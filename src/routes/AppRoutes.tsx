@@ -6,7 +6,7 @@ import { Dashboard } from '../view/Dashboard';
 // import { Accounting } from '../view/Accounting';
 // import { Application } from '../view/Application';
 // import { Customer } from '../view/Customer';
-import { LoanApplication } from '../view/Loan/LoanApplication';
+import { Loan } from '../view/Loan/Loan';
 // import { Setting } from '../view/Setting';
 
 const rootRoute = createRootRoute({
@@ -44,7 +44,7 @@ const indexRoute = createRoute({
 const loanRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/loan',
-  component: LoanApplication,
+  component: Loan,
 });
 
 // const settingRoute = createRoute({
