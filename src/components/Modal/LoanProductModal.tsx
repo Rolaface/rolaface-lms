@@ -10,13 +10,14 @@ import {
   Checkbox,
   Modal,
   Tabs,
-  Divider,
+  ActionIcon,
 } from "@mantine/core";
 import {
   IconX,
   IconMinus,
   IconBuildingBank,
   IconChevronDown,
+  IconTrash,
 } from "@tabler/icons-react";
 
 interface LoanProductProps {
@@ -27,10 +28,70 @@ interface LoanProductProps {
 export function LoanProductModal({ opened, onClose }: LoanProductProps) {
   const [activeTab, setActiveTab] = useState<string | null>("0");
 
+  // --- 1. Accounting State (Same as Interest Logic) ---
+  const [sameAsInterest, setSameAsInterest] = useState(false);
+  const [interestAccs, setInterestAccs] = useState({
+    income: "",
+    receivable: "",
+    accrued: "",
+    suspended: "",
+    waiver: "",
+  });
+  const [penaltyAccs, setPenaltyAccs] = useState({
+    income: "",
+    receivable: "",
+    accrued: "",
+    suspended: "",
+    waiver: "",
+  });
+
+  const handleInterestChange = (field: keyof typeof interestAccs, value: string | null) => {
+    const val = value || "";
+    setInterestAccs((prev) => ({ ...prev, [field]: val }));
+    if (sameAsInterest) {
+      setPenaltyAccs((prev) => ({ ...prev, [field]: val }));
+    }
+  };
+
+  const handlePenaltyChange = (field: keyof typeof penaltyAccs, value: string | null) => {
+    setPenaltyAccs((prev) => ({ ...prev, [field]: value || "" }));
+    // Automatically uncheck "Same as Interest" if the user manually edits a penalty field
+    if (sameAsInterest) {
+      setSameAsInterest(false);
+    }
+  };
+
+  const handleSameAsInterestToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isChecked = e.currentTarget.checked;
+    setSameAsInterest(isChecked);
+    if (isChecked) {
+      setPenaltyAccs({ ...interestAccs });
+    }
+  };
+
+  // --- 2. Charges Table State ---
+  const [charges, setCharges] = useState<{ id: number; type: string; percentage: string; amount: string }[]>([]);
+
+  const handleAddCharge = () => {
+    setCharges((prev) => [...prev, { id: Date.now(), type: "", percentage: "", amount: "" }]);
+  };
+
+  const handleUpdateCharge = (id: number, field: string, value: string) => {
+    setCharges((prev) => prev.map((charge) => (charge.id === id ? { ...charge, [field]: value } : charge)));
+  };
+
+  const handleRemoveCharge = (id: number) => {
+    setCharges((prev) => prev.filter((charge) => charge.id !== id));
+  };
+
+  // --- Navigation ---
   const handleNext = () => {
     const current = parseInt(activeTab || "0");
     if (current < 4) setActiveTab((current + 1).toString());
   };
+
+  const dummyAccounts = ["Account A", "Account B", "Account C"];
+  const chargeTypes = ["Processing Fee", "Late Fee", "Documentation Fee"];
 
   const renderProductDetails = () => (
     <div className="flex flex-col gap-4">
@@ -174,7 +235,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               rightSection={<IconChevronDown size={14} className="text-gray-500" />}
               placeholder="Select account"
               label="Loan Account"
-              data={[]}
+              data={dummyAccounts}
               classNames={{ label: "text-xs text-gray-500 mb-1" }}
             />
             <Select
@@ -183,7 +244,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               rightSection={<IconChevronDown size={14} className="text-gray-500" />}
               placeholder="Select account"
               label="Disbursement Bank Account"
-              data={[]}
+              data={dummyAccounts}
               classNames={{ label: "text-xs text-gray-500 mb-1" }}
             />
             <Select
@@ -192,7 +253,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               rightSection={<IconChevronDown size={14} className="text-gray-500" />}
               placeholder="Select account"
               label="Repayment Bank Account"
-              data={[]}
+              data={dummyAccounts}
               classNames={{ label: "text-xs text-gray-500 mb-1" }}
             />
           </div>
@@ -210,7 +271,9 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
             <Checkbox
               size="xs"
               label="Same as Interest"
-              classNames={{ label: "text-[11px] text-gray-700 font-semibold" }}
+              checked={sameAsInterest}
+              onChange={handleSameAsInterestToggle}
+              classNames={{ label: "text-[11px] text-gray-700 font-semibold cursor-pointer" }}
             />
           </div>
 
@@ -223,46 +286,56 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               <Select
                 size="xs"
                 searchable
+                value={interestAccs.income}
+                onChange={(v) => handleInterestChange("income", v)}
                 rightSection={<IconChevronDown size={14} className="text-gray-500" />}
                 placeholder="Select account"
                 label="Income Account"
-                data={[]}
+                data={dummyAccounts}
                 classNames={{ label: "text-xs text-gray-500 mb-1" }}
               />
               <Select
                 size="xs"
                 searchable
+                value={interestAccs.receivable}
+                onChange={(v) => handleInterestChange("receivable", v)}
                 rightSection={<IconChevronDown size={14} className="text-gray-500" />}
                 placeholder="Select account"
                 label="Receivable Account"
-                data={[]}
+                data={dummyAccounts}
                 classNames={{ label: "text-xs text-gray-500 mb-1" }}
               />
               <Select
                 size="xs"
                 searchable
+                value={interestAccs.accrued}
+                onChange={(v) => handleInterestChange("accrued", v)}
                 rightSection={<IconChevronDown size={14} className="text-gray-500" />}
                 placeholder="Select account"
                 label="Accrued Account"
-                data={[]}
+                data={dummyAccounts}
                 classNames={{ label: "text-xs text-gray-500 mb-1" }}
               />
               <Select
                 size="xs"
                 searchable
+                value={interestAccs.suspended}
+                onChange={(v) => handleInterestChange("suspended", v)}
                 rightSection={<IconChevronDown size={14} className="text-gray-500" />}
                 placeholder="Select account"
                 label="Suspended Account"
-                data={[]}
+                data={dummyAccounts}
                 classNames={{ label: "text-xs text-gray-500 mb-1" }}
               />
               <Select
                 size="xs"
                 searchable
+                value={interestAccs.waiver}
+                onChange={(v) => handleInterestChange("waiver", v)}
                 rightSection={<IconChevronDown size={14} className="text-gray-500" />}
                 placeholder="Select account"
                 label="Waiver Account"
-                data={[]}
+                data={dummyAccounts}
                 classNames={{ label: "text-xs text-gray-500 mb-1" }}
               />
             </div>
@@ -277,46 +350,56 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               <Select
                 size="xs"
                 searchable
+                value={penaltyAccs.income}
+                onChange={(v) => handlePenaltyChange("income", v)}
                 rightSection={<IconChevronDown size={14} className="text-gray-500" />}
                 placeholder="Select account"
                 label="Income Account"
-                data={[]}
+                data={dummyAccounts}
                 classNames={{ label: "text-xs text-gray-500 mb-1" }}
               />
               <Select
                 size="xs"
                 searchable
+                value={penaltyAccs.receivable}
+                onChange={(v) => handlePenaltyChange("receivable", v)}
                 rightSection={<IconChevronDown size={14} className="text-gray-500" />}
                 placeholder="Select account"
                 label="Receivable Account"
-                data={[]}
+                data={dummyAccounts}
                 classNames={{ label: "text-xs text-gray-500 mb-1" }}
               />
               <Select
                 size="xs"
                 searchable
+                value={penaltyAccs.accrued}
+                onChange={(v) => handlePenaltyChange("accrued", v)}
                 rightSection={<IconChevronDown size={14} className="text-gray-500" />}
                 placeholder="Select account"
                 label="Accrued Account"
-                data={[]}
+                data={dummyAccounts}
                 classNames={{ label: "text-xs text-gray-500 mb-1" }}
               />
               <Select
                 size="xs"
                 searchable
+                value={penaltyAccs.suspended}
+                onChange={(v) => handlePenaltyChange("suspended", v)}
                 rightSection={<IconChevronDown size={14} className="text-gray-500" />}
                 placeholder="Select account"
                 label="Suspended Account"
-                data={[]}
+                data={dummyAccounts}
                 classNames={{ label: "text-xs text-gray-500 mb-1" }}
               />
               <Select
                 size="xs"
                 searchable
+                value={penaltyAccs.waiver}
+                onChange={(v) => handlePenaltyChange("waiver", v)}
                 rightSection={<IconChevronDown size={14} className="text-gray-500" />}
                 placeholder="Select account"
                 label="Waiver Account"
-                data={[]}
+                data={dummyAccounts}
                 classNames={{ label: "text-xs text-gray-500 mb-1" }}
               />
             </div>
@@ -338,7 +421,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               rightSection={<IconChevronDown size={14} className="text-gray-500" />}
               placeholder="Select account"
               label="Write Off Account"
-              data={[]}
+              data={dummyAccounts}
               classNames={{ label: "text-xs text-gray-500 mb-1" }}
             />
             <Select
@@ -347,7 +430,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               rightSection={<IconChevronDown size={14} className="text-gray-500" />}
               placeholder="Select account"
               label="Subsidy Account"
-              data={[]}
+              data={dummyAccounts}
               classNames={{ label: "text-xs text-gray-500 mb-1" }}
             />
             <Select
@@ -356,7 +439,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               rightSection={<IconChevronDown size={14} className="text-gray-500" />}
               placeholder="Select account"
               label="Security Deposit Account"
-              data={[]}
+              data={dummyAccounts}
               classNames={{ label: "text-xs text-gray-500 mb-1" }}
             />
             <Select
@@ -365,7 +448,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               rightSection={<IconChevronDown size={14} className="text-gray-500" />}
               placeholder="Select account"
               label="Write Off Recovery"
-              data={[]}
+              data={dummyAccounts}
               classNames={{ label: "text-xs text-gray-500 mb-1" }}
             />
             <Select
@@ -374,7 +457,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               rightSection={<IconChevronDown size={14} className="text-gray-500" />}
               placeholder="Select account"
               label="Suspense Collection"
-              data={[]}
+              data={dummyAccounts}
               classNames={{ label: "text-xs text-gray-500 mb-1" }}
             />
             <Select
@@ -383,7 +466,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               rightSection={<IconChevronDown size={14} className="text-gray-500" />}
               placeholder="Select account"
               label="Customer Refund"
-              data={[]}
+              data={dummyAccounts}
               classNames={{ label: "text-xs text-gray-500 mb-1" }}
             />
           </div>
@@ -423,8 +506,33 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
           placeholder="Select sequence"
           data={["Sequence 1"]}
         />
+        <Select
+          size="xs"
+          searchable
+          rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+          label="Written Off Asset"
+          placeholder="Select sequence"
+          data={["Sequence 1"]}
+        />
+        <Select
+          size="xs"
+          searchable
+          rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+          label="Settlement Collection"
+          placeholder="Select sequence"
+          data={["Sequence 1"]}
+        />
       </div>
-      <Divider mb="md" color="gray.2" />
+    </Paper>
+  );
+
+  const renderCharges = () => (
+    <Paper
+      withBorder
+      radius="md"
+      p="md"
+      className="shadow-sm bg-white min-h-[300px]"
+    >
       <Text
         size="xs"
         fw={700}
@@ -432,34 +540,89 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
       >
         Loan Charges
       </Text>
-      <div className="border border-gray-200 rounded-md overflow-hidden mb-3">
-        <Table size="xs">
+      <div className="border border-gray-200 rounded-md overflow-hidden mb-3 mt-4">
+        <Table size="xs" verticalSpacing="sm">
           <Table.Thead className="bg-gray-50">
             <Table.Tr>
               <Table.Th className="w-10">
                 <Checkbox size="xs" aria-label="Select all" />
               </Table.Th>
-              <Table.Th>No.</Table.Th>
+              <Table.Th className="w-12">No.</Table.Th>
               <Table.Th>Charge Type</Table.Th>
               <Table.Th>Percentage</Table.Th>
               <Table.Th>Amount</Table.Th>
+              <Table.Th className="w-12"></Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            <Table.Tr>
-              <Table.Td
-                colSpan={5}
-                className="text-center py-6 text-gray-500 bg-gray-50/50"
-              >
-                No rows
-              </Table.Td>
-            </Table.Tr>
+            {charges.length === 0 ? (
+              <Table.Tr>
+                <Table.Td
+                  colSpan={6}
+                  className="text-center py-6 text-gray-500 bg-gray-50/50"
+                >
+                  No rows
+                </Table.Td>
+              </Table.Tr>
+            ) : (
+              charges.map((charge, index) => (
+                <Table.Tr key={charge.id}>
+                  <Table.Td>
+                    <Checkbox size="xs" />
+                  </Table.Td>
+                  <Table.Td className="text-xs text-gray-600 font-medium">
+                    {index + 1}
+                  </Table.Td>
+                  <Table.Td>
+                    <Select
+                      size="xs"
+                      data={chargeTypes}
+                      placeholder="Select type"
+                      value={charge.type}
+                      onChange={(val) => handleUpdateCharge(charge.id, "type", val || "")}
+                      variant="unstyled"
+                      className="border-b border-transparent hover:border-gray-200"
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="xs"
+                      placeholder="%"
+                      value={charge.percentage}
+                      onChange={(e) => handleUpdateCharge(charge.id, "percentage", e.currentTarget.value)}
+                      variant="unstyled"
+                      className="border-b border-transparent hover:border-gray-200"
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="xs"
+                      placeholder="0.00"
+                      value={charge.amount}
+                      onChange={(e) => handleUpdateCharge(charge.id, "amount", e.currentTarget.value)}
+                      variant="unstyled"
+                      className="border-b border-transparent hover:border-gray-200"
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <ActionIcon
+                      color="red"
+                      variant="subtle"
+                      onClick={() => handleRemoveCharge(charge.id)}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Table.Td>
+                </Table.Tr>
+              ))
+            )}
           </Table.Tbody>
         </Table>
       </div>
       <Button
         size="xs"
         variant="default"
+        onClick={handleAddCharge}
         className="text-gray-700 font-semibold"
       >
         + Add row
@@ -553,7 +716,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
                 <Tabs.List className="border-none gap-2">
                   <Tabs.Tab value="0">Basic Details</Tabs.Tab>
                   <Tabs.Tab value="1">Accounting</Tabs.Tab>
-                  <Tabs.Tab value="2">Collection Sequence & Charges</Tabs.Tab>
+                  <Tabs.Tab value="2">Collection Sequence</Tabs.Tab>
+                  <Tabs.Tab value="3">Charges</Tabs.Tab>
                   <Tabs.Tab value="4">Review</Tabs.Tab>
                 </Tabs.List>
               </Tabs>
@@ -564,6 +728,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               {activeTab === "0" && renderProductDetails()}
               {activeTab === "1" && renderAccounting()}
               {activeTab === "2" && renderCollection()}
+              {activeTab === "3" && renderCharges()}
               {activeTab === "4" && renderReview()}
             </div>
           </div>
