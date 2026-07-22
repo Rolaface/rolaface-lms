@@ -1,25 +1,23 @@
-import { useState } from 'react';
-import { 
-  Box, 
-  Text, 
-  Button, 
-  TextInput, 
-  Select, 
+import { useState } from "react";
+import {
+  Box,
+  Text,
+  Button,
+  TextInput,
+  Select,
   Paper,
   Table,
   Checkbox,
   Modal,
   Tabs,
-  Badge,
-  Divider
-} from '@mantine/core';
-import { 
+  Divider,
+} from "@mantine/core";
+import {
   IconX,
   IconMinus,
   IconBuildingBank,
-  IconFileInvoice,
-  IconChevronDown
-} from '@tabler/icons-react';
+  IconChevronDown,
+} from "@tabler/icons-react";
 
 interface LoanProductProps {
   opened: boolean;
@@ -27,227 +25,420 @@ interface LoanProductProps {
 }
 
 export function LoanProductModal({ opened, onClose }: LoanProductProps) {
-  const [activeTab, setActiveTab] = useState<string | null>('0');
+  const [activeTab, setActiveTab] = useState<string | null>("0");
 
   const handleNext = () => {
-    const current = parseInt(activeTab || '0');
+    const current = parseInt(activeTab || "0");
     if (current < 4) setActiveTab((current + 1).toString());
   };
 
   const renderProductDetails = () => (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {/* Basic Product Information */}
-      <Paper withBorder radius="md" p="xl" className="shadow-sm bg-white">
-        <Text size="xs" fw={700} className="text-gray-700 uppercase tracking-wider mb-6">
+      <Paper withBorder radius="md" p="md" className="shadow-sm bg-white">
+        <Text
+          size="xs"
+          fw={700}
+          className="text-gray-700 uppercase tracking-wider mb-3"
+        >
           Basic Product Information
         </Text>
-        
+
         <div className="grid grid-cols-4 gap-4">
-          <TextInput 
-            label="Product Code" 
-            placeholder="Enter product code" 
-            withAsterisk 
-            classNames={{ label: 'text-sm font-semibold text-gray-700 mb-1' }}
+          <TextInput
+            size="xs"
+            label="Product Code"
+            placeholder="Enter product code"
+            withAsterisk
+            classNames={{ label: "text-xs font-semibold text-gray-700 mb-1" }}
           />
-          <TextInput 
-            label="Product Name" 
-            placeholder="Enter product name" 
-            withAsterisk 
-            classNames={{ label: 'text-sm font-semibold text-gray-700 mb-1' }}
+          <TextInput
+            size="xs"
+            label="Product Name"
+            placeholder="Enter product name"
+            withAsterisk
+            classNames={{ label: "text-xs font-semibold text-gray-700 mb-1" }}
           />
-          <Select 
-            label="Loan Category" 
-            placeholder="Select loan category" 
-            data={['Personal Loan', 'Home Loan', 'Auto Loan']}
-            classNames={{ label: 'text-sm font-semibold text-gray-700 mb-1' }}
+          <Select
+            size="xs"
+            searchable
+            rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+            label="Loan Category"
+            placeholder="Select loan category"
+            data={["Personal Loan", "Home Loan", "Auto Loan"]}
+            classNames={{ label: "text-xs font-semibold text-gray-700 mb-1" }}
           />
-          <Select 
-            label="Repayment Schedule Type" 
-            placeholder="Select repayment schedule type" 
-            data={['Equated Monthly Installment (EMI)', 'Bullet Payment']}
-            classNames={{ label: 'text-sm font-semibold text-gray-700 mb-1' }}
+          <Select
+            size="xs"
+            searchable
+            rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+            label="Repayment Schedule Type"
+            placeholder="Select repayment schedule type"
+            data={["Equated Monthly Installment (EMI)", "Bullet Payment"]}
+            classNames={{ label: "text-xs font-semibold text-gray-700 mb-1" }}
           />
-          <TextInput 
-            label="Maximum Loan Amount" 
-            placeholder="Enter maximum amount" 
-            classNames={{ label: 'text-sm font-semibold text-gray-700 mb-1' }}
+          <TextInput
+            size="xs"
+            label="Maximum Loan Amount"
+            placeholder="Enter maximum amount"
+            classNames={{ label: "text-xs font-semibold text-gray-700 mb-1" }}
           />
         </div>
       </Paper>
 
       {/* Interest & Repayment Terms */}
-      <Paper withBorder radius="md" p="xl" className="shadow-sm bg-white">
-        <Text size="xs" fw={700} className="text-gray-700 uppercase tracking-wider mb-6">
+      <Paper withBorder radius="md" p="md" className="shadow-sm bg-white">
+        <Text
+          size="xs"
+          fw={700}
+          className="text-gray-700 uppercase tracking-wider mb-3"
+        >
           Interest & Repayment Terms
         </Text>
-        
-        <div className="grid grid-cols-4 gap-6">
-          <TextInput 
-            label="Rate of Interest (% Yearly)" 
-             description="Total Interest charged annually on the principal amount."
-            placeholder="Enter rate of interest" 
-            withAsterisk 
-            classNames={{ label: 'text-sm font-semibold text-gray-700 mb-1' }}
+
+        <div className="grid grid-cols-4 gap-4">
+          <TextInput
+            size="xs"
+            label="Rate of Interest (% Yearly)"
+            description="Total Interest charged annually."
+            placeholder="Enter rate of interest"
+            withAsterisk
+            classNames={{
+              label: "text-xs font-semibold text-gray-700 mb-1",
+              description: "mt-0 text-[10px]",
+            }}
           />
-          <Select 
-            label="Frequency" 
-             description="Monthly, Quarterly, Yearly"
-            placeholder="Select frequency" 
-            data={['Monthly', 'Quarterly', 'Yearly']}
-            classNames={{ label: 'text-sm font-semibold text-gray-700 mb-1' , description: 'mt-1'}}
+          <Select
+            size="xs"
+            searchable
+            rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+            label="Frequency"
+            description="Monthly, Quarterly, Yearly"
+            placeholder="Select frequency"
+            data={["Monthly", "Quarterly", "Yearly"]}
+            classNames={{
+              label: "text-xs font-semibold text-gray-700 mb-1",
+              description: "mt-0 text-[10px]",
+            }}
           />
-          <TextInput 
-            label="Penalty Rate (%)" 
-            description="Levied on pending amount daily for delays."
-            placeholder="Enter penalty interest rate" 
-            classNames={{ label: 'text-sm font-semibold text-gray-700 mb-1', description: 'mt-1' }}
+          <TextInput
+            size="xs"
+            label="Penalty Rate (%)"
+            description="Levied on pending amount daily."
+            placeholder="Enter penalty rate"
+            classNames={{
+              label: "text-xs font-semibold text-gray-700 mb-1",
+              description: "mt-0 text-[10px]",
+            }}
           />
-          <TextInput 
-            label="Grace Period (Days)" 
-            description="Days allowed before penalty rate applies."
-            placeholder="Enter grace period in days" 
-            classNames={{ label: 'text-sm font-semibold text-gray-700 mb-1', description: 'mt-1' }}
+          <TextInput
+            size="xs"
+            label="Grace Period (Days)"
+            description="Days before penalty applies."
+            placeholder="Enter grace period"
+            classNames={{
+              label: "text-xs font-semibold text-gray-700 mb-1",
+              description: "mt-0 text-[10px]",
+            }}
           />
-          <TextInput 
-            label="Days Past Due Threshold for NPA" 
-            description="Days allowed for overdue before marking as Non-Performing Asset."
-            placeholder="Enter number of days" 
-            classNames={{ label: 'text-sm font-semibold text-gray-700 mb-1',  description: 'mt-1' }}
+          <TextInput
+            size="xs"
+            label="Days Past Due for NPA"
+            description="Overdue days before NPA mark."
+            placeholder="Enter days"
+            classNames={{
+              label: "text-xs font-semibold text-gray-700 mb-1",
+              description: "mt-0 text-[10px]",
+            }}
           />
         </div>
       </Paper>
-
-      {/* Additional Settings */}
-      {/* <Paper withBorder radius="md" p="xl" className="shadow-sm bg-white">
-        <Text size="xs" fw={700} className="text-gray-700 uppercase tracking-wider mb-6">
-          Additional Settings
-        </Text>
-        
-        <div className="w-1/3 pr-3">
-          
-        </div>
-      </Paper> */}
     </div>
   );
 
-const renderAccounting = () => (
+  const renderAccounting = () => (
     <div className="flex flex-col gap-4">
-      <Paper withBorder radius="md" p="xl" className="shadow-sm bg-white">
-
-    <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Text size="sm" fw={600} className="text-gray-900">General Accounts</Text>
-            <IconChevronDown size={14} className="text-gray-500" />
-          </div>
-          <div className="grid grid-cols-4 gap-x-8 gap-y-3">
-            <Select placeholder="Select account" label="Income Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            <Select placeholder="Select account" label="Expense Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-           </div>
-        </div>
-
-        {/* Loan Accounts Section */}
+      <Paper withBorder radius="md" p="md" className="shadow-sm bg-white">
+        {/* Principal Accounts Section */}
         <div className="mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Text size="sm" fw={600} className="text-gray-900">Loan Accounts</Text>
+          <div className="flex items-center gap-2 mb-2">
+            <Text size="sm" fw={600} className="text-gray-900">
+              Principal Accounts
+            </Text>
             <IconChevronDown size={14} className="text-gray-500" />
           </div>
-          <div className="grid grid-cols-4 gap-x-8 gap-y-3">
-            <Select placeholder="Select account" label="Disbursement Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            <Select placeholder="Select account" label="Loan Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            {/* <Select placeholder="Select account" label="Repayment Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} /> */}
-            <Select placeholder="Select account" label="Security Deposit Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            {/* <Select placeholder="Select account" label="Subsidy Adjustment Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} /> */}
-            <Select placeholder="Select account" label="Suspense Collection Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            {/* <Select placeholder="Select account" label="Customer Refund Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} /> */}
+          <div className="grid grid-cols-5 gap-x-6 gap-y-2">
+            <Select
+              size="xs"
+              searchable
+              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              placeholder="Select account"
+              label="Loan Account"
+              data={[]}
+              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+            />
+            <Select
+              size="xs"
+              searchable
+              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              placeholder="Select account"
+              label="Disbursement Bank Account"
+              data={[]}
+              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+            />
+            <Select
+              size="xs"
+              searchable
+              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              placeholder="Select account"
+              label="Repayment Bank Account"
+              data={[]}
+              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+            />
           </div>
         </div>
 
-        {/* <Divider mb="xl" color="gray.2" /> */}
-
-        {/* Interest Accounts Section */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Text size="sm" fw={600} className="text-gray-900">Interest Accounts</Text>
-            <IconChevronDown size={14} className="text-gray-500" />
-          </div>
-          <div className="grid grid-cols-4 gap-x-8 gap-y-3">
-            {/* <Select placeholder="Select account" label="Interest Income Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} /> */}
-            <Select placeholder="Select account" label="Interest Receivable Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            <Select placeholder="Select account" label="Interest Accrued Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            <Select placeholder="Select account" label="Suspense Interest Income" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            {/* <Select placeholder="Select account" label="Interest Waiver Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} /> */}
-            {/* <Select placeholder="Select account" label="Broken Period Interest Recovery Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} /> */}
-          </div>
-        </div>
-
-        {/* <Divider mb="xl" color="gray.2" /> */}
-
-        {/* Additional Interest Accounts Section */}
-        {/* <div className="mb-6">
-          <div className="flex items-center gap-2 mb-5">
-            <Text size="sm" fw={600} className="text-gray-900">Additional Interest Accounts</Text>
-            <IconChevronDown size={14} className="text-gray-500" />
-          </div>
-          <div className="grid grid-cols-4 gap-x-8 gap-y-5">
-            <div className="flex items-center mt-6">
-              <Checkbox label="Same as regular Interest accounts" classNames={{ label: 'text-xs text-gray-700' }} />
+        {/* Interest & Penalty Accounts Section */}
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Text size="sm" fw={600} className="text-gray-900">
+                Interest & Penalty Accounts
+              </Text>
+              <IconChevronDown size={14} className="text-gray-500" />
             </div>
-            <Select placeholder="Select account" label="Additional Interest Receivable" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            <Select placeholder="Select account" label="Additional Interest Income" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            <Select placeholder="Select account" label="Additional Interest Suspense" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            <Select placeholder="Select account" label="Additional Interest Accrued" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            <Select placeholder="Select account" label="Additional Interest Waiver" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
+            <Checkbox
+              size="xs"
+              label="Same as Interest"
+              classNames={{ label: "text-[11px] text-gray-700 font-semibold" }}
+            />
           </div>
-        </div> */}
 
-        {/* <Divider mb="xl" color="gray.2" /> */}
-
-        {/* Penalty Charges Accounts Section */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Text size="sm" fw={600} className="text-gray-900">Penalty Charges Accounts</Text>
-            <IconChevronDown size={14} className="text-gray-500" />
+          {/* Interest Part */}
+          <div className="mb-4">
+            <Text size="xs" fw={600} className="text-gray-600 mb-2">
+              Interest
+            </Text>
+            <div className="grid grid-cols-5 gap-x-6 gap-y-3">
+              <Select
+                size="xs"
+                searchable
+                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                placeholder="Select account"
+                label="Income Account"
+                data={[]}
+                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              />
+              <Select
+                size="xs"
+                searchable
+                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                placeholder="Select account"
+                label="Receivable Account"
+                data={[]}
+                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              />
+              <Select
+                size="xs"
+                searchable
+                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                placeholder="Select account"
+                label="Accrued Account"
+                data={[]}
+                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              />
+              <Select
+                size="xs"
+                searchable
+                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                placeholder="Select account"
+                label="Suspended Account"
+                data={[]}
+                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              />
+              <Select
+                size="xs"
+                searchable
+                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                placeholder="Select account"
+                label="Waiver Account"
+                data={[]}
+                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              />
+            </div>
           </div>
-          <div className="grid grid-cols-4 gap-x-8 gap-y-3">
-            {/* <Select placeholder="Select account" label="Penalty Income Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} /> */}
-            <Select placeholder="Select account" label="Penalty Receivable Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            <Select placeholder="Select account" label="Penalty Accrued Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            <Select placeholder="Select account" label="Penalty Suspense Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            {/* <Select placeholder="Select account" label="Penalty Waiver Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} /> */}
+
+          {/* Penalty Part */}
+          <div>
+            <Text size="xs" fw={600} className="text-gray-600 mb-2">
+              Penalty
+            </Text>
+            <div className="grid grid-cols-5 gap-x-6 gap-y-3">
+              <Select
+                size="xs"
+                searchable
+                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                placeholder="Select account"
+                label="Income Account"
+                data={[]}
+                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              />
+              <Select
+                size="xs"
+                searchable
+                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                placeholder="Select account"
+                label="Receivable Account"
+                data={[]}
+                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              />
+              <Select
+                size="xs"
+                searchable
+                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                placeholder="Select account"
+                label="Accrued Account"
+                data={[]}
+                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              />
+              <Select
+                size="xs"
+                searchable
+                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                placeholder="Select account"
+                label="Suspended Account"
+                data={[]}
+                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              />
+              <Select
+                size="xs"
+                searchable
+                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                placeholder="Select account"
+                label="Waiver Account"
+                data={[]}
+                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              />
+            </div>
           </div>
         </div>
 
-        {/* <Divider mb="xl" color="gray.2" /> */}
-
-        {/* Write Off Accounts Section */}
-        {/* <div>
-          <div className="flex items-center gap-2 mb-5">
-            <Text size="sm" fw={600} className="text-gray-900">Write Off Accounts</Text>
+        {/* General Accounts Section */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Text size="sm" fw={600} className="text-gray-900">
+              General Accounts
+            </Text>
             <IconChevronDown size={14} className="text-gray-500" />
           </div>
-          <div className="grid grid-cols-4 gap-x-8 gap-y-5">
-            <Select placeholder="Select account" label="Write Off Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
-            <Select placeholder="Select account" label="Write Off Recovery Account" data={[]} classNames={{ label: 'text-xs text-gray-500 mb-1' }} />
+          <div className="grid grid-cols-5 gap-x-6 gap-y-2">
+            <Select
+              size="xs"
+              searchable
+              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              placeholder="Select account"
+              label="Write Off Account"
+              data={[]}
+              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+            />
+            <Select
+              size="xs"
+              searchable
+              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              placeholder="Select account"
+              label="Subsidy Account"
+              data={[]}
+              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+            />
+            <Select
+              size="xs"
+              searchable
+              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              placeholder="Select account"
+              label="Security Deposit Account"
+              data={[]}
+              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+            />
+            <Select
+              size="xs"
+              searchable
+              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              placeholder="Select account"
+              label="Write Off Recovery"
+              data={[]}
+              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+            />
+            <Select
+              size="xs"
+              searchable
+              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              placeholder="Select account"
+              label="Suspense Collection"
+              data={[]}
+              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+            />
+            <Select
+              size="xs"
+              searchable
+              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              placeholder="Select account"
+              label="Customer Refund"
+              data={[]}
+              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+            />
           </div>
-        </div> */}
+        </div>
       </Paper>
     </div>
   );
 
   const renderCollection = () => (
-    <Paper withBorder radius="md" p="xl" className="shadow-sm bg-white min-h-[400px]">
-      <Text size="xs" fw={700} className="text-gray-700 uppercase tracking-wider mb-6">Collection Sequence</Text>
-      <div className="grid grid-cols-4 gap-6 mb-8">
-        <Select label="Standard Asset" placeholder="Select sequence" data={['Sequence 1']} />
-        <Select label="Sub Standard Asset" placeholder="Select sequence" data={['Sequence 1']} />
+    <Paper
+      withBorder
+      radius="md"
+      p="md"
+      className="shadow-sm bg-white min-h-[300px]"
+    >
+      <Text
+        size="xs"
+        fw={700}
+        className="text-gray-700 uppercase tracking-wider mb-4"
+      >
+        Collection Sequence
+      </Text>
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <Select
+          size="xs"
+          searchable
+          rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+          label="Standard Asset"
+          placeholder="Select sequence"
+          data={["Sequence 1"]}
+        />
+        <Select
+          size="xs"
+          searchable
+          rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+          label="Sub Standard Asset"
+          placeholder="Select sequence"
+          data={["Sequence 1"]}
+        />
       </div>
-<Divider mb="xl" color="gray.2" />
-        <Text size="xs" fw={700} className="text-gray-700 uppercase tracking-wider">Loan Charges</Text>
-      <div className="border border-gray-200 rounded-md overflow-hidden mb-4 mt-2">
-        <Table>
+      <Divider mb="md" color="gray.2" />
+      <Text
+        size="xs"
+        fw={700}
+        className="text-gray-700 uppercase tracking-wider mb-2"
+      >
+        Loan Charges
+      </Text>
+      <div className="border border-gray-200 rounded-md overflow-hidden mb-3">
+        <Table size="xs">
           <Table.Thead className="bg-gray-50">
             <Table.Tr>
-              <Table.Th className="w-12"><Checkbox aria-label="Select all" /></Table.Th>
+              <Table.Th className="w-10">
+                <Checkbox size="xs" aria-label="Select all" />
+              </Table.Th>
               <Table.Th>No.</Table.Th>
               <Table.Th>Charge Type</Table.Th>
               <Table.Th>Percentage</Table.Th>
@@ -256,162 +447,161 @@ const renderAccounting = () => (
           </Table.Thead>
           <Table.Tbody>
             <Table.Tr>
-              <Table.Td colSpan={5} className="text-center py-8 text-gray-500 bg-gray-50/50">No rows</Table.Td>
+              <Table.Td
+                colSpan={5}
+                className="text-center py-6 text-gray-500 bg-gray-50/50"
+              >
+                No rows
+              </Table.Td>
             </Table.Tr>
           </Table.Tbody>
         </Table>
       </div>
-        <Button variant="default" className="text-gray-700 font-semibold">+ Add row</Button>
-
+      <Button
+        size="xs"
+        variant="default"
+        className="text-gray-700 font-semibold"
+      >
+        + Add row
+      </Button>
     </Paper>
   );
 
-//   const renderCharges = () => (
-//     <Paper withBorder radius="md" p="xl" className="shadow-sm bg-white min-h-[400px]">
-//       <Text size="xs" fw={700} className="text-gray-700 uppercase tracking-wider mb-6">Loan Charges</Text>
-//       <div className="border border-gray-200 rounded-md overflow-hidden mb-4">
-//         <Table>
-//           <Table.Thead className="bg-gray-50">
-//             <Table.Tr>
-//               <Table.Th className="w-12"><Checkbox aria-label="Select all" /></Table.Th>
-//               <Table.Th>No.</Table.Th>
-//               <Table.Th>Charge Type</Table.Th>
-//               <Table.Th>Percentage</Table.Th>
-//               <Table.Th>Amount</Table.Th>
-//             </Table.Tr>
-//           </Table.Thead>
-//           <Table.Tbody>
-//             <Table.Tr>
-//               <Table.Td colSpan={5} className="text-center py-8 text-gray-500 bg-gray-50/50">No rows</Table.Td>
-//             </Table.Tr>
-//           </Table.Tbody>
-//         </Table>
-//       </div>
-//       <Button variant="default" className="text-gray-700 font-semibold">+ Add row</Button>
-//     </Paper>
-//   );
-
   const renderReview = () => (
-    <Paper withBorder radius="md" p="xl" className="shadow-sm bg-white min-h-[400px]">
-      <Text size="xs" fw={700} className="text-gray-700 uppercase tracking-wider mb-6">Review</Text>
-      <Text size="sm" className="text-gray-600">Review summary goes here.</Text>
+    <Paper
+      withBorder
+      radius="md"
+      p="md"
+      className="shadow-sm bg-white min-h-[300px]"
+    >
+      <Text
+        size="xs"
+        fw={700}
+        className="text-gray-700 uppercase tracking-wider mb-4"
+      >
+        Review
+      </Text>
+      <Text size="sm" className="text-gray-600">
+        Review summary goes here.
+      </Text>
     </Paper>
   );
 
   return (
-    <Modal 
-      opened={opened} 
-      onClose={onClose} 
-      size="95%" // Makes it nearly full screen like the screenshot
-      withCloseButton={false} 
-      padding={0} // Removing padding here allows the header to bleed edge-to-edge
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      size="95%"
+      withCloseButton={false}
+      padding={0}
       radius="md"
       className="bg-[#F4F5F7]"
     >
       <Box className="flex flex-col h-[90vh]">
-        
         {/* Dark Blue Header */}
-      <Box
-  bg="brand.6"
-  className="text-white px-6 py-4 flex justify-between items-center rounded-t-md shrink-0"
->
-  <div className="flex items-center gap-3">
-    <div className="p-2 rounded-md">
-      <IconBuildingBank size={24} className="text-white" />
-    </div>
-    <div>
-      <Text size="lg" fw={600} className="leading-tight">
-        Create Loan Product
-      </Text>
-      <Text size="xs" c="white.6">
-        Define product details and rules for this loan offering
-      </Text>
-    </div>
-  </div>
+        <Box
+          bg="brand.6"
+          className="text-white px-5 py-3 flex justify-between items-center rounded-t-md shrink-0"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-1 rounded-md">
+              <IconBuildingBank size={22} className="text-white" />
+            </div>
+            <div>
+              <Text size="md" fw={600} className="leading-tight">
+                Create Loan Product
+              </Text>
+              <Text size="xs" c="white.6">
+                Define product details and rules for this loan offering
+              </Text>
+            </div>
+          </div>
 
-  <div className="flex items-center gap-2">
-    <Button variant="subtle" className="text-white hover:bg-white/10 px-2" size="sm">
-      <IconMinus size={20} />
-    </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="subtle"
+              className="text-white hover:bg-white/10 px-2"
+              size="xs"
+            >
+              <IconMinus size={18} />
+            </Button>
 
-    <Button variant="subtle" onClick={onClose} className="text-white hover:bg-white/10 px-2" size="sm">
-      <IconX size={20} />
-    </Button>
-  </div>
-</Box>
+            <Button
+              variant="subtle"
+              onClick={onClose}
+              className="text-white hover:bg-white/10 px-2"
+              size="xs"
+            >
+              <IconX size={18} />
+            </Button>
+          </div>
+        </Box>
 
         {/* Main Body Layout */}
         <div className="flex flex-1 overflow-hidden bg-[#F4F5F7]">
-          
           {/* Left Content Area (Tabs + Forms) */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Minimalist Tabs */}
-            <Box className="px-8 pt-4 bg-white border-b border-gray-200 shrink-0">
-              <Tabs value={activeTab} onChange={setActiveTab} classNames={{ tab: 'px-4 py-3 text-sm font-medium hover:bg-transparent' }}>
-                <Tabs.List className="border-none gap-4">
-                  <Tabs.Tab value="0">Product Details</Tabs.Tab>
+            <Box className="px-5 pt-3 bg-white border-b border-gray-200 shrink-0">
+              <Tabs
+                value={activeTab}
+                onChange={setActiveTab}
+                classNames={{
+                  tab: "px-3 py-2 text-sm font-medium hover:bg-transparent",
+                }}
+              >
+                <Tabs.List className="border-none gap-2">
+                  <Tabs.Tab value="0">Basic Details</Tabs.Tab>
                   <Tabs.Tab value="1">Accounting</Tabs.Tab>
                   <Tabs.Tab value="2">Collection Sequence & Charges</Tabs.Tab>
-                  {/* <Tabs.Tab value="3">Charges</Tabs.Tab> */}
                   <Tabs.Tab value="4">Review</Tabs.Tab>
                 </Tabs.List>
               </Tabs>
             </Box>
 
             {/* Scrollable Form Area */}
-            <div className="flex-1 overflow-y-auto p-8">
-              {activeTab === '0' && renderProductDetails()}
-              {activeTab === '1' && renderAccounting()}
-              {activeTab === '2' && renderCollection()}
-              {/* {activeTab === '3' && renderCharges()} */}
-              {activeTab === '4' && renderReview()}
+            <div className="flex-1 overflow-y-auto p-5">
+              {activeTab === "0" && renderProductDetails()}
+              {activeTab === "1" && renderAccounting()}
+              {activeTab === "2" && renderCollection()}
+              {activeTab === "4" && renderReview()}
             </div>
           </div>
-
-          {/* Right Sidebar (Summary Panel) */}
-          {/* <div className="w-[280px] bg-white border-l border-gray-200 p-6 flex flex-col items-center shrink-0">
-            <div className="bg-[#3B82F6] text-white p-4 rounded-xl mb-4 mt-2">
-              <IconFileInvoice size={32} />
-            </div>
-            <Text fw={700} className="text-gray-900 mb-2">New Product</Text>
-            <Badge color="teal" variant="light" size="lg" radius="xl" className="mb-6 font-semibold border border-teal-200">
-              ● Active
-            </Badge>
-
-            <div className="w-full">
-              <Divider my="sm" />
-              <div className="flex justify-between items-center text-sm py-1">
-                <Text fw={600} className="text-gray-500 text-xs tracking-wider uppercase">Category</Text>
-                <Text className="text-gray-900">—</Text>
-              </div>
-              <Divider my="sm" />
-              <div className="flex justify-between items-center text-sm py-1">
-                <Text fw={600} className="text-gray-500 text-xs tracking-wider uppercase">Type</Text>
-                <Text className="text-gray-900">—</Text>
-              </div>
-              <Divider my="sm" />
-            </div>
-          </div> */}
         </div>
 
         {/* Footer Action Bar */}
-        <div className="bg-white border-t border-gray-200 p-4 px-8 flex justify-between items-center shrink-0 rounded-b-md">
-          <Button variant="default" onClick={onClose} className="font-semibold px-6">
+        <div className="bg-white border-t border-gray-200 p-3 px-5 flex justify-between items-center shrink-0 rounded-b-md">
+          <Button
+            size="sm"
+            variant="default"
+            onClick={onClose}
+            className="font-semibold px-5"
+          >
             Cancel
           </Button>
-          <div className="flex gap-3">
-            <Button className="bg-[#EF4444] hover:bg-red-600 font-semibold px-6">
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="bg-[#EF4444] hover:bg-red-600 font-semibold px-5"
+            >
               Reset
             </Button>
-            <Button variant="default" onClick={handleNext} className="font-semibold px-6">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={handleNext}
+              className="font-semibold px-5"
+            >
               Next
             </Button>
-            <Button className="bg-[#223A70] hover:bg-[#1a2d57] font-semibold px-8">
+            <Button
+              size="sm"
+              className="bg-[#223A70] hover:bg-[#1a2d57] font-semibold px-6"
+            >
               Submit
             </Button>
           </div>
         </div>
-
       </Box>
     </Modal>
   );
