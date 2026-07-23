@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   Box,
   Text,
@@ -9,21 +9,50 @@ import {
   Table,
   Checkbox,
   Modal,
-  Tabs,
   ActionIcon,
 } from "@mantine/core";
 import {
   IconX,
-  IconMinus,
   IconBuildingBank,
   IconChevronDown,
   IconTrash,
+  IconInfoCircle,
+  IconDeviceFloppy,
+  IconArrowRight,
+  IconArrowLeft,
+  IconCheck,
+  IconPercentage,
+  IconWallet,
+  IconArrowsExchange,
+  IconReceipt2,
+  IconClipboardCheck,
 } from "@tabler/icons-react";
 
 interface LoanProductProps {
   opened: boolean;
   onClose: () => void;
 }
+
+const STEPS = [
+  { label: "Product Details", desc: "Basic information", icon: IconWallet },
+  { label: "Accounting", desc: "GL and interest accounts", icon: IconBuildingBank },
+  { label: "Collection & Offsets", desc: "Offsets and sequences", icon: IconArrowsExchange },
+  { label: "Charges", desc: "Fees and charges", icon: IconReceipt2 },
+  { label: "Review", desc: "Review and confirm", icon: IconClipboardCheck },
+];
+
+// Shared label styling so every field across every step looks consistent
+const labelProps = {
+  label: "text-[11px] font-semibold text-slate-700 mb-1",
+  description: "mt-0 text-[9px] text-slate-400 leading-tight",
+  input:
+    "min-h-[2px] h-[26px] text-xs border-slate-200 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition-colors",
+};
+
+const fieldLabelProps = {
+  label: "text-[11px] font-medium text-slate-500 mb-1",
+  input: "min-h-[26px] h-[26px] text-xs border-slate-200",
+};
 
 export function LoanProductModal({ opened, onClose }: LoanProductProps) {
   const [activeTab, setActiveTab] = useState<string | null>("0");
@@ -90,459 +119,515 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
     if (current < 4) setActiveTab((current + 1).toString());
   };
 
+  const handleBack = () => {
+    const current = parseInt(activeTab || "0");
+    if (current > 0) setActiveTab((current - 1).toString());
+  };
+
+  const handleReset = () => {
+    setSameAsInterest(false);
+    setInterestAccs({ income: "", receivable: "", accrued: "", suspended: "", waiver: "" });
+    setPenaltyAccs({ income: "", receivable: "", accrued: "", suspended: "", waiver: "" });
+    setCharges([]);
+    setActiveTab("0");
+  };
+
   const dummyAccounts = ["Account A", "Account B", "Account C"];
   const chargeTypes = ["Processing Fee", "Late Fee", "Documentation Fee"];
+  const frequencyOptions = ["Monthly", "Quarterly", "Yearly"];
+
+  const currentStep = parseInt(activeTab || "0");
+
+  // --- Reusable section wrapper — card with a colored accent bar + icon badge ---
+  const SectionCard = ({
+    title,
+    description,
+    accent = "indigo",
+    children,
+  }: {
+    title: string;
+    description?: string;
+    accent?: "indigo" | "violet" | "teal";
+    children: React.ReactNode;
+  }) => {
+    const accentMap: Record<string, string> = {
+      indigo: "bg-indigo-500",
+      violet: "bg-violet-500",
+      teal: "bg-teal-500",
+    };
+    return (
+      <Paper
+        withBorder
+        radius="lg"
+        p={0}
+        className="shadow-[0_1px_2px_rgba(15,23,42,0.04)] bg-white border-slate-200 overflow-hidden"
+      >
+        <div className={`h-[3px] w-full ${accentMap[accent]}`} />
+        <div className="p-5">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Text size="xs" fw={700} className="text-slate-900 tracking-tight">
+              {title}
+            </Text>
+            <IconInfoCircle size={13} className="text-slate-300" />
+          </div>
+          {description && (
+            <Text size="10px" className="text-slate-400 mb-4">
+              {description}
+            </Text>
+          )}
+          {!description && <div className="mb-2" />}
+          {children}
+        </div>
+      </Paper>
+    );
+  };
+
+  const SubHeading = ({
+    children,
+    color = "indigo",
+  }: {
+    children: React.ReactNode;
+    color?: "indigo" | "rose";
+  }) => {
+    const colorMap =
+      color === "rose"
+        ? { dot: "bg-rose-400", text: "text-rose-600" }
+        : { dot: "bg-indigo-400", text: "text-indigo-600" };
+    return (
+      <div className="flex items-center gap-1.5 mb-3">
+        <span className={`w-1 h-3 rounded-full ${colorMap.dot}`} />
+        <Text size="10px" fw={700} className={`${colorMap.text} uppercase tracking-wide`}>
+          {children}
+        </Text>
+      </div>
+    );
+  };
 
   const renderProductDetails = () => (
     <div className="flex flex-col gap-4">
-      {/* Basic Product Information */}
-      <Paper withBorder radius="md" p="md" className="shadow-sm bg-white">
-        <Text
-          size="xs"
-          fw={700}
-          className="text-gray-700 uppercase tracking-wider mb-3"
-        >
-          Basic Product Information
-        </Text>
-
-        <div className="grid grid-cols-4 gap-4">
+      <SectionCard
+        title="Basic Product Information"
+        description="Capture the basic details of the loan product."
+        accent="indigo"
+      >
+        <div className="grid grid-cols-3 gap-x-5 gap-y-3">
           <TextInput
             size="xs"
             label="Product Code"
-            placeholder="Enter product code"
+            placeholder="Enter code"
             withAsterisk
-            classNames={{ label: "text-xs font-semibold text-gray-700 mb-1" }}
+            classNames={labelProps}
           />
           <TextInput
             size="xs"
             label="Product Name"
             placeholder="Enter product name"
             withAsterisk
-            classNames={{ label: "text-xs font-semibold text-gray-700 mb-1" }}
+            classNames={labelProps}
           />
           <Select
             size="xs"
             searchable
-            rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+            rightSection={<IconChevronDown size={13} className="text-slate-400" />}
             label="Loan Category"
-            placeholder="Select loan category"
+            placeholder="Select category"
             data={["Personal Loan", "Home Loan", "Auto Loan"]}
-            classNames={{ label: "text-xs font-semibold text-gray-700 mb-1" }}
+            withAsterisk
+            classNames={labelProps}
           />
           <Select
             size="xs"
             searchable
-            rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+            rightSection={<IconChevronDown size={13} className="text-slate-400" />}
             label="Repayment Schedule Type"
-            placeholder="Select repayment schedule type"
+            placeholder="Select schedule type"
             data={["Equated Monthly Installment (EMI)", "Bullet Payment"]}
-            classNames={{ label: "text-xs font-semibold text-gray-700 mb-1" }}
+            withAsterisk
+            classNames={labelProps}
           />
           <TextInput
             size="xs"
             label="Maximum Loan Amount"
-            placeholder="Enter maximum amount"
-            classNames={{ label: "text-xs font-semibold text-gray-700 mb-1" }}
-          />
-        </div>
-      </Paper>
-
-      {/* Interest & Repayment Terms */}
-      <Paper withBorder radius="md" p="md" className="shadow-sm bg-white">
-        <Text
-          size="xs"
-          fw={700}
-          className="text-gray-700 uppercase tracking-wider mb-3"
-        >
-          Interest & Repayment Terms
-        </Text>
-
-        <div className="grid grid-cols-4 gap-4">
-          <TextInput
-            size="xs"
-            label="Rate of Interest (% Yearly)"
-            description="Total Interest charged annually."
-            placeholder="Enter rate of interest"
+            placeholder="Enter amount"
+            leftSection={<Text size="xs" className="text-slate-400">₹</Text>}
             withAsterisk
-            classNames={{
-              label: "text-xs font-semibold text-gray-700 mb-1",
-              description: "mt-0 text-[10px]",
-            }}
-          />
-          <Select
-            size="xs"
-            searchable
-            rightSection={<IconChevronDown size={14} className="text-gray-500" />}
-            label="Frequency"
-            description="Monthly, Quarterly, Yearly"
-            placeholder="Select frequency"
-            data={["Monthly", "Quarterly", "Yearly"]}
-            classNames={{
-              label: "text-xs font-semibold text-gray-700 mb-1",
-              description: "mt-0 text-[10px]",
-            }}
+            classNames={labelProps}
           />
           <TextInput
             size="xs"
-            label="Penalty Rate (%)"
-            description="Levied on pending amount daily."
-            placeholder="Enter penalty rate"
-            classNames={{
-              label: "text-xs font-semibold text-gray-700 mb-1",
-              description: "mt-0 text-[10px]",
-            }}
-          />
-          <TextInput
-            size="xs"
-            label="Grace Period (Days)"
-            description="Days before penalty applies."
-            placeholder="Enter grace period"
-            classNames={{
-              label: "text-xs font-semibold text-gray-700 mb-1",
-              description: "mt-0 text-[10px]",
-            }}
-          />
-          <TextInput
-            size="xs"
-            label="Days Past Due for NPA"
-            description="Overdue days before NPA mark."
+            label="Days Past Due Threshold for NPA"
             placeholder="Enter days"
-            classNames={{
-              label: "text-xs font-semibold text-gray-700 mb-1",
-              description: "mt-0 text-[10px]",
-            }}
+            withAsterisk
+            classNames={labelProps}
           />
         </div>
-      </Paper>
+      </SectionCard>
+
+      <SectionCard
+        title="Interest & Penalty"
+        description="Configure interest rate, penalty rate and related settings."
+        accent="violet"
+      >
+        <div className="flex flex-col gap-3">
+          <div className="rounded-lg bg-indigo-50/50 border border-indigo-100 p-2 mt-2">
+            <SubHeading>Interest</SubHeading>
+            <div className="grid grid-cols-3 gap-x-5 gap-y-3">
+              <TextInput
+                size="xs"
+                label="Interest Rate (%)"
+                placeholder="0.00"
+                rightSection={<IconPercentage size={12} className="text-slate-400" />}
+                withAsterisk
+                classNames={labelProps}
+              />
+              <Select
+                size="xs"
+                searchable
+                rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                label="Interest Frequency"
+                placeholder="Select"
+                data={frequencyOptions}
+                withAsterisk
+                classNames={labelProps}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-rose-50/40 border border-rose-100 p-2">
+            <SubHeading color="rose">Penalty</SubHeading>
+            <div className="grid grid-cols-3 gap-x-5 gap-y-3">
+              <TextInput
+                size="xs"
+                label="Penalty Rate (%)"
+                placeholder="0.00"
+                rightSection={<IconPercentage size={12} className="text-slate-400" />}
+                withAsterisk
+                classNames={labelProps}
+              />
+              <Select
+                size="xs"
+                searchable
+                rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                label="Penalty Frequency"
+                placeholder="Select"
+                data={frequencyOptions}
+                withAsterisk
+                classNames={labelProps}
+              />
+              <TextInput
+                size="xs"
+                label="Grace Period (Days)"
+                placeholder="0"
+                classNames={labelProps}
+              />
+            </div>
+          </div>
+        </div>
+      </SectionCard>
     </div>
   );
 
   const renderAccounting = () => (
     <div className="flex flex-col gap-4">
-      <Paper withBorder radius="md" p="md" className="shadow-sm bg-white">
+      <SectionCard title="Accounts" description="Map GL accounts used by this loan product." accent="indigo">
         {/* Principal Accounts Section */}
         <div className="mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Text size="sm" fw={600} className="text-gray-900">
+          <div className="flex items-center gap-2 mb-2.5">
+            <Text size="xs" fw={700} className="text-slate-900">
               Principal Accounts
             </Text>
-            <IconChevronDown size={14} className="text-gray-500" />
           </div>
-          <div className="grid grid-cols-5 gap-x-6 gap-y-2">
+          <div className="grid grid-cols-3 gap-x-5 gap-y-3">
             <Select
               size="xs"
               searchable
-              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              rightSection={<IconChevronDown size={14} className="text-slate-400" />}
               placeholder="Select account"
               label="Loan Account"
               data={dummyAccounts}
-              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              classNames={fieldLabelProps}
             />
             <Select
               size="xs"
               searchable
-              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              rightSection={<IconChevronDown size={14} className="text-slate-400" />}
               placeholder="Select account"
               label="Disbursement Bank Account"
               data={dummyAccounts}
-              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              classNames={fieldLabelProps}
             />
             <Select
               size="xs"
               searchable
-              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              rightSection={<IconChevronDown size={14} className="text-slate-400" />}
               placeholder="Select account"
               label="Repayment Bank Account"
               data={dummyAccounts}
-              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              classNames={fieldLabelProps}
             />
           </div>
         </div>
 
         {/* Interest & Penalty Accounts Section */}
-        <div className="mb-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Text size="sm" fw={600} className="text-gray-900">
-                Interest & Penalty Accounts
-              </Text>
-              <IconChevronDown size={14} className="text-gray-500" />
-            </div>
+        <div className="mb-4 border-t border-slate-100 pt-4">
+          <div className="flex items-center justify-between mb-2.5">
+            <Text size="xs" fw={700} className="text-slate-900">
+              Interest & Penalty Accounts
+            </Text>
             <Checkbox
               size="xs"
               label="Same as Interest"
               checked={sameAsInterest}
               onChange={handleSameAsInterestToggle}
-              classNames={{ label: "text-[11px] text-gray-700 font-semibold cursor-pointer" }}
+              classNames={{ label: "text-[10px] text-slate-600 font-semibold cursor-pointer" }}
             />
           </div>
 
           {/* Interest Part */}
-          <div className="mb-4">
-            <Text size="xs" fw={600} className="text-gray-600 mb-2">
-              Interest
-            </Text>
-            <div className="grid grid-cols-5 gap-x-6 gap-y-3">
+          <div className="mb-3 rounded-lg bg-indigo-50/50 border border-indigo-100 p-4">
+            <SubHeading>Interest</SubHeading>
+            <div className="grid grid-cols-5 gap-x-4 gap-y-3">
               <Select
                 size="xs"
                 searchable
                 value={interestAccs.income}
                 onChange={(v) => handleInterestChange("income", v)}
-                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
                 placeholder="Select account"
                 label="Income Account"
                 data={dummyAccounts}
-                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+                classNames={fieldLabelProps}
               />
               <Select
                 size="xs"
                 searchable
                 value={interestAccs.receivable}
                 onChange={(v) => handleInterestChange("receivable", v)}
-                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
                 placeholder="Select account"
                 label="Receivable Account"
                 data={dummyAccounts}
-                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+                classNames={fieldLabelProps}
               />
               <Select
                 size="xs"
                 searchable
                 value={interestAccs.accrued}
                 onChange={(v) => handleInterestChange("accrued", v)}
-                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
                 placeholder="Select account"
                 label="Accrued Account"
                 data={dummyAccounts}
-                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+                classNames={fieldLabelProps}
               />
               <Select
                 size="xs"
                 searchable
                 value={interestAccs.suspended}
                 onChange={(v) => handleInterestChange("suspended", v)}
-                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
                 placeholder="Select account"
                 label="Suspended Account"
                 data={dummyAccounts}
-                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+                classNames={fieldLabelProps}
               />
               <Select
                 size="xs"
                 searchable
                 value={interestAccs.waiver}
                 onChange={(v) => handleInterestChange("waiver", v)}
-                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
                 placeholder="Select account"
                 label="Waiver Account"
                 data={dummyAccounts}
-                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+                classNames={fieldLabelProps}
               />
             </div>
           </div>
 
           {/* Penalty Part */}
-          <div>
-            <Text size="xs" fw={600} className="text-gray-600 mb-2">
-              Penalty
-            </Text>
-            <div className="grid grid-cols-5 gap-x-6 gap-y-3">
+          <div className="rounded-lg bg-rose-50/40 border border-rose-100 p-4">
+            <SubHeading color="rose">Penalty</SubHeading>
+            <div className="grid grid-cols-5 gap-x-4 gap-y-3">
               <Select
                 size="xs"
                 searchable
                 value={penaltyAccs.income}
                 onChange={(v) => handlePenaltyChange("income", v)}
-                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
                 placeholder="Select account"
                 label="Income Account"
                 data={dummyAccounts}
-                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+                classNames={fieldLabelProps}
               />
               <Select
                 size="xs"
                 searchable
                 value={penaltyAccs.receivable}
                 onChange={(v) => handlePenaltyChange("receivable", v)}
-                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
                 placeholder="Select account"
                 label="Receivable Account"
                 data={dummyAccounts}
-                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+                classNames={fieldLabelProps}
               />
               <Select
                 size="xs"
                 searchable
                 value={penaltyAccs.accrued}
                 onChange={(v) => handlePenaltyChange("accrued", v)}
-                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
                 placeholder="Select account"
                 label="Accrued Account"
                 data={dummyAccounts}
-                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+                classNames={fieldLabelProps}
               />
               <Select
                 size="xs"
                 searchable
                 value={penaltyAccs.suspended}
                 onChange={(v) => handlePenaltyChange("suspended", v)}
-                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
                 placeholder="Select account"
                 label="Suspended Account"
                 data={dummyAccounts}
-                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+                classNames={fieldLabelProps}
               />
               <Select
                 size="xs"
                 searchable
                 value={penaltyAccs.waiver}
                 onChange={(v) => handlePenaltyChange("waiver", v)}
-                rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
                 placeholder="Select account"
                 label="Waiver Account"
                 data={dummyAccounts}
-                classNames={{ label: "text-xs text-gray-500 mb-1" }}
+                classNames={fieldLabelProps}
               />
             </div>
           </div>
         </div>
 
         {/* General Accounts Section */}
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Text size="sm" fw={600} className="text-gray-900">
+        <div className="border-t border-slate-100 pt-4">
+          <div className="flex items-center gap-2 mb-2.5">
+            <Text size="xs" fw={700} className="text-slate-900">
               General Accounts
             </Text>
-            <IconChevronDown size={14} className="text-gray-500" />
           </div>
-          <div className="grid grid-cols-5 gap-x-6 gap-y-2">
+          <div className="grid grid-cols-3 gap-x-5 gap-y-3">
             <Select
               size="xs"
               searchable
-              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              rightSection={<IconChevronDown size={14} className="text-slate-400" />}
               placeholder="Select account"
               label="Write Off Account"
               data={dummyAccounts}
-              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              classNames={fieldLabelProps}
             />
             <Select
               size="xs"
               searchable
-              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
-              placeholder="Select account"
-              label="Subsidy Account"
-              data={dummyAccounts}
-              classNames={{ label: "text-xs text-gray-500 mb-1" }}
-            />
-            <Select
-              size="xs"
-              searchable
-              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
-              placeholder="Select account"
-              label="Security Deposit Account"
-              data={dummyAccounts}
-              classNames={{ label: "text-xs text-gray-500 mb-1" }}
-            />
-            <Select
-              size="xs"
-              searchable
-              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              rightSection={<IconChevronDown size={14} className="text-slate-400" />}
               placeholder="Select account"
               label="Write Off Recovery"
               data={dummyAccounts}
-              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              classNames={fieldLabelProps}
             />
             <Select
               size="xs"
               searchable
-              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              rightSection={<IconChevronDown size={14} className="text-slate-400" />}
+              placeholder="Select account"
+              label="Subsidy Account"
+              data={dummyAccounts}
+              classNames={fieldLabelProps}
+            />
+            <Select
+              size="xs"
+              searchable
+              rightSection={<IconChevronDown size={14} className="text-slate-400" />}
+              placeholder="Select account"
+              label="Security Deposit Account"
+              data={dummyAccounts}
+              classNames={fieldLabelProps}
+            />
+            <Select
+              size="xs"
+              searchable
+              rightSection={<IconChevronDown size={14} className="text-slate-400" />}
               placeholder="Select account"
               label="Suspense Collection"
               data={dummyAccounts}
-              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              classNames={fieldLabelProps}
             />
             <Select
               size="xs"
               searchable
-              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              rightSection={<IconChevronDown size={14} className="text-slate-400" />}
               placeholder="Select account"
               label="Customer Refund"
               data={dummyAccounts}
-              classNames={{ label: "text-xs text-gray-500 mb-1" }}
+              classNames={fieldLabelProps}
             />
           </div>
         </div>
-      </Paper>
+      </SectionCard>
     </div>
   );
 
   const renderCollection = () => (
-    <Paper
-      withBorder
-      radius="md"
-      p="md"
-      className="shadow-sm bg-white min-h-[300px]"
+    <SectionCard
+      title="Collection Sequence"
+      description="Define collection order by asset classification."
+      accent="teal"
     >
-      <Text
-        size="xs"
-        fw={700}
-        className="text-gray-700 uppercase tracking-wider mb-4"
-      >
-        Collection Sequence
-      </Text>
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-4 gap-4">
         <Select
           size="xs"
           searchable
-          rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+          rightSection={<IconChevronDown size={14} className="text-slate-400" />}
           label="Standard Asset"
           placeholder="Select sequence"
           data={["Sequence 1"]}
+          classNames={labelProps}
         />
         <Select
           size="xs"
           searchable
-          rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+          rightSection={<IconChevronDown size={14} className="text-slate-400" />}
           label="Sub Standard Asset"
           placeholder="Select sequence"
           data={["Sequence 1"]}
+          classNames={labelProps}
         />
         <Select
           size="xs"
           searchable
-          rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+          rightSection={<IconChevronDown size={14} className="text-slate-400" />}
           label="Written Off Asset"
           placeholder="Select sequence"
           data={["Sequence 1"]}
+          classNames={labelProps}
         />
         <Select
           size="xs"
           searchable
-          rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+          rightSection={<IconChevronDown size={14} className="text-slate-400" />}
           label="Settlement Collection"
           placeholder="Select sequence"
           data={["Sequence 1"]}
+          classNames={labelProps}
         />
       </div>
-    </Paper>
+    </SectionCard>
   );
 
   const renderCharges = () => (
-    <Paper
-      withBorder
-      radius="md"
-      p="md"
-      className="shadow-sm bg-white min-h-[300px]"
-    >
-      <Text
-        size="xs"
-        fw={700}
-        className="text-gray-700 uppercase tracking-wider mb-2"
-      >
-        Loan Charges
-      </Text>
-      <div className="border border-gray-200 rounded-md overflow-hidden mb-3 mt-4">
+    <SectionCard title="Loan Charges" description="Fees and charges applied to this loan product." accent="violet">
+      <div className="border border-slate-200 rounded-lg overflow-hidden mb-3">
         <Table size="xs" verticalSpacing="sm">
-          <Table.Thead className="bg-gray-50">
+          <Table.Thead className="bg-slate-50">
             <Table.Tr>
               <Table.Th className="w-10">
                 <Checkbox size="xs" aria-label="Select all" />
@@ -557,22 +642,17 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
           <Table.Tbody>
             {charges.length === 0 ? (
               <Table.Tr>
-                <Table.Td
-                  colSpan={6}
-                  className="text-center py-6 text-gray-500 bg-gray-50/50"
-                >
-                  No rows
+                <Table.Td colSpan={6} className="text-center py-8 text-slate-400 bg-slate-50/50">
+                  No rows yet — add a charge to get started
                 </Table.Td>
               </Table.Tr>
             ) : (
               charges.map((charge, index) => (
-                <Table.Tr key={charge.id}>
+                <Table.Tr key={charge.id} className="hover:bg-slate-50/60">
                   <Table.Td>
                     <Checkbox size="xs" />
                   </Table.Td>
-                  <Table.Td className="text-xs text-gray-600 font-medium">
-                    {index + 1}
-                  </Table.Td>
+                  <Table.Td className="text-xs text-slate-500 font-medium">{index + 1}</Table.Td>
                   <Table.Td>
                     <Select
                       size="xs"
@@ -581,7 +661,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
                       value={charge.type}
                       onChange={(val) => handleUpdateCharge(charge.id, "type", val || "")}
                       variant="unstyled"
-                      className="border-b border-transparent hover:border-gray-200"
+                      className="border-b border-transparent hover:border-slate-200"
                     />
                   </Table.Td>
                   <Table.Td>
@@ -591,7 +671,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
                       value={charge.percentage}
                       onChange={(e) => handleUpdateCharge(charge.id, "percentage", e.currentTarget.value)}
                       variant="unstyled"
-                      className="border-b border-transparent hover:border-gray-200"
+                      className="border-b border-transparent hover:border-slate-200"
                     />
                   </Table.Td>
                   <Table.Td>
@@ -601,15 +681,11 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
                       value={charge.amount}
                       onChange={(e) => handleUpdateCharge(charge.id, "amount", e.currentTarget.value)}
                       variant="unstyled"
-                      className="border-b border-transparent hover:border-gray-200"
+                      className="border-b border-transparent hover:border-slate-200"
                     />
                   </Table.Td>
                   <Table.Td>
-                    <ActionIcon
-                      color="red"
-                      variant="subtle"
-                      onClick={() => handleRemoveCharge(charge.id)}
-                    >
+                    <ActionIcon color="red" variant="subtle" onClick={() => handleRemoveCharge(charge.id)}>
                       <IconTrash size={16} />
                     </ActionIcon>
                   </Table.Td>
@@ -623,31 +699,19 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         size="xs"
         variant="default"
         onClick={handleAddCharge}
-        className="text-gray-700 font-semibold"
+        className="text-slate-700 font-semibold border-slate-200"
       >
         + Add row
       </Button>
-    </Paper>
+    </SectionCard>
   );
 
   const renderReview = () => (
-    <Paper
-      withBorder
-      radius="md"
-      p="md"
-      className="shadow-sm bg-white min-h-[300px]"
-    >
-      <Text
-        size="xs"
-        fw={700}
-        className="text-gray-700 uppercase tracking-wider mb-4"
-      >
-        Review
-      </Text>
-      <Text size="sm" className="text-gray-600">
+    <SectionCard title="Review" description="Review and confirm before submitting." accent="teal">
+      <Text size="sm" className="text-slate-500">
         Review summary goes here.
       </Text>
-    </Paper>
+    </SectionCard>
   );
 
   return (
@@ -657,113 +721,172 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
       size="95%"
       withCloseButton={false}
       padding={0}
-      radius="md"
-      className="bg-[#F4F5F7]"
+      radius="lg"
+      styles={{
+        content: {
+          height: "90vh",
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        },
+        header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
+        body: {
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          padding: 0,
+          minHeight: 0,
+          overflow: "hidden",
+        },
+      }}
     >
-      <Box className="flex flex-col h-[90vh]">
-        {/* Dark Blue Header */}
-        <Box
-          bg="brand.6"
-          className="text-white px-5 py-3 flex justify-between items-center rounded-t-md shrink-0"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-1 rounded-md">
-              <IconBuildingBank size={22} className="text-white" />
+      <Box
+        className="flex flex-col h-full bg-white"
+        style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}
+      >
+        {/* Header */}
+        <Box className="flex justify-between items-start px-6 pt-5 pb-4 shrink-0 bg-gradient-to-r from-indigo-50/70 via-white to-white border-b border-slate-100">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0 shadow-sm shadow-indigo-200">
+              <IconBuildingBank size={18} className="text-white" />
             </div>
             <div>
-              <Text size="md" fw={600} className="leading-tight">
+              <Text size="lg" fw={700} className="text-slate-900 leading-tight">
                 Create Loan Product
               </Text>
-              <Text size="xs" c="white.6">
-                Define product details and rules for this loan offering
+              <Text size="xs" className="text-slate-500 mt-0.5">
+                Define product details and rules for this loan offering.
               </Text>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Button
-              variant="subtle"
-              className="text-white hover:bg-white/10 px-2"
+              variant="default"
               size="xs"
+              leftSection={<IconDeviceFloppy size={14} />}
+              className="font-semibold text-slate-700 border-slate-200"
             >
-              <IconMinus size={18} />
+              Save as Draft
             </Button>
-
-            <Button
+            <ActionIcon
               variant="subtle"
+              color="gray"
               onClick={onClose}
-              className="text-white hover:bg-white/10 px-2"
-              size="xs"
+              aria-label="Close"
+              className="hover:bg-slate-100"
             >
               <IconX size={18} />
-            </Button>
+            </ActionIcon>
           </div>
         </Box>
 
-        {/* Main Body Layout */}
-        <div className="flex flex-1 overflow-hidden bg-[#F4F5F7]">
-          {/* Left Content Area (Tabs + Forms) */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Minimalist Tabs */}
-            <Box className="px-5 pt-3 bg-white border-b border-gray-200 shrink-0">
-              <Tabs
-                value={activeTab}
-                onChange={setActiveTab}
-                classNames={{
-                  tab: "px-3 py-2 text-sm font-medium hover:bg-transparent",
-                }}
-              >
-                <Tabs.List className="border-none gap-2">
-                  <Tabs.Tab value="0">Basic Details</Tabs.Tab>
-                  <Tabs.Tab value="1">Accounting</Tabs.Tab>
-                  <Tabs.Tab value="2">Collection Sequence</Tabs.Tab>
-                  <Tabs.Tab value="3">Charges</Tabs.Tab>
-                  <Tabs.Tab value="4">Review</Tabs.Tab>
-                </Tabs.List>
-              </Tabs>
-            </Box>
-
-            {/* Scrollable Form Area */}
-            <div className="flex-1 overflow-y-auto p-5">
-              {activeTab === "0" && renderProductDetails()}
-              {activeTab === "1" && renderAccounting()}
-              {activeTab === "2" && renderCollection()}
-              {activeTab === "3" && renderCharges()}
-              {activeTab === "4" && renderReview()}
-            </div>
+        {/* Stepper */}
+        <Box className="px-6 pt-4 pb-4 border-b border-slate-100 shrink-0 bg-white">
+          <div className="flex items-center">
+            {STEPS.map((step, idx) => {
+              const isActive = currentStep === idx;
+              const isComplete = currentStep > idx;
+              const StepIcon = step.icon;
+              return (
+                <Fragment key={step.label}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab(idx.toString())}
+                    className="flex items-center gap-2.5 text-left shrink-0 group"
+                  >
+                    <div
+                      className={`flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
+                        isActive
+                          ? "bg-indigo-600 text-white ring-4 ring-indigo-100"
+                          : isComplete
+                          ? "bg-indigo-500 text-white"
+                          : "bg-white text-slate-400 border-2 border-slate-200 group-hover:border-slate-300"
+                      }`}
+                    >
+                      {isComplete ? <IconCheck size={13} /> : <StepIcon size={12} />}
+                    </div>
+                    <div className="hidden sm:block whitespace-nowrap">
+                      <Text
+                        size="xs"
+                        fw={700}
+                        className={isActive ? "text-indigo-600" : isComplete ? "text-slate-700" : "text-slate-400"}
+                      >
+                        {step.label}
+                      </Text>
+                      <Text size="10px" className="text-slate-400">
+                        {step.desc}
+                      </Text>
+                    </div>
+                  </button>
+                  {idx < STEPS.length - 1 && (
+                    <div
+                      className={`flex-1 h-[2px] mx-4 rounded-full transition-colors ${
+                        isComplete ? "bg-indigo-400" : "bg-slate-150"
+                      }`}
+                      style={!isComplete ? { backgroundColor: "#e2e8f0" } : undefined}
+                    />
+                  )}
+                </Fragment>
+              );
+            })}
           </div>
+        </Box>
+
+        {/* Form Area — this is the only part that scrolls, so the footer stays put */}
+        <div
+          className="flex-1 min-h-0 overflow-y-auto p-5 px-6 pb-8 bg-[#F7F8FB]"
+          style={{ flex: "1 1 0%", minHeight: 0, overflowY: "auto" }}
+        >
+          {activeTab === "0" && renderProductDetails()}
+          {activeTab === "1" && renderAccounting()}
+          {activeTab === "2" && renderCollection()}
+          {activeTab === "3" && renderCharges()}
+          {activeTab === "4" && renderReview()}
         </div>
 
-        {/* Footer Action Bar */}
-        <div className="bg-white border-t border-gray-200 p-3 px-5 flex justify-between items-center shrink-0 rounded-b-md">
-          <Button
-            size="sm"
-            variant="default"
-            onClick={onClose}
-            className="font-semibold px-5"
-          >
-            Cancel
-          </Button>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              className="bg-[#EF4444] hover:bg-red-600 font-semibold px-5"
+        {/* Footer Action Bar — always visible, never requires scrolling */}
+        <div className="bg-white border-t border-slate-100 p-3.5 px-6 flex justify-between items-center shrink-0 shadow-[0_-2px_10px_rgba(15,23,42,0.04)]">
+          <div className="flex items-center gap-4">
+            <Button size="sm" variant="default" onClick={onClose} className="font-semibold px-5 border-slate-200">
+              Cancel
+            </Button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="text-xs font-semibold text-red-500 hover:text-red-600 transition-colors"
             >
               Reset
-            </Button>
+            </button>
+          </div>
+          <div className="flex gap-2">
+            {currentStep > 0 && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={handleBack}
+                leftSection={<IconArrowLeft size={14} />}
+                className="font-semibold px-5 text-slate-700 border-slate-200"
+              >
+                Back
+              </Button>
+            )}
             <Button
               size="sm"
               variant="default"
-              onClick={handleNext}
-              className="font-semibold px-5"
+              leftSection={<IconDeviceFloppy size={14} />}
+              className="font-semibold px-5 text-slate-700 border-slate-200"
             >
-              Next
+              Save as Draft
             </Button>
             <Button
               size="sm"
-              className="bg-[#223A70] hover:bg-[#1a2d57] font-semibold px-6"
+              onClick={handleNext}
+              rightSection={currentStep < 4 ? <IconArrowRight size={14} /> : <IconCheck size={14} />}
+              className="bg-indigo-600 hover:bg-indigo-700 font-semibold px-6 shadow-sm shadow-indigo-200"
             >
-              Submit
+              {currentStep < 4 ? "Save & Next" : "Submit"}
             </Button>
           </div>
         </div>
