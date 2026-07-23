@@ -10,7 +10,6 @@ import {
   Table,
   Badge,
   ActionIcon,
-  Switch,
   Text,
   Pagination,
   Tooltip,
@@ -23,6 +22,8 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
+  IconUsers,
+  IconTrash,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -33,112 +34,186 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { LoanProductModal } from '../../../components/Modal/LoanProductModal';
+import { CustomerModal } from '../../components/Modal/CustomerModal';
 
 // NOTE: requires `@tanstack/react-table` — install with:
 //   npm install @tanstack/react-table
 
-const DUMMY_PRODUCTS = [
-  { id: 1, name: 'Personal Loan', code: 'PL_001', category: 'Retail', rate: 10.5, status: 'ACTIVE' },
-  { id: 2, name: 'Home Loan', code: 'HL_001', category: 'Mortgage', rate: 8.5, status: 'ACTIVE' },
-  { id: 3, name: 'Auto Loan', code: 'AL_001', category: 'Retail', rate: 9.0, status: 'INACTIVE' },
-  { id: 4, name: 'Business Loan', code: 'BL_001', category: 'Corporate', rate: 11.25, status: 'ACTIVE' },
-  { id: 5, name: 'Education Loan', code: 'EL_001', category: 'Retail', rate: 7.75, status: 'ACTIVE' },
-  { id: 6, name: 'Overdraft Facility', code: 'OD_001', category: 'Corporate', rate: 12.0, status: 'INACTIVE' },
-  { id: 7, name: 'Gold Loan', code: 'GL_001', category: 'Retail', rate: 8.0, status: 'ACTIVE' },
+const DUMMY_CUSTOMERS = [
+  {
+    id: 1,
+    name: 'Rola -di acono',
+    type: 'Company',
+    contact: 'Marco Rossi',
+    email: 'marco.rossi@rolaco.com',
+    mobile: '+39 331 220 4410',
+    city: 'Milan',
+    country: 'Italy',
+    status: 'ACTIVE',
+  },
+  {
+    id: 2,
+    name: 'Chanda Mwansa',
+    type: 'Individual',
+    contact: 'Chanda Mwansa',
+    email: 'c.mwansa@mailbox.zm',
+    mobile: '+260 97 712 3344',
+    city: 'Lusaka',
+    country: 'Zambia',
+    status: 'ACTIVE',
+  },
+  {
+    id: 3,
+    name: 'Bwalya Enterprises Ltd',
+    type: 'Company',
+    contact: 'Bwalya Mutale',
+    email: 'info@bwalyaent.co.zm',
+    mobile: '+260 96 550 2210',
+    city: 'Ndola',
+    country: 'Zambia',
+    status: 'INACTIVE',
+  },
+  {
+    id: 4,
+    name: 'Natasha Phiri',
+    type: 'Individual',
+    contact: 'Natasha Phiri',
+    email: 'n.phiri@mailbox.zm',
+    mobile: '+260 95 330 8871',
+    city: 'Kitwe',
+    country: 'Zambia',
+    status: 'ACTIVE',
+  },
+  {
+    id: 5,
+    name: 'Harborview Logistics',
+    type: 'Company',
+    contact: 'Sarah Nkonde',
+    email: 's.nkonde@harborview.co',
+    mobile: '+260 97 118 8820',
+    city: 'Livingstone',
+    country: 'Zambia',
+    status: 'ACTIVE',
+  },
 ];
 
 const columnHelper = createColumnHelper();
 
-function SortIcon({ sorted }) {
+function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   if (sorted === 'asc') return <IconChevronUp size={12} />;
   if (sorted === 'desc') return <IconChevronDown size={12} />;
   return <IconSelector size={12} className="opacity-40" />;
 }
 
-// Reusable chevron-down affordance for searchable selects
 const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
 
-export function LoanProduct() {
+export function Customer() {
   const [opened, { open, close }] = useDisclosure(false);
 
   // filter state
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState(null);
-  const [type, setType] = useState(null);
+  const [type, setType] = useState<string | null>(null);
+  const [country, setCountry] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
 
   // table state
   const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  // local status map so the switch can optimistically update without a backend
-  const [statusOverrides, setStatusOverrides] = useState({});
+  // local status map so the row can optimistically update without a backend
+  const [statusOverrides, setStatusOverrides] = useState<Record<number, string>>({});
+  const [customers, setCustomers] = useState(DUMMY_CUSTOMERS);
 
   const data = useMemo(
     () =>
-      DUMMY_PRODUCTS.map((p) => ({
-        ...p,
-        status: statusOverrides[p.id] ?? p.status,
+      customers.map((c) => ({
+        ...c,
+        status: statusOverrides[c.id] ?? c.status,
       })),
-    [statusOverrides]
+    [customers, statusOverrides]
   );
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return data.filter((p) => {
+    return data.filter((c) => {
       const matchesSearch =
-        !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
-      const matchesCategory = !category || p.category === category;
-      const matchesStatus =
-        status === 'all' ||
-        (status === 'active' && p.status === 'ACTIVE') ||
-        (status === 'inactive' && p.status === 'INACTIVE');
-      return matchesSearch && matchesCategory && matchesStatus;
+        !q ||
+        c.name.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q) ||
+        c.mobile.toLowerCase().includes(q);
+      const matchesType = !type || c.type === type;
+      const matchesCountry = !country || c.country === country;
+      const matchesStatus = status === 'all' || c.status === status;
+      return matchesSearch && matchesType && matchesCountry && matchesStatus;
     });
-  }, [data, search, category, status]);
+  }, [data, search, type, country, status]);
 
-  const toggleStatus = (id, currentStatus) => {
-    setStatusOverrides((prev) => ({
-      ...prev,
-      [id]: currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
-    }));
+  const handleDelete = (id: number) => {
+    setCustomers((prev) => prev.filter((c) => c.id !== id));
   };
 
   const columns = useMemo(
     () => [
       columnHelper.accessor('name', {
-        header: 'Product Name',
+        header: 'Customer Name',
         cell: (info) => (
-          <Text fz="xs" fw={500} c="gray.9">
+          <Text fz="xs" fw={600} c="gray.9">
             {info.getValue()}
           </Text>
         ),
       }),
-      columnHelper.accessor('code', {
-        header: 'Code',
+      columnHelper.accessor('type', {
+        header: 'Type',
+        cell: (info) => (
+          <Badge
+            variant="light"
+            size="sm"
+            color={info.getValue() === 'Company' ? 'indigo' : 'cyan'}
+            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
+          >
+            {info.getValue()}
+          </Badge>
+        ),
+      }),
+      columnHelper.accessor('contact', {
+        header: 'Primary Contact',
         cell: (info) => (
           <Text fz="xs" c="gray.6">
             {info.getValue()}
           </Text>
         ),
       }),
-      columnHelper.accessor('category', {
-        header: 'Category',
+      columnHelper.accessor('email', {
+        header: 'Email',
         cell: (info) => (
           <Text fz="xs" c="gray.6">
             {info.getValue()}
           </Text>
         ),
       }),
-      columnHelper.accessor('rate', {
-        header: 'Base Rate',
+      columnHelper.accessor('mobile', {
+        header: 'Mobile',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            {info.getValue().toFixed(2)}%
+          <Text fz="xs" c="gray.6" className="font-mono">
+            {info.getValue()}
           </Text>
         ),
-        sortingFn: 'basic',
+      }),
+      columnHelper.accessor('city', {
+        header: 'City',
+        cell: (info) => (
+          <Text fz="xs" c="gray.6">
+            {info.getValue()}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor('country', {
+        header: 'Country',
+        cell: (info) => (
+          <Text fz="xs" c="gray.6">
+            {info.getValue()}
+          </Text>
+        ),
       }),
       columnHelper.accessor('status', {
         header: 'Status',
@@ -175,13 +250,15 @@ export function LoanProduct() {
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} withArrow>
-                <Switch
-                  size="xs"
-                  color="green"
-                  checked={row.status === 'ACTIVE'}
-                  onChange={() => toggleStatus(row.id, row.status)}
-                />
+              <Tooltip label="Delete" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="red"
+                  onClick={() => handleDelete(row.id)}
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
               </Tooltip>
             </Group>
           );
@@ -210,29 +287,30 @@ export function LoanProduct() {
 
   const resetFilters = () => {
     setSearch('');
-    setCategory(null);
     setType(null);
+    setCountry(null);
     setStatus('all');
   };
 
+  const countryOptions = Array.from(new Set(DUMMY_CUSTOMERS.map((c) => c.country)));
+
   return (
     <Box className="flex flex-col gap-4">
-      {/* The newly integrated Modal Component */}
-      <LoanProductModal opened={opened} onClose={close} />
+      <CustomerModal opened={opened} onClose={close} />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
         <Text size="md" fw={700} className="text-gray-900">
-          Loan Products
+          Customers
         </Text>
         <Button
           size="xs"
-           bg="indigoAlt.4"
+          bg="indigoAlt.4"
           onClick={open}
           className="bg-[#991B1B] hover:bg-red-900 transition-colors"
           leftSection={<IconPlus size={14} />}
         >
-          Add Product
+          Add Customer
         </Button>
       </div>
 
@@ -241,9 +319,9 @@ export function LoanProduct() {
         <div className="flex items-center gap-3 flex-wrap">
           <TextInput
             size="xs"
-            placeholder="Product Name / Code"
+            placeholder="Name / Email / Mobile"
             leftSection={<IconSearch size={13} />}
-            className="flex-1 min-w-[180px]"
+            className="flex-1 min-w-[200px]"
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
@@ -252,28 +330,31 @@ export function LoanProduct() {
           />
           <Select
             size="xs"
-            placeholder="All Categories"
-            data={['Retail', 'Mortgage', 'Corporate']}
-            className="w-36"
-            searchable
-            clearable
-            rightSection={chevronDown}
-            value={category}
-            onChange={(v) => {
-              setCategory(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          />
-          <Select
-            size="xs"
             placeholder="All Types"
-            data={['Term Loan', 'Overdraft']}
+            data={['Individual', 'Company']}
             className="w-36"
             searchable
             clearable
             rightSection={chevronDown}
             value={type}
-            onChange={setType}
+            onChange={(v) => {
+              setType(v);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
+          />
+          <Select
+            size="xs"
+            placeholder="All Countries"
+            data={countryOptions}
+            className="w-40"
+            searchable
+            clearable
+            rightSection={chevronDown}
+            value={country}
+            onChange={(v) => {
+              setCountry(v);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
           />
 
           <Radio.Group
@@ -286,8 +367,8 @@ export function LoanProduct() {
           >
             <Group gap="sm">
               <Radio size="xs" value="all" label="All" color="indigoAlt.4" />
-              <Radio size="xs" value="active" label="Active" color="indigoAlt.4" />
-              <Radio size="xs" value="inactive" label="Inactive" color="indigoAlt.4" />
+              <Radio size="xs" value="ACTIVE" label="Active" color="indigoAlt.4" />
+              <Radio size="xs" value="INACTIVE" label="Inactive" color="indigoAlt.4" />
             </Group>
           </Radio.Group>
 
@@ -332,9 +413,12 @@ export function LoanProduct() {
             {rows.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={columns.length}>
-                  <Text ta="center" c="dimmed" fz="xs" py="sm">
-                    No products match your filters.
-                  </Text>
+                  <div className="flex flex-col items-center py-8 text-gray-400">
+                    <IconUsers size={32} className="mb-2 opacity-50" />
+                    <Text ta="center" c="dimmed" fz="xs">
+                      No customers match your filters.
+                    </Text>
+                  </div>
                 </Table.Td>
               </Table.Tr>
             ) : (

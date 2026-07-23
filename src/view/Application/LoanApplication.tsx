@@ -302,7 +302,7 @@ export function LoanApplication() {
         </Text>
         <Button
           size="xs"
-          color="red"
+          bg="indigoAlt.4"
           onClick={open}
           className="bg-[#991B1B] hover:bg-red-900 transition-colors"
           leftSection={<IconPlus size={14} />}
@@ -363,12 +363,12 @@ export function LoanApplication() {
             }}
           >
             <Group gap="sm">
-              <Radio size="xs" value="all" label="All" color="red" />
-              <Radio size="xs" value="DRAFT" label="Draft" color="red" />
-              <Radio size="xs" value="PENDING_APPROVAL" label="Pending" color="red" />
-              <Radio size="xs" value="APPROVED" label="Approved" color="red" />
-              <Radio size="xs" value="DISBURSED" label="Disbursed" color="red" />
-              <Radio size="xs" value="REJECTED" label="Rejected" color="red" />
+              <Radio size="xs" value="all" label="All" color="indigoAlt.4" />
+              <Radio size="xs" value="DRAFT" label="Draft" color="indigoAlt.4" />
+              <Radio size="xs" value="PENDING_APPROVAL" label="Pending" color="indigoAlt.4" />
+              <Radio size="xs" value="APPROVED" label="Approved" color="indigoAlt.4" />
+              <Radio size="xs" value="DISBURSED" label="Disbursed" color="indigoAlt.4" />
+              <Radio size="xs" value="REJECTED" label="Rejected" color="indigoAlt.4" />
             </Group>
           </Radio.Group>
 
@@ -460,7 +460,7 @@ export function LoanApplication() {
             total={table.getPageCount() || 1}
             value={pageIndex + 1}
             onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-            color="red"
+            color="indigoAlt.4"
             size="xs"
             radius="sm"
           />
