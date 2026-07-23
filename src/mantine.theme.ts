@@ -51,6 +51,18 @@ export const mantineTheme = createTheme({
       "#a87317",
       "#8f6213",
     ],
+    indigoAlt: [
+      "#eef2ff",
+      "#e0e7ff",
+      "#c7d2fe",
+      "#a5b4fc",
+      "#818cf8",
+      "#6366f1", // main
+      "#4f46e5", // button
+      "#4338ca",
+      "#3730a3",
+      "#312e81",
+    ],
   },
 
   fontFamily: "var(--font-main)",

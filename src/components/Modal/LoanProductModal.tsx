@@ -762,14 +762,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="default"
-              size="xs"
-              leftSection={<IconDeviceFloppy size={14} />}
-              className="font-semibold text-slate-700 border-slate-200"
-            >
-              Save as Draft
-            </Button>
+
             <ActionIcon
               variant="subtle"
               color="gray"
@@ -797,13 +790,12 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
                     className="flex items-center gap-2.5 text-left shrink-0 group"
                   >
                     <div
-                      className={`flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
-                        isActive
+                      className={`flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-semibold shrink-0 transition-all ${isActive
                           ? "bg-indigo-600 text-white ring-4 ring-indigo-100"
                           : isComplete
-                          ? "bg-indigo-500 text-white"
-                          : "bg-white text-slate-400 border-2 border-slate-200 group-hover:border-slate-300"
-                      }`}
+                            ? "bg-indigo-500 text-white"
+                            : "bg-white text-slate-400 border-2 border-slate-200 group-hover:border-slate-300"
+                        }`}
                     >
                       {isComplete ? <IconCheck size={13} /> : <StepIcon size={12} />}
                     </div>
@@ -822,9 +814,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
                   </button>
                   {idx < STEPS.length - 1 && (
                     <div
-                      className={`flex-1 h-[2px] mx-4 rounded-full transition-colors ${
-                        isComplete ? "bg-indigo-400" : "bg-slate-150"
-                      }`}
+                      className={`flex-1 h-[2px] mx-4 rounded-full transition-colors ${isComplete ? "bg-indigo-400" : "bg-slate-150"
+                        }`}
                       style={!isComplete ? { backgroundColor: "#e2e8f0" } : undefined}
                     />
                   )}
@@ -883,8 +874,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
             <Button
               size="sm"
               onClick={handleNext}
+              color="indigoAlt"
               rightSection={currentStep < 4 ? <IconArrowRight size={14} /> : <IconCheck size={14} />}
-              className="bg-indigo-600 hover:bg-indigo-700 font-semibold px-6 shadow-sm shadow-indigo-200"
             >
               {currentStep < 4 ? "Save & Next" : "Submit"}
             </Button>
