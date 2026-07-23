@@ -370,140 +370,68 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
 
         {/* Interest & Penalty Accounts Section */}
         <div className="mb-4 border-t border-slate-100 pt-4">
-          <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center justify-between mb-4">
             <Text size="xs" fw={700} className="text-slate-900">
               Interest & Penalty Accounts
             </Text>
-            <Checkbox
+            {/* <Checkbox
               size="xs"
               label="Same as Interest"
               checked={sameAsInterest}
               onChange={handleSameAsInterestToggle}
               classNames={{ label: "text-[10px] text-slate-600 font-semibold cursor-pointer" }}
-            />
+            /> */}
           </div>
 
-          {/* Interest Part */}
-          <div className="mb-3 rounded-lg bg-indigo-50/50 border border-indigo-100 p-4">
-            <SubHeading>Interest</SubHeading>
-            <div className="grid grid-cols-5 gap-x-4 gap-y-3">
-              <Select
-                size="xs"
-                searchable
-                value={interestAccs.income}
-                onChange={(v) => handleInterestChange("income", v)}
-                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
-                placeholder="Select account"
-                label="Income Account"
-                data={dummyAccounts}
-                classNames={fieldLabelProps}
-              />
-              <Select
-                size="xs"
-                searchable
-                value={interestAccs.receivable}
-                onChange={(v) => handleInterestChange("receivable", v)}
-                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
-                placeholder="Select account"
-                label="Receivable Account"
-                data={dummyAccounts}
-                classNames={fieldLabelProps}
-              />
-              <Select
-                size="xs"
-                searchable
-                value={interestAccs.accrued}
-                onChange={(v) => handleInterestChange("accrued", v)}
-                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
-                placeholder="Select account"
-                label="Accrued Account"
-                data={dummyAccounts}
-                classNames={fieldLabelProps}
-              />
-              <Select
-                size="xs"
-                searchable
-                value={interestAccs.suspended}
-                onChange={(v) => handleInterestChange("suspended", v)}
-                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
-                placeholder="Select account"
-                label="Suspended Account"
-                data={dummyAccounts}
-                classNames={fieldLabelProps}
-              />
-              <Select
-                size="xs"
-                searchable
-                value={interestAccs.waiver}
-                onChange={(v) => handleInterestChange("waiver", v)}
-                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
-                placeholder="Select account"
-                label="Waiver Account"
-                data={dummyAccounts}
-                classNames={fieldLabelProps}
-              />
+          <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
+            {/* Header Row */}
+            <div className="grid grid-cols-3 gap-6 bg-slate-50 px-4 py-2.5 border-b border-slate-200">
+              <Text size="10px" fw={700} className="text-slate-500 uppercase tracking-wider">
+                GL
+              </Text>
+              <Text size="10px" fw={700} className="text-indigo-600 uppercase tracking-wider">
+                INTEREST
+              </Text>
+              <Text size="10px" fw={700} className="text-rose-600 uppercase tracking-wider">
+                PENALTY
+              </Text>
             </div>
-          </div>
 
-          {/* Penalty Part */}
-          <div className="rounded-lg bg-rose-50/40 border border-rose-100 p-4">
-            <SubHeading color="rose">Penalty</SubHeading>
-            <div className="grid grid-cols-5 gap-x-4 gap-y-3">
-              <Select
-                size="xs"
-                searchable
-                value={penaltyAccs.income}
-                onChange={(v) => handlePenaltyChange("income", v)}
-                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
-                placeholder="Select account"
-                label="Income Account"
-                data={dummyAccounts}
-                classNames={fieldLabelProps}
-              />
-              <Select
-                size="xs"
-                searchable
-                value={penaltyAccs.receivable}
-                onChange={(v) => handlePenaltyChange("receivable", v)}
-                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
-                placeholder="Select account"
-                label="Receivable Account"
-                data={dummyAccounts}
-                classNames={fieldLabelProps}
-              />
-              <Select
-                size="xs"
-                searchable
-                value={penaltyAccs.accrued}
-                onChange={(v) => handlePenaltyChange("accrued", v)}
-                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
-                placeholder="Select account"
-                label="Accrued Account"
-                data={dummyAccounts}
-                classNames={fieldLabelProps}
-              />
-              <Select
-                size="xs"
-                searchable
-                value={penaltyAccs.suspended}
-                onChange={(v) => handlePenaltyChange("suspended", v)}
-                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
-                placeholder="Select account"
-                label="Suspended Account"
-                data={dummyAccounts}
-                classNames={fieldLabelProps}
-              />
-              <Select
-                size="xs"
-                searchable
-                value={penaltyAccs.waiver}
-                onChange={(v) => handlePenaltyChange("waiver", v)}
-                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
-                placeholder="Select account"
-                label="Waiver Account"
-                data={dummyAccounts}
-                classNames={fieldLabelProps}
-              />
+            {/* Data Rows */}
+            <div className="flex flex-col gap-3 p-4">
+              {[
+                { key: "income", label: "Income Account" },
+                { key: "receivable", label: "Receivable Account" },
+                { key: "accrued", label: "Accrued Account" },
+                { key: "suspended", label: "Suspended Account" },
+                { key: "waiver", label: "Waiver Account" },
+              ].map(({ key, label }) => (
+                <div key={key} className="grid grid-cols-3 gap-6 items-center">
+                  <Text size="xs" fw={600} className="text-slate-700">
+                    {label}
+                  </Text>
+                  <Select
+                    size="xs"
+                    searchable
+                    value={interestAccs[key as keyof typeof interestAccs]}
+                    onChange={(v) => handleInterestChange(key as keyof typeof interestAccs, v)}
+                    rightSection={<IconChevronDown size={14} className="text-slate-400" />}
+                    placeholder="Select account"
+                    data={dummyAccounts}
+                    classNames={{ input: fieldLabelProps.input }}
+                  />
+                  <Select
+                    size="xs"
+                    searchable
+                    value={penaltyAccs[key as keyof typeof penaltyAccs]}
+                    onChange={(v) => handlePenaltyChange(key as keyof typeof penaltyAccs, v)}
+                    rightSection={<IconChevronDown size={14} className="text-slate-400" />}
+                    placeholder="Select account"
+                    data={dummyAccounts}
+                    classNames={{ input: fieldLabelProps.input }}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -746,16 +674,16 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}
       >
         {/* Header */}
-        <Box className="flex justify-between items-start px-6 pt-5 pb-4 shrink-0 bg-gradient-to-r from-indigo-50/70 via-white to-white border-b border-slate-100">
+        <Box  bg="brand.6" className="flex justify-between items-start px-6 pt-5 pb-4 shrink-0 bg-gradient-to-r via-white to-white border-b border-slate-100">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0 shadow-sm shadow-indigo-200">
               <IconBuildingBank size={18} className="text-white" />
             </div>
             <div>
-              <Text size="lg" fw={700} className="text-slate-900 leading-tight">
+              <Text size="lg" fw={700} className="text-white leading-tight">
                 Create Loan Product
               </Text>
-              <Text size="xs" className="text-slate-500 mt-0.5">
+              <Text size="xs" className="text-white mt-0.5">
                 Define product details and rules for this loan offering.
               </Text>
             </div>

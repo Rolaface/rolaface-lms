@@ -5,7 +5,7 @@ import { AppLayout } from '../layout/AppLayout';
 import { Dashboard } from '../view/Dashboard';
 // import { Accounting } from '../view/Accounting';
 import { Application } from '../view/Application/Application';
-// import { Customer } from '../view/Customer';
+import { Customers } from '../view/Customer/Customers';
 import { Loan } from '../view/Loan/Loan';
 // import { Setting } from '../view/Setting';
 
@@ -35,11 +35,11 @@ const applicationRoute = createRoute({
   component: Application,
 });
 
-// const customerRoute = createRoute({
-//   getParentRoute: () => rootRoute,
-//   path: '/customer',
-//   component: Customer,
-// });
+const customerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/customer',
+  component: Customers,
+});
 
 const loanRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -57,7 +57,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
 //   accountingRoute,
   applicationRoute,
-//   customerRoute,
+  customerRoute,
   loanRoute,
 //   settingRoute,
 ]);

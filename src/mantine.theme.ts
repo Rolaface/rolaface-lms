@@ -5,60 +5,55 @@ export const mantineTheme = createTheme({
 
   colors: {
     /* =========================
-     * IZB PRIMARY (Deep Red)
+     * PRIMARY (Indigo Blue)
      * ========================= */
     brand: [
-      "#ffe9ea",
-      "#fbbdc0",
-      "#f58f95",
-      "#ee616a",
-      "#e83340",
-      "#B32025", // logo red
-      "#9A1C20",
-      "#7f171a",
-      "#651214",
-      "#4c0d0f",
+      "#eef2ff",
+      "#e0e7ff",
+      "#c7d2fe",
+      "#a5b4fc",
+      "#818cf8",
+      "#4F46E5", // primary
+      "#4338CA",
+      "#3730A3",
+      "#312E81",
+      "#1E1B4B",
     ],
 
-    /* =========================
-     * IZB ORANGE (Z gradient)
-     * ========================= */
     accent: [
       "#fff0e6",
       "#ffd1b8",
       "#ffb38a",
       "#ff945c",
       "#ff762e",
-      "#F26522", // logo orange
+      "#F26522",
       "#d9561e",
       "#bf4c1a",
       "#a64216",
       "#8c3812",
     ],
 
-    /* =========================
-     * IZB GOLD (Z highlight)
-     * ========================= */
     gold: [
       "#fff6e6",
       "#ffe5b3",
       "#ffd480",
       "#ffc24d",
       "#ffb11a",
-      "#F5A623", // logo yellow
+      "#F5A623",
       "#db951f",
       "#c2841b",
       "#a87317",
       "#8f6213",
     ],
+
     indigoAlt: [
       "#eef2ff",
       "#e0e7ff",
       "#c7d2fe",
       "#a5b4fc",
       "#818cf8",
-      "#6366f1", // main
-      "#4f46e5", // button
+      "#6366f1",
+      "#4f46e5",
       "#4338ca",
       "#3730a3",
       "#312e81",
