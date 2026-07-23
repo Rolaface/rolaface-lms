@@ -874,13 +874,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
             <Button
               size="sm"
               onClick={handleNext}
-              color="indigo"
-              styles={{
-                root: {
-                  backgroundColor: "#4f46e5",
-                  '&:hover': { backgroundColor: "#4338ca" }
-                }
-              }}
+              color="indigoAlt"
               rightSection={currentStep < 4 ? <IconArrowRight size={14} /> : <IconCheck size={14} />}
             >
               {currentStep < 4 ? "Save & Next" : "Submit"}
