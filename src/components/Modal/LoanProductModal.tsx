@@ -13,6 +13,7 @@ import {
 } from "@mantine/core";
 import {
   IconX,
+  IconBriefcase,
   IconBuildingBank,
   IconChevronDown,
   IconTrash,
@@ -26,6 +27,13 @@ import {
   IconArrowsExchange,
   IconReceipt2,
   IconClipboardCheck,
+  IconHash,
+  IconFileText,
+  IconStack2,
+  IconCalendar,
+  IconCurrencyRupee,
+  IconClock,
+  IconRefresh,
 } from "@tabler/icons-react";
 
 interface LoanProductProps {
@@ -43,15 +51,39 @@ const STEPS = [
 
 // Shared label styling so every field across every step looks consistent
 const labelProps = {
-  label: "text-[11px] font-semibold text-slate-700 mb-1",
-  description: "mt-0 text-[9px] text-slate-400 leading-tight",
+  label: "text-[13px] font-semibold text-slate-700 mb-2",
+  description: "mt-0 text-[10px] text-slate-400 leading-tight",
   input:
-    "min-h-[2px] h-[26px] text-xs border-slate-200 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition-colors",
+    "min-h-[52px] h-[52px] text-sm border-slate-200 rounded-xl overflow-hidden focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition-colors",
 };
 
 const fieldLabelProps = {
   label: "text-[11px] font-medium text-slate-500 mb-1",
   input: "min-h-[26px] h-[26px] text-xs border-slate-200",
+};
+
+const IconChip = ({
+  icon: Icon,
+  color = "indigo",
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  color?: "indigo" | "violet" | "orange" | "rose" | "teal" | "sky";
+}) => {
+  const colorMap: Record<string, string> = {
+    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+    violet: "bg-violet-50 text-violet-600 border-violet-100",
+    orange: "bg-orange-50 text-orange-600 border-orange-100",
+    rose: "bg-rose-50 text-rose-600 border-rose-100",
+    teal: "bg-teal-50 text-teal-600 border-teal-100",
+    sky: "bg-sky-50 text-sky-600 border-sky-100",
+  };
+  return (
+    <div
+      className={`w-full h-full flex items-center justify-center shrink-0 border-r ${colorMap[color]}`}
+    >
+      <Icon size={18} stroke={2} />
+    </div>
+  );
 };
 
 export function LoanProductModal({ opened, onClose }: LoanProductProps) {
@@ -150,11 +182,6 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
     accent?: "indigo" | "violet" | "teal";
     children: React.ReactNode;
   }) => {
-    const accentMap: Record<string, string> = {
-      indigo: "bg-indigo-500",
-      violet: "bg-violet-500",
-      teal: "bg-teal-500",
-    };
     return (
       <Paper
         withBorder
@@ -162,20 +189,20 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         p={0}
         className="shadow-[0_1px_2px_rgba(15,23,42,0.04)] bg-white border-slate-200 overflow-hidden"
       >
-        <div className={`h-[3px] w-full ${accentMap[accent]}`} />
-        <div className="p-5">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Text size="xs" fw={700} className="text-slate-900 tracking-tight">
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="w-1 h-4 rounded-full bg-indigo-500 shrink-0" />
+            <Text size="md" fw={700} className="text-slate-900 tracking-tight">
               {title}
             </Text>
-            <IconInfoCircle size={13} className="text-slate-300" />
+            <IconInfoCircle size={14} className="text-slate-300" />
           </div>
           {description && (
-            <Text size="10px" className="text-slate-400 mb-4">
+            <Text size="xs" className="text-slate-400 mb-5 pl-3">
               {description}
             </Text>
           )}
-          {!description && <div className="mb-2" />}
+          {!description && <div className="mb-3" />}
           {children}
         </div>
       </Paper>
@@ -194,9 +221,9 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         ? { dot: "bg-rose-400", text: "text-rose-600" }
         : { dot: "bg-indigo-400", text: "text-indigo-600" };
     return (
-      <div className="flex items-center gap-1.5 mb-3">
+      <div className="flex items-center gap-1.5 mb-3.5">
         <span className={`w-1 h-3 rounded-full ${colorMap.dot}`} />
-        <Text size="10px" fw={700} className={`${colorMap.text} uppercase tracking-wide`}>
+        <Text size="xs" fw={700} className={`${colorMap.text} uppercase tracking-wide`}>
           {children}
         </Text>
       </div>
@@ -204,18 +231,20 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
   };
 
   const renderProductDetails = () => (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <SectionCard
         title="Basic Product Information"
         description="Capture the basic details of the loan product."
         accent="indigo"
       >
-        <div className="grid grid-cols-3 gap-x-5 gap-y-3">
+        <div className="grid grid-cols-3 gap-x-6 gap-y-5">
           <TextInput
             size="xs"
             label="Product Code"
             placeholder="Enter code"
             withAsterisk
+            leftSection={<IconChip icon={IconHash} color="indigo" />}
+            leftSectionWidth={50}
             classNames={labelProps}
           />
           <TextInput
@@ -223,6 +252,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
             label="Product Name"
             placeholder="Enter product name"
             withAsterisk
+            leftSection={<IconChip icon={IconFileText} color="violet" />}
+            leftSectionWidth={50}
             classNames={labelProps}
           />
           <Select
@@ -233,6 +264,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
             placeholder="Select category"
             data={["Personal Loan", "Home Loan", "Auto Loan"]}
             withAsterisk
+            leftSection={<IconChip icon={IconStack2} color="sky" />}
+            leftSectionWidth={50}
             classNames={labelProps}
           />
           <Select
@@ -243,13 +276,16 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
             placeholder="Select schedule type"
             data={["Equated Monthly Installment (EMI)", "Bullet Payment"]}
             withAsterisk
+            leftSection={<IconChip icon={IconCalendar} color="teal" />}
+            leftSectionWidth={50}
             classNames={labelProps}
           />
           <TextInput
             size="xs"
             label="Maximum Loan Amount"
             placeholder="Enter amount"
-            leftSection={<Text size="xs" className="text-slate-400">₹</Text>}
+            leftSection={<IconChip icon={IconCurrencyRupee} color="orange" />}
+            leftSectionWidth={50}
             withAsterisk
             classNames={labelProps}
           />
@@ -257,6 +293,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
             size="xs"
             label="Days Past Due Threshold for NPA"
             placeholder="Enter days"
+            leftSection={<IconChip icon={IconClock} color="rose" />}
+            leftSectionWidth={50}
             withAsterisk
             classNames={labelProps}
           />
@@ -268,15 +306,16 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         description="Configure interest rate, penalty rate and related settings."
         accent="violet"
       >
-        <div className="flex flex-col gap-3">
-          <div className="rounded-lg bg-indigo-50/50 border border-indigo-100 p-2 mt-2">
+        <div className="grid grid-cols-5 gap-6">
+          <div className="col-span-2 rounded-xl bg-indigo-50/60 border border-indigo-100 p-5">
             <SubHeading>Interest</SubHeading>
-            <div className="grid grid-cols-3 gap-x-5 gap-y-3">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
               <TextInput
                 size="xs"
                 label="Interest Rate (%)"
                 placeholder="0.00"
-                rightSection={<IconPercentage size={12} className="text-slate-400" />}
+                leftSection={<IconChip icon={IconPercentage} color="indigo" />}
+                leftSectionWidth={50}
                 withAsterisk
                 classNames={labelProps}
               />
@@ -288,19 +327,22 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
                 placeholder="Select"
                 data={frequencyOptions}
                 withAsterisk
+                leftSection={<IconChip icon={IconRefresh} color="indigo" />}
+                leftSectionWidth={50}
                 classNames={labelProps}
               />
             </div>
           </div>
 
-          <div className="rounded-lg bg-rose-50/40 border border-rose-100 p-2">
+          <div className="col-span-3 rounded-xl bg-rose-50/50 border border-rose-100 p-5">
             <SubHeading color="rose">Penalty</SubHeading>
-            <div className="grid grid-cols-3 gap-x-5 gap-y-3">
+            <div className="grid grid-cols-3 gap-x-6 gap-y-4">
               <TextInput
                 size="xs"
                 label="Penalty Rate (%)"
                 placeholder="0.00"
-                rightSection={<IconPercentage size={12} className="text-slate-400" />}
+                leftSection={<IconChip icon={IconPercentage} color="rose" />}
+                leftSectionWidth={50}
                 withAsterisk
                 classNames={labelProps}
               />
@@ -312,12 +354,16 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
                 placeholder="Select"
                 data={frequencyOptions}
                 withAsterisk
+                leftSection={<IconChip icon={IconRefresh} color="rose" />}
+                leftSectionWidth={50}
                 classNames={labelProps}
               />
               <TextInput
                 size="xs"
                 label="Grace Period (Days)"
                 placeholder="0"
+                leftSection={<IconChip icon={IconCalendar} color="rose" />}
+                leftSectionWidth={50}
                 classNames={labelProps}
               />
             </div>
@@ -328,7 +374,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
   );
 
   const renderAccounting = () => (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <SectionCard title="Accounts" description="Map GL accounts used by this loan product." accent="indigo">
         {/* Principal Accounts Section */}
         <div className="mb-4">
@@ -383,7 +429,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
             /> */}
           </div>
 
-          <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
+          <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
             {/* Header Row */}
             <div className="grid grid-cols-3 gap-6 bg-slate-50 px-4 py-2.5 border-b border-slate-200">
               <Text size="10px" fw={700} className="text-slate-500 uppercase tracking-wider">
@@ -518,6 +564,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
           label="Standard Asset"
           placeholder="Select sequence"
           data={["Sequence 1"]}
+          leftSection={<IconChip icon={IconStack2} color="teal" />}
+          leftSectionWidth={50}
           classNames={labelProps}
         />
         <Select
@@ -527,6 +575,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
           label="Sub Standard Asset"
           placeholder="Select sequence"
           data={["Sequence 1"]}
+          leftSection={<IconChip icon={IconStack2} color="sky" />}
+          leftSectionWidth={50}
           classNames={labelProps}
         />
         <Select
@@ -536,6 +586,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
           label="Written Off Asset"
           placeholder="Select sequence"
           data={["Sequence 1"]}
+          leftSection={<IconChip icon={IconStack2} color="rose" />}
+          leftSectionWidth={50}
           classNames={labelProps}
         />
         <Select
@@ -545,6 +597,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
           label="Settlement Collection"
           placeholder="Select sequence"
           data={["Sequence 1"]}
+          leftSection={<IconChip icon={IconStack2} color="violet" />}
+          leftSectionWidth={50}
           classNames={labelProps}
         />
       </div>
@@ -553,7 +607,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
 
   const renderCharges = () => (
     <SectionCard title="Loan Charges" description="Fees and charges applied to this loan product." accent="violet">
-      <div className="border border-slate-200 rounded-lg overflow-hidden mb-3">
+      <div className="border border-slate-200 rounded-xl overflow-hidden mb-3">
         <Table size="xs" verticalSpacing="sm">
           <Table.Thead className="bg-slate-50">
             <Table.Tr>
@@ -627,6 +681,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         size="xs"
         variant="default"
         onClick={handleAddCharge}
+        radius="md"
         className="text-slate-700 font-semibold border-slate-200"
       >
         + Add row
@@ -646,7 +701,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
     <Modal
       opened={opened}
       onClose={onClose}
-      size="95%"
+      size="65%"
       withCloseButton={false}
       padding={0}
       radius="lg"
@@ -674,33 +729,32 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}
       >
         {/* Header */}
-        <Box  bg="brand.6" className="flex justify-between items-start px-6 pt-5 pb-4 shrink-0 bg-gradient-to-r via-white to-white border-b border-slate-100">
+        <Box className="flex justify-between items-start px-6 pt-6 pb-5 shrink-0 bg-white border-b border-slate-100">
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0 shadow-sm shadow-indigo-200">
-              <IconBuildingBank size={18} className="text-white" />
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0 shadow-sm shadow-indigo-200">
+              <IconBriefcase size={20} className="text-white" />
             </div>
             <div>
-              <Text size="lg" fw={700} className="text-white leading-tight">
+              <Text size="xl" fw={800} className="text-slate-900 leading-tight">
                 Create Loan Product
               </Text>
-              <Text size="xs" className="text-white mt-0.5">
+              <Text size="xs" className="text-slate-500 mt-1">
                 Define product details and rules for this loan offering.
               </Text>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              onClick={onClose}
-              aria-label="Close"
-              className="hover:bg-slate-100"
-            >
-              <IconX size={18} />
-            </ActionIcon>
-          </div>
+          <ActionIcon
+            variant="light"
+            color="gray"
+            radius="xl"
+            size="lg"
+            onClick={onClose}
+            aria-label="Close"
+            className="hover:bg-slate-100"
+          >
+            <IconX size={18} />
+          </ActionIcon>
         </Box>
 
         {/* Stepper */}
@@ -718,14 +772,14 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
                     className="flex items-center gap-2.5 text-left shrink-0 group"
                   >
                     <div
-                      className={`flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-semibold shrink-0 transition-all ${isActive
+                      className={`flex items-center justify-center w-9 h-9 rounded-full text-[11px] font-semibold shrink-0 transition-all ${isActive
                           ? "bg-indigo-600 text-white ring-4 ring-indigo-100"
                           : isComplete
                             ? "bg-indigo-500 text-white"
                             : "bg-white text-slate-400 border-2 border-slate-200 group-hover:border-slate-300"
                         }`}
                     >
-                      {isComplete ? <IconCheck size={13} /> : <StepIcon size={12} />}
+                      {isComplete ? <IconCheck size={15} /> : <StepIcon size={15} />}
                     </div>
                     <div className="hidden sm:block whitespace-nowrap">
                       <Text
@@ -742,9 +796,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
                   </button>
                   {idx < STEPS.length - 1 && (
                     <div
-                      className={`flex-1 h-[2px] mx-4 rounded-full transition-colors ${isComplete ? "bg-indigo-400" : "bg-slate-150"
+                      className={`flex-1 h-[2px] mx-4 rounded-full transition-colors ${isComplete ? "bg-indigo-400" : "bg-slate-200"
                         }`}
-                      style={!isComplete ? { backgroundColor: "#e2e8f0" } : undefined}
                     />
                   )}
                 </Fragment>
@@ -755,7 +808,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
 
         {/* Form Area — this is the only part that scrolls, so the footer stays put */}
         <div
-          className="flex-1 min-h-0 overflow-y-auto p-5 px-6 pb-8 bg-[#F7F8FB]"
+          className="flex-1 min-h-0 overflow-y-auto p-6 px-7 pb-10 bg-[#F7F8FB]"
           style={{ flex: "1 1 0%", minHeight: 0, overflowY: "auto" }}
         >
           {activeTab === "0" && renderProductDetails()}
@@ -768,7 +821,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         {/* Footer Action Bar — always visible, never requires scrolling */}
         <div className="bg-white border-t border-slate-100 p-3.5 px-6 flex justify-between items-center shrink-0 shadow-[0_-2px_10px_rgba(15,23,42,0.04)]">
           <div className="flex items-center gap-4">
-            <Button size="sm" variant="default" onClick={onClose} className="font-semibold px-5 border-slate-200">
+            <Button size="sm" variant="default" radius="md" onClick={onClose} className="font-semibold px-5 border-slate-200">
               Cancel
             </Button>
             <button
@@ -784,6 +837,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               <Button
                 size="sm"
                 variant="default"
+                radius="md"
                 onClick={handleBack}
                 leftSection={<IconArrowLeft size={14} />}
                 className="font-semibold px-5 text-slate-700 border-slate-200"
@@ -794,6 +848,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
             <Button
               size="sm"
               variant="default"
+              radius="md"
               leftSection={<IconDeviceFloppy size={14} />}
               className="font-semibold px-5 text-slate-700 border-slate-200"
             >
@@ -801,9 +856,10 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
             </Button>
             <Button
               size="sm"
+              radius="md"
               onClick={handleNext}
-              color="indigoAlt"
               rightSection={currentStep < 4 ? <IconArrowRight size={14} /> : <IconCheck size={14} />}
+              className="font-semibold px-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0"
             >
               {currentStep < 4 ? "Save & Next" : "Submit"}
             </Button>
