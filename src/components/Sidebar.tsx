@@ -9,7 +9,8 @@ import {
   IconCash,
   IconSettings,
   IconMenu2,
-  IconLogout
+  IconLogout,
+  IconMoneybag
 } from '@tabler/icons-react';
 
 const LOCAL_NAV_ITEMS = [
@@ -17,6 +18,7 @@ const LOCAL_NAV_ITEMS = [
   { path: '/customer', label: 'Customer', icon: IconUsers, matchPrefix: true },
   { path: '/application', label: 'Application', icon: IconFileText, matchPrefix: true },
   { path: '/loan', label: 'Loan', icon: IconCash, matchPrefix: true },
+  { path: '/operations', label: 'Operations', icon: IconMoneybag, matchPrefix: true },
   { path: '/accounting', label: 'Accounting', icon: IconCalculator, matchPrefix: true },
   { path: '/setting', label: 'Setting', icon: IconSettings, matchPrefix: true },
 ];
@@ -57,7 +59,7 @@ export function Sidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onTog
               key={item.path}
               component={Link}
               to={item.path}
-              title={isCollapsed ? item.label : undefined} // Shows tooltip when collapsed
+              title={isCollapsed ? item.label : undefined} 
               className={`flex items-center text-[15px] font-medium transition-colors ${isCollapsed ? 'justify-center' : 'gap-4'} ${
                 isActive
                   ? 'text-[#1E40AF]' 
