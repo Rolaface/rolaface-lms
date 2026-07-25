@@ -4,8 +4,9 @@ import { AppLayout } from '../layout/AppLayout';
 // View Imports
 import { Dashboard } from '../view/Dashboard';
 // import { Accounting } from '../view/Accounting';
-import { Application } from '../view/Application/Application';
+// import { Application } from '../view/Application/Application';
 import { Customers } from '../view/Customer/Customers';
+import { Account } from '../view/LoanAccount/Account';
 import { Loan } from '../view/Loan/Loan';
 import { LendingSetup } from '../view/Setup/LendingSetup';
 import { Operations } from '../view/Operations/Operation';
@@ -31,10 +32,15 @@ const indexRoute = createRoute({
 //   component: Accounting,
 // });
 
-const applicationRoute = createRoute({
+// const applicationRoute = createRoute({
+//   getParentRoute: () => rootRoute,
+//   path: '/application',
+//   component: Application,
+// });
+const loanAccountRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/application',
-  component: Application,
+  path: '/loanAccount',
+  component: Account,
 });
 
 const customerRoute = createRoute({
@@ -67,7 +73,8 @@ const setupRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
 //   accountingRoute,
-  applicationRoute,
+  // applicationRoute,
+  loanAccountRoute,
   customerRoute,
   loanRoute,
   operationsRoute,
