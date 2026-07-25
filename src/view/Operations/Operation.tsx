@@ -1,6 +1,7 @@
 import { Box, Tabs, Title } from '@mantine/core';
 import { LoanDisbursement } from './LoanDisbursement/LoanDisbursement';
 import { LoanWriteOff } from './LoanWriteOff/LoanWriteOff';
+import {LoanRepayment} from './LoanRepayment/LoanRepayment';
 // import { LoanCategory } from './LoanCategory/LoanCategory';
  
 export function Operations() {
@@ -21,6 +22,7 @@ export function Operations() {
           <Tabs.Tab value="product">Loan Disbursement</Tabs.Tab>
           {/* <Tabs.Tab value="category">Loan Repayment</Tabs.Tab> */}
           <Tabs.Tab value="category">Loan Write Off</Tabs.Tab>
+          <Tabs.Tab value="repayment">Loan Repayment</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="product">
@@ -29,6 +31,9 @@ export function Operations() {
 
         <Tabs.Panel value="category">
           <LoanWriteOff />
+        </Tabs.Panel>
+        <Tabs.Panel value="repayment">
+          <LoanRepayment/>
         </Tabs.Panel>
       </Tabs>
     </Box>
