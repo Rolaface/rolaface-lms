@@ -58,6 +58,22 @@ export const mantineTheme = createTheme({
       "#3730a3",
       "#312e81",
     ],
+
+    /* =========================
+     * DANGER / WARNING (Rose)
+     * ========================= */
+    danger: [
+      "#fff1f2",
+      "#ffe4e6",
+      "#fecdd3",
+      "#fda4af",
+      "#fb7185",
+      "#F43F5E", // primary
+      "#E11D48",
+      "#BE123C",
+      "#9F1239",
+      "#881337",
+    ],
   },
 
   fontFamily: "var(--font-main)",
