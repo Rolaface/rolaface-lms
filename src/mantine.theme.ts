@@ -1,7 +1,15 @@
 import { createTheme } from "@mantine/core";
 
 export const mantineTheme = createTheme({
-  primaryColor: "brand",
+    primaryColor: "brand",
+
+  breakpoints: {
+    xs: "30em",  // 480px — below your supported floor, kept for Mantine internals that expect it
+    sm: "40em",  // 640px
+    md: "48em",  // 768px  ← your real floor (tablet)
+    lg: "64em",  // 1024px ← primary desktop target
+    xl: "80em",  // 1280px
+  },
 
   colors: {
     /* =========================
