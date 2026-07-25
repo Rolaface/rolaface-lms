@@ -19,6 +19,7 @@ const LOCAL_NAV_ITEMS = [
   { path: '/application', label: 'Application', icon: IconFileText, matchPrefix: true },
   { path: '/loan', label: 'Loan', icon: IconCash, matchPrefix: true },
   { path: '/operations', label: 'Operations', icon: IconMoneybag, matchPrefix: true },
+  { path: '/setup', label: 'Setup', icon: IconMoneybag, matchPrefix: true },
   { path: '/accounting', label: 'Accounting', icon: IconCalculator, matchPrefix: true },
   { path: '/setting', label: 'Setting', icon: IconSettings, matchPrefix: true },
 ];
