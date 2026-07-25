@@ -16,7 +16,7 @@ import {
 const LOCAL_NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: IconLayoutDashboard, matchPrefix: false },
   { path: '/customer', label: 'Customer', icon: IconUsers, matchPrefix: true },
-  { path: '/application', label: 'Application', icon: IconFileText, matchPrefix: true },
+  { path: '/loanAccount', label: 'Loan Account', icon: IconFileText, matchPrefix: true },
   { path: '/loan', label: 'Loan', icon: IconCash, matchPrefix: true },
   { path: '/operations', label: 'Operations', icon: IconMoneybag, matchPrefix: true },
   { path: '/setup', label: 'Setup', icon: IconMoneybag, matchPrefix: true },
