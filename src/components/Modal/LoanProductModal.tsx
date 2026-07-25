@@ -33,6 +33,11 @@ import {
   IconClock,
   IconRefresh,
   IconClipboardList,
+  IconPencil,
+  IconCopy,
+  IconArrowBarToDown,
+  IconArrowBarToUp,
+  IconWallet,
 } from "@tabler/icons-react";
 
 interface LoanProductProps {
@@ -42,10 +47,9 @@ interface LoanProductProps {
 
 const STEPS = [
   { label: "Product Details", desc: "Basic information", icon: IconBriefcase },
-  { label: "Accounting", desc: "GL and interest accounts", icon: IconBuildingBank },
-  { label: "Collection & Offsets", desc: "Offsets and sequences", icon: IconArrowsExchange },
+  { label: "Accounting", desc: "Account Mapping", icon: IconBuildingBank },
+  { label: "Collection Sequence", desc: "Repayment Order", icon: IconArrowsExchange },
   { label: "Charges", desc: "Fees and charges", icon: IconReceipt2 },
-  { label: "Review", desc: "Review and confirm", icon: IconClipboardCheck },
 ];
 
 
@@ -130,24 +134,83 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
   };
 
   // --- 2. Charges Table State ---
-  const [charges, setCharges] = useState<{ id: number; type: string; percentage: string; amount: string }[]>([]);
+  interface ChargeRow {
+    id: number;
+    type: string;
+    basedOn: "Percentage" | "Flat Amount";
+    amount: string;
+    percentage: string;
+    incomeAccount: string;
+    receivableAccount: string;
+    waiverAccount: string;
+    writeOffAccount: string;
+    suspenseAccount: string;
+  }
+
+  const emptyCharge = (): ChargeRow => ({
+    id: Date.now() + Math.random(),
+    type: "",
+    basedOn: "Percentage",
+    amount: "",
+    percentage: "",
+    incomeAccount: "",
+    receivableAccount: "",
+    waiverAccount: "",
+    writeOffAccount: "",
+    suspenseAccount: "",
+  });
+
+  const [charges, setCharges] = useState<ChargeRow[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const handleAddCharge = () => {
-    setCharges((prev) => [...prev, { id: Date.now(), type: "", percentage: "", amount: "" }]);
+    setCharges((prev) => {
+      const next = [...prev, emptyCharge()];
+      setEditingIndex(next.length - 1);
+      return next;
+    });
   };
 
-  const handleUpdateCharge = (id: number, field: string, value: string) => {
-    setCharges((prev) => prev.map((charge) => (charge.id === id ? { ...charge, [field]: value } : charge)));
+  const handleUpdateCharge = (index: number, field: keyof ChargeRow, value: string) => {
+    setCharges((prev) => prev.map((charge, i) => (i === index ? { ...charge, [field]: value } : charge)));
   };
 
-  const handleRemoveCharge = (id: number) => {
-    setCharges((prev) => prev.filter((charge) => charge.id !== id));
+  const handleRemoveChargeAt = (index: number) => {
+    setCharges((prev) => prev.filter((_, i) => i !== index));
+    setEditingIndex(null);
+  };
+
+  const handleInsertAbove = (index: number) => {
+    setCharges((prev) => {
+      const next = [...prev];
+      next.splice(index, 0, emptyCharge());
+      return next;
+    });
+    setEditingIndex(index);
+  };
+
+  const handleInsertBelow = (index: number) => {
+    setCharges((prev) => {
+      const next = [...prev];
+      next.splice(index + 1, 0, emptyCharge());
+      return next;
+    });
+    setEditingIndex(index + 1);
+  };
+
+  const handleDuplicateCharge = (index: number) => {
+    setCharges((prev) => {
+      const next = [...prev];
+      next.splice(index + 1, 0, { ...prev[index], id: Date.now() + Math.random() });
+      return next;
+    });
+    setEditingIndex(index + 1);
   };
 
   // --- Navigation ---
   const handleNext = () => {
     const current = parseInt(activeTab || "0");
-    if (current < 4) setActiveTab((current + 1).toString());
+    if (current < 3) setActiveTab((current + 1).toString());
   };
 
   const handleBack = () => {
@@ -160,11 +223,11 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
     setInterestAccs({ income: "", receivable: "", accrued: "", suspended: "", waiver: "" });
     setPenaltyAccs({ income: "", receivable: "", accrued: "", suspended: "", waiver: "" });
     setCharges([]);
+    setEditingIndex(null);
     setActiveTab("0");
   };
 
   const dummyAccounts = ["Account A", "Account B", "Account C"];
-  const chargeTypes = ["Processing Fee", "Late Fee", "Documentation Fee"];
   const frequencyOptions = ["Monthly", "Quarterly", "Yearly"];
 
   const currentStep = parseInt(activeTab || "0");
@@ -246,7 +309,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
 
   const renderProductDetails = () => (
     <div className="flex flex-col gap-5">
-      <SectionCard title="Basic Product Information">
+      <PlainCard>
         <div className="grid grid-cols-3 gap-x-6 gap-y-5">
           <TextInput size="xs" label="Product Code" placeholder="Enter code" withAsterisk leftSection={<IconChip icon={IconHash} color="violet" />} leftSectionWidth={50} classNames={labelProps} />
           <TextInput size="xs" label="Product Name" placeholder="Enter product name" withAsterisk leftSection={<IconChip icon={IconFileText} color="violet" />} leftSectionWidth={50} classNames={labelProps} />
@@ -277,7 +340,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
           <TextInput size="xs" label="Maximum Loan Amount" placeholder="Enter amount" withAsterisk leftSection={<IconChip icon={IconCurrencyRupee} color="accent" />} leftSectionWidth={50} classNames={labelProps} />
           <TextInput size="xs" label="Days Past Due Threshold for NPA" placeholder="Enter days" withAsterisk leftSection={<IconChip icon={IconClock} color="danger" />} leftSectionWidth={50} classNames={labelProps} />
         </div>
-      </SectionCard>
+      </PlainCard>
 
       <SectionCard title="Interest & Penalty">
         <div className="grid grid-cols-5 gap-6">
@@ -352,7 +415,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         }
       >
         <div className="grid grid-cols-3 gap-6 mb-3 px-0">
-          <Text size="xs" fw={700} className="text-slate-400 uppercase tracking-wider">GL Type</Text>
+          <Text size="xs" fw={700} className="text-slate-400 uppercase tracking-wider">Account Type</Text>
           <Text size="xs" fw={700} className="uppercase tracking-wider" style={{ color: theme.brand[6] }}>Interest</Text>
           <Text size="xs" fw={700} className="uppercase tracking-wider" style={{ color: theme.danger[6] }}>Penalty</Text>
         </div>
@@ -423,10 +486,10 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
             <Table.Tr>
               <Table.Th className="w-10"><Checkbox size="xs" aria-label="Select all" /></Table.Th>
               <Table.Th className="w-12">No.</Table.Th>
-              <Table.Th>Charge Type</Table.Th>
-              <Table.Th>Percentage</Table.Th>
-              <Table.Th>Amount</Table.Th>
-              <Table.Th className="w-12"></Table.Th>
+              <Table.Th>Fee / Charge Name</Table.Th>
+              <Table.Th>Charge Based On</Table.Th>
+              <Table.Th>Value</Table.Th>
+              <Table.Th className="w-20"></Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -438,20 +501,19 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               </Table.Tr>
             ) : (
               charges.map((charge, index) => (
-                <Table.Tr key={charge.id} className="hover:bg-slate-50/60">
-                  <Table.Td><Checkbox size="xs" /></Table.Td>
+                <Table.Tr key={charge.id} className="hover:bg-slate-50/60 cursor-pointer" onClick={() => setEditingIndex(index)}>
+                  <Table.Td onClick={(e) => e.stopPropagation()}><Checkbox size="xs" /></Table.Td>
                   <Table.Td className="text-xs text-slate-500 font-medium">{index + 1}</Table.Td>
-                  <Table.Td>
-                    <Select size="xs" data={chargeTypes} placeholder="Select type" value={charge.type} onChange={(val) => handleUpdateCharge(charge.id, "type", val || "")} variant="unstyled" className="border-b border-transparent hover:border-slate-200" />
+                  <Table.Td className="text-xs text-slate-700 font-medium">{charge.type || <span className="text-slate-400 font-normal">Untitled charge</span>}</Table.Td>
+                  <Table.Td className="text-xs text-slate-500">{charge.basedOn}</Table.Td>
+                  <Table.Td className="text-xs text-slate-500">
+                    {charge.basedOn === "Percentage" ? (charge.percentage ? `${charge.percentage}%` : "—") : (charge.amount ? charge.amount : "—")}
                   </Table.Td>
-                  <Table.Td>
-                    <TextInput size="xs" placeholder="%" value={charge.percentage} onChange={(e) => handleUpdateCharge(charge.id, "percentage", e.currentTarget.value)} variant="unstyled" className="border-b border-transparent hover:border-slate-200" />
-                  </Table.Td>
-                  <Table.Td>
-                    <TextInput size="xs" placeholder="0.00" value={charge.amount} onChange={(e) => handleUpdateCharge(charge.id, "amount", e.currentTarget.value)} variant="unstyled" className="border-b border-transparent hover:border-slate-200" />
-                  </Table.Td>
-                  <Table.Td>
-                    <ActionIcon color="danger" viant="subtle" onClick={() => handleRemoveCharge(charge.id)}><IconTrash size={16} /></ActionIcon>
+                  <Table.Td onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1">
+                      <ActionIcon color="brand" variant="subtle" onClick={() => setEditingIndex(index)}><IconPencil size={15} /></ActionIcon>
+                      <ActionIcon color="danger" variant="subtle" onClick={() => handleRemoveChargeAt(index)}><IconTrash size={15} /></ActionIcon>
+                    </div>
                   </Table.Td>
                 </Table.Tr>
               ))
@@ -465,11 +527,219 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
     </SectionCard>
   );
 
-  const renderReview = () => (
-    <SectionCard title="Review" description="Review and confirm before submitting.">
-      <Text size="sm" className="text-slate-500">Review summary goes here.</Text>
-    </SectionCard>
-  );
+  // --- Charge row editing modal (matches the app's card/field styling) ---
+  const renderChargeEditModal = () => {
+    if (editingIndex === null) return null;
+    const charge = charges[editingIndex];
+    if (!charge) return null;
+
+    const update = (field: keyof typeof charge, value: string) => handleUpdateCharge(editingIndex, field, value);
+
+    return (
+      <Modal
+        opened={editingIndex !== null}
+        onClose={() => setEditingIndex(null)}
+        size="68%"
+        withCloseButton={false}
+        padding={0}
+        radius="lg"
+        centered
+        overlayProps={{ backgroundOpacity: 0.5, blur: 3 }}
+        styles={{
+          content: { display: "flex", flexDirection: "column", maxHeight: "88vh", overflow: "hidden" },
+          header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
+          body: { flex: 1, display: "flex", flexDirection: "column", padding: 0, minHeight: 0, overflow: "hidden" },
+        }}
+      >
+        {/* Header */}
+        <Box className="flex justify-between items-center px-6 py-4 shrink-0 bg-white border-b border-slate-100 flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+              style={{ background: `linear-gradient(135deg, ${theme.brand[5]}, ${theme.brand[7]})` }}
+            >
+              <IconReceipt2 size={18} className="text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <Text size="md" fw={800} className="text-slate-900 leading-tight">Editing Row #{editingIndex + 1}</Text>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                  style={{
+                    backgroundColor: charge.basedOn === "Percentage" ? theme.gold[0] : theme.emerald[0],
+                    color: charge.basedOn === "Percentage" ? "#a16207" : theme.emerald[6],
+                  }}
+                >
+                  {charge.basedOn}
+                </span>
+              </div>
+              <Text size="xs" className="text-slate-400 mt-0.5">{charge.type || "Untitled charge"}</Text>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="xs" color="danger" radius="md" leftSection={<IconTrash size={14} />} className="font-semibold px-4" onClick={() => handleRemoveChargeAt(editingIndex)}>
+              Delete
+            </Button>
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-1">
+              <Button size="xs" variant="subtle" color="gray" radius="sm" leftSection={<IconArrowBarToDown size={14} />} className="font-semibold px-3 text-slate-700" onClick={() => handleInsertBelow(editingIndex)}>
+                Insert Below
+              </Button>
+              <Button size="xs" variant="subtle" color="gray" radius="sm" leftSection={<IconArrowBarToUp size={14} />} className="font-semibold px-3 text-slate-700" onClick={() => handleInsertAbove(editingIndex)}>
+                Insert Above
+              </Button>
+              <Button size="xs" variant="subtle" color="gray" radius="sm" leftSection={<IconCopy size={14} />} className="font-semibold px-3 text-slate-700" onClick={() => handleDuplicateCharge(editingIndex)}>
+                Duplicate
+              </Button>
+            </div>
+            <ActionIcon variant="light" color="gray" radius="xl" size="lg" onClick={() => setEditingIndex(null)} aria-label="Close" className="hover:bg-slate-100">
+              <IconX size={16} />
+            </ActionIcon>
+          </div>
+        </Box>
+
+        {/* Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 bg-[#F7F8FB]" style={{ flex: "1 1 0%", minHeight: 0, overflowY: "auto" }}>
+          <div className="flex flex-col gap-5">
+            <div className="rounded-xl border p-5" style={{ backgroundColor: theme.violet[0], borderColor: theme.violet[1] }}>
+              <div className="flex items-center gap-2 mb-4">
+                <IconReceipt2 size={16} style={{ color: theme.violet[6] }} />
+                <SubHeading color="brand">Charge Details</SubHeading>
+              </div>
+              <div className={`grid gap-x-5 gap-y-4 ${charge.basedOn === "Percentage" ? "grid-cols-4" : "grid-cols-3"}`}>
+                <TextInput
+                  size="xs"
+                  label="Charge Type"
+                  placeholder="e.g. Processing Fee"
+                  value={charge.type}
+                  onChange={(e) => update("type", e.currentTarget.value)}
+                  leftSection={<IconChip icon={IconReceipt2} color="violet" />}
+                  leftSectionWidth={44}
+                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+                />
+                <TextInput
+                  size="xs"
+                  label="Amount"
+                  placeholder="Enter flat amount"
+                  value={charge.amount}
+                  onChange={(e) => update("amount", e.currentTarget.value)}
+                  leftSection={<IconChip icon={IconCurrencyRupee} color="accent" />}
+                  leftSectionWidth={44}
+                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+                />
+                <Select
+                  size="xs"
+                  label="Charge Based On"
+                  placeholder="Select basis"
+                  data={["Percentage", "Flat Amount"]}
+                  value={charge.basedOn}
+                  onChange={(val) => update("basedOn", (val as "Percentage" | "Flat Amount") || "Percentage")}
+                  rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                  leftSection={<IconChip icon={IconArrowsExchange} color="blue" />}
+                  leftSectionWidth={44}
+                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+                />
+                {charge.basedOn === "Percentage" && (
+                  <TextInput
+                    size="xs"
+                    label="Percentage"
+                    placeholder="Enter percentage"
+                    value={charge.percentage}
+                    onChange={(e) => update("percentage", e.currentTarget.value)}
+                    leftSection={<IconChip icon={IconPercentage} color="gold" />}
+                    leftSectionWidth={44}
+                    classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-xl border p-5" style={{ backgroundColor: theme.blue[0], borderColor: theme.blue[1] }}>
+              <div className="flex items-center gap-2 mb-4">
+                <IconWallet size={16} style={{ color: theme.blue[6] }} />
+                <Text size="xs" fw={700} className="uppercase tracking-wide" style={{ color: theme.blue[6] }}>Charge Accounts</Text>
+              </div>
+              <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+                <Select
+                  size="xs"
+                  searchable
+                  label="Income Account"
+                  placeholder="Select income account"
+                  data={dummyAccounts}
+                  value={charge.incomeAccount}
+                  onChange={(v) => update("incomeAccount", v || "")}
+                  rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                  leftSection={<IconChip icon={IconWallet} color="emerald" />}
+                  leftSectionWidth={44}
+                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+                />
+                <Select
+                  size="xs"
+                  searchable
+                  label="Receivable Account"
+                  placeholder="Select receivable account"
+                  data={dummyAccounts}
+                  value={charge.receivableAccount}
+                  onChange={(v) => update("receivableAccount", v || "")}
+                  rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                  leftSection={<IconChip icon={IconReceipt2} color="blue" />}
+                  leftSectionWidth={44}
+                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+                />
+                <Select
+                  size="xs"
+                  searchable
+                  label="Waiver Account"
+                  placeholder="Select waiver account"
+                  data={dummyAccounts}
+                  value={charge.waiverAccount}
+                  onChange={(v) => update("waiverAccount", v || "")}
+                  rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                  leftSection={<IconChip icon={IconClipboardCheck} color="violet" />}
+                  leftSectionWidth={44}
+                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+                />
+                <Select
+                  size="xs"
+                  searchable
+                  label="Write Off Account"
+                  placeholder="Select write off account"
+                  data={dummyAccounts}
+                  value={charge.writeOffAccount}
+                  onChange={(v) => update("writeOffAccount", v || "")}
+                  rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                  leftSection={<IconChip icon={IconClipboardList} color="danger" />}
+                  leftSectionWidth={44}
+                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+                />
+                <Select
+                  size="xs"
+                  searchable
+                  label="Suspense Account"
+                  placeholder="Select suspense account"
+                  data={dummyAccounts}
+                  value={charge.suspenseAccount}
+                  onChange={(v) => update("suspenseAccount", v || "")}
+                  rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                  leftSection={<IconChip icon={IconStack2} color="gold" />}
+                  leftSectionWidth={44}
+                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-white border-t border-slate-100 p-3.5 px-6 flex justify-between items-center shrink-0">
+          <Text size="10px" className="text-slate-400">Shortcuts: Ctrl+↑ previous · Ctrl+↓ next · Esc close</Text>
+          <Button size="sm" radius="md" color="brand" className="font-semibold px-6" onClick={() => setEditingIndex(null)}>
+            Done
+          </Button>
+        </div>
+      </Modal>
+    );
+  };
 
   return (
     <Modal
@@ -511,7 +781,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         </Box>
 
         {/* Stepper */}
-        <Box className="px-6 pt-4 pb-4 border-b border-slate-100 shrink-0 bg-white">
+        <Box className="px-10 pt-4 pb-4 border-b border-slate-100 shrink-0 bg-white">
           <div className="flex items-center">
             {STEPS.map((step, idx) => {
               const isActive = currentStep === idx;
@@ -554,8 +824,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
           {activeTab === "1" && renderAccounting()}
           {activeTab === "2" && renderCollection()}
           {activeTab === "3" && renderCharges()}
-          {activeTab === "4" && renderReview()}
         </div>
+        {renderChargeEditModal()}
 
         {/* Footer — always visible */}
         <div className="bg-white border-t border-slate-100 p-3.5 px-6 flex justify-between items-center shrink-0 shadow-[0_-2px_10px_rgba(15,23,42,0.04)]">
@@ -568,8 +838,8 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               <Button size="sm" variant="default" radius="md" onClick={handleBack} leftSection={<IconArrowLeft size={14} />} className="font-semibold px-5 text-slate-700 border-slate-200">Back</Button>
             )}
             <Button size="sm" variant="default" radius="md" leftSection={<IconDeviceFloppy size={14} />} className="font-semibold px-5 text-slate-700 border-slate-200">Save as Draft</Button>
-            <Button size="sm" radius="md" color="brand" onClick={handleNext} rightSection={currentStep < 4 ? <IconArrowRight size={14} /> : <IconCheck size={14} />} className="font-semibold px-6">
-              {currentStep < 4 ? "Save & Next" : "Submit"}
+            <Button size="sm" radius="md" color="brand" onClick={handleNext} rightSection={currentStep < 3 ? <IconArrowRight size={14} /> : <IconCheck size={14} />} className="font-semibold px-6">
+              {currentStep < 3 ? "Save & Next" : "Submit"}
             </Button>
           </div>
         </div>
