@@ -13,6 +13,7 @@ import {
   Pagination,
   Menu,
   Title,
+  Menu,
 } from '@mantine/core';
 import {
   IconPlus,
