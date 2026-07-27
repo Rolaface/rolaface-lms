@@ -10,6 +10,8 @@ import {
   Checkbox,
   Modal,
   ActionIcon,
+  Menu,
+  SegmentedControl,
 } from "@mantine/core";
 import {
   IconX,
@@ -38,6 +40,8 @@ import {
   IconArrowBarToDown,
   IconArrowBarToUp,
   IconWallet,
+  IconDotsVertical,
+  IconPlus,
 } from "@tabler/icons-react";
 
 interface LoanProductProps {
@@ -49,7 +53,8 @@ const STEPS = [
   { label: "Product Details", desc: "Basic information", icon: IconBriefcase },
   { label: "Accounting", desc: "Account Mapping", icon: IconBuildingBank },
   { label: "Collection Sequence", desc: "Repayment Order", icon: IconArrowsExchange },
-  { label: "Charges", desc: "Fees and charges", icon: IconReceipt2 },
+{ label: "Fees & Charges", desc: "Configure applicable loan fees", icon: IconReceipt2 },
+
 ];
 
 
@@ -161,23 +166,34 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
   });
 
   const [charges, setCharges] = useState<ChargeRow[]>([]);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  // Only tracks which row's ACCOUNTS modal is open. Charge Type / Based On /
+  // Percentage / Amount are now edited inline in the table itself.
+  const [accountsModalIndex, setAccountsModalIndex] = useState<number | null>(null);
 
   const handleAddCharge = () => {
-    setCharges((prev) => {
-      const next = [...prev, emptyCharge()];
-      setEditingIndex(next.length - 1);
-      return next;
-    });
+    // Adds the row directly into the table (inline-editable) instead of
+    // opening any modal.
+    setCharges((prev) => [...prev, emptyCharge()]);
   };
 
   const handleUpdateCharge = (index: number, field: keyof ChargeRow, value: string) => {
-    setCharges((prev) => prev.map((charge, i) => (i === index ? { ...charge, [field]: value } : charge)));
+    setCharges((prev) =>
+      prev.map((charge, i) => {
+        if (i !== index) return charge;
+        const updated = { ...charge, [field]: value };
+        // Keep the disabled field's stale value cleared when basis changes
+        if (field === "basedOn") {
+          if (value === "Percentage") updated.amount = "";
+          if (value === "Flat Amount") updated.percentage = "";
+        }
+        return updated;
+      })
+    );
   };
 
   const handleRemoveChargeAt = (index: number) => {
     setCharges((prev) => prev.filter((_, i) => i !== index));
-    setEditingIndex(null);
+    setAccountsModalIndex(null);
   };
 
   const handleInsertAbove = (index: number) => {
@@ -186,7 +202,6 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
       next.splice(index, 0, emptyCharge());
       return next;
     });
-    setEditingIndex(index);
   };
 
   const handleInsertBelow = (index: number) => {
@@ -195,7 +210,6 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
       next.splice(index + 1, 0, emptyCharge());
       return next;
     });
-    setEditingIndex(index + 1);
   };
 
   const handleDuplicateCharge = (index: number) => {
@@ -204,7 +218,6 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
       next.splice(index + 1, 0, { ...prev[index], id: Date.now() + Math.random() });
       return next;
     });
-    setEditingIndex(index + 1);
   };
 
   // --- Navigation ---
@@ -223,7 +236,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
     setInterestAccs({ income: "", receivable: "", accrued: "", suspended: "", waiver: "" });
     setPenaltyAccs({ income: "", receivable: "", accrued: "", suspended: "", waiver: "" });
     setCharges([]);
-    setEditingIndex(null);
+    setAccountsModalIndex(null);
     setActiveTab("0");
   };
 
@@ -478,254 +491,253 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
     </PlainCard>
   );
 
+  // Compact inline input used inside table cells (no label, tighter height)
+  const cellInputClasses = {
+    input: "h-8 min-h-[32px] w-full text-xs rounded-md border border-slate-200 bg-white hover:border-slate-300 focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)] disabled:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 px-2",
+  };
+
   const renderCharges = () => (
     <SectionCard title="Loan Charges" description="Fees and charges applied to this loan product.">
       <div className="border border-slate-200 rounded-xl overflow-hidden mb-3">
-        <Table size="xs" verticalSpacing="sm">
+        <Table size="xs" verticalSpacing="xs" horizontalSpacing={6} className="table-fixed w-full">
           <Table.Thead className="bg-slate-50">
             <Table.Tr>
-              <Table.Th className="w-10"><Checkbox size="xs" aria-label="Select all" /></Table.Th>
-              <Table.Th className="w-12">No.</Table.Th>
-              <Table.Th>Fee / Charge Name</Table.Th>
-              <Table.Th>Charge Based On</Table.Th>
-              <Table.Th>Value</Table.Th>
-              <Table.Th className="w-20"></Table.Th>
+              <Table.Th className="w-6"><Checkbox size="xs" aria-label="Select all" /></Table.Th>
+              <Table.Th className="w-6">No.</Table.Th>
+              <Table.Th className="w-52">Charge Type</Table.Th>
+              <Table.Th className="w-48">Charge Based On</Table.Th>
+              <Table.Th className="w-24">Percentage</Table.Th>
+              <Table.Th className="w-24">Amount</Table.Th>
+              <Table.Th className="w-14"></Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {charges.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={6} className="text-center py-8 text-slate-400 bg-slate-50/50">
+                <Table.Td colSpan={7} className="text-center py-8 text-slate-400 bg-slate-50/50">
                   No rows yet — add a charge to get started
                 </Table.Td>
               </Table.Tr>
             ) : (
               charges.map((charge, index) => (
-                <Table.Tr key={charge.id} className="hover:bg-slate-50/60 cursor-pointer" onClick={() => setEditingIndex(index)}>
-                  <Table.Td onClick={(e) => e.stopPropagation()}><Checkbox size="xs" /></Table.Td>
+                <Table.Tr key={charge.id} className="hover:bg-slate-50/60">
+                  <Table.Td><Checkbox size="xs" /></Table.Td>
                   <Table.Td className="text-xs text-slate-500 font-medium">{index + 1}</Table.Td>
-                  <Table.Td className="text-xs text-slate-700 font-medium">{charge.type || <span className="text-slate-400 font-normal">Untitled charge</span>}</Table.Td>
-                  <Table.Td className="text-xs text-slate-500">{charge.basedOn}</Table.Td>
-                  <Table.Td className="text-xs text-slate-500">
-                    {charge.basedOn === "Percentage" ? (charge.percentage ? `${charge.percentage}%` : "—") : (charge.amount ? charge.amount : "—")}
+                  <Table.Td>
+                    <TextInput
+                      size="xs"
+                      placeholder="Charge Type"
+                      value={charge.type}
+                      onChange={(e) => handleUpdateCharge(index, "type", e.currentTarget.value)}
+                      classNames={cellInputClasses}
+                    />
                   </Table.Td>
-                  <Table.Td onClick={(e) => e.stopPropagation()}>
+                  <Table.Td>
+                    <SegmentedControl
+                      size="xs"
+                      fullWidth
+                      data={[
+                        { label: "Percentage", value: "Percentage" },
+                        { label: "Flat Amount", value: "Flat Amount" },
+                      ]}
+                      value={charge.basedOn}
+                      onChange={(val) => handleUpdateCharge(index, "basedOn", (val as "Percentage" | "Flat Amount") || "Percentage")}
+                      color="brand"
+                      classNames={{
+                        root: "bg-slate-100 p-0.5 h-8",
+                        label: "text-xs font-semibold px-1",
+                        indicator: "shadow-sm",
+                      }}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="xs"
+                      placeholder="Percentage"
+                      value={charge.percentage}
+                      disabled={charge.basedOn === "Flat Amount"}
+                      onChange={(e) => handleUpdateCharge(index, "percentage", e.currentTarget.value)}
+                      classNames={cellInputClasses}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="xs"
+                      placeholder="Amount"
+                      value={charge.amount}
+                      disabled={charge.basedOn === "Percentage"}
+                      onChange={(e) => handleUpdateCharge(index, "amount", e.currentTarget.value)}
+                      classNames={cellInputClasses}
+                    />
+                  </Table.Td>
+                  <Table.Td>
                     <div className="flex items-center gap-1">
-                      <ActionIcon color="brand" variant="subtle" onClick={() => setEditingIndex(index)}><IconPencil size={15} /></ActionIcon>
-                      <ActionIcon color="danger" variant="subtle" onClick={() => handleRemoveChargeAt(index)}><IconTrash size={15} /></ActionIcon>
+                      {/* Edit opens ONLY the charge-accounts modal */}
+                      <ActionIcon color="brand" variant="subtle" onClick={() => setAccountsModalIndex(index)} aria-label="Edit charge accounts">
+                        <IconPencil size={15} />
+                      </ActionIcon>
+                      <Menu shadow="md" width={170} position="bottom-end" withinPortal>
+                        <Menu.Target>
+                          <ActionIcon color="gray" variant="subtle" aria-label="More actions">
+                            <IconDotsVertical size={15} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item leftSection={<IconArrowBarToUp size={14} />} onClick={() => handleInsertAbove(index)}>
+                            Insert Above
+                          </Menu.Item>
+                          <Menu.Item leftSection={<IconArrowBarToDown size={14} />} onClick={() => handleInsertBelow(index)}>
+                            Insert Below
+                          </Menu.Item>
+                          <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => handleDuplicateCharge(index)}>
+                            Duplicate
+                          </Menu.Item>
+                          <Menu.Divider />
+                          <Menu.Item color="danger" leftSection={<IconTrash size={14} />} onClick={() => handleRemoveChargeAt(index)}>
+                            Delete
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
                     </div>
                   </Table.Td>
                 </Table.Tr>
               ))
             )}
+            {/* Inline "add" row replaces the old standalone Add row button */}
+            <Table.Tr className="cursor-pointer hover:bg-slate-50/60" onClick={handleAddCharge}>
+              <Table.Td colSpan={7} className="py-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: theme.brand[6] }}>
+                  <IconPlus size={14} />
+                  Add charge
+                </div>
+              </Table.Td>
+            </Table.Tr>
           </Table.Tbody>
         </Table>
       </div>
-      <Button size="xs" variant="default" onClick={handleAddCharge} radius="md" className="text-slate-700 font-semibold border-slate-200">
-        + Add row
-      </Button>
     </SectionCard>
   );
 
-  // --- Charge row editing modal (matches the app's card/field styling) ---
-  const renderChargeEditModal = () => {
-    if (editingIndex === null) return null;
-    const charge = charges[editingIndex];
+  // --- Charge accounts modal (accounts only — matches the app's card/field styling) ---
+  const renderChargeAccountsModal = () => {
+    if (accountsModalIndex === null) return null;
+    const charge = charges[accountsModalIndex];
     if (!charge) return null;
 
-    const update = (field: keyof typeof charge, value: string) => handleUpdateCharge(editingIndex, field, value);
+    const update = (field: keyof typeof charge, value: string) => handleUpdateCharge(accountsModalIndex, field, value);
 
     return (
       <Modal
-        opened={editingIndex !== null}
-        onClose={() => setEditingIndex(null)}
-        size="68%"
+        opened={accountsModalIndex !== null}
+        onClose={() => setAccountsModalIndex(null)}
+        size="50%"
         withCloseButton={false}
         padding={0}
         radius="lg"
         centered
         overlayProps={{ backgroundOpacity: 0.5, blur: 3 }}
         styles={{
-          content: { display: "flex", flexDirection: "column", maxHeight: "88vh", overflow: "hidden" },
+          content: { display: "flex", flexDirection: "column", maxHeight: "80vh", overflow: "hidden" },
           header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
           body: { flex: 1, display: "flex", flexDirection: "column", padding: 0, minHeight: 0, overflow: "hidden" },
         }}
       >
-        {/* Header */}
-        <Box className="flex justify-between items-center px-6 py-4 shrink-0 bg-white border-b border-slate-100 flex-wrap gap-3">
+        {/* Summary header — which charge these accounts belong to */}
+        <Box className="flex justify-between items-center px-6 py-4 shrink-0 bg-white border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: `linear-gradient(135deg, ${theme.brand[5]}, ${theme.brand[7]})` }}
             >
-              <IconReceipt2 size={18} className="text-white" />
+              <IconReceipt2 size={16} className="text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <Text size="md" fw={800} className="text-slate-900 leading-tight">Editing Row #{editingIndex + 1}</Text>
-                <span
-                  className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
-                  style={{
-                    backgroundColor: charge.basedOn === "Percentage" ? theme.gold[0] : theme.emerald[0],
-                    color: charge.basedOn === "Percentage" ? "#a16207" : theme.emerald[6],
-                  }}
-                >
-                  {charge.basedOn}
-                </span>
-              </div>
-              <Text size="xs" className="text-slate-400 mt-0.5">{charge.type || "Untitled charge"}</Text>
+              <Text size="sm" fw={800} className="text-slate-900 leading-tight">
+                Editing accounts for: {charge.type || "Untitled charge"}
+              </Text>
+              <Text size="xs" className="text-slate-400 mt-0.5">
+                Row #{accountsModalIndex + 1} · {charge.basedOn === "Percentage" ? `${charge.percentage || "0"}%` : charge.amount || "0"}
+              </Text>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button size="xs" color="danger" radius="md" leftSection={<IconTrash size={14} />} className="font-semibold px-4" onClick={() => handleRemoveChargeAt(editingIndex)}>
-              Delete
-            </Button>
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-1">
-              <Button size="xs" variant="subtle" color="gray" radius="sm" leftSection={<IconArrowBarToDown size={14} />} className="font-semibold px-3 text-slate-700" onClick={() => handleInsertBelow(editingIndex)}>
-                Insert Below
-              </Button>
-              <Button size="xs" variant="subtle" color="gray" radius="sm" leftSection={<IconArrowBarToUp size={14} />} className="font-semibold px-3 text-slate-700" onClick={() => handleInsertAbove(editingIndex)}>
-                Insert Above
-              </Button>
-              <Button size="xs" variant="subtle" color="gray" radius="sm" leftSection={<IconCopy size={14} />} className="font-semibold px-3 text-slate-700" onClick={() => handleDuplicateCharge(editingIndex)}>
-                Duplicate
-              </Button>
-            </div>
-            <ActionIcon variant="light" color="gray" radius="xl" size="lg" onClick={() => setEditingIndex(null)} aria-label="Close" className="hover:bg-slate-100">
-              <IconX size={16} />
-            </ActionIcon>
-          </div>
+          <ActionIcon variant="light" color="gray" radius="xl" size="lg" onClick={() => setAccountsModalIndex(null)} aria-label="Close" className="hover:bg-slate-100">
+            <IconX size={16} />
+          </ActionIcon>
         </Box>
 
         {/* Body */}
         <div className="flex-1 min-h-0 overflow-y-auto p-6 bg-[#F7F8FB]" style={{ flex: "1 1 0%", minHeight: 0, overflowY: "auto" }}>
-          <div className="flex flex-col gap-5">
-            <div className="rounded-xl border p-5" style={{ backgroundColor: theme.violet[0], borderColor: theme.violet[1] }}>
-              <div className="flex items-center gap-2 mb-4">
-                <IconReceipt2 size={16} style={{ color: theme.violet[6] }} />
-                <SubHeading color="brand">Charge Details</SubHeading>
-              </div>
-              <div className={`grid gap-x-5 gap-y-4 ${charge.basedOn === "Percentage" ? "grid-cols-4" : "grid-cols-3"}`}>
-                <TextInput
-                  size="xs"
-                  label="Charge Type"
-                  placeholder="e.g. Processing Fee"
-                  value={charge.type}
-                  onChange={(e) => update("type", e.currentTarget.value)}
-                  leftSection={<IconChip icon={IconReceipt2} color="violet" />}
-                  leftSectionWidth={44}
-                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
-                />
-                <TextInput
-                  size="xs"
-                  label="Amount"
-                  placeholder="Enter flat amount"
-                  value={charge.amount}
-                  onChange={(e) => update("amount", e.currentTarget.value)}
-                  leftSection={<IconChip icon={IconCurrencyRupee} color="accent" />}
-                  leftSectionWidth={44}
-                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
-                />
-                <Select
-                  size="xs"
-                  label="Charge Based On"
-                  placeholder="Select basis"
-                  data={["Percentage", "Flat Amount"]}
-                  value={charge.basedOn}
-                  onChange={(val) => update("basedOn", (val as "Percentage" | "Flat Amount") || "Percentage")}
-                  rightSection={<IconChevronDown size={13} className="text-slate-400" />}
-                  leftSection={<IconChip icon={IconArrowsExchange} color="blue" />}
-                  leftSectionWidth={44}
-                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
-                />
-                {charge.basedOn === "Percentage" && (
-                  <TextInput
-                    size="xs"
-                    label="Percentage"
-                    placeholder="Enter percentage"
-                    value={charge.percentage}
-                    onChange={(e) => update("percentage", e.currentTarget.value)}
-                    leftSection={<IconChip icon={IconPercentage} color="gold" />}
-                    leftSectionWidth={44}
-                    classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
-                  />
-                )}
-              </div>
+          <div className="rounded-xl border p-5 bg-white" style={{ borderColor: theme.blue[1] }}>
+            <div className="flex items-center gap-2 mb-4">
+              <IconWallet size={16} style={{ color: theme.blue[6] }} />
+              <Text size="xs" fw={700} className="uppercase tracking-wide" style={{ color: theme.blue[6] }}>Charge Accounts</Text>
             </div>
-
-            <div className="rounded-xl border p-5" style={{ backgroundColor: theme.blue[0], borderColor: theme.blue[1] }}>
-              <div className="flex items-center gap-2 mb-4">
-                <IconWallet size={16} style={{ color: theme.blue[6] }} />
-                <Text size="xs" fw={700} className="uppercase tracking-wide" style={{ color: theme.blue[6] }}>Charge Accounts</Text>
-              </div>
-              <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-                <Select
-                  size="xs"
-                  searchable
-                  label="Income Account"
-                  placeholder="Select income account"
-                  data={dummyAccounts}
-                  value={charge.incomeAccount}
-                  onChange={(v) => update("incomeAccount", v || "")}
-                  rightSection={<IconChevronDown size={13} className="text-slate-400" />}
-                  leftSection={<IconChip icon={IconWallet} color="emerald" />}
-                  leftSectionWidth={44}
-                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
-                />
-                <Select
-                  size="xs"
-                  searchable
-                  label="Receivable Account"
-                  placeholder="Select receivable account"
-                  data={dummyAccounts}
-                  value={charge.receivableAccount}
-                  onChange={(v) => update("receivableAccount", v || "")}
-                  rightSection={<IconChevronDown size={13} className="text-slate-400" />}
-                  leftSection={<IconChip icon={IconReceipt2} color="blue" />}
-                  leftSectionWidth={44}
-                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
-                />
-                <Select
-                  size="xs"
-                  searchable
-                  label="Waiver Account"
-                  placeholder="Select waiver account"
-                  data={dummyAccounts}
-                  value={charge.waiverAccount}
-                  onChange={(v) => update("waiverAccount", v || "")}
-                  rightSection={<IconChevronDown size={13} className="text-slate-400" />}
-                  leftSection={<IconChip icon={IconClipboardCheck} color="violet" />}
-                  leftSectionWidth={44}
-                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
-                />
-                <Select
-                  size="xs"
-                  searchable
-                  label="Write Off Account"
-                  placeholder="Select write off account"
-                  data={dummyAccounts}
-                  value={charge.writeOffAccount}
-                  onChange={(v) => update("writeOffAccount", v || "")}
-                  rightSection={<IconChevronDown size={13} className="text-slate-400" />}
-                  leftSection={<IconChip icon={IconClipboardList} color="danger" />}
-                  leftSectionWidth={44}
-                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
-                />
-                <Select
-                  size="xs"
-                  searchable
-                  label="Suspense Account"
-                  placeholder="Select suspense account"
-                  data={dummyAccounts}
-                  value={charge.suspenseAccount}
-                  onChange={(v) => update("suspenseAccount", v || "")}
-                  rightSection={<IconChevronDown size={13} className="text-slate-400" />}
-                  leftSection={<IconChip icon={IconStack2} color="gold" />}
-                  leftSectionWidth={44}
-                  classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
-                />
-              </div>
+            <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+              <Select
+                size="xs"
+                searchable
+                label="Income Account"
+                placeholder="Select income account"
+                data={dummyAccounts}
+                value={charge.incomeAccount}
+                onChange={(v) => update("incomeAccount", v || "")}
+                rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                leftSection={<IconChip icon={IconWallet} color="emerald" />}
+                leftSectionWidth={44}
+                classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+              />
+              <Select
+                size="xs"
+                searchable
+                label="Receivable Account"
+                placeholder="Select receivable account"
+                data={dummyAccounts}
+                value={charge.receivableAccount}
+                onChange={(v) => update("receivableAccount", v || "")}
+                rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                leftSection={<IconChip icon={IconReceipt2} color="blue" />}
+                leftSectionWidth={44}
+                classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+              />
+              <Select
+                size="xs"
+                searchable
+                label="Waiver Account"
+                placeholder="Select waiver account"
+                data={dummyAccounts}
+                value={charge.waiverAccount}
+                onChange={(v) => update("waiverAccount", v || "")}
+                rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                leftSection={<IconChip icon={IconClipboardCheck} color="violet" />}
+                leftSectionWidth={44}
+                classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+              />
+              <Select
+                size="xs"
+                searchable
+                label="Write Off Account"
+                placeholder="Select write off account"
+                data={dummyAccounts}
+                value={charge.writeOffAccount}
+                onChange={(v) => update("writeOffAccount", v || "")}
+                rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                leftSection={<IconChip icon={IconClipboardList} color="danger" />}
+                leftSectionWidth={44}
+                classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+              />
+              <Select
+                size="xs"
+                searchable
+                label="Suspense Account"
+                placeholder="Select suspense account"
+                data={dummyAccounts}
+                value={charge.suspenseAccount}
+                onChange={(v) => update("suspenseAccount", v || "")}
+                rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+                leftSection={<IconChip icon={IconStack2} color="gold" />}
+                leftSectionWidth={44}
+                classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }}
+              />
             </div>
           </div>
         </div>
@@ -733,7 +745,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         {/* Footer */}
         <div className="bg-white border-t border-slate-100 p-3.5 px-6 flex justify-between items-center shrink-0">
           <Text size="10px" className="text-slate-400">Shortcuts: Ctrl+↑ previous · Ctrl+↓ next · Esc close</Text>
-          <Button size="sm" radius="md" color="brand" className="font-semibold px-6" onClick={() => setEditingIndex(null)}>
+          <Button size="sm" radius="md" color="brand" className="font-semibold px-6" onClick={() => setAccountsModalIndex(null)}>
             Done
           </Button>
         </div>
@@ -825,7 +837,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
           {activeTab === "2" && renderCollection()}
           {activeTab === "3" && renderCharges()}
         </div>
-        {renderChargeEditModal()}
+        {renderChargeAccountsModal()}
 
         {/* Footer — always visible */}
         <div className="bg-white border-t border-slate-100 p-3.5 px-6 flex justify-between items-center shrink-0 shadow-[0_-2px_10px_rgba(15,23,42,0.04)]">
