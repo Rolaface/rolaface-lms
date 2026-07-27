@@ -274,7 +274,17 @@ interface ScheduleRow {
   dueDate: string;
   principal: number;
   interest: number;
+  totalEmi: number;
   balance: number;
+}
+
+function monthsBetween(startISO: string, endISO: string) {
+  const start = new Date(startISO);
+  const end = new Date(endISO);
+  let months =
+    (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  if (end.getDate() < start.getDate()) months -= 1;
+  return Math.max(months, 1);
 }
 
 function buildSchedule(
@@ -282,6 +292,7 @@ function buildSchedule(
   type: RestructureType,
   newInterestRate: number | "",
   newPrincipalOutstanding: number | "",
+  newMaturityDate: string,
   valueDate: string
 ): ScheduleRow[] {
   if (!loan) return [];
@@ -291,22 +302,33 @@ function buildSchedule(
       : loan.principalOutstanding;
   const annualRate =
     type === "RATE_CHANGE" && newInterestRate !== "" ? Number(newInterestRate) : loan.interestRate;
+  const maturity = type === "MODIFY_MATURITY" && newMaturityDate ? newMaturityDate : loan.maturityDate;
+  const start = valueDate || todayISO();
+  const months = monthsBetween(start, maturity);
   const monthlyRate = annualRate / 12 / 100;
-  const months = 6;
-  const principalComponent = principal / 12;
+
+  const emi =
+    monthlyRate === 0
+      ? principal / months
+      : (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) /
+        (Math.pow(1 + monthlyRate, months) - 1);
+
   let balance = principal;
-  const start = valueDate ? new Date(valueDate) : new Date();
+  const startDate = new Date(start);
   const rows: ScheduleRow[] = [];
   for (let i = 1; i <= months; i++) {
     const interest = balance * monthlyRate;
+    let principalComponent = emi - interest;
+    if (i === months) principalComponent = balance;
     balance = Math.max(balance - principalComponent, 0);
-    const due = new Date(start);
+    const due = new Date(startDate);
     due.setMonth(due.getMonth() + i);
     rows.push({
       emiNo: i,
       dueDate: due.toISOString().slice(0, 10),
       principal: Math.round(principalComponent * 100) / 100,
       interest: Math.round(interest * 100) / 100,
+      totalEmi: Math.round((principalComponent + interest) * 100) / 100,
       balance: Math.round(balance * 100) / 100,
     });
   }
@@ -324,6 +346,12 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       </Text>
     </div>
   );
+}
+
+function restructureTypeLabel(type: RestructureType) {
+  if (type === "RATE_CHANGE") return "Rate Change";
+  if (type === "TOPUP") return "Topup";
+  return "Modify Maturity";
 }
 
 /* =========================
@@ -486,8 +514,16 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
   };
 
   const scheduleRows = useMemo(
-    () => buildSchedule(selectedLoan, restructureType, newInterestRate, newPrincipalOutstanding, valueDate),
-    [selectedLoan, restructureType, newInterestRate, newPrincipalOutstanding, valueDate]
+    () =>
+      buildSchedule(
+        selectedLoan,
+        restructureType,
+        newInterestRate,
+        newPrincipalOutstanding,
+        newMaturityDate,
+        valueDate
+      ),
+    [selectedLoan, restructureType, newInterestRate, newPrincipalOutstanding, newMaturityDate, valueDate]
   );
 
   return (
@@ -1007,36 +1043,113 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
       <Modal
         opened={scheduleOpened}
         onClose={() => setScheduleOpened(false)}
-        title="Projected Repayment Schedule"
-        size="lg"
+        withCloseButton={false}
+        size="900px"
         radius="md"
+        padding={0}
       >
-        <Text size="xs" c="dimmed" className="mb-3">
-          Indicative first 6 instalments based on the revised terms. Final schedule is confirmed after
-          processing.
-        </Text>
-        <Table verticalSpacing="xs" horizontalSpacing="sm" fz="xs">
-          <Table.Thead>
-            <Table.Tr className="border-b border-gray-200">
-              <Table.Th>EMI No.</Table.Th>
-              <Table.Th>Due Date</Table.Th>
-              <Table.Th className="text-right">Principal</Table.Th>
-              <Table.Th className="text-right">Interest</Table.Th>
-              <Table.Th className="text-right">Balance</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {scheduleRows.map((row) => (
-              <Table.Tr key={row.emiNo}>
-                <Table.Td>{row.emiNo}</Table.Td>
-                <Table.Td>{row.dueDate}</Table.Td>
-                <Table.Td className="text-right font-mono">{formatCurrency(row.principal)}</Table.Td>
-                <Table.Td className="text-right font-mono">{formatCurrency(row.interest)}</Table.Td>
-                <Table.Td className="text-right font-mono">{formatCurrency(row.balance)}</Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <Box className="flex flex-col max-h-[85vh]">
+          <div className="flex items-start justify-between px-6 pt-5 pb-4 shrink-0">
+            <div>
+              <Text size="md" fw={700} className="text-gray-900 leading-tight">
+                New Repayment Schedule
+              </Text>
+              <Text size="xs" c="dimmed" className="mt-0.5">
+                Projected schedule based on the updated restructure terms.
+              </Text>
+            </div>
+            <Button
+              variant="subtle"
+              color="gray"
+              onClick={() => setScheduleOpened(false)}
+              className="px-2"
+              size="xs"
+            >
+              <IconX size={18} />
+            </Button>
+          </div>
+
+          {selectedLoan && (
+            <div className="flex flex-wrap gap-2 px-6 pb-4 shrink-0">
+              <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
+                Type: {restructureTypeLabel(restructureType)}
+              </Badge>
+              {restructureType === "RATE_CHANGE" && (
+                <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
+                  New Rate: {newInterestRate === "" ? selectedLoan.interestRate : newInterestRate}%
+                </Badge>
+              )}
+              {restructureType === "TOPUP" && (
+                <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
+                  Topup: {formatCurrency(Number(topupAmount) || 0)}
+                </Badge>
+              )}
+              {restructureType === "MODIFY_MATURITY" && (
+                <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
+                  New Maturity: {newMaturityDate || selectedLoan.maturityDate}
+                </Badge>
+              )}
+              <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
+                Penalty: {newPenaltyRate === "" ? selectedLoan.penaltyRate : newPenaltyRate}%
+              </Badge>
+              <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
+                Principal:{" "}
+                {formatCurrency(
+                  restructureType === "TOPUP" && newPrincipalOutstanding !== ""
+                    ? Number(newPrincipalOutstanding)
+                    : selectedLoan.principalOutstanding
+                )}
+              </Badge>
+            </div>
+          )}
+
+          <div className="px-6 pb-6 overflow-y-auto flex-1">
+            <Table verticalSpacing="sm" horizontalSpacing="md" fz="sm" stickyHeader>
+              <Table.Thead>
+                <Table.Tr className="border-b border-gray-200">
+                  <Table.Th className="text-gray-500 font-semibold" style={{ fontSize: 11 }}>
+                    INSTALLMENT
+                  </Table.Th>
+                  <Table.Th className="text-gray-500 font-semibold" style={{ fontSize: 11 }}>
+                    DUE DATE
+                  </Table.Th>
+                  <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>
+                    PRINCIPAL
+                  </Table.Th>
+                  <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>
+                    INTEREST
+                  </Table.Th>
+                  <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>
+                    TOTAL EMI
+                  </Table.Th>
+                  <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>
+                    BALANCE
+                  </Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {scheduleRows.map((row) => (
+                  <Table.Tr key={row.emiNo} className="border-b border-gray-100 last:border-0">
+                    <Table.Td>#{row.emiNo}</Table.Td>
+                    <Table.Td>{row.dueDate}</Table.Td>
+                    <Table.Td className="text-right font-mono">{formatCurrency(row.principal)}</Table.Td>
+                    <Table.Td className="text-right font-mono">{formatCurrency(row.interest)}</Table.Td>
+                    <Table.Td className="text-right font-mono font-semibold">
+                      {formatCurrency(row.totalEmi)}
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono">{formatCurrency(row.balance)}</Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </div>
+
+          <div className="border-t border-gray-200 p-4 px-6 flex justify-end shrink-0">
+            <Button size="sm" variant="default" onClick={() => setScheduleOpened(false)} className="font-semibold px-5">
+              Close
+            </Button>
+          </div>
+        </Box>
       </Modal>
     </Modal>
   );
