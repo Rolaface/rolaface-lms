@@ -30,7 +30,7 @@ import { LoanCategory } from '../view/Loan/LoanCategory/LoanCategory';
 import { LoanClassification } from '../view/Setup/LoanClassification/LoanClassification';
 import { LoanProvision } from '../view/Setup/LoanProvision/LoanProvision';
 import { LoanCollectionSequenceOrder } from '../view/Setup/LoanCollectionSequence/LoanCollectionSequenceOrder';
-// import { FeeAndCharges } from '../view/Setup/FeeAndCharges';
+import { FeeAndCharges } from '../view/Setup/LoanCharges/FeeAndCharges';
 import { LoanProduct } from '../view/Loan/Product/LoanProduct';
 import { LoanClassificationRanges } from '../view/Setup/LoanClassificationRanges/LoanClassificationRanges';
 
@@ -114,11 +114,11 @@ const setupCollectionRoute = createRoute({
   path: '/collection',
   component: LoanCollectionSequenceOrder,
 });
-// const setupFeesRoute = createRoute({
-//   getParentRoute: () => setupRoute,
-//   path: '/fees',
-//   component: FeeAndCharges,
-// });
+const setupFeesRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: '/fees',
+  component: FeeAndCharges,
+});
 const setupProductRoute = createRoute({
   getParentRoute: () => setupRoute,
   path: '/product',
@@ -223,7 +223,7 @@ const routeTree = rootRoute.addChildren([
     setupProvisioningRoute,
     setupClassificationRangeRoute,
     setupCollectionRoute,
-    // setupFeesRoute,
+    setupFeesRoute,
     setupProductRoute,
   ]),
   // originationRoute.addChildren([originationApplicationRoute]),
