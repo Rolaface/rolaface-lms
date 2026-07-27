@@ -63,19 +63,19 @@ const LOCAL_NAV_ITEMS = [
       },
       {
         path: "/setup/classification",
-        label: "Loan Classification Codes",
+        label: "Loan Classification",
         icon: IconFileText,
       },
-      {
-        path: "/setup/classificationRange",
-        label: "Loan Classification Range",
-        icon: IconFileText,
-      },
-      {
-        path: "/setup/provisioning",
-        label: "Provisioning",
-        icon: IconCalculator,
-      },
+      // {
+      //   path: "/setup/classificationRange",
+      //   label: "Loan Classification Range",
+      //   icon: IconFileText,
+      // },
+      // {
+      //   path: "/setup/provisioning",
+      //   label: "Provisioning",
+      //   icon: IconCalculator,
+      // },
       {
         path: "/setup/collection",
         label: "Collection Sequence",

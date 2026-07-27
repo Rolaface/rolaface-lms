@@ -1,20 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState } from "react";
 import {
   Box,
   Button,
   TextInput,
   Select,
-  Radio,
   Group,
   Paper,
   Table,
   ActionIcon,
-  Switch,
   Text,
   Pagination,
   Tooltip,
   Title,
-} from '@mantine/core';
+  Badge,
+} from "@mantine/core";
 import {
   IconEye,
   IconPencil,
@@ -23,8 +22,8 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
-} from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
+} from "@tabler/icons-react";
+import { useDisclosure } from "@mantine/hooks";
 import {
   useReactTable,
   getCoreRowModel,
@@ -32,22 +31,62 @@ import {
   getPaginationRowModel,
   flexRender,
   createColumnHelper,
-} from '@tanstack/react-table';
-import { LoanClassificationModal } from '../../../components/Modal/LoanClassificationModal';
+} from "@tanstack/react-table";
+import { LoanClassificationModal, type LoanClassificationData } from "../../../components/Modal/LoanClassificationModal";
 
-const DUMMY_CLASSIFICATIONS = [
-  { id: 1, code: 'STD', name: 'Standard'},
-  { id: 2, code: 'WTC', name: 'Watch'},
-  { id: 3, code: 'SUB', name: 'Substandard'},
-  { id: 4, code: 'DBT', name: 'Doubtful'},
-  { id: 5, code: 'LSS', name: 'Loss'},
+const DUMMY_CLASSIFICATIONS: LoanClassificationData[] = [
+  {
+    level: 1,
+    code: "STD",
+    name: "Standard",
+    min_dpd_range: 0,
+    max_dpd_range: 30,
+    is_written_off: false,
+    provision_rate: 0,
+  },
+  {
+    level: 2,
+    code: "WTC",
+    name: "Watch",
+    min_dpd_range: 31,
+    max_dpd_range: 60,
+    is_written_off: false,
+    provision_rate: 5,
+  },
+  {
+    level: 3,
+    code: "SUB",
+    name: "Substandard",
+    min_dpd_range: 61,
+    max_dpd_range: 90,
+    is_written_off: false,
+    provision_rate: 20,
+  },
+  {
+    level: 4,
+    code: "DBT",
+    name: "Doubtful",
+    min_dpd_range: 91,
+    max_dpd_range: 180,
+    is_written_off: false,
+    provision_rate: 50,
+  },
+  {
+    level: 5,
+    code: "LSS",
+    name: "Loss",
+    min_dpd_range: 181,
+    max_dpd_range: null,
+    is_written_off: true,
+    provision_rate: 100,
+  },
 ];
 
-const columnHelper = createColumnHelper();
+const columnHelper = createColumnHelper<LoanClassificationData>();
 
-function SortIcon({ sorted }) {
-  if (sorted === 'asc') return <IconChevronUp size={12} />;
-  if (sorted === 'desc') return <IconChevronDown size={12} />;
+function SortIcon({ sorted }: { sorted: string | boolean }) {
+  if (sorted === "asc") return <IconChevronUp size={12} />;
+  if (sorted === "desc") return <IconChevronDown size={12} />;
   return <IconSelector size={12} className="opacity-40" />;
 }
 
@@ -56,53 +95,101 @@ const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
 export function LoanClassification() {
   const [opened, { open, close }] = useDisclosure(false);
 
+  // Modal Action State
+  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
+  const [selectedData, setSelectedData] = useState<LoanClassificationData | null>(null);
+
+  const handleOpenModal = (mode: 'add' | 'edit' | 'view', data: LoanClassificationData | null = null) => {
+    setModalMode(mode);
+    setSelectedData(data);
+    open();
+  };
+
   // filter state
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('all');
+  const [search, setSearch] = useState("");
 
   // table state
-  const [sorting, setSorting] = useState([{ id: 'code', desc: false }]);
+  const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([
+    { id: "code", desc: false }
+  ]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-
-  // local status map for optimistic updates (used by the switch in actions)
-  const [statusOverrides, setStatusOverrides] = useState({});
-
-  const data = useMemo(
-    () =>
-      DUMMY_CLASSIFICATIONS.map((c) => ({
-        ...c,
-      })),
-    [statusOverrides]
-  );
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return data.filter((c) => {
-      const matchesSearch = !q || c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q);
+    return DUMMY_CLASSIFICATIONS.filter((c) => {
+      const matchesSearch =
+        !q ||
+        c.code.toLowerCase().includes(q) ||
+        c.name.toLowerCase().includes(q);
       return matchesSearch;
     });
-  }, [data, search, status]);
+  }, [search]);
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor('code', {
-        header: 'Classification Code',
+      columnHelper.accessor("level", {
+        header: "level",
         cell: (info) => (
           <Text fz="xs" fw={600} c="gray.7">
             {info.getValue()}
           </Text>
         ),
       }),
-      columnHelper.accessor('name', {
-        header: 'Classification Name',
+      columnHelper.accessor("code", {
+        header: "Code",
+        cell: (info) => (
+          <Text fz="xs" fw={600} c="gray.7">
+            {info.getValue()}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor("name", {
+        header: "Name",
         cell: (info) => (
           <Text fz="xs" fw={500} c="gray.9">
             {info.getValue()}
           </Text>
         ),
       }),
+      columnHelper.accessor("min_dpd_range", {
+        header: "Min DPD",
+        cell: (info) => (
+          <Text fz="xs" fw={500} c="gray.9">
+            {info.getValue() !== null ? info.getValue() : '-'}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor("max_dpd_range", {
+        header: "Max DPD",
+        cell: (info) => (
+          <Text fz="xs" fw={500} c="gray.9">
+            {info.getValue() ?? '∞'}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor("provision_rate", {
+        header: "Provision (%)",
+        cell: (info) => (
+          <Text fz="xs" fw={500} c="gray.9">
+            {info.getValue()}%
+          </Text>
+        ),
+      }),
+      columnHelper.accessor("is_written_off", {
+        header: "Written Off",
+        cell: (info) => (
+          <Badge 
+            color={info.getValue() ? 'red' : 'gray'} 
+            variant="light" 
+            size="sm"
+            radius="sm"
+          >
+            {info.getValue() ? 'Yes' : 'No'}
+          </Badge>
+        ),
+      }),
       columnHelper.display({
-        id: 'actions',
+        id: "actions",
         header: () => (
           <Text fz="xs" fw={600} ta="right" w="100%">
             Actions
@@ -112,12 +199,22 @@ export function LoanClassification() {
           return (
             <Group justify="flex-end" gap={6} wrap="nowrap">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="gray">
+                <ActionIcon 
+                  size="sm" 
+                  variant="subtle" 
+                  color="gray"
+                  onClick={() => handleOpenModal('view', info.row.original)}
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="blue">
+                <ActionIcon 
+                  size="sm" 
+                  variant="subtle" 
+                  color="blue"
+                  onClick={() => handleOpenModal('edit', info.row.original)}
+                >
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -126,7 +223,7 @@ export function LoanClassification() {
         },
       }),
     ],
-    []
+    [],
   );
 
   const table = useReactTable({
@@ -147,13 +244,18 @@ export function LoanClassification() {
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   const resetFilters = () => {
-    setSearch('');
-    setStatus('all');
+    setSearch("");
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
   };
 
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
-      <LoanClassificationModal opened={opened} onClose={close} />
+      <LoanClassificationModal 
+        opened={opened} 
+        onClose={close} 
+        mode={modalMode}
+        data={selectedData}
+      />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
@@ -164,7 +266,7 @@ export function LoanClassification() {
           size="xs"
           bg="indigoAlt.4"
           className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-          onClick={open}
+          onClick={() => handleOpenModal('add')}
           leftSection={<IconPlus size={14} />}
         >
           Add Classification
@@ -185,12 +287,25 @@ export function LoanClassification() {
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
+          <Button
+            size="xs"
+            variant="default"
+            className="ml-auto px-4"
+            onClick={resetFilters}
+          >
+            Reset
+          </Button>
         </div>
       </Paper>
 
       {/* Data Table */}
       <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
-        <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full">
+        <Table
+          verticalSpacing={6}
+          horizontalSpacing="sm"
+          fz="xs"
+          className="w-full"
+        >
           <Table.Thead className="bg-gray-50 border-b border-gray-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <Table.Tr key={headerGroup.id}>
@@ -200,18 +315,25 @@ export function LoanClassification() {
                     <Table.Th
                       key={header.id}
                       className={`text-gray-600 font-semibold select-none ${
-                        canSort ? 'cursor-pointer' : ''
+                        canSort ? "cursor-pointer" : ""
                       }`}
-                      style={{ fontSize: 11, padding: '6px 10px' }}
+                      style={{ fontSize: 11, padding: "8px 10px" }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <Group
                         gap={4}
                         wrap="nowrap"
-                        justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
+                        justify={
+                          header.id === "actions" ? "flex-end" : "flex-start"
+                        }
                       >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                        {canSort && (
+                          <SortIcon sorted={header.column.getIsSorted() as string | boolean} />
+                        )}
                       </Group>
                     </Table.Th>
                   );
@@ -235,8 +357,11 @@ export function LoanClassification() {
                   className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <Table.Td key={cell.id} style={{ padding: '5px 10px' }}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    <Table.Td key={cell.id} style={{ padding: "8px 10px" }}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
                     </Table.Td>
                   ))}
                 </Table.Tr>
@@ -249,14 +374,18 @@ export function LoanClassification() {
         <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <span>
-              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+              {totalRows === 0
+                ? "Showing 0 of 0"
+                : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
             </span>
             <div className="flex items-center gap-1.5">
               <span>Rows:</span>
               <Select
-                data={['10', '20', '50']}
+                data={["10", "20", "50"]}
                 value={String(pageSize)}
-                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                onChange={(v) =>
+                  setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
+                }
                 rightSection={chevronDown}
                 size="xs"
                 className="w-14"
@@ -266,7 +395,9 @@ export function LoanClassification() {
           <Pagination
             total={table.getPageCount() || 1}
             value={pageIndex + 1}
-            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+            onChange={(p) =>
+              setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
+            }
             color="indigoAlt.4"
             size="xs"
             radius="sm"
