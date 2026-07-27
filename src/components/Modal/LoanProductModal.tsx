@@ -12,6 +12,7 @@ import {
   ActionIcon,
   Menu,
   SegmentedControl,
+  Tooltip,
 } from "@mantine/core";
 import {
   IconX,
@@ -573,9 +574,11 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
                   <Table.Td>
                     <div className="flex items-center gap-1">
                       {/* Edit opens ONLY the charge-accounts modal */}
-                      <ActionIcon color="brand" variant="subtle" onClick={() => setAccountsModalIndex(index)} aria-label="Edit charge accounts">
-                        <IconPencil size={15} />
-                      </ActionIcon>
+                      <Tooltip label="Modify Map Account" position="top" withArrow>
+                        <ActionIcon color="brand" variant="subtle" onClick={() => setAccountsModalIndex(index)} aria-label="Edit charge accounts">
+                          <IconPencil size={15} />
+                        </ActionIcon>
+                      </Tooltip>
                       <Menu shadow="md" width={170} position="bottom-end" withinPortal>
                         <Menu.Target>
                           <ActionIcon color="gray" variant="subtle" aria-label="More actions">
