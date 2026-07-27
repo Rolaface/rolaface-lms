@@ -14,6 +14,7 @@ import {
   Pagination,
   Tooltip,
   Select,
+  Title,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -189,16 +190,16 @@ export function LoanCategory() {
   };
 
   return (
-    <Box className="flex flex-col gap-4">
+    <Box className="flex flex-col gap-4 p-8 mt-10">
       {/* If you have a Modal, insert it here:
           <LoanCategoryModal opened={opened} onClose={close} /> 
       */}
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
-        <Text size="md" fw={700} className="text-gray-900">
+       <Title order={2} className="text-gray-900 font-semibold">
           Loan Categories
-        </Text>
+        </Title>
         <Button
           size="xs"
           bg="indigoAlt.4"

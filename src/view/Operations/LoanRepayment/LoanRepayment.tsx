@@ -14,6 +14,7 @@ import {
   Text,
   Pagination,
   Tooltip,
+  Title,
 } from '@mantine/core';
 import {
   IconEye,
@@ -314,14 +315,14 @@ export function LoanRepayment() {
   const loanTypeOptions = Array.from(new Set(DUMMY_REPAYMENTS.map((r) => r.loanType)));
 
   return (
-    <Box className="flex flex-col gap-4">
+    <Box className="flex flex-col gap-4 p-8 mt-10">
       <LoanRepaymentModal opened={opened} onClose={close} onSubmit={handleAddRepayment} />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
-        <Text size="md" fw={700} className="text-gray-900">
+        <Title order={2} className="text-gray-900 font-semibold">
           Loan Repayments
-        </Text>
+        </Title>
         <Button
           size="xs"
           onClick={open}

@@ -14,6 +14,7 @@ import {
   Text,
   Pagination,
   Tooltip,
+  Title,
 } from '@mantine/core';
 import {
   IconEye,
@@ -318,14 +319,14 @@ export function LoanRestructure() {
   ];
 
   return (
-    <Box className="flex flex-col gap-4">
+    <Box className="flex flex-col gap-4 p-8 mt-10">
       <LoanRestructureModal opened={opened} onClose={close} onSubmit={handleAddRestructure} />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
-        <Text size="md" fw={700} className="text-gray-900">
+         <Title order={2} className="text-gray-900 font-semibold">
           Loan Restructures
-        </Text>
+        </Title>
         <Button
           size="xs"
           onClick={open}
