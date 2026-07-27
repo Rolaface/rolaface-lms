@@ -223,7 +223,7 @@ export function LoanProduct() {
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
-         <Title order={2} className="text-gray-900 font-semibold">
+        <Title order={2} className="text-gray-900 font-semibold">
           Loan Products
         </Title>
         <Button
