@@ -13,6 +13,7 @@ import {
   Text,
   Pagination,
   Tooltip,
+  Title,
 } from '@mantine/core';
 import {
   IconEye,
@@ -295,14 +296,14 @@ export function Customer() {
   const countryOptions = Array.from(new Set(DUMMY_CUSTOMERS.map((c) => c.country)));
 
   return (
-    <Box className="flex flex-col gap-4">
+    <Box className="flex flex-col gap-4 p-8 mt-10">
       <CustomerModal opened={opened} onClose={close} />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
-        <Text size="md" fw={700} className="text-gray-900">
+         <Title order={2} className="text-gray-900 font-semibold">
           Customers
-        </Text>
+        </Title>
         <Button
           size="xs"
           bg="indigoAlt.4"

@@ -11,6 +11,9 @@ import {
   Badge,
   ActionIcon,
   Tooltip,
+  SegmentedControl,
+  Input,
+  Checkbox,
 } from "@mantine/core";
 import {
   IconX,
@@ -39,6 +42,8 @@ import {
   IconAdjustments,
   IconSettings, IconPencil, 
   IconPercentage,
+  IconCash,
+  IconPageBreak,
 } from "@tabler/icons-react";
 
 import { CollateralModal } from "./CollateralModal";
@@ -132,7 +137,7 @@ const FEE_TYPES = ["Processing Fee", "Documentation Charges", "Insurance Premium
 const CURRENCIES = ["USD", "INR", "EUR", "GBP"];
 const TENURE_UNITS = ["Months", "Years"];
 const FREQUENCIES = ["Monthly", "Quarterly", "Half-Yearly", "Yearly"];
-const MORATORIUM_TYPES = ["None", "Principal Only", "EMI (Principal + Interest)"];
+const MORATORIUM_TYPES = ["Principal Only", "EMI (Principal + Interest)"];
 
 const DEFAULT_DOCUMENTS: DocumentRow[] = [
   { id: 1, name: "National ID / Passport", status: "Pending" },
@@ -151,45 +156,6 @@ const TAB_ITEMS: { value: string; label: string; icon: React.ComponentType<{ siz
   { value: "simulator", label: "Loan Simulator", icon: IconCalculator },
 ];
 
-// Add this near the top of the file, alongside the other helpers (outside the component):
-function TenureField({
-  value,
-  unit,
-  onValueChange,
-  onUnitChange,
-}: {
-  value: number | "";
-  unit: string | null;
-  onValueChange: (v: number | "") => void;
-  onUnitChange: (v: string | null) => void;
-}) {
-  return (
-    <div>
-      <Text size="sm" fw={500} className="text-slate-700 mb-1">
-        Tenure
-      </Text>
-      <div className="flex gap-2">
-        <NumberInput
-          size="sm"
-          placeholder="0"
-          value={value}
-          onChange={(v) => onValueChange(v as number | "")}
-          leftSection={<FieldIcon Icon={IconCalendarStats} bg="#ECFDF5" color="#059669" />}
-          className="flex-1"
-        />
-        <Select
-          size="sm"
-          data={TENURE_UNITS}
-          value={unit}
-          onChange={onUnitChange}
-          rightSection={<IconChevronDown size={14} className="text-slate-500" />}
-          className="w-28"
-        />
-      </div>
-    </div>
-  );
-}
-
 export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
   const [activeTab, setActiveTab] = useState<string | null>("basic");
 
@@ -198,6 +164,11 @@ export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
   const [loanAcNumber] = useState(""); // auto-generated on save
   const [refNumber, setRefNumber] = useState("REF-2026-000482");
   const [customerNumber, setCustomerNumber] = useState<string | null>(null);
+  const [fixedRepaymentsIn, setFixedRepaymentsIn] = useState<string>("TENOR");
+const [tenure, setTenure] = useState<number | "">("");
+const [repaymentAmount, setRepaymentAmount] = useState<number | "">("");
+const [isImport, setIsImport] = useState(false);
+const [migrationDate, setMigrationDate] = useState("");
 
   const [transactionDate, setTransactionDate] = useState("");
   const [valueDate, setValueDate] = useState("");
@@ -212,6 +183,17 @@ const [collateralSearch, setCollateralSearch] = useState("");
 
   const [moratoriumType, setMoratoriumType] = useState<string | null>("None");
   const [moratoriumPeriod, setMoratoriumPeriod] = useState<number | "">("");
+
+  const getTodayDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+};
+  const [trnDate, setTrnDate] = useState(getTodayDate());
+
 
   const tenureMonths = useMemo(() => {
     if (tenureValue === "") return 0;
@@ -367,11 +349,27 @@ const [collateralSearch, setCollateralSearch] = useState("");
   const renderBasicDetails = () => (
     <div className="flex flex-col gap-2">
       <div className="border border-slate-200 rounded-md p-5">
-        <SectionHeader
-          title="Account Identifiers"
-          subtitle="Product and customer linkage for this account."
-        />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-3 lg:gap-y-1">
+          <Select
+            size="sm"
+            label="Customer Number"
+            placeholder="Search customer number..."
+            data={[]}
+            searchable
+            value={customerNumber}
+            onChange={setCustomerNumber}
+            leftSection={<FieldIcon Icon={IconUser} bg="#EEF2FF" color="#4F46E5" />}
+            rightSection={chevronDown}
+            classNames={labelClass}
+          />
+          <TextInput
+            size="sm"
+            label="Customer Name"
+            leftSection={<FieldIcon Icon={IconUsers} bg="#F3E8FF" color="#4F46E5" />}
+            disabled
+            placeholder="Enter customer name..."
+            classNames={labelClass}
+          />
           <Select
             size="sm"
             label="Product Code"
@@ -386,11 +384,25 @@ const [collateralSearch, setCollateralSearch] = useState("");
           />
           <TextInput
             size="sm"
+            label="Product Name"
+            leftSection={<FieldIcon Icon={IconHash} bg="#F3E8FF" color="#4F46E5" />}
+            placeholder="Prodcut name..."
+            disabled
+            classNames={labelClass}
+          />
+          <TextInput
+            size="sm"
             label="Loan A/C Number"
             placeholder="Auto-generated on save"
             value={loanAcNumber}
             disabled
             leftSection={<FieldIcon Icon={IconIdBadge2} bg="#F3E8FF" color="#9333EA" />}
+            classNames={labelClass}
+          />
+           <TextInput
+            size="sm"
+            label="Loan Application Number"
+            leftSection={<FieldIcon Icon={IconPageBreak} bg="#F3E8FF" color="#9333EA" />}
             classNames={labelClass}
           />
           <TextInput
@@ -401,135 +413,175 @@ const [collateralSearch, setCollateralSearch] = useState("");
             leftSection={<FieldIcon Icon={IconFileText} bg="#F3E8FF" color="#9333EA" />}
             classNames={labelClass}
           />
-          <Select
-            size="sm"
-            label="Customer Number"
-            placeholder="Search customer number..."
-            data={[]}
-            searchable
-            value={customerNumber}
-            onChange={setCustomerNumber}
-            leftSection={<FieldIcon Icon={IconUser} bg="#EEF2FF" color="#4F46E5" />}
-            rightSection={chevronDown}
-            classNames={labelClass}
-          />
+         <div className="flex items-end gap-4">
+  <Checkbox
+    size="sm"
+    label="Import"
+    checked={isImport}
+    onChange={(e) => setIsImport(e.currentTarget.checked)}
+    className="mb-2" /* Aligns the checkbox with the input box vertically */
+  />
+  
+  <TextInput
+    size="sm"
+    type="date"
+    label="Migration Date"
+    value={migrationDate}
+    onChange={(e) => setMigrationDate(e.currentTarget.value)}
+    disabled={!isImport}
+    leftSection={<FieldIcon Icon={IconCalendar} bg="#ECFDF5" color="#059669" />}
+    classNames={labelClass}
+    className="flex-1" /* Allows the input to fill the remaining space */
+  />
+</div>
         </div>
       </div>
 
-      <div className="border border-slate-200 rounded-md p-5">
-        <SectionHeader
-          title="Timeline & Loan Financials"
-          subtitle="Dates, currency, amount and repayment structure."
-        />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-3 lg:gap-y-1">
-          <TextInput
-            size="sm"
-            type="date"
-            label="Transaction Date"
-            value={transactionDate}
-            onChange={(e) => setTransactionDate(e.currentTarget.value)}
-            leftSection={<FieldIcon Icon={IconCalendar} bg="#ECFDF5" color="#059669" />}
-            classNames={labelClass}
-          />
-          <TextInput
-            size="sm"
-            type="date"
-            label="Value Date"
-            value={valueDate}
-            onChange={(e) => setValueDate(e.currentTarget.value)}
-            leftSection={<FieldIcon Icon={IconCalendar} bg="#ECFDF5" color="#059669" />}
-            classNames={labelClass}
-          />
-          <Select
-            size="sm"
-            label="Currency"
-            data={CURRENCIES}
-            value={currency}
-            onChange={setCurrency}
-            leftSection={<FieldIcon Icon={IconCurrencyDollar} bg="#EEF2FF" color="#4F46E5" />}
-            rightSection={chevronDown}
-            classNames={labelClass}
-          />
-          <NumberInput
-            size="sm"
-            label="Loan Amount"
-            placeholder="0"
-            value={loanAmount}
-            onChange={(v) => setLoanAmount(v as number | "")}
-            leftSection={<FieldIcon Icon={IconCurrencyRupee} bg="#FFF7ED" color="#EA580C" />}
-            thousandSeparator=","
-            classNames={labelClass}
-          />
-          <TenureField
-            value={tenureValue}
-            unit={tenureUnit}
-            onValueChange={setTenureValue}
-            onUnitChange={setTenureUnit}
-          />
-          <Select
-            size="sm"
-            label="Frequency"
-            data={FREQUENCIES}
-            value={frequency}
-            onChange={setFrequency}
-            leftSection={<FieldIcon Icon={IconRefresh} bg="#EEF2FF" color="#4F46E5" />}
-            rightSection={chevronDown}
-            classNames={labelClass}
-          />
-          <TextInput
-            size="sm"
-            label="Maturity Date"
-            placeholder="Auto-calculated"
-            value={maturityDate}
-            disabled
-            leftSection={<FieldIcon Icon={IconCalendar} bg="#ECFDF5" color="#059669" />}
-            classNames={labelClass}
-          />
-          <TextInput
-            size="sm"
-            type="date"
-            label="Repayment Start Date"
-            value={repaymentStartDate}
-            onChange={(e) => setRepaymentStartDate(e.currentTarget.value)}
-            leftSection={<FieldIcon Icon={IconCalendar} bg="#ECFDF5" color="#059669" />}
-            classNames={labelClass}
-          />
-        </div>
-      </div>
+<div className="border border-slate-200 rounded-md p-5 flex flex-col gap-6 lg:gap-4">
+  
+   <div className="grid grid-cols-1 grid-cols-4 gap-x-8 gap-y-3 lg:gap-y-1">
+     <TextInput
+      size="sm"
+      type="date"
+      label="Transaction Date"
+      value={trnDate}
+      onChange={(e) => setTrnDate(e.currentTarget.value)} 
+      leftSection={<FieldIcon Icon={IconCalendar} bg="#ECFDF5" color="#059669" />}
+      disabled // Keeping your disabled prop
+      classNames={labelClass}
+    />
+    <TextInput
+      size="sm"
+      type="date"
+      label="Value Date"
+      value={valueDate}
+      onChange={(e) => setValueDate(e.currentTarget.value)}
+      leftSection={<FieldIcon Icon={IconCalendar} bg="#ECFDF5" color="#059669" />}
+      classNames={labelClass}
+    />
+    <Select
+      size="sm"
+      label="Currency"
+      data={CURRENCIES}
+      value={currency}
+      onChange={setCurrency}
+      leftSection={<FieldIcon Icon={IconCurrencyDollar} bg="#EEF2FF" color="#4F46E5" />}
+      rightSection={chevronDown}
+      classNames={labelClass}
+    />
+    <NumberInput
+      size="sm"
+      label="Loan Amount"
+      placeholder="0"
+      value={loanAmount}
+      onChange={(v) => setLoanAmount(v as number | "")}
+      leftSection={<FieldIcon Icon={IconCurrencyRupee} bg="#FFF7ED" color="#EA580C" />}
+      thousandSeparator=","
+      classNames={labelClass}
+    />
+  </div>
+
+  {/* Row 2: 4 Columns */}
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-3 lg:gap-y-1">
+    <Input.Wrapper label="Fixed Repayments In" classNames={labelClass}>
+      <SegmentedControl
+        size="sm"
+        data={['TENOR', 'EMI']}
+        value={fixedRepaymentsIn}
+        onChange={setFixedRepaymentsIn}
+        fullWidth
+        color="blue"
+      />
+    </Input.Wrapper>
+    <NumberInput
+      size="sm"
+      label="Tenure"
+      placeholder="0"
+      value={tenure}
+      onChange={(v) => setTenure(v as number | "")}
+      disabled={fixedRepaymentsIn === "EMI"}
+      leftSection={<FieldIcon Icon={IconCalendarStats} bg="#ECFDF5" color="#059669" />}
+      classNames={labelClass}
+    />
+    <Select
+      size="sm"
+      label="Frequency"
+      data={FREQUENCIES}
+      value={frequency}
+      onChange={setFrequency}
+      leftSection={<FieldIcon Icon={IconRefresh} bg="#EEF2FF" color="#4F46E5" />}
+      rightSection={chevronDown}
+      classNames={labelClass}
+    />
+    <NumberInput
+      size="sm"
+      label="Repayment Amount"
+      placeholder="0"
+      value={repaymentAmount}
+      onChange={(v) => setRepaymentAmount(v as number | "")}
+      disabled={fixedRepaymentsIn === "TENOR"}
+      leftSection={<FieldIcon Icon={IconCash} bg="#ECFDF5" color="#059669" />}
+      classNames={labelClass}
+    />
+  </div>
+
+  {/* Row 3: 2 Columns */}
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 lg:gap-y-1 lg:w-1/2 lg:pr-4">
+    <TextInput
+      size="sm"
+      type="date"
+      label="Maturity Date"
+      placeholder="Auto-calculated"
+      value={maturityDate}
+      leftSection={<FieldIcon Icon={IconCalendar} bg="#ECFDF5" color="#059669" />}
+      classNames={labelClass}
+    />
+    <TextInput
+      size="sm"
+      type="date"
+      label="Repayment Start Date"
+      value={repaymentStartDate}
+      onChange={(e) => setRepaymentStartDate(e.currentTarget.value)}
+      leftSection={<FieldIcon Icon={IconCalendar} bg="#ECFDF5" color="#059669" />}
+      classNames={labelClass}
+    />
+  </div>
+  
+</div>
 
       <div className="border border-slate-200 rounded-md p-5">
-        <SectionHeader
-          title="Exceptions / Moratorium"
-          subtitle="Optional grace period before repayment obligations begin."
-        />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3 lg:gap-y-1">
-          <Select
-            size="sm"
-            label="Moratorium (Principal / EMI)"
-            data={MORATORIUM_TYPES}
-            value={moratoriumType}
-            onChange={setMoratoriumType}
-            leftSection={<FieldIcon Icon={IconAdjustments} bg="#EEF2FF" color="#4F46E5" />}
-            rightSection={chevronDown}
-            classNames={labelClass}
-          />
-          <div>
-            <NumberInput
-              size="sm"
-              label="Moratorium Period"
-              placeholder="0"
-              value={moratoriumPeriod}
-              onChange={(v) => setMoratoriumPeriod(v as number | "")}
-              disabled={!moratoriumType || moratoriumType === "None"}
-              leftSection={<FieldIcon Icon={IconClock} bg="#FEF2F2" color="#DC2626" />}
-              classNames={labelClass}
-            />
-            <Text size="xs" c="dimmed" className="mt-1">
-              In months. Enabled when a moratorium type is selected.
-            </Text>
-          </div>
-        </div>
-      </div>
+  <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3 lg:gap-y-1">
+    <Input.Wrapper 
+      label="Moratorium (Principal / EMI)" 
+      classNames={labelClass}
+    >
+      <SegmentedControl
+        size="sm"
+        data={MORATORIUM_TYPES}
+        // value={moratoriumType}
+        // onChange={setMoratoriumType}
+        fullWidth
+         color="blue" 
+      />
+    </Input.Wrapper>
+
+    <div>
+      <NumberInput
+        size="sm"
+        label="Moratorium Period"
+        placeholder="0"
+        value={moratoriumPeriod}
+        onChange={(v) => setMoratoriumPeriod(v as number | "")}
+        // disabled={!moratoriumType || moratoriumType === "None"}
+        leftSection={<FieldIcon Icon={IconClock} bg="#FEF2F2" color="#DC2626" />}
+        classNames={labelClass}
+      />
+      <Text size="xs" c="dimmed" className="mt-1">
+        In months. Enabled when a moratorium type is selected.
+      </Text>
+    </div>
+  </div>
+</div>
     </div>
   );
 

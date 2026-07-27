@@ -12,6 +12,8 @@ import {
   Text,
   Pagination,
   Menu,
+  Title,
+  Menu,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -426,9 +428,9 @@ export function LoanRestructure() {
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
         <div>
-          <Text size="xl" fw={800} className="text-gray-900">
+           <Title order={2} className="text-gray-900 font-semibold">
             Loan Restructures
-          </Text>
+          </Title>
           <Text size="sm" c="dimmed" className="mt-0.5">
             Track and manage restructure requests across all loan accounts
           </Text>

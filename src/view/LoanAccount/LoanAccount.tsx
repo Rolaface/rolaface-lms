@@ -13,6 +13,7 @@ import {
   Text,
   Pagination,
   Tooltip,
+  Title,
 } from '@mantine/core';
 import {
   IconEye,
@@ -292,14 +293,14 @@ export function LoanAccount() {
   const branchOptions = Array.from(new Set(DUMMY_APPLICATIONS.map((a) => a.branch)));
 
   return (
-    <Box className="flex flex-col gap-4">
+    <Box className="flex flex-col gap-4 p-8 mt-10">
       <LoanAccountModal opened={opened} onClose={close} />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
-        <Text size="md" fw={700} className="text-gray-900">
+        <Title order={2} className="text-gray-900 font-semibold">
           Create Loan Account
-        </Text>
+        </Title>
         <Button
           size="xs"
           bg="indigoAlt.4"
