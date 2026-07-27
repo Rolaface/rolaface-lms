@@ -1,15 +1,27 @@
-import { RouterProvider } from '@tanstack/react-router';
-import { MantineProvider } from '@mantine/core';
-import { router } from './routes/AppRoutes';
+import { RouterProvider } from "@tanstack/react-router";
+import { MantineProvider } from "@mantine/core";
 
-import '@mantine/core/styles.css'; 
-import './App.css';
+import {
+  QueryClientProvider,
+} from "@tanstack/react-query";
+
+// import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+
+import { router } from "./routes/AppRoutes";
+import { queryClient } from "../src/config/queryClient";
+
+import "@mantine/core/styles.css";
+import "./App.css";
 
 function App() {
   return (
-    <MantineProvider>
-      <RouterProvider router={router} />
-    </MantineProvider>
+    <QueryClientProvider client={queryClient}>
+      <MantineProvider>
+        <RouterProvider router={router} />
+
+        {/* <ReactQueryDevtools initialIsOpen={false} /> */}
+      </MantineProvider>
+    </QueryClientProvider>
   );
 }
 
