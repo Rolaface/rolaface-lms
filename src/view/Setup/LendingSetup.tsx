@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Text,
@@ -11,6 +11,8 @@ import {
   Badge,
   Grid,
   UnstyledButton,
+  TextInput,
+  ActionIcon,
 } from '@mantine/core';
 import {
   IconAdjustments,
@@ -23,7 +25,13 @@ import {
   IconPlus,
   IconCheck,
   IconChevronDown,
+  IconTrash,
 } from '@tabler/icons-react';
+import {
+  useReactTable,
+  getCoreRowModel,
+  flexRender,
+} from '@tanstack/react-table';
 
 // Common Colors mapped from CSS
 const colors = {
@@ -110,6 +118,7 @@ const chevronDown = <IconChevronDown size={14} color={colors.textMuted} />;
 export function LendingSetup() {
   const [activeTab, setActiveTab] = useState('loan');
 
+  // --- Allocations State ---
   const [allocations, setAllocations] = useState({
     standard: 'Interest,Principal,Penal',
     substandard: 'Penal,Interest,Principal',
@@ -117,6 +126,232 @@ export function LendingSetup() {
     settlement: 'Principal,Penal,Interest',
   });
 
+  // --- Classification Table Data & State ---
+  const [classData, setClassData] = useState([
+    { id: '1', code: 'STD', name: 'Standard', minDpd: 0, maxDpd: 30, isWrittenOff: false },
+    { id: '2', code: 'SUB', name: 'Sub-standard', minDpd: 31, maxDpd: 90, isWrittenOff: false },
+  ]);
+
+  const updateClassData = (rowIndex: number, columnId: string, value: any) => {
+    setClassData(old =>
+      old.map((row, index) => {
+        if (index === rowIndex) {
+          return { ...old[rowIndex]!, [columnId]: value };
+        }
+        return row;
+      })
+    );
+  };
+
+  const addClassRow = () => {
+    setClassData(prev => [
+      ...prev,
+      { id: Date.now().toString(), code: '', name: '', minDpd: 0, maxDpd: 0, isWrittenOff: false },
+    ]);
+  };
+
+  const removeClassRow = (rowIndex: number) => {
+    setClassData(prev => prev.filter((_, idx) => idx !== rowIndex));
+  };
+
+  // --- Provisioning Table Data & State ---
+  const [provData, setProvData] = useState([
+    { id: '1', code: 'STD', name: 'Standard', security: 'Secured', rate: 0.25 },
+    { id: '2', code: 'STD', name: 'Standard', security: 'Unsecured', rate: 10 },
+  ]);
+
+  const updateProvData = (rowIndex: number, columnId: string, value: any) => {
+    setProvData(old =>
+      old.map((row, index) => {
+        if (index === rowIndex) {
+          return { ...old[rowIndex]!, [columnId]: value };
+        }
+        return row;
+      })
+    );
+  };
+
+  const addProvRow = () => {
+    setProvData(prev => [
+      ...prev,
+      { id: Date.now().toString(), code: '', name: '', security: 'Secured', rate: 0 },
+    ]);
+  };
+
+  const removeProvRow = (rowIndex: number) => {
+    setProvData(prev => prev.filter((_, idx) => idx !== rowIndex));
+  };
+
+  // --- TanStack Table Column Definitions ---
+  const classColumns = useMemo(
+    () => [
+      {
+        id: 'select',
+        header: ({ table }: any) => (
+          <Checkbox
+            size="xs"
+            color="indigo"
+            checked={table.getIsAllRowsSelected()}
+            indeterminate={table.getIsSomeRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+          />
+        ),
+        cell: ({ row }: any) => (
+          <Checkbox
+            size="xs"
+            color="indigo"
+            checked={row.getIsSelected()}
+            onChange={row.getToggleSelectedHandler()}
+          />
+        ),
+      },
+      {
+        header: 'No.',
+        cell: (info: any) => <Text fz={12.5}>{info.row.index + 1}</Text>,
+      },
+      {
+        accessorKey: 'code',
+        header: 'Classification code',
+        cell: ({ getValue, row: { index }, column: { id } }: any) => (
+          <TextInput size="xs" value={getValue()} onChange={(e) => updateClassData(index, id, e.target.value)} />
+        ),
+      },
+      {
+        accessorKey: 'name',
+        header: 'Classification name',
+        cell: ({ getValue, row: { index }, column: { id } }: any) => (
+          <TextInput size="xs" value={getValue()} onChange={(e) => updateClassData(index, id, e.target.value)} />
+        ),
+      },
+      {
+        accessorKey: 'minDpd',
+        header: 'Min DPD',
+        cell: ({ getValue, row: { index }, column: { id } }: any) => (
+          <NumberInput size="xs" value={getValue()} onChange={(val) => updateClassData(index, id, val)} />
+        ),
+      },
+      {
+        accessorKey: 'maxDpd',
+        header: 'Max DPD',
+        cell: ({ getValue, row: { index }, column: { id } }: any) => (
+          <NumberInput size="xs" value={getValue()} onChange={(val) => updateClassData(index, id, val)} />
+        ),
+      },
+      {
+        accessorKey: 'isWrittenOff',
+        header: 'Is written off',
+        cell: ({ getValue, row: { index }, column: { id } }: any) => (
+          <Checkbox
+            size="xs"
+            color="indigo"
+            checked={getValue()}
+            onChange={(e) => updateClassData(index, id, e.currentTarget.checked)}
+          />
+        ),
+      },
+      {
+        id: 'actions',
+        cell: ({ row: { index } }: any) => (
+          <ActionIcon color="red" variant="subtle" onClick={() => removeClassRow(index)}>
+            <IconTrash size={16} />
+          </ActionIcon>
+        ),
+      },
+    ],
+    []
+  );
+
+  const provColumns = useMemo(
+    () => [
+      {
+        id: 'select',
+        header: ({ table }: any) => (
+          <Checkbox
+            size="xs"
+            color="indigo"
+            checked={table.getIsAllRowsSelected()}
+            indeterminate={table.getIsSomeRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+          />
+        ),
+        cell: ({ row }: any) => (
+          <Checkbox
+            size="xs"
+            color="indigo"
+            checked={row.getIsSelected()}
+            onChange={row.getToggleSelectedHandler()}
+          />
+        ),
+      },
+      {
+        header: 'No.',
+        cell: (info: any) => <Text fz={12.5}>{info.row.index + 1}</Text>,
+      },
+      {
+        accessorKey: 'code',
+        header: 'Classification code',
+        cell: ({ getValue, row: { index }, column: { id } }: any) => (
+          <Select
+            searchable
+            size="xs"
+            data={['STD', 'SUB', 'DBT', 'LSS']}
+            value={getValue()}
+            onChange={(val) => updateProvData(index, id, val)}
+          />
+        ),
+      },
+      {
+        accessorKey: 'name',
+        header: 'Classification name',
+        cell: ({ getValue, row: { index }, column: { id } }: any) => (
+          <TextInput size="xs" value={getValue()} onChange={(e) => updateProvData(index, id, e.target.value)} />
+        ),
+      },
+      {
+        accessorKey: 'security',
+        header: 'Security type',
+        cell: ({ getValue, row: { index }, column: { id } }: any) => (
+          <Select
+            searchable
+            size="xs"
+            data={['Secured', 'Unsecured', 'All']}
+            value={getValue()}
+            onChange={(val) => updateProvData(index, id, val)}
+          />
+        ),
+      },
+      {
+        accessorKey: 'rate',
+        header: 'Provision rate (%)',
+        cell: ({ getValue, row: { index }, column: { id } }: any) => (
+          <NumberInput size="xs" min={0} max={100} value={getValue()} onChange={(val) => updateProvData(index, id, val)} />
+        ),
+      },
+      {
+        id: 'actions',
+        cell: ({ row: { index } }: any) => (
+          <ActionIcon color="red" variant="subtle" onClick={() => removeProvRow(index)}>
+            <IconTrash size={16} />
+          </ActionIcon>
+        ),
+      },
+    ],
+    []
+  );
+
+  const classTable = useReactTable({
+    data: classData,
+    columns: classColumns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  const provTable = useReactTable({
+    data: provData,
+    columns: provColumns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  // --- Render Helpers ---
   const renderAllocationOrder = (orderString: string) => {
     const items = orderString.split(',');
     return (
@@ -173,7 +408,6 @@ export function LendingSetup() {
   ];
 
   return (
-    // Changed from a centered floating Box to a full-width page layout
     <Box
       bg={colors.surface2}
       style={{
@@ -260,9 +494,9 @@ export function LendingSetup() {
         })}
       </Group>
 
-      {/* Body Content - flex: 1 pushes footer to the bottom */}
+      {/* Body Content */}
       <Box p="32px" style={{ flex: 1 }}>
-        <Box maw={1400}> {/* Optional: Add max width here if you don't want fields stretching infinitely on ultrawide monitors */}
+        <Box maw={1400}>
           {/* TAB 1: LOAN */}
           {activeTab === 'loan' && (
             <Box>
@@ -276,6 +510,7 @@ export function LendingSetup() {
                 <Grid gutter={20}>
                   <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                     <Select
+                      searchable
                       label="Interest day-count convention"
                       data={['30/360', 'Actual/365', 'Actual/Actual']}
                       defaultValue="30/360"
@@ -286,6 +521,7 @@ export function LendingSetup() {
                   </Grid.Col>
                   <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                     <Select
+                      searchable
                       label="Loan accrual frequency"
                       data={['Daily', 'Monthly', 'Quarterly']}
                       defaultValue="Daily"
@@ -326,6 +562,7 @@ export function LendingSetup() {
                   </Grid.Col>
                   <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                     <Select
+                      searchable
                       label="Collection offset logic based on"
                       data={['Due date', 'Value date', 'Booking date']}
                       defaultValue="Due date"
@@ -351,43 +588,42 @@ export function LendingSetup() {
                 style={{
                   border: `1px solid ${colors.border}`,
                   borderRadius: 10,
-                  overflow: 'hidden',
+                  overflow: 'auto',
                 }}
                 mb={12}
               >
                 <Table fz={12.5} verticalSpacing={16} horizontalSpacing={12}>
                   <Table.Thead bg={colors.surface1}>
-                    <Table.Tr>
-                      <Table.Th w={36} ta="center" c={colors.textSecondary} fw={600}>
-                        <Checkbox size="xs" color="indigo" />
-                      </Table.Th>
-                      <Table.Th c={colors.textSecondary} fw={600}>
-                        No.
-                      </Table.Th>
-                      <Table.Th c={colors.textSecondary} fw={600}>
-                        Classification code
-                      </Table.Th>
-                      <Table.Th c={colors.textSecondary} fw={600}>
-                        Classification name
-                      </Table.Th>
-                      <Table.Th c={colors.textSecondary} fw={600}>
-                        Min DPD
-                      </Table.Th>
-                      <Table.Th c={colors.textSecondary} fw={600}>
-                        Max DPD
-                      </Table.Th>
-                      <Table.Th c={colors.textSecondary} fw={600}>
-                        Is written off
-                      </Table.Th>
-                      <Table.Th />
-                    </Table.Tr>
+                    {classTable.getHeaderGroups().map((headerGroup) => (
+                      <Table.Tr key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <Table.Th key={header.id} c={colors.textSecondary} fw={600}>
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(header.column.columnDef.header, header.getContext())}
+                          </Table.Th>
+                        ))}
+                      </Table.Tr>
+                    ))}
                   </Table.Thead>
                   <Table.Tbody>
-                    <Table.Tr>
-                      <Table.Td colSpan={8} ta="center" py={28} c={colors.textMuted}>
-                        No rows
-                      </Table.Td>
-                    </Table.Tr>
+                    {classTable.getRowModel().rows.length > 0 ? (
+                      classTable.getRowModel().rows.map((row) => (
+                        <Table.Tr key={row.id}>
+                          {row.getVisibleCells().map((cell) => (
+                            <Table.Td key={cell.id}>
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </Table.Td>
+                          ))}
+                        </Table.Tr>
+                      ))
+                    ) : (
+                      <Table.Tr>
+                        <Table.Td colSpan={8} ta="center" py={28} c={colors.textMuted}>
+                          No classification rows. Click "Add row" below.
+                        </Table.Td>
+                      </Table.Tr>
+                    )}
                   </Table.Tbody>
                 </Table>
               </Box>
@@ -395,6 +631,7 @@ export function LendingSetup() {
                 variant="default"
                 size="xs"
                 radius="md"
+                onClick={addClassRow}
                 leftSection={<IconPlus size={14} />}
                 fw={500}
                 style={{ height: 34, color: colors.textPrimary, borderColor: colors.border }}
@@ -436,6 +673,7 @@ export function LendingSetup() {
               <Grid gutter={20}>
                 <Grid.Col span={{ base: 12, xs: 6, md: 3 }}>
                   <Select
+                    searchable
                     label="Standard asset"
                     data={[
                       { value: 'Interest,Principal,Penal', label: 'Interest > Principal > Penal' },
@@ -457,6 +695,7 @@ export function LendingSetup() {
 
                 <Grid.Col span={{ base: 12, xs: 6, md: 3 }}>
                   <Select
+                    searchable
                     label="Sub-standard asset"
                     data={[
                       { value: 'Penal,Interest,Principal', label: 'Penal > Interest > Principal' },
@@ -478,6 +717,7 @@ export function LendingSetup() {
 
                 <Grid.Col span={{ base: 12, xs: 6, md: 3 }}>
                   <Select
+                    searchable
                     label="Written-off asset"
                     data={[
                       { value: 'Principal,Interest,Penal', label: 'Principal > Interest > Penal' },
@@ -499,6 +739,7 @@ export function LendingSetup() {
 
                 <Grid.Col span={{ base: 12, xs: 6, md: 3 }}>
                   <Select
+                    searchable
                     label="Settlement collection"
                     data={[
                       { value: 'Principal,Penal,Interest', label: 'Principal > Penal > Interest' },
@@ -533,40 +774,42 @@ export function LendingSetup() {
                 style={{
                   border: `1px solid ${colors.border}`,
                   borderRadius: 10,
-                  overflow: 'hidden',
+                  overflow: 'auto',
                 }}
                 mb={12}
               >
                 <Table fz={12.5} verticalSpacing={16} horizontalSpacing={12}>
                   <Table.Thead bg={colors.surface1}>
-                    <Table.Tr>
-                      <Table.Th w={36} ta="center" c={colors.textSecondary} fw={600}>
-                        <Checkbox size="xs" color="indigo" />
-                      </Table.Th>
-                      <Table.Th c={colors.textSecondary} fw={600}>
-                        No.
-                      </Table.Th>
-                      <Table.Th c={colors.textSecondary} fw={600}>
-                        Classification code
-                      </Table.Th>
-                      <Table.Th c={colors.textSecondary} fw={600}>
-                        Classification name
-                      </Table.Th>
-                      <Table.Th c={colors.textSecondary} fw={600}>
-                        Security type
-                      </Table.Th>
-                      <Table.Th c={colors.textSecondary} fw={600}>
-                        Provision rate
-                      </Table.Th>
-                      <Table.Th />
-                    </Table.Tr>
+                    {provTable.getHeaderGroups().map((headerGroup) => (
+                      <Table.Tr key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <Table.Th key={header.id} c={colors.textSecondary} fw={600}>
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(header.column.columnDef.header, header.getContext())}
+                          </Table.Th>
+                        ))}
+                      </Table.Tr>
+                    ))}
                   </Table.Thead>
                   <Table.Tbody>
-                    <Table.Tr>
-                      <Table.Td colSpan={7} ta="center" py={28} c={colors.textMuted}>
-                        No rows
-                      </Table.Td>
-                    </Table.Tr>
+                    {provTable.getRowModel().rows.length > 0 ? (
+                      provTable.getRowModel().rows.map((row) => (
+                        <Table.Tr key={row.id}>
+                          {row.getVisibleCells().map((cell) => (
+                            <Table.Td key={cell.id}>
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </Table.Td>
+                          ))}
+                        </Table.Tr>
+                      ))
+                    ) : (
+                      <Table.Tr>
+                        <Table.Td colSpan={7} ta="center" py={28} c={colors.textMuted}>
+                          No provisioning rows. Click "Add row" below.
+                        </Table.Td>
+                      </Table.Tr>
+                    )}
                   </Table.Tbody>
                 </Table>
               </Box>
@@ -574,6 +817,7 @@ export function LendingSetup() {
                 variant="default"
                 size="xs"
                 radius="md"
+                onClick={addProvRow}
                 leftSection={<IconPlus size={14} />}
                 fw={500}
                 style={{ height: 34, color: colors.textPrimary, borderColor: colors.border }}
@@ -585,7 +829,7 @@ export function LendingSetup() {
         </Box>
       </Box>
 
-      {/* Footer - Fixed at bottom of content flow */}
+      {/* Footer */}
       <Group
         justify="space-between"
         p="18px 32px"

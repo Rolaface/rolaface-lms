@@ -9,8 +9,8 @@ import { LendingSetup } from '../view/Setup/LendingSetup';
 // import { Operations } from '../view/Operations/Operation';
 
 // TODO: create these view components (placeholders shown for now)
-// import { CollateralType } from '../view/Collateral/CollateralType';
-// import { CollateralList } from '../view/Collateral/CollateralList';
+import { CollateralType } from '../view/Collateral/CollateralType/CollateralType';
+import { Collateral } from '../view/Collateral/Collateral';
 // import { LoanApplication } from '../view/Origination/LoanApplication';
 // import { LoanStatement } from '../view/Reports/LoanStatement';
 // import { ArrearReports } from '../view/Reports/ArrearReports';
@@ -27,11 +27,12 @@ import { LoanWriteOff } from '../view/Operations/LoanWriteOff/LoanWriteOff';
 // import { LoanTransfer } from '../view/Operations/LoanTransfer';
 
 import { LoanCategory } from '../view/Loan/LoanCategory/LoanCategory';
-// import { LoanClassification } from '../view/Setup/LoanClassification';
-// import { Provisioning } from '../view/Setup/Provisioning';
-// import { CollectionSequence } from '../view/Setup/CollectionSequence';
+import { LoanClassification } from '../view/Setup/LoanClassification/LoanClassification';
+import { LoanProvision } from '../view/Setup/LoanProvision/LoanProvision';
+import { LoanCollectionSequenceOrder } from '../view/Setup/LoanCollectionSequence/LoanCollectionSequenceOrder';
 // import { FeeAndCharges } from '../view/Setup/FeeAndCharges';
 import { LoanProduct } from '../view/Loan/Product/LoanProduct';
+import { LoanClassificationRanges } from '../view/Setup/LoanClassificationRanges/LoanClassificationRanges';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -71,16 +72,16 @@ const collateralRoute = createRoute({
   path: '/collateral',
   component: Outlet, // just renders matched child
 });
-// const collateralTypeRoute = createRoute({
-//   getParentRoute: () => collateralRoute,
-//   path: '/type',
-//   component: CollateralType,
-// });
-// const collateralListRoute = createRoute({
-//   getParentRoute: () => collateralRoute,
-//   path: '/list',
-//   component: CollateralList,
-// });
+const collateralTypeRoute = createRoute({
+  getParentRoute: () => collateralRoute,
+  path: '/type',
+  component: CollateralType,
+});
+const collateralListRoute = createRoute({
+  getParentRoute: () => collateralRoute,
+  path: '/list',
+  component: Collateral,
+});
 
 /* ---------- Lending Setup (layout + children) ---------- */
 const setupRoute = createRoute({
@@ -93,21 +94,26 @@ const setupCategoryRoute = createRoute({
   path: '/category',
   component: LoanCategory,
 });
-// const setupClassificationRoute = createRoute({
-//   getParentRoute: () => setupRoute,
-//   path: '/classification',
-//   component: LoanClassification,
-// });
-// const setupProvisioningRoute = createRoute({
-//   getParentRoute: () => setupRoute,
-//   path: '/provisioning',
-//   component: Provisioning,
-// });
-// const setupCollectionRoute = createRoute({
-//   getParentRoute: () => setupRoute,
-//   path: '/collection',
-//   component: CollectionSequence,
-// });
+const setupClassificationRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: '/classification',
+  component: LoanClassification,
+});
+const setupClassificationRangeRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: '/classificationRange',
+  component: LoanClassificationRanges,
+});
+const setupProvisioningRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: '/provisioning',
+  component: LoanProvision,
+});
+const setupCollectionRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: '/collection',
+  component: LoanCollectionSequenceOrder,
+});
 // const setupFeesRoute = createRoute({
 //   getParentRoute: () => setupRoute,
 //   path: '/fees',
@@ -210,12 +216,13 @@ const routeTree = rootRoute.addChildren([
   loanAccountRoute,
   customerRoute,
   // loanRoute,
-  // collateralRoute.addChildren([collateralTypeRoute, collateralListRoute]),
+  collateralRoute.addChildren([collateralTypeRoute, collateralListRoute]),
   setupRoute.addChildren([
     setupCategoryRoute,
-    // setupClassificationRoute,
-    // setupProvisioningRoute,
-    // setupCollectionRoute,
+    setupClassificationRoute,
+    setupProvisioningRoute,
+    setupClassificationRangeRoute,
+    setupCollectionRoute,
     // setupFeesRoute,
     setupProductRoute,
   ]),
