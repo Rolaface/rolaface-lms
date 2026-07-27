@@ -217,11 +217,7 @@ export function LoanDisbursementModal({
                         Pay From
                       </Text>
                     </div>
-                    <Text size="xs" c="dimmed" className="ml-3 mb-4">
-                      Payment mode and source account for the disbursement payout.
-                    </Text>
-
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-4 mt-4">
                       <Select
                         size="sm"
                         withAsterisk
@@ -257,11 +253,7 @@ export function LoanDisbursementModal({
                         Pay To
                       </Text>
                     </div>
-                    <Text size="xs" c="dimmed" className="ml-3 mb-4">
-                      Beneficiary reference and destination account details.
-                    </Text>
-
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-4 mt-4">
                       <TextInput
                         size="sm"
                         withAsterisk
