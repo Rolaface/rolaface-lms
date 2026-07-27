@@ -60,6 +60,7 @@ interface LoanAccount {
   emiDate: string;
   principalDue: number;
   interestDue: number;
+  penalty: number;
   lateFees: number;
 }
 
@@ -86,6 +87,7 @@ const BORROWERS: Borrower[] = [
         emiDate: "5th of Month",
         principalDue: 450,
         interestDue: 125.5,
+        penalty: 10,
         lateFees: 25,
       },
       {
@@ -95,6 +97,7 @@ const BORROWERS: Borrower[] = [
         emiDate: "12th of Month",
         principalDue: 210,
         interestDue: 65,
+        penalty: 10,
         lateFees: 0,
       },
     ],
@@ -112,6 +115,7 @@ const BORROWERS: Borrower[] = [
         emiDate: "1st of Month",
         principalDue: 3200,
         interestDue: 1450.75,
+        penalty: 10,
         lateFees: 0,
       },
     ],
@@ -129,6 +133,7 @@ const BORROWERS: Borrower[] = [
         emiDate: "18th of Month",
         principalDue: 380,
         interestDue: 95.25,
+        penalty: 10,
         lateFees: 40,
       },
       {
@@ -138,6 +143,7 @@ const BORROWERS: Borrower[] = [
         emiDate: "25th of Month",
         principalDue: 175,
         interestDue: 42.5,
+        penalty: 10,
         lateFees: 15,
       },
     ],
@@ -155,6 +161,7 @@ const BORROWERS: Borrower[] = [
         emiDate: "10th of Month",
         principalDue: 1200,
         interestDue: 380.6,
+        penalty: 10,
         lateFees: 0,
       },
     ],
@@ -172,6 +179,7 @@ const BORROWERS: Borrower[] = [
         emiDate: "3rd of Month",
         principalDue: 300,
         interestDue: 88,
+        penalty: 10,
         lateFees: 60,
       },
     ],
@@ -509,34 +517,29 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
           </div>
 
           {/* Payment Execution column (middle) */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="rounded-lg border border-gray-200 p-4">
+          <div className="relative flex-1 overflow-y-auto p-6">
+            <div className={`rounded-lg border border-gray-200 p-4 transition-all duration-300 ${
+                  !selectedLoan
+                    ? "pointer-events-none select-none opacity-50 blur-[2px]"
+                    : ""
+                }`}
+              >
               <div className="flex items-center gap-2 mb-4">
                 <IconChecklist size={16} className="text-[#4F46E5]" />
-                <Text size="sm" fw={700} className="text-gray-900">
-                  Payment Execution
+                <Text size="sm" fw={700} className="text-gray-900 flex items-center gap-2">
+                  Executing Payment for
+                  <span className="rounded bg-indigo-100 px-2 py-0.5 text-[#4338CA] font-semibold">
+                    {selectedLoan?.id ?? "—"}
+                  </span>
+                  <span className="text-gray-400">/</span>
+                  <span className="rounded bg-orange-100 px-2 py-0.5 text-[#EA580C] font-semibold">
+                    {selectedBorrower?.name ?? "—"}
+                  </span>
                 </Text>
-              </div>
-              <div className="flex flex-col justify-center h-[42px]">
-                <Text size="xs" fw={500} className="text-gray-700 mb-1">
-                  Loan Account
-                </Text>
-
-                <div className="flex items-center gap-2">
-                  <Text size="sm" fw={700} className="font-mono text-gray-900">
-                    {selectedLoan?.id}
-                  </Text>
-
-                  <span className="text-gray-300">|</span>
-
-                  <Text size="sm" c="dimmed">
-                    {selectedLoan?.type}
-                  </Text>
-                </div>
               </div>
 
               <div className="flex flex-col gap-4">
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                <div className="grid grid-cols-3 gap-x-8 gap-y-3">
                   <TextInput
                     size="sm"
                     withAsterisk
@@ -547,27 +550,55 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
                     leftSection={<IconCalendarDue size={14} className="text-emerald-600" />}
                     classNames={labelClass}
                   />
+                </div>
 
-                  <div>
-                    <Text size="sm" fw={500} className="text-gray-700 mb-1">
-                      Nature of Payment
-                    </Text>
-                    <SegmentedControl
-                      size="xs"
-                      fullWidth
-                      color="brand"
-                      value={natureOfPayment}
-                      onChange={handleNatureChange}
-                      data={[
-                        { label: "Pay Dues", value: "PAY_DUES" },
-                        { label: "Partially Pay Off", value: "PARTIAL" },
-                        { label: "Full Settl.", value: "FULL_SETTLEMENT" },
-                      ]}
-                    />
+                <div>
+                  <Text size="sm" fw={500} className="text-gray-700 mb-1">
+                    Nature of Payment
+                  </Text>
+                  <div className="grid grid-cols-3 gap-x-8 gap-3">
+                    {(
+                      [
+                        {
+                          label: "Pay Any",
+                          value: "PAY_DUES",
+                          active:
+                            "border-emerald-300 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 shadow-sm",
+                          hover: "hover:border-emerald-200 hover:bg-emerald-50",
+                        },
+                        {
+                          label: "Partially Pay Off",
+                          value: "PARTIAL",
+                          active:
+                            "border-amber-300 bg-amber-50 text-amber-700 ring-1 ring-amber-200 shadow-sm",
+                          hover: "hover:border-amber-200 hover:bg-amber-50",
+                        },
+                        {
+                          label: "Pay Full",
+                          value: "FULL_SETTLEMENT",
+                          active:
+                            "border-[#818cf8] bg-[#eef2ff] text-[#4338CA] ring-1 ring-[#c7d2fe] shadow-sm",
+                          hover: "hover:border-[#c7d2fe] hover:bg-[#f5f3ff]",
+                        },
+                      ] as const
+                    ).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleNatureChange(option.value)}
+                        className={`rounded-lg border py-3 px-3 text-center text-sm font-semibold transition-all duration-200 ${
+                          natureOfPayment === option.value
+                            ? option.active
+                            : `border-gray-200 bg-white text-gray-700 ${option.hover}`
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                <div className="grid grid-cols-3 gap-x-8 gap-y-3">
                   <NumberInput
                     size="sm"
                     withAsterisk
@@ -580,7 +611,6 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
                     decimalScale={2}
                     classNames={labelClass}
                   />
-
                   <Select
                     size="sm"
                     withAsterisk
@@ -593,9 +623,18 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
                     rightSection={chevronDown}
                     classNames={labelClass}
                   />
+                  <TextInput
+                    size="sm"
+                    label="Account Number"
+                    placeholder="Debit account number"
+                    value={accountNumber}
+                    onChange={(e) => setAccountNumber(e.currentTarget.value)}
+                    leftSection={<IconCreditCard size={14} className="text-gray-400" />}
+                    classNames={labelClass}
+                  />
                 </div>
+                <div className="grid grid-cols-3 gap-x-8 gap-y-3">
 
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                   <TextInput
                     size="sm"
                     label="Reference Number"
@@ -615,31 +654,79 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
                     leftSection={<IconCalendar size={14} className="text-gray-400" />}
                     classNames={labelClass}
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                   <TextInput
-                    size="sm"
-                    label="Account Number"
-                    placeholder="Debit account number"
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.currentTarget.value)}
-                    leftSection={<IconCreditCard size={14} className="text-gray-400" />}
-                    classNames={labelClass}
-                  />
-
-                  <TextInput
-                    size="sm"
-                    label="Remark"
-                    placeholder="Add a note about this repayment (optional)"
-                    value={remark}
-                    onChange={(e) => setRemark(e.currentTarget.value)}
-                    leftSection={<IconNotes size={14} className="text-gray-400" />}
-                    classNames={labelClass}
-                  />
-                </div>
+                  size="sm"
+                  label="Remark"
+                  placeholder="Add a note about this repayment (optional)"
+                  value={remark}
+                  onChange={(e) => setRemark(e.currentTarget.value)}
+                  leftSection={<IconNotes size={14} className="text-gray-400" />}
+                  classNames={labelClass}
+                />
+                </div>                
               </div>
             </div>
+
+            {!selectedLoan && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-white/55 backdrop-blur-[3px]">
+
+                <div className="w-[440px] rounded-2xl border border-[#dbe4ff] bg-white shadow-2xl">
+
+                  {/* Icon */}
+                  <div className="flex justify-center pt-8">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#EEF2FF] to-[#E0E7FF] ring-1 ring-[#C7D2FE]">
+                      <IconChecklist
+                        size={30}
+                        className="text-[#4338CA]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="px-8 py-6 text-center">
+
+                    <Text
+                      size="xl"
+                      fw={700}
+                      className="text-gray-900"
+                    >
+                      No Loan Account Selected
+                    </Text>
+
+                    <Text
+                      size="sm"
+                      c="dimmed"
+                      className="mt-3 leading-6"
+                    >
+                      To proceed with a repayment transaction, first search for a borrower
+                      and select one of their active loan accounts from the panel on the
+                      left.
+                    </Text>
+
+                    <div className="mt-6 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+                      <Text
+                        size="xs"
+                        fw={600}
+                        className="uppercase tracking-wide text-[#4F46E5]"
+                      >
+                        Next Step
+                      </Text>
+
+                      <Text
+                        size="sm"
+                        className="mt-1 text-gray-700"
+                      >
+                        Select a borrower → Choose a loan account → Process repayment
+                      </Text>
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+            )}
+
           </div>
 
           {/* Dues Summary — separate card, to the right of Payment Execution */}
@@ -650,34 +737,9 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
                 Dues Summary
               </Text>
             </div>
-            <Text size="xs" c="dimmed" className="ml-3 mb-4">
-              Live account status
-            </Text>
 
             {selectedLoan ? (
               <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2 bg-gray-50/60 border border-gray-100 rounded-md p-2.5">
-                  <div className="p-1.5 rounded-md bg-[#eef2ff] flex items-center justify-center shrink-0">
-                    <IconCar size={14} className="text-[#4F46E5]" />
-                  </div>
-                  <div>
-                    <Text size="xs" c="dimmed">
-                      {selectedLoan.type}
-                    </Text>
-                    <Text size="sm" fw={700} className="text-gray-900 font-mono">
-                      {selectedLoan.id}
-                    </Text>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50/60 border border-gray-100 rounded-md p-2.5">
-                  <Text size="xs" c="dimmed">
-                    Customer
-                  </Text>
-                  <Text size="sm" fw={600} className="text-gray-900">
-                    {selectedBorrower?.name}
-                  </Text>
-                </div>
 
                 <div className="bg-gray-50/60 border border-gray-100 rounded-md p-2.5">
                   <Text size="xs" c="dimmed">
@@ -707,7 +769,15 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
                   </div>
                   <div className="flex justify-between">
                     <Text size="xs" c="dimmed">
-                      Late Fees / Penalties
+                      Penalty
+                    </Text>
+                    <Text size="xs" className="font-mono text-gray-700">
+                      {formatCurrency(selectedLoan.penalty)}
+                    </Text>
+                  </div>
+                  <div className="flex justify-between">
+                    <Text size="xs" c="dimmed">
+                      Fees/Charges
                     </Text>
                     <Text size="xs" className="font-mono text-gray-700">
                       {formatCurrency(selectedLoan.lateFees)}
