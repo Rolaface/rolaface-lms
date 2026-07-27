@@ -30,7 +30,7 @@ import { LoanCategory } from '../view/Loan/LoanCategory/LoanCategory';
 import { LoanClassification } from '../view/Setup/LoanClassification/LoanClassification';
 import { LoanProvision } from '../view/Setup/LoanProvision/LoanProvision';
 import { LoanCollectionSequenceOrder } from '../view/Setup/LoanCollectionSequence/LoanCollectionSequenceOrder';
-import { FeeAndCharges } from '../view/Setup/LoanCharges/FeeAndCharges';
+import { FeeAndCharges } from '../view/Setup/FeeAndCharges/FeeandCharges';
 import { LoanProduct } from '../view/Loan/Product/LoanProduct';
 import { LoanClassificationRanges } from '../view/Setup/LoanClassificationRanges/LoanClassificationRanges';
 
