@@ -60,27 +60,23 @@ const theme = {
 }
 type ChipColor = keyof typeof theme;
 
-// Shared label styling so every field across every step looks consistent
 const labelProps = {
-  label: "text-[13px] font-semibold text-slate-700 mb-2",
+  label: "text-[13px] font-semibold text-slate-700 mb-1",
   description: "mt-0 text-[10px] text-slate-400 leading-tight",
   input:
-    "min-h-[52px] h-[52px] text-sm border-slate-200 rounded-xl overflow-hidden transition-colors focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)] !pl-[56px]",
+    "min-h-[42px] h-[42px] text-sm border-slate-200 rounded-xl overflow-hidden transition-colors focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)] !pl-[58px]",
 };
 
 const fieldLabelProps = {
   label: "text-[13px] font-medium text-slate-600 mb-1",
   input:
-    "min-h-[36px] h-[36px] text-sm rounded-lg border-slate-200 focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)]",
+    "min-h-[32px] h-[32px] text-sm rounded-lg border-slate-200 focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)]",
 };
-
-// Same visual size/weight as labelProps but WITHOUT the left icon chip offset —
-// used on fields where the icon symbol has been removed.
 const labelPropsPlain = {
-  label: "text-[13px] font-semibold text-slate-700 mb-2",
+  label: "text-[13px] font-semibold text-slate-700 mb-1",
   description: "mt-0 text-[10px] text-slate-400 leading-tight",
   input:
-    "min-h-[52px] h-[52px] text-sm border-slate-200 rounded-xl transition-colors focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)] px-4",
+    "min-h-[40px] h-[40px] text-sm border-slate-200 rounded-xl transition-colors focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)] px-4",
 };
 
 const IconChip = ({ icon: Icon, color = "brand" }: { icon: React.ComponentType<{ size?: number }>; color?: ChipColor }) => {
@@ -94,13 +90,6 @@ const IconChip = ({ icon: Icon, color = "brand" }: { icon: React.ComponentType<{
     </div>
   );
 };
-
-// NOTE: these presentational components are defined at module scope (not
-// inside LoanProductModal) on purpose. Defining them inside the component
-// body would create a brand-new component type on every render, which makes
-// React unmount/remount their children — including any inputs — and that's
-// what was causing the Charge Type field to lose focus after every keystroke.
-
 // --- Card used on Product Details: accent bar + title + description ---
 const SectionCard = ({
   title,
@@ -112,13 +101,13 @@ const SectionCard = ({
   children: React.ReactNode;
 }) => (
   <Paper withBorder radius="lg" p={0} className="shadow-[0_1px_2px_rgba(15,23,42,0.04)] bg-white border-slate-200 overflow-hidden">
-    <div className="p-6">
-      <div className="flex items-center gap-2 mb-1.5">
+    <div className="p-4">
+      <div className="flex items-center gap-2 mb-1">
         <span className="w-1 h-4 rounded-full shrink-0" style={{ backgroundColor: theme.brand[5] }} />
-        <Text size="md" fw={700} className="text-slate-900 tracking-tight">{title}</Text>
+        <Text size="sm" fw={700} className="text-slate-900 tracking-tight">{title}</Text>
       </div>
-      {description && <Text size="xs" className="text-slate-400 mb-5 pl-3">{description}</Text>}
-      {!description && <div className="mb-3" />}
+      {description && <Text size="xs" className="text-slate-400 mb-2 pl-3">{description}</Text>}
+      {!description && <div className="mb-1.5" />}
       {children}
     </div>
   </Paper>
@@ -127,8 +116,8 @@ const SectionCard = ({
 // --- Card used on Collection & Offsets: just a shadowed card with a lead paragraph ---
 const PlainCard = ({ description, children }: { description?: string; children: React.ReactNode }) => (
   <Paper withBorder radius="lg" p={0} className="shadow-[0_1px_2px_rgba(15,23,42,0.04)] bg-white border-slate-200 overflow-hidden">
-    <div className="p-6">
-      {description && <Text size="sm" className="text-slate-500 mb-6">{description}</Text>}
+    <div className="p-4">
+      {description && <Text size="sm" className="text-slate-500 mb-3">{description}</Text>}
       {children}
     </div>
   </Paper>
@@ -171,8 +160,6 @@ const SubHeading = ({ children, color = "brand" }: { children: React.ReactNode; 
 
 const demandTypeSequence = ["Charges", "Penalty", "Additional Interest", "Interest", "Principal"];
 
-// Small table used under each asset-classification column — styled to match
-// the Loan Charges table (checkbox column, same header/row look).
 const DemandTypeTable = () => (
   <div className="border border-slate-200 rounded-xl overflow-hidden">
     <Table size="xs" verticalSpacing="xs" horizontalSpacing={6} className="table-fixed w-full">
@@ -277,13 +264,9 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
   });
 
   const [charges, setCharges] = useState<ChargeRow[]>([]);
-  // Only tracks which row's ACCOUNTS modal is open. Charge Type / Based On /
-  // Percentage / Amount are now edited inline in the table itself.
   const [accountsModalIndex, setAccountsModalIndex] = useState<number | null>(null);
 
   const handleAddCharge = () => {
-    // Adds the row directly into the table (inline-editable) instead of
-    // opening any modal.
     setCharges((prev) => [...prev, emptyCharge()]);
   };
 
@@ -332,17 +315,15 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
 
   const currentStep = parseInt(activeTab || "0");
 
-  // Header is dynamic: step 0 shows the modal's overall intro,
-  // every later step shows that step's own icon / title / description.
   const headerIcon = currentStep === 0 ? IconBriefcase : STEPS[currentStep].icon;
   const headerTitle = currentStep === 0 ? "Create Loan Product" : STEPS[currentStep].label;
   const headerDesc =
     currentStep === 0 ? "Define product details and rules for this loan offering." : STEPS[currentStep].desc;
 
   const renderProductDetails = () => (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <PlainCard>
-        <div className="grid grid-cols-3 gap-x-6 gap-y-5">
+        <div className="grid grid-cols-3 gap-x-6 gap-y-4">
           <Select
             size="xs"
             searchable
@@ -390,12 +371,12 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
       </PlainCard>
 
       <SectionCard title="Interest & Penalty">
-        <div className="grid grid-cols-5 gap-6">
-          <div className="col-span-2 rounded-xl border p-5" style={{ backgroundColor: theme.indigoAlt[0], borderColor: theme.indigoAlt[1] }}>
-            <div className="mb-3.5">
+        <div className="grid grid-cols-5 gap-5">
+          <div className="col-span-2 rounded-xl border p-4" style={{ backgroundColor: theme.indigoAlt[0], borderColor: theme.indigoAlt[1] }}>
+            <div className="mb-3">
               <SubHeading color="brand">Interest</SubHeading>
             </div>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+            <div className="grid grid-cols-2 gap-x-5 gap-y-3">
               <TextInput size="xs" label="Interest Rate (%)" placeholder="Enter rate" withAsterisk leftSection={<IconChip icon={IconPercentage} color="indigoAlt" />} leftSectionWidth={50} classNames={labelProps} />
               <Select
                 size="xs"
@@ -412,11 +393,11 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
             </div>
           </div>
 
-          <div className="col-span-3 rounded-xl border p-5" style={{ backgroundColor: theme.danger[0], borderColor: theme.danger[1] }}>
-            <div className="mb-3.5">
+          <div className="col-span-3 rounded-xl border p-4" style={{ backgroundColor: theme.danger[0], borderColor: theme.danger[1] }}>
+            <div className="mb-3">
               <SubHeading color="danger">Penalty</SubHeading>
             </div>
-            <div className="grid grid-cols-3 gap-x-6 gap-y-4">
+            <div className="grid grid-cols-3 gap-x-5 gap-y-3">
               <TextInput size="xs" label="Penalty Rate (%)" placeholder="Enter rate" withAsterisk leftSection={<IconChip icon={IconPercentage} color="danger" />} leftSectionWidth={50} classNames={labelProps} />
               <Select
                 size="xs"
@@ -545,7 +526,6 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
     </PlainCard>
   );
 
-  // Compact inline input used inside table cells (no label, tighter height)
   const cellInputClasses = {
     input: "h-8 min-h-[32px] w-full text-xs rounded-md border border-slate-200 bg-white hover:border-slate-300 focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)] disabled:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 px-2",
   };
@@ -656,7 +636,6 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
                 </Table.Tr>
               ))
             )}
-            {/* Inline "add" row replaces the old standalone Add row button */}
             <Table.Tr className="cursor-pointer hover:bg-slate-50/60" onClick={handleAddCharge}>
               <Table.Td colSpan={7} className="py-2.5">
                 <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: theme.brand[6] }}>
@@ -671,7 +650,6 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
     </SectionCard>
   );
 
-  // --- Charge accounts modal (accounts only — matches the app's card/field styling) ---
   const renderChargeAccountsModal = () => {
     if (accountsModalIndex === null) return null;
     const charge = charges[accountsModalIndex];
@@ -810,33 +788,33 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
     <Modal
       opened={opened}
       onClose={onClose}
-      size="70%"
+      size="80%"
       withCloseButton={false}
       padding={0}
       radius="lg"
       overlayProps={{ backgroundOpacity: 0.45, blur: 2 }}
       styles={{
-        content: { height: "90vh", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" },
+        content: { height: "95vh", maxHeight: "95vh", display: "flex", flexDirection: "column", overflow: "hidden" },
         header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
         body: { flex: 1, display: "flex", flexDirection: "column", padding: 0, minHeight: 0, overflow: "hidden" },
       }}
     >
       <Box className="flex flex-col h-full bg-white" style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
         {/* Header — dynamic per step */}
-        <Box className="flex justify-between items-start px-6 pt-6 pb-5 shrink-0 bg-white border-b border-slate-100">
+        <Box className="flex justify-between items-start px-6 pt-4 pb-3 shrink-0 bg-white border-b border-slate-100">
           <div className="flex items-start gap-3">
             <div
-              className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
               style={{ background: `linear-gradient(135deg, ${theme.brand[5]}, ${theme.brand[7]})` }}
             >
               {(() => {
                 const HeaderIcon = headerIcon;
-                return <HeaderIcon size={20} className="text-white" />;
+                return <HeaderIcon size={17} className="text-white" />;
               })()}
             </div>
             <div>
-              <Text size="xl" fw={800} className="text-slate-900 leading-tight">{headerTitle}</Text>
-              <Text size="xs" className="text-slate-500 mt-1">{headerDesc}</Text>
+              <Text size="lg" fw={800} className="text-slate-900 leading-tight">{headerTitle}</Text>
+              <Text size="xs" className="text-slate-500 mt-0.5">{headerDesc}</Text>
             </div>
           </div>
 
@@ -846,7 +824,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         </Box>
 
         {/* Stepper */}
-        <Box className="px-10 pt-4 pb-4 border-b border-slate-100 shrink-0 bg-white">
+        <Box className="px-8 pt-2.5 pb-2.5 border-b border-slate-100 shrink-0 bg-white">
           <div className="flex items-center">
             {STEPS.map((step, idx) => {
               const isActive = currentStep === idx;
@@ -854,28 +832,28 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
               const StepIcon = step.icon;
               return (
                 <Fragment key={step.label}>
-                  <button type="button" onClick={() => setActiveTab(idx.toString())} className="flex items-center gap-2.5 text-left shrink-0 group">
+                  <button type="button" onClick={() => setActiveTab(idx.toString())} className="flex items-center gap-2 text-left shrink-0 group">
                     <div
-                      className="flex items-center justify-center w-9 h-9 rounded-full text-[11px] font-semibold shrink-0 transition-all"
+                      className="flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-semibold shrink-0 transition-all"
                       style={
                         isActive
-                          ? { backgroundColor: theme.brand[6], color: "#fff", boxShadow: `0 0 0 4px ${theme.brand[1]}` }
+                          ? { backgroundColor: theme.brand[6], color: "#fff", boxShadow: `0 0 0 3px ${theme.brand[1]}` }
                           : isComplete
                           ? { backgroundColor: theme.brand[5], color: "#fff" }
                           : { backgroundColor: "#fff", color: "#94a3b8", border: "2px solid #e2e8f0" }
                       }
                     >
-                      {isComplete ? <IconCheck size={15} /> : <StepIcon size={15} />}
+                      {isComplete ? <IconCheck size={13} /> : <StepIcon size={13} />}
                     </div>
                     <div className="hidden sm:block whitespace-nowrap">
                       <Text size="xs" fw={700} style={{ color: isActive ? theme.brand[6] : isComplete ? "#334155" : "#94a3b8" }}>
                         {step.label}
                       </Text>
-                      <Text size="10px" className="text-slate-400">{step.desc}</Text>
+                      <Text size="10px" className="text-slate-400 leading-none">{step.desc}</Text>
                     </div>
                   </button>
                   {idx < STEPS.length - 1 && (
-                    <div className="flex-1 h-[2px] mx-4 rounded-full transition-colors" style={{ backgroundColor: isComplete ? theme.brand[5] : "#e2e8f0" }} />
+                    <div className="flex-1 h-[2px] mx-3 rounded-full transition-colors" style={{ backgroundColor: isComplete ? theme.brand[5] : "#e2e8f0" }} />
                   )}
                 </Fragment>
               );
@@ -884,7 +862,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         </Box>
 
         {/* Form Area — only scrollable region, footer always stays put */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-6 px-7 pb-10 bg-[#F7F8FB]" style={{ flex: "1 1 0%", minHeight: 0, overflowY: "auto" }}>
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 px-6 pb-4 bg-[#F7F8FB]" style={{ flex: "1 1 0%", minHeight: 0, overflowY: "auto" }}>
           {activeTab === "0" && renderProductDetails()}
           {activeTab === "1" && renderAccounting()}
           {activeTab === "2" && renderCollection()}
@@ -893,7 +871,7 @@ export function LoanProductModal({ opened, onClose }: LoanProductProps) {
         {renderChargeAccountsModal()}
 
         {/* Footer — always visible */}
-        <div className="bg-white border-t border-slate-100 p-3.5 px-6 flex justify-between items-center shrink-0 shadow-[0_-2px_10px_rgba(15,23,42,0.04)]">
+        <div className="bg-white border-t border-slate-100 p-2.5 px-6 flex justify-between items-center shrink-0 shadow-[0_-2px_10px_rgba(15,23,42,0.04)]">
           <div className="flex items-center gap-4">
             <Button size="sm" variant="default" radius="md" onClick={onClose} className="font-semibold px-5 border-slate-200">Cancel</Button>
             <button type="button" onClick={handleReset} className="text-xs font-semibold transition-colors" style={{ color: theme.danger[6] }}>Reset</button>
