@@ -21,12 +21,17 @@ export const API = {
   // =========================
   // CUSTOMER
   // =========================
-  customer: {},
+  customer: {
+    getAllCustomers: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_customers`
+  },
 
   // =========================
   // LOAN
   // =========================
-  loan: {},
+loan: {
+  create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.create_loan`,
+  getLoans:  `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_loans`,
+},
 
   // =========================
   // LOAN PRODUCT
