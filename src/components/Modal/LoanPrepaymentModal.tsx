@@ -323,7 +323,7 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
       padding={0}
       radius="md"
     >
-      <Box className="flex flex-col max-h-[90vh]">
+      <Box className="flex flex-col h-[520px] max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
           <div className="flex items-center gap-3">
@@ -332,10 +332,10 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
             </div>
             <div>
               <Text size="md" fw={700} className="text-gray-900 leading-tight">
-                Loan Repayment
+                Loan Perepayment
               </Text>
               <Text size="xs" c="dimmed">
-                Search a borrower and process a repayment against their loan account.
+                Search a borrower and process a Perepayment against their loan account.
               </Text>
             </div>
           </div>
@@ -518,7 +518,7 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
 
           {/* Payment Execution column (middle) */}
           <div className="relative flex-1 overflow-y-auto p-6">
-            <div className={`rounded-lg border border-gray-200 p-4 transition-all duration-300 ${
+            <div className={`flex h-full flex-col rounded-lg border border-gray-200 p-4 transition-all duration-300 ${
                   !selectedLoan
                     ? "pointer-events-none select-none opacity-50 blur-[2px]"
                     : ""
@@ -538,7 +538,7 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
                 </Text>
               </div>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-1 flex-col justify-center gap-6">
 
                 <div className="grid grid-cols-3 gap-x-8 gap-y-3">
                     <TextInput
@@ -609,7 +609,7 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
                   <TextInput
                   size="sm"
                   label="Remark"
-                  placeholder="Add a note about this repayment (optional)"
+                  placeholder="Add a note about this Perepayment (optional)"
                   value={remark}
                   onChange={(e) => setRemark(e.currentTarget.value)}
                   leftSection={<IconNotes size={14} className="text-gray-400" />}
@@ -650,7 +650,7 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
                       c="dimmed"
                       className="mt-3 leading-6"
                     >
-                      To proceed with a repayment transaction, first search for a borrower
+                      To proceed with a Perepayment transaction, first search for a borrower
                       and select one of their active loan accounts from the panel on the
                       left.
                     </Text>
@@ -668,7 +668,7 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
                         size="sm"
                         className="mt-1 text-gray-700"
                       >
-                        Select a borrower → Choose a loan account → Process repayment
+                        Select a borrower → Choose a loan account → Process Perepayment
                       </Text>
                     </div>
 
@@ -777,7 +777,7 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
               rightSection={<IconArrowRight size={16} />}
               className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 font-semibold px-6"
             >
-              Process Repayment
+              Process Perepayment
             </Button>
           </div>
         </div>

@@ -329,7 +329,7 @@ export function LoanPrepayment() {
           className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 transition-opacity"
           leftSection={<IconPlus size={14} />}
         >
-          Process Repayment
+          Process Prepayment
         </Button>
       </div>
 
