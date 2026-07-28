@@ -24,7 +24,7 @@ import { LoanCapitalization } from '../view/Operations/LoanCapitalization/LoanCa
 // import { FullSettlement } from '../view/Operations/FullSettlement';
 import { LoanRestructure } from '../view/Operations/LoanRestructure/LoanRestructure';
 import { LoanWriteOff } from '../view/Operations/LoanWriteOff/LoanWriteOff';
-// import { LoanTransfer } from '../view/Operations/LoanTransfer';
+import { LoanTransfer } from '../view/Operations/LoanTransfer/LoanTransfer';
 
 import { LoanCategory } from '../view/Loan/LoanCategory/LoanCategory';
 import { LoanClassification } from '../view/Setup/LoanClassification/LoanClassification';
@@ -188,11 +188,11 @@ const operationsWriteoffRoute = createRoute({
   path: '/writeoff',
   component: LoanWriteOff,
 });
-// const operationsTransferRoute = createRoute({
-//   getParentRoute: () => operationsRoute,
-//   path: '/transfer',
-//   component: LoanTransfer,
-// });
+const operationsTransferRoute = createRoute({
+  getParentRoute: () => operationsRoute,
+  path: '/transfer',
+  component: LoanTransfer,
+});
 
 /* ---------- Lending Reports (layout + children) ---------- */
 const reportsRoute = createRoute({
@@ -237,7 +237,7 @@ const routeTree = rootRoute.addChildren([
     // operationsSettlementRoute,
     operationsRestructureRoute,
     operationsWriteoffRoute,
-    // operationsTransferRoute,
+    operationsTransferRoute,
   ]),
   // reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute]),
 ]);
