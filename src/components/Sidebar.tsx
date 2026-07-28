@@ -119,22 +119,22 @@ const LOCAL_NAV_ITEMS = [
         label: "Loan Repayment",
         icon: IconCalculator,
       },
-      {
-        path: "/operations/prepayment",
-        label: "Loan Prepayment",
-        icon: IconCalculator,
-      },
+      // {
+      //   path: "/operations/prepayment",
+      //   label: "Loan Prepayment",
+      //   icon: IconCalculator,
+      // },
       { path: "/operations/waiver", label: "Loan Waiver", icon: IconFileText },
       {
         path: "/operations/capitalization",
         label: "Loan Capitalization",
         icon: IconFileText,
       },
-      {
-        path: "/operations/settlement",
-        label: "Full Settlement",
-        icon: IconShieldCheck,
-      },
+      // {
+      //   path: "/operations/settlement",
+      //   label: "Full Settlement",
+      //   icon: IconShieldCheck,
+      // },
       {
         path: "/operations/restructure",
         label: "Loan Restructure",
