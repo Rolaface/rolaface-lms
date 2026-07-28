@@ -31,7 +31,9 @@ export const API = {
   // =========================
   // LOAN PRODUCT
   // =========================
-  loanProduct: {},
+  loanProduct: {
+  create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.create_loan`,
+  },
 
   // =========================
   // LOAN APPLICATION
