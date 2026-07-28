@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -14,6 +14,7 @@ import {
   Pagination,
   Tooltip,
   Title,
+  Loader,
 } from '@mantine/core';
 import {
   IconEye,
@@ -34,80 +35,8 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { LoanAccountModal } from '../../components/Modal/LoanAccountModal';
-
-// NOTE: requires `@tanstack/react-table` — install with:
-//   npm install @tanstack/react-table
-
-const DUMMY_APPLICATIONS = [
-  {
-    id: 1,
-    appNo: 'APP-2026-004821',
-    customer: 'Chanda Mwansa',
-    product: 'SME Business Growth Loan',
-    branch: 'Lusaka Main Branch',
-    amount: 850000,
-    rate: 15.5,
-    status: 'DRAFT',
-    appliedDate: '2026-07-20',
-  },
-  {
-    id: 2,
-    appNo: 'APP-2026-004798',
-    customer: 'Bwalya Enterprises Ltd',
-    product: 'Asset Finance — Commercial Vehicle',
-    branch: 'Ndola Corporate Branch',
-    amount: 2400000,
-    rate: 17.0,
-    status: 'PENDING_APPROVAL',
-    appliedDate: '2026-07-18',
-  },
-  {
-    id: 3,
-    appNo: 'APP-2026-004780',
-    customer: 'Natasha Phiri',
-    product: 'Personal Salary Advance',
-    branch: 'Kitwe Business Branch',
-    amount: 45000,
-    rate: 12.0,
-    status: 'APPROVED',
-    appliedDate: '2026-07-15',
-  },
-  {
-    id: 4,
-    appNo: 'APP-2026-004755',
-    customer: 'Mutale Chileshe',
-    product: 'Agri-Business Seasonal Loan',
-    branch: 'Livingstone Branch',
-    amount: 620000,
-    rate: 14.0,
-    status: 'DISBURSED',
-    appliedDate: '2026-07-10',
-  },
-  {
-    id: 5,
-    appNo: 'APP-2026-004732',
-    customer: 'Joseph Tembo',
-    product: 'Personal Salary Advance',
-    branch: 'Lusaka Main Branch',
-    amount: 30000,
-    rate: 13.0,
-    status: 'REJECTED',
-    appliedDate: '2026-07-08',
-  },
-  {
-    id: 6,
-    appNo: 'APP-2026-004710',
-    customer: 'Bwalya Enterprises Ltd',
-    product: 'SME Business Growth Loan',
-    branch: 'Ndola Corporate Branch',
-    amount: 1250000,
-    rate: 16.5,
-    status: 'APPROVED',
-    appliedDate: '2026-07-05',
-  },
-];
-
+import { LoanAccountModal } from '../../components/Modal/LoanBooking/LoanAccountModal';
+import { getAllLoans } from '../../api/loanApi';  
 const STATUS_META: Record<string, { label: string; color: string }> = {
   DRAFT: { label: 'DRAFT', color: 'gray' },
   PENDING_APPROVAL: { label: 'PENDING APPROVAL', color: 'yellow' },
@@ -116,7 +45,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   REJECTED: { label: 'REJECTED', color: 'red' },
 };
 
-const columnHelper = createColumnHelper();
+const columnHelper = createColumnHelper<any>();
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   if (sorted === 'asc') return <IconChevronUp size={12} />;
@@ -127,13 +56,17 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
 const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
 
 const fmtAmount = (n: number) =>
-  n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  n ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
 
 const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
 export function LoanAccount() {
   const [opened, { open, close }] = useDisclosure(false);
+
+  // Data fetching state
+  const [data, setData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // filter state
   const [search, setSearch] = useState('');
@@ -145,7 +78,36 @@ export function LoanAccount() {
   const [sorting, setSorting] = useState([{ id: 'appliedDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  const data = useMemo(() => DUMMY_APPLICATIONS, []);
+  useEffect(() => {
+    const fetchLoans = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getAllLoans();
+        
+        if (response?.status === 'success' && response.data) {
+          // Map API data to match existing UI structure
+          const mappedData = response.data.map((item: any) => ({
+            id: item.name,
+            appNo: item.name,
+            customer: item.applicant_name || item.applicant || 'N/A',
+            product: item.loan_product || 'N/A',
+            branch: item.company || 'N/A', // Mapped company to branch to preserve UI
+            amount: item.loan_amount || 0,
+            rate: 0, // Fallback to 0 since rate isn't in current API response
+            status: item.status ? item.status.toUpperCase().replace(' ', '_') : 'DRAFT',
+            appliedDate: item.posting_date,
+          }));
+          setData(mappedData);
+        }
+      } catch (error) {
+        console.error('Error fetching loans:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLoans();
+  }, []);
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -208,7 +170,7 @@ export function LoanAccount() {
         header: 'Rate',
         cell: (info) => (
           <Text fz="xs" c="gray.6">
-            {info.getValue().toFixed(2)}%
+            {info.getValue() ? `${info.getValue().toFixed(2)}%` : '-'}
           </Text>
         ),
         sortingFn: 'basic',
@@ -289,8 +251,9 @@ export function LoanAccount() {
     setStatus('all');
   };
 
-  const productOptions = Array.from(new Set(DUMMY_APPLICATIONS.map((a) => a.product)));
-  const branchOptions = Array.from(new Set(DUMMY_APPLICATIONS.map((a) => a.branch)));
+  // Generate options dynamically from the loaded API data
+  const productOptions = Array.from(new Set(data.map((a) => a.product).filter(Boolean)));
+  const branchOptions = Array.from(new Set(data.map((a) => a.branch).filter(Boolean)));
 
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
@@ -329,7 +292,7 @@ export function LoanAccount() {
           <Select
             size="xs"
             placeholder="All Products"
-            data={productOptions}
+            data={productOptions as string[]}
             className="w-52"
             searchable
             clearable
@@ -343,7 +306,7 @@ export function LoanAccount() {
           <Select
             size="xs"
             placeholder="All Branches"
-            data={branchOptions}
+            data={branchOptions as string[]}
             className="w-44"
             searchable
             clearable
@@ -411,7 +374,18 @@ export function LoanAccount() {
             ))}
           </Table.Thead>
           <Table.Tbody>
-            {rows.length === 0 ? (
+            {isLoading ? (
+              <Table.Tr>
+                <Table.Td colSpan={columns.length}>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader size="sm" color="gray" />
+                    <Text ta="center" c="dimmed" fz="xs" mt="sm">
+                      Loading loan applications...
+                    </Text>
+                  </div>
+                </Table.Td>
+              </Table.Tr>
+            ) : rows.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={columns.length}>
                   <div className="flex flex-col items-center py-8 text-gray-400">
@@ -464,6 +438,7 @@ export function LoanAccount() {
             color="indigoAlt.4"
             size="xs"
             radius="sm"
+            disabled={totalRows === 0}
           />
         </div>
       </Paper>
