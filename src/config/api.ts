@@ -1,6 +1,5 @@
 // src/config/api.ts
-
-const ERP_BASE = import.meta.env.VITE_API_BASE_URL as string;
+const ERP_BASE = (import.meta.env.VITE_API_BASE_URL ?? "") as string;
 
 export { ERP_BASE };
 
@@ -12,7 +11,12 @@ export const API = {
     // login: `${ERP_BASE}/api/method/...`,
     // logout: `${ERP_BASE}/api/method/...`,
   },
-
+  // =========================
+  // CHARGES
+  // =========================
+  loanCharges: {
+    createCharges: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.charges.api.create_charge`,
+  },
   // =========================
   // DASHBOARD
   // =========================
