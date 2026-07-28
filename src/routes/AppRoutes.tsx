@@ -18,7 +18,7 @@ import { Collateral } from '../view/Collateral/Collateral';
 import { LoanAccount } from '../view/LoanAccount/LoanAccount';
 import { LoanDisbursement } from '../view/Operations/LoanDisbursement/LoanDisbursement';
 import { LoanRepayment } from '../view/Operations/LoanRepayment/LoanRepayment';
-// import { LoanPrepayment } from '../view/Operations/LoanPrepayment';
+import { LoanPrepayment } from '../view/Operations/LoanPrepayment/LoanPrepayment';
 // import { LoanWaiver } from '../view/Operations/LoanWaiver';
 // import { LoanCapitalization } from '../view/Operations/LoanCapitalization';
 // import { FullSettlement } from '../view/Operations/FullSettlement';
@@ -158,11 +158,11 @@ const operationsRepaymentRoute = createRoute({
   path: '/repayment',
   component: LoanRepayment,
 });
-// const operationsPrepaymentRoute = createRoute({
-//   getParentRoute: () => operationsRoute,
-//   path: '/prepayment',
-//   component: LoanPrepayment,
-// });
+const operationsPrepaymentRoute = createRoute({
+  getParentRoute: () => operationsRoute,
+  path: '/prepayment',
+  component: LoanPrepayment,
+});
 // const operationsWaiverRoute = createRoute({
 //   getParentRoute: () => operationsRoute,
 //   path: '/waiver',
@@ -231,7 +231,7 @@ const routeTree = rootRoute.addChildren([
     operationsBookingRoute,
     operationsDisbursementRoute,
     operationsRepaymentRoute,
-    // operationsPrepaymentRoute,
+    operationsPrepaymentRoute,
     // operationsWaiverRoute,
     // operationsCapitalizationRoute,
     // operationsSettlementRoute,
