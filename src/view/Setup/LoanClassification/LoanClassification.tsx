@@ -37,19 +37,19 @@ import { LoanClassificationModal, type LoanClassificationData } from "../../../c
 const DUMMY_CLASSIFICATIONS: LoanClassificationData[] = [
   {
     level: 1,
-    code: "STD",
-    name: "Standard",
+    code: "PAS",
+    name: "Pass",
     min_dpd_range: 0,
     max_dpd_range: 30,
     is_written_off: false,
-    provision_rate: 0,
+    provision_rate: 1,
   },
   {
     level: 2,
-    code: "WTC",
-    name: "Watch",
+    code: "SM",
+    name: "Special Mention",
     min_dpd_range: 31,
-    max_dpd_range: 60,
+    max_dpd_range: 90,
     is_written_off: false,
     provision_rate: 5,
   },
@@ -57,8 +57,8 @@ const DUMMY_CLASSIFICATIONS: LoanClassificationData[] = [
     level: 3,
     code: "SUB",
     name: "Substandard",
-    min_dpd_range: 61,
-    max_dpd_range: 90,
+    min_dpd_range: 91,
+    max_dpd_range: 180,
     is_written_off: false,
     provision_rate: 20,
   },
@@ -66,22 +66,21 @@ const DUMMY_CLASSIFICATIONS: LoanClassificationData[] = [
     level: 4,
     code: "DBT",
     name: "Doubtful",
-    min_dpd_range: 91,
-    max_dpd_range: 180,
+    min_dpd_range: 181,
+    max_dpd_range: 365,
     is_written_off: false,
     provision_rate: 50,
   },
   {
     level: 5,
-    code: "LSS",
+    code: "LOS",
     name: "Loss",
-    min_dpd_range: 181,
+    min_dpd_range: 366,
     max_dpd_range: null,
     is_written_off: true,
     provision_rate: 100,
   },
 ];
-
 const columnHelper = createColumnHelper<LoanClassificationData>();
 
 function SortIcon({ sorted }: { sorted: string | boolean }) {
