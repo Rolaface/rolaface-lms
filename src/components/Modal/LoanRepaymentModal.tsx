@@ -560,14 +560,14 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
                     {(
                       [
                         {
-                          label: "Pay Any",
+                          label: "Pay Dues",
                           value: "PAY_DUES",
                           active:
                             "border-emerald-300 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 shadow-sm",
                           hover: "hover:border-emerald-200 hover:bg-emerald-50",
                         },
                         {
-                          label: "Partially Pay Off",
+                          label: "Pay Any",
                           value: "PARTIAL",
                           active:
                             "border-amber-300 bg-amber-50 text-amber-700 ring-1 ring-amber-200 shadow-sm",
