@@ -586,13 +586,6 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
           <div className="flex flex-1 overflow-hidden border-t border-gray-100">
             {/* Borrower Selection */}
             <div className="w-[280px] border-r border-gray-200 p-5 shrink-0 overflow-y-auto">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-1 h-4 rounded bg-gradient-to-b from-[#4338CA] to-[#4F46E5]" />
-                <Text size="sm" fw={700} className="text-gray-900">
-                  Borrower Selection
-                </Text>
-              </div>
-
               {!selectedBorrower ? (
                 <>
                   <Text size="sm" fw={500} className="text-gray-700 mb-1">
@@ -938,14 +931,6 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
           </div>
         ) : (
           <div className="p-6 border-t border-gray-100 overflow-y-auto flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-1 h-4 rounded bg-gradient-to-b from-[#4338CA] to-[#4F46E5]" />
-              <Text fw={700} size="sm" className="text-gray-900">
-                Restructure Charges
-              </Text>
-            </div>
-         
-
             <Table verticalSpacing="sm" horizontalSpacing="md" fz="sm">
               <Table.Thead>
                 <Table.Tr className="border-b border-gray-200">
