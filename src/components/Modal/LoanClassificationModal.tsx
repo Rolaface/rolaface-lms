@@ -6,14 +6,13 @@ export interface LoanClassificationData {
   name: string;
   min_dpd_range: number | null;
   max_dpd_range: number | null;
-  is_written_off: boolean;
   provision_rate: number;
 }
 
 interface LoanClassificationModalProps {
   opened: boolean;
   onClose: () => void;
-  mode?: 'add' | 'edit' | 'view';
+  mode?: "add" | "edit" | "view";
   data?: LoanClassificationData | null;
 }
 
@@ -80,7 +79,7 @@ export function LoanClassificationModal({
     } else if (opened && mode === 'add') {
       setFormData(EMPTY_FORM_STATE);
     }
-  }, [opened, data, mode]);
+  }, [opened, data]);
 
 
   /**

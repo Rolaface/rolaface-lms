@@ -1,78 +1,194 @@
-import { Modal, TextInput, NumberInput, Select, Checkbox, Button, Group, SimpleGrid } from '@mantine/core';
+import { useState } from "react";
+import {
+  Modal,
+  Box,
+  Text,
+  TextInput,
+  NumberInput,
+  Select,
+  Checkbox,
+  Button,
+} from "@mantine/core";
+import { IconBriefcase, IconX, IconPercentage, IconChevronDown } from "@tabler/icons-react";
 
-export function CollateralModal({ opened, onClose }) {
+interface CollateralModalProps {
+  opened: boolean;
+  onClose: () => void;
+}
+
+const labelClass = { label: "text-sm font-medium text-gray-700 mb-1" };
+
+export function CollateralModal({ opened, onClose }: CollateralModalProps) {
+  const [formData, setFormData] = useState({
+    code: "",
+    name: "",
+    type: "",
+    haircut: 0,
+    originalValue: "" as number | "",
+    ltv: "" as number | "",
+    disabled: false,
+  });
+
+  const handleReset = () => {
+    setFormData({
+      code: "",
+      name: "",
+      type: "",
+      haircut: 0,
+      originalValue: "",
+      ltv: "",
+      disabled: false,
+    });
+  };
+
+  const handleClose = () => {
+    handleReset();
+    onClose();
+  };
+
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
-      title="New Collateral"
-      size="xl"
+      onClose={handleClose}
+      size="750px"
+      withCloseButton={false}
+      padding={0}
       radius="md"
-      classNames={{ title: 'font-semibold text-gray-900' }}
     >
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl" mt="sm">
-        {/* Left Column */}
-        <div className="flex flex-col gap-6">
-          <TextInput
-            label="Collateral Code"
-            withAsterisk
-            size="sm"
-          />
-          <TextInput
-            label="Collateral Name"
-            withAsterisk
-            size="sm"
-          />
-          <NumberInput
-            label="Haircut %"
-            defaultValue={0.000}
-            decimalScale={3}
-            fixedDecimalScale
-            size="sm"
-          />
-          <NumberInput
-            label="Original Collateral Value"
-            thousandSeparator
-            size="sm"
-          />
+      <Box className="flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#7C3AED] flex items-center justify-center">
+              <IconBriefcase size={20} className="text-white" />
+            </div>
+            <div>
+              <Text size="md" fw={700} className="text-gray-900 leading-tight">
+                New Collateral
+              </Text>
+              <Text size="xs" c="dimmed">
+                Define collateral details, valuation metrics, and status.
+              </Text>
+            </div>
+          </div>
+          <Button variant="subtle" color="gray" onClick={handleClose} className="px-2" size="xs">
+            <IconX size={18} />
+          </Button>
         </div>
 
-        {/* Right Column */}
-        <div className="flex flex-col gap-6">
-          <Select
-            label="Collateral Type"
-            withAsterisk
-            data={['Real Estate', 'Vehicles', 'Government Bonds', 'Shares/Equities', 'Cash Deposits']}
-            searchable
-            size="sm"
-          />
-          <NumberInput
-            label="Loan To Value Ratio"
-            size="sm"
-          />
-          <Checkbox 
-            label="Disabled" 
-            size="sm" 
-            mt="xs"
-            color="indigoAlt.4"
-          />
-        </div>
-      </SimpleGrid>
+        <div className="border-b border-gray-200" />
 
-      {/* Footer Actions */}
-      <Group justify="flex-end" mt="xl" pt="md" className="border-t border-gray-100">
-        <Button variant="default" onClick={onClose} size="sm">
-          Cancel
-        </Button>
-        <Button 
-          size="sm" 
-          bg="indigoAlt.4"
-          className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-          onClick={onClose}
-        >
-          Save
-        </Button>
-      </Group>
+        {/* Body */}
+        <div className="flex-1 p-6">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            <TextInput
+              size="xs"
+              label="Collateral Code"
+              placeholder="Enter code"
+              withAsterisk
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.currentTarget.value })}
+              classNames={labelClass}
+            />
+
+            <Select
+              size="xs"
+              label="Collateral Type"
+              placeholder="Select type"
+              withAsterisk
+              data={[
+                "Real Estate",
+                "Vehicles",
+                "Government Bonds",
+                "Shares/Equities",
+                "Cash Deposits",
+              ]}
+              searchable
+              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+              value={formData.type}
+              onChange={(v) => setFormData({ ...formData, type: v || "" })}
+              classNames={labelClass}
+            />
+
+            <div className="col-span-2">
+              <TextInput
+                size="xs"
+                label="Collateral Name"
+                placeholder="Enter full name"
+                withAsterisk
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.currentTarget.value })}
+                classNames={labelClass}
+              />
+            </div>
+
+            <NumberInput
+              size="xs"
+              label="Original Collateral Value"
+              placeholder="0.00"
+              thousandSeparator=","
+              hideControls
+              value={formData.originalValue}
+              onChange={(v) => setFormData({ ...formData, originalValue: v as number })}
+              classNames={labelClass}
+            />
+
+            <NumberInput
+              size="xs"
+              label="Loan To Value Ratio"
+              placeholder="0.00"
+              hideControls
+              value={formData.ltv}
+              onChange={(v) => setFormData({ ...formData, ltv: v as number })}
+              rightSection={<IconPercentage size={13} className="text-gray-400" />}
+              classNames={labelClass}
+            />
+
+            <NumberInput
+              size="xs"
+              label="Haircut %"
+              placeholder="0.000"
+              decimalScale={3}
+              fixedDecimalScale
+              hideControls
+              value={formData.haircut}
+              onChange={(v) => setFormData({ ...formData, haircut: v as number })}
+              rightSection={<IconPercentage size={13} className="text-gray-400" />}
+              classNames={labelClass}
+            />
+
+            {/* Checkbox aligned nicely with the other inputs */}
+            <div className="flex items-center pt-6">
+              <Checkbox
+                size="xs"
+                label="Disabled"
+                color="indigo"
+                checked={formData.disabled}
+                onChange={(e) => setFormData({ ...formData, disabled: e.currentTarget.checked })}
+                styles={{ label: { color: '#374151', fontWeight: 500 } }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 p-4 px-6 flex justify-between items-center shrink-0 bg-gray-50/50">
+          <Button size="xs" variant="default" onClick={handleClose} className="font-semibold px-5">
+            Cancel
+          </Button>
+          
+          <Button
+            size="xs"
+            onClick={() => {
+              // Save logic here
+              onClose();
+            }}
+            className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 font-semibold px-6"
+          >
+            Save Collateral
+          </Button>
+        </div>
+      </Box>
     </Modal>
   );
 }
