@@ -44,8 +44,9 @@ export function BasicDetailsTab({
   maturityDate,
   loanAcNumber,
 }: BasicDetailsTabProps) {
-  const moratoriumEnabled =
-    !!form.values.moratoriumType && form.values.moratoriumType !== "None";
+  // const moratoriumEnabled =
+  //   !!form.values.moratoriumType && form.values.moratoriumType !== "None";
+  const moratoriumEnabled = !!form.values.moratoriumType;
 
     const { data: customerResponse, isLoading: isCustomersLoading } = useQuery({
     queryKey: ["customers"],
@@ -292,7 +293,10 @@ const { data: productResponse, isLoading: isProductsLoading } = useQuery({
           <Input.Wrapper label="Moratorium Type" classNames={labelClass}>
             <SegmentedControl
               size="xs"
-              data={MORATORIUM_TYPES}
+              data={[
+      { label: "Principal", value: "Principal" },
+      { label: "EMI (Principal + Interest)", value: "EMI" }, // <--- Shows long text, saves short text!
+    ]}
               fullWidth
               color="blue"
               value={form.values.moratoriumType}
