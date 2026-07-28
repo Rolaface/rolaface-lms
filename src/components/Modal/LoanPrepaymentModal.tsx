@@ -13,6 +13,7 @@ import {
   Badge,
   ActionIcon,
   Tooltip,
+  Table,
 } from "@mantine/core";
 import {
   IconX,
@@ -31,6 +32,7 @@ import {
   IconChecklist,
   IconNotes,
   IconHash,
+  IconCalendarStats,
 } from "@tabler/icons-react";
 
 interface LoanPrepaymentModalProps {
@@ -188,6 +190,34 @@ const BORROWERS: Borrower[] = [
 
 const PAYMENT_MODES = ["Direct Debit from A/C", "Cash", "Cheque", "NEFT/RTGS", "UPI"];
 
+interface ScheduleInstallment {
+  installmentNo: number;
+  dueDate: string;
+  principal: number;
+  interest: number;
+  total: number;
+  status: "Paid" | "Due" | "Upcoming";
+}
+
+
+function generateSchedule(loan: LoanAccount): ScheduleInstallment[] {
+  const installments: ScheduleInstallment[] = [];
+  const today = new Date();
+  for (let i = 0; i < 6; i++) {
+    const dueDate = new Date(today.getFullYear(), today.getMonth() + i, today.getDate());
+    const interest = Math.max(loan.interestDue - i * (loan.interestDue * 0.03), 0);
+    installments.push({
+      installmentNo: i + 1,
+      dueDate: dueDate.toISOString().slice(0, 10),
+      principal: loan.principalDue,
+      interest,
+      total: loan.principalDue + interest,
+      status: i === 0 ? "Due" : "Upcoming",
+    });
+  }
+  return installments;
+}
+
 const labelClass = { label: "text-sm font-medium text-gray-700 mb-1" };
 const chevronDown = <IconChevronDown size={14} className="text-gray-500" />;
 
@@ -211,6 +241,7 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
   const [referenceDate, setReferenceDate] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [remark, setRemark] = useState("");
+  const [scheduleModalOpened, setScheduleModalOpened] = useState(false);
 
   // Collapse the borrower panel automatically once a loan account is picked,
   // to free up room for the payment form. Expands again if selection is cleared.
@@ -235,6 +266,10 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
   const totalDue = selectedLoan
     ? selectedLoan.principalDue + selectedLoan.interestDue + selectedLoan.lateFees
     : 0;
+  const schedule = useMemo(
+    () => (selectedLoan ? generateSchedule(selectedLoan) : []),
+    [selectedLoan]
+  );
 
   const handleSelectBorrower = (borrower: Borrower) => {
     setSelectedBorrower(borrower);
@@ -315,6 +350,7 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
   };
 
   return (
+    <>
     <Modal
       opened={opened}
       onClose={onClose}
@@ -323,7 +359,7 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
       padding={0}
       radius="md"
     >
-      <Box className="flex flex-col h-[520px] max-h-[90vh] overflow-hidden">
+      <Box className="flex flex-col h-[600px] max-h-[60vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
           <div className="flex items-center gap-3">
@@ -563,6 +599,22 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
                     decimalScale={2}
                     classNames={labelClass}
                   />
+                  <div className="flex items-end">
+                    <Button
+                      fullWidth
+                      h={36}
+                      variant="light"
+                      color="brand"
+                      disabled={!selectedLoan}
+                      leftSection={<IconCalendarStats size={14} />}
+                      onClick={() => setScheduleModalOpened(true)}
+                      className="font-semibold"
+                    >
+                      New Schedule
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-x-8 gap-y-3">
                   <Select
                     size="sm"
                     withAsterisk
@@ -584,9 +636,6 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
                     leftSection={<IconCreditCard size={14} className="text-gray-400" />}
                     classNames={labelClass}
                   />
-                </div>
-                <div className="grid grid-cols-3 gap-x-8 gap-y-3">
-
                   <TextInput
                     size="sm"
                     label="Reference Number"
@@ -596,6 +645,8 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
                     leftSection={<IconHash size={14} className="text-gray-400" />}
                     classNames={labelClass}
                   />
+                </div>
+                <div className="grid grid-cols-3 gap-x-8 gap-y-3">
 
                   <TextInput
                     size="sm"
@@ -607,14 +658,14 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
                     classNames={labelClass}
                   />
                   <TextInput
-                  size="sm"
-                  label="Remark"
-                  placeholder="Add a note about this Perepayment (optional)"
-                  value={remark}
-                  onChange={(e) => setRemark(e.currentTarget.value)}
-                  leftSection={<IconNotes size={14} className="text-gray-400" />}
-                  classNames={labelClass}
-                />
+                    size="sm"
+                    label="Remark"
+                    placeholder="Add a note about this Perepayment (optional)"
+                    value={remark}
+                    onChange={(e) => setRemark(e.currentTarget.value)}
+                    leftSection={<IconNotes size={14} className="text-gray-400" />}
+                    classNames={labelClass}
+                  />
                 </div>                
               </div>
             </div>
@@ -783,5 +834,75 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
         </div>
       </Box>
     </Modal>
+
+    <Modal
+      opened={scheduleModalOpened}
+      onClose={() => setScheduleModalOpened(false)}
+      withCloseButton
+      title={
+        <div className="flex items-center gap-2">
+          <IconCalendarStats size={18} className="text-[#4F46E5]" />
+          <Text size="sm" fw={700} className="text-gray-900">
+            Repayment Schedule
+          </Text>
+        </div>
+      }
+      size="700px"
+      radius="md"
+    >
+      {selectedLoan && (
+        <>
+          <div className="flex items-center justify-between mb-4 rounded-md border border-gray-100 bg-gray-50/60 px-3 py-2">
+            <div>
+              <Text size="sm" fw={700} className="text-gray-900">
+                {selectedLoan.type} · {selectedLoan.id}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {selectedBorrower?.name}
+              </Text>
+            </div>
+            <Badge size="sm" variant="light" color="brand">
+              {schedule.length} upcoming installments
+            </Badge>
+          </div>
+
+          <Table striped highlightOnHover verticalSpacing="sm" fz="sm">
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>#</Table.Th>
+                <Table.Th>Due Date</Table.Th>
+                <Table.Th>Principal</Table.Th>
+                <Table.Th>Interest</Table.Th>
+                <Table.Th>Total</Table.Th>
+                <Table.Th>Status</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {schedule.map((row) => (
+                <Table.Tr key={row.installmentNo}>
+                  <Table.Td className="text-gray-500">{row.installmentNo}</Table.Td>
+                  <Table.Td>{row.dueDate}</Table.Td>
+                  <Table.Td className="font-mono">{formatCurrency(row.principal)}</Table.Td>
+                  <Table.Td className="font-mono">{formatCurrency(row.interest)}</Table.Td>
+                  <Table.Td className="font-mono font-semibold text-gray-900">
+                    {formatCurrency(row.total)}
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge
+                      size="sm"
+                      variant="light"
+                      color={row.status === "Paid" ? "green" : row.status === "Due" ? "orange" : "gray"}
+                    >
+                      {row.status}
+                    </Badge>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </>
+      )}
+    </Modal>
+    </>
   );
 }
