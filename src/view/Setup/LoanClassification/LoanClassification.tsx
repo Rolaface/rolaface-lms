@@ -178,9 +178,9 @@ export function LoanClassification() {
       columnHelper.accessor("is_written_off", {
         header: "Written Off",
         cell: (info) => (
-          <Badge 
-            color={info.getValue() ? 'red' : 'gray'} 
-            variant="light" 
+          <Badge
+            color={info.getValue() ? 'red' : 'gray'}
+            variant="light"
             size="sm"
             radius="sm"
           >
@@ -199,9 +199,9 @@ export function LoanClassification() {
           return (
             <Group justify="flex-end" gap={6} wrap="nowrap">
               <Tooltip label="View" withArrow>
-                <ActionIcon 
-                  size="sm" 
-                  variant="subtle" 
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
                   color="gray"
                   onClick={() => handleOpenModal('view', info.row.original)}
                 >
@@ -209,9 +209,9 @@ export function LoanClassification() {
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon 
-                  size="sm" 
-                  variant="subtle" 
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
                   color="blue"
                   onClick={() => handleOpenModal('edit', info.row.original)}
                 >
@@ -250,9 +250,9 @@ export function LoanClassification() {
 
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
-      <LoanClassificationModal 
-        opened={opened} 
-        onClose={close} 
+      <LoanClassificationModal
+        opened={opened}
+        onClose={close}
         mode={modalMode}
         data={selectedData}
       />
@@ -262,6 +262,7 @@ export function LoanClassification() {
         <Title order={2} className="text-gray-900 font-semibold">
           Loan Classifications
         </Title>
+
         <Button
           size="xs"
           bg="indigoAlt.4"
@@ -314,9 +315,8 @@ export function LoanClassification() {
                   return (
                     <Table.Th
                       key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${
-                        canSort ? "cursor-pointer" : ""
-                      }`}
+                      className={`text-gray-600 font-semibold select-none ${canSort ? "cursor-pointer" : ""
+                        }`}
                       style={{ fontSize: 11, padding: "8px 10px" }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
