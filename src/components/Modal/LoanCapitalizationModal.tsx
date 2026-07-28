@@ -1,3 +1,5 @@
+// @TODO No need of Nature Of Payment, Remove it
+
 import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
@@ -22,6 +24,7 @@ import {
   IconCalendarDue,
   IconChecklist,
   IconNotes,
+  IconReportMoney,
 } from '@tabler/icons-react';
 
 interface LoanCapitalizationModalProps {
@@ -53,6 +56,7 @@ interface LoanAccount {
   interestDue: number;
   penalty: number;
   lateFees: number;
+  remainingInstallments: number;
 }
 
 interface Borrower {
@@ -79,6 +83,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 125.5,
         penalty: 10,
         lateFees: 25,
+        remainingInstallments: 18,
       },
       {
         id: 'LNA-2025-089',
@@ -89,6 +94,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 65,
         penalty: 10,
         lateFees: 0,
+        remainingInstallments: 9,
       },
     ],
   },
@@ -107,6 +113,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 1450.75,
         penalty: 10,
         lateFees: 0,
+        remainingInstallments: 96,
       },
     ],
   },
@@ -125,6 +132,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 95.25,
         penalty: 10,
         lateFees: 40,
+        remainingInstallments: 14,
       },
       {
         id: 'LNA-2025-047',
@@ -135,6 +143,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 42.5,
         penalty: 10,
         lateFees: 15,
+        remainingInstallments: 6,
       },
     ],
   },
@@ -144,6 +153,79 @@ const labelClass = { label: 'text-sm font-medium text-gray-700 mb-1' };
 
 function formatCurrency(amount: number) {
   return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+}
+
+interface PaymentEffectRow {
+  component: string;
+  before: number;
+  after: number;
+}
+
+interface PaymentEffectModalProps {
+  opened: boolean;
+  onClose: () => void;
+  loanId: string;
+  customerName: string;
+  rows: PaymentEffectRow[];
+}
+
+function PaymentEffectModal({ opened, onClose, loanId, customerName, rows }: PaymentEffectModalProps) {
+  return (
+    <Modal opened={opened} onClose={onClose} size="640px" withCloseButton={false} padding={0} radius="md">
+      <Box className="flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#3730A3] flex items-center justify-center">
+              <IconReportMoney size={20} className="text-white" />
+            </div>
+            <div>
+              <Text size="md" fw={700} className="text-gray-900 leading-tight">
+                Payment Effect
+              </Text>
+              <Text size="xs" c="dimmed">
+                Projected impact of this capitalization on{' '}
+                <span className="font-semibold text-gray-700">
+                  {loanId} / {customerName}
+                </span>
+              </Text>
+            </div>
+          </div>
+          <Button variant="subtle" color="gray" onClick={onClose} className="px-2" size="xs">
+            <IconX size={18} />
+          </Button>
+        </div>
+
+        <div className="border-b border-gray-200" />
+
+        <div className="p-6">
+          <Table withTableBorder withColumnBorders striped verticalSpacing="sm">
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Component</Table.Th>
+                <Table.Th className="text-right">Before</Table.Th>
+                <Table.Th className="text-right">After</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {rows.map((row) => (
+                <Table.Tr key={row.component}>
+                  <Table.Td className="font-medium text-gray-700">{row.component}</Table.Td>
+                  <Table.Td className="font-mono text-right">{formatCurrency(row.before)}</Table.Td>
+                  <Table.Td className="font-mono text-right text-emerald-700">{formatCurrency(row.after)}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </div>
+
+        <div className="border-t border-gray-200 p-4 px-6 flex justify-end shrink-0">
+          <Button size="sm" variant="default" onClick={onClose} className="font-semibold px-5">
+            Close
+          </Button>
+        </div>
+      </Box>
+    </Modal>
+  );
 }
 
 export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapitalizationModalProps) {
@@ -160,6 +242,8 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
   const [referenceDate, setReferenceDate] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [remark, setRemark] = useState('');
+
+  const [paymentEffectOpened, setPaymentEffectOpened] = useState(false);
 
   useEffect(() => {
     setBorrowerPanelCollapsed(!!selectedLoanId);
@@ -182,6 +266,42 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
   const totalDue = selectedLoan
     ? selectedLoan.principalDue + selectedLoan.interestDue + selectedLoan.lateFees
     : 0;
+
+  const paymentEffectRows: PaymentEffectRow[] = useMemo(() => {
+    if (!selectedLoan) return [];
+    const paying = Number(amountToPay) || 0;
+    const isFullSettlement = natureOfPayment === 'FULL_SETTLEMENT';
+    const principalOutstandingBefore = selectedLoan.balance;
+    const clamp = (n: number) => Math.max(Math.round(n * 100) / 100, 0);
+
+    return [
+      {
+        component: 'Total Outstanding',
+        before: selectedLoan.balance,
+        after: isFullSettlement ? 0 : clamp(selectedLoan.balance - paying),
+      },
+      {
+        component: 'Principal Outstanding',
+        before: principalOutstandingBefore,
+        after: isFullSettlement ? 0 : clamp(principalOutstandingBefore - Math.max(paying - selectedLoan.interestDue, 0)),
+      },
+      {
+        component: 'Arrears',
+        before: totalDue,
+        after: isFullSettlement ? 0 : clamp(totalDue - paying),
+      },
+      {
+        component: 'Remaining Installments',
+        before: selectedLoan.remainingInstallments,
+        after: isFullSettlement ? 0 : Math.max(selectedLoan.remainingInstallments - (paying >= totalDue && totalDue > 0 ? 1 : 0), 0),
+      },
+      {
+        component: 'Interest Payable',
+        before: selectedLoan.interestDue,
+        after: isFullSettlement ? 0 : clamp(selectedLoan.interestDue - Math.min(paying, selectedLoan.interestDue)),
+      },
+    ];
+  }, [selectedLoan, amountToPay, natureOfPayment, totalDue]);
 
   const handleSelectBorrower = (borrower: Borrower) => {
     setSelectedBorrower(borrower);
@@ -245,7 +365,7 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
 
   return (
     <Modal opened={opened} onClose={onClose} size="1300px" withCloseButton={false} padding={0} radius="md">
-      <Box className="flex flex-col h-[640px] max-h-[90vh] overflow-hidden">
+      <Box className="flex flex-col h-[700px] max-h-[90vh] overflow-hidden">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#3730A3] flex items-center justify-center">
@@ -550,9 +670,17 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
         </div>
 
         <div className="border-t border-gray-200 p-4 px-6 flex justify-between items-center shrink-0">
-          <Button size="sm" variant="default" onClick={onClose} className="font-semibold px-5">
-            Cancel
-          </Button>
+          <Button
+              size="sm"
+              variant="light"
+              color="brand"
+              disabled={!selectedLoan}
+              leftSection={<IconReportMoney size={14} />}
+              onClick={() => setPaymentEffectOpened(true)}
+              className="font-semibold px-4"
+            >
+              Payment Effect
+            </Button>
           <div className="flex gap-2">
             <Button size="sm" variant="subtle" color="danger" leftSection={<IconRefresh size={14} />} onClick={handleReset} className="font-semibold px-4">
               Reset
@@ -563,6 +691,14 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
           </div>
         </div>
       </Box>
+
+      <PaymentEffectModal
+        opened={paymentEffectOpened}
+        onClose={() => setPaymentEffectOpened(false)}
+        loanId={selectedLoan?.id ?? ''}
+        customerName={selectedBorrower?.name ?? ''}
+        rows={paymentEffectRows}
+      />
     </Modal>
   );
 }

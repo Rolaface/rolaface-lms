@@ -13,6 +13,7 @@ import {
   Badge,
   ActionIcon,
   Tooltip,
+  Table,
 } from "@mantine/core";
 import {
   IconX,
@@ -31,6 +32,8 @@ import {
   IconChecklist,
   IconNotes,
   IconHash,
+  IconScale,
+  IconTrendingDown,
 } from "@tabler/icons-react";
 
 interface LoanRepaymentModalProps {
@@ -62,6 +65,8 @@ interface LoanAccount {
   interestDue: number;
   penalty: number;
   lateFees: number;
+  // Total number of EMIs still left on the schedule (used for the Payment Effect preview).
+  remainingInstallments: number;
 }
 
 interface Borrower {
@@ -89,6 +94,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 125.5,
         penalty: 10,
         lateFees: 25,
+        remainingInstallments: 28,
       },
       {
         id: "LNA-2025-089",
@@ -99,6 +105,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 65,
         penalty: 10,
         lateFees: 0,
+        remainingInstallments: 20,
       },
     ],
   },
@@ -117,6 +124,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 1450.75,
         penalty: 10,
         lateFees: 0,
+        remainingInstallments: 156,
       },
     ],
   },
@@ -135,6 +143,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 95.25,
         penalty: 10,
         lateFees: 40,
+        remainingInstallments: 22,
       },
       {
         id: "LNA-2025-047",
@@ -145,6 +154,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 42.5,
         penalty: 10,
         lateFees: 15,
+        remainingInstallments: 12,
       },
     ],
   },
@@ -163,6 +173,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 380.6,
         penalty: 10,
         lateFees: 0,
+        remainingInstallments: 96,
       },
     ],
   },
@@ -181,6 +192,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 88,
         penalty: 10,
         lateFees: 60,
+        remainingInstallments: 16,
       },
     ],
   },
@@ -193,6 +205,55 @@ const chevronDown = <IconChevronDown size={14} className="text-gray-500" />;
 
 function formatCurrency(amount: number) {
   return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+}
+
+// Applies a payment against a loan using a standard collection waterfall:
+// penalty -> late fees -> interest -> principal. Returns the before/after
+// snapshot used by the Payment Effect preview.
+function computePaymentEffect(loan: LoanAccount, amount: number, nature: LoanRepaymentFormData["natureOfPayment"]) {
+  const amt = Math.max(0, amount || 0);
+
+  const totalOutstandingBefore = loan.balance + loan.interestDue + loan.penalty + loan.lateFees;
+  const arrearsBefore = loan.principalDue + loan.interestDue + loan.penalty + loan.lateFees;
+  const principalOutstandingBefore = loan.balance;
+  const interestPayableBefore = loan.interestDue;
+
+  let remaining = amt;
+  const penaltyPaid = Math.min(remaining, loan.penalty);
+  remaining -= penaltyPaid;
+  const feesPaid = Math.min(remaining, loan.lateFees);
+  remaining -= feesPaid;
+  const interestPaid = Math.min(remaining, loan.interestDue);
+  remaining -= interestPaid;
+  const principalPaid = Math.min(remaining, loan.balance);
+  remaining -= principalPaid;
+
+  const totalOutstandingAfter = Math.max(totalOutstandingBefore - amt, 0);
+  const principalOutstandingAfter = Math.max(principalOutstandingBefore - principalPaid, 0);
+  const arrearsAfter = Math.max(arrearsBefore - amt, 0);
+  const interestPayableAfter = Math.max(interestPayableBefore - interestPaid, 0);
+
+  const emiCleared = nature === "FULL_SETTLEMENT" || amt >= loan.principalDue + loan.interestDue + loan.penalty + loan.lateFees;
+  const remainingInstallmentsBefore = loan.remainingInstallments;
+  const remainingInstallmentsAfter =
+    nature === "FULL_SETTLEMENT"
+      ? 0
+      : emiCleared
+      ? Math.max(loan.remainingInstallments - 1, 0)
+      : loan.remainingInstallments;
+
+  return {
+    totalOutstandingBefore,
+    totalOutstandingAfter,
+    principalOutstandingBefore,
+    principalOutstandingAfter,
+    arrearsBefore,
+    arrearsAfter,
+    remainingInstallmentsBefore,
+    remainingInstallmentsAfter,
+    interestPayableBefore,
+    interestPayableAfter,
+  };
 }
 
 export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentModalProps) {
@@ -211,6 +272,8 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
   const [referenceDate, setReferenceDate] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [remark, setRemark] = useState("");
+
+  const [paymentEffectOpened, setPaymentEffectOpened] = useState(false);
 
   // Collapse the borrower panel automatically once a loan account is picked,
   // to free up room for the payment form. Expands again if selection is cleared.
@@ -235,6 +298,11 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
   const totalDue = selectedLoan
     ? selectedLoan.principalDue + selectedLoan.interestDue + selectedLoan.lateFees
     : 0;
+
+  const paymentEffect = useMemo(() => {
+    if (!selectedLoan) return null;
+    return computePaymentEffect(selectedLoan, Number(amountToPay) || 0, natureOfPayment);
+  }, [selectedLoan, amountToPay, natureOfPayment]);
 
   const handleSelectBorrower = (borrower: Borrower) => {
     setSelectedBorrower(borrower);
@@ -793,6 +861,18 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
                     </Text>
                   </div>
                 </div>
+
+                <Button
+                  size="sm"
+                  variant="light"
+                  color="brand"
+                  fullWidth
+                  leftSection={<IconScale size={14} />}
+                  onClick={() => setPaymentEffectOpened(true)}
+                  className="font-semibold"
+                >
+                  Payment Effect
+                </Button>
               </div>
             ) : (
               <Text size="xs" c="dimmed" className="py-8 text-center">
@@ -830,6 +910,153 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
           </div>
         </div>
       </Box>
+
+      {/* Payment Effect Modal */}
+      <Modal
+        opened={paymentEffectOpened}
+        onClose={() => setPaymentEffectOpened(false)}
+        size="640px"
+        withCloseButton={false}
+        padding={0}
+        radius="md"
+      >
+        <Box className="flex flex-col">
+          <div className="flex items-center justify-between px-6 pt-5 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#3730A3] flex items-center justify-center">
+                <IconTrendingDown size={20} className="text-white" />
+              </div>
+              <div>
+                <Text size="md" fw={700} className="text-gray-900 leading-tight">
+                  Payment Effect
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Projected impact of {amountToPay ? formatCurrency(Number(amountToPay)) : "this payment"} on{" "}
+                  {selectedLoan?.id ?? "the loan account"}.
+                </Text>
+              </div>
+            </div>
+            <Button
+              variant="subtle"
+              color="gray"
+              onClick={() => setPaymentEffectOpened(false)}
+              className="px-2"
+              size="xs"
+            >
+              <IconX size={18} />
+            </Button>
+          </div>
+
+          <div className="border-b border-gray-200" />
+
+          <div className="px-6 py-5">
+            {paymentEffect && selectedLoan ? (
+              <Table verticalSpacing="sm" horizontalSpacing="md" withRowBorders={false}>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Component
+                    </Table.Th>
+                    <Table.Th className="text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">
+                      Before
+                    </Table.Th>
+                    <Table.Th className="text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">
+                      After
+                    </Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  <Table.Tr className="bg-gray-50/60">
+                    <Table.Td>
+                      <Text size="sm" fw={600} className="text-gray-900">
+                        Total Outstanding
+                      </Text>
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm text-gray-700">
+                      {formatCurrency(paymentEffect.totalOutstandingBefore)}
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm font-semibold text-emerald-700">
+                      {formatCurrency(paymentEffect.totalOutstandingAfter)}
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Text size="sm" fw={600} className="text-gray-900">
+                        Principal Outstanding
+                      </Text>
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm text-gray-700">
+                      {formatCurrency(paymentEffect.principalOutstandingBefore)}
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm font-semibold text-emerald-700">
+                      {formatCurrency(paymentEffect.principalOutstandingAfter)}
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr className="bg-gray-50/60">
+                    <Table.Td>
+                      <Text size="sm" fw={600} className="text-gray-900">
+                        Arrears
+                      </Text>
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm text-gray-700">
+                      {formatCurrency(paymentEffect.arrearsBefore)}
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm font-semibold text-emerald-700">
+                      {formatCurrency(paymentEffect.arrearsAfter)}
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Text size="sm" fw={600} className="text-gray-900">
+                        Remaining Installments
+                      </Text>
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm text-gray-700">
+                      {paymentEffect.remainingInstallmentsBefore}
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm font-semibold text-emerald-700">
+                      {paymentEffect.remainingInstallmentsAfter}
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr className="bg-gray-50/60">
+                    <Table.Td>
+                      <Text size="sm" fw={600} className="text-gray-900">
+                        Interest Payable
+                      </Text>
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm text-gray-700">
+                      {formatCurrency(paymentEffect.interestPayableBefore)}
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm font-semibold text-emerald-700">
+                      {formatCurrency(paymentEffect.interestPayableAfter)}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            ) : (
+              <Text size="sm" c="dimmed" className="py-6 text-center">
+                Select a loan account to preview payment effect.
+              </Text>
+            )}
+
+            <Text size="xs" c="dimmed" className="mt-4">
+              Payment is applied in order: penalty → fees → interest → principal. This is a
+              projection only and does not process the transaction.
+            </Text>
+          </div>
+
+          <div className="border-t border-gray-200 p-4 px-6 flex justify-end">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => setPaymentEffectOpened(false)}
+              className="font-semibold px-5"
+            >
+              Close
+            </Button>
+          </div>
+        </Box>
+      </Modal>
     </Modal>
   );
 }

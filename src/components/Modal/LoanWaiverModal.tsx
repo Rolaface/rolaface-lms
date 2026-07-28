@@ -1,5 +1,3 @@
-// @TODO:No need of Nature of Payment, remove the Nature of Payment
-
 import { useEffect, useMemo, useState } from "react";
 import {
   Box,
@@ -24,6 +22,8 @@ import {
   IconCalendarDue,
   IconChecklist,
   IconNotes,
+  IconScale,
+  IconTrendingDown,
 } from "@tabler/icons-react";
 
 interface LoanWaiverModalProps {
@@ -37,13 +37,15 @@ export interface LoanWaiverFormData {
   customerName: string;
   loanType: string;
   valueDate: string;
-  natureOfPayment: "PAY_DUES" | "PARTIAL" | "FULL_SETTLEMENT";
   amountToPay: number | "";
   paymentMode: string | null;
   referenceNumber: string;
   referenceDate: string;
   accountNumber: string;
   remark: string;
+  waivedInterest: number | "";
+  waivedPenalty: number | "";
+  waivedFee: number | "";
 }
 
 interface LoanAccount {
@@ -55,6 +57,8 @@ interface LoanAccount {
   interestDue: number;
   penalty: number;
   lateFees: number;
+  // Total number of EMIs still left on the schedule (used for the Waiver Effect preview).
+  remainingInstallments: number;
 }
 
 interface Borrower {
@@ -81,6 +85,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 125.5,
         penalty: 10,
         lateFees: 25,
+        remainingInstallments: 28,
       },
       {
         id: "LNA-2025-089",
@@ -91,6 +96,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 65,
         penalty: 10,
         lateFees: 0,
+        remainingInstallments: 20,
       },
     ],
   },
@@ -109,6 +115,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 1450.75,
         penalty: 10,
         lateFees: 0,
+        remainingInstallments: 156,
       },
     ],
   },
@@ -127,6 +134,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 95.25,
         penalty: 10,
         lateFees: 40,
+        remainingInstallments: 22,
       },
       {
         id: "LNA-2025-047",
@@ -137,6 +145,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 42.5,
         penalty: 10,
         lateFees: 15,
+        remainingInstallments: 12,
       },
     ],
   },
@@ -155,6 +164,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 380.6,
         penalty: 10,
         lateFees: 0,
+        remainingInstallments: 96,
       },
     ],
   },
@@ -173,6 +183,7 @@ const BORROWERS: Borrower[] = [
         interestDue: 88,
         penalty: 10,
         lateFees: 60,
+        remainingInstallments: 16,
       },
     ],
   },
@@ -184,6 +195,36 @@ function formatCurrency(amount: number) {
   return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 }
 
+function computeWaiverEffect(
+  loan: LoanAccount,
+  waivedInterest: number,
+  waivedPenalty: number,
+  waivedFee: number
+) {
+  const interestWaived = Math.min(Math.max(waivedInterest, 0), loan.interestDue);
+  const penaltyWaived = Math.min(Math.max(waivedPenalty, 0), loan.penalty);
+  const feeWaived = Math.min(Math.max(waivedFee, 0), loan.lateFees);
+  const totalWaived = interestWaived + penaltyWaived + feeWaived;
+
+  const totalOutstandingBefore = loan.balance + loan.interestDue + loan.penalty + loan.lateFees;
+  const arrearsBefore = loan.principalDue + loan.interestDue + loan.penalty + loan.lateFees;
+  const principalOutstandingBefore = loan.balance;
+  const interestPayableBefore = loan.interestDue;
+
+  return {
+    totalOutstandingBefore,
+    totalOutstandingAfter: Math.max(totalOutstandingBefore - totalWaived, 0),
+    principalOutstandingBefore,
+    principalOutstandingAfter: principalOutstandingBefore,
+    arrearsBefore,
+    arrearsAfter: Math.max(arrearsBefore - totalWaived, 0),
+    remainingInstallmentsBefore: loan.remainingInstallments,
+    remainingInstallmentsAfter: loan.remainingInstallments,
+    interestPayableBefore,
+    interestPayableAfter: Math.max(interestPayableBefore - interestWaived, 0),
+  };
+}
+
 export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalProps) {
   const [search, setSearch] = useState("");
   const [selectedBorrower, setSelectedBorrower] = useState<Borrower | null>(null);
@@ -191,15 +232,18 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
   const [borrowerPanelCollapsed, setBorrowerPanelCollapsed] = useState(false);
 
   const [valueDate, setValueDate] = useState(new Date().toISOString().slice(0, 10));
-  const [natureOfPayment, setNatureOfPayment] = useState<LoanWaiverFormData["natureOfPayment"]>(
-    "PAY_DUES"
-  );
   const [amountToPay, setAmountToPay] = useState<number | "">("");
   const [paymentMode, setPaymentMode] = useState<string | null>("Direct Debit from A/C");
   const [referenceNumber, setReferenceNumber] = useState("");
   const [referenceDate, setReferenceDate] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [remark, setRemark] = useState("");
+
+  const [waivedInterest, setWaivedInterest] = useState<number | "">("");
+  const [waivedPenalty, setWaivedPenalty] = useState<number | "">("");
+  const [waivedFee, setWaivedFee] = useState<number | "">("");
+
+  const [waiverEffectOpened, setWaiverEffectOpened] = useState(false);
 
   useEffect(() => {
     setBorrowerPanelCollapsed(!!selectedLoanId);
@@ -223,6 +267,16 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
     ? selectedLoan.principalDue + selectedLoan.interestDue + selectedLoan.lateFees
     : 0;
 
+  const waiverEffect = useMemo(() => {
+    if (!selectedLoan) return null;
+    return computeWaiverEffect(
+      selectedLoan,
+      Number(waivedInterest) || 0,
+      Number(waivedPenalty) || 0,
+      Number(waivedFee) || 0
+    );
+  }, [selectedLoan, waivedInterest, waivedPenalty, waivedFee]);
+
   const handleSelectBorrower = (borrower: Borrower) => {
     setSelectedBorrower(borrower);
     setSelectedLoanId(borrower.loans[0]?.id ?? null);
@@ -233,6 +287,9 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
           100
       );
     }
+    setWaivedInterest("");
+    setWaivedPenalty("");
+    setWaivedFee("");
   };
 
   const handleClearBorrower = () => {
@@ -244,33 +301,35 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
     setReferenceDate("");
     setAccountNumber("");
     setRemark("");
+    setWaivedInterest("");
+    setWaivedPenalty("");
+    setWaivedFee("");
   };
 
   const handleSelectLoan = (loan: LoanAccount) => {
     setSelectedLoanId(loan.id);
-    if (natureOfPayment === "PAY_DUES") {
-      setAmountToPay(
-        Math.round((loan.principalDue + loan.interestDue + loan.lateFees) * 100) / 100
-      );
-    } else if (natureOfPayment === "FULL_SETTLEMENT") {
-      setAmountToPay(loan.balance);
-    }
+    setAmountToPay(
+      Math.round((loan.principalDue + loan.interestDue + loan.lateFees) * 100) / 100
+    );
+    setWaivedInterest("");
+    setWaivedPenalty("");
+    setWaivedFee("");
   };
-
-
 
   const handleReset = () => {
     setSearch("");
     setSelectedBorrower(null);
     setSelectedLoanId(null);
     setValueDate(new Date().toISOString().slice(0, 10));
-    setNatureOfPayment("PAY_DUES");
     setAmountToPay("");
     setPaymentMode("Direct Debit from A/C");
     setReferenceNumber("");
     setReferenceDate("");
     setAccountNumber("");
     setRemark("");
+    setWaivedInterest("");
+    setWaivedPenalty("");
+    setWaivedFee("");
   };
 
   const handleSubmit = () => {
@@ -279,13 +338,15 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
       customerName: selectedBorrower?.name ?? "",
       loanType: selectedLoan?.type ?? "",
       valueDate,
-      natureOfPayment,
       amountToPay,
       paymentMode,
       referenceNumber,
       referenceDate,
       accountNumber,
       remark,
+      waivedInterest,
+      waivedPenalty,
+      waivedFee,
     });
     onClose();
   };
@@ -300,7 +361,7 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
         padding={0}
         radius="md"
       >
-        <Box className="flex flex-col h-[640px] max-h-[90vh] overflow-hidden">
+        <Box className="flex flex-col h-[700px] max-h-[90vh] overflow-hidden">
           <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#3730A3] flex items-center justify-center">
@@ -538,13 +599,22 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
 
                 {/* Waiver Breakdown */}
                 <div className="mt-6">
-                  <Text
-                    size="sm"
-                    fw={600}
-                    className="text-gray-900 mb-3"
-                  >
-                    Waiver Breakdown
-                  </Text>
+                  <div className="flex items-center justify-between mb-3">
+                    <Text size="sm" fw={600} className="text-gray-900">
+                      Waiver Breakdown
+                    </Text>
+
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="brand"
+                      leftSection={<IconScale size={14} />}
+                      onClick={() => setWaiverEffectOpened(true)}
+                      className="font-semibold"
+                    >
+                      Payment Effect
+                    </Button>
+                  </div>
 
                   <Table
                     withTableBorder
@@ -571,7 +641,7 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
                         <Table.Td>Interest</Table.Td>
 
                         <Table.Td className="font-mono text-right">
-                          $3,000.00
+                          {formatCurrency(selectedLoan?.interestDue ?? 0)}
                         </Table.Td>
 
                         <Table.Td>
@@ -580,6 +650,10 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
                             placeholder="0.00"
                             thousandSeparator=","
                             decimalScale={2}
+                            min={0}
+                            max={selectedLoan?.interestDue}
+                            value={waivedInterest}
+                            onChange={(v) => setWaivedInterest(v as number | "")}
                           />
                         </Table.Td>
                       </Table.Tr>
@@ -588,7 +662,7 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
                         <Table.Td>Penalty</Table.Td>
 
                         <Table.Td className="font-mono text-right">
-                          $4,000.00
+                          {formatCurrency(selectedLoan?.penalty ?? 0)}
                         </Table.Td>
 
                         <Table.Td>
@@ -597,6 +671,10 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
                             placeholder="0.00"
                             thousandSeparator=","
                             decimalScale={2}
+                            min={0}
+                            max={selectedLoan?.penalty}
+                            value={waivedPenalty}
+                            onChange={(v) => setWaivedPenalty(v as number | "")}
                           />
                         </Table.Td>
                       </Table.Tr>
@@ -605,7 +683,7 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
                         <Table.Td>Charge / Fee</Table.Td>
 
                         <Table.Td className="font-mono text-right">
-                          $200.00
+                          {formatCurrency(selectedLoan?.lateFees ?? 0)}
                         </Table.Td>
 
                         <Table.Td>
@@ -614,6 +692,10 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
                             placeholder="0.00"
                             thousandSeparator=","
                             decimalScale={2}
+                            min={0}
+                            max={selectedLoan?.lateFees}
+                            value={waivedFee}
+                            onChange={(v) => setWaivedFee(v as number | "")}
                           />
                         </Table.Td>
                       </Table.Tr>
@@ -761,6 +843,153 @@ export function LoanWaiverModal({ opened, onClose, onSubmit }: LoanWaiverModalPr
                 Process Waiver
               </Button>
             </div>
+          </div>
+        </Box>
+      </Modal>
+
+      {/* Payment Effect Modal */}
+      <Modal
+        opened={waiverEffectOpened}
+        onClose={() => setWaiverEffectOpened(false)}
+        size="640px"
+        withCloseButton={false}
+        padding={0}
+        radius="md"
+      >
+        <Box className="flex flex-col">
+          <div className="flex items-center justify-between px-6 pt-5 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#3730A3] flex items-center justify-center">
+                <IconTrendingDown size={20} className="text-white" />
+              </div>
+              <div>
+                <Text size="md" fw={700} className="text-gray-900 leading-tight">
+                  Payment Effect
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Projected impact of this waiver on {selectedLoan?.id ?? "the loan account"}.
+                </Text>
+              </div>
+            </div>
+            <Button
+              variant="subtle"
+              color="gray"
+              onClick={() => setWaiverEffectOpened(false)}
+              className="px-2"
+              size="xs"
+            >
+              <IconX size={18} />
+            </Button>
+          </div>
+
+          <div className="border-b border-gray-200" />
+
+          <div className="px-6 py-5">
+            {waiverEffect && selectedLoan ? (
+              <Table verticalSpacing="sm" horizontalSpacing="md" withRowBorders={false}>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Component
+                    </Table.Th>
+                    <Table.Th className="text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">
+                      Before
+                    </Table.Th>
+                    <Table.Th className="text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">
+                      After
+                    </Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  <Table.Tr className="bg-gray-50/60">
+                    <Table.Td>
+                      <Text size="sm" fw={600} className="text-gray-900">
+                        Total Outstanding
+                      </Text>
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm text-gray-700">
+                      {formatCurrency(waiverEffect.totalOutstandingBefore)}
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm font-semibold text-emerald-700">
+                      {formatCurrency(waiverEffect.totalOutstandingAfter)}
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Text size="sm" fw={600} className="text-gray-900">
+                        Principal Outstanding
+                      </Text>
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm text-gray-700">
+                      {formatCurrency(waiverEffect.principalOutstandingBefore)}
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm font-semibold text-gray-700">
+                      {formatCurrency(waiverEffect.principalOutstandingAfter)}
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr className="bg-gray-50/60">
+                    <Table.Td>
+                      <Text size="sm" fw={600} className="text-gray-900">
+                        Arrears
+                      </Text>
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm text-gray-700">
+                      {formatCurrency(waiverEffect.arrearsBefore)}
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm font-semibold text-emerald-700">
+                      {formatCurrency(waiverEffect.arrearsAfter)}
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Text size="sm" fw={600} className="text-gray-900">
+                        Remaining Installments
+                      </Text>
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm text-gray-700">
+                      {waiverEffect.remainingInstallmentsBefore}
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm font-semibold text-gray-700">
+                      {waiverEffect.remainingInstallmentsAfter}
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr className="bg-gray-50/60">
+                    <Table.Td>
+                      <Text size="sm" fw={600} className="text-gray-900">
+                        Interest Payable
+                      </Text>
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm text-gray-700">
+                      {formatCurrency(waiverEffect.interestPayableBefore)}
+                    </Table.Td>
+                    <Table.Td className="text-right font-mono text-sm font-semibold text-emerald-700">
+                      {formatCurrency(waiverEffect.interestPayableAfter)}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            ) : (
+              <Text size="sm" c="dimmed" className="py-6 text-center">
+                Select a loan account to preview waiver effect.
+              </Text>
+            )}
+
+            <Text size="xs" c="dimmed" className="mt-4">
+              A waiver forgives interest, penalty, and fees only — principal and the remaining
+              installment count are unaffected. This is a projection only and does not process
+              the transaction.
+            </Text>
+          </div>
+
+          <div className="border-t border-gray-200 p-4 px-6 flex justify-end">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => setWaiverEffectOpened(false)}
+              className="font-semibold px-5"
+            >
+              Close
+            </Button>
           </div>
         </Box>
       </Modal>
