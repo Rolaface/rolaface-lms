@@ -14,6 +14,7 @@ import {
   SegmentedControl,
   Input,
   Checkbox,
+  UnstyledButton,
 } from "@mantine/core";
 import {
   IconX,
@@ -44,9 +45,13 @@ import {
   IconPercentage,
   IconCash,
   IconPageBreak,
+  IconCurrency,
+  IconPlus,
+  IconDotsVertical,
 } from "@tabler/icons-react";
 
 import { CollateralModal } from "./CollateralModal";
+import { LoanSimulatorModal } from "./LoanSimulatorModal";
 
 interface LoanAccountModalProps {
   opened: boolean;
@@ -148,12 +153,12 @@ const DEFAULT_DOCUMENTS: DocumentRow[] = [
 
 const TAB_ITEMS: { value: string; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
   { value: "basic", label: "Basic Details", icon: IconIdBadge2 },
+    { value: "charges", label: "Charges", icon: IconReceipt2 },
   { value: "schedule", label: "Repayment Schedule", icon: IconCalendarStats },
-  { value: "charges", label: "Charges", icon: IconReceipt2 },
-  { value: "collateral", label: "Collateral", icon: IconBriefcase },
   { value: "coapplicant", label: "Co-applicant", icon: IconUsers },
+  { value: "collateral", label: "Collateral", icon: IconBriefcase },
   { value: "documents", label: "Documents", icon: IconFileUpload },
-  { value: "simulator", label: "Loan Simulator", icon: IconCalculator },
+  // { value: "simulator", label: "Loan Simulator", icon: IconCalculator },
 ];
 
 export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
@@ -180,6 +185,7 @@ const [migrationDate, setMigrationDate] = useState("");
   const [repaymentStartDate, setRepaymentStartDate] = useState("");
 const [collateralModalOpened, setCollateralModalOpened] = useState(false);
 const [collateralSearch, setCollateralSearch] = useState("");
+const [simulatorModalOpened, setSimulatorModalOpened] = useState(false); // <-- ADD THIS
 
   const [moratoriumType, setMoratoriumType] = useState<string | null>("None");
   const [moratoriumPeriod, setMoratoriumPeriod] = useState<number | "">("");
@@ -227,35 +233,51 @@ const [collateralSearch, setCollateralSearch] = useState("");
   );
 
   // --- Tab 3: Charges ---
-  const [chargeFeeType, setChargeFeeType] = useState<string | null>("Processing Fee");
-  const [chargeAmount, setChargeAmount] = useState<number | "">("");
-  const [charges, setCharges] = useState<ChargeRow[]>([]);
+   const [charges, setCharges] = useState<{ id: string; feeType: string; amount: number | ''; appliedOn: string }[]>([]);
 
-  const handleAddCharge = () => {
-    if (!chargeFeeType || chargeAmount === "" || Number(chargeAmount) <= 0) return;
-    setCharges((prev) => [
-      ...prev,
-      {
-        id: prev.length ? Math.max(...prev.map((c) => c.id)) + 1 : 1,
-        feeType: chargeFeeType,
-        amount: Number(chargeAmount),
-        appliedOn: "Transaction Date",
-      },
-    ]);
-    setChargeAmount("");
+const handleAddCharge = () => {
+  const newCharge = {
+    id: Date.now().toString(),
+    feeType: '',
+    amount: '' as const,
+    appliedOn: getTodayDate(), 
   };
+  setCharges([...charges, newCharge]);
+};
+const handleUpdateCharge = (id: string, field: string, value: string | number) => {
+  setCharges(charges.map(charge => 
+    charge.id === id ? { ...charge, [field]: value } : charge
+  ));
+};
 
-  const handleRemoveCharge = (id: number) => {
-    setCharges((prev) => prev.filter((c) => c.id !== id));
+const handleAddCoApplicant = () => {
+  const newApplicant = {
+    id: Date.now().toString(),
+    name: '',
+    email: '',
+    mobile: ''
   };
+  setCoApplicants([...coApplicants, newApplicant]);
+};
+
+// Function to update a specific field in a specific row
+const handleUpdateCoApplicant = (id: string, field: string, value: string) => {
+  setCoApplicants(coApplicants.map(app => 
+    app.id === id ? { ...app, [field]: value } : app
+  ));
+};
+
+// Function to delete a row
+const handleRemoveCoApplicant = (id: string) => {
+  setCoApplicants(coApplicants.filter(app => app.id !== id));
+};
 
   // --- Tab 4: Collateral ---
   const [collaterals, setCollaterals] = useState<{ id: number; name: string }[]>([]);
 
   // --- Tab 5: Co-applicant ---
   const [coApplicantSearch, setCoApplicantSearch] = useState("");
-  const [coApplicants, setCoApplicants] = useState<{ id: number; name: string }[]>([]);
-
+const [coApplicants, setCoApplicants] = useState<{ id: string; name: string; email: string; mobile: string }[]>([]);
   // --- Tab 6: Documents ---
   const [documents, setDocuments] = useState<DocumentRow[]>(DEFAULT_DOCUMENTS);
 
@@ -465,7 +487,7 @@ const [collateralSearch, setCollateralSearch] = useState("");
       data={CURRENCIES}
       value={currency}
       onChange={setCurrency}
-      leftSection={<FieldIcon Icon={IconCurrencyDollar} bg="#EEF2FF" color="#4F46E5" />}
+      leftSection={<FieldIcon Icon={IconCurrency} bg="#EEF2FF" color="#4F46E5" />}
       rightSection={chevronDown}
       classNames={labelClass}
     />
@@ -475,7 +497,7 @@ const [collateralSearch, setCollateralSearch] = useState("");
       placeholder="0"
       value={loanAmount}
       onChange={(v) => setLoanAmount(v as number | "")}
-      leftSection={<FieldIcon Icon={IconCurrencyRupee} bg="#FFF7ED" color="#EA580C" />}
+      leftSection={<FieldIcon Icon={IconCurrency} bg="#FFF7ED" color="#EA580C" />}
       thousandSeparator=","
       classNames={labelClass}
     />
@@ -552,7 +574,7 @@ const [collateralSearch, setCollateralSearch] = useState("");
       <div className="border border-slate-200 rounded-md p-5">
   <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3 lg:gap-y-1">
     <Input.Wrapper 
-      label="Moratorium (Principal / EMI)" 
+      label="Moratorium" 
       classNames={labelClass}
     >
       <SegmentedControl
@@ -593,13 +615,16 @@ const [collateralSearch, setCollateralSearch] = useState("");
             <Table.Thead className="bg-slate-50">
               <Table.Tr>
                 <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
-                  Inst. No.
+                  Installment Number
                 </Table.Th>
                 <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
                   Date
                 </Table.Th>
                 <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
                   Beginning Bal.
+                </Table.Th>
+                 <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
+                  Fee & Charges
                 </Table.Th>
                 <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
                   Principal
@@ -647,100 +672,119 @@ const [collateralSearch, setCollateralSearch] = useState("");
     </div>
   );
 
-  const renderCharges = () => (
-    <div className="flex flex-col gap-4">
-      <div className="border border-slate-200 rounded-md p-5">
-        <div className="flex items-center gap-1.5 mb-3">
-          <Text size="sm" fw={700} className="text-slate-900 uppercase tracking-wide" style={{ fontSize: 11 }}>
-            Add Charge
-          </Text>
-          <Tooltip label="Add a one-time or recurring fee for this loan account." withArrow>
-            <IconInfoCircle size={13} className="text-slate-400" />
-          </Tooltip>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-          <Select
-            size="sm"
-            label="Fee Type"
-            data={FEE_TYPES}
-            value={chargeFeeType}
-            onChange={setChargeFeeType}
-            leftSection={<FieldIcon Icon={IconReceipt2} bg="#EEF2FF" color="#4F46E5" />}
-            rightSection={chevronDown}
-            classNames={labelClass}
-            className="flex-1"
-          />
-          <NumberInput
-            size="sm"
-            label="Amount"
-            placeholder="0.00"
-            value={chargeAmount}
-            onChange={(v) => setChargeAmount(v as number | "")}
-            leftSection={<FieldIcon Icon={IconCurrencyRupee} bg="#FFF7ED" color="#EA580C" />}
-            classNames={labelClass}
-            className="flex-1"
-          />
-          <Button
-            size="sm"
-            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0 w-full sm:w-auto"
-            onClick={handleAddCharge}
-          >
-            + Add Charge
-          </Button>
-        </div>
+const renderCharges = () => (
+  <div className="bg-white p-6 border border-slate-200 rounded-md">
+    {/* Header Section */}
+    <div className="mb-4">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-1 h-5 bg-indigo-700 rounded-full"></div>
+        <Text size="lg" fw={700} className="text-slate-900">
+          Loan Charges
+        </Text>
+        <Tooltip label="Fees and charges applied to this loan product." withArrow>
+          <IconInfoCircle size={14} className="text-slate-400 ml-1 cursor-help" />
+        </Tooltip>
       </div>
+      <Text size="sm" className="text-slate-500">
+        Fees and charges applied to this loan product.
+      </Text>
+    </div>
 
-      <div className="border border-slate-200 rounded-md overflow-hidden">
-        <Table.ScrollContainer minWidth={520}>
-          <Table verticalSpacing="sm" fz="xs">
-            <Table.Thead className="bg-slate-50">
+    {/* Table Section */}
+    <div className="border border-slate-200 rounded-lg overflow-hidden">
+      <Table.ScrollContainer minWidth={700}>
+        <Table verticalSpacing="sm" horizontalSpacing="md" className="w-full">
+          <Table.Thead className="bg-slate-50/50">
+            <Table.Tr>
+              <Table.Th className="w-12">
+                <Checkbox size="sm" />
+              </Table.Th>
+              <Table.Th className="w-16 font-semibold text-slate-800">No.</Table.Th>
+              <Table.Th className="font-semibold text-slate-800">Fee Type</Table.Th>
+              <Table.Th className="font-semibold text-slate-800">Amount</Table.Th>
+              <Table.Th className="font-semibold text-slate-800">Applied On</Table.Th>
+              <Table.Th className="w-24"></Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {charges.length === 0 ? (
               <Table.Tr>
-                <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
-                  Fee Type
-                </Table.Th>
-                <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
-                  Amount
-                </Table.Th>
-                <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
-                  Applied On
-                </Table.Th>
-                <Table.Th className="w-10" />
+                <Table.Td colSpan={6} className="text-center py-8 text-slate-400">
+                  No charges added yet. Click "+ Add charge" to create one.
+                </Table.Td>
               </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {charges.length === 0 ? (
-                <Table.Tr>
-                  <Table.Td colSpan={4} className="text-center py-8 text-slate-400 bg-slate-50/50">
-                    No charges added yet.
+            ) : (
+              charges.map((c, index) => (
+                <Table.Tr key={c.id}>
+                  <Table.Td>
+                    <Checkbox size="sm" />
+                  </Table.Td>
+                  <Table.Td className="text-slate-600 font-medium">
+                    {index + 1}
+                  </Table.Td>
+                  <Table.Td>
+                    <Select
+                      size="sm"
+                      data={FEE_TYPES} 
+                      value={c.feeType}
+                      onChange={(val) => handleUpdateCharge(c.id, 'feeType', val || '')}
+                      placeholder="Select type"
+                      classNames={{ input: 'bg-white' }}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <NumberInput
+                      size="sm"
+                      value={c.amount}
+                      onChange={(val) => handleUpdateCharge(c.id, 'amount', val)}
+                      placeholder="0.00"
+                      classNames={{ input: 'bg-white' }}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="sm"
+                      type="date"
+                      value={c.appliedOn}
+                      onChange={(e) => handleUpdateCharge(c.id, 'appliedOn', e.currentTarget.value)}
+                      classNames={{ input: 'bg-white' }}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <div className="flex items-center gap-1 justify-end">
+                      <ActionIcon variant="subtle" color="gray" size="sm">
+                        <IconPencil size={16} stroke={1.5} />
+                      </ActionIcon>
+                      <ActionIcon 
+                        variant="subtle" 
+                        color="gray" 
+                        size="sm"
+                        onClick={() => handleRemoveCharge(c.id)}
+                      >
+                        <IconDotsVertical size={16} stroke={1.5} />
+                      </ActionIcon>
+                    </div>
                   </Table.Td>
                 </Table.Tr>
-              ) : (
-                charges.map((c) => (
-                  <Table.Tr key={c.id}>
-                    <Table.Td className="font-medium text-indigo-600">{c.feeType}</Table.Td>
-                    <Table.Td className="font-mono">{c.amount.toFixed(2)}</Table.Td>
-                    <Table.Td className="text-orange-600 font-medium">{c.appliedOn}</Table.Td>
-                    <Table.Td>
-                      <Tooltip label="Remove" withArrow>
-                        <ActionIcon
-                          color="red"
-                          variant="subtle"
-                          size="sm"
-                          onClick={() => handleRemoveCharge(c.id)}
-                        >
-                          <IconTrash size={14} />
-                        </ActionIcon>
-                      </Tooltip>
-                    </Table.Td>
-                  </Table.Tr>
-                ))
-              )}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+              ))
+            )}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+
+      {/* Footer Action */}
+      <div className="border-t border-slate-200 p-3 bg-white">
+        <UnstyledButton 
+          className="flex items-center gap-2 text-[#4F46E5] font-semibold text-sm hover:text-indigo-800 transition-colors px-2 py-1 rounded"
+          onClick={handleAddCharge}
+        >
+          <IconPlus size={16} stroke={2.5} />
+          Add charge
+        </UnstyledButton>
       </div>
     </div>
-  );
+  </div>
+);
 
 const renderCollateral = () => (
     <div className="flex flex-col gap-6">
@@ -813,9 +857,8 @@ const renderCollateral = () => (
   );
 
 const renderCoApplicant = () => (
-    <div className="flex flex-col gap-4">
-      {/* Top Form (Styled like Charges) */}
-       <div className="border border-slate-200 rounded-md p-5">
+  <div className="bg-white p-6 border border-slate-200 rounded-md">
+     <div className="border border-slate-200 rounded-md p-5">
         <div className="flex items-center gap-1.5 mb-3">
           <Text size="sm" fw={700} className="text-slate-900 uppercase tracking-wide" style={{ fontSize: 11 }}>
             Find Existing Customer
@@ -841,114 +884,115 @@ const renderCoApplicant = () => (
           </Button>
         </div>
       </div>
-      <div className="border border-slate-200 rounded-md p-5">
-        <div className="flex items-center gap-1.5 mb-3">
-          <Text size="sm" fw={700} className="text-slate-900 uppercase tracking-wide" style={{ fontSize: 11 }}>
-            Add Co-Applicant
-          </Text>
-          <Tooltip label="Add a new co-applicant to this loan account." withArrow>
-            <IconInfoCircle size={13} className="text-slate-400" />
-          </Tooltip>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-          <TextInput
-            size="sm"
-            label="Applicant Name"
-            placeholder="Enter name"
-            classNames={labelClass}
-            className="flex-1"
-          />
-          <TextInput
-            size="sm"
-            label="Applicant Email"
-            placeholder="Enter email"
-            classNames={labelClass}
-            className="flex-1"
-          />
-          <TextInput
-            size="sm"
-            label="Applicant Mobile"
-            placeholder="Enter mobile"
-            classNames={labelClass}
-            className="flex-1"
-          />
-          <Button
-            size="sm"
-            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0 w-full sm:w-auto"
-            onClick={() => {
-              // Mock adding a full row for the preview
-              setCoApplicants((prev) => [
-                ...prev,
-                { 
-                  id: prev.length + 1, 
-                  name: `Applicant Name ${prev.length + 1}`,
-                  email: `Applicant Email`,
-                  mobile: `Applicant Mobile`
-                },
-              ]);
-            }}
-          >
-            + Add Co-Applicant
-          </Button>
-        </div>
+    <div className="mb-4">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-1 h-5 bg-indigo-700 rounded-full"></div>
+        <Text size="lg" fw={700} className="text-slate-900">
+          Co-Applicants
+        </Text>
+        <Tooltip label="Add and manage co-applicants linked to this loan account." withArrow>
+          <IconInfoCircle size={14} className="text-slate-400 ml-1 cursor-help" />
+        </Tooltip>
       </div>
+      <Text size="sm" className="text-slate-500">
+        Manage co-applicants linked to this application.
+      </Text>
+    </div>
 
-      {/* Bottom Table (Fields from Co-Applicants Image) */}
-      <div className="border border-slate-200 rounded-md overflow-hidden">
-        <Table.ScrollContainer minWidth={650}>
-          <Table verticalSpacing="sm" fz="xs">
-            <Table.Thead className="bg-slate-50">
+    {/* Table Section */}
+    <div className="border border-slate-200 rounded-lg overflow-hidden">
+      <Table.ScrollContainer minWidth={700}>
+        <Table verticalSpacing="sm" horizontalSpacing="md" className="w-full">
+          <Table.Thead className="bg-slate-50/50">
+            <Table.Tr>
+              <Table.Th className="w-12">
+                <Checkbox size="sm" />
+              </Table.Th>
+              <Table.Th className="w-16 font-semibold text-slate-800">No.</Table.Th>
+              <Table.Th className="font-semibold text-slate-800">Applicant Name</Table.Th>
+              <Table.Th className="font-semibold text-slate-800">Applicant Email</Table.Th>
+              <Table.Th className="font-semibold text-slate-800">Applicant Mobile</Table.Th>
+              <Table.Th className="w-24"></Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {coApplicants.length === 0 ? (
               <Table.Tr>
-                <Table.Th className="w-10 text-center px-4">
-                  <input type="checkbox" className="rounded border-slate-300 cursor-pointer" />
-                </Table.Th>
-                <Table.Th className="text-slate-500 font-medium w-12 text-center">No.</Table.Th>
-                <Table.Th className="text-slate-500 font-medium">Applicant Name</Table.Th>
-                <Table.Th className="text-slate-500 font-medium">Applicant Email</Table.Th>
-                <Table.Th className="text-slate-500 font-medium">Applicant Mobile</Table.Th>
-                <Table.Th className="w-12 text-center">
-                  <IconSettings size={16} className="text-slate-400 mx-auto" />
-                </Table.Th>
+                <Table.Td colSpan={6} className="text-center py-8 text-slate-400">
+                  No co-applicants added yet. Click "+ Add co-applicant" to create one.
+                </Table.Td>
               </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {coApplicants.length === 0 ? (
-                <Table.Tr>
-                  <Table.Td colSpan={6} className="text-center py-8 text-slate-400 bg-slate-50/50">
-                    No co-applicants added yet.
+            ) : (
+              coApplicants.map((c, index) => (
+                <Table.Tr key={c.id}>
+                  <Table.Td>
+                    <Checkbox size="sm" />
+                  </Table.Td>
+                  <Table.Td className="text-slate-600 font-medium">
+                    {index + 1}
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="sm"
+                      value={c.name}
+                      onChange={(e) => handleUpdateCoApplicant(c.id, 'name', e.currentTarget.value)}
+                      placeholder="Enter name"
+                      classNames={{ input: 'bg-white' }}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="sm"
+                      value={c.email}
+                      onChange={(e) => handleUpdateCoApplicant(c.id, 'email', e.currentTarget.value)}
+                      placeholder="Enter email"
+                      classNames={{ input: 'bg-white' }}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="sm"
+                      value={c.mobile}
+                      onChange={(e) => handleUpdateCoApplicant(c.id, 'mobile', e.currentTarget.value)}
+                      placeholder="Enter mobile"
+                      classNames={{ input: 'bg-white' }}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <div className="flex items-center gap-1 justify-end">
+                      <ActionIcon variant="subtle" color="gray" size="sm">
+                        <IconPencil size={16} stroke={1.5} />
+                      </ActionIcon>
+                      <ActionIcon 
+                        variant="subtle" 
+                        color="gray" 
+                        size="sm"
+                        onClick={() => handleRemoveCoApplicant(c.id)}
+                      >
+                        <IconTrash size={16} stroke={1.5} />
+                      </ActionIcon>
+                    </div>
                   </Table.Td>
                 </Table.Tr>
-              ) : (
-                coApplicants.map((c, idx) => (
-                  <Table.Tr key={c.id}>
-                    <Table.Td className="text-center px-4">
-                      <input type="checkbox" className="rounded border-slate-300 cursor-pointer" />
-                    </Table.Td>
-                    <Table.Td className="text-center font-medium text-slate-600">{idx + 1}</Table.Td>
-                    <Table.Td className="text-slate-700">{c.name}</Table.Td>
-                    {/* Mock fields falling back to strings for existing state shape */}
-                    <Table.Td className="text-slate-500">{(c as any).email || 'Applicant Email'}</Table.Td>
-                    <Table.Td className="text-slate-500">{(c as any).mobile || 'Applicant Mobile'}</Table.Td>
-                    <Table.Td className="text-center">
-                      <ActionIcon
-                        size="sm"
-                        color="gray"
-                        variant="subtle"
-                        className="mx-auto"
-                        onClick={() => setCoApplicants((prev) => prev.filter((x) => x.id !== c.id))}
-                      >
-                        <IconPencil size={15} className="text-slate-500" />
-                      </ActionIcon>
-                    </Table.Td>
-                  </Table.Tr>
-                ))
-              )}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+              ))
+            )}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+
+      {/* Footer Action */}
+      <div className="border-t border-slate-200 p-3 bg-white">
+        <UnstyledButton 
+          className="flex items-center gap-2 text-[#4F46E5] font-semibold text-sm hover:text-indigo-800 transition-colors px-2 py-1 rounded"
+          onClick={handleAddCoApplicant}
+        >
+          <IconPlus size={16} stroke={2.5} />
+          Add co-applicant
+        </UnstyledButton>
       </div>
     </div>
-  );
+  </div>
+);
 
   const renderDocuments = () => (
     <div className="flex flex-col gap-4">
@@ -1115,10 +1159,10 @@ const renderCoApplicant = () => (
             </div>
             <div className="min-w-0">
               <Text size="md" fw={600} className="leading-tight truncate">
-                New Loan Account
+                New Loan Booking
               </Text>
               <Text size="xs" className="text-indigo-100 truncate">
-                Create and configure a new loan account.
+                Create and configure a new loan booking.
               </Text>
             </div>
           </div>
@@ -1264,6 +1308,14 @@ const renderCoApplicant = () => (
             >
               Reset
             </button>
+            <button
+              type="button"
+              onClick={() => setSimulatorModalOpened(true)}
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition-colors ml-2"
+            >
+              <IconCalculator size={14} />
+              Loan Simulator
+            </button>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Button size="sm" variant="default" className="font-semibold px-5 text-slate-700 border-slate-200">
@@ -1281,6 +1333,10 @@ const renderCoApplicant = () => (
       <CollateralModal 
         opened={collateralModalOpened} 
         onClose={() => setCollateralModalOpened(false)} 
+      />
+      <LoanSimulatorModal
+        opened={simulatorModalOpened}
+        onClose={() => setSimulatorModalOpened(false)}
       />
     </Modal>
   );

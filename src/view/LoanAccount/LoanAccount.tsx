@@ -299,7 +299,7 @@ export function LoanAccount() {
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
         <Title order={2} className="text-gray-900 font-semibold">
-          Create Loan Account
+          Loan Booking
         </Title>
         <Button
           size="xs"
