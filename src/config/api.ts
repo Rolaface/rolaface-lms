@@ -36,8 +36,9 @@ loan: {
   // =========================
   // LOAN PRODUCT
   // =========================
-  loanProduct: {},
-
+  loanProduct: {
+  get: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.get_loan_products`
+  },
   // =========================
   // LOAN APPLICATION
   // =========================

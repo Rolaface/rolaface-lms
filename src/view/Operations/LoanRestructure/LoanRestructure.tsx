@@ -5,16 +5,19 @@ import {
   Button,
   TextInput,
   Select,
+  Radio,
   Group,
+  Paper,
   Table,
   Badge,
   ActionIcon,
   Text,
   Pagination,
-  Menu,
-  Title,
+  Tooltip,
 } from '@mantine/core';
 import {
+  IconEye,
+  IconPencil,
   IconPlus,
   IconChevronUp,
   IconChevronDown,
@@ -22,17 +25,6 @@ import {
   IconSearch,
   IconFileOff,
   IconTrash,
-  IconPercentage,
-  IconCirclePlus,
-  IconCalendarStats,
-  IconListDetails,
-  IconCircleCheck,
-  IconClockHour4,
-  IconCircleX,
-  IconDotsVertical,
-  IconEye,
-  IconPencil,
-  IconAdjustments,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -114,59 +106,22 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
 
 const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
 
-function restructureTypeMeta(type: RestructureRow['restructureType']) {
-  if (type === 'RATE_CHANGE')
-    return {
-      label: 'Rate Change',
-      color: 'brand',
-      icon: <IconPercentage size={17} />,
-      iconBg: 'bg-[#eef2ff]',
-      iconColor: 'text-[#4F46E5]',
-      pillBg: 'bg-[#eef2ff]',
-      pillText: 'text-[#4F46E5]',
-      ring: 'ring-[#e0e7ff]',
-    };
-  if (type === 'TOPUP')
-    return {
-      label: 'Topup',
-      color: 'green',
-      icon: <IconCirclePlus size={17} />,
-      iconBg: 'bg-emerald-50',
-      iconColor: 'text-emerald-600',
-      pillBg: 'bg-emerald-50',
-      pillText: 'text-emerald-700',
-      ring: 'ring-emerald-100',
-    };
-  return {
-    label: 'Modify Maturity',
-    color: 'gold',
-    icon: <IconCalendarStats size={17} />,
-    iconBg: 'bg-amber-50',
-    iconColor: 'text-amber-600',
-    pillBg: 'bg-amber-50',
-    pillText: 'text-amber-700',
-    ring: 'ring-amber-100',
-  };
+function restructureTypeColor(type: RestructureRow['restructureType']) {
+  if (type === 'RATE_CHANGE') return 'brand';
+  if (type === 'TOPUP') return 'gold';
+  return 'accent';
 }
 
-function statusMeta(status: RestructureRow['status']) {
-  if (status === 'APPROVED') return { color: 'green', label: 'Approved', dot: '#22c55e', text: 'text-emerald-700', bg: 'bg-emerald-50' };
-  if (status === 'PENDING') return { color: 'gold', label: 'Pending', dot: '#eab308', text: 'text-amber-700', bg: 'bg-amber-50' };
-  return { color: 'danger', label: 'Rejected', dot: '#ef4444', text: 'text-red-700', bg: 'bg-red-50' };
+function restructureTypeLabel(type: RestructureRow['restructureType']) {
+  if (type === 'RATE_CHANGE') return 'Rate Change';
+  if (type === 'TOPUP') return 'Topup';
+  return 'Modify Maturity';
 }
 
-function Sparkline({ color, points }: { color: string; points: string }) {
-  return (
-    <svg viewBox="0 0 80 32" width="52" height="22" fill="none" className="shrink-0">
-      <polyline
-        points={points}
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+function statusColor(status: RestructureRow['status']) {
+  if (status === 'APPROVED') return 'green';
+  if (status === 'PENDING') return 'gold';
+  return 'danger';
 }
 
 export function LoanRestructure() {
@@ -175,22 +130,13 @@ export function LoanRestructure() {
   // filter state
   const [search, setSearch] = useState('');
   const [restructureType, setRestructureType] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState('all');
 
   // table state
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
   const [rowsData, setRowsData] = useState(DUMMY_RESTRUCTURES);
-
-  const stats = useMemo(() => {
-    return {
-      total: rowsData.length,
-      approved: rowsData.filter((r) => r.status === 'APPROVED').length,
-      pending: rowsData.filter((r) => r.status === 'PENDING').length,
-      rejected: rowsData.filter((r) => r.status === 'REJECTED').length,
-    };
-  }, [rowsData]);
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -200,7 +146,7 @@ export function LoanRestructure() {
         r.customer.toLowerCase().includes(q) ||
         r.loanAc.toLowerCase().includes(q);
       const matchesType = !restructureType || r.restructureType === restructureType;
-      const matchesStatus = !status || r.status === status;
+      const matchesStatus = status === 'all' || r.status === status;
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [rowsData, search, restructureType, status]);
@@ -228,75 +174,42 @@ export function LoanRestructure() {
 
   const columns = useMemo(
     () => [
-      columnHelper.display({
-        id: 'index',
-        header: '#',
+      columnHelper.accessor('loanAc', {
+        header: 'Loan A/c',
         cell: (info) => (
-          <Text fz="xs" c="gray.5" fw={500}>
-            {info.row.index + 1}
+          <Text fz="xs" fw={600} c="gray.9" className="font-mono">
+            {info.getValue()}
           </Text>
         ),
       }),
       columnHelper.accessor('customer', {
         header: 'Customer',
-        cell: (info) => {
-          const row = info.row.original;
-          const initials = row.customer
-            .split(' ')
-            .filter(Boolean)
-            .map((w) => w[0])
-            .slice(0, 2)
-            .join('')
-            .toUpperCase();
-          const palette = [
-            { bg: 'bg-indigo-50', text: 'text-indigo-600' },
-            { bg: 'bg-rose-50', text: 'text-rose-600' },
-            { bg: 'bg-teal-50', text: 'text-teal-600' },
-            { bg: 'bg-amber-50', text: 'text-amber-600' },
-            { bg: 'bg-sky-50', text: 'text-sky-600' },
-            { bg: 'bg-violet-50', text: 'text-violet-600' },
-          ];
-          const hash = row.customer
-            .split('')
-            .reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-          const { bg, text } = palette[hash % palette.length];
-          return (
-            <Group gap={11} wrap="nowrap">
-              <div
-                className={`w-9 h-9 rounded-full ${bg} ${text} flex items-center justify-center shrink-0 text-[12px] font-semibold`}
-              >
-                {initials}
-              </div>
-              <div className="min-w-0">
-                <Text fz="sm" fw={600} c="gray.9" truncate>
-                  {row.customer}
-                </Text>
-                <Text fz={11} c="dimmed" truncate>
-                  {row.loanType}
-                </Text>
-              </div>
-            </Group>
-          );
-        },
-      }),
-      columnHelper.accessor('loanAc', {
-        header: 'Loan A/c',
         cell: (info) => (
-          <span className="inline-block rounded-md bg-gray-50 px-2 py-1 text-[11px] font-mono font-semibold text-gray-600">
+          <Text fz="xs" c="gray.6">
             {info.getValue()}
-          </span>
+          </Text>
+        ),
+      }),
+      columnHelper.accessor('loanType', {
+        header: 'Loan Type',
+        cell: (info) => (
+          <Text fz="xs" c="gray.6">
+            {info.getValue()}
+          </Text>
         ),
       }),
       columnHelper.accessor('restructureType', {
         header: 'Restructure Type',
-        cell: (info) => {
-          const meta = restructureTypeMeta(info.getValue());
-          return (
-            <span className={`inline-flex items-center rounded-full ${meta.pillBg} ${meta.pillText} px-2.5 py-1 text-[11px] font-semibold`}>
-              {meta.label}
-            </span>
-          );
-        },
+        cell: (info) => (
+          <Badge
+            variant="light"
+            size="sm"
+            color={restructureTypeColor(info.getValue())}
+            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
+          >
+            {restructureTypeLabel(info.getValue())}
+          </Badge>
+        ),
       }),
       columnHelper.accessor('reason', {
         header: 'Reason',
@@ -306,40 +219,34 @@ export function LoanRestructure() {
           </Text>
         ),
       }),
-      columnHelper.accessor('totalCharges', {
-        header: 'Charges',
-        cell: (info) => (
-          <Text
-            fz="sm"
-            fw={700}
-            c="#4F46E5"
-            className="font-mono text-right"
-            style={{ fontVariantNumeric: 'tabular-nums' }}
-          >
-            ${info.getValue().toLocaleString('en-US', { minimumFractionDigits: 2 })}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor('status', {
-        header: 'Status',
-        cell: (info) => {
-          const meta = statusMeta(info.getValue());
-          return (
-            <span className={`inline-flex items-center gap-1.5 rounded-full ${meta.bg} px-2.5 py-1`}>
-              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: meta.dot }} />
-              <Text fz={11} fw={600} className={meta.text}>
-                {meta.label}
-              </Text>
-            </span>
-          );
-        },
-      }),
       columnHelper.accessor('valueDate', {
         header: 'Value Date',
         cell: (info) => (
           <Text fz="xs" c="gray.6">
             {info.getValue()}
           </Text>
+        ),
+      }),
+      columnHelper.accessor('totalCharges', {
+        header: 'Charges',
+        cell: (info) => (
+          <Text fz="xs" fw={600} c="gray.9" className="font-mono">
+            ${info.getValue().toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor('status', {
+        header: 'Status',
+        cell: (info) => (
+          <Badge
+            variant="light"
+            size="sm"
+            color={statusColor(info.getValue())}
+            className="font-semibold tracking-wider"
+            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
+          >
+            {info.getValue()}
+          </Badge>
         ),
       }),
       columnHelper.display({
@@ -352,31 +259,27 @@ export function LoanRestructure() {
         cell: (info) => {
           const row = info.row.original;
           return (
-            <Group justify="flex-end">
-              <Menu shadow="md" width={160} position="bottom-end" withArrow>
-                <Menu.Target>
-                  <ActionIcon
-                    size="sm"
-                    variant="subtle"
-                    color="gray"
-                    radius="md"
-                    className="opacity-50 group-hover:opacity-100 transition-opacity"
-                  >
-                    <IconDotsVertical size={14} />
-                  </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item leftSection={<IconEye size={14} />}>View</Menu.Item>
-                  <Menu.Item leftSection={<IconPencil size={14} />}>Edit</Menu.Item>
-                  <Menu.Item
-                    leftSection={<IconTrash size={14} />}
-                    color="danger"
-                    onClick={() => handleDelete(row.id)}
-                  >
-                    Delete
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
+            <Group justify="flex-end" gap={6} wrap="nowrap">
+              <Tooltip label="View" withArrow>
+                <ActionIcon size="sm" variant="subtle" color="gray">
+                  <IconEye size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Edit" withArrow>
+                <ActionIcon size="sm" variant="subtle" color="brand">
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Delete" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="danger"
+                  onClick={() => handleDelete(row.id)}
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
+              </Tooltip>
             </Group>
           );
         },
@@ -405,7 +308,7 @@ export function LoanRestructure() {
   const resetFilters = () => {
     setSearch('');
     setRestructureType(null);
-    setStatus(null);
+    setStatus('all');
   };
 
   const restructureTypeOptions = [
@@ -414,183 +317,90 @@ export function LoanRestructure() {
     { value: 'MODIFY_MATURITY', label: 'Modify Maturity' },
   ];
 
-  const statusOptions = [
-    { value: 'APPROVED', label: 'Approved' },
-    { value: 'PENDING', label: 'Pending' },
-    { value: 'REJECTED', label: 'Rejected' },
-  ];
-
   return (
-    <Box className="flex flex-col gap-6">
+    <Box className="flex flex-col gap-4">
       <LoanRestructureModal opened={opened} onClose={close} onSubmit={handleAddRestructure} />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
-        <div>
-           <Title order={2} className="text-gray-900 font-semibold">
-            Loan Restructures
-          </Title>
-          <Text size="sm" c="dimmed" className="mt-0.5">
-            Track and manage restructure requests across all loan accounts
-          </Text>
-        </div>
+        <Text size="md" fw={700} className="text-gray-900">
+          Loan Restructures
+        </Text>
         <Button
+          size="xs"
           onClick={open}
-          radius="md"
           className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 transition-opacity"
-          leftSection={<IconPlus size={16} />}
+          leftSection={<IconPlus size={14} />}
         >
           Restructure Loan
         </Button>
       </div>
 
-      {/* Summary stat cards */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-[#eef2ff] to-white px-4 py-3.5">
-          <Group justify="space-between" align="center" wrap="nowrap">
-            <Group gap={10} wrap="nowrap">
-              <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center shrink-0">
-                <IconListDetails size={16} className="text-[#4F46E5]" />
-              </div>
-              <div className="min-w-0">
-                <Text fz={11} c="dimmed" fw={500} truncate>
-                  Total Requests
-                </Text>
-                <Text fz={20} fw={800} c="gray.9" className="leading-tight">
-                  {stats.total}
-                </Text>
-              </div>
-            </Group>
-            <Sparkline color="#4F46E5" points="0,24 12,20 24,22 36,12 48,16 60,6 72,10" />
-          </Group>
-        </div>
+      {/* Filters Box */}
+      <Paper withBorder radius="md" p="xs" className="shadow-sm">
+        <div className="flex items-center gap-3 flex-wrap">
+          <TextInput
+            size="xs"
+            placeholder="Loan A/c / Customer"
+            leftSection={<IconSearch size={13} />}
+            className="flex-1 min-w-[200px]"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.currentTarget.value);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
+          />
+          <Select
+            size="xs"
+            placeholder="All Restructure Types"
+            data={restructureTypeOptions}
+            className="w-48"
+            clearable
+            rightSection={chevronDown}
+            value={restructureType}
+            onChange={(v) => {
+              setRestructureType(v);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
+          />
 
-        <div className="rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white px-4 py-3.5">
-          <Group justify="space-between" align="center" wrap="nowrap">
-            <Group gap={10} wrap="nowrap">
-              <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center shrink-0">
-                <IconCircleCheck size={16} className="text-emerald-600" />
-              </div>
-              <div className="min-w-0">
-                <Text fz={11} c="dimmed" fw={500} truncate>
-                  Approved
-                </Text>
-                <Text fz={20} fw={800} c="gray.9" className="leading-tight">
-                  {stats.approved}
-                </Text>
-              </div>
+          <Radio.Group
+            name="status"
+            value={status}
+            onChange={(v) => {
+              setStatus(v);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
+          >
+            <Group gap="sm">
+              <Radio size="xs" value="all" label="All" color="brand" />
+              <Radio size="xs" value="APPROVED" label="Approved" color="brand" />
+              <Radio size="xs" value="PENDING" label="Pending" color="brand" />
+              <Radio size="xs" value="REJECTED" label="Rejected" color="brand" />
             </Group>
-            <Sparkline color="#059669" points="0,20 12,22 24,14 36,18 48,8 60,12 72,4" />
-          </Group>
-        </div>
+          </Radio.Group>
 
-        <div className="rounded-xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white px-4 py-3.5">
-          <Group justify="space-between" align="center" wrap="nowrap">
-            <Group gap={10} wrap="nowrap">
-              <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center shrink-0">
-                <IconClockHour4 size={16} className="text-amber-600" />
-              </div>
-              <div className="min-w-0">
-                <Text fz={11} c="dimmed" fw={500} truncate>
-                  Pending
-                </Text>
-                <Text fz={20} fw={800} c="gray.9" className="leading-tight">
-                  {stats.pending}
-                </Text>
-              </div>
-            </Group>
-            <Sparkline color="#d97706" points="0,10 12,14 24,8 36,18 48,14 60,22 72,18" />
-          </Group>
+          <Button size="xs" variant="default" className="ml-auto px-4" onClick={resetFilters}>
+            Reset
+          </Button>
         </div>
-
-        <div className="rounded-xl border border-red-100 bg-gradient-to-br from-red-50 to-white px-4 py-3.5">
-          <Group justify="space-between" align="center" wrap="nowrap">
-            <Group gap={10} wrap="nowrap">
-              <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center shrink-0">
-                <IconCircleX size={16} className="text-red-600" />
-              </div>
-              <div className="min-w-0">
-                <Text fz={11} c="dimmed" fw={500} truncate>
-                  Rejected
-                </Text>
-                <Text fz={20} fw={800} c="gray.9" className="leading-tight">
-                  {stats.rejected}
-                </Text>
-              </div>
-            </Group>
-            <Sparkline color="#dc2626" points="0,8 12,12 24,10 36,16 48,14 60,20 72,24" />
-          </Group>
-        </div>
-      </div>
-
-      {/* Filters Bar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <TextInput
-          size="sm"
-          radius="md"
-          placeholder="Search by customer name or loan A/c..."
-          leftSection={<IconSearch size={15} className="text-gray-400" />}
-          className="flex-1 min-w-[260px]"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.currentTarget.value);
-            setPagination((p) => ({ ...p, pageIndex: 0 }));
-          }}
-        />
-        <Select
-          size="sm"
-          radius="md"
-          placeholder="All Restructure Types"
-          data={restructureTypeOptions}
-          className="w-52"
-          clearable
-          rightSection={chevronDown}
-          value={restructureType}
-          onChange={(v) => {
-            setRestructureType(v);
-            setPagination((p) => ({ ...p, pageIndex: 0 }));
-          }}
-        />
-        <Select
-          size="sm"
-          radius="md"
-          placeholder="All Status"
-          data={statusOptions}
-          className="w-40"
-          clearable
-          rightSection={chevronDown}
-          value={status}
-          onChange={(v) => {
-            setStatus(v);
-            setPagination((p) => ({ ...p, pageIndex: 0 }));
-          }}
-        />
-        <Button
-          size="sm"
-          radius="md"
-          variant="default"
-          leftSection={<IconAdjustments size={15} />}
-          onClick={resetFilters}
-        >
-          Reset Filters
-        </Button>
-      </div>
+      </Paper>
 
       {/* Data Table */}
-      <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-        <Table verticalSpacing="md" horizontalSpacing="lg" fz="sm" className="w-full" highlightOnHover={false}>
-          <Table.Thead className="bg-white">
+      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
+        <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full">
+          <Table.Thead className="bg-gray-50 border-b border-gray-200">
             {table.getHeaderGroups().map((headerGroup) => (
-              <Table.Tr key={headerGroup.id} className="border-b border-gray-100">
+              <Table.Tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   const canSort = header.column.getCanSort();
                   return (
                     <Table.Th
                       key={header.id}
-                      className={`text-gray-400 font-semibold uppercase select-none ${
-                        canSort ? 'cursor-pointer hover:text-gray-600' : ''
+                      className={`text-gray-600 font-semibold select-none ${
+                        canSort ? 'cursor-pointer' : ''
                       }`}
-                      style={{ fontSize: 10.5, letterSpacing: '0.04em', paddingTop: 14, paddingBottom: 14 }}
+                      style={{ fontSize: 11, padding: '6px 10px' }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <Group
@@ -611,16 +421,11 @@ export function LoanRestructure() {
             {rows.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={columns.length}>
-                  <div className="flex flex-col items-center py-16 text-gray-400">
-                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3">
-                      <IconFileOff size={22} className="opacity-60" />
-                    </div>
-                    <Text ta="center" c="dimmed" fz="sm" fw={500}>
+                  <div className="flex flex-col items-center py-8 text-gray-400">
+                    <IconFileOff size={32} className="mb-2 opacity-50" />
+                    <Text ta="center" c="dimmed" fz="xs">
                       No restructure requests match your filters.
                     </Text>
-                    <Button size="xs" variant="subtle" color="brand" radius="md" className="mt-2" onClick={resetFilters}>
-                      Clear filters
-                    </Button>
                   </div>
                 </Table.Td>
               </Table.Tr>
@@ -628,10 +433,10 @@ export function LoanRestructure() {
               rows.map((row) => (
                 <Table.Tr
                   key={row.id}
-                  className="border-b border-gray-50 last:border-0 hover:bg-[#fafaff] transition-colors group"
+                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <Table.Td key={cell.id} className="py-3.5">
+                    <Table.Td key={cell.id} style={{ padding: '5px 10px' }}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </Table.Td>
                   ))}
@@ -642,23 +447,20 @@ export function LoanRestructure() {
         </Table>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 bg-gray-50/40">
-          <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
             <span>
-              {totalRows === 0
-                ? 'Showing 0 of 0 requests'
-                : `Showing ${firstRow} to ${lastRow} of ${totalRows} requests`}
+              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
             </span>
             <div className="flex items-center gap-1.5">
-              <span>Rows per page</span>
+              <span>Rows:</span>
               <Select
                 data={['10', '20', '50']}
                 value={String(pageSize)}
                 onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
                 rightSection={chevronDown}
                 size="xs"
-                radius="md"
-                className="w-16"
+                className="w-14"
               />
             </div>
           </div>
@@ -667,11 +469,11 @@ export function LoanRestructure() {
             value={pageIndex + 1}
             onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
             color="brand"
-            size="sm"
-            radius="md"
+            size="xs"
+            radius="sm"
           />
         </div>
-      </div>
+      </Paper>
     </Box>
   );
 }
