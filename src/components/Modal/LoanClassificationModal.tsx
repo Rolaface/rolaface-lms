@@ -249,7 +249,7 @@ export function LoanClassificationModal({
                     text-[#0b1c30]
                   "
                 >
-                  Classification Code
+                  Code
                   {!isView && (
                     <span className="ml-1 text-red-600">
                       *
@@ -312,7 +312,7 @@ export function LoanClassificationModal({
                     text-[#0b1c30]
                   "
                 >
-                  Classification Name
+                  Name
                   {!isView && (
                     <span className="ml-1 text-red-600">
                       *
