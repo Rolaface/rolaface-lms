@@ -24,7 +24,6 @@ import {
   IconCalendarDue,
   IconChecklist,
   IconNotes,
-  IconCalendarStats,
 } from "@tabler/icons-react";
 
 interface LoanWaiverModalProps {
