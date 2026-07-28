@@ -302,7 +302,7 @@ export function LoanClassificationModal({
 
 
               {/* Classification Name */}
-              <div className="flex-[2] flex flex-col gap-1">
+              <div className="flex-2 flex flex-col gap-1">
 
                 <label
                   htmlFor="class-name"
