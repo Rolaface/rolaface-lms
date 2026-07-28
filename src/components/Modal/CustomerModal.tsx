@@ -486,10 +486,7 @@ export function CustomerModal({ opened, onClose }: CustomerModalProps) {
           </div>
 
           {/* Footer */}
-          <div className="bg-white border-t border-gray-200 py-3 px-6 flex justify-between items-center shrink-0 rounded-b-lg">
-            <Button size="sm" variant="default" onClick={onClose} className="font-semibold px-5">
-              Cancel
-            </Button>
+          <div className="bg-white border-t border-gray-200 py-3 px-6 flex justify-end items-center shrink-0 rounded-b-lg">
             <Group gap={8}>
               <Button
                 size="sm"

@@ -78,7 +78,7 @@ const LOCAL_NAV_ITEMS = [
       // },
       {
         path: "/setup/collection",
-        label: "Collection Sequence",
+        label: "Collection Order",
         icon: IconListDetails,
       },
       { path: "/setup/fees", label: "Fee and Charges", icon: IconCreditCard },

@@ -806,10 +806,7 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 p-4 px-6 flex justify-between items-center shrink-0">
-          <Button size="sm" variant="default" onClick={onClose} className="font-semibold px-5">
-            Cancel
-          </Button>
+        <div className="border-t border-gray-200 p-4 px-6 flex justify-end items-center shrink-0">
           <div className="flex gap-2">
             <Button
               size="sm"
