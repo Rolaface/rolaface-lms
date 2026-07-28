@@ -1,9 +1,16 @@
-import { Modal, TextInput, Button, Group, Stack } from '@mantine/core';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { Modal, TextInput, Button, Group, Stack, Text } from '@mantine/core';
+import { useMutation } from '@tanstack/react-query';
+import { useForm } from '@mantine/form';
+import { createFeeAndCharge } from '../../api/loanChargesApi';
+import { parseFrappeError } from '../../utils/parseFrappeError';
+
 
 export interface FeeAndCharge {
   id?: number;
   name: string;
+  item_code?: string;
+  item_group?: string;
 }
 
 interface FeeAndChargesModalProps {
@@ -21,24 +28,35 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
     mode === 'edit' ? 'Edit Fee and Charge' : 
     'View Fee and Charge';
 
-  // Local state to populate form fields
-  const [formData, setFormData] = useState<FeeAndCharge>({
-    name: '',
-  });
+ const form = useForm({
+  initialValues: { name: '' },
+  validate: {
+    name: (v) => (!v ? 'Fee/Charge name is required' : null),
+  },
+});
 
-  // Update form when modal opens or data changes
+  
   useEffect(() => {
     if (opened && data) {
-      setFormData({
-        name: data.name || '',
-      });
+      form.setValues({ name: data.name || '' });
     } else if (opened && mode === 'add') {
-      // Reset form for adding
-      setFormData({
-        name: '',
-      });
+       form.reset();
     }
   }, [opened, data, mode]);
+
+
+ const createChargeMutation = useMutation({
+    mutationFn: createFeeAndCharge,
+    onSuccess: () => onClose(),
+  });
+
+  const handleSubmit = (values: typeof form.values) => {
+    createChargeMutation.mutate({
+      item_code: values.name,
+      item_group: 'Loan Charges',
+    });
+  };
+
 
   return (
     <Modal
@@ -49,14 +67,14 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
       radius="md"
       classNames={{ title: 'font-semibold text-gray-900' }}
     >
+      <form onSubmit={form.onSubmit(handleSubmit)}>
       <Stack gap="md" mt="sm">
         <TextInput
           label="Fee/Charge Name"
           placeholder="e.g. Late Payment Fee"
           size="sm"
           className="w-full"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.currentTarget.value })}
+           {...form.getInputProps('name')}
           readOnly={isView}
           variant={isView ? 'filled' : 'default'}
           withAsterisk={!isView}
@@ -69,16 +87,25 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
           {isView ? 'Close' : 'Cancel'}
         </Button>
         {!isView && (
+            <>
+         {createChargeMutation.isError && (
+              <Text size="xs" c="red">
+                {parseFrappeError(createChargeMutation.error)}
+              </Text>
+            )}
           <Button 
+          type="submit"
             size="sm" 
             bg="indigoAlt.4"
             className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-            onClick={onClose}
+            loading={createChargeMutation.isPending}
           >
             Save
           </Button>
+            </>
         )}
       </Group>
+       </form>
     </Modal>
   );
 }
