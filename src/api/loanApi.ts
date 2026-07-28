@@ -12,3 +12,24 @@ export async function getAllLoans() {
   return data;
   
 }
+
+// api/loanApi.ts
+export async function getLoanById(id: string) {
+  const { data } = await apiClient.get(API.loan.getLoanById, { params: { id } });  
+  return data;
+}
+
+export async function updateLoan({id, payload,}: {
+  id: string;
+  payload: Partial<CreateLoanPayload>;
+}) {
+  const { data } = await apiClient.put(
+    API.loan.updateLoan,
+    payload,
+    {
+      params: { id },
+    }
+  );
+
+  return data;
+}

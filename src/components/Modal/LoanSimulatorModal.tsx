@@ -114,6 +114,8 @@ export function LoanSimulatorModal({ opened, onClose, onApply }: LoanSimulatorMo
           <NumberInput
             size="md"
             label="Principal"
+             hideControls
+            min={0}
             value={simPrincipal}
             onChange={(v) => handleSimPrincipalChange(v as number | "")}
             leftSection={<FieldIcon Icon={IconCurrency} bg="#FFF7ED" color="#EA580C" />}
@@ -124,6 +126,8 @@ export function LoanSimulatorModal({ opened, onClose, onApply }: LoanSimulatorMo
           <NumberInput
             size="md"
             label="Interest Rate (% p.a.)"
+             hideControls
+            min={0}
             value={simRate}
             onChange={(v) => setSimRate(v as number | "")}
             leftSection={<FieldIcon Icon={IconPercentage} bg="#EEF2FF" color="#4F46E5" />}
@@ -134,6 +138,8 @@ export function LoanSimulatorModal({ opened, onClose, onApply }: LoanSimulatorMo
             size="md"
             label="Tenure (months)"
             value={simTenure}
+             hideControls
+            min={0}
             onChange={(v) => setSimTenure(v as number | "")}
             leftSection={<FieldIcon Icon={IconCalendarStats} bg="#ECFDF5" color="#059669" />}
             classNames={labelClass}
@@ -143,6 +149,8 @@ export function LoanSimulatorModal({ opened, onClose, onApply }: LoanSimulatorMo
             <NumberInput
               size="md"
               label="EMI"
+               hideControls
+            min={0}
               value={simMode === "emiToPrincipal" ? simEmi : simComputedEmi || ""}
               onChange={(v) => handleSimEmiChange(v as number | "")}
               leftSection={<FieldIcon Icon={IconCalculator} bg="#FFF7ED" color="#EA580C" />}

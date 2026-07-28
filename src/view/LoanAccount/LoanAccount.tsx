@@ -37,6 +37,7 @@ import {
 } from '@tanstack/react-table';
 import { LoanAccountModal } from '../../components/Modal/LoanBooking/LoanAccountModal';
 import { getAllLoans } from '../../api/loanApi';  
+import { useQuery } from '@tanstack/react-query';
 const STATUS_META: Record<string, { label: string; color: string }> = {
   DRAFT: { label: 'DRAFT', color: 'gray' },
   PENDING_APPROVAL: { label: 'PENDING APPROVAL', color: 'yellow' },
@@ -63,10 +64,20 @@ const fmtDate = (iso: string) =>
 
 export function LoanAccount() {
   const [opened, { open, close }] = useDisclosure(false);
+  
+  const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
+  
+   const handleModalClose = () => {
+    close();
+    setSelectedLoanId(null);
+  };
+ const { data: loansResponse, isLoading } = useQuery({
+  queryKey: ["loans"],
+  queryFn: getAllLoans,
+});
 
-  // Data fetching state
-  const [data, setData] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // const [data, setData] = useState<any[]>([]);
+  // const [isLoading, setIsLoading] = useState(true);
 
   // filter state
   const [search, setSearch] = useState('');
@@ -78,36 +89,52 @@ export function LoanAccount() {
   const [sorting, setSorting] = useState([{ id: 'appliedDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  useEffect(() => {
-    const fetchLoans = async () => {
-      try {
-        setIsLoading(true);
-        const response = await getAllLoans();
+  // useEffect(() => {
+  //   const fetchLoans = async () => {
+  //     try {
+  //       setIsLoading(true);
+  //       const response = await getAllLoans();
         
-        if (response?.status === 'success' && response.data) {
-          // Map API data to match existing UI structure
-          const mappedData = response.data.map((item: any) => ({
-            id: item.name,
-            appNo: item.name,
-            customer: item.applicant_name || item.applicant || 'N/A',
-            product: item.loan_product || 'N/A',
-            branch: item.company || 'N/A', // Mapped company to branch to preserve UI
-            amount: item.loan_amount || 0,
-            rate: 0, // Fallback to 0 since rate isn't in current API response
-            status: item.status ? item.status.toUpperCase().replace(' ', '_') : 'DRAFT',
-            appliedDate: item.posting_date,
-          }));
-          setData(mappedData);
-        }
-      } catch (error) {
-        console.error('Error fetching loans:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  //       if (response?.status === 'success' && response.data) {
+  //         // Map API data to match existing UI structure
+  //         const mappedData = response.data.map((item: any) => ({
+  //           id: item.name,
+  //           appNo: item.name,
+  //           customer: item.applicant_name || item.applicant || 'N/A',
+  //           product: item.loan_product || 'N/A',
+  //           branch: item.company || 'N/A', // Mapped company to branch to preserve UI
+  //           amount: item.loan_amount || 0,
+  //           rate: 0, // Fallback to 0 since rate isn't in current API response
+  //           status: item.status ? item.status.toUpperCase().replace(' ', '_') : 'DRAFT',
+  //           appliedDate: item.posting_date,
+  //         }));
+  //         setData(mappedData);
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching loans:', error);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
 
-    fetchLoans();
-  }, []);
+  //   fetchLoans();
+  // }, []);
+  const data = useMemo(() => {
+  if (loansResponse?.status === 'success' && loansResponse.data) {
+    return loansResponse.data.map((item: any) => ({
+      id: item.name,
+      appNo: item.name,
+      customer: item.applicant_name || item.applicant || 'N/A',
+      product: item.loan_product || 'N/A',
+      branch: item.company || 'N/A',
+      amount: item.loan_amount || 0,
+      rate: 0,
+      status: item.status ? item.status.toUpperCase().replace(' ', '_') : 'DRAFT',
+      appliedDate: item.posting_date,
+    }));
+  }
+  return [];
+}, [loansResponse]);
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -201,27 +228,46 @@ export function LoanAccount() {
           );
         },
       }),
-      columnHelper.display({
+  columnHelper.display({
         id: 'actions',
         header: () => (
           <Text fz="xs" fw={600} ta="right" w="100%">
             Actions
           </Text>
         ),
-        cell: () => (
-          <Group justify="flex-end" gap={6} wrap="nowrap">
-            <Tooltip label="View" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="gray">
-                <IconEye size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Edit" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="blue">
-                <IconPencil size={14} />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
-        ),
+        cell: (info) => {
+          const rowData = info.row.original;
+          
+          // Grab the identifier regardless of how it was mapped to the table row
+          const loanIdentifier = rowData.name || rowData.appNo || rowData.id; 
+          
+          const isDraft = rowData.status === 'DRAFT';
+
+          return (
+            <Group justify="flex-end" gap={6} wrap="nowrap">
+              <Tooltip label="View" withArrow>
+                <ActionIcon size="sm" variant="subtle" color="gray">
+                  <IconEye size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label={isDraft ? "Edit" : "Only Drafts can be edited"} withArrow>
+                <ActionIcon 
+                  size="sm" 
+                  variant="subtle" 
+                  color={isDraft ? "blue" : "gray"}
+                  disabled={!isDraft}
+                  onClick={() => {
+                    // Pass the exact string "ACC-LOAN-2026-00003" to the state
+                    setSelectedLoanId(loanIdentifier);
+                    open();
+                  }}
+                >
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
+          );
+        },
       }),
     ],
     []
@@ -257,17 +303,21 @@ export function LoanAccount() {
 
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
-      <LoanAccountModal opened={opened} onClose={close} />
+      {/* <LoanAccountModal opened={opened} onClose={close} /> */}
+      <LoanAccountModal opened={opened} onClose={handleModalClose} loanId={selectedLoanId} />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
         <Title order={2} className="text-gray-900 font-semibold">
           Loan Booking
         </Title>
-        <Button
+       <Button
           size="xs"
           bg="indigoAlt.4"
-          onClick={open}
+          onClick={() => {
+            setSelectedLoanId(null);
+            open();
+          }}
           className="bg-[#991B1B] hover:bg-red-900 transition-colors"
           leftSection={<IconPlus size={14} />}
         >

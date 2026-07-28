@@ -7,7 +7,7 @@ export interface CreateLoanPayload {
   penalty_charges_rate: number;
   is_term_loan: 0 | 1;
   repayment_method: "Repay Over Number of Periods" | "Repay Fixed Amount per Period";
-  posting_date: string; // YYYY-MM-DD
+  posting_date: string; 
 
   // Optional (commented in your sample, or clearly non-mandatory)
   applicant_name?: string;
@@ -18,7 +18,7 @@ export interface CreateLoanPayload {
   repayment_start_date?: string;
   auto_create_disbursement_on_loan_booking?: 0 | 1;
   moratorium_tenure?: number;
-  moratorium_type?: "EMI" | "Principal Only" | string;
+  moratorium_type?: "EMI" | "Principal" | string;
   treatment_of_interest?: "Capitalize" | "Charge Separately" | string;
 }
 
