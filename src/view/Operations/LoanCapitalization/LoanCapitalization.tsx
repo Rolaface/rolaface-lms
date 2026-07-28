@@ -1,4 +1,3 @@
-// LoanRepayment.tsx
 import { useMemo, useState } from 'react';
 import {
   Box,
@@ -24,7 +23,6 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
-  IconFileOff,
   IconTrash,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
@@ -36,9 +34,9 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { LoanPrepaymentModal, type LoanRepaymentFormData } from '../../../components/Modal/LoanPrepaymentModal';
+import { LoanCapitalizationModal, type LoanCapitalizationFormData } from '../../../components/Modal/LoanCapitalizationModal';
 
-interface RepaymentRow {
+interface CapitalizationRow {
   id: number;
   loanAc: string;
   customer: string;
@@ -50,7 +48,7 @@ interface RepaymentRow {
   status: 'COMPLETED' | 'PENDING' | 'FAILED';
 }
 
-const DUMMY_REPAYMENTS: RepaymentRow[] = [
+const DUMMY_CAPITALIZATIONS: CapitalizationRow[] = [
   {
     id: 1,
     loanAc: 'LNA-2025-001',
@@ -97,7 +95,7 @@ const DUMMY_REPAYMENTS: RepaymentRow[] = [
   },
 ];
 
-const columnHelper = createColumnHelper<RepaymentRow>();
+const columnHelper = createColumnHelper<CapitalizationRow>();
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   if (sorted === 'asc') return <IconChevronUp size={12} />;
@@ -107,45 +105,37 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
 
 const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
 
-function natureColor(nature: RepaymentRow['natureOfPayment']) {
+function natureColor(nature: CapitalizationRow['natureOfPayment']) {
   if (nature === 'PAY_DUES') return 'brand';
   if (nature === 'PARTIAL') return 'gold';
   return 'accent';
 }
 
-function natureLabel(nature: RepaymentRow['natureOfPayment']) {
-  if (nature === 'PAY_DUES') return 'Pay Dues';
-  if (nature === 'PARTIAL') return 'Partially Pay Off';
-  return 'Full Settlement';
+function natureLabel(nature: CapitalizationRow['natureOfPayment']) {
+  if (nature === 'PAY_DUES') return 'Capitalize Dues';
+  if (nature === 'PARTIAL') return 'Partial Capitalization';
+  return 'Full Capitalization';
 }
 
-function statusColor(status: RepaymentRow['status']) {
+function statusColor(status: CapitalizationRow['status']) {
   if (status === 'COMPLETED') return 'green';
   if (status === 'PENDING') return 'gold';
   return 'danger';
 }
 
-export function LoanPrepayment() {
+export function LoanCapitalization() {
   const [opened, { open, close }] = useDisclosure(false);
-
-  // filter state
   const [search, setSearch] = useState('');
   const [loanType, setLoanType] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
-
-  // table state
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-
-  const [rowsData, setRowsData] = useState(DUMMY_REPAYMENTS);
+  const [rowsData, setRowsData] = useState(DUMMY_CAPITALIZATIONS);
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rowsData.filter((r) => {
-      const matchesSearch =
-        !q ||
-        r.customer.toLowerCase().includes(q) ||
-        r.loanAc.toLowerCase().includes(q);
+      const matchesSearch = !q || r.customer.toLowerCase().includes(q) || r.loanAc.toLowerCase().includes(q);
       const matchesLoanType = !loanType || r.loanType === loanType;
       const matchesStatus = status === 'all' || r.status === status;
       return matchesSearch && matchesLoanType && matchesStatus;
@@ -156,7 +146,7 @@ export function LoanPrepayment() {
     setRowsData((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const handleAddRepayment = (formData: LoanRepaymentFormData) => {
+  const handleAddCapitalization = (formData: LoanCapitalizationFormData) => {
     setRowsData((prev) => [
       ...prev,
       {
@@ -200,20 +190,15 @@ export function LoanPrepayment() {
         ),
       }),
       columnHelper.accessor('natureOfPayment', {
-        header: 'Nature of Payment',
+        header: 'Nature of Capitalization',
         cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            color={natureColor(info.getValue())}
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
+          <Badge variant="light" size="sm" color={natureColor(info.getValue())} styles={{ root: { fontSize: 10, padding: '0 8px' } }}>
             {natureLabel(info.getValue())}
           </Badge>
         ),
       }),
       columnHelper.accessor('amountPaid', {
-        header: 'Amount Paid',
+        header: 'Capitalized Amount',
         cell: (info) => (
           <Text fz="xs" fw={600} c="gray.9" className="font-mono">
             ${info.getValue().toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -239,13 +224,7 @@ export function LoanPrepayment() {
       columnHelper.accessor('status', {
         header: 'Status',
         cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            color={statusColor(info.getValue())}
-            className="font-semibold tracking-wider"
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
+          <Badge variant="light" size="sm" color={statusColor(info.getValue())} className="font-semibold tracking-wider" styles={{ root: { fontSize: 10, padding: '0 8px' } }}>
             {info.getValue()}
           </Badge>
         ),
@@ -272,12 +251,7 @@ export function LoanPrepayment() {
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Delete" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="danger"
-                  onClick={() => handleDelete(row.id)}
-                >
+                <ActionIcon size="sm" variant="subtle" color="danger" onClick={() => handleDelete(row.id)}>
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -312,64 +286,27 @@ export function LoanPrepayment() {
     setStatus('all');
   };
 
-  const loanTypeOptions = Array.from(new Set(DUMMY_REPAYMENTS.map((r) => r.loanType)));
+  const loanTypeOptions = Array.from(new Set(DUMMY_CAPITALIZATIONS.map((r) => r.loanType)));
 
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
-      <LoanPrepaymentModal opened={opened} onClose={close} onSubmit={handleAddRepayment} />
+      <LoanCapitalizationModal opened={opened} onClose={close} onSubmit={handleAddCapitalization} />
 
-      {/* Header & Add Button */}
       <div className="flex justify-between items-center">
         <Title order={2} className="text-gray-900 font-semibold">
-          Loan Prepayments
+          Loan Capitalization
         </Title>
-        <Button
-          size="xs"
-          onClick={open}
-          className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 transition-opacity"
-          leftSection={<IconPlus size={14} />}
-        >
-          Process Prepayment
+        <Button size="xs" onClick={open} className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 transition-opacity" leftSection={<IconPlus size={14} />}>
+          Process Capitalization
         </Button>
       </div>
 
-      {/* Filters Box */}
       <Paper withBorder radius="md" p="xs" className="shadow-sm">
         <div className="flex items-center gap-3 flex-wrap">
-          <TextInput
-            size="xs"
-            placeholder="Loan A/c / Customer"
-            leftSection={<IconSearch size={13} />}
-            className="flex-1 min-w-[200px]"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          />
-          <Select
-            size="xs"
-            placeholder="All Loan Types"
-            data={loanTypeOptions}
-            className="w-44"
-            searchable
-            clearable
-            rightSection={chevronDown}
-            value={loanType}
-            onChange={(v) => {
-              setLoanType(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          />
+          <TextInput size="xs" placeholder="Loan A/c / Customer" leftSection={<IconSearch size={13} />} className="flex-1 min-w-[200px]" value={search} onChange={(e) => { setSearch(e.currentTarget.value); setPagination((p) => ({ ...p, pageIndex: 0 })); }} />
+          <Select size="xs" placeholder="All Loan Types" data={loanTypeOptions} className="w-44" searchable clearable rightSection={chevronDown} value={loanType} onChange={(v) => { setLoanType(v); setPagination((p) => ({ ...p, pageIndex: 0 })); }} />
 
-          <Radio.Group
-            name="status"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          >
+          <Radio.Group name="status" value={status} onChange={(v) => { setStatus(v); setPagination((p) => ({ ...p, pageIndex: 0 })); }}>
             <Group gap="sm">
               <Radio size="xs" value="all" label="All" color="brand" />
               <Radio size="xs" value="COMPLETED" label="Completed" color="brand" />
@@ -384,7 +321,6 @@ export function LoanPrepayment() {
         </div>
       </Paper>
 
-      {/* Data Table */}
       <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
         <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full">
           <Table.Thead className="bg-gray-50 border-b border-gray-200">
@@ -393,19 +329,8 @@ export function LoanPrepayment() {
                 {headerGroup.headers.map((header) => {
                   const canSort = header.column.getCanSort();
                   return (
-                    <Table.Th
-                      key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${
-                        canSort ? 'cursor-pointer' : ''
-                      }`}
-                      style={{ fontSize: 11, padding: '6px 10px' }}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      <Group
-                        gap={4}
-                        wrap="nowrap"
-                        justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
-                      >
+                    <Table.Th key={header.id} className={`text-gray-600 font-semibold select-none ${canSort ? 'cursor-pointer' : ''}`} style={{ fontSize: 11, padding: '6px 10px' }} onClick={header.column.getToggleSortingHandler()}>
+                      <Group gap={4} wrap="nowrap" justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}>
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
                       </Group>
@@ -418,23 +343,15 @@ export function LoanPrepayment() {
           <Table.Tbody>
             {rows.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={columns.length}>
-                  <div className="flex flex-col items-center py-8 text-gray-400">
-                    <IconFileOff size={32} className="mb-2 opacity-50" />
-                    <Text ta="center" c="dimmed" fz="xs">
-                      No repayments match your filters.
-                    </Text>
-                  </div>
+                <Table.Td colSpan={9} className="text-center py-8 text-gray-500">
+                  No capitalization records found.
                 </Table.Td>
               </Table.Tr>
             ) : (
               rows.map((row) => (
-                <Table.Tr
-                  key={row.id}
-                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
-                >
+                <Table.Tr key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <Table.Td key={cell.id} style={{ padding: '5px 10px' }}>
+                    <Table.Td key={cell.id} style={{ padding: '10px 12px' }}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </Table.Td>
                   ))}
@@ -443,35 +360,14 @@ export function LoanPrepayment() {
             )}
           </Table.Tbody>
         </Table>
-
-        {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span>
-              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span>Rows:</span>
-              <Select
-                data={['10', '20', '50']}
-                value={String(pageSize)}
-                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
-                rightSection={chevronDown}
-                size="xs"
-                className="w-14"
-              />
-            </div>
-          </div>
-          <Pagination
-            total={table.getPageCount() || 1}
-            value={pageIndex + 1}
-            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-            color="brand"
-            size="xs"
-            radius="sm"
-          />
-        </div>
       </Paper>
+
+      <div className="flex items-center justify-between text-xs text-gray-500">
+        <Text>
+          Showing {firstRow}-{lastRow} of {totalRows} capitalizations
+        </Text>
+        <Pagination page={pageIndex + 1} onChange={(page) => setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))} total={Math.ceil(totalRows / pageSize)} size="xs" />
+      </div>
     </Box>
   );
 }

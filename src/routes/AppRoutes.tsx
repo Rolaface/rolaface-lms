@@ -19,8 +19,8 @@ import { LoanAccount } from '../view/LoanAccount/LoanAccount';
 import { LoanDisbursement } from '../view/Operations/LoanDisbursement/LoanDisbursement';
 import { LoanRepayment } from '../view/Operations/LoanRepayment/LoanRepayment';
 import { LoanPrepayment } from '../view/Operations/LoanPrepayment/LoanPrepayment';
-// import { LoanWaiver } from '../view/Operations/LoanWaiver';
-// import { LoanCapitalization } from '../view/Operations/LoanCapitalization';
+import { LoanWaiver } from '../view/Operations/LoanWaiver/LoanWaiver';
+import { LoanCapitalization } from '../view/Operations/LoanCapitalization/LoanCapitalization';
 // import { FullSettlement } from '../view/Operations/FullSettlement';
 import { LoanRestructure } from '../view/Operations/LoanRestructure/LoanRestructure';
 import { LoanWriteOff } from '../view/Operations/LoanWriteOff/LoanWriteOff';
@@ -163,16 +163,16 @@ const operationsPrepaymentRoute = createRoute({
   path: '/prepayment',
   component: LoanPrepayment,
 });
-// const operationsWaiverRoute = createRoute({
-//   getParentRoute: () => operationsRoute,
-//   path: '/waiver',
-//   component: LoanWaiver,
-// });
-// const operationsCapitalizationRoute = createRoute({
-//   getParentRoute: () => operationsRoute,
-//   path: '/capitalization',
-//   component: LoanCapitalization,
-// });
+const operationsWaiverRoute = createRoute({
+  getParentRoute: () => operationsRoute,
+  path: '/waiver',
+  component: LoanWaiver,
+});
+const operationsCapitalizationRoute = createRoute({
+  getParentRoute: () => operationsRoute,
+  path: '/capitalization',
+  component: LoanCapitalization,
+});
 // const operationsSettlementRoute = createRoute({
 //   getParentRoute: () => operationsRoute,
 //   path: '/settlement',
@@ -232,8 +232,8 @@ const routeTree = rootRoute.addChildren([
     operationsDisbursementRoute,
     operationsRepaymentRoute,
     operationsPrepaymentRoute,
-    // operationsWaiverRoute,
-    // operationsCapitalizationRoute,
+    operationsWaiverRoute,
+    operationsCapitalizationRoute,
     // operationsSettlementRoute,
     operationsRestructureRoute,
     operationsWriteoffRoute,
