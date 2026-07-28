@@ -15,6 +15,7 @@ import { FEE_TYPES } from "./Constants";
 export interface ChargeRow {
   id: string;
   feeType: string;
+  percentage: number | "",
   amount: number | "";
   appliedOn: string;
 }
@@ -30,18 +31,6 @@ export function ChargesTab({ charges, onAdd, onUpdate, onRemove }: ChargesTabPro
   return (
     <div className="bg-white p-6 border border-slate-200 rounded-md">
       <div className="mb-4">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-1 h-5 bg-indigo-700 rounded-full" />
-          <Text size="lg" fw={700} className="text-slate-900">
-            Loan Charges
-          </Text>
-          <Tooltip label="Fees and charges applied to this loan product." withArrow>
-            <IconInfoCircle size={14} className="text-slate-400 ml-1 cursor-help" />
-          </Tooltip>
-        </div>
-        <Text size="sm" className="text-slate-500">
-          Fees and charges applied to this loan product.
-        </Text>
       </div>
 
       <div className="border border-slate-200 rounded-lg overflow-hidden">
@@ -54,6 +43,7 @@ export function ChargesTab({ charges, onAdd, onUpdate, onRemove }: ChargesTabPro
                 </Table.Th>
                 <Table.Th className="w-16 font-semibold text-slate-800">No.</Table.Th>
                 <Table.Th className="font-semibold text-slate-800">Fee Type</Table.Th>
+                 <Table.Th className="font-semibold text-slate-800">Percentage</Table.Th>
                 <Table.Th className="font-semibold text-slate-800">Amount</Table.Th>
                 <Table.Th className="font-semibold text-slate-800">Applied On</Table.Th>
                 <Table.Th className="w-24" />
@@ -83,10 +73,23 @@ export function ChargesTab({ charges, onAdd, onUpdate, onRemove }: ChargesTabPro
                         classNames={{ input: "bg-white" }}
                       />
                     </Table.Td>
+                     <Table.Td>
+                      <NumberInput
+                        size="sm"
+                        value={c.percentage}
+                         hideControls
+                          min={0}
+                        onChange={(val) => onUpdate(c.id, "percentage", val as number)}
+                        placeholder="0.00"
+                        classNames={{ input: "bg-white" }}
+                      />
+                    </Table.Td>
                     <Table.Td>
                       <NumberInput
                         size="sm"
                         value={c.amount}
+                         hideControls
+                         min={0}
                         onChange={(val) => onUpdate(c.id, "amount", val as number)}
                         placeholder="0.00"
                         classNames={{ input: "bg-white" }}

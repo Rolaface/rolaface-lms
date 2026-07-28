@@ -23,7 +23,7 @@ export function CollateralTab({
 }: CollateralTabProps) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="border border-slate-200 rounded-md p-5">
+      {/* <div className="border border-slate-200 rounded-md p-5">
         <div className="flex items-center gap-1.5 mb-3">
           <Text size="sm" fw={700} className="text-slate-900 uppercase tracking-wide" style={{ fontSize: 11 }}>
             Find Existing Collateral
@@ -48,7 +48,7 @@ export function CollateralTab({
             Search
           </Button>
         </div>
-      </div>
+      </div> */}
 
       <div className="flex flex-col items-center justify-center py-20 border border-slate-200 rounded-md">
         <IconBriefcase2 size={40} className="text-indigo-400 mb-4" />
@@ -58,9 +58,9 @@ export function CollateralTab({
         <Text size="xs" c="dimmed" className="mb-4">
           Attach a collateral asset to secure this loan account.
         </Text>
-        <Button size="xs" variant="outline" color="indigo" className="border-dashed" onClick={onOpenAddModal}>
+        {/* <Button size="xs" variant="outline" color="indigo" className="border-dashed" onClick={onOpenAddModal}>
           + Add Collateral
-        </Button>
+        </Button> */}
 
         {collaterals.length > 0 && (
           <div className="w-full mt-6 flex flex-col gap-2">

@@ -1,10 +1,10 @@
-import { Fragment, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Box, Text, Button, Modal } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconX, IconMinus, IconFileText, IconCheck, IconCalculator } from "@tabler/icons-react";
 
-import { createLoan } from "../../../api/loanApi";
+import { createLoan, getLoanById, updateLoan } from "../../../api/loanApi";
 import { calcEmi, buildAmortization, getTodayDate } from "../../../utils/loanCalculations";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { ANNUAL_RATE, DEFAULT_DOCUMENTS, TAB_ITEMS } from "./Constants";
@@ -17,15 +17,16 @@ import { CoApplicantTab, type CoApplicant } from "./CoapplicationTab";
 import { DocumentsTab } from "./DocumentTab";
 import { LoanSummarySidebar } from "./LoanSummarySidebarTab";
 
-import { CollateralModal } from "../CollateralModal";
+// import { CollateralModal } from "../CollateralModal";
 import { LoanSimulatorModal } from "../LoanSimulatorModal";
 
 interface LoanAccountModalProps {
   opened: boolean;
+  loanId?: string | null;
   onClose: () => void;
 }
 
-export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
+export function LoanAccountModal({ opened, onClose, loanId }: LoanAccountModalProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<string | null>("basic");
   
@@ -48,7 +49,7 @@ export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
       customerNumber: "",
       productCode: "",
       loanAppNumber: "",
-      refNumber: "REF-2026-000482",
+      refNumber: "",
       isImport: false,
       migrationDate: "",
       trnDate: getTodayDate(),
@@ -110,7 +111,7 @@ export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
 
   // --- Array Handlers ---
   const handleAddCharge = () =>
-    setCharges((prev) => [...prev, { id: Date.now().toString(), feeType: "", amount: "", appliedOn: getTodayDate() }]);
+    setCharges((prev) => [...prev, { id: Date.now().toString(), feeType: "", percentage: "", amount: "", appliedOn: getTodayDate() }]);
   const handleUpdateCharge = (id: string, field: keyof ChargeRow, value: string | number) =>
     setCharges((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
   const handleRemoveCharge = (id: string) => setCharges((prev) => prev.filter((c) => c.id !== id));
@@ -128,7 +129,8 @@ export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
     mutationFn: createLoan,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loans"] });
-      onClose();
+      handleModalClose();
+      // onClose();
     },
   });
 
@@ -159,13 +161,71 @@ export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
       payload.repayment_start_date = values.repaymentStartDate;
     }
 
-    if (values.moratoriumType && values.moratoriumType !== "None" && values.moratoriumPeriod !== "") {
+   if (
+      values.moratoriumType && 
+      values.moratoriumType !== "None" && 
+      values.moratoriumPeriod !== "" && 
+      Number(values.moratoriumPeriod) > 0
+    ) {
       payload.moratorium_type = values.moratoriumType;
       payload.moratorium_tenure = Number(values.moratoriumPeriod);
     }
 
-    createLoanMutation.mutate(payload);
+    // createLoanMutation.mutate(payload);
+    if (loanId) {
+      updateLoanMutation.mutate({ id: loanId, payload });
+    } else {
+      createLoanMutation.mutate(payload);
+    }
   };
+
+// const { data: existingLoanData, isLoading: isFetchingLoan } = useQuery({
+//     queryKey: ["loan", loanId],
+//     queryFn: () => getLoanById(loanId!),
+//     enabled: !!loanId && opened, 
+//   });
+
+ const { data: existingLoanData, isLoading: isFetchingLoan, error, isError } = useQuery({
+  queryKey: ["loan", loanId],
+  queryFn: async () => await getLoanById(loanId as string),
+  enabled: !!loanId && opened === true,
+  refetchOnMount: "always", 
+});
+
+ useEffect(() => {
+  const loan = existingLoanData?.message?.data;
+
+  if (loan) {
+    form.setValues({
+      customerNumber: loan.applicant || "",
+      productCode: loan.loan_product || "",
+      loanAmount: loan.loan_amount || "",
+      trnDate: loan.posting_date || getTodayDate(),
+      fixedRepaymentsIn: loan.repayment_method === "Repay Over Number of Periods" ? "TENOR" : "EMI",
+      tenureValue: loan.repayment_periods || "",
+      repaymentAmount: loan.monthly_repayment_amount || "",
+      repaymentStartDate: loan.repayment_start_date || "",
+      moratoriumType: loan.moratorium_type || "None",
+      moratoriumPeriod: loan.moratorium_tenure || "",
+    });
+  }
+}, [existingLoanData]);
+
+// const updateLoanMutation = useMutation({
+//     mutationFn: updateLoan,
+//     onSuccess: () => {
+//       queryClient.invalidateQueries({ queryKey: ["loans"] });
+//       handleModalClose();
+//     },
+//   });
+const updateLoanMutation = useMutation({
+  mutationFn: updateLoan,
+  onSuccess: (data, variables) => {
+    queryClient.invalidateQueries({ queryKey: ["loans"] });
+    queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });  
+    handleModalClose();
+  },
+});
 
   const handleReset = () => {
     form.reset();
@@ -178,10 +238,20 @@ export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
     createLoanMutation.reset();
   };
 
+  // --- ADD THIS FUNCTION ---
+  const handleModalClose = () => {
+     if (loanId) {
+    queryClient.removeQueries({ queryKey: ["loan", loanId] }); 
+  }
+    handleReset(); 
+    onClose();     
+  };
+
   const activeTabIndex = TAB_ITEMS.findIndex((t) => t.value === activeTab);
 
   return (
-    <Modal opened={opened} onClose={onClose} size="95%" withCloseButton={false} padding={0} radius="md">
+    // <Modal opened={opened} onClose={onClose} size="95%" withCloseButton={false} padding={0} radius="md">
+    <Modal opened={opened} onClose={handleModalClose} size="95%" withCloseButton={false} padding={0} radius="md">
       {/* Wrap everything in the form element */}
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Box className="flex flex-col h-[90vh]">
@@ -193,20 +263,17 @@ export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
               </div>
               <div className="min-w-0">
                 <Text size="md" fw={600} className="leading-tight truncate">
-                  New Loan Booking
-                </Text>
-                <Text size="xs" className="text-indigo-100 truncate">
-                  Create and configure a new loan booking.
-                </Text>
+  {loanId ? "Update Loan Booking" : "New Loan Booking"}
+</Text>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Button variant="subtle" className="text-white hover:bg-white/10 px-2" size="xs">
                 <IconMinus size={18} />
               </Button>
-              <Button variant="subtle" onClick={onClose} className="text-white hover:bg-white/10 px-2" size="xs">
-                <IconX size={18} />
-              </Button>
+             <Button variant="subtle" onClick={handleModalClose} className="text-white hover:bg-white/10 px-2" size="xs">
+  <IconX size={18} />
+</Button>
             </div>
           </Box>
 
@@ -317,22 +384,22 @@ export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
           {/* Footer */}
           <div className="bg-white border-t border-slate-100 p-3 px-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 shrink-0 rounded-b-md">
             <div className="flex items-center gap-4">
-              <Button
-                size="sm"
-                variant="default"
-                onClick={onClose}
-                disabled={createLoanMutation.isPending}
-                className="font-semibold px-5 text-slate-700 border-slate-200"
-              >
-                Cancel
-              </Button>
+              {/* <Button
+  size="sm"
+  variant="default"
+  onClick={handleModalClose}
+  disabled={createLoanMutation.isPending}
+  className="font-semibold px-5 text-slate-700 border-slate-200"
+>
+  Cancel
+</Button>
               <button
                 type="button"
                 onClick={handleReset}
                 className="text-xs font-semibold text-red-500 hover:text-red-600 transition-colors"
               >
                 Reset
-              </button>
+              </button> */}
               <button
                 type="button"
                 onClick={() => setSimulatorModalOpened(true)}
@@ -349,6 +416,22 @@ export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
                   {parseFrappeError(createLoanMutation.error)}
                 </Text>
               )}
+                          <Button
+  size="sm"
+  variant="default"
+  onClick={handleModalClose}
+  disabled={createLoanMutation.isPending}
+  className="font-semibold px-5 text-slate-700 border-slate-200"
+>
+  Cancel
+</Button>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="text-xs font-semibold text-red-500 hover:text-red-600 transition-colors"
+              >
+                Reset
+              </button>
               <Button size="sm" variant="default" className="font-semibold px-5 text-slate-700 border-slate-200">
                 Save as Draft
               </Button>
@@ -356,17 +439,17 @@ export function LoanAccountModal({ opened, onClose }: LoanAccountModalProps) {
               <Button
                 type="submit"
                 size="sm"
-                loading={createLoanMutation.isPending}
+                loading={createLoanMutation.isPending || updateLoanMutation.isPending || isFetchingLoan}
                 className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0 font-semibold px-6"
               >
-                Submit Application
+                {loanId ? "Update Application" : "Submit Application"}
               </Button>
             </div>
           </div>
         </Box>
       </form>
 
-      <CollateralModal opened={collateralModalOpened} onClose={() => setCollateralModalOpened(false)} />
+      {/* <CollateralModal opened={collateralModalOpened} onClose={() => setCollateralModalOpened(false)} /> */}
       <LoanSimulatorModal opened={simulatorModalOpened} onClose={() => setSimulatorModalOpened(false)} />
     </Modal>
   );

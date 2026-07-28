@@ -46,10 +46,6 @@ export function LoanSummarySidebar({
       <Text size="xs" fw={700} className="text-indigo-600 uppercase tracking-wide" style={{ fontSize: 10 }}>
         Live Preview
       </Text>
-      <Text size="sm" fw={700} className="text-slate-900 mb-4">
-        Loan Summary
-      </Text>
-
       <div className="flex flex-col">
         <SummaryRow label="Product" value={productCode || "—"} />
         <SummaryRow

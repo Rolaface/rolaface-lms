@@ -24,7 +24,7 @@ export const FREQUENCIES = ["Monthly", "Quarterly", "Half-Yearly", "Yearly"];
 // "None" added so the SegmentedControl has a matching option for the
 // default state — previously the control's value/onChange were commented
 // out, so this list never actually connected to state at all.
-export const MORATORIUM_TYPES = ["Principal Only", "EMI (Principal + Interest)"];
+export const MORATORIUM_TYPES = ["Principal", "EMI (Principal + Interest)"];
 
 export const DEFAULT_DOCUMENTS: DocumentRow[] = [
   { id: 1, name: "National ID / Passport", status: "Pending" },
@@ -41,7 +41,7 @@ export const TAB_ITEMS: {
   { value: "basic", label: "Basic Details", icon: IconIdBadge2 },
   { value: "charges", label: "Charges", icon: IconReceipt2 },
   { value: "schedule", label: "Repayment Schedule", icon: IconCalendarStats },
-  { value: "coapplicant", label: "Co-applicant", icon: IconUsers },
+  { value: "coapplicant", label: "Co-Applicants", icon: IconUsers },
   { value: "collateral", label: "Collateral", icon: IconBriefcase },
   { value: "documents", label: "Documents", icon: IconFileUpload },
 ];

@@ -36,47 +36,6 @@ export function CoApplicantTab({
 }: CoApplicantTabProps) {
   return (
     <div className="bg-white p-6 border border-slate-200 rounded-md">
-      <div className="border border-slate-200 rounded-md p-5">
-        <div className="flex items-center gap-1.5 mb-3">
-          <Text size="sm" fw={700} className="text-slate-900 uppercase tracking-wide" style={{ fontSize: 11 }}>
-            Find Existing Customer
-          </Text>
-          <Tooltip label="Search for an existing customer to add as a co-applicant." withArrow>
-            <IconInfoCircle size={13} className="text-slate-400" />
-          </Tooltip>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <TextInput
-            size="sm"
-            placeholder="Search by name or customer number..."
-            leftSection={<IconSearch size={14} className="text-slate-400" />}
-            value={search}
-            onChange={(e) => onSearchChange(e.currentTarget.value)}
-            className="flex-1"
-          />
-          <Button
-            size="sm"
-            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0 px-6 w-full sm:w-auto"
-          >
-            Search
-          </Button>
-        </div>
-      </div>
-
-      <div className="mb-4 mt-4">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-1 h-5 bg-indigo-700 rounded-full" />
-          <Text size="lg" fw={700} className="text-slate-900">
-            Co-Applicants
-          </Text>
-          <Tooltip label="Add and manage co-applicants linked to this loan account." withArrow>
-            <IconInfoCircle size={14} className="text-slate-400 ml-1 cursor-help" />
-          </Tooltip>
-        </div>
-        <Text size="sm" className="text-slate-500">
-          Manage co-applicants linked to this application.
-        </Text>
-      </div>
 
       <div className="border border-slate-200 rounded-lg overflow-hidden">
         <Table.ScrollContainer minWidth={700}>

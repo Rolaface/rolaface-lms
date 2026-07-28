@@ -29,11 +29,11 @@ import { CURRENCIES, FREQUENCIES, MORATORIUM_TYPES, labelClass } from "./Constan
 import { useQuery } from "@tanstack/react-query";
 import { getAllCustomers } from "../../../api/customerApi";
 import { useMemo } from "react";
+import { getAllLoanProducts } from "../../../api/productApi";
 
 const chevronDown = <IconChevronDown size={14} className="text-slate-500" />;
 
 interface BasicDetailsTabProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: UseFormReturnType<any>;
   maturityDate: string;
   loanAcNumber: string;
@@ -67,7 +67,27 @@ export function BasicDetailsTab({
     const found = customers.find((c: any) => c.value === form.values.customerNumber);
     return found ? found.label : "";
   }, [customerResponse, form.values.customerNumber]);
-    
+  
+const { data: productResponse, isLoading: isProductsLoading } = useQuery({
+    queryKey: ["loanProducts"],
+    queryFn: getAllLoanProducts,
+  });
+
+  const productOptions = useMemo(() => {
+    const products = productResponse?.data || [];
+    return products.map((p: any) => ({
+      value: p.name, 
+      label: p.name, // Update to `${p.name} - ${p.product_name}` if your API has a separate description field
+    }));
+  }, [productResponse]);
+
+  const selectedProductName = useMemo(() => {
+    const products = productResponse?.data || [];
+    const found = products.find((p: any) => p.name === form.values.productCode);
+    // Assumes 'product_name' might exist, falls back to 'name'
+    return found ? (found.product_name || found.name) : "";
+  }, [productResponse, form.values.productCode]);
+
   return (
     <div className="flex flex-col gap-2">
       <div className="border border-slate-200 rounded-md p-5">
@@ -94,12 +114,14 @@ export function BasicDetailsTab({
             value={selectedCustomerName} // <-- Automatically gets 'Ayush'
             classNames={labelClass}
           />
-          <Select
+         <Select
             size="sm"
             label="Product Code"
-            placeholder="Search product code..."
-            data={[]}
+            placeholder={isProductsLoading ? "Loading..." : "Search product code..."}
+            data={productOptions}
+            disabled={isProductsLoading}
             searchable
+            clearable
             leftSection={<FieldIcon Icon={IconHash} bg="#EEF2FF" color="#4F46E5" />}
             rightSection={chevronDown}
             classNames={labelClass}
@@ -109,8 +131,9 @@ export function BasicDetailsTab({
             size="sm"
             label="Product Name"
             leftSection={<FieldIcon Icon={IconHash} bg="#F3E8FF" color="#4F46E5" />}
-            placeholder="Product name..."
             disabled
+            placeholder="Auto-filled on selection"
+            value={selectedProductName} // <-- Automatically gets the product name
             classNames={labelClass}
           />
           <TextInput
@@ -188,6 +211,8 @@ export function BasicDetailsTab({
           <NumberInput
             size="sm"
             label="Loan Amount"
+            hideControls
+            min={0}
             placeholder="0"
             leftSection={<FieldIcon Icon={IconCurrency} bg="#FFF7ED" color="#EA580C" />}
             thousandSeparator=","
@@ -211,6 +236,8 @@ export function BasicDetailsTab({
             size="sm"
             label="Tenure (months)"
             placeholder="0"
+             hideControls
+            min={0}
             disabled={form.values.fixedRepaymentsIn === "EMI"}
             leftSection={<FieldIcon Icon={IconCalendarStats} bg="#ECFDF5" color="#059669" />}
             classNames={labelClass}
@@ -229,6 +256,8 @@ export function BasicDetailsTab({
             size="sm"
             label="Repayment Amount"
             placeholder="0"
+             hideControls
+            min={0}
             disabled={form.values.fixedRepaymentsIn === "TENOR"}
             leftSection={<FieldIcon Icon={IconCash} bg="#ECFDF5" color="#059669" />}
             classNames={labelClass}
@@ -276,14 +305,13 @@ export function BasicDetailsTab({
               size="sm"
               label="Moratorium Period"
               placeholder="0"
+               hideControls
+            min={0}
               disabled={!moratoriumEnabled}
               leftSection={<FieldIcon Icon={IconClock} bg="#FEF2F2" color="#DC2626" />}
               classNames={labelClass}
               {...form.getInputProps("moratoriumPeriod")}
             />
-            <Text size="xs" c="dimmed" className="mt-1">
-              In months. Enabled when a moratorium type is selected.
-            </Text>
           </div>
         </div>
       </div>
