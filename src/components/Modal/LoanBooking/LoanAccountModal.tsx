@@ -205,7 +205,8 @@ export function LoanAccountModal({ opened, onClose, loanId }: LoanAccountModalPr
       tenureValue: loan.repayment_periods || "",
       repaymentAmount: loan.monthly_repayment_amount || "",
       repaymentStartDate: loan.repayment_start_date || "",
-      moratoriumType: loan.moratorium_type || "None",
+      // moratoriumType: loan.moratorium_type || "None",
+      moratoriumType: loan.moratorium_type || "Principal",
       moratoriumPeriod: loan.moratorium_tenure || "",
     });
   }
