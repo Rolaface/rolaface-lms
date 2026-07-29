@@ -5,7 +5,7 @@ import {
 } from '@mantine/core';
 import {
   IconEye, IconPencil, IconPlus, IconChevronUp, IconChevronDown,
-  IconSelector, IconSearch, IconAlertCircle,
+  IconSelector, IconSearch, IconAlertCircle, IconTrash,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -13,10 +13,14 @@ import {
   flexRender, createColumnHelper,
 } from '@tanstack/react-table';
 import { LoanProductModal } from '../../../components/Modal/LoanProductModal';
-// import { getLoanProducts, type LoanProductRaw } from '../../../components/Modal/LoanProduct/LoanProductAPi';
-import { getLoanProducts ,type LoanProductRaw } from '../../../api/LoanProduct/LoanProductAPi';
-
-
+import {
+  getLoanProducts,
+  deleteLoanProduct,
+  enableLoanProduct,
+  disableLoanProduct,
+  type LoanProductRaw,
+} from '../../../api/LoanProduct/LoanProductAPi';
+import { parseFrappeError } from '../../../utils/parseFrappeError';
 
 interface NormalizedProduct {
   id: string;
@@ -41,6 +45,16 @@ const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
 
 export function LoanProduct() {
   const [opened, { open, close }] = useDisclosure(false);
+
+  // NEW — which product is being viewed/edited
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [isViewMode, setIsViewMode] = useState(false);
+
+  const handleModalClose = () => {
+    close();
+    setSelectedProductId(null);
+    setIsViewMode(false);
+  };
 
   // filter state
   const [search, setSearch] = useState('');
@@ -74,7 +88,7 @@ export function LoanProduct() {
       }));
       setProducts(normalized);
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to load loan products.');
+  setError(parseFrappeError(err));
     } finally {
       setLoading(false);
     }
@@ -84,7 +98,6 @@ export function LoanProduct() {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Category options derived from actual loaded data
   const categoryOptions = useMemo(
     () => Array.from(new Set(products.map((p) => p.category))).sort(),
     [products]
@@ -93,8 +106,7 @@ export function LoanProduct() {
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
-      const matchesSearch =
-        !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+      const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
       const matchesCategory = !category || p.category === category;
       const matchesStatus =
         status === 'all' ||
@@ -104,16 +116,32 @@ export function LoanProduct() {
     });
   }, [products, search, category, status]);
 
-  // Local-only toggle — no backend call (no update endpoint in scope)
-  const handleToggleStatus = (id: string, currentStatus: 'ACTIVE' | 'INACTIVE') => {
-    const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? { ...p, status: newStatus, disabled: newStatus === 'INACTIVE' ? 1 : 0 }
-          : p
-      )
-    );
+  // NEW — real backend call instead of local-only toggle
+  const handleToggleStatus = async (id: string, currentStatus: 'ACTIVE' | 'INACTIVE') => {
+    setError(null);
+    try {
+      if (currentStatus === 'ACTIVE') {
+        await disableLoanProduct(id);
+      } else {
+        await enableLoanProduct(id);
+      }
+      await fetchProducts();
+    } catch (err: any) {
+  setError(parseFrappeError(err));
+    }
+  };
+
+  // NEW — delete
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this loan product? This cannot be undone.')) return;
+    setError(null);
+    try {
+      await deleteLoanProduct(id);
+      await fetchProducts();
+    } catch (err: any) {
+        setError(parseFrappeError(err));
+
+    }
   };
 
   const columns = useMemo(
@@ -138,12 +166,7 @@ export function LoanProduct() {
       columnHelper.accessor('status', {
         header: 'Status',
         cell: (info) => (
-          <Badge
-            variant="light" size="sm"
-            color={info.getValue() === 'ACTIVE' ? 'green' : 'red'}
-            className="font-semibold tracking-wider"
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
+          <Badge variant="light" size="sm" color={info.getValue() === 'ACTIVE' ? 'green' : 'red'} className="font-semibold tracking-wider" styles={{ root: { fontSize: 10, padding: '0 8px' } }}>
             {info.getValue()}
           </Badge>
         ),
@@ -156,17 +179,28 @@ export function LoanProduct() {
           return (
             <Group justify="flex-end" gap={6} wrap="nowrap">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="gray"><IconEye size={14} /></ActionIcon>
+                <ActionIcon
+                  size="sm" variant="subtle" color="gray"
+                  onClick={() => { setSelectedProductId(row.id); setIsViewMode(true); open(); }}
+                >
+                  <IconEye size={14} />
+                </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="blue"><IconPencil size={14} /></ActionIcon>
+                <ActionIcon
+                  size="sm" variant="subtle" color="blue"
+                  onClick={() => { setSelectedProductId(row.id); setIsViewMode(false); open(); }}
+                >
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Delete" withArrow>
+                <ActionIcon size="sm" variant="subtle" color="red" onClick={() => handleDelete(row.id)}>
+                  <IconTrash size={14} />
+                </ActionIcon>
               </Tooltip>
               <Tooltip label={row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} withArrow>
-                <Switch
-                  size="xs" color="green"
-                  checked={row.status === 'ACTIVE'}
-                  onChange={() => handleToggleStatus(row.id, row.status)}
-                />
+                <Switch size="xs" color="green" checked={row.status === 'ACTIVE'} onChange={() => handleToggleStatus(row.id, row.status)} />
               </Tooltip>
             </Group>
           );
@@ -201,12 +235,19 @@ export function LoanProduct() {
 
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
-      <LoanProductModal opened={opened} onClose={close} onSaved={fetchProducts} />
+      <LoanProductModal
+        opened={opened}
+        onClose={handleModalClose}
+        onSaved={fetchProducts}
+        loanProductId={selectedProductId}
+        isViewMode={isViewMode}
+      />
 
       <div className="flex justify-between items-center">
         <Title order={2} className="text-gray-900 font-semibold">Loan Products</Title>
         <Button
-          size="xs" bg="indigoAlt.4" onClick={open}
+          size="xs" bg="indigoAlt.4"
+          onClick={() => { setSelectedProductId(null); setIsViewMode(false); open(); }}
           className="bg-[#991B1B] hover:bg-red-900 transition-colors"
           leftSection={<IconPlus size={14} />}
         >
