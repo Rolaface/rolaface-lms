@@ -290,21 +290,6 @@ const handleSave = () => {
           {/* Classification Identity */}
           <section className="flex flex-col gap-3">
 
-            <div>
-              <h3
-                className="
-                  border-b
-                  border-[#c7c4d8]
-                  pb-1
-                  text-sm
-                  font-semibold
-                  text-[#0b1c30]
-                "
-              >
-                Classification Identity
-              </h3>
-            </div>
-
 
             <div className="flex gap-4">
 
@@ -370,7 +355,7 @@ const handleSave = () => {
                     text-[#0b1c30]
                   "
                 >
-                  Code
+Classification Code
                   {!isView && (
                     <span className="ml-1 text-red-600">
                       *
@@ -409,14 +394,7 @@ const handleSave = () => {
                   "
                 />
 
-                <span
-                  className="
-                    text-xs
-                    text-[#464555]
-                  "
-                >
-                  Unique institution-wide short code.
-                </span>
+        
 
               </div>
 
@@ -433,7 +411,7 @@ const handleSave = () => {
                     text-[#0b1c30]
                   "
                 >
-                  Name
+                  Classificaion  Name
                   {!isView && (
                     <span className="ml-1 text-red-600">
                       *
@@ -472,14 +450,7 @@ const handleSave = () => {
                   "
                 />
 
-                <span
-                  className="
-                    text-xs
-                    text-[#464555]
-                  "
-                >
-                  Readable name.
-                </span>
+             
 
               </div>
 
@@ -489,291 +460,153 @@ const handleSave = () => {
 
 
 
-          {/* Delinquency Configuration */}
-          <section className="flex flex-col gap-3">
+{/* Delinquency Configuration */}
+<section className="flex flex-col gap-3">
+  <div>
+    <h3
+      className="
+        border-b
+        border-[#c7c4d8]
+        pb-1
+        text-sm
+        font-semibold
+        text-[#0b1c30]
+      "
+    >
+      Delinquency Configuration
+    </h3>
+  </div>
 
-            <div>
-              <h3
-                className="
-                  border-b
-                  border-[#c7c4d8]
-                  pb-1
-                  text-sm
-                  font-semibold
-                  text-[#0b1c30]
-                "
-              >
-                Delinquency Configuration
-              </h3>
-            </div>
+  <div className="grid grid-cols-3 gap-4">
 
+    {/* From DPD */}
+    <div className="flex flex-col gap-1">
+      <label
+        htmlFor="min-dpd"
+        className="text-xs font-semibold text-[#0b1c30]"
+      >
+        From DPD
+        {!isView && (
+          <span className="ml-1 text-red-600">*</span>
+        )}
+      </label>
 
-            <div className="flex gap-4">
+      <input
+        id="min-dpd"
+        type="number"
+        placeholder="91"
+        value={formData.min_dpd_range}
+        disabled={isView}
+        onChange={(event) =>
+          updateField("min_dpd_range", event.target.value)
+        }
+        className="
+          h-10
+          rounded
+          border
+          border-[#c7c4d8]
+          px-3
+          text-sm
+          outline-none
+          focus:ring-2
+          focus:ring-[#3525cd]
+          disabled:bg-[#eff4ff]
+        "
+      />
+    </div>
 
-              {/* Min DPD */}
-              <div className="flex flex-1 flex-col gap-1">
+    {/* To DPD */}
+    <div className="flex flex-col gap-1">
+      <label
+        htmlFor="max-dpd"
+        className="text-xs font-semibold text-[#0b1c30]"
+      >
+        To DPD
+        {!isView && (
+          <span className="ml-1 text-red-600">*</span>
+        )}
+      </label>
 
-                <label
-                  htmlFor="min-dpd"
-                  className="text-xs font-semibold text-[#0b1c30]"
-                >
-                  From DPD
-                  {!isView && (
-                    <span className="ml-1 text-red-600">*</span>
-                  )}
-                </label>
+      <input
+        id="max-dpd"
+        type="number"
+        placeholder="180"
+        value={formData.max_dpd_range}
+        disabled={isView}
+        onChange={(event) =>
+          updateField("max_dpd_range", event.target.value)
+        }
+        className="
+          h-10
+          rounded
+          border
+          border-[#c7c4d8]
+          px-3
+          text-sm
+          outline-none
+          focus:ring-2
+          focus:ring-[#3525cd]
+          disabled:bg-[#eff4ff]
+        "
+      />
+    </div>
 
-                <input
-                  id="min-dpd"
-                  type="number"
-                  placeholder="91"
-                  value={formData.min_dpd_range}
-                  disabled={isView}
-                  onChange={(event) =>
-                    updateField(
-                      'min_dpd_range',
-                      event.target.value,
-                    )
-                  }
-                  className="
-                    h-10
-                    rounded
-                    border
-                    border-[#c7c4d8]
-                    px-3
-                    text-sm
-                    outline-none
-                    focus:ring-2
-                    focus:ring-[#3525cd]
-                    disabled:bg-[#eff4ff]
-                  "
-                />
+    {/* Provision Rate */}
+    <div className="flex flex-col gap-1">
+      <label
+        htmlFor="provision-rate"
+        className="text-xs font-semibold text-[#0b1c30]"
+      >
+        Provision Rate
+        {!isView && (
+          <span className="ml-1 text-red-600">*</span>
+        )}
+      </label>
 
-              </div>
+      <div
+        className="
+          flex
+          h-10
+          items-center
+          rounded
+          border
+          border-[#c7c4d8]
+          bg-white
+          focus-within:border-transparent
+          focus-within:ring-2
+          focus-within:ring-[#3525cd]
+        "
+      >
+        <input
+          id="provision-rate"
+          type="number"
+          placeholder="20.00"
+          value={formData.provision_rate}
+          disabled={isView}
+          onChange={(event) =>
+            updateField("provision_rate", event.target.value)
+          }
+          className="
+            h-full
+            w-full
+            border-none
+            bg-transparent
+            px-3
+            text-sm
+            outline-none
+            disabled:bg-[#eff4ff]
+          "
+        />
 
+        <span className="pr-3 text-sm text-[#464555]">
+          %
+        </span>
+      </div>
+    </div>
 
-              {/* Max DPD */}
-              <div className="flex flex-1 flex-col gap-1">
+  </div>
 
-                <label
-                  htmlFor="max-dpd"
-                  className="text-xs font-semibold text-[#0b1c30]"
-                >
-                  To DPD
-                  {!isView && (
-                    <span className="ml-1 text-red-600">*</span>
-                  )}
-                </label>
-
-                <input
-                  id="max-dpd"
-                  type="number"
-                  placeholder="180"
-                  value={formData.max_dpd_range}
-                  disabled={isView}
-                  onChange={(event) =>
-                    updateField(
-                      'max_dpd_range',
-                      event.target.value,
-                    )
-                  }
-                  className="
-                    h-10
-                    rounded
-                    border
-                    border-[#c7c4d8]
-                    px-3
-                    text-sm
-                    outline-none
-                    focus:ring-2
-                    focus:ring-[#3525cd]
-                    disabled:bg-[#eff4ff]
-                  "
-                />
-
-              </div>
-
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-[#464555]">
-                Inclusive Days Past Due range for this classification.
-              </span>
-            </div>
-
-          </section>
-
-          {/* Financial Configuration */}
-          <section className="flex flex-col gap-3">
-
-            <div>
-              <h3
-                className="
-                  border-b
-                  border-[#c7c4d8]
-                  pb-1
-                  text-sm
-                  font-semibold
-                  text-[#0b1c30]
-                "
-              >
-                Financial Configuration
-              </h3>
-            </div>
-
-            <div className="w-1/2 flex flex-col gap-1">
-
-              <label
-                htmlFor="provision-rate"
-                className="text-xs font-semibold text-[#0b1c30]"
-              >
-                Provision Rate
-                {!isView && (
-                  <span className="ml-1 text-red-600">*</span>
-                )}
-              </label>
-
-              <div
-                className="
-                  flex
-                  h-10
-                  items-center
-                  rounded
-                  border
-                  border-[#c7c4d8]
-                  bg-white
-                  focus-within:border-transparent
-                  focus-within:ring-2
-                  focus-within:ring-[#3525cd]
-                "
-              >
-                <input
-                  id="provision-rate"
-                  type="number"
-                  placeholder="20.00"
-                  value={formData.provision_rate}
-                  disabled={isView}
-                  onChange={(event) =>
-                    updateField(
-                      'provision_rate',
-                      event.target.value,
-                    )
-                  }
-                  className="
-                    h-full
-                    w-full
-                    border-none
-                    bg-transparent
-                    px-3
-                    text-sm
-                    outline-none
-                    disabled:bg-[#eff4ff]
-                  "
-                />
-
-                <span
-                  className="
-                    pr-3
-                    text-sm
-                    text-[#464555]
-                  "
-                >
-                  %
-                </span>
-              </div>
-
-              <span
-                className="
-                  text-xs
-                  text-[#464555]
-                "
-              >
-                Accepted range: 0–100%.
-              </span>
-
-            </div>
-
-          </section>
-
-          {/* Write-Off Eligibility */}
-          <section className="flex flex-col gap-3">
-
-            <div>
-              <h3
-                className="
-                  border-b
-                  border-[#c7c4d8]
-                  pb-1
-                  text-sm
-                  font-semibold
-                  text-[#0b1c30]
-                "
-              >
-                Write-Off Eligibility
-              </h3>
-            </div>
-
-            <label
-              htmlFor="write-off"
-              className="
-                flex
-                cursor-pointer
-                items-start
-                gap-3
-                pt-2
-              "
-            >
-
-              <input
-                id="write-off"
-                type="checkbox"
-                checked={formData.is_written_off}
-                disabled={isView}
-                onChange={(event) =>
-                  updateField(
-                    'is_written_off',
-                    event.target.checked,
-                  )
-                }
-                className="
-                  mt-1
-                  h-4
-                  w-4
-                  rounded
-                  border-[#c7c4d8]
-                  text-[#3525cd]
-                  focus:ring-[#3525cd]
-                  disabled:cursor-not-allowed
-                "
-              />
-
-              <div className="flex flex-col gap-1">
-
-                <span
-                  className="
-                    text-sm
-                    font-medium
-                    text-[#0b1c30]
-                  "
-                >
-                  Eligible for Write-Off
-                </span>
-
-                <span
-                  className="
-                    text-xs
-                    text-[#464555]
-                  "
-                >
-                  Loans within this classification become eligible for
-                  institution write-off workflows.
-                </span>
-
-              </div>
-
-            </label>
-
-          </section>
+</section>
 
           {formError && !isView && (
             <p className="text-xs font-medium text-red-600">
