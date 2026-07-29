@@ -66,10 +66,12 @@ export function LoanAccount() {
   const [opened, { open, close }] = useDisclosure(false);
   
   const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
+  const [isViewMode, setIsViewMode] = useState(false);
   
    const handleModalClose = () => {
     close();
     setSelectedLoanId(null);
+    setIsViewMode(false);
   };
  const { data: loansResponse, isLoading } = useQuery({
   queryKey: ["loans"],
@@ -244,21 +246,32 @@ export function LoanAccount() {
           const isDraft = rowData.status === 'DRAFT';
 
           return (
-            <Group justify="flex-end" gap={6} wrap="nowrap">
+          <Group justify="flex-end" gap={6} wrap="nowrap">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="gray">
+                {/* 1. Add onClick to View Icon */}
+                <ActionIcon 
+                  size="sm" 
+                  variant="subtle" 
+                  color="gray"
+                  onClick={() => {
+                    setSelectedLoanId(loanIdentifier);
+                    setIsViewMode(true);
+                    open();
+                  }}
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label={isDraft ? "Edit" : "Only Drafts can be edited"} withArrow>
+                {/* 2. Update onClick to Edit Icon */}
                 <ActionIcon 
                   size="sm" 
                   variant="subtle" 
                   color={isDraft ? "blue" : "gray"}
                   disabled={!isDraft}
                   onClick={() => {
-                    // Pass the exact string "ACC-LOAN-2026-00003" to the state
                     setSelectedLoanId(loanIdentifier);
+                    setIsViewMode(false); 
                     open();
                   }}
                 >
@@ -304,7 +317,8 @@ export function LoanAccount() {
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
       {/* <LoanAccountModal opened={opened} onClose={close} /> */}
-      <LoanAccountModal opened={opened} onClose={handleModalClose} loanId={selectedLoanId} />
+      {/* <LoanAccountModal opened={opened} onClose={handleModalClose} loanId={selectedLoanId} /> */}
+      <LoanAccountModal opened={opened} onClose={handleModalClose} loanId={selectedLoanId} isViewMode={isViewMode} />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
@@ -316,6 +330,7 @@ export function LoanAccount() {
           bg="indigoAlt.4"
           onClick={() => {
             setSelectedLoanId(null);
+            setIsViewMode(false);
             open();
           }}
           className="bg-[#991B1B] hover:bg-red-900 transition-colors"

@@ -24,9 +24,10 @@ interface LoanAccountModalProps {
   opened: boolean;
   loanId?: string | null;
   onClose: () => void;
+  isViewMode?: boolean;
 }
 
-export function LoanAccountModal({ opened, onClose, loanId }: LoanAccountModalProps) {
+export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAccountModalProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<string | null>("basic");
   
@@ -264,7 +265,8 @@ const updateLoanMutation = useMutation({
               </div>
               <div className="min-w-0">
                 <Text size="md" fw={600} className="leading-tight truncate">
-  {loanId ? "Update Loan Booking" : "New Loan Booking"}
+  {/* {loanId ? "Update Loan Booking" : "New Loan Booking"} */}
+  {loanId ? (isViewMode ? "View Loan Booking" : "Update Loan Booking") : "New Loan Booking"}
 </Text>
               </div>
             </div>
@@ -327,7 +329,11 @@ const updateLoanMutation = useMutation({
           </Box>
 
           {/* Body */}
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-white">
+          {/* <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-white"> */}
+          <fieldset 
+            disabled={isViewMode} 
+            className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-white border-0 p-0 m-0 min-w-0 min-h-0"
+          >
             <div className="flex-1 overflow-y-auto p-6 min-w-0">
               {activeTab === "basic" && (
                 <BasicDetailsTab
@@ -380,7 +386,8 @@ const updateLoanMutation = useMutation({
               totalInterest={totalInterest}
               totalRepayment={totalRepayment}
             />
-          </div>
+          {/* </div> */}
+          </fieldset>
 
           {/* Footer */}
           <div className="bg-white border-t border-slate-100 p-3 px-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 shrink-0 rounded-b-md">
@@ -412,39 +419,44 @@ const updateLoanMutation = useMutation({
             </div>
 
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
-              {createLoanMutation.isError && (
+              {createLoanMutation.isError && !isViewMode && (
                 <Text size="xs" c="red" className="sm:mr-2">
                   {parseFrappeError(createLoanMutation.error)}
                 </Text>
               )}
-                          <Button
-  size="sm"
-  variant="default"
-  onClick={handleModalClose}
-  disabled={createLoanMutation.isPending}
-  className="font-semibold px-5 text-slate-700 border-slate-200"
->
-  Cancel
-</Button>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="text-xs font-semibold text-red-500 hover:text-red-600 transition-colors"
-              >
-                Reset
-              </button>
-              <Button size="sm" variant="default" className="font-semibold px-5 text-slate-700 border-slate-200">
-                Save as Draft
-              </Button>
-              {/* Type = submit automatically triggers Mantine validation and handleSubmit */}
               <Button
-                type="submit"
                 size="sm"
-                loading={createLoanMutation.isPending || updateLoanMutation.isPending || isFetchingLoan}
-                className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0 font-semibold px-6"
+                variant="default"
+                onClick={handleModalClose}
+                disabled={createLoanMutation.isPending}
+                className="font-semibold px-5 text-slate-700 border-slate-200"
               >
-                {loanId ? "Update Application" : "Submit Application"}
+                {isViewMode ? "Close" : "Cancel"}
               </Button>
+              
+              {/* Only show action buttons if NOT in view mode */}
+              {!isViewMode && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="text-xs font-semibold text-red-500 hover:text-red-600 transition-colors"
+                  >
+                    Reset
+                  </button>
+                  <Button size="sm" variant="default" className="font-semibold px-5 text-slate-700 border-slate-200">
+                    Save as Draft
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    loading={createLoanMutation.isPending || updateLoanMutation.isPending || isFetchingLoan}
+                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0 font-semibold px-6"
+                  >
+                    {loanId ? "Update Application" : "Submit Application"}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </Box>
