@@ -7,6 +7,7 @@ export interface LoanClassificationData {
   min_dpd_range: number | null;
   max_dpd_range: number | null;
   provision_rate: number;
+  is_written_off: boolean;
 }
 
 interface LoanClassificationModalProps {
