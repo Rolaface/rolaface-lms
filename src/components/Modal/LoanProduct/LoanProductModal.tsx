@@ -6,14 +6,14 @@ import {
   IconX, IconBriefcase, IconArrowRight, IconArrowLeft, IconCheck,
 } from "@tabler/icons-react";
 import {
-  createLoanProduct,
-  updateLoanProduct,
+//   createLoanProduct,
+//   updateLoanProduct,
   getLoanProductById,
   getAccounts,
   type CreateLoanProductPayload,
 } from "../../../api/LoanProduct/LoanProductAPi";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
-
+import {createLoanProduct, updateLoanProduct} from "../../../api/productApi";
 import { STEPS, theme, toAccountOptions } from "./Constants";
 import { ProductDetailsTab } from "./ProductDetailsTab";
 import { AccountingTab, type AccountFieldsState, type InterestPenaltyAccountsState } from "./AccountingTab";
@@ -61,9 +61,9 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
       maxLoanAmount: (v) => (!v ? "Maximum Loan Amount is required" : null),
       npaThreshold: (v) => (!v ? "This field is required" : null),
       interestRate: (v) => (!v ? "Interest Rate is required" : null),
-      interestFrequency: (v) => (!v ? "Interest Frequency is required" : null),
+    //   interestFrequency: (v) => (!v ? "Interest Frequency is required" : null),
       penaltyRate: (v) => (!v ? "Penalty Rate is required" : null),
-      penaltyFrequency: (v) => (!v ? "Penalty Frequency is required" : null),
+    //   penaltyFrequency: (v) => (!v ? "Penalty Frequency is required" : null),
       collectionSeq: {
         standard: (v) => (!v ? "Required" : null),
         subStandard: (v) => (!v ? "Required" : null),
@@ -132,27 +132,23 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
   });
 
   useEffect(() => {
-    // GET response shape: { status_code, status, message, data: {...single product} }
-    const product = existingProductData?.data;
+    // 1. Account for the 'message' wrapper shown in your network tab
+    const product = (existingProductData as any)?.message?.data || (existingProductData as any)?.data;
     if (!product) return;
 
-    const accounts = product.accounts || {};
-    const interest = product.interest_accounts || {};
-    const penalty = product.penalty_accounts || {};
-    const writeOff = product.write_off_accounts || {};
-
+    // 2. Read directly from the flat structure
     form.setValues({
       productCode: product.product_code || "",
       productName: product.product_name || "",
       loanCategory: product.loan_category || null,
       repaymentScheduleType: product.repayment_schedule_type || null,
-      maxLoanAmount: product.maximum_loan_amount != null ? String(product.maximum_loan_amount) : "",
-      npaThreshold: product.days_past_due_threshold_for_npa != null ? String(product.days_past_due_threshold_for_npa) : "",
-      interestRate: product.rate_of_interest != null ? String(product.rate_of_interest) : "",
+      maxLoanAmount: product.maximum_loan_amount != null ? Number(product.maximum_loan_amount) : "",
+     npaThreshold: product.days_past_due_threshold_for_npa != null ? Number(product.days_past_due_threshold_for_npa) : "",
+      interestRate: product.rate_of_interest != null ? Number(product.rate_of_interest) : "",
       interestFrequency: product.interest_frequency || null,
-      penaltyRate: product.penalty_interest_rate != null ? String(product.penalty_interest_rate) : "",
+      penaltyRate: product.penalty_interest_rate != null ? Number(product.penalty_interest_rate) : "",
       penaltyFrequency: product.penalty_frequency || null,
-      gracePeriodDays: product.grace_period_in_days != null ? String(product.grace_period_in_days) : "",
+      gracePeriodDays: product.grace_period_in_days != null ? Number(product.grace_period_in_days) : "",
       collectionSeq: {
         standard: product.collection_offset_sequence_for_standard_asset || null,
         subStandard: product.collection_offset_sequence_for_sub_standard_asset || null,
@@ -162,36 +158,36 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     });
 
     setGeneralAccs({
-      loanAccount: accounts.loan_account || "",
-      disbursementAccount: accounts.disbursement_account || "",
-      repaymentAccount: accounts.payment_account || "",
-      writeOffAccount: writeOff.write_off_account || "",
-      writeOffRecoveryAccount: writeOff.write_off_recovery_account || "",
-      subsidyAccount: accounts.subsidy_adjustment_account || "",
-      securityDepositAccount: accounts.security_deposit_account || "",
-      suspenseCollectionAccount: accounts.suspense_collection_account || "",
-      customerRefundAccount: accounts.customer_refund_account || "",
+      loanAccount: product.loan_account || "",
+      disbursementAccount: product.disbursement_account || "",
+      repaymentAccount: product.payment_account || "",
+      writeOffAccount: product.write_off_account || "",
+      writeOffRecoveryAccount: product.write_off_recovery_account || "",
+      subsidyAccount: product.subsidy_adjustment_account || "",
+      securityDepositAccount: product.security_deposit_account || "",
+      suspenseCollectionAccount: product.suspense_collection_account || "",
+      customerRefundAccount: product.customer_refund_account || "",
     });
 
     setInterestAccs({
-      income: interest.income_account || "",
-      receivable: interest.receivable_account || "",
-      accrued: interest.accrued_account || "",
-      suspended: interest.suspense_income_account || "",
-      waiver: interest.waiver_account || "",
+      income: product.interest_income_account || "",
+      receivable: product.interest_receivable_account || "",
+      accrued: product.interest_accrued_account || "",
+      suspended: product.suspense_interest_income || "",
+      waiver: product.interest_waiver_account || "",
     });
 
     setPenaltyAccs({
-      income: penalty.income_account || "",
-      receivable: penalty.receivable_account || "",
-      accrued: penalty.accrued_account || "",
-      suspended: penalty.suspense_account || "",
-      waiver: penalty.waiver_account || "",
+      income: product.penalty_income_account || "",
+      receivable: product.penalty_receivable_account || "",
+      accrued: product.penalty_accrued_account || "",
+      suspended: product.penalty_suspense_account || "",
+      waiver: product.penalty_waiver_account || "",
     });
 
-    setBrokenPeriodRecoveryAccount(interest.broken_period_interest_recovery_account || "");
+    setBrokenPeriodRecoveryAccount(product.broken_period_interest_recovery_account || "");
 
-    setSameAsInterest(penalty.same_as_regular_interest_accounts === 1);
+    setSameAsInterest(product.same_as_regular_interest_accounts === 1);
 
     if (Array.isArray(product.loan_charges)) {
       setCharges(
@@ -201,6 +197,7 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
           basedOn: c.charge_based_on === "Fixed Amount" ? "Flat Amount" : "Percentage",
           amount: c.amount ? String(c.amount) : "",
           percentage: c.percentage ? String(c.percentage) : "",
+          // Note: ensure these keys match exactly what the backend sends inside the loan_charges array
           incomeAccount: c.income_account || "",
           receivableAccount: c.receivable_account || "",
           waiverAccount: c.waiver_account || "",
@@ -255,70 +252,60 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     setAccountsModalIndex(null);
   };
 
-  const buildPayload = (values: typeof form.values): CreateLoanProductPayload => ({
-    product_code: values.productCode,
-    product_name: values.productName,
-    loan_category: values.loanCategory || undefined,
-    repayment_schedule_type: values.repaymentScheduleType || undefined,
-    maximum_loan_amount: values.maxLoanAmount ? Number(values.maxLoanAmount) : undefined,
-    days_past_due_threshold_for_npa: values.npaThreshold ? Number(values.npaThreshold) : undefined,
-    rate_of_interest: values.interestRate ? Number(values.interestRate) : undefined,
-    interest_frequency: values.interestFrequency || undefined,
-    penalty_interest_rate: values.penaltyRate ? Number(values.penaltyRate) : undefined,
-    penalty_frequency: values.penaltyFrequency || undefined,
-    grace_period_in_days: values.gracePeriodDays ? Number(values.gracePeriodDays) : undefined,
+const buildPayload = (values: typeof form.values) => ({
+  product_code: values.productCode,
+  product_name: values.productName,
+  loan_category: values.loanCategory || undefined,
+  repayment_schedule_type: values.repaymentScheduleType || undefined,
+  maximum_loan_amount: values.maxLoanAmount ? Number(values.maxLoanAmount) : undefined,
+  days_past_due_threshold_for_npa: values.npaThreshold ? Number(values.npaThreshold) : undefined,
+  rate_of_interest: values.interestRate ? Number(values.interestRate) : undefined,
+  interest_frequency: values.interestFrequency || undefined,
+  penalty_interest_rate: values.penaltyRate ? Number(values.penaltyRate) : undefined,
+  penalty_frequency: values.penaltyFrequency || undefined,
+  grace_period_in_days: values.gracePeriodDays ? Number(values.gracePeriodDays) : undefined,
 
-    collection_offset_sequence_for_standard_asset: values.collectionSeq.standard || undefined,
-    collection_offset_sequence_for_sub_standard_asset: values.collectionSeq.subStandard || undefined,
-    collection_offset_sequence_for_written_off_asset: values.collectionSeq.writtenOff || undefined,
-    collection_offset_sequence_for_settlement_collection: values.collectionSeq.settlement || undefined,
+  collection_offset_sequence_for_standard_asset: values.collectionSeq.standard || undefined,
+  collection_offset_sequence_for_sub_standard_asset: values.collectionSeq.subStandard || undefined,
+  collection_offset_sequence_for_written_off_asset: values.collectionSeq.writtenOff || undefined,
+  collection_offset_sequence_for_settlement_collection: values.collectionSeq.settlement || undefined,
 
-    accounts: {
-      loan_account: generalAccs.loanAccount || undefined,
-      disbursement_account: generalAccs.disbursementAccount || undefined,
-      payment_account: generalAccs.repaymentAccount || undefined,
-      subsidy_adjustment_account: generalAccs.subsidyAccount || undefined,
-      security_deposit_account: generalAccs.securityDepositAccount || undefined,
-      suspense_collection_account: generalAccs.suspenseCollectionAccount || undefined,
-      customer_refund_account: generalAccs.customerRefundAccount || undefined,
-    },
+  // --- Flattened General Accounts ---
+  loan_account: generalAccs.loanAccount || undefined,
+  disbursement_account: generalAccs.disbursementAccount || undefined,
+  payment_account: generalAccs.repaymentAccount || undefined,
+  subsidy_adjustment_account: generalAccs.subsidyAccount || undefined,
+  security_deposit_account: generalAccs.securityDepositAccount || undefined,
+  suspense_collection_account: generalAccs.suspenseCollectionAccount || undefined,
+  customer_refund_account: generalAccs.customerRefundAccount || undefined,
 
-    interest_accounts: {
-      income_account: interestAccs.income || undefined,
-      receivable_account: interestAccs.receivable || undefined,
-      accrued_account: interestAccs.accrued || undefined,
-      suspense_income_account: interestAccs.suspended || undefined,
-      waiver_account: interestAccs.waiver || undefined,
-      broken_period_interest_recovery_account: brokenPeriodRecoveryAccount || undefined,
-    },
+  // --- Flattened Write Off Accounts ---
+  write_off_account: generalAccs.writeOffAccount || undefined,
+  write_off_recovery_account: generalAccs.writeOffRecoveryAccount || undefined,
 
-    penalty_accounts: {
-      same_as_regular_interest_accounts: sameAsInterest ? 1 : 0,
-      income_account: penaltyAccs.income || undefined,
-      receivable_account: penaltyAccs.receivable || undefined,
-      accrued_account: penaltyAccs.accrued || undefined,
-      suspense_account: penaltyAccs.suspended || undefined,
-      waiver_account: penaltyAccs.waiver || undefined,
-    },
+  // --- Flattened Interest Accounts ---
+  interest_income_account: interestAccs.income || undefined,
+  interest_receivable_account: interestAccs.receivable || undefined,
+  interest_accrued_account: interestAccs.accrued || undefined,
+  suspense_interest_income: interestAccs.suspended || undefined,
+  interest_waiver_account: interestAccs.waiver || undefined,
+  broken_period_interest_recovery_account: brokenPeriodRecoveryAccount || undefined,
 
-    write_off_accounts: {
-      write_off_account: generalAccs.writeOffAccount || undefined,
-      write_off_recovery_account: generalAccs.writeOffRecoveryAccount || undefined,
-    },
+  // --- Flattened Penalty Accounts ---
+  penalty_income_account: penaltyAccs.income || undefined,
+  penalty_receivable_account: penaltyAccs.receivable || undefined,
+  penalty_accrued_account: penaltyAccs.accrued || undefined,
+  penalty_suspense_account: penaltyAccs.suspended || undefined,
+  penalty_waiver_account: penaltyAccs.waiver || undefined,
 
-    loan_charges: charges.map((c) => ({
-      charge_type: c.type,
-      charge_based_on: c.basedOn === "Flat Amount" ? "Fixed Amount" : "Percentage",
-      percentage: c.percentage ? Number(c.percentage) : 0,
-      amount: c.amount ? Number(c.amount) : 0,
-      income_account: c.incomeAccount || undefined,
-      receivable_account: c.receivableAccount || undefined,
-      waiver_account: c.waiverAccount || undefined,
-      write_off_account: c.writeOffAccount || undefined,
-      suspense_account: c.suspenseAccount || undefined,
-    })),
-  });
-
+  // Charges (Keep this as an array as requested)
+  loan_charges: charges.map((c) => ({
+    charge_type: c.type,
+    charge_based_on: c.basedOn === "Flat Amount" ? "Fixed Amount" : "Percentage",
+    percentage: c.percentage ? Number(c.percentage) : 0,
+    amount: c.amount ? Number(c.amount) : 0,
+  })),
+});
   // ---------- CREATE / UPDATE MUTATIONS ----------
   const createMutation = useMutation({
     mutationFn: createLoanProduct,
@@ -332,9 +319,8 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateLoanProductPayload> }) =>
-      updateLoanProduct(id, payload),
+const updateMutation = useMutation({
+    mutationFn: updateLoanProduct,  
     onSuccess: async (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["loanProducts"] });
       queryClient.invalidateQueries({ queryKey: ["loanProduct", variables.id] });
@@ -588,7 +574,7 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
             writeOffAccounts={writeOffAccounts}
           />
 
-          <div className="bg-white border-t border-slate-100 p-2.5 px-6 flex justify-between items-center shrink-0 shadow-[0_-2px_10px_rgba(15,23,42,0.04)]">
+         <div className="bg-white border-t border-slate-100 p-2.5 px-6 flex justify-between items-center shrink-0 shadow-[0_-2px_10px_rgba(15,23,42,0.04)]">
             <div className="flex items-center gap-4" />
 
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
@@ -614,16 +600,26 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
                 </Button>
               )}
 
-              {!isViewMode &&
-                (currentStep < 3 ? (
-                  <Button type="button" size="sm" radius="md" color="brand" className="font-semibold px-6" onClick={handleNext} rightSection={<IconArrowRight size={14} />}>
-                    Save & Next
-                  </Button>
-                ) : (
-                  <Button type="submit" size="sm" radius="md" color="brand" className="font-semibold px-6" loading={isSaving} rightSection={<IconCheck size={14} />}>
-                    {loanProductId ? "Update Product" : "Submit"}
-                  </Button>
-                ))}
+              {!isViewMode && (
+                <Button
+                  type="button"
+                  size="sm"
+                  radius="md"
+                  color="brand"
+                  className="font-semibold px-6"
+                  loading={currentStep === 3 ? isSaving : false}
+                  onClick={() => {
+                    if (currentStep < 3) {
+                      handleNext();
+                    } else {
+                      form.onSubmit(handleValidSubmit, handleInvalidSubmit)();
+                    }
+                  }}
+                  rightSection={currentStep < 3 ? <IconArrowRight size={14} /> : <IconCheck size={14} />}
+                >
+                  {currentStep < 3 ? "Save & Next" : loanProductId ? "Update Product" : "Submit"}
+                </Button>
+              )}
 
               {isViewMode && currentStep < 3 && (
                 <Button type="button" size="sm" radius="md" color="brand" className="font-semibold px-6" onClick={handleNext} rightSection={<IconArrowRight size={14} />}>
