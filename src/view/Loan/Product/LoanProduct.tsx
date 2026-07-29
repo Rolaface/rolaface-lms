@@ -12,7 +12,7 @@ import {
   useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel,
   flexRender, createColumnHelper,
 } from '@tanstack/react-table';
-import { LoanProductModal } from '../../../components/Modal/LoanProductModal';
+import { LoanProductModal } from '../../../components/Modal/LoanProduct/LoanProductModal';
 import {
   getLoanProducts,
   deleteLoanProduct,
