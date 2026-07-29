@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { modals } from '@mantine/modals';
 import {
   Box, Button, TextInput, Select, Radio, Group, Paper, Table, Badge,
   ActionIcon, Switch, Text, Pagination, Tooltip, Title, Loader, Alert,
@@ -15,12 +16,13 @@ import {
 import { LoanProductModal } from '../../../components/Modal/LoanProduct/LoanProductModal';
 import {
   getLoanProducts,
-  deleteLoanProduct,
-  enableLoanProduct,
-  disableLoanProduct,
+  // deleteLoanProduct,
+  // enableLoanProduct,
+  // disableLoanProduct,
   type LoanProductRaw,
 } from '../../../api/LoanProduct/LoanProductAPi';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
+import { deleteLoanProduct, enableLoanProduct, disableLoanProduct } from '../../../api/productApi';
 
 interface NormalizedProduct {
   id: string;
@@ -131,19 +133,15 @@ export function LoanProduct() {
     }
   };
 
-  // NEW — delete
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this loan product? This cannot be undone.')) return;
+const handleDelete = async (id: string) => {
     setError(null);
     try {
       await deleteLoanProduct(id);
       await fetchProducts();
     } catch (err: any) {
-        setError(parseFrappeError(err));
-
+      setError(parseFrappeError(err));
     }
   };
-
   const columns = useMemo(
     () => [
       columnHelper.accessor('name', {
@@ -194,8 +192,31 @@ export function LoanProduct() {
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label="Delete" withArrow>
+              {/* <Tooltip label="Delete" withArrow>
                 <ActionIcon size="sm" variant="subtle" color="red" onClick={() => handleDelete(row.id)}>
+                  <IconTrash size={14} />
+                </ActionIcon>
+              </Tooltip> */}
+             <Tooltip label="Delete" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="red"
+                  onClick={() => {
+                    modals.openConfirmModal({
+                      title: 'Delete Loan Product',
+                      children: (
+                        <Text size="sm">
+                          Are you sure you want to delete loan product <b>{row.name}</b>? This cannot be undone.
+                        </Text>
+                      ),
+                      // Add the labels property here:
+                      labels: { confirm: 'Delete', cancel: 'Cancel' },
+                      confirmProps: { color: 'red' },
+                      onConfirm: () => handleDelete(row.id),
+                    });
+                  }}
+                >
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>

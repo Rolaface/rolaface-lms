@@ -1,5 +1,7 @@
 import apiClient from "../config/axios";
 import { API } from "../config/api";
+import type { CreateLoanProductPayload } from "./LoanProduct/LoanProductAPi";
+import type { CreateLoanProductResponse } from "../types/loanProductForm";
 
 export async function getAllLoanProducts() {
   const { data } = await apiClient.get(API.loanProduct.getAllLoanProducts);
@@ -7,12 +9,45 @@ export async function getAllLoanProducts() {
   
 }
 
+export async function createLoanProduct(payload: CreateLoanProductPayload) {
+  const { data } = await apiClient.post<CreateLoanProductResponse>(API.loanProduct.create, payload);
+  return data;
+}
+
+export async function updateLoanProduct({id, payload,}: {
+  id: string;
+  payload: Partial<CreateLoanProductPayload>;
+}) {
+  const { data } = await apiClient.put(
+    API.loanProduct.update,
+    payload,
+    {
+      params: { id },
+    }
+  );
+
+  return data;
+}
+
 export async function getLoanDeamndOffsetorder() {
   const { data } = await apiClient.get(API.search.getLoanDemandOffsetOrders);
   return data;
   
+} 
+
+export async function deleteLoanProduct(id: string) {
+  const { data } = await apiClient.delete(API.loanProduct.delete, { params: { id } });  
+  return data;
+}
+export async function enableLoanProduct(id: string) {
+   const { data } = await apiClient.put(API.loanProduct.enable, {}, { params: { id } });  
+  return data;
 }
 
+export async function disableLoanProduct(id: string) {
+  const { data } = await apiClient.put(API.loanProduct.disable, {}, { params: { id } });  
+  return data;
+}
 export async function getAllItems() {
   const { data } = await apiClient.get(API.search.getItems);
   return data;
