@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
+import { modals } from "@mantine/modals";
 import {
   ActionIcon,
   Badge,
   Group,
+  Loader,
   Pagination,
   Select,
   Text,
@@ -18,9 +20,11 @@ import {
   IconRefresh,
   IconSelector,
   IconSearch,
+  IconTrash,
 } from "@tabler/icons-react";
 
 import { useDisclosure } from "@mantine/hooks";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   createColumnHelper,
@@ -31,63 +35,12 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 
+import { LoanClassificationModal } from "../../../components/Modal/LoanClassificationModal";
+import type { LoanClassificationData } from "../../../types/loanClassification";
 import {
-  LoanClassificationModal,
-  type LoanClassificationData,
-} from "../../../components/Modal/LoanClassificationModal";
-
-
-// -----------------------------------------------------------------------------
-// Mock Data
-// -----------------------------------------------------------------------------
-
-const DUMMY_CLASSIFICATIONS: LoanClassificationData[] = [
-  {
-    level: 1,
-    code: "STD",
-    name: "Standard",
-    min_dpd_range: 0,
-    max_dpd_range: 30,
-    is_written_off: false,
-    provision_rate: 0,
-  },
-  {
-    level: 2,
-    code: "WTC",
-    name: "Watch",
-    min_dpd_range: 31,
-    max_dpd_range: 60,
-    is_written_off: false,
-    provision_rate: 5,
-  },
-  {
-    level: 3,
-    code: "SUB",
-    name: "Substandard",
-    min_dpd_range: 61,
-    max_dpd_range: 90,
-    is_written_off: false,
-    provision_rate: 20,
-  },
-  {
-    level: 4,
-    code: "DBT",
-    name: "Doubtful",
-    min_dpd_range: 91,
-    max_dpd_range: 180,
-    is_written_off: false,
-    provision_rate: 50,
-  },
-  {
-    level: 5,
-    code: "LSS",
-    name: "Loss",
-    min_dpd_range: 181,
-    max_dpd_range: null,
-    is_written_off: true,
-    provision_rate: 100,
-  },
-];
+  getAllLoanClassifications,
+  deleteLoanClassification,
+} from "../../../api/LoanClassificationApi"
 
 
 // -----------------------------------------------------------------------------
@@ -125,6 +78,8 @@ function SortIcon({
 
 export function LoanClassification() {
 
+  const queryClient = useQueryClient();
+
   // ---------------------------------------------------------------------------
   // Modal State
   // ---------------------------------------------------------------------------
@@ -151,18 +106,15 @@ export function LoanClassification() {
 
 
 
-  const handleOpenModal = (
-    mode: "add" | "edit" | "view",
-    data: LoanClassificationData | null = null,
-  ) => {
-
-    setModalMode(mode);
-
-    setSelectedData(data);
-
-    open();
-  };
-
+ const handleOpenModal = (
+  mode: "add" | "edit" | "view",
+  data: LoanClassificationData | null = null,
+) => {
+  console.log("handleOpenModal called:", mode); // ADD THIS
+  setModalMode(mode);
+  setSelectedData(data);
+  open();
+};
 
 
   // ---------------------------------------------------------------------------
@@ -203,6 +155,31 @@ export function LoanClassification() {
 
 
   // ---------------------------------------------------------------------------
+  // Fetch Classifications
+  // ---------------------------------------------------------------------------
+
+  const {
+    data: classifications = [],
+    isLoading,
+  } = useQuery({
+    queryKey: ["loanClassifications"],
+    queryFn: () => getAllLoanClassifications(),
+  });
+
+
+  const {
+    mutate: removeClassification,
+    isPending: isDeleting,
+  } = useMutation({
+    mutationFn: (id: string) => deleteLoanClassification(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanClassifications"] });
+    },
+  });
+
+
+
+  // ---------------------------------------------------------------------------
   // Filtering Logic
   // ---------------------------------------------------------------------------
 
@@ -213,7 +190,7 @@ export function LoanClassification() {
       .toLowerCase();
 
 
-    return DUMMY_CLASSIFICATIONS.filter(
+    return classifications.filter(
       (classification) => {
 
         const matchesSearch =
@@ -230,7 +207,7 @@ export function LoanClassification() {
       },
     );
 
-  }, [search]);
+  }, [classifications, search]);
 
 
 
@@ -459,53 +436,84 @@ export function LoanClassification() {
 
           cell: (
             info,
-          ) => (
+          ) => {
 
-            <Group
-              justify="flex-end"
-              gap={4}
-            >
+            const row = info.row.original;
 
-              <Tooltip label="View">
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  onClick={() =>
-                    handleOpenModal(
-                      "view",
-                      info.row.original,
-                    )
-                  }
-                >
-                  <IconEye size={15} />
-                </ActionIcon>
-              </Tooltip>
+            return (
+
+              <Group
+                justify="flex-end"
+                gap={4}
+              >
+
+                <Tooltip label="View">
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    onClick={() =>
+                      handleOpenModal(
+                        "view",
+                        row,
+                      )
+                    }
+                  >
+                    <IconEye size={15} />
+                  </ActionIcon>
+                </Tooltip>
 
 
-              <Tooltip label="Edit">
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  onClick={() =>
-                    handleOpenModal(
-                      "edit",
-                      info.row.original,
-                    )
-                  }
-                >
-                  <IconPencil size={15} />
-                </ActionIcon>
-              </Tooltip>
+                <Tooltip label="Edit">
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    onClick={() =>
+                      handleOpenModal(
+                        "edit",
+                        row,
+                      )
+                    }
+                  >
+                    <IconPencil size={15} />
+                  </ActionIcon>
+                </Tooltip>
 
-            </Group>
 
-          ),
+                <Tooltip label="Delete">
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="red"
+                    disabled={isDeleting}
+                    onClick={() => {
+                      modals.openConfirmModal({
+                        title: "Delete loan classification",
+                        children: (
+                          <Text size="sm">
+                            Are you sure you want to delete classification{" "}
+                            <b>{row.code}</b>? This cannot be undone.
+                          </Text>
+                        ),
+                        labels: { confirm: "Delete", cancel: "Cancel" },
+                        confirmProps: { color: "red" },
+                        onConfirm: () => removeClassification(row.code),
+                      });
+                    }}
+                  >
+                    <IconTrash size={15} />
+                  </ActionIcon>
+                </Tooltip>
+
+              </Group>
+
+            );
+          },
         },
       ),
 
     ],
 
-    [],
+    [isDeleting],
   );
 
 
@@ -1040,7 +1048,25 @@ export function LoanClassification() {
 
 
               {
-                rows.length === 0 ? (
+                isLoading ? (
+
+                  <tr>
+
+                    <td
+                      colSpan={columns.length}
+                      className="text-center py-8"
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader size="sm" color="gray" />
+                        <span className="text-sm text-gray-500">
+                          Loading loan classifications...
+                        </span>
+                      </div>
+                    </td>
+
+                  </tr>
+
+                ) : rows.length === 0 ? (
 
                   <tr>
 
