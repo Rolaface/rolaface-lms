@@ -290,21 +290,6 @@ const handleSave = () => {
           {/* Classification Identity */}
           <section className="flex flex-col gap-3">
 
-            <div>
-              <h3
-                className="
-                  border-b
-                  border-[#c7c4d8]
-                  pb-1
-                  text-sm
-                  font-semibold
-                  text-[#0b1c30]
-                "
-              >
-                Classification Identity
-              </h3>
-            </div>
-
 
             <div className="flex gap-4">
 
@@ -370,7 +355,7 @@ const handleSave = () => {
                     text-[#0b1c30]
                   "
                 >
-                  Code
+Classification Code
                   {!isView && (
                     <span className="ml-1 text-red-600">
                       *
@@ -409,15 +394,7 @@ const handleSave = () => {
                   "
                 />
 
-                <span
-                  className="
-                    text-xs
-                    text-[#464555]
-                    pl-1
-                  "
-                >
-                  Unique institution-wide short code.
-                </span>
+        
 
               </div>
 
@@ -434,7 +411,7 @@ const handleSave = () => {
                     text-[#0b1c30]
                   "
                 >
-                  Name
+                  Classificaion  Name
                   {!isView && (
                     <span className="ml-1 text-red-600">
                       *
@@ -473,15 +450,7 @@ const handleSave = () => {
                   "
                 />
 
-                <span
-                  className="
-                    text-xs
-                    text-[#464555]
-                    pl-1.5
-                  "
-                >
-                  Readable name.
-                </span>
+             
 
               </div>
 
@@ -637,9 +606,6 @@ const handleSave = () => {
 
   </div>
 
-  <span className="text-xs text-[#464555]">
-    Inclusive Days Past Due range for this classification.
-  </span>
 </section>
 
           {formError && !isView && (
