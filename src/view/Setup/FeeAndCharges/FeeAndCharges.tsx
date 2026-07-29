@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {getFeeAndCharges} from '../../../api/loanChargesApi';
 import {
   Box,
   Button,
@@ -23,24 +25,16 @@ import {
   IconSearch,
 } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
+
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getPaginationRowModel,
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
 import { FeeAndChargesModal, type FeeAndCharge } from "../../../components/Modal/FeeAndChargesModal";
 
-// --- DUMMY DATA ---
-const DUMMY_FEES_AND_CHARGES: FeeAndCharge[] = [
-  { id: 1, name: "Processing Fee" },
-  { id: 2, name: "Late Payment Penalty" },
-  { id: 3, name: "Documentation Charge" },
-  { id: 4, name: "Prepayment Penalty" },
-  { id: 5, name: "Insurance Premium" },
-];
 
 const columnHelper = createColumnHelper<FeeAndCharge>();
 
@@ -74,13 +68,28 @@ export function FeeAndCharges() {
     { id: "name", desc: false },
   ]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+ const { data: chargesResponse, isLoading, isError } = useQuery({
+   queryKey: ["fee-and-charges", pagination.pageIndex, pagination.pageSize, search],
+    queryFn: () =>
+      getFeeAndCharges({
+        page: pagination.pageIndex + 1, // API is 1-indexed, react-table is 0-indexed
+        page_size: pagination.pageSize,
+        search: search || undefined,
+      }),
+    placeholderData: (prev) => prev,
+  });
 
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return DUMMY_FEES_AND_CHARGES.filter((p) => {
-      return !q || p.name.toLowerCase().includes(q);
-    });
-  }, [search]);
+  const filteredData: FeeAndCharge[] = useMemo(() => {
+    const list = chargesResponse?.data ?? [];
+    return list.map((item) => ({
+      id: item.name,
+      name: item.item_name,
+      item_code: item.item_code,
+      item_group: item.item_group,
+    }));
+  }, [chargesResponse]);
+
+  const serverPagination = chargesResponse?.pagination;
 
   const columns = useMemo(
     () => [
@@ -138,11 +147,12 @@ export function FeeAndCharges() {
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true,
+  pageCount: serverPagination?.total_pages ?? 1,
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
+  const totalRows = serverPagination?.total ?? 0;
   const { pageIndex, pageSize } = pagination;
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
@@ -233,7 +243,23 @@ export function FeeAndCharges() {
             ))}
           </Table.Thead>
           <Table.Tbody>
-            {rows.length === 0 ? (
+             {isLoading ? (
+           <Table.Tr>
+                <Table.Td colSpan={columns.length}>
+                  <Text ta="center" c="dimmed" fz="xs" py="sm">
+                    Loading...
+                  </Text>
+                </Table.Td>
+              </Table.Tr>
+            ) : isError ? (
+              <Table.Tr>
+                <Table.Td colSpan={columns.length}>
+                  <Text ta="center" c="red" fz="xs" py="sm">
+                    Failed to load fees and charges.
+                  </Text>
+                </Table.Td>
+              </Table.Tr>
+         ) : rows.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={columns.length}>
                   <Text ta="center" c="dimmed" fz="xs" py="sm">
