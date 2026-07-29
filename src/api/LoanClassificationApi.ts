@@ -5,7 +5,7 @@ import type {
   LoanClassificationData,
   LoanClassificationApiPayload,
   LoanClassificationApiResponse,
-} from "../types/loanClassification"
+} from "../types/loanClassification";
 
 // --- Mappers: UI shape (snake_case) <-> backend shape (camelCase) ---
 
@@ -17,19 +17,19 @@ function toApiPayload(data: LoanClassificationData): LoanClassificationApiPayloa
     minDpdRange: data.min_dpd_range,
     maxDpdRange: data.max_dpd_range,
     provisionRate: data.provision_rate,
-    // isWrittenOff: data.is_written_off,
+    isWrittenOff: data.is_written_off,
   };
 }
 
 function fromApiRecord(record: any): LoanClassificationData {
   return {
     level: record.level,
-    code: record.classificationCode ?? record.code ?? "",
-    name: record.classificationName ?? record.name ?? "",
-    min_dpd_range: record.minDpdRange ?? record.min_dpd_range ?? null,
-    max_dpd_range: record.maxDpdRange ?? record.max_dpd_range ?? null,
-    provision_rate: record.provisionRate ?? record.provision_rate ?? 0,
-    is_written_off: record.isWrittenOff ?? record.is_written_off ?? false,
+    code: record.classificationCode ?? "",
+    name: record.classificationName ?? "",
+    min_dpd_range: record.minDpdRange ?? null,
+    max_dpd_range: record.maxDpdRange ?? null,
+    provision_rate: record.provisionRate ?? 0,
+    is_written_off: record.isWrittenOff ?? false,
   };
 }
 
