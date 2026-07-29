@@ -170,6 +170,9 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
     ) {
       payload.moratorium_type = values.moratoriumType;
       payload.moratorium_tenure = Number(values.moratoriumPeriod);
+       if (payload.moratorium_type === "EMI") {
+        payload.treatment_of_interest = "Capitalize";
+      }
     }
 
     // createLoanMutation.mutate(payload);

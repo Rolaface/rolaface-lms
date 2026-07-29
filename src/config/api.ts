@@ -39,6 +39,8 @@ loan: {
   getLoans:  `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_loans`,
   getLoanById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_loan_by_id`,
   updateLoan:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.update_loan`,
+  deleteLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.delete_loan`,
+  statusLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.update_loan_status`,
 },
 
   // =========================
@@ -62,7 +64,11 @@ loan: {
   // =========================
   // LOAN DISBURSEMENT
   // =========================
-  loanDisbursement: {},
+  loanDisbursement: {
+    createLoanDsbr: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.create_loan_disbursement`,
+    getLoanDsbr: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.get_loan_disbursements`,
+    getLoanAppNumber: `${ERP_BASE}/api/resource/Loan`
+  },
 
   // =========================
   // REPAYMENT SCHEDULE
