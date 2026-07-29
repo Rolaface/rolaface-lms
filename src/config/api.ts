@@ -16,8 +16,8 @@ export const API = {
   // =========================
   loanCharges: {
     createCharges: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.charges.api.create_charge`,
-     getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.charges.api.get_charges`,
-   },
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.charges.api.get_charges`,
+  },
 
   // =========================
   // DASHBOARD
@@ -28,7 +28,7 @@ export const API = {
   // CUSTOMER
   // =========================
   customer: {
-    getAllCustomers: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_customers`
+    getAllCustomers: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_customers`,
   },
 
   // =========================
@@ -47,8 +47,23 @@ loan: {
   // LOAN PRODUCT
   // =========================
   loanProduct: {
-  get: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.get_loan_products`,
+    get: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.get_loan_products`,
     getAllLoanProducts: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.get_loan_products`,
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.create_loan_product`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.update_loan_product`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.get_loan_product_by_id`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.delete_loan_product`,
+    enable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.enable_loan_product`,
+    disable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.disable_loan_product`,
+  },
+
+  // =========================
+  // SEARCH / LOOKUPS (accounts, items, offset orders)
+  // =========================
+  search: {
+    getAccounts: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_accounts`,
+    getItems: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_items`,
+    getLoanDemandOffsetOrders: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_demand_offset_orders`,
   },
 
   // =========================
