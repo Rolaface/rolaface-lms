@@ -66,6 +66,16 @@ loan: {
     getLoanDemandOffsetOrders: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_demand_offset_orders`,
   },
 
+
+  // =========================
+  // LOAN CLASSIFICATION
+  // =========================
+  loanClassification: {
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.classification.api.create_loan_classification`,
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.classification.api.get_loan_classifications`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.classification.api.get_loan_classification_by_id`,    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.classification.api.update_loan_classification`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.classification.api.delete_loan_classification`,
+  },
   // =========================
   // LOAN APPLICATION
   // =========================
