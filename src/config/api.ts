@@ -16,7 +16,9 @@ export const API = {
   // =========================
   loanCharges: {
     createCharges: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.charges.api.create_charge`,
-  },
+     getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.charges.api.get_charges`,
+   },
+
   // =========================
   // DASHBOARD
   // =========================
