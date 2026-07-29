@@ -19,7 +19,7 @@ export interface CreateLoanPayload {
   auto_create_disbursement_on_loan_booking?: 0 | 1;
   moratorium_tenure?: number;
   moratorium_type?: "EMI" | "Principal" | string;
-  treatment_of_interest?: "Capitalize" | "Charge Separately" | string;
+  treatment_of_interest?: "Capitalize" | string;
 }
 
 // Frappe whitelisted methods wrap the return value in `message`.

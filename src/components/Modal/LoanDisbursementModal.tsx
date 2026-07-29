@@ -1,5 +1,6 @@
 // LoanDisbursementModal.tsx
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useForm } from "@mantine/form";
 import {
   Box,
   Text,
@@ -26,6 +27,9 @@ import {
   IconArrowRight,
   IconRefresh,
 } from "@tabler/icons-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createLoanDisbursement, getAllLoanApplicationNumber } from "../../api/loanDisbursementAPi"; 
+import type { LoanDisbursementPayload, } from "../../types/loanDisbursementForm";
 
 interface LoanDisbursementModalProps {
   opened: boolean;
@@ -95,31 +99,73 @@ export function LoanDisbursementModal({
   const [refNo, setRefNo] = useState("");
   const [beneficiaryAcNo, setBeneficiaryAcNo] = useState("");
 
-  const handleReset = () => {
-    setAcNo("");
-    setValueDate("");
-    setDisburseAmount("");
-    setModeOfPayment(null);
-    setDisbursementAc(null);
-    setRefDate("");
-    setRefNo("");
-    setBeneficiaryAcNo("");
+  const form = useForm({
+    initialValues: {
+      acNo: "",
+      valueDate: "",
+      disburseAmount: "" as number | "",
+      modeOfPayment: null as string | null,
+      disbursementAc: null as string | null,
+      refDate: "",
+      refNo: "",
+      beneficiaryAcNo: "",
+    },
+    validate: {
+      acNo: (v) => (!v ? "Account Number is required" : null),
+      valueDate: (v) => (!v ? "Value Date is required" : null),
+      disburseAmount: (v) => (!v ? "Disburse Amount is required" : null),
+      modeOfPayment: (v) => (!v ? "Mode of Payment is required" : null),
+      disbursementAc: (v) => (!v ? "Disbursement Account is required" : null),
+      refDate: (v) => (!v ? "Ref Date is required" : null),
+      refNo: (v) => (!v ? "Ref No is required" : null),
+      beneficiaryAcNo: (v) => (!v ? "Beneficiary A/c No is required" : null),
+    },
+  });
+
+  const queryClient = useQueryClient();
+
+  const createDisbursementMutation = useMutation({
+    mutationFn: createLoanDisbursement,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
+      handleReset();
+      onClose();
+    },
+  });
+
+ const handleReset = () => {
+    form.reset();
     setActiveTab("settlement");
   };
 
-  const handleSubmit = () => {
-    onSubmit?.({
-      acNo,
-      valueDate,
-      disburseAmount,
-      modeOfPayment,
-      disbursementAc,
-      refDate,
-      refNo,
-      beneficiaryAcNo,
-    });
-    onClose();
+  const handleSubmit = (values: typeof form.values) => {
+    const payload: LoanDisbursementPayload = {
+      against_loan: values.acNo,
+      posting_date: values.valueDate,
+      disbursement_date: values.valueDate,
+      disbursed_amount: Number(values.disburseAmount),
+      mode_of_payment: values.modeOfPayment as string,
+      reference_number: values.refNo,
+      reference_date: values.refDate,
+      repayment_start_date: values.valueDate, 
+      disbursement_account: values.disbursementAc || undefined,
+    };
+
+    createDisbursementMutation.mutate(payload);
   };
+
+  const { data: loanAppsResponse, isLoading: isLoanAppsLoading } = useQuery({
+    queryKey: ["loanApplications"],
+    queryFn: getAllLoanApplicationNumber,
+  });
+
+  // Extract the "name" property from the response array to pass to the dropdown
+  const loanAppOptions = useMemo(() => {
+    if (loanAppsResponse?.data) {
+      return loanAppsResponse.data.map((item: any) => item.name);
+    }
+    return [];
+  }, [loanAppsResponse]);
 
   return (
     <Modal
@@ -130,6 +176,7 @@ export function LoanDisbursementModal({
       padding={0}
       radius="md"
     >
+      <form onSubmit={form.onSubmit(handleSubmit)}>
       <Box className="flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
@@ -156,15 +203,19 @@ export function LoanDisbursementModal({
           {/* Main form column */}
           <div className="flex-1 overflow-y-auto p-6">
             <div className="grid grid-cols-3 gap-4 mb-5">
-              <TextInput
+             <Select
                 size="sm"
                 withAsterisk
+                searchable
+                clearable
                 label="A/c No"
-                placeholder="Search loan account"
-                value={acNo}
-                onChange={(e) => setAcNo(e.currentTarget.value)}
+                placeholder={isLoanAppsLoading ? "Loading..." : "Search loan account"}
+                data={loanAppOptions}
+                disabled={isLoanAppsLoading}
                 leftSection={<IconSearch size={14} className="text-gray-400" />}
+                rightSection={chevronDown}
                 classNames={labelClass}
+                {...form.getInputProps("acNo")}
               />
               <TextInput
                 size="sm"
@@ -172,7 +223,7 @@ export function LoanDisbursementModal({
                 type="date"
                 label="Value Date"
                 value={valueDate}
-                onChange={(e) => setValueDate(e.currentTarget.value)}
+                {...form.getInputProps("valueDate")}
                 leftSection={<IconCalendar size={14} className="text-emerald-600" />}
                 classNames={labelClass}
               />
@@ -182,7 +233,7 @@ export function LoanDisbursementModal({
                 label="Disburse Amount"
                 placeholder="Enter amount"
                 value={disburseAmount}
-                onChange={(v) => setDisburseAmount(v as number | "")}
+                {...form.getInputProps("disburseAmount")}
                 leftSection={<IconCurrencyRupee size={14} className="text-orange-500" />}
                 thousandSeparator=","
                 classNames={labelClass}
@@ -385,23 +436,33 @@ export function LoanDisbursementModal({
           </div>
         </div>
 
-        {/* Footer */}
+       {/* Footer */}
         <div className="border-t border-gray-200 p-4 px-6 flex justify-end items-center shrink-0">
           <div className="flex gap-2">
+            
+            {/* Show API Error if any */}
+            {createDisbursementMutation.isError && (
+              <Text size="xs" c="red" className="mr-2 self-center">
+                Failed to create disbursement.
+              </Text>
+            )}
+
             <Button
               size="sm"
               variant="subtle"
               color="red"
               leftSection={<IconRefresh size={14} />}
               onClick={handleReset}
+              disabled={createDisbursementMutation.isPending}
               className="font-semibold px-4"
             >
               Reset
             </Button>
-            <Button
+           <Button
+              type="submit" // <--- Change this from onClick={handleSubmit} to type="submit"
               size="sm"
-              onClick={handleSubmit}
-              rightSection={<IconArrowRight size={16} />}
+              loading={createDisbursementMutation.isPending}
+              rightSection={!createDisbursementMutation.isPending ? <IconArrowRight size={16} /> : null}
               className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 font-semibold px-6"
             >
               Submit Disbursement
@@ -409,6 +470,7 @@ export function LoanDisbursementModal({
           </div>
         </div>
       </Box>
+      </form>
     </Modal>
   );
 }

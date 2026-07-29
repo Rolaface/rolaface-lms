@@ -19,6 +19,17 @@ export async function getLoanById(id: string) {
   return data;
 }
 
+export async function deleteLoan(id: string) {
+  const { data } = await apiClient.delete(API.loan.deleteLoan, { params: { id } });  
+  return data;
+}
+
+export async function changeLoanStatus(id: string, action: string) {
+  const { data } = await apiClient.put(API.loan.statusLoan, {}, { params: { id, action } });
+  return data;
+}
+
+
 export async function updateLoan({id, payload,}: {
   id: string;
   payload: Partial<CreateLoanPayload>;

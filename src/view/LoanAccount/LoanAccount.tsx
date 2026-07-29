@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { modals } from '@mantine/modals';
 import {
   Box,
   Button,
@@ -15,6 +16,7 @@ import {
   Tooltip,
   Title,
   Loader,
+  Menu,
 } from '@mantine/core';
 import {
   IconEye,
@@ -25,6 +27,8 @@ import {
   IconSelector,
   IconSearch,
   IconFileText,
+  IconTrash,
+  IconDotsVertical
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -36,8 +40,8 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { LoanAccountModal } from '../../components/Modal/LoanBooking/LoanAccountModal';
-import { getAllLoans } from '../../api/loanApi';  
-import { useQuery } from '@tanstack/react-query';
+import { getAllLoans, deleteLoan, changeLoanStatus } from '../../api/loanApi';  
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 const STATUS_META: Record<string, { label: string; color: string }> = {
   DRAFT: { label: 'DRAFT', color: 'gray' },
   PENDING_APPROVAL: { label: 'PENDING APPROVAL', color: 'yellow' },
@@ -78,9 +82,22 @@ export function LoanAccount() {
   queryFn: getAllLoans,
 });
 
-  // const [data, setData] = useState<any[]>([]);
-  // const [isLoading, setIsLoading] = useState(true);
+const queryClient = useQueryClient();
 
+const { mutate: removeLoan, isPending: isDeleting } = useMutation({
+  mutationFn: (id: string) => deleteLoan(id),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['loans'] });
+  },
+});
+
+const { mutate: updateStatus } = useMutation({
+  mutationFn: ({ id, action }: { id: string; action: string }) =>
+    changeLoanStatus(id, action),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['loans'] });
+  },
+});
   // filter state
   const [search, setSearch] = useState('');
   const [product, setProduct] = useState<string | null>(null);
@@ -278,6 +295,47 @@ export function LoanAccount() {
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
+              <Tooltip label={isDraft ? "Delete" : "Only Drafts can be deleted"} withArrow>
+  <ActionIcon
+    size="sm"
+    variant="subtle"
+    color={isDraft ? "red" : "gray"}
+    disabled={!isDraft || isDeleting}
+   onClick={() => {
+  modals.openConfirmModal({
+    title: 'Delete loan application',
+    children: (
+      <Text size="sm">
+        Are you sure you want to delete loan application <b>{loanIdentifier}</b>? This cannot be undone.
+      </Text>
+    ),
+    labels: { confirm: 'Delete', cancel: 'Cancel' },
+    confirmProps: { color: 'red' },
+    onConfirm: () => removeLoan(loanIdentifier),
+  });
+}}
+  >
+    <IconTrash size={14} />
+  </ActionIcon>
+</Tooltip>
+  <Menu shadow="md" width={140} position="bottom-end">
+  <Menu.Target>
+    <ActionIcon size="sm" variant="subtle" color="gray">
+      <IconDotsVertical size={14} />
+    </ActionIcon>
+  </Menu.Target>
+  <Menu.Dropdown>
+    {isDraft ? (
+      <Menu.Item onClick={() => updateStatus({ id: loanIdentifier, action: 'approved' })}>
+        Submit
+      </Menu.Item>
+    ) : (
+      <Menu.Item color="red" onClick={() => updateStatus({ id: loanIdentifier, action: 'cancelled' })}>
+        Cancel
+      </Menu.Item>
+    )}
+  </Menu.Dropdown>
+</Menu>
             </Group>
           );
         },
