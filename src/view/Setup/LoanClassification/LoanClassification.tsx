@@ -2,11 +2,9 @@ import { useMemo, useState } from "react";
 import {
   ActionIcon,
   Badge,
-  Button,
   Group,
   Pagination,
   Select,
-  Table,
   Text,
   Tooltip,
 } from "@mantine/core";
