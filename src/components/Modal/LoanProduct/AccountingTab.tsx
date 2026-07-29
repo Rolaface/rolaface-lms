@@ -1,5 +1,5 @@
 // Remove useQuery and useMemo from your imports as they are no longer needed here
-import { Text, Checkbox } from "@mantine/core";
+import { Text, Checkbox, Select } from "@mantine/core";
 import { IconChevronDown, IconBuildingBank, IconStack2, IconFileText } from "@tabler/icons-react";
 import { getAllIncomeAccounts, getAllIPAccounts, getAllPrincipalAccounts } from "../../../api/productApi";
 import { SubSection } from "./Subsection";
@@ -88,6 +88,22 @@ export function AccountingTab({
               <AsyncAccountSelect fetchFn={fetchFn} queryKeyPrefix={queryKey} size="xs" value={penaltyAccs[key as keyof InterestPenaltyAccountsState]} onChange={(v) => handlePenaltyChange(key as keyof InterestPenaltyAccountsState, v)} rightSection={chevron} placeholder="Select account" classNames={{ input: fieldLabelProps.input }} />
             </div>
           ))}
+        </div>
+        <div className="mt-3.5 pt-3.5 border-t border-slate-100">
+          <AsyncAccountSelect
+            fetchFn={getAllIPAccounts} // Or getAllIncomeAccounts if preferred
+            queryKeyPrefix="ipAccs"
+            size="xs"
+            withAsterisk
+            label="Broken Period Interest Recovery Account"
+            description="Interest-side only — used when a loan is disbursed mid-cycle"
+            placeholder="Select account"
+            value={brokenPeriodRecoveryAccount}
+            onChange={(v) => setBrokenPeriodRecoveryAccount(v || "")}
+            rightSection={<IconChevronDown size={14} className="text-slate-400" />}
+            classNames={fieldLabelProps}
+            className="max-w-md"
+          />
         </div>
       </SubSection>
 
