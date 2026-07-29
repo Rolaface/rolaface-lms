@@ -239,16 +239,6 @@ const handleSave = () => {
             >
               {title}
             </h2>
-
-            <p
-              className="
-                text-sm
-                text-[#464555]
-              "
-            >
-              Configure a loan classification policy used throughout the
-              lending lifecycle.
-            </p>
           </div>
 
 
