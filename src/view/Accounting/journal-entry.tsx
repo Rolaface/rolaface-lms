@@ -205,7 +205,7 @@ export function JournalEntries() {
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   return (
-    <Box className="flex flex-col gap-4 p-8 mt-10">
+    <Box className="flex flex-col gap-4 p-8 ">
       <div className="flex justify-between items-center">
         <Title order={2} className="text-gray-900 font-semibold">
           Journal Entries

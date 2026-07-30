@@ -244,11 +244,11 @@ export function TrialBalance() {
   }
 
   return (
-    <Box className="flex flex-col gap-4 p-8 mt-10">
+    <Box className="flex flex-col gap-4 p-8 ">
       <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
           <Title order={2} className="text-gray-900 font-semibold">Trial Balance</Title>
-          <Text fz="xs" c="gray.6" mt={2}>{data?.company ?? '—'}</Text>
+          {/* <Text fz="xs" c="gray.6" mt={2}>{data?.company ?? '—'}</Text> */}
         </div>
       </div>
 
