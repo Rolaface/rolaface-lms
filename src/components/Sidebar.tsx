@@ -27,7 +27,11 @@ import {
   IconFileInvoice,
   IconHierarchy2,
   IconReceipt2,
-  IconBookmarks,IconCreditCardRefund,IconCreditCardPay
+  IconBookmarks,
+  IconCreditCardRefund,
+  IconCreditCardPay,
+  IconChartLine,
+  IconScale,
 } from "@tabler/icons-react";
 
 /* ───────────────── Nav item types (recursive) ───────────────── */
@@ -35,7 +39,11 @@ import {
 interface NavItem {
   path?: string; // omit for a group that only holds children (e.g. "General Ledger")
   label: string;
-  icon: React.ComponentType<{ size?: number; stroke?: number; className?: string }>;
+  icon: React.ComponentType<{
+    size?: number;
+    stroke?: number;
+    className?: string;
+  }>;
   matchPrefix?: boolean;
   subItems?: NavItem[];
 }
@@ -166,11 +174,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
             label: "Journal Entry",
             icon: IconReceipt2,
           },
-          {      
-        path: "/accounting/general-ledger-report",
-        label: "General Ledger report",
-        icon: IconFileText,
-      },
+          {
+            path: "/accounting/general-ledger-report",
+            label: "General Ledger report",
+            icon: IconFileText,
+          },
         ],
       },
       {
@@ -178,7 +186,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         label: "Receivable",
         icon: IconCreditCardRefund,
       },
-       {
+      {
         path: "/accounting/Payable",
         label: "Payable",
         icon: IconCreditCardPay,
@@ -188,6 +196,16 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         path: "/accounting/trial-balance",
         label: "Trial Balance",
         icon: IconReportAnalytics,
+      },
+      {
+        path: "/accounting/profit-loss",
+        label: "Profit & Loss",
+        icon: IconChartLine,
+      },
+      {
+        path: "/accounting/balance-sheet",
+        label: "Balancesheet",
+        icon: IconScale,
       },
     ],
   },
@@ -263,7 +281,9 @@ function NavNode({
         <UnstyledButton
           onClick={() => toggleMenu(menuKey)}
           className={`flex w-full items-center justify-between font-medium transition-colors ${
-            isActive || isOpen ? "text-[#1E40AF]" : "text-gray-600 hover:text-[#1E40AF]"
+            isActive || isOpen
+              ? "text-[#1E40AF]"
+              : "text-gray-600 hover:text-[#1E40AF]"
           }`}
           style={{ fontSize: textSize }}
         >
@@ -271,7 +291,9 @@ function NavNode({
             <Icon
               size={iconSize}
               stroke={1.5}
-              className={isActive || isOpen ? "text-[#1E40AF]" : "text-gray-500"}
+              className={
+                isActive || isOpen ? "text-[#1E40AF]" : "text-gray-500"
+              }
             />
             <span>{item.label}</span>
           </Box>
@@ -310,7 +332,11 @@ function NavNode({
       }`}
       style={{ fontSize: textSize }}
     >
-      <Icon size={iconSize} stroke={1.5} className={isActive ? "text-[#1E40AF]" : "text-gray-500"} />
+      <Icon
+        size={iconSize}
+        stroke={1.5}
+        className={isActive ? "text-[#1E40AF]" : "text-gray-500"}
+      />
       <span>{item.label}</span>
     </UnstyledButton>
   );
@@ -412,7 +438,10 @@ export function Sidebar({
                 {!isCollapsed && hasSubItems && (
                   <Box className="text-gray-400">
                     {isOpen ? (
-                      <IconChevronUp size={SIZES.chevron} className="text-[#1E40AF]" />
+                      <IconChevronUp
+                        size={SIZES.chevron}
+                        className="text-[#1E40AF]"
+                      />
                     ) : (
                       <IconChevronDown size={16} />
                     )}
@@ -459,10 +488,17 @@ export function Sidebar({
 
             {!isCollapsed && (
               <Box>
-                <Text size="sm" fw={700} className="text-gray-900 leading-tight">
+                <Text
+                  size="sm"
+                  fw={700}
+                  className="text-gray-900 leading-tight"
+                >
                   Administrator
                 </Text>
-                <Text size="xs" className="text-gray-500 uppercase tracking-wide font-medium mt-0.5">
+                <Text
+                  size="xs"
+                  className="text-gray-500 uppercase tracking-wide font-medium mt-0.5"
+                >
                   Administrator
                 </Text>
               </Box>

@@ -291,8 +291,19 @@ export function Receivable() {
     );
   };
 
-  return (
-    <div className="flex flex-col gap-3 p-6">
+ return (
+  <div className="flex flex-col gap-3 p-6">
+
+    <div className="flex flex-col gap-1">
+      <h1 className="text-3xl font-bold text-gray-900">
+        Accounts Receivable
+      </h1>
+      <p className="text-sm text-gray-500">
+        Monitor outstanding invoices, overdue balances, and customer receivables.
+      </p>
+    </div>
+
+    {/* KPI strip */}
       {/* KPI strip */}
       {kpis ? (
         <KpiStrip kpis={kpis} loading={isLoading} displayAmount={displayAmount} />

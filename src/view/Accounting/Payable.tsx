@@ -300,6 +300,14 @@ export function Payable() {
 
   return (
     <div className="flex flex-col gap-3 p-6">
+      <div className="flex flex-col gap-1">
+  <h1 className="text-3xl font-bold text-gray-900">
+    Accounts Payable
+  </h1>
+  <p className="text-sm text-gray-500">
+    Track supplier invoices, outstanding balances, due payments, and aging.
+  </p>
+</div>
       {/* KPI strip */}
       {kpis ? (
         <KpiStrip kpis={kpis} loading={isLoading} displayAmount={displayAmount} />

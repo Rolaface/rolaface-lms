@@ -300,7 +300,7 @@ export function ChartOfAccounts() {
   const rows = table.getRowModel().rows;
 
   return (
-    <Box className="flex flex-col gap-4 p-8 mt-10">
+    <Box className="flex flex-col gap-4 p-6">
       <ViewAccountModal account={viewAccount} onClose={() => setViewAccount(null)} />
 
       <div className="flex justify-between items-center">
