@@ -485,6 +485,8 @@ export function LoanClassificationModal({
                     focus-within:ring-[#3525cd]/20
                   "
                 >
+
+                  
                   <input
                     id="provision-rate"
                     type="number"
