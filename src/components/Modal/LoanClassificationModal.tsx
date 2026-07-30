@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-export interface LoanClassificationData {
-  level?: number;
-  code: string;
-  name: string;
-  min_dpd_range: number | null;
-  max_dpd_range: number | null;
-  provision_rate: number;
-  is_written_off: boolean;
-}
+import type { LoanClassificationData } from '../../types/loanClassification';
+import {
+  createLoanClassification,
+  updateLoanClassification,
+} from "../../api/LoanClassificationApi"
+import { parseFrappeError } from '../../utils/parseFrappeError';
+
+// Re-exported so this stays a drop-in replacement even if some file still
+// imports `LoanClassificationData` from this Modal file (old pattern).
+export type { LoanClassificationData } from '../../types/loanClassification';
 
 interface LoanClassificationModalProps {
   opened: boolean;
@@ -18,6 +20,7 @@ interface LoanClassificationModalProps {
 }
 
 interface LoanClassificationFormState {
+  level: string;
   code: string;
   name: string;
   min_dpd_range: string;
@@ -27,6 +30,7 @@ interface LoanClassificationFormState {
 }
 
 const EMPTY_FORM_STATE: LoanClassificationFormState = {
+  level: '',
   code: '',
   name: '',
   min_dpd_range: '',
@@ -42,6 +46,7 @@ export function LoanClassificationModal({
   data = null,
 }: LoanClassificationModalProps) {
   const isView = mode === 'view';
+  const queryClient = useQueryClient();
 
   const title =
     mode === 'add'
@@ -52,6 +57,7 @@ export function LoanClassificationModal({
 
   const [formData, setFormData] =
     useState<LoanClassificationFormState>(EMPTY_FORM_STATE);
+  const [formError, setFormError] = useState<string | null>(null);
 
   /**
    * Existing behavior preserved:
@@ -61,6 +67,7 @@ export function LoanClassificationModal({
   useEffect(() => {
     if (opened && data) {
       setFormData({
+        level: data.level !== undefined && data.level !== null ? String(data.level) : '',
         code: data.code || '',
         name: data.name || '',
         min_dpd_range:
@@ -80,7 +87,8 @@ export function LoanClassificationModal({
     } else if (opened && mode === 'add') {
       setFormData(EMPTY_FORM_STATE);
     }
-  }, [opened, data]);
+    setFormError(null);
+  }, [opened, data, mode]);
 
 
   /**
@@ -97,6 +105,78 @@ export function LoanClassificationModal({
     }));
   };
 
+  // --- API mutations ---
+  const createMutation = useMutation({
+    mutationFn: (payload: LoanClassificationData) =>
+      createLoanClassification(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loanClassifications'] });
+      onClose();
+    },
+    onError: (err) => {
+      console.error('Create loan classification failed:', err);
+      setFormError(parseFrappeError(err));
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: LoanClassificationData }) =>
+      updateLoanClassification(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loanClassifications'] });
+      onClose();
+    },
+    onError: (err) => {
+      console.error('Update loan classification failed:', err);
+      setFormError(parseFrappeError(err));
+    },
+  });
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+const handleSave = () => {
+  setFormError(null);
+  console.log("Save clicked", formData); // TEMP DEBUG
+
+  if (formData.level === '') {
+    setFormError('Level is required.');
+    return;
+  }
+  if (!formData.code.trim() || !formData.name.trim()) {
+    setFormError('Code and Name are required.');
+    return;
+  }
+  if (formData.min_dpd_range === '' || formData.max_dpd_range === '') {
+    setFormError('Min and Max DPD are required.');
+    return;
+  }
+  if (Number(formData.max_dpd_range) < Number(formData.min_dpd_range)) {
+    setFormError('Max DPD must be greater than or equal to Min DPD.');
+    return;
+  }
+  if (formData.provision_rate === '') {
+    setFormError('Provision rate is required.');
+    return;
+  }
+
+  const payload: LoanClassificationData = {
+    level: Number(formData.level),
+    code: formData.code.trim(),
+    name: formData.name.trim(),
+    min_dpd_range: Number(formData.min_dpd_range),
+    max_dpd_range: Number(formData.max_dpd_range),
+    provision_rate: Number(formData.provision_rate),
+    is_written_off: formData.is_written_off,
+  };
+
+  console.log("Calling API with payload:", payload); // TEMP DEBUG — payload banne ke baad
+
+  if (mode === 'edit' && data?.code) {
+    updateMutation.mutate({ id: data.code, payload });
+  } else {
+    createMutation.mutate(payload);
+  }
+};
 
   if (!opened) {
     return null;
@@ -210,33 +290,59 @@ export function LoanClassificationModal({
           {/* Classification Identity */}
           <section className="flex flex-col gap-3">
 
-            <div>
-              <h3
-                className="
-                  border-b
-                  border-[#c7c4d8]
-                  pb-1
-                  text-sm
-                  font-semibold
-                  text-[#0b1c30]
-                "
-              >
-                Classification Identity
-              </h3>
-
-              {/* <p
-                className="
-                  mt-1
-                  text-xs
-                  text-[#464555]
-                "
-              >
-                Define the unique identity used across lending workflows.
-              </p> */}
-            </div>
-
 
             <div className="flex gap-4">
+
+              {/* Level */}
+              <div className="flex w-32 flex-col gap-1">
+
+                <label
+                  htmlFor="class-level"
+                  className="
+                    text-xs
+                    font-semibold
+                    text-[#0b1c30]
+                  "
+                >
+                  Level
+                  {!isView && (
+                    <span className="ml-1 text-red-600">
+                      *
+                    </span>
+                  )}
+                </label>
+
+                <input
+                  id="class-level"
+                  type="number"
+                  placeholder="e.g. 1"
+                  value={formData.level}
+                  disabled={isView}
+                  onChange={(event) =>
+                    updateField(
+                      'level',
+                      event.target.value,
+                    )
+                  }
+                  className="
+                    h-10
+                    rounded
+                    border
+                    border-[#c7c4d8]
+                    bg-white
+                    px-3
+                    text-sm
+                    text-[#0b1c30]
+                    placeholder:text-[#777587]
+                    outline-none
+                    focus:border-transparent
+                    focus:ring-2
+                    focus:ring-[#3525cd]
+                    disabled:bg-[#eff4ff]
+                  "
+                />
+
+              </div>
 
               {/* Classification Code */}
               <div className="flex flex-1 flex-col gap-1">
@@ -249,7 +355,7 @@ export function LoanClassificationModal({
                     text-[#0b1c30]
                   "
                 >
-                  Code
+Classification Code
                   {!isView && (
                     <span className="ml-1 text-red-600">
                       *
@@ -263,7 +369,7 @@ export function LoanClassificationModal({
                   type="text"
                   placeholder="e.g. SUB"
                   value={formData.code}
-                  disabled={isView}
+                  disabled={isView || mode === 'edit'}
                   onChange={(event) =>
                     updateField(
                       'code',
@@ -288,14 +394,7 @@ export function LoanClassificationModal({
                   "
                 />
 
-                <span
-                  className="
-                    text-xs
-                    text-[#464555]
-                  "
-                >
-                  Unique institution-wide short code.
-                </span>
+        
 
               </div>
 
@@ -312,7 +411,7 @@ export function LoanClassificationModal({
                     text-[#0b1c30]
                   "
                 >
-                  Name
+                  Classificaion  Name
                   {!isView && (
                     <span className="ml-1 text-red-600">
                       *
@@ -351,344 +450,169 @@ export function LoanClassificationModal({
                   "
                 />
 
-                <span
-                  className="
-                    text-xs
-                    text-[#464555]
-                  "
-                >
-                  Readable name.
-                </span>
+             
 
               </div>
 
             </div>
-
-
 
           </section>
 
 
 
-          {/* Delinquency Configuration */}
-          <section className="flex flex-col gap-3">
+{/* Delinquency Configuration */}
+<section className="flex flex-col gap-3">
+  <div>
+    <h3
+      className="
+        border-b
+        border-[#c7c4d8]
+        pb-1
+        text-sm
+        font-semibold
+        text-[#0b1c30]
+      "
+    >
+      Delinquency Configuration
+    </h3>
+  </div>
 
-            <div>
-              <h3
-                className="
-                  border-b
-                  border-[#c7c4d8]
-                  pb-1
-                  text-sm
-                  font-semibold
-                  text-[#0b1c30]
-                "
-              >
-                Delinquency Configuration
-              </h3>
+  <div className="grid grid-cols-3 gap-4">
 
-              {/* <p
-                className="
-                  mt-1
-                  text-xs
-                  text-[#464555]
-                "
-              >
-                Specify the Days Past Due range mapped to this classification.
-              </p> */}
-            </div>
+    {/* From DPD */}
+    <div className="flex flex-col gap-1">
+      <label
+        htmlFor="min-dpd"
+        className="text-xs font-semibold text-[#0b1c30]"
+      >
+        From DPD
+        {!isView && (
+          <span className="ml-1 text-red-600">*</span>
+        )}
+      </label>
 
+      <input
+        id="min-dpd"
+        type="number"
+        placeholder="91"
+        value={formData.min_dpd_range}
+        disabled={isView}
+        onChange={(event) =>
+          updateField("min_dpd_range", event.target.value)
+        }
+        className="
+          h-10
+          rounded
+          border
+          border-[#c7c4d8]
+          px-3
+          text-sm
+          outline-none
+          focus:ring-2
+          focus:ring-[#3525cd]
+          disabled:bg-[#eff4ff]
+        "
+      />
+    </div>
 
-            <div className="flex gap-4">
+    {/* To DPD */}
+    <div className="flex flex-col gap-1">
+      <label
+        htmlFor="max-dpd"
+        className="text-xs font-semibold text-[#0b1c30]"
+      >
+        To DPD
+        {!isView && (
+          <span className="ml-1 text-red-600">*</span>
+        )}
+      </label>
 
-              {/* Min DPD */}
-              <div className="flex flex-1 flex-col gap-1">
+      <input
+        id="max-dpd"
+        type="number"
+        placeholder="180"
+        value={formData.max_dpd_range}
+        disabled={isView}
+        onChange={(event) =>
+          updateField("max_dpd_range", event.target.value)
+        }
+        className="
+          h-10
+          rounded
+          border
+          border-[#c7c4d8]
+          px-3
+          text-sm
+          outline-none
+          focus:ring-2
+          focus:ring-[#3525cd]
+          disabled:bg-[#eff4ff]
+        "
+      />
+    </div>
 
-                <label
-                  htmlFor="min-dpd"
-                  className="text-xs font-semibold text-[#0b1c30]"
-                >
-                  From DPD
-                  {!isView && (
-                    <span className="ml-1 text-red-600">*</span>
-                  )}
-                </label>
+    {/* Provision Rate */}
+    <div className="flex flex-col gap-1">
+      <label
+        htmlFor="provision-rate"
+        className="text-xs font-semibold text-[#0b1c30]"
+      >
+        Provision Rate
+        {!isView && (
+          <span className="ml-1 text-red-600">*</span>
+        )}
+      </label>
 
-                <input
-                  id="min-dpd"
-                  type="number"
-                  placeholder="91"
-                  value={formData.min_dpd_range}
-                  disabled={isView}
-                  onChange={(event) =>
-                    updateField(
-                      'min_dpd_range',
-                      event.target.value,
-                    )
-                  }
-                  className="
-                    h-10
-                    rounded
-                    border
-                    border-[#c7c4d8]
-                    px-3
-                    text-sm
-                    outline-none
-                    focus:ring-2
-                    focus:ring-[#3525cd]
-                    disabled:bg-[#eff4ff]
-                  "
-                />
+      <div
+        className="
+          flex
+          h-10
+          items-center
+          rounded
+          border
+          border-[#c7c4d8]
+          bg-white
+          focus-within:border-transparent
+          focus-within:ring-2
+          focus-within:ring-[#3525cd]
+        "
+      >
+        <input
+          id="provision-rate"
+          type="number"
+          placeholder="20.00"
+          value={formData.provision_rate}
+          disabled={isView}
+          onChange={(event) =>
+            updateField("provision_rate", event.target.value)
+          }
+          className="
+            h-full
+            w-full
+            border-none
+            bg-transparent
+            px-3
+            text-sm
+            outline-none
+            disabled:bg-[#eff4ff]
+          "
+        />
 
-              </div>
+        <span className="pr-3 text-sm text-[#464555]">
+          %
+        </span>
+      </div>
+    </div>
 
+  </div>
 
-              {/* Max DPD */}
-              <div className="flex flex-1 flex-col gap-1">
+</section>
 
-                <label
-                  htmlFor="max-dpd"
-                  className="text-xs font-semibold text-[#0b1c30]"
-                >
-                  To DPD
-                  {!isView && (
-                    <span className="ml-1 text-red-600">*</span>
-                  )}
-                </label>
-
-                <input
-                  id="max-dpd"
-                  type="number"
-                  placeholder="180"
-                  value={formData.max_dpd_range}
-                  disabled={isView}
-                  onChange={(event) =>
-                    updateField(
-                      'max_dpd_range',
-                      event.target.value,
-                    )
-                  }
-                  className="
-                    h-10
-                    rounded
-                    border
-                    border-[#c7c4d8]
-                    px-3
-                    text-sm
-                    outline-none
-                    focus:ring-2
-                    focus:ring-[#3525cd]
-                    disabled:bg-[#eff4ff]
-                  "
-                />
-
-              </div>
-
-
-
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-[#464555]">
-                Inclusive Days Past Due range for this classification.
-              </span>
-            </div>
-
-          </section>
-
-          {/* Financial Configuration */}
-          <section className="flex flex-col gap-3">
-
-            <div>
-              <h3
-                className="
-                  border-b
-                  border-[#c7c4d8]
-                  pb-1
-                  text-sm
-                  font-semibold
-                  text-[#0b1c30]
-                "
-              >
-                Financial Configuration
-              </h3>
-
-              {/* <p
-                className="
-                  mt-1
-                  text-xs
-                  text-[#464555]
-                "
-              >
-                Configure the expected provisioning percentage for this risk
-                level.
-              </p> */}
-            </div>
-
-            <div className="w-1/2 flex flex-col gap-1">
-
-              <label
-                htmlFor="provision-rate"
-                className="text-xs font-semibold text-[#0b1c30]"
-              >
-                Provision Rate
-                {!isView && (
-                  <span className="ml-1 text-red-600">*</span>
-                )}
-              </label>
-
-              <div
-                className="
-                  flex
-                  h-10
-                  items-center
-                  rounded
-                  border
-                  border-[#c7c4d8]
-                  bg-white
-                  focus-within:border-transparent
-                  focus-within:ring-2
-                  focus-within:ring-[#3525cd]
-                "
-              >
-                <input
-                  id="provision-rate"
-                  type="number"
-                  placeholder="20.00"
-                  value={formData.provision_rate}
-                  disabled={isView}
-                  onChange={(event) =>
-                    updateField(
-                      'provision_rate',
-                      event.target.value,
-                    )
-                  }
-                  className="
-                    h-full
-                    w-full
-                    border-none
-                    bg-transparent
-                    px-3
-                    text-sm
-                    outline-none
-                    disabled:bg-[#eff4ff]
-                  "
-                />
-
-                <span
-                  className="
-                    pr-3
-                    text-sm
-                    text-[#464555]
-                  "
-                >
-                  %
-                </span>
-              </div>
-
-              <span
-                className="
-                  text-xs
-                  text-[#464555]
-                "
-              >
-                Accepted range: 0–100%.
-              </span>
-
-            </div>
-
-          </section>
-
-          {/* Write-Off Eligibility */}
-          <section className="flex flex-col gap-3">
-
-            <div>
-              <h3
-                className="
-                  border-b
-                  border-[#c7c4d8]
-                  pb-1
-                  text-sm
-                  font-semibold
-                  text-[#0b1c30]
-                "
-              >
-                Write-Off Eligibility
-              </h3>
-
-              {/* <p
-                className="
-                  mt-1
-                  text-xs
-                  text-[#464555]
-                "
-              >
-                Determine whether loans in this classification can participate
-                in institution write-off operations.
-              </p> */}
-            </div>
-
-            <label
-              htmlFor="write-off"
-              className="
-                flex
-                cursor-pointer
-                items-start
-                gap-3
-                pt-2
-              "
-            >
-
-              <input
-                id="write-off"
-                type="checkbox"
-                checked={formData.is_written_off}
-                disabled={isView}
-                onChange={(event) =>
-                  updateField(
-                    'is_written_off',
-                    event.target.checked,
-                  )
-                }
-                className="
-                  mt-1
-                  h-4
-                  w-4
-                  rounded
-                  border-[#c7c4d8]
-                  text-[#3525cd]
-                  focus:ring-[#3525cd]
-                  disabled:cursor-not-allowed
-                "
-              />
-
-              <div className="flex flex-col gap-1">
-
-                <span
-                  className="
-                    text-sm
-                    font-medium
-                    text-[#0b1c30]
-                  "
-                >
-                  Eligible for Write-Off
-                </span>
-
-                <span
-                  className="
-                    text-xs
-                    text-[#464555]
-                  "
-                >
-                  Loans within this classification become eligible for
-                  institution write-off workflows.
-                </span>
-
-              </div>
-
-            </label>
-
-          </section>
+          {formError && !isView && (
+            <p className="text-xs font-medium text-red-600">
+              {formError}
+            </p>
+          )}
 
         </div>
 
@@ -712,6 +636,7 @@ export function LoanClassificationModal({
           <button
             type="button"
             onClick={onClose}
+            disabled={isSaving}
             className="
               h-10
               rounded
@@ -726,6 +651,7 @@ export function LoanClassificationModal({
               focus:outline-none
               focus:ring-2
               focus:ring-[#3525cd]
+              disabled:opacity-60
             "
           >
             {isView ? 'Close' : 'Cancel'}
@@ -734,7 +660,8 @@ export function LoanClassificationModal({
           {!isView && (
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleSave}
+              disabled={isSaving}
               className="
                 flex
                 h-10
@@ -752,9 +679,10 @@ export function LoanClassificationModal({
                 focus:ring-2
                 focus:ring-[#3525cd]
                 focus:ring-offset-2
+                disabled:opacity-60
               "
             >
-              <span>Save Classification</span>
+              <span>{isSaving ? 'Saving...' : 'Save Classification'}</span>
             </button>
           )}
 

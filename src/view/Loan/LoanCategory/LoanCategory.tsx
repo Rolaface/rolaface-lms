@@ -1,4 +1,7 @@
 import { useMemo, useState } from 'react';
+import AddLoanCategoryModal from '../../../components/Modal/Lending Setup Modal/AddLoanCategoryModel';
+import type { LoanCategoryFormData } from '../../../components/Modal/Lending Setup Modal/AddLoanCategoryModel';
+import type { SortDirection, SortingState, PaginationState } from '@tanstack/react-table';
 import {
   Box,
   Button,
@@ -38,15 +41,28 @@ import {
 // If you have a Modal component, import it here:
 // import { LoanCategoryModal } from '../../../components/Modal/LoanCategoryModal';
 
-const DUMMY_CATEGORIES = [
+type LoanStatus = 'ACTIVE' | 'INACTIVE';
+
+interface LoanCategoryRow {
+  id: number;
+  name: string;
+  code: string;
+  status: LoanStatus;
+}
+
+interface SortIconProps {
+  sorted: false | SortDirection;
+}
+
+const DUMMY_CATEGORIES: LoanCategoryRow[] = [
   { id: 1, name: 'Retail Banking', code: 'CAT_RET', status: 'ACTIVE' },
   { id: 2, name: 'Corporate Finance', code: 'CAT_CORP', status: 'ACTIVE' },
   { id: 3, name: 'Agricultural', code: 'CAT_AGR', status: 'INACTIVE' },
 ];
 
-const columnHelper = createColumnHelper();
+const columnHelper = createColumnHelper<LoanCategoryRow>();
 
-function SortIcon({ sorted }) {
+function SortIcon({ sorted }: SortIconProps) {
   if (sorted === 'asc') return <IconChevronUp size={12} />;
   if (sorted === 'desc') return <IconChevronDown size={12} />;
   return <IconSelector size={12} className="opacity-40" />;
@@ -63,11 +79,22 @@ export function LoanCategory() {
   const [status, setStatus] = useState('all');
 
   // table state
-  const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [sorting, setSorting] = useState<SortingState>([
+    {
+      id: 'name',
+      desc: false,
+    },
+  ]);
+  const [pagination, setPagination] =
+    useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: 10,
+    });
 
   // local status map so the switch can optimistically update without a backend
-  const [statusOverrides, setStatusOverrides] = useState({});
+  const [statusOverrides, setStatusOverrides] = useState<
+    Record<number, LoanStatus>
+  >({});
 
   const data = useMemo(
     () =>
@@ -91,7 +118,10 @@ export function LoanCategory() {
     });
   }, [data, search, status]);
 
-  const toggleStatus = (id, currentStatus) => {
+  const toggleStatus = (
+    id: number,
+    currentStatus: LoanStatus
+  ) => {
     setStatusOverrides((prev) => ({
       ...prev,
       [id]: currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
@@ -164,10 +194,10 @@ export function LoanCategory() {
         },
       }),
     ],
-    []
+    [toggleStatus]
   );
 
-  const table = useReactTable({
+  const table = useReactTable<LoanCategoryRow>({
     data: filteredData,
     columns,
     state: { sorting, pagination },
@@ -189,15 +219,25 @@ export function LoanCategory() {
     setStatus('all');
   };
 
+  const handleSave = async (data: LoanCategoryFormData) => {
+    console.log('Category received from modal');
+
+    console.log(data);
+
+    close();
+  };
+
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
-      {/* If you have a Modal, insert it here:
-          <LoanCategoryModal opened={opened} onClose={close} /> 
-      */}
+      <AddLoanCategoryModal
+        open={opened}
+        onClose={close}
+        onSave={handleSave}
+      />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
-       <Title order={2} className="text-gray-900 font-semibold">
+        <Title order={2} className="text-gray-900 font-semibold">
           Loan Categories
         </Title>
         <Button
@@ -218,7 +258,7 @@ export function LoanCategory() {
             size="xs"
             placeholder="Category Name / Code"
             leftSection={<IconSearch size={13} />}
-            className="flex-1 min-w-[180px]"
+            className="flex-1 min-w-45"
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
@@ -258,9 +298,8 @@ export function LoanCategory() {
                   return (
                     <Table.Th
                       key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${
-                        canSort ? 'cursor-pointer' : ''
-                      }`}
+                      className={`text-gray-600 font-semibold select-none ${canSort ? 'cursor-pointer' : ''
+                        }`}
                       style={{ fontSize: 11, padding: '6px 10px' }}
                       onClick={header.column.getToggleSortingHandler()}
                     >

@@ -21,7 +21,9 @@ export const API = {
     deleteCharge: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.charges.api.delete_charge`,
     updateCharge: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.charges.api.update_charge`,
   
-   },
+//    },
+//     getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.charges.api.get_charges`,
+  },
 
   // =========================
   // Loan Writeoff
@@ -46,7 +48,7 @@ export const API = {
   // CUSTOMER
   // =========================
   customer: {
-    getAllCustomers: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_customers`
+    getAllCustomers: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_customers`,
   },
 
   // =========================
@@ -57,6 +59,8 @@ loan: {
   getLoans:  `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_loans`,
   getLoanById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_loan_by_id`,
   updateLoan:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.update_loan`,
+  deleteLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.delete_loan`,
+  statusLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.update_loan_status`,
 },
 
   // =========================
@@ -64,9 +68,38 @@ loan: {
   // =========================
   loanProduct: {
   get: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.get_loan_products`,
-  getAllLoanProducts: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.get_loan_products`,
+//   getAllLoanProducts: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.get_loan_products`,
+//     get: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.get_loan_products`,
+    getAllLoanProducts: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.get_loan_products`,
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.create_loan_product`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.update_loan_product`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.get_loan_product_by_id`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.delete_loan_product`,
+    enable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.enable_loan_product`,
+    disable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.disable_loan_product`,
   },
 
+  // =========================
+  // SEARCH / LOOKUPS (accounts, items, offset orders)
+  // =========================
+  search: {
+    getAccounts: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_accounts`,
+    getItems: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_items`,
+    getLoanDemandOffsetOrders: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_demand_offset_orders`,
+    getLoanCategory: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_category`,
+  },
+
+
+  // =========================
+  // LOAN CLASSIFICATION
+  // =========================
+  loanClassification: {
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.classification.api.create_loan_classification`,
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.classification.api.get_loan_classifications`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.classification.api.get_loan_classification_by_id`, 
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.classification.api.update_loan_classification`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.classification.api.delete_loan_classification`,
+  },
   // =========================
   // LOAN APPLICATION
   // =========================
@@ -80,7 +113,15 @@ loan: {
   // =========================
   // LOAN DISBURSEMENT
   // =========================
-  loanDisbursement: {},
+  loanDisbursement: {
+    createLoanDsbr: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.create_loan_disbursement`,
+    getLoanDsbr: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.get_loan_disbursements`,
+    getLoanDsbrById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.get_loan_disbursement_by_id`,
+    getLoanAppNumber: `${ERP_BASE}/api/resource/Loan`,
+    updateLoanDsbr: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.update_loan_disbursement`,
+    deleteLoanDsbr: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.delete_loan_disbursement`,
+    updateDsbrStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.update_loan_disbursement_status`,
+  },
 
   // =========================
   // REPAYMENT SCHEDULE

@@ -13,11 +13,39 @@ export async function getAllLoans() {
   
 }
 
-// api/loanApi.ts
+export async function getAllApplicationDsbr() {
+   const { data } = await apiClient.get(API.loan.getLoans);
+
+   const allowedStatuses = ["Sanctioned", "Active", "Partially Disbursed"];
+
+   if (data && Array.isArray(data.data)) {
+    data.data = data.data.filter((loan: any) =>
+      allowedStatuses.includes(loan.status)
+    );
+    
+     if (data.pagination) {
+      data.pagination.total = data.data.length;
+    }
+  }
+
+  return data;
+}
+
 export async function getLoanById(id: string) {
   const { data } = await apiClient.get(API.loan.getLoanById, { params: { id } });  
   return data;
 }
+
+export async function deleteLoan(id: string) {
+  const { data } = await apiClient.delete(API.loan.deleteLoan, { params: { id } });  
+  return data;
+}
+
+export async function changeLoanStatus(id: string, action: string) {
+  const { data } = await apiClient.put(API.loan.statusLoan, {}, { params: { id, action } });
+  return data;
+}
+
 
 export async function updateLoan({id, payload,}: {
   id: string;
