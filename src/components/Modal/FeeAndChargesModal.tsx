@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 import { Modal, TextInput, Button, Group, Stack, Text } from '@mantine/core';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useForm } from '@mantine/form';
-import { createFeeAndCharge } from '../../api/loanChargesApi';
+import { createFeeAndCharge,updateFeeAndCharge,deleteFeeAndCharge,getFeeAndChargeById,} from '../../api/loanChargesApi';
+
 import { parseFrappeError } from '../../utils/parseFrappeError';
+import type { CreateFeeAndChargePayload } from '../../types/loanCharges';
 
 
 export interface FeeAndCharge {
@@ -35,27 +37,49 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
   },
 });
 
-  
-  useEffect(() => {
-    if (opened && data) {
-      form.setValues({ name: data.name || '' });
-    } else if (opened && mode === 'add') {
-       form.reset();
-    }
-  }, [opened, data, mode]);
-
-
- const createChargeMutation = useMutation({
-    mutationFn: createFeeAndCharge,
-    onSuccess: () => onClose(),
+ const { data: fetchedCharge, isLoading: isFetching } = useQuery({
+    queryKey: ['fee-and-charge', data?.id],
+   queryFn: () => getFeeAndChargeById(String(data!.id)),
+    enabled: opened && mode !== 'add' && !!data?.id,
   });
 
+  
+  useEffect(() => {
+    if (opened && mode !== 'add' && data) {
+      // show existing row data immediately so the modal isn't blank while fetching
+      form.setValues({ name: data.name || '' });
+   } else if (opened && mode === 'add') {
+       form.reset();
+    }
+   }, [opened, data, mode]);
+    // once the fresh get_charge_by_id response arrives, overwrite with the real data
+ useEffect(() => {
+    if (fetchedCharge?.data && !form.isDirty()) {
+      form.setValues({ name: fetchedCharge.data.item_name || '' });
+    }
+  }, [fetchedCharge]);
+
+
+ const saveChargeMutation = useMutation({
+    mutationFn: (payload: CreateFeeAndChargePayload & { id?: string }) =>
+  payload.id ? updateFeeAndCharge(payload as CreateFeeAndChargePayload & { id: string }) : createFeeAndCharge(payload),
+    onSuccess: () => onClose(),
+  });
   const handleSubmit = (values: typeof form.values) => {
-    createChargeMutation.mutate({
-      item_code: values.name,
-      item_group: 'Loan Charges',
-    });
+      if (mode === 'edit' && data?.id) {
+     saveChargeMutation.mutate({
+        id: String(data.id),
+        item_code: values.name,
+        item_group: 'Loan Charges',
+      });
+    } else {
+      saveChargeMutation.mutate({
+        item_code: values.name,
+        item_group: 'Loan Charges',
+      });
+    }
   };
+  
 
 
   return (
@@ -69,6 +93,9 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
       <Stack gap="md" mt="sm">
+        {isFetching && (
+           <Text size="xs" c="dimmed">Loading details...</Text>
+          )}
         <TextInput
           label="Fee/Charge Name"
           placeholder="e.g. Late Payment Fee"
@@ -88,9 +115,9 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
         </Button>
         {!isView && (
             <>
-         {createChargeMutation.isError && (
+          {saveChargeMutation.isError && (
               <Text size="xs" c="red">
-                {parseFrappeError(createChargeMutation.error)}
+                 {parseFrappeError(saveChargeMutation.error)}
               </Text>
             )}
           <Button 
@@ -98,7 +125,7 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
             size="sm" 
             bg="indigoAlt.4"
             className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-            loading={createChargeMutation.isPending}
+             loading={saveChargeMutation.isPending}
           >
             Save
           </Button>

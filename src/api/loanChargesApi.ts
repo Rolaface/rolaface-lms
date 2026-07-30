@@ -4,6 +4,7 @@ import type {
   CreateFeeAndChargePayload,
   CreateFeeAndChargeResponse,
   GetFeeAndChargesResponse,
+  FeeAndChargeItem,
 } from "../types/loanCharges.ts";
 
 export async function createFeeAndCharge(payload: CreateFeeAndChargePayload) {
@@ -25,3 +26,25 @@ export async function getFeeAndCharges(params: {
  });
    return data;
  }
+export async function updateFeeAndCharge(payload: CreateFeeAndChargePayload & { id: string }) {
+  const { id, ...body } = payload;
+  const { data } = await apiClient.put<CreateFeeAndChargeResponse>(
+    API.loanCharges.updateCharge,
+    body,
+    { params: { id } },
+  );
+  return data;
+}
+
+export async function deleteFeeAndCharge(id: string) {
+  const { data } = await apiClient.delete<CreateFeeAndChargeResponse>(API.loanCharges.deleteCharge, {
+     params: { id },
+  });
+  return data;
+}
+export async function getFeeAndChargeById(id: string) {
+  const { data } = await apiClient.get<{ data: FeeAndChargeItem }>(API.loanCharges.getById, {
+    params: { id },
+  });
+  return data;
+}
