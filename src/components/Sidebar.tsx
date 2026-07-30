@@ -7,7 +7,6 @@ import {
   UnstyledButton,
   Avatar,
   ActionIcon,
-  Collapse,
 } from "@mantine/core";
 import {
   IconShieldCheck,
@@ -25,10 +24,24 @@ import {
   IconListDetails,
   IconReportAnalytics,
   IconCreditCard,
+  IconFileInvoice,
+  IconHierarchy2,
+  IconReceipt2,
+  IconBookmarks,IconCreditCardRefund,IconCreditCardPay
 } from "@tabler/icons-react";
 
+/* ───────────────── Nav item types (recursive) ───────────────── */
+
+interface NavItem {
+  path?: string; // omit for a group that only holds children (e.g. "General Ledger")
+  label: string;
+  icon: React.ComponentType<{ size?: number; stroke?: number; className?: string }>;
+  matchPrefix?: boolean;
+  subItems?: NavItem[];
+}
+
 // Updated Navigation Items with Submenus
-const LOCAL_NAV_ITEMS = [
+const LOCAL_NAV_ITEMS: NavItem[] = [
   {
     path: "/",
     label: "Dashboard",
@@ -66,16 +79,6 @@ const LOCAL_NAV_ITEMS = [
         label: "Loan Classification",
         icon: IconFileText,
       },
-      // {
-      //   path: "/setup/classificationRange",
-      //   label: "Loan Classification Range",
-      //   icon: IconFileText,
-      // },
-      // {
-      //   path: "/setup/provisioning",
-      //   label: "Provisioning",
-      //   icon: IconCalculator,
-      // },
       {
         path: "/setup/collection",
         label: "Collection Order",
@@ -119,22 +122,12 @@ const LOCAL_NAV_ITEMS = [
         label: "Loan Repayment",
         icon: IconCalculator,
       },
-      // {
-      //   path: "/operations/prepayment",
-      //   label: "Loan Prepayment",
-      //   icon: IconCalculator,
-      // },
       { path: "/operations/waiver", label: "Loan Waiver", icon: IconFileText },
       {
         path: "/operations/capitalization",
         label: "Loan Capitalization",
         icon: IconFileText,
       },
-      // {
-      //   path: "/operations/settlement",
-      //   label: "Full Settlement",
-      //   icon: IconShieldCheck,
-      // },
       {
         path: "/operations/restructure",
         label: "Loan Restructure",
@@ -149,6 +142,52 @@ const LOCAL_NAV_ITEMS = [
         path: "/operations/transfer",
         label: "Loan Transfer",
         icon: IconBuildingBank,
+      },
+    ],
+  },
+  {
+    path: "/accounting",
+    label: "Accounting",
+    icon: IconFileInvoice,
+    matchPrefix: true,
+    subItems: [
+      {
+        // group only — no path, holds Chart of Accounts + Journal Entry
+        label: "General Ledger",
+        icon: IconBookmarks,
+        subItems: [
+          {
+            path: "/accounting/chart-of-accounts",
+            label: "Chart Of Accounts",
+            icon: IconHierarchy2,
+          },
+          {
+            path: "/accounting/journal-entry",
+            label: "Journal Entry",
+            icon: IconReceipt2,
+          },
+          {      
+        path: "/accounting/general-ledger-report",
+        label: "General Ledger report",
+        icon: IconFileText,
+      },
+        ],
+      },
+      {
+        path: "/accounting/Receivable",
+        label: "Receivable",
+        icon: IconCreditCardRefund,
+      },
+       {
+        path: "/accounting/Payable",
+        label: "Payable",
+        icon: IconCreditCardPay,
+      },
+
+      {
+        path: "/accounting/trial-balance",
+        label: "Trial Balance",
+        icon: IconReportAnalytics,
       },
     ],
   },
@@ -171,16 +210,111 @@ const LOCAL_NAV_ITEMS = [
     ],
   },
 ];
+
 // Size config — tweak these to scale text/icons up or down
 const SIZES = {
-  rootIcon: 22, // top-level nav icons (Dashboard, Customer, etc.)
-  subIcon: 18, // submenu icons
-  rootText: 15, // top-level label font size (px)
-  subText: 14, // submenu label font size (px)
+  rootIcon: 22,
+  subIcon: 18,
+  subSubIcon: 16,
+  rootText: 15,
+  subText: 14,
+  subSubText: 13,
   chevron: 16,
   logoIcon: 28,
-  avatarLetter: "md", // Mantine Avatar size token
+  avatarLetter: "md",
 };
+
+/* ───────────────── Recursive submenu node ───────────────── */
+/* Handles both a leaf link (has `path`, no `subItems`) and a group
+   (has `subItems`, with or without its own `path`) at any nesting depth. */
+
+function NavNode({
+  item,
+  depth,
+  pathname,
+  openMenus,
+  toggleMenu,
+}: {
+  item: NavItem;
+  depth: number; // 1 = first-level submenu item, 2 = nested group, ...
+  pathname: string;
+  openMenus: Record<string, boolean>;
+  toggleMenu: (key: string) => void;
+}) {
+  const hasSubItems = !!item.subItems?.length;
+  const menuKey = `${depth}-${item.label}`;
+  const isOpen = openMenus[menuKey] === true;
+  const Icon = item.icon;
+
+  const isActive = item.path
+    ? pathname === item.path
+    : hasSubItems
+      ? item.subItems!.some((s) => (s.path ? pathname === s.path : false))
+      : false;
+
+  const textSize = depth >= 2 ? SIZES.subSubText : SIZES.subText;
+  const iconSize = depth >= 2 ? SIZES.subSubIcon : SIZES.subIcon;
+
+  if (hasSubItems) {
+    // Group node — no path (or a path that's just a section landing page),
+    // renders a toggle button + nested children.
+    return (
+      <Box className="w-full">
+        <UnstyledButton
+          onClick={() => toggleMenu(menuKey)}
+          className={`flex w-full items-center justify-between font-medium transition-colors ${
+            isActive || isOpen ? "text-[#1E40AF]" : "text-gray-600 hover:text-[#1E40AF]"
+          }`}
+          style={{ fontSize: textSize }}
+        >
+          <Box className="flex items-center gap-3">
+            <Icon
+              size={iconSize}
+              stroke={1.5}
+              className={isActive || isOpen ? "text-[#1E40AF]" : "text-gray-500"}
+            />
+            <span>{item.label}</span>
+          </Box>
+          {isOpen ? (
+            <IconChevronUp size={SIZES.chevron} className="text-[#1E40AF]" />
+          ) : (
+            <IconChevronDown size={SIZES.chevron} className="text-gray-400" />
+          )}
+        </UnstyledButton>
+
+        {isOpen && (
+          <Box className="ml-[11px] mt-2 mb-2 flex flex-col gap-3 border-l-2 border-gray-200 py-1 pl-6">
+            {item.subItems!.map((sub) => (
+              <NavNode
+                key={sub.label}
+                item={sub}
+                depth={depth + 1}
+                pathname={pathname}
+                openMenus={openMenus}
+                toggleMenu={toggleMenu}
+              />
+            ))}
+          </Box>
+        )}
+      </Box>
+    );
+  }
+
+  // Leaf node — a real route link
+  return (
+    <UnstyledButton
+      component={Link}
+      to={item.path}
+      className={`flex items-center gap-3 font-medium transition-colors ${
+        isActive ? "text-[#1E40AF]" : "text-gray-600 hover:text-[#1E40AF]"
+      }`}
+      style={{ fontSize: textSize }}
+    >
+      <Icon size={iconSize} stroke={1.5} className={isActive ? "text-[#1E40AF]" : "text-gray-500"} />
+      <span>{item.label}</span>
+    </UnstyledButton>
+  );
+}
 
 export function Sidebar({
   isCollapsed,
@@ -191,13 +325,11 @@ export function Sidebar({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  // State to manage open/closed submenus
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
-    // 'Lending Setup': true,
-  });
+  // Keyed by `${depth}-${label}` so labels can repeat across sections/depths
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
-  const toggleMenu = (label: string) => {
-    setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }));
+  const toggleMenu = (key: string) => {
+    setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   return (
@@ -233,15 +365,14 @@ export function Sidebar({
       >
         {LOCAL_NAV_ITEMS.map((item) => {
           const isRootActive = item.matchPrefix
-            ? (pathname.startsWith(item.path) && item.path !== "/") ||
+            ? (pathname.startsWith(item.path!) && item.path !== "/") ||
               pathname === item.path
             : pathname === item.path;
 
           const ItemIcon = item.icon;
-          const hasSubItems = item.subItems && item.subItems.length > 0;
-
-          // Ensure it evaluates to a strict boolean
-          const isOpen = openMenus[item.label] === true;
+          const hasSubItems = !!item.subItems?.length;
+          const menuKey = `0-${item.label}`;
+          const isOpen = openMenus[menuKey] === true;
 
           return (
             <Box key={item.label} className="w-full">
@@ -251,8 +382,8 @@ export function Sidebar({
                   : { component: Link, to: item.path })}
                 onClick={(e: React.MouseEvent) => {
                   if (hasSubItems && !isCollapsed) {
-                    e.preventDefault(); // Stop any rogue link behaviors
-                    toggleMenu(item.label);
+                    e.preventDefault();
+                    toggleMenu(menuKey);
                   }
                 }}
                 title={isCollapsed ? item.label : undefined}
@@ -267,7 +398,6 @@ export function Sidebar({
                   className={`flex items-center ${isCollapsed ? "justify-center" : "gap-4"}`}
                 >
                   <ItemIcon
-                    // size={22}
                     size={SIZES.rootIcon}
                     stroke={1.5}
                     className={
@@ -279,14 +409,10 @@ export function Sidebar({
                   {!isCollapsed && <span>{item.label}</span>}
                 </Box>
 
-                {/* Expand / Collapse Icon */}
                 {!isCollapsed && hasSubItems && (
                   <Box className="text-gray-400">
                     {isOpen ? (
-                      <IconChevronUp
-                        size={SIZES.chevron}
-                        className="text-[#1E40AF]"
-                      />
+                      <IconChevronUp size={SIZES.chevron} className="text-[#1E40AF]" />
                     ) : (
                       <IconChevronDown size={16} />
                     )}
@@ -294,37 +420,19 @@ export function Sidebar({
                 )}
               </UnstyledButton>
 
-              {/* Submenu rendering */}
+              {/* First-level submenu — each entry may itself be a group (e.g. "General Ledger") */}
               {hasSubItems && !isCollapsed && isOpen && (
                 <Box className="ml-[11px] mt-2 mb-2 flex flex-col gap-3 border-l-2 border-gray-200 py-1 pl-6">
-                  {item.subItems!.map((subItem) => {
-                    const isSubActive = pathname === subItem.path;
-                    const SubIcon = subItem.icon;
-
-                    return (
-                      <UnstyledButton
-                        key={subItem.path}
-                        component={Link}
-                        to={subItem.path}
-                        className={`flex items-center gap-3 text-[14px] font-medium transition-colors ${
-                          isSubActive
-                            ? "text-[#1E40AF]"
-                            : "text-gray-600 hover:text-[#1E40AF]"
-                        }`}
-                        style={{ fontSize: SIZES.subText }}
-                      >
-                        <SubIcon
-                          // size={18}
-                          size={SIZES.subIcon}
-                          stroke={1.5}
-                          className={
-                            isSubActive ? "text-[#1E40AF]" : "text-gray-500"
-                          }
-                        />
-                        <span>{subItem.label}</span>
-                      </UnstyledButton>
-                    );
-                  })}
+                  {item.subItems!.map((sub) => (
+                    <NavNode
+                      key={sub.label}
+                      item={sub}
+                      depth={1}
+                      pathname={pathname}
+                      openMenus={openMenus}
+                      toggleMenu={toggleMenu}
+                    />
+                  ))}
                 </Box>
               )}
             </Box>
@@ -351,17 +459,10 @@ export function Sidebar({
 
             {!isCollapsed && (
               <Box>
-                <Text
-                  size="sm"
-                  fw={700}
-                  className="text-gray-900 leading-tight"
-                >
+                <Text size="sm" fw={700} className="text-gray-900 leading-tight">
                   Administrator
                 </Text>
-                <Text
-                  size="xs"
-                  className="text-gray-500 uppercase tracking-wide font-medium mt-0.5"
-                >
+                <Text size="xs" className="text-gray-500 uppercase tracking-wide font-medium mt-0.5">
                   Administrator
                 </Text>
               </Box>
@@ -375,7 +476,6 @@ export function Sidebar({
           )}
         </Box>
 
-        {/* If collapsed, show logout icon below avatar */}
         {isCollapsed && (
           <ActionIcon variant="subtle" color="red" title="Logout">
             <IconLogout size={22} className="text-red-500" stroke={1.5} />
