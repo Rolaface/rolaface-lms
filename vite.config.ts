@@ -8,7 +8,7 @@ export default defineConfig({
     server: {
     proxy: {
       '/api': {
-        target: 'https://api.erp.lms.rolaface.com', 
+        target: 'http://lms.local:8000', 
         changeOrigin: true,
         secure: false,
       }}}
