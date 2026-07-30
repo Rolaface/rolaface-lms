@@ -34,6 +34,14 @@ import { FeeAndCharges } from '../view/Setup/FeeAndCharges/FeeAndCharges';
 import { LoanProduct } from '../view/Loan/Product/LoanProduct';
 import { LoanClassificationRanges } from '../view/Setup/LoanClassificationRanges/LoanClassificationRanges';
 
+//accounting
+import { ChartOfAccounts } from "../view/Accounting/chartofaccounting";
+import { GeneralLedger } from "../view/Accounting/general-ledger";
+import { JournalEntries } from "../view/Accounting/journal-entry";
+import { TrialBalance } from "../view/Accounting/trial-balance";
+import { Receivable } from '../view/Accounting/Receivable ';
+import { Payable } from '../view/Accounting/Payable';
+
 const rootRoute = createRootRoute({
   component: () => (
     <AppLayout>
@@ -200,6 +208,46 @@ const reportsRoute = createRoute({
   path: '/reports',
   component: Outlet,
 });
+
+const accountingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/accounting",
+  component: Outlet,
+});
+const chartOfAccountsRoute = createRoute({
+  getParentRoute: () => accountingRoute,
+  path: "/chart-of-accounts",
+  component: ChartOfAccounts,
+});
+
+const generalLedgerRoute = createRoute({
+  getParentRoute: () => accountingRoute,
+  path: "/general-ledger-report",
+  component: GeneralLedger,
+});
+const journaEntryroutes= createRoute({
+  getParentRoute: () => accountingRoute,
+  path: "/journal-entry",
+  component: JournalEntries,
+});
+
+
+const trialBalanceRoute = createRoute({
+  getParentRoute: () => accountingRoute,
+  path: "/trial-balance",
+  component: TrialBalance,
+});
+const receivableRoute = createRoute({
+  getParentRoute: () => accountingRoute,
+  path: "/Receivable",
+  component: Receivable,
+});
+const payableeRoute = createRoute({
+  getParentRoute: () => accountingRoute,
+  path: "/Payable",
+  component: Payable,
+});
+
 // const reportsStatementRoute = createRoute({
 //   getParentRoute: () => reportsRoute,
 //   path: '/statement',
@@ -239,6 +287,12 @@ const routeTree = rootRoute.addChildren([
     operationsWriteoffRoute,
     operationsTransferRoute,
   ]),
+  accountingRoute.addChildren([
+  chartOfAccountsRoute,
+  generalLedgerRoute,
+  trialBalanceRoute,journaEntryroutes,receivableRoute,payableeRoute
+]),
+  
   // reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute]),
 ]);
 

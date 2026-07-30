@@ -36,7 +36,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         />
       </AppShell.Navbar>
 
-      <AppShell.Main className="min-h-screen bg-[#F8F9FB]">
+      <AppShell.Main className="h-screen bg-[#F8F9FB]">
         {children}
       </AppShell.Main>
     </AppShell>
