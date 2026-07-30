@@ -1,5 +1,5 @@
 // LoanDisbursementModal.tsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "@mantine/form";
 import {
   Box,
@@ -28,13 +28,17 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createLoanDisbursement, getAllLoanApplicationNumber } from "../../api/loanDisbursementAPi"; 
+import { createLoanDisbursement, getAllDsbrAccount, updateLoanDisbursement, getLoanDisbursementById} from "../../api/loanDisbursementAPi"; 
+import {getAllApplicationDsbr} from "../../api/loanApi";
 import type { LoanDisbursementPayload, } from "../../types/loanDisbursementForm";
 
 interface LoanDisbursementModalProps {
   opened: boolean;
   onClose: () => void;
   onSubmit?: (data: LoanDisbursementFormData) => void;
+  editId?: string | null; 
+  initialData?: any;
+  isView?: boolean;
 }
 
 export interface LoanDisbursementFormData {
@@ -62,17 +66,7 @@ const CHARGES: ChargeRow[] = [
 
 const TOTAL_CHARGES = CHARGES.reduce((sum, c) => sum + c.amount, 0);
 
-// Static account/summary data — wire up to real account lookup as needed.
-const ACCOUNT_SUMMARY = {
-  customerName: "Rohan Mehta",
-  currency: "INR",
-  sanctionedAmount: 800000,
-  disbursementTillDate: 313750,
-  modeOfDisbursement: "Manual",
-};
-
-const PAYMENT_MODES = ["Bank Transfer", "Cash", "Cheque", "UPI"];
-const DISBURSE_ACCOUNTS = ["Primary Account", "Operating Account", "Escrow Account"];
+const PAYMENT_MODES = ["Bank Draft", "Cash", "Cheque", "Credit Card", "Wire Transfer"];
 
 const labelClass = { label: "text-sm font-medium text-gray-700 mb-1" };
 const chevronDown = <IconChevronDown size={14} className="text-gray-500" />;
@@ -85,19 +79,42 @@ export function LoanDisbursementModal({
   opened,
   onClose,
   onSubmit,
+  editId,     
+  initialData,
+  isView = false,
 }: LoanDisbursementModalProps) {
   const [activeTab, setActiveTab] = useState<string | null>("settlement");
 
-  const [acNo, setAcNo] = useState("");
-  const [valueDate, setValueDate] = useState("");
-  const [disburseAmount, setDisburseAmount] = useState<number | "">("");
+   const [dsbrAcSearch, setDsbrAcSearch] = useState("");
 
-  const [modeOfPayment, setModeOfPayment] = useState<string | null>(null);
-  const [disbursementAc, setDisbursementAc] = useState<string | null>(null);
+   const { data: dsbrAccountsResponse, isLoading: isDsbrAccountsLoading } = useQuery({
+    queryKey: ["dsbrAccounts", dsbrAcSearch],
+    queryFn: () => getAllDsbrAccount(dsbrAcSearch),
+    enabled: opened,
+  });
 
-  const [refDate, setRefDate] = useState("");
-  const [refNo, setRefNo] = useState("");
-  const [beneficiaryAcNo, setBeneficiaryAcNo] = useState("");
+   const dsbrAccountOptions = useMemo(() => {
+     const list = dsbrAccountsResponse?.data || dsbrAccountsResponse?.message || dsbrAccountsResponse || [];
+    if (Array.isArray(list)) {
+      return list.map((item: any) => item.value || item.name || item);
+    }
+    return [];
+  }, [dsbrAccountsResponse]);
+   const [beneficiaryAcSearch, setBeneficiaryAcSearch] = useState("");
+
+   const { data: beneficiaryAccountsResponse, isLoading: isBeneficiaryAccountsLoading } = useQuery({
+    queryKey: ["beneficiaryAccounts", beneficiaryAcSearch],
+    queryFn: () => getAllDsbrAccount(beneficiaryAcSearch),
+    enabled: opened,
+  });
+
+   const beneficiaryAccountOptions = useMemo(() => {
+    const list = beneficiaryAccountsResponse?.data || beneficiaryAccountsResponse?.message || beneficiaryAccountsResponse || [];
+    if (Array.isArray(list)) {
+      return list.map((item: any) => item.value || item.name || item);
+    }
+    return [];
+  }, [beneficiaryAccountsResponse]);
 
   const form = useForm({
     initialValues: {
@@ -133,13 +150,22 @@ export function LoanDisbursementModal({
     },
   });
 
+  const updateDisbursementMutation = useMutation({
+    mutationFn: updateLoanDisbursement,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
+      handleReset();
+      onClose();
+    },
+  });
+
  const handleReset = () => {
     form.reset();
     setActiveTab("settlement");
   };
 
-  const handleSubmit = (values: typeof form.values) => {
-    const payload: LoanDisbursementPayload = {
+const handleSubmit = (values: typeof form.values) => {
+    const payload: Partial<LoanDisbursementPayload> = {
       against_loan: values.acNo,
       posting_date: values.valueDate,
       disbursement_date: values.valueDate,
@@ -151,21 +177,76 @@ export function LoanDisbursementModal({
       disbursement_account: values.disbursementAc || undefined,
     };
 
-    createDisbursementMutation.mutate(payload);
+    if (editId) {
+      updateDisbursementMutation.mutate({ id: editId, payload });
+    } else {
+      createDisbursementMutation.mutate(payload as LoanDisbursementPayload);
+    }
   };
+
+  useEffect(() => {
+    if (opened && editId && initialData) {
+      form.setValues({
+        acNo: initialData.againstLoan || "",
+        valueDate: initialData.disbursementDate || "",
+        disburseAmount: initialData.disbursedAmount || "",
+        modeOfPayment: initialData.modeOfPayment || null,
+        disbursementAc: initialData.disbursementAccount || null, 
+        refDate: initialData.referenceDate || "",
+        refNo: initialData.referenceNumber || "",
+        beneficiaryAcNo: initialData.beneficiaryAcNo || "", 
+      });
+    } else if (opened && !editId) {
+      form.reset();
+      setActiveTab("settlement");
+    }
+  }, [opened, editId, initialData]);
 
   const { data: loanAppsResponse, isLoading: isLoanAppsLoading } = useQuery({
     queryKey: ["loanApplications"],
-    queryFn: getAllLoanApplicationNumber,
+    queryFn: getAllApplicationDsbr,
+    enabled: opened,
   });
 
-  // Extract the "name" property from the response array to pass to the dropdown
+  const { data: editDetailsResponse, isLoading: isEditLoading } = useQuery({
+    queryKey: ["loanDisbursement", editId],
+    queryFn: () => getLoanDisbursementById(editId!),
+    enabled: opened && !!editId,
+  });
+  const isPending = createDisbursementMutation.isPending || updateDisbursementMutation.isPending || isEditLoading;
+
+  useEffect(() => {
+    if (opened && editId && editDetailsResponse) {
+       const item = editDetailsResponse.message?.data || editDetailsResponse.data || editDetailsResponse.message || editDetailsResponse;
+      
+      form.setValues({
+        acNo: item.against_loan || "",
+        valueDate: item.disbursement_date || item.posting_date || "",
+        disburseAmount: item.disbursed_amount || "",
+        modeOfPayment: item.mode_of_payment || null,
+        disbursementAc: item.disbursement_account || null, 
+        refDate: item.reference_date || "",
+        refNo: item.reference_number || "",
+        beneficiaryAcNo: item.bank_account || "", 
+      });
+    } else if (opened && !editId) {
+      form.reset();
+      setActiveTab("settlement");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened, editId, editDetailsResponse]);
+
   const loanAppOptions = useMemo(() => {
     if (loanAppsResponse?.data) {
       return loanAppsResponse.data.map((item: any) => item.name);
     }
     return [];
   }, [loanAppsResponse]);
+
+  const selectedLoanApp = useMemo(() => {
+    if (!loanAppsResponse?.data || !form.values.acNo) return null;
+    return loanAppsResponse.data.find((app: any) => app.name === form.values.acNo);
+  }, [loanAppsResponse, form.values.acNo]);
 
   return (
     <Modal
@@ -202,13 +283,14 @@ export function LoanDisbursementModal({
         <div className="flex flex-1 overflow-hidden">
           {/* Main form column */}
           <div className="flex-1 overflow-y-auto p-6">
+            <fieldset disabled={isView} className="border-0 p-0 m-0">
             <div className="grid grid-cols-3 gap-4 mb-5">
              <Select
                 size="sm"
                 withAsterisk
                 searchable
                 clearable
-                label="A/c No"
+                label="Application Number"
                 placeholder={isLoanAppsLoading ? "Loading..." : "Search loan account"}
                 data={loanAppOptions}
                 disabled={isLoanAppsLoading}
@@ -217,13 +299,12 @@ export function LoanDisbursementModal({
                 classNames={labelClass}
                 {...form.getInputProps("acNo")}
               />
-              <TextInput
+             <TextInput
                 size="sm"
                 withAsterisk
                 type="date"
                 label="Value Date"
-                value={valueDate}
-                {...form.getInputProps("valueDate")}
+                 {...form.getInputProps("valueDate")}
                 leftSection={<IconCalendar size={14} className="text-emerald-600" />}
                 classNames={labelClass}
               />
@@ -232,13 +313,13 @@ export function LoanDisbursementModal({
                 withAsterisk
                 label="Disburse Amount"
                 placeholder="Enter amount"
-                value={disburseAmount}
-                {...form.getInputProps("disburseAmount")}
+                 {...form.getInputProps("disburseAmount")}
                 leftSection={<IconCurrencyRupee size={14} className="text-orange-500" />}
                 thousandSeparator=","
                 classNames={labelClass}
               />
             </div>
+            </fieldset>
 
             <Tabs value={activeTab} onChange={setActiveTab} variant="default">
               <Tabs.List className="border-b border-gray-200">
@@ -269,26 +350,30 @@ export function LoanDisbursementModal({
                       </Text>
                     </div>
                     <div className="flex flex-col gap-4 mt-4">
-                      <Select
+                     <Select
                         size="sm"
                         withAsterisk
                         label="Mode of Payment"
                         placeholder="Select mode of payment"
                         data={PAYMENT_MODES}
-                        value={modeOfPayment}
-                        onChange={setModeOfPayment}
+                        disabled={isView}
+                         {...form.getInputProps("modeOfPayment")}
                         leftSection={<IconCreditCard size={14} className="text-indigo-500" />}
                         rightSection={chevronDown}
                         classNames={labelClass}
                       />
-                      <Select
+                     <Select
                         size="sm"
                         withAsterisk
+                        searchable
+                        clearable
                         label="Disbursement A/c"
-                        placeholder="Select disburse account"
-                        data={DISBURSE_ACCOUNTS}
-                        value={disbursementAc}
-                        onChange={setDisbursementAc}
+                        placeholder={isDsbrAccountsLoading ? "Loading..." : "Select disburse account"}
+                        data={dsbrAccountOptions}
+                        searchValue={dsbrAcSearch}
+                        onSearchChange={setDsbrAcSearch}
+                        disabled={isView || isDsbrAccountsLoading}
+                         {...form.getInputProps("disbursementAc")}
                         leftSection={<IconHome size={14} className="text-indigo-500" />}
                         rightSection={chevronDown}
                         classNames={labelClass}
@@ -310,8 +395,8 @@ export function LoanDisbursementModal({
                         withAsterisk
                         type="date"
                         label="Ref Date"
-                        value={refDate}
-                        onChange={(e) => setRefDate(e.currentTarget.value)}
+                        disabled={isView}
+                         {...form.getInputProps("refDate")}
                         leftSection={<IconCalendar size={14} className="text-emerald-600" />}
                         classNames={labelClass}
                       />
@@ -319,20 +404,26 @@ export function LoanDisbursementModal({
                         size="sm"
                         withAsterisk
                         label="Ref No"
+                        disabled={isView}
                         placeholder="e.g. DSB-2026-000452"
-                        value={refNo}
-                        onChange={(e) => setRefNo(e.currentTarget.value)}
+                         {...form.getInputProps("refNo")}
                         leftSection={<IconCalendar size={14} className="text-orange-500" />}
                         classNames={labelClass}
                       />
-                      <TextInput
+                     <Select
                         size="sm"
                         withAsterisk
+                        searchable
+                        clearable
                         label="A/c No"
-                        placeholder="Beneficiary account number"
-                        value={beneficiaryAcNo}
-                        onChange={(e) => setBeneficiaryAcNo(e.currentTarget.value)}
+                        placeholder={isBeneficiaryAccountsLoading ? "Loading..." : "Beneficiary account number"}
+                        data={beneficiaryAccountOptions}
+                        searchValue={beneficiaryAcSearch}
+                        onSearchChange={setBeneficiaryAcSearch}
+                       disabled={isView || isBeneficiaryAccountsLoading}
+                         {...form.getInputProps("beneficiaryAcNo")}
                         leftSection={<IconHome size={14} className="text-indigo-500" />}
+                        rightSection={chevronDown}
                         classNames={labelClass}
                       />
                     </div>
@@ -377,7 +468,7 @@ export function LoanDisbursementModal({
             </Tabs>
           </div>
 
-          {/* Summary sidebar */}
+         {/* Summary sidebar */}
           <div className="w-[280px] border-l border-gray-200 p-5 shrink-0 overflow-y-auto">
             <div className="flex items-center gap-2 mb-0.5">
               <div className="w-1 h-4 rounded bg-gradient-to-b from-[#7C3AED] to-[#4F46E5]" />
@@ -394,26 +485,26 @@ export function LoanDisbursementModal({
                 icon={<IconUser size={14} className="text-gray-500" />}
                 iconBg="#F3F4F6"
                 label="Customer Name"
-                value={ACCOUNT_SUMMARY.customerName}
+                value={selectedLoanApp ? (selectedLoanApp.applicant_name || selectedLoanApp.applicant) : "—"}
               />
               <SummaryItem
                 icon={<IconCurrencyDollar size={14} className="text-indigo-500" />}
                 iconBg="#EEF2FF"
                 label="Currency"
-                value={ACCOUNT_SUMMARY.currency}
+                value="INR" // Hardcoded as it's not returned in the provided API snippet
               />
               <SummaryItem
                 icon={<IconCurrencyDollar size={14} className="text-emerald-600" />}
                 iconBg="#ECFDF5"
                 label="Sanctioned Amount"
-                value={formatCurrency(ACCOUNT_SUMMARY.sanctionedAmount)}
+                value={selectedLoanApp ? formatCurrency(selectedLoanApp.loan_amount) : "₹0"}
                 bold
               />
               <SummaryItem
                 icon={<IconClock size={14} className="text-orange-500" />}
                 iconBg="#FFF7ED"
                 label="Disbursement till Date"
-                value={formatCurrency(ACCOUNT_SUMMARY.disbursementTillDate)}
+                value="₹0" // Defaulting to 0 as this field is not in the provided API snippet
                 bold
               />
               <SummaryItem
@@ -421,53 +512,65 @@ export function LoanDisbursementModal({
                 iconBg="#EEF2FF"
                 label="Mode of Disbursement"
                 value={
-                  <Badge
-                    size="sm"
-                    variant="light"
-                    color="orange"
-                    className="font-semibold"
-                    styles={{ root: { fontSize: 10 } }}
-                  >
-                    {ACCOUNT_SUMMARY.modeOfDisbursement}
-                  </Badge>
+                  selectedLoanApp ? (
+                     <Badge
+                      size="sm"
+                      variant="light"
+                      color="orange"
+                      className="font-semibold"
+                      styles={{ root: { fontSize: 10 } }}
+                    >
+                      —
+                    </Badge>
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-orange-100" />
+                  )
                 }
               />
             </div>
           </div>
         </div>
 
-       {/* Footer */}
-        <div className="border-t border-gray-200 p-4 px-6 flex justify-end items-center shrink-0">
-          <div className="flex gap-2">
-            
-            {/* Show API Error if any */}
-            {createDisbursementMutation.isError && (
-              <Text size="xs" c="red" className="mr-2 self-center">
-                Failed to create disbursement.
-              </Text>
-            )}
+     {/* Footer */}
+        <div className="border-t border-gray-200 p-4 px-6 flex justify-between items-center shrink-0">
+          
+          <Button variant="default" size="sm" onClick={onClose} className="font-semibold">
+            {isView ? "Close" : "Cancel"} {/* <-- Update text dynamically */}
+          </Button>
 
-            <Button
-              size="sm"
-              variant="subtle"
-              color="red"
-              leftSection={<IconRefresh size={14} />}
-              onClick={handleReset}
-              disabled={createDisbursementMutation.isPending}
-              className="font-semibold px-4"
-            >
-              Reset
-            </Button>
-           <Button
-              type="submit" // <--- Change this from onClick={handleSubmit} to type="submit"
-              size="sm"
-              loading={createDisbursementMutation.isPending}
-              rightSection={!createDisbursementMutation.isPending ? <IconArrowRight size={16} /> : null}
-              className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 font-semibold px-6"
-            >
-              Submit Disbursement
-            </Button>
-          </div>
+          {/* Wrap the action buttons so they only show if it's NOT view mode */}
+          {!isView && (
+            <div className="flex gap-2">
+              
+              {/* Show API Error if any */}
+              {(createDisbursementMutation.isError || updateDisbursementMutation.isError) && (
+                <Text size="xs" c="red" className="mr-2 self-center">
+                  Failed to {editId ? "update" : "create"} disbursement.
+                </Text>
+              )}
+
+              <Button
+                size="sm"
+                variant="subtle"
+                color="red"
+                leftSection={<IconRefresh size={14} />}
+                onClick={handleReset}
+                disabled={isPending}
+                className="font-semibold px-4"
+              >
+                Reset
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                loading={isPending}
+                rightSection={!isPending ? <IconArrowRight size={16} /> : null}
+                className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 font-semibold px-6"
+              >
+                {editId ? "Update" : "Submit"}
+              </Button>
+            </div>
+          )}
         </div>
       </Box>
       </form>

@@ -13,16 +13,40 @@ export async function getAllLoansDisbursement() {
   
 }
 
-export async function getAllLoanApplicationNumber(){
-    const filters = [
-        ["docstatus", "=", 1],
-        ["status", "in", ["Sanctioned", "Active", "Partially Disbursed"]]
-    ];
-
-    const { data } = await apiClient.get(API.loanDisbursement.getLoanAppNumber, {
-        params: {
-            filters: JSON.stringify(filters)
-        }
-    });
-    return data;
+export async function getAllDsbrAccount(searchTerm?: string) {
+  const { data } = await apiClient.get(API.search.getAccounts, {
+    params: {
+      txt: searchTerm
+    }
+  });
+  return data;
 }
+
+export async function updateLoanDisbursement({id, payload,}: {
+  id: string;
+  payload: Partial<LoanDisbursementPayload>;
+}) {
+  const { data } = await apiClient.put(
+    API.loanDisbursement.updateLoanDsbr,
+    payload,
+    {
+      params: { id },
+    }
+  );
+  return data;
+}
+
+export async function getLoanDisbursementById(id: string) {
+  const { data } = await apiClient.get(API.loanDisbursement.getLoanDsbrById, { params: { id } });  
+  return data;
+}
+
+export async function deleteLoanDisbursement(id: string) {
+  const { data } = await apiClient.delete(API.loanDisbursement.deleteLoanDsbr, { params: { id } });  
+  return data;
+}
+export async function changeLoanDsbrStatus(id: string, action: string) {
+  const { data } = await apiClient.put(API.loanDisbursement.updateDsbrStatus, {}, { params: { id, action } });
+  return data;
+}
+
