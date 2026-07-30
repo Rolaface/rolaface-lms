@@ -1,9 +1,3 @@
-/* ───────────────────────────────────────────────────────────
-   JournalEntries — API layer
-   Dummy data + fake-delay functions for now. When the backend
-   is ready, swap these bodies for real axios/react-query calls —
-   keep names/signatures the same so the logic layer doesn't change.
-   ─────────────────────────────────────────────────────────── */
 
 export interface JournalEntry {
   name: string;

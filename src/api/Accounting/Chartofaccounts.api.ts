@@ -1,14 +1,7 @@
-/* ───────────────────────────────────────────────────────────
-   ChartOfAccounts — API layer
-   Right now this just serves dummy data with a fake delay.
-   When the backend is ready, swap the bodies of these functions
-   for real axios/react-query calls — keep the function names and
-   return shapes the same so chartOfAccounts.logic.ts doesn't need
-   to change.
-   ─────────────────────────────────────────────────────────── */
+
 
 export interface COAAccount {
-  name: string; // unique code, used as row id
+  name: string; 
   account_name: string;
   account_type?: string;
   root_type: 'Asset' | 'Liability' | 'Equity' | 'Income' | 'Expense';

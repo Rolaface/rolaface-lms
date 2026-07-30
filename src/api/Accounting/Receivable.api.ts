@@ -1,10 +1,4 @@
-/* ───────────────────────────────────────────────────────────
-   Accounts Receivable — API layer
-   Dummy paginated data + a fake-delay fetch for now. When the
-   backend is ready, swap the body of fetchReceivables for a
-   real axios/react-query call — keep the name/signature the
-   same so the logic layer doesn't change.
-   ─────────────────────────────────────────────────────────── */
+
 
 export type ReceivableVoucherType = 'Sales Invoice' | 'Payment Entry' | 'Journal Entry';
 export type ReceivableStatus = 'Pending' | 'Overdue' | 'Paid';

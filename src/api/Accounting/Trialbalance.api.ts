@@ -1,10 +1,3 @@
-/* ───────────────────────────────────────────────────────────
-   TrialBalance — API layer
-   Dummy data + a fake-delay fetch for now. When the backend is
-   ready, swap the body of fetchTrialBalance for a real
-   axios/react-query call (passing TBFilters as query params) —
-   keep the name/signature the same so the logic layer doesn't change.
-   ─────────────────────────────────────────────────────────── */
 
 export interface TBAccount {
   account: string;

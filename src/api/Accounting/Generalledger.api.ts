@@ -1,10 +1,4 @@
-/* ───────────────────────────────────────────────────────────
-   GeneralLedger — API layer
-   Dummy paginated data + a fake-delay fetch for now. When the
-   backend is ready, swap the body of fetchGeneralLedger for a
-   real axios/react-query call — keep the name/signature the
-   same so the logic layer doesn't change.
-   ─────────────────────────────────────────────────────────── */
+
 
 export interface LedgerRow {
   gl_entry: string;

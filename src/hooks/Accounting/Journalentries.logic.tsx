@@ -1,8 +1,4 @@
-/* ───────────────────────────────────────────────────────────
-   JournalEntries — Logic layer
-   All state, filtering, and status-transition behavior. The UI
-   file only renders what this hook returns.
-   ─────────────────────────────────────────────────────────── */
+
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { modals } from '@mantine/modals';

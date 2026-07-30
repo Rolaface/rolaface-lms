@@ -1,8 +1,4 @@
-/* ───────────────────────────────────────────────────────────
-   TrialBalance — Logic layer
-   Expand-state helper + the one hook owning all state and data
-   loading. The UI file only renders what this hook returns.
-   ─────────────────────────────────────────────────────────── */
+
 
 import { useCallback, useEffect, useState } from 'react';
 import type { ExpandedState } from '@tanstack/react-table';

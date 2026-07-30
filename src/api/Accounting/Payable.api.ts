@@ -1,10 +1,4 @@
-/* ───────────────────────────────────────────────────────────
-   Accounts Payable — API layer
-   Dummy paginated data + a fake-delay fetch for now. When the
-   backend is ready, swap the body of fetchPayables for a real
-   axios/react-query call — keep the name/signature the same so
-   the logic layer doesn't change.
-   ─────────────────────────────────────────────────────────── */
+
 
 export type PayableVoucherType = 'Purchase Invoice' | 'Payment Entry' | 'Journal Entry' | 'Expense Claim';
 export type PayableStatus = 'Pending' | 'Overdue' | 'Paid';
