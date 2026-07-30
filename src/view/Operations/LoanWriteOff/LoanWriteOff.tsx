@@ -1,20 +1,21 @@
-// LoanWriteOff.tsx
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { getLoanWriteOffs, getLoanWriteOffById, deleteLoanWriteOff,updateLoanWriteOffStatus} from "../../../api/lendingOperation/writeoff";
+import type { LoanWriteOffListItem, LoanWriteOffDetail, } from "../../../types/loanWriteOff";
+
 import {
   Box,
   Button,
   TextInput,
   Select,
-  Radio,
   Group,
   Paper,
   Table,
-  Badge,
   ActionIcon,
   Text,
   Pagination,
   Tooltip,
   Title,
+   Menu, 
 } from '@mantine/core';
 import {
   IconEye,
@@ -26,6 +27,9 @@ import {
   IconSearch,
   IconFileOff,
   IconTrash,
+  IconDotsVertical,  
+  IconCheck,         
+  IconSend, 
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -38,71 +42,8 @@ import {
 } from '@tanstack/react-table';
 import { LoanWriteOffModal, type LoanWriteOffFormData } from '../../../components/Modal/LoanWriteOffModal';
 
-interface WriteOffRow {
-  id: number;
-  loanAc: string;
-  customer: string;
-  classification: string;
-  dpd: number;
-  principalOutstanding: number;
-  writeOffAmount: number;
-  writeOffPercentage: number;
-  valueDate: string;
-  status: 'WRITTEN_OFF' | 'PENDING';
-}
 
-const DUMMY_WRITE_OFFS: WriteOffRow[] = [
-  {
-    id: 1,
-    loanAc: 'LN-2024-00187',
-    customer: 'Rohan Mehta',
-    classification: 'Sub-Standard',
-    dpd: 132,
-    principalOutstanding: 486250,
-    writeOffAmount: 48625,
-    writeOffPercentage: 10,
-    valueDate: '2026-07-24',
-    status: 'PENDING',
-  },
-  {
-    id: 2,
-    loanAc: 'LN-2024-00092',
-    customer: 'Chanda Mwansa',
-    classification: 'Doubtful',
-    dpd: 210,
-    principalOutstanding: 156000,
-    writeOffAmount: 156000,
-    writeOffPercentage: 100,
-    valueDate: '2026-06-15',
-    status: 'WRITTEN_OFF',
-  },
-  {
-    id: 3,
-    loanAc: 'LN-2024-00145',
-    customer: 'Bwalya Enterprises Ltd',
-    classification: 'Loss',
-    dpd: 365,
-    principalOutstanding: 720000,
-    writeOffAmount: 720000,
-    writeOffPercentage: 100,
-    valueDate: '2026-05-02',
-    status: 'WRITTEN_OFF',
-  },
-  {
-    id: 4,
-    loanAc: 'LN-2024-00201',
-    customer: 'Natasha Phiri',
-    classification: 'Sub-Standard',
-    dpd: 98,
-    principalOutstanding: 92500,
-    writeOffAmount: 9250,
-    writeOffPercentage: 10,
-    valueDate: '2026-07-18',
-    status: 'PENDING',
-  },
-];
-
-const columnHelper = createColumnHelper<WriteOffRow>();
+const columnHelper = createColumnHelper<LoanWriteOffListItem>();
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   if (sorted === 'asc') return <IconChevronUp size={12} />;
@@ -121,56 +62,124 @@ function classificationColor(classification: string) {
 
 export function LoanWriteOff() {
   const [opened, { open, close }] = useDisclosure(false);
+  const [editData, setEditData] = useState<LoanWriteOffDetail | null>(null);
 
   // filter state
   const [search, setSearch] = useState('');
-  const [classification, setClassification] = useState<string | null>(null);
-  const [status, setStatus] = useState('all');
+
 
   // table state
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  const [rowsData, setRowsData] = useState(DUMMY_WRITE_OFFS);
+  const [rowsData, setRowsData] = useState<LoanWriteOffListItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [apiPagination, setApiPagination] = useState({ total: 0, total_pages: 1 });
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
 
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rowsData.filter((r) => {
-      const matchesSearch =
-        !q ||
-        r.customer.toLowerCase().includes(q) ||
-        r.loanAc.toLowerCase().includes(q);
-      const matchesClassification = !classification || r.classification === classification;
-      const matchesStatus = status === 'all' || r.status === status;
-      return matchesSearch && matchesClassification && matchesStatus;
+    getLoanWriteOffs({
+      page: pagination.pageIndex + 1,
+      page_size: pagination.pageSize,
+      search,
+    })
+      .then((res) => {
+        if (active) {
+          setRowsData(Array.isArray(res?.data) ? res.data : []);
+          setApiPagination({
+            total: res?.pagination?.total ?? 0,
+            total_pages: res?.pagination?.total_pages ?? 1,
+          });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        if (active) setRowsData([]);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [pagination.pageIndex, pagination.pageSize, search]);
+
+  const filteredData = useMemo(() => rowsData, [rowsData]);
+
+  const handleAddWriteOff = () => {
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  };
+  const handleEditClick = async (id: string) => {
+    try {
+      const detail = await getLoanWriteOffById(id);
+      setEditData(detail);
+      open();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  const handleDeleteClick = async (id: string) => {
+    const confirmed = window.confirm(`Are you sure you want to delete write-off "${id}"?`);
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(id);
+      await deleteLoanWriteOff(id);
+      // Refresh the list after deletion
+      setPagination((p) => ({ ...p })); // triggers useEffect refetch since deps unchanged; safer to force refetch below
+      const res = await getLoanWriteOffs({
+        page: pagination.pageIndex + 1,
+        page_size: pagination.pageSize,
+        search,
+      });
+      setRowsData(Array.isArray(res?.data) ? res.data : []);
+      setApiPagination({
+        total: res?.pagination?.total ?? 0,
+        total_pages: res?.pagination?.total_pages ?? 1,
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+  const handleStatusChange = async (id: string, action: "approved" | "submitted") => {
+  try {
+    setStatusUpdatingId(id);
+    await updateLoanWriteOffStatus(id, action);
+
+    const res = await getLoanWriteOffs({
+      page: pagination.pageIndex + 1,
+      page_size: pagination.pageSize,
+      search,
     });
-  }, [rowsData, search, classification, status]);
-
-  const handleDelete = (id: number) => {
-    setRowsData((prev) => prev.filter((r) => r.id !== id));
-  };
-
-  const handleAddWriteOff = (formData: LoanWriteOffFormData) => {
-    setRowsData((prev) => [
-      ...prev,
-      {
-        id: prev.length ? Math.max(...prev.map((r) => r.id)) + 1 : 1,
-        loanAc: formData.loanAc || '—',
-        customer: '—',
-        classification: 'Sub-Standard',
-        dpd: 0,
-        principalOutstanding: Number(formData.principalOutstanding) || 0,
-        writeOffAmount: Number(formData.writeOffAmount) || 0,
-        writeOffPercentage: Number(formData.writeOffPercentage) || 0,
-        valueDate: formData.valueDate || '—',
-        status: 'PENDING',
-      },
-    ]);
-  };
+    setRowsData(Array.isArray(res?.data) ? res.data : []);
+    setApiPagination({
+      total: res?.pagination?.total ?? 0,
+      total_pages: res?.pagination?.total_pages ?? 1,
+    });
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setStatusUpdatingId(null);
+  }
+};
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor('loanAc', {
+      columnHelper.accessor('name', {
+        header: 'Write-off ID',
+        cell: (info) => (
+          <Text fz="xs" fw={600} c="gray.9" className="font-mono">
+            {info.getValue()}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor('loan', {
         header: 'Loan A/c',
         cell: (info) => (
           <Text fz="xs" fw={600} c="gray.9" className="font-mono">
@@ -178,79 +187,36 @@ export function LoanWriteOff() {
           </Text>
         ),
       }),
-      columnHelper.accessor('customer', {
-        header: 'Customer',
+      columnHelper.accessor('applicant', {
+        header: 'Applicant',
         cell: (info) => (
           <Text fz="xs" c="gray.6">
             {info.getValue()}
           </Text>
         ),
       }),
-      columnHelper.accessor('classification', {
-        header: 'Classification',
+      columnHelper.accessor('loan_product', {
+        header: 'Loan Product',
         cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            color={classificationColor(info.getValue())}
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
+          <Text fz="xs" c="gray.6">
             {info.getValue()}
-          </Badge>
-        ),
-      }),
-      columnHelper.accessor('dpd', {
-        header: 'DPD',
-        cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            {info.getValue()} days
           </Text>
         ),
       }),
-      columnHelper.accessor('principalOutstanding', {
-        header: 'Principal Outstanding',
-        cell: (info) => (
-          <Text fz="xs" c="gray.6" className="font-mono">
-            ₹{info.getValue().toLocaleString('en-IN')}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor('writeOffPercentage', {
-        header: 'Write-off %',
-        cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            {info.getValue()}%
-          </Text>
-        ),
-      }),
-      columnHelper.accessor('writeOffAmount', {
+      columnHelper.accessor('write_off_amount', {
         header: 'Write-off Amount',
         cell: (info) => (
           <Text fz="xs" fw={600} c="gray.9" className="font-mono">
-            ₹{info.getValue().toLocaleString('en-IN')}
+            ₹{Number(info.getValue()).toLocaleString('en-IN')}
           </Text>
         ),
       }),
-      columnHelper.accessor('valueDate', {
-        header: 'Value Date',
+      columnHelper.accessor('posting_date', {
+        header: 'Posting Date',
         cell: (info) => (
           <Text fz="xs" c="gray.6">
             {info.getValue()}
           </Text>
-        ),
-      }),
-      columnHelper.accessor('status', {
-        header: 'Status',
-        cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            color={info.getValue() === 'WRITTEN_OFF' ? 'green' : 'yellow'}
-            className="font-semibold tracking-wider"
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
-            {info.getValue() === 'WRITTEN_OFF' ? 'WRITTEN OFF' : 'PENDING'}
-          </Badge>
         ),
       }),
       columnHelper.display({
@@ -270,20 +236,53 @@ export function LoanWriteOff() {
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="blue">
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Delete" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="red"
-                  onClick={() => handleDelete(row.id)}
+                  color="blue"
+                  onClick={() => handleEditClick(row.name)}
                 >
-                  <IconTrash size={14} />
+                  <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
+              
+              <Tooltip label="Delete" withArrow>
+  <ActionIcon
+    size="sm"
+    variant="subtle"
+    color="red"
+    loading={deletingId === row.name}
+    onClick={() => handleDeleteClick(row.name)}
+  >
+    <IconTrash size={14} />
+  </ActionIcon>
+</Tooltip>
+<Menu shadow="md" width={160} position="bottom-end" withinPortal>
+  <Menu.Target>
+    <ActionIcon
+      size="sm"
+      variant="subtle"
+      color="gray"
+      loading={statusUpdatingId === row.name}
+    >
+      <IconDotsVertical size={14} />
+    </ActionIcon>
+  </Menu.Target>
+  <Menu.Dropdown>
+    <Menu.Item
+      leftSection={<IconSend size={14} />}
+      onClick={() => handleStatusChange(row.name, "submitted")}
+    >
+      Submit
+    </Menu.Item>
+    <Menu.Item
+      leftSection={<IconCheck size={14} />}
+      onClick={() => handleStatusChange(row.name, "approved")}
+    >
+      Approve
+    </Menu.Item>
+  </Menu.Dropdown>
+</Menu>
             </Group>
           );
         },
@@ -295,33 +294,36 @@ export function LoanWriteOff() {
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting, pagination },
+    state: { sorting },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true,
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
+  const totalRows = apiPagination.total;
   const { pageIndex, pageSize } = pagination;
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   const resetFilters = () => {
     setSearch('');
-    setClassification(null);
-    setStatus('all');
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
   };
 
-  const classificationOptions = Array.from(
-    new Set(DUMMY_WRITE_OFFS.map((r) => r.classification))
-  );
 
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
-      <LoanWriteOffModal opened={opened} onClose={close} onSubmit={handleAddWriteOff} />
+      <LoanWriteOffModal
+        opened={opened}
+        onClose={() => {
+          close();
+          setEditData(null);
+        }}
+        onSubmit={handleAddWriteOff}
+        editData={editData}
+      />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
@@ -330,7 +332,10 @@ export function LoanWriteOff() {
         </Title>
         <Button
           size="xs"
-          onClick={open}
+          onClick={() => {
+            setEditData(null);
+            open();
+          }}
           className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 transition-opacity"
           leftSection={<IconPlus size={14} />}
         >
@@ -352,35 +357,6 @@ export function LoanWriteOff() {
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
-          <Select
-            size="xs"
-            placeholder="All Classifications"
-            data={classificationOptions}
-            className="w-44"
-            searchable
-            clearable
-            rightSection={chevronDown}
-            value={classification}
-            onChange={(v) => {
-              setClassification(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          />
-
-          <Radio.Group
-            name="status"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          >
-            <Group gap="sm">
-              <Radio size="xs" value="all" label="All" color="indigo" />
-              <Radio size="xs" value="WRITTEN_OFF" label="Written Off" color="indigo" />
-              <Radio size="xs" value="PENDING" label="Pending" color="indigo" />
-            </Group>
-          </Radio.Group>
 
           <Button size="xs" variant="default" className="ml-auto px-4" onClick={resetFilters}>
             Reset
@@ -399,9 +375,8 @@ export function LoanWriteOff() {
                   return (
                     <Table.Th
                       key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${
-                        canSort ? 'cursor-pointer' : ''
-                      }`}
+                      className={`text-gray-600 font-semibold select-none ${canSort ? 'cursor-pointer' : ''
+                        }`}
                       style={{ fontSize: 11, padding: '6px 10px' }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
@@ -467,7 +442,7 @@ export function LoanWriteOff() {
             </div>
           </div>
           <Pagination
-            total={table.getPageCount() || 1}
+            total={apiPagination.total_pages || 1}
             value={pageIndex + 1}
             onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
             color="indigo"
