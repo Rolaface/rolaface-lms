@@ -93,7 +93,11 @@ loan: {
   loanDisbursement: {
     createLoanDsbr: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.create_loan_disbursement`,
     getLoanDsbr: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.get_loan_disbursements`,
-    getLoanAppNumber: `${ERP_BASE}/api/resource/Loan`
+    getLoanDsbrById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.get_loan_disbursement_by_id`,
+    getLoanAppNumber: `${ERP_BASE}/api/resource/Loan`,
+    updateLoanDsbr: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.update_loan_disbursement`,
+    deleteLoanDsbr: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.delete_loan_disbursement`,
+    updateDsbrStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.disbursement.api.update_loan_disbursement_status`,
   },
 
   // =========================
