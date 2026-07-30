@@ -251,7 +251,7 @@ export function LoanClassificationModal({
         {/* Scrollable Content */}
         <div className="flex flex-col gap-6 px-6 py-6">
           {/* Classification Identity */}
-          <section className="flex flex-col gap-3">
+          <section className="flex flex-col gap-3 rounded-lg border border-[#e2e1ec] bg-[#f8f9ff] p-4">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-[#8886a0]">
               Classification Identity
             </span>
@@ -289,7 +289,7 @@ export function LoanClassificationModal({
                     focus:border-[#3525cd]
                     focus:ring-2
                     focus:ring-[#3525cd]/20
-                    disabled:bg-[#f8f8fc]
+                    disabled:bg-[#f1f1f7]
                     disabled:text-[#8886a0]
                   "
                 />
@@ -327,7 +327,7 @@ export function LoanClassificationModal({
                     focus:border-[#3525cd]
                     focus:ring-2
                     focus:ring-[#3525cd]/20
-                    disabled:bg-[#f8f8fc]
+                    disabled:bg-[#f1f1f7]
                     disabled:text-[#8886a0]
                   "
                 />
@@ -365,7 +365,7 @@ export function LoanClassificationModal({
                     focus:border-[#3525cd]
                     focus:ring-2
                     focus:ring-[#3525cd]/20
-                    disabled:bg-[#f8f8fc]
+                    disabled:bg-[#f1f1f7]
                     disabled:text-[#8886a0]
                   "
                 />
