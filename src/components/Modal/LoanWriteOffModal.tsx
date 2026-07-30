@@ -1,5 +1,6 @@
-// LoanWriteOffModal.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getWriteOffAccounts, getLoanAccounts, createLoanWriteOff,updateLoanWriteOff } from "../../api/lendingOperation/writeoff";
+import type { WriteOffAccountItem, LoanAccountItem, LoanWriteOffDetail } from "../../types/loanWriteOff";
 import {
   Box,
   Text,
@@ -32,6 +33,7 @@ interface LoanWriteOffModalProps {
   opened: boolean;
   onClose: () => void;
   onSubmit?: (data: LoanWriteOffFormData) => void;
+  editData?: LoanWriteOffDetail | null;
 }
 
 export interface LoanWriteOffFormData {
@@ -51,9 +53,6 @@ const ACCOUNT_SUMMARY = {
   dpd: 132,
   outstanding: 486250,
 };
-
-const WRITE_OFF_ACCOUNTS = ["Write-off Reserve A/c", "Bad Debt Provision A/c", "NPA Suspense A/c"];
-
 const labelClass = { label: "text-sm font-medium text-gray-700 mb-1" };
 const chevronDown = <IconChevronDown size={14} className="text-gray-500" />;
 
@@ -61,13 +60,83 @@ function formatCurrency(amount: number) {
   return `₹${amount.toLocaleString("en-IN")}`;
 }
 
-export function LoanWriteOffModal({ opened, onClose, onSubmit }: LoanWriteOffModalProps) {
+export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanWriteOffModalProps) {
+  
   const [loanAc, setLoanAc] = useState("");
   const [valueDate, setValueDate] = useState("");
   const [principalOutstanding, setPrincipalOutstanding] = useState<number | "">("");
   const [writeOffPercentage, setWriteOffPercentage] = useState<number | "">("");
   const [writeOffAmount, setWriteOffAmount] = useState<number | "">("");
   const [writeOffAccount, setWriteOffAccount] = useState<string | null>(null);
+  const [accountOptions, setAccountOptions] = useState<WriteOffAccountItem[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountSearch, setAccountSearch] = useState("");
+  const [loanAccountOptions, setLoanAccountOptions] = useState<LoanAccountItem[]>([]);
+  const [loanAccountsLoading, setLoanAccountsLoading] = useState(false);
+  const [loanAcSearch, setLoanAcSearch] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  useEffect(() => {
+    if (!opened) return;
+
+    let active = true;
+    setAccountsLoading(true);
+
+    getWriteOffAccounts({ page: 1, page_size: 10, search: accountSearch })
+      .then((res) => {
+        if (active) setAccountOptions(res.data);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (active) setAccountOptions([]);
+      })
+      .finally(() => {
+        if (active) setAccountsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [opened, accountSearch]);
+  useEffect(() => {
+    if (!opened) return;
+
+    let active = true;
+    setLoanAccountsLoading(true);
+
+    getLoanAccounts({ page: 1, page_size: 10, search: loanAcSearch })
+      .then((res) => {
+        if (active) setLoanAccountOptions(Array.isArray(res?.data) ? res.data : []);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (active) setLoanAccountOptions([]);
+      })
+      .finally(() => {
+        if (active) setLoanAccountsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+}, [opened, loanAcSearch]);
+
+ useEffect(() => {
+  if (editData) {
+    setLoanAc(editData.loan);
+    setValueDate(editData.value_date);
+    setWriteOffAmount(editData.write_off_amount);
+    setWriteOffAccount(editData.write_off_account);
+  }
+}, [editData]);
+
+useEffect(() => {
+  if (editData && loanAccountOptions.length > 0) {
+    const matchedLoan = loanAccountOptions.find((acc) => acc.name === editData.loan);
+    if (matchedLoan) {
+      setPrincipalOutstanding(matchedLoan.pending_principal_amount);
+    }
+  }
+}, [editData, loanAccountOptions]);
 
   const handlePercentageChange = (value: number | "") => {
     setWriteOffPercentage(value);
@@ -76,6 +145,15 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit }: LoanWriteOffMod
       setWriteOffAmount(Math.round(amount * 100) / 100);
     } else {
       setWriteOffAmount("");
+    }
+  };
+  const handleLoanAcChange = (value: string | null) => {
+    setLoanAc(value ?? "");
+    const selected = loanAccountOptions.find((acc) => acc.name === value);
+    if (selected) {
+      setPrincipalOutstanding(selected.pending_principal_amount);
+    } else {
+      setPrincipalOutstanding("");
     }
   };
 
@@ -98,16 +176,46 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit }: LoanWriteOffMod
     setWriteOffAccount(null);
   };
 
-  const handleSubmit = () => {
-    onSubmit?.({
-      loanAc,
-      valueDate,
-      principalOutstanding,
-      writeOffPercentage,
-      writeOffAmount,
-      writeOffAccount,
-    });
-    onClose();
+  const handleSubmit = async () => {
+    if (!loanAc || !valueDate || writeOffAmount === "" || !writeOffAccount) {
+      return; // basic guard — add proper validation/toast as needed
+    }
+
+    const postingDate = new Date().toISOString().split("T")[0]; // YYYY-MM-DD, today
+
+    const payload = {
+      loan: loanAc,
+      write_off_amount: Number(writeOffAmount),
+      write_off_account: writeOffAccount,
+      posting_date: postingDate,
+      value_date: valueDate,
+      is_settlement_write_off: 1 as const,
+    };
+
+    try {
+      setSubmitting(true);
+
+      if (editData) {
+        await updateLoanWriteOff({ name: editData.name, ...payload });
+      } else {
+        await createLoanWriteOff(payload);
+      }
+
+      onSubmit?.({
+        loanAc,
+        valueDate,
+        principalOutstanding,
+        writeOffPercentage,
+        writeOffAmount,
+        writeOffAccount,
+      });
+
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -128,7 +236,7 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit }: LoanWriteOffMod
             </div>
             <div>
               <Text size="md" fw={700} className="text-gray-900 leading-tight">
-                Write Off Loan
+                {editData ? "Update Write Off" : "Write Off Loan"}
               </Text>
               <Text size="xs" c="dimmed">
                 Record a principal write-off against a loan account.
@@ -148,13 +256,22 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit }: LoanWriteOffMod
           <div className="flex-1 overflow-y-auto p-6">
 
             <div className="flex flex-col gap-4">
-              <TextInput
+              <Select
                 size="sm"
                 withAsterisk
                 label="Loan A/c"
                 placeholder="Search loan account"
-                value={loanAc}
-                onChange={(e) => setLoanAc(e.currentTarget.value)}
+                data={
+    loanAc && !loanAccountOptions.some((acc) => acc.name === loanAc)
+      ? [{ value: loanAc, label: loanAc }, ...loanAccountOptions.map((acc) => ({ value: acc.name, label: acc.name }))]
+      : loanAccountOptions.map((acc) => ({ value: acc.name, label: acc.name }))
+  }
+                value={loanAc || null}
+                onChange={handleLoanAcChange}
+                searchable
+                searchValue={loanAcSearch}
+                onSearchChange={setLoanAcSearch}
+                nothingFoundMessage={loanAccountsLoading ? "Loading..." : "No accounts found"}
                 leftSection={<IconSearch size={14} className="text-gray-400" />}
                 classNames={labelClass}
               />
@@ -174,11 +291,12 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit }: LoanWriteOffMod
                   size="sm"
                   withAsterisk
                   label="Principal Outstanding"
-                  placeholder="Enter amount"
+                  placeholder="Auto-filled on account selection"
                   value={principalOutstanding}
                   onChange={(v) => setPrincipalOutstanding(v as number | "")}
                   leftSection={<IconCurrencyRupee size={14} className="text-orange-500" />}
                   thousandSeparator=","
+                  readOnly
                   classNames={labelClass}
                 />
 
@@ -217,15 +335,22 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit }: LoanWriteOffMod
                   </Text>
                 </div>
               </div>
-
               <Select
                 size="sm"
                 withAsterisk
                 label="Write-off Account"
                 placeholder="Select write-off account"
-                data={WRITE_OFF_ACCOUNTS}
+                data={
+    writeOffAccount && !accountOptions.some((a) => a.value === writeOffAccount)
+      ? [{ value: writeOffAccount, label: writeOffAccount }, ...accountOptions.map((a) => ({ value: a.value, label: a.label }))]
+      : accountOptions.map((a) => ({ value: a.value, label: a.label }))
+  }
                 value={writeOffAccount}
                 onChange={setWriteOffAccount}
+                searchable
+                searchValue={accountSearch}
+                onSearchChange={setAccountSearch}
+                nothingFoundMessage={accountsLoading ? "Loading..." : "No accounts found"}
                 leftSection={<IconBuildingBank size={14} className="text-indigo-500" />}
                 rightSection={chevronDown}
                 classNames={labelClass}
@@ -326,10 +451,12 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit }: LoanWriteOffMod
             <Button
               size="sm"
               onClick={handleSubmit}
+              loading={submitting}
+              disabled={submitting}
               rightSection={<IconArrowRight size={16} />}
               className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 font-semibold px-6"
             >
-              Submit Write-off
+              {editData ? "Update Write-off" : "Submit Write-off"}
             </Button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -14,6 +14,8 @@ import {
   Pagination,
   Tooltip,
   Title,
+  Loader,
+  Alert, Menu
 } from '@mantine/core';
 import {
   IconEye,
@@ -25,6 +27,7 @@ import {
   IconSearch,
   IconCashBanknote,
   IconTrash,
+  IconAlertCircle, IconDotsVertical
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -35,10 +38,12 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { LoanDisbursementModal, type LoanDisbursementFormData } from '../../../components/Modal/LoanDisbursementModal';
-
+import { LoanDisbursementModal } from '../../../components/Modal/LoanDisbursementModal';
+import { getAllLoansDisbursement, deleteLoanDisbursement, changeLoanDsbrStatus } from '../../../api/loanDisbursementAPi';  
+import { useMutation } from '@tanstack/react-query';
+import { modals } from '@mantine/modals';
 interface DisbursementRow {
-  id: number;
+  id: string;
   againstLoan: string;
   applicant: string;
   applicantType: string;
@@ -46,66 +51,8 @@ interface DisbursementRow {
   disbursementDate: string;
   disbursedAmount: number;
   modeOfPayment: string;
-  status: 'DISBURSED' | 'PENDING';
+  status: string;
 }
-
-const DUMMY_DISBURSEMENTS: DisbursementRow[] = [
-  {
-    id: 1,
-    againstLoan: 'LN-2026-0011',
-    applicant: 'Marco Rossi',
-    applicantType: 'Customer',
-    company: 'Acme Corp',
-    disbursementDate: '2026-06-12',
-    disbursedAmount: 250000,
-    modeOfPayment: 'Bank Transfer',
-    status: 'DISBURSED',
-  },
-  {
-    id: 2,
-    againstLoan: 'LN-2026-0014',
-    applicant: 'Chanda Mwansa',
-    applicantType: 'Employee',
-    company: 'Billu&Billa',
-    disbursementDate: '2026-06-20',
-    disbursedAmount: 80000,
-    modeOfPayment: 'UPI',
-    status: 'DISBURSED',
-  },
-  {
-    id: 3,
-    againstLoan: 'LN-2026-0019',
-    applicant: 'Bwalya Enterprises Ltd',
-    applicantType: 'Vendor',
-    company: 'Zenith Traders',
-    disbursementDate: '2026-07-01',
-    disbursedAmount: 500000,
-    modeOfPayment: 'Cheque',
-    status: 'PENDING',
-  },
-  {
-    id: 4,
-    againstLoan: 'LN-2026-0022',
-    applicant: 'Natasha Phiri',
-    applicantType: 'Employee',
-    company: 'Billu&Billa',
-    disbursementDate: '2026-07-10',
-    disbursedAmount: 45000,
-    modeOfPayment: 'Cash',
-    status: 'PENDING',
-  },
-  {
-    id: 5,
-    againstLoan: 'LN-2026-0025',
-    applicant: 'Harborview Logistics',
-    applicantType: 'Customer',
-    company: 'Acme Corp',
-    disbursementDate: '2026-07-18',
-    disbursedAmount: 320000,
-    modeOfPayment: 'Bank Transfer',
-    status: 'DISBURSED',
-  },
-];
 
 const columnHelper = createColumnHelper<DisbursementRow>();
 
@@ -120,61 +67,179 @@ const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
 export function LoanDisbursement() {
   const [opened, { open, close }] = useDisclosure(false);
 
-  // filter state
+ const [editId, setEditId] = useState<string | null>(null);
+ const [isView, setIsView] = useState(false);
+  const [editData, setEditData] = useState<any>(null);
   const [search, setSearch] = useState('');
   const [applicantType, setApplicantType] = useState<string | null>(null);
   const [company, setCompany] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
 
-  // table state
+  // Table state
   const [sorting, setSorting] = useState([{ id: 'disbursementDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  const [statusOverrides, setStatusOverrides] = useState<Record<number, string>>({});
-  const [rowsData, setRowsData] = useState(DUMMY_DISBURSEMENTS);
+  // Data state
+  const [rowsData, setRowsData] = useState<DisbursementRow[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const data = useMemo(
-    () =>
-      rowsData.map((r) => ({
-        ...r,
-        status: (statusOverrides[r.id] ?? r.status) as DisbursementRow['status'],
-      })),
-    [rowsData, statusOverrides]
-  );
+  const fetchDisbursements = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await getAllLoansDisbursement();
+      const list = Array.isArray(res?.data) ? res.data : [];
+      
+      const mappedData: DisbursementRow[] = list.map((item: any) => ({
+        id: item.name || '',
+        againstLoan: item.against_loan || '—',
+        applicant: item.applicant || '—',
+        applicantType: '—', // Not provided by current API response
+        company: item.company || '—',
+        disbursementDate: item.posting_date || '—',
+        disbursedAmount: Number(item.disbursed_amount) || 0,
+        modeOfPayment: '—', // Not provided by current API response
+        status: item.status || 'Pending',
+      }));
+      
+      setRowsData(mappedData);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to fetch loan disbursements.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDisbursements();
+  }, [fetchDisbursements]);
+
+  // const deleteMutation = useMutation({
+  //   mutationFn: deleteLoanDisbursement,
+  //   onSuccess: () => {
+  //     fetchDisbursements();
+  //   },
+  // });
+
+  // const statusMutation = useMutation({
+  //   mutationFn: ({ id, action }: { id: string; action: string }) => changeLoanDsbrStatus(id, action),
+  //   onSuccess: () => {
+  //     fetchDisbursements();
+  //   },
+  // });
+  const deleteMutation = useMutation({
+    mutationFn: deleteLoanDisbursement,
+    onSuccess: () => {
+      fetchDisbursements();
+    },
+   onError: (error: any) => {
+      const errorData = error.response?.data;
+      
+      const errorMessage = 
+        errorData?._error_message || 
+        errorData?.message?.message || 
+        error.message || 
+        "An unexpected error occurred.";
+
+      modals.open({
+        title: <Text fw={600} c="red">Action Failed</Text>,
+        children: (
+          <div>
+            <Text size="sm" mb="lg">
+              {errorMessage}
+            </Text>
+            <Group justify="flex-end">
+              <Button onClick={() => modals.closeAll()} variant="default">
+                Close
+              </Button>
+            </Group>
+          </div>
+        ),
+      });
+    },
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: string }) => changeLoanDsbrStatus(id, action),
+    onSuccess: () => {
+      fetchDisbursements();
+    },
+  onError: (error: any) => {
+      const errorData = error.response?.data;
+      const errorMessage = 
+        errorData?._error_message || 
+        errorData?.message?.message || 
+        error.message || 
+        "An unexpected error occurred.";
+
+      modals.open({
+        title: <Text fw={600} c="red">Update Failed</Text>,
+        children: (
+          <div>
+            <Text size="sm" mb="lg">
+              {errorMessage}
+            </Text>
+            <Group justify="flex-end">
+              <Button onClick={() => modals.closeAll()} variant="default">
+                Close
+              </Button>
+            </Group>
+          </div>
+        ),
+      });
+    },
+  });
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return data.filter((r) => {
+    return rowsData.filter((r) => {
       const matchesSearch =
         !q ||
         r.applicant.toLowerCase().includes(q) ||
         r.againstLoan.toLowerCase().includes(q);
       const matchesType = !applicantType || r.applicantType === applicantType;
       const matchesCompany = !company || r.company === company;
-      const matchesStatus = status === 'all' || r.status === status;
+      
+      // Adapted to match 'Submitted' API status as the default active state for filters
+      const matchesStatus = 
+        status === 'all' || 
+        (status === 'SUBMITTED' && r.status.toUpperCase() === 'SUBMITTED') ||
+        (status === 'PENDING' && r.status.toUpperCase() !== 'SUBMITTED');
+        
       return matchesSearch && matchesType && matchesCompany && matchesStatus;
     });
-  }, [data, search, applicantType, company, status]);
+  }, [rowsData, search, applicantType, company, status]);
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
+    // Note: Local state filter only. Wire this up to your delete API when ready.
     setRowsData((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const handleAddDisbursement = (formData: LoanDisbursementFormData) => {
-    setRowsData((prev) => [
-      ...prev,
-      {
-        id: prev.length ? Math.max(...prev.map((r) => r.id)) + 1 : 1,
-        againstLoan: formData.againstLoan || '—',
-        applicant: formData.loanPartner || '—',
-        applicantType: formData.applicantType || '—',
-        company: formData.company || '—',
-        disbursementDate: formData.disbursementDate || '—',
-        disbursedAmount: Number(formData.disbursedAmount) || 0,
-        modeOfPayment: formData.modeOfPayment || '—',
-        status: 'PENDING',
-      },
-    ]);
+  const handleAdd = () => {
+    setEditId(null);
+    setEditData(null);
+    setIsView(false);
+    open();
+  };
+
+  const handleEdit = (row: DisbursementRow) => {
+    setEditId(row.id);
+    setEditData(row); 
+    setIsView(false);
+    open();
+  };
+  const handleView = (row: DisbursementRow) => {
+    setEditId(row.id);
+    setIsView(true);
+    open();
+  };
+
+  const handleModalClose = () => {
+    setEditId(null);
+    setEditData(null);
+    setIsView(false);
+    close();
   };
 
   const columns = useMemo(
@@ -201,7 +266,7 @@ export function LoanDisbursement() {
           <Badge
             variant="light"
             size="sm"
-            color={info.getValue() === 'Employee' ? 'indigo' : info.getValue() === 'Vendor' ? 'orange' : 'cyan'}
+            color={info.getValue() === 'Employee' ? 'indigo' : info.getValue() === 'Vendor' ? 'orange' : 'gray'}
             styles={{ root: { fontSize: 10, padding: '0 8px' } }}
           >
             {info.getValue()}
@@ -242,17 +307,21 @@ export function LoanDisbursement() {
       }),
       columnHelper.accessor('status', {
         header: 'Status',
-        cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            color={info.getValue() === 'DISBURSED' ? 'green' : 'yellow'}
-            className="font-semibold tracking-wider"
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
-            {info.getValue()}
-          </Badge>
-        ),
+        cell: (info) => {
+          const val = info.getValue();
+          const color = val === 'Submitted' || val === 'Disbursed' ? 'green' : 'yellow';
+          return (
+            <Badge
+              variant="light"
+              size="sm"
+              color={color}
+              className="font-semibold tracking-wider"
+              styles={{ root: { fontSize: 10, padding: '0 8px' } }}
+            >
+              {val}
+            </Badge>
+          );
+        },
       }),
       columnHelper.display({
         id: 'actions',
@@ -263,15 +332,31 @@ export function LoanDisbursement() {
         ),
         cell: (info) => {
           const row = info.row.original;
+          
+          // Determine if the record is in a draft state (adjust 'Draft' based on your exact API status string)
+          const isDraft = row.status === 'Draft'; 
+          const isDeleting = deleteMutation.isPending && deleteMutation.variables === row.id;
+
           return (
             <Group justify="flex-end" gap={6} wrap="nowrap">
-              <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="gray">
+             <Tooltip label="View" withArrow>
+                <ActionIcon 
+                  size="sm" 
+                  variant="subtle" 
+                  color="gray"
+                  onClick={() => handleView(row)} 
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="blue">
+                <ActionIcon 
+                  size="sm" 
+                  variant="subtle" 
+                  color="blue"
+                  onClick={() => handleEdit(row)}
+                  disabled={!isDraft} // Optional: Prevent editing if already submitted
+                >
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -279,12 +364,50 @@ export function LoanDisbursement() {
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="red"
-                  onClick={() => handleDelete(row.id)}
+                  color={isDraft ? "red" : "gray"}
+                  disabled={!isDraft || isDeleting}
+                  loading={isDeleting}
+                  onClick={() => {
+                    modals.openConfirmModal({
+                      title: 'Delete Loan Disbursement',
+                      children: (
+                        <Text size="sm">
+                          Are you sure you want to delete disbursement <b>{row.id}</b>? This cannot be undone.
+                        </Text>
+                      ),
+                      labels: { confirm: 'Delete', cancel: 'Cancel' },
+                      confirmProps: { color: 'red' },
+                      onConfirm: () => deleteMutation.mutate(row.id),
+                    });
+                  }}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
+
+              <Menu shadow="md" width={140} position="bottom-end">
+                <Menu.Target>
+                  <ActionIcon size="sm" variant="subtle" color="gray" loading={statusMutation.isPending && statusMutation.variables?.id === row.id}>
+                    <IconDotsVertical size={14} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {isDraft ? (
+                    <Menu.Item 
+                      onClick={() => statusMutation.mutate({ id: row.id, action: 'approved' })}
+                    >
+                      Submit
+                    </Menu.Item>
+                  ) : (
+                    <Menu.Item 
+                      color="red" 
+                      onClick={() => statusMutation.mutate({ id: row.id, action: 'cancelled' })}
+                    >
+                      Cancel
+                    </Menu.Item>
+                  )}
+                </Menu.Dropdown>
+              </Menu>
             </Group>
           );
         },
@@ -317,26 +440,33 @@ export function LoanDisbursement() {
     setStatus('all');
   };
 
-  const companyOptions = Array.from(new Set(DUMMY_DISBURSEMENTS.map((r) => r.company)));
+  const companyOptions = Array.from(new Set(rowsData.map((r) => r.company).filter(c => c !== '—')));
 
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
-      <LoanDisbursementModal opened={opened} onClose={close} onSubmit={handleAddDisbursement} />
+      <LoanDisbursementModal 
+        opened={opened} onClose={handleModalClose} editId={editId} initialData={editData} isView={isView}/>
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
         <Title order={2} className="text-gray-900 font-semibold">
           Loan Disbursements
         </Title>
-        <Button
+       <Button
           size="xs"
-          onClick={open}
+          onClick={handleAdd} 
           className="bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] hover:opacity-90 transition-opacity"
           leftSection={<IconPlus size={14} />}
         >
           Add Disbursement
         </Button>
       </div>
+
+      {error && (
+        <Alert color="red" icon={<IconAlertCircle size={16} />} withCloseButton onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
 
       {/* Filters Box */}
       <Paper withBorder radius="md" p="xs" className="shadow-sm">
@@ -391,7 +521,7 @@ export function LoanDisbursement() {
           >
             <Group gap="sm">
               <Radio size="xs" value="all" label="All" color="indigo" />
-              <Radio size="xs" value="DISBURSED" label="Disbursed" color="indigo" />
+              <Radio size="xs" value="SUBMITTED" label="Submitted" color="indigo" />
               <Radio size="xs" value="PENDING" label="Pending" color="indigo" />
             </Group>
           </Radio.Group>
@@ -404,91 +534,99 @@ export function LoanDisbursement() {
 
       {/* Data Table */}
       <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
-        <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full">
-          <Table.Thead className="bg-gray-50 border-b border-gray-200">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <Table.Tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  const canSort = header.column.getCanSort();
-                  return (
-                    <Table.Th
-                      key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${
-                        canSort ? 'cursor-pointer' : ''
-                      }`}
-                      style={{ fontSize: 11, padding: '6px 10px' }}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      <Group
-                        gap={4}
-                        wrap="nowrap"
-                        justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
-                      </Group>
-                    </Table.Th>
-                  );
-                })}
-              </Table.Tr>
-            ))}
-          </Table.Thead>
-          <Table.Tbody>
-            {rows.length === 0 ? (
-              <Table.Tr>
-                <Table.Td colSpan={columns.length}>
-                  <div className="flex flex-col items-center py-8 text-gray-400">
-                    <IconCashBanknote size={32} className="mb-2 opacity-50" />
-                    <Text ta="center" c="dimmed" fz="xs">
-                      No disbursements match your filters.
-                    </Text>
-                  </div>
-                </Table.Td>
-              </Table.Tr>
-            ) : (
-              rows.map((row) => (
-                <Table.Tr
-                  key={row.id}
-                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <Table.Td key={cell.id} style={{ padding: '5px 10px' }}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        {isLoading ? (
+          <div className="flex justify-center items-center py-16">
+            <Loader size="sm" color="indigo" />
+          </div>
+        ) : (
+          <>
+            <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full">
+              <Table.Thead className="bg-gray-50 border-b border-gray-200">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <Table.Tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      const canSort = header.column.getCanSort();
+                      return (
+                        <Table.Th
+                          key={header.id}
+                          className={`text-gray-600 font-semibold select-none ${
+                            canSort ? 'cursor-pointer' : ''
+                          }`}
+                          style={{ fontSize: 11, padding: '6px 10px' }}
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          <Group
+                            gap={4}
+                            wrap="nowrap"
+                            justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
+                          </Group>
+                        </Table.Th>
+                      );
+                    })}
+                  </Table.Tr>
+                ))}
+              </Table.Thead>
+              <Table.Tbody>
+                {rows.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={columns.length}>
+                      <div className="flex flex-col items-center py-8 text-gray-400">
+                        <IconCashBanknote size={32} className="mb-2 opacity-50" />
+                        <Text ta="center" c="dimmed" fz="xs">
+                          No disbursements match your filters.
+                        </Text>
+                      </div>
                     </Table.Td>
-                  ))}
-                </Table.Tr>
-              ))
-            )}
-          </Table.Tbody>
-        </Table>
+                  </Table.Tr>
+                ) : (
+                  rows.map((row) => (
+                    <Table.Tr
+                      key={row.id}
+                      className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <Table.Td key={cell.id} style={{ padding: '5px 10px' }}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </Table.Td>
+                      ))}
+                    </Table.Tr>
+                  ))
+                )}
+              </Table.Tbody>
+            </Table>
 
-        {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span>
-              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span>Rows:</span>
-              <Select
-                data={['10', '20', '50']}
-                value={String(pageSize)}
-                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
-                rightSection={chevronDown}
+            {/* Pagination Footer */}
+            <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span>
+                  {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span>Rows:</span>
+                  <Select
+                    data={['10', '20', '50']}
+                    value={String(pageSize)}
+                    onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                    rightSection={chevronDown}
+                    size="xs"
+                    className="w-14"
+                  />
+                </div>
+              </div>
+              <Pagination
+                total={table.getPageCount() || 1}
+                value={pageIndex + 1}
+                onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+                color="indigo"
                 size="xs"
-                className="w-14"
+                radius="sm"
               />
             </div>
-          </div>
-          <Pagination
-            total={table.getPageCount() || 1}
-            value={pageIndex + 1}
-            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-            color="indigo"
-            size="xs"
-            radius="sm"
-          />
-        </div>
+          </>
+        )}
       </Paper>
     </Box>
   );

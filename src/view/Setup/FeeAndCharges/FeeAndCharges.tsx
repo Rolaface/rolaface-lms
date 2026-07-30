@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {getFeeAndCharges} from '../../../api/loanChargesApi';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {getFeeAndCharges,deleteFeeAndCharge} from '../../../api/loanChargesApi';
 import {
   Box,
   Button,
@@ -18,6 +18,7 @@ import {
 import {
   IconEye,
   IconPencil,
+  IconTrash,
   IconPlus,
   IconChevronUp,
   IconChevronDown,
@@ -34,6 +35,7 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 import { FeeAndChargesModal, type FeeAndCharge } from "../../../components/Modal/FeeAndChargesModal";
+import { queryClient } from "../../../config/queryClient";
 
 
 const columnHelper = createColumnHelper<FeeAndCharge>();
@@ -72,11 +74,18 @@ export function FeeAndCharges() {
    queryKey: ["fee-and-charges", pagination.pageIndex, pagination.pageSize, search],
     queryFn: () =>
       getFeeAndCharges({
-        page: pagination.pageIndex + 1, // API is 1-indexed, react-table is 0-indexed
+        page: pagination.pageIndex + 1, 
         page_size: pagination.pageSize,
         search: search || undefined,
       }),
     placeholderData: (prev) => prev,
+  });
+  
+ const deleteMutation = useMutation({
+    mutationFn: deleteFeeAndCharge,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fee-and-charges"] });
+    },
   });
 
   const filteredData: FeeAndCharge[] = useMemo(() => {
@@ -132,11 +141,26 @@ export function FeeAndCharges() {
                 <IconPencil size={14} />
               </ActionIcon>
             </Tooltip>
+             <Tooltip label="Delete" withArrow>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="red"
+                loading={deleteMutation.isPending && deleteMutation.variables === info.row.original.name}
+                onClick={() => {
+                  if (confirm(`Delete "${info.row.original.name}"?`)) {
+                    deleteMutation.mutate(String(info.row.original.id));
+                  }
+                }}
+              >
+                <IconTrash size={14} />
+              </ActionIcon>
+           </Tooltip>
           </Group>
         ),
       }),
     ],
-    [],
+     [deleteMutation.isPending, deleteMutation.variables],
   );
 
   const table = useReactTable({
