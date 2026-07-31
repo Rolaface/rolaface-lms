@@ -7,13 +7,11 @@ import {
   IconX, IconUser, IconPhone, IconId, IconChartLine, IconCash, IconShieldCheck,
   IconUpload, IconUsers, IconTag, IconCheck, IconArrowLeft, IconArrowRight,
   IconPlus, IconTrash, IconMail, IconMapPin, IconWorld, IconChevronDown,
-  IconChevronUp, IconCreditCard, IconWallet, IconLink, IconUserPlus,
+  IconChevronUp, IconLink, IconUserPlus,
   IconClipboardCheck, IconCalendar, IconLanguage, IconBriefcase,
-  IconBuildingBank, IconFileText, IconStarFilled, IconPhoto, IconSignature,
+  IconFileText, IconStarFilled, IconPhoto, IconSignature,
   IconReceipt, IconFileInvoice, IconBuildingBank as IconBankFile,
 } from "@tabler/icons-react";
-import { BankAccountModal, type BankAccountFormData } from "./BankAccountModal";
-
 interface CustomerModalProps {
   opened: boolean;
   onClose: () => void;
@@ -29,41 +27,42 @@ const theme = {
 };
 type ChipColor = keyof typeof theme;
 
-/* ---------------------------------------------------------------------
-   FIELD WIDTHS — every input is sized to what it actually holds
-   instead of being stretched into an equal grid cell. Short codes
-   (postal, dates, dependents) stay narrow; names/addresses/emails get
-   the room they need. Fields sit in a flex-wrap row and wrap naturally
-   on smaller screens instead of forcing a rigid N-column grid.
---------------------------------------------------------------------- */
+
 const W = {
-  xxs: 110, // postal code, dependents
-  xs: 140,  // dates, district, gender
-  sm: 170,  // marital status, city, industry
-  md: 200,  // occupation, id number, education
-  lg: 230,  // employer, id type, borrower category
-  xl: 260,  // full name, mobile, email
-  xxl: 320, // residential address, branch
+  xxs: 2, // postal code, dependents
+  xs: 2,  // dates, district, gender
+  sm: 3,  // marital status, city, industry
+  md: 3,  // occupation, id number, education, credit officer
+  lg: 4,  // employer, id type, borrower category, branch
+  xl: 3,  // mobile, email
+  xxl: 6, // residential address, mailing address, kin address
 };
 
+
+
 const labelPropsPlain = {
-  label: "text-[12px] font-semibold text-slate-700 mb-1",
+  label: `text-[12px] font-semibold text-slate-700 mb-1 flex items-center`,
   error: "text-[10px] text-danger-6 mt-0.5",
   input: "min-h-[36px] h-[36px] text-[13px] border-slate-200 rounded-lg transition-colors focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)] px-3",
 };
 
-/* Reference-matched styling: label text + inline qualifier word
-   ("Required" / "Optional" / "(auto)" / "(calculated)"), a taller
-   42px input, and a distinct greyed-out look for read-only /
-   system-computed fields (Customer Number, Age). */
+
 const FieldLabel = ({ text, tag, tone = "muted" }: { text: string; tag?: string; tone?: "required" | "muted" }) => (
-  <span className="inline-flex items-baseline gap-1.5">
-    <span className="text-[13px] font-semibold text-slate-800">{text}</span>
-    {tag && <span className={`text-[11.5px] font-medium ${tone === "required" ? "text-rose-700" : "text-slate-400"}`}>{tag}</span>}
+  <span
+    className="inline-flex items-baseline gap-1.5"
+    style={{ height: LABEL_ROW_H, lineHeight: `${LABEL_ROW_H}px` }}
+  >
+    <span className="text-[13px] font-semibold text-slate-800 whitespace-nowrap">{text}</span>
+
+    <span
+      className={`text-[11.5px] font-medium whitespace-nowrap ${tag ? (tone === "required" ? "text-rose-700" : "text-slate-400") : "invisible"}`}
+    >
+      {tag || "·"}
+    </span>
   </span>
 );
 const gridLabelProps = {
-  label: "mb-1.5",
+  label: "mb-1.5 flex items-center",
   error: "text-[10px] text-danger-6 mt-0.5",
   input: "min-h-[42px] h-[42px] text-[13.5px] border-slate-200 rounded-lg transition-colors focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)] px-3.5",
 };
@@ -72,55 +71,50 @@ const gridLabelPropsReadOnly = {
   input: `${gridLabelProps.input} !bg-slate-50 !text-slate-400 !border-slate-150`,
 };
 const fieldLabelProps = {
-  label: "text-[11px] font-medium text-slate-600 mb-1",
+  label: "text-[11px] font-medium text-slate-600 mb-1 flex items-center",
   error: "text-[10px] text-danger-6 mt-0.5",
   input: "min-h-[32px] h-[32px] text-[12.5px] rounded-md border-slate-200 focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)]",
 };
 const labelProps = {
-  label: "text-[12px] font-semibold text-slate-700 mb-1",
+  label: "text-[12px] font-semibold text-slate-700 mb-1 flex items-center",
   error: "text-[10px] text-danger-6 mt-0.5",
   input: "min-h-[38px] h-[38px] text-[13px] border-slate-200 rounded-lg overflow-hidden transition-colors focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)] !pl-[46px]",
 };
 
-/* Forces a true fixed width on a field no matter what global CSS is
-   doing to Mantine inputs elsewhere in the app. A plain inline style
-   loses to any external rule marked !important — so instead we set
-   the width via the DOM API with 'important' priority, which beats
-   every external rule, !important or not. This is the only approach
-   that is guaranteed to hold regardless of the host project's CSS. */
+
 const F = ({ w, children }: { w: number; children: React.ReactNode }) => {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.setProperty("width", `${w}px`, "important");
-    el.style.setProperty("min-width", `${w}px`, "important");
-    el.style.setProperty("max-width", `${w}px`, "important");
-    el.style.setProperty("flex", `0 0 ${w}px`, "important");
+    el.style.setProperty("grid-column", `span ${w} / span ${w}`, "important");
+    el.style.setProperty("min-width", "0", "important");
   }, [w]);
   return (
-    <div ref={ref} style={{ width: w, maxWidth: w, flex: `0 0 ${w}px` }} className="min-w-0">
+    <div ref={ref} style={{ gridColumn: `span ${w} / span ${w}`, minWidth: 0 }} className="flex flex-col">
       {children}
     </div>
   );
 };
 
-/* Same guarantee as F, but for the row container itself — forces
-   display:flex + wrap + gaps so fields sit side by side and wrap
-   naturally, regardless of any conflicting global CSS. */
+
 const Row = ({ className = "", children }: { className?: string; children: React.ReactNode }) => {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.setProperty("display", "flex", "important");
-    el.style.setProperty("flex-wrap", "wrap", "important");
-    el.style.setProperty("align-items", "flex-start", "important");
+    el.style.setProperty("display", "grid", "important");
+    el.style.setProperty("grid-template-columns", "repeat(12, minmax(0, 1fr))", "important");
+    el.style.setProperty("align-items", "end", "important");
     el.style.setProperty("column-gap", "16px", "important");
     el.style.setProperty("row-gap", "12px", "important");
   }, []);
   return (
-    <div ref={ref} className={className} style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", columnGap: 16, rowGap: 12 }}>
+    <div
+      ref={ref}
+      className={className}
+      style={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", alignItems: "end", columnGap: 16, rowGap: 12 }}
+    >
       {children}
     </div>
   );
@@ -135,13 +129,10 @@ const IconChip = ({ icon: Icon, color = "brand" }: { icon: React.ComponentType<{
   );
 };
 
-/* PlainCard now carries a thin gradient accent strip on top so each
-   section reads as its own distinct module instead of an identical
-   grey box repeated ten times. */
-const PlainCard = ({ children, accent = "brand" }: { children: React.ReactNode; accent?: ChipColor }) => (
+
+const PlainCard = ({ children, accent = "brand", dense = false }: { children: React.ReactNode; accent?: ChipColor; dense?: boolean }) => (
   <Paper withBorder radius="lg" p={0} className="shadow-[0_1px_3px_rgba(15,23,42,0.06)] hover:shadow-[0_2px_10px_rgba(15,23,42,0.08)] transition-shadow bg-white border-slate-200 overflow-hidden">
-    <div className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, ${theme[accent][5]}, ${theme[accent][6]})` }} />
-    <div className="p-3.5">{children}</div>
+    <div className={dense ? "p-2.5" : "p-3.5"}>{children}</div>
   </Paper>
 );
 
@@ -155,14 +146,14 @@ const BADGE_STYLE: Record<string, { bg: string; color: string }> = {
   "RUNS AUTOMATICALLY": { bg: theme.brand[0], color: theme.brand[6] },
 };
 
-const SectionHeader = ({ icon: Icon, title, badge, description, accent = "brand" }: { icon: any; title: string; badge?: keyof typeof BADGE_STYLE; description?: string; accent?: ChipColor }) => {
+const SectionHeader = ({ icon: Icon, title, badge, description, accent = "brand", dense = false }: { icon: any; title: string; badge?: keyof typeof BADGE_STYLE; description?: string; accent?: ChipColor; dense?: boolean }) => {
   const b = badge ? BADGE_STYLE[badge] : null;
   const c = theme[accent];
   return (
-    <div className="flex items-start justify-between pb-2.5 mb-2.5 border-b border-slate-100">
+    <div className={`flex items-start justify-between border-b border-slate-100 ${dense ? "pb-1.5 mb-1.5" : "pb-2.5 mb-2.5"}`}>
       <div className="flex items-start gap-2.5">
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border" style={{ backgroundColor: c[0], borderColor: c[1] }}>
-          <Icon size={16} style={{ color: (c as any)[6] }} />
+        <div className={`rounded-lg flex items-center justify-center shrink-0 border ${dense ? "w-6 h-6" : "w-7 h-7"}`} style={{ backgroundColor: c[0], borderColor: c[1] }}>
+          <Icon size={dense ? 14 : 16} style={{ color: (c as any)[6] }} />
         </div>
         <div>
           <div className="flex items-center gap-2">
@@ -173,7 +164,7 @@ const SectionHeader = ({ icon: Icon, title, badge, description, accent = "brand"
               </span>
             )}
           </div>
-          {description && <Text size="xs" className="text-slate-400 mt-0.5">{description}</Text>}
+          {description && !dense && <Text size="xs" className="text-slate-400 mt-0.5">{description}</Text>}
         </div>
       </div>
       <IconChevronUp size={15} className="text-slate-300 mt-1.5 shrink-0" />
@@ -191,7 +182,6 @@ const STEPS = [
   { label: "Documents", icon: IconUpload },
   { label: "Next of Kin", icon: IconUsers },
   { label: "Tags & Notes", icon: IconTag },
-  { label: "Bank Accounts", icon: IconWallet },
 ];
 
 type IdDocument = {
@@ -207,6 +197,8 @@ type IdDocument = {
 
 type CustomField = { id: string; label: string; value: string; type: string };
 
+type UploadedDoc = { name: string; size: number; previewUrl?: string };
+
 let uid = 0;
 const nextId = () => `id_${Date.now()}_${uid++}`;
 
@@ -218,6 +210,12 @@ const calcAge = (dob: string): string => {
   const ageDate = new Date(diffMs);
   const age = Math.abs(ageDate.getUTCFullYear() - 1970);
   return age >= 0 && age < 130 ? `${age} yrs` : "—";
+};
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
 export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProps) {
@@ -292,16 +290,49 @@ export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProp
 
   // --- Documents ---
   const DOC_TILES = [
-    { key: "profilePhoto", label: "Profile Photo", icon: IconPhoto, hint: "JPG, PNG up to 5MB" },
-    { key: "signature", label: "Signature", icon: IconSignature, hint: "JPG, PNG up to 2MB" },
-    { key: "nationalId", label: "National ID", icon: IconId, hint: "Front & back" },
-    { key: "utilityBill", label: "Utility Bill", icon: IconFileText, hint: "Proof of address" },
-    { key: "salarySlip", label: "Salary Slip", icon: IconReceipt, hint: "Last 3 months" },
-    { key: "bankStatement", label: "Bank Statement", icon: IconBankFile, hint: "Last 6 months" },
+    { key: "profilePhoto", label: "Profile Photo", icon: IconPhoto, hint: "JPG, PNG up to 5MB", accept: "image/*" },
+    { key: "signature", label: "Signature", icon: IconSignature, hint: "JPG, PNG up to 2MB", accept: "image/*" },
+    { key: "nationalId", label: "National ID", icon: IconId, hint: "Front & back", accept: "image/*,.pdf" },
+    { key: "utilityBill", label: "Utility Bill", icon: IconFileText, hint: "Proof of address", accept: "image/*,.pdf" },
+    { key: "salarySlip", label: "Salary Slip", icon: IconReceipt, hint: "Last 3 months", accept: "image/*,.pdf" },
+    { key: "bankStatement", label: "Bank Statement", icon: IconBankFile, hint: "Last 6 months", accept: "image/*,.pdf" },
   ] as const;
-  const [uploadedDocs, setUploadedDocs] = useState<Record<string, string>>({});
-  const handleFakeUpload = (key: string) => setUploadedDocs((prev) => ({ ...prev, [key]: `${key}.jpg` }));
-  const removeUpload = (key: string) => setUploadedDocs((prev) => { const n = { ...prev }; delete n[key]; return n; });
+  const [uploadedDocs, setUploadedDocs] = useState<Record<string, UploadedDoc>>({});
+  // One real <input type="file"> per tile, kept off-screen and
+  // triggered programmatically when the card is clicked.
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const triggerUpload = (key: string) => {
+    if (isViewMode) return;
+    fileInputRefs.current[key]?.click();
+  };
+
+  const handleFileSelected = (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // reset the input so choosing the exact same file again still fires onChange
+    e.target.value = "";
+    if (!file) return;
+    setUploadedDocs((prev) => {
+      const existing = prev[key];
+      if (existing?.previewUrl) URL.revokeObjectURL(existing.previewUrl);
+      return {
+        ...prev,
+        [key]: {
+          name: file.name,
+          size: file.size,
+          previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+        },
+      };
+    });
+  };
+
+  const removeUpload = (key: string) =>
+    setUploadedDocs((prev) => {
+      const n = { ...prev };
+      if (n[key]?.previewUrl) URL.revokeObjectURL(n[key].previewUrl!);
+      delete n[key];
+      return n;
+    });
 
   // --- Next of kin & guarantor ---
   const [kinName, setKinName] = useState("");
@@ -322,12 +353,6 @@ export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProp
   const removeCustomField = (id: string) => setCustomFields((p) => p.filter((f) => f.id !== id));
   const updateCustomField = (id: string, patch: Partial<CustomField>) => setCustomFields((p) => p.map((f) => (f.id === id ? { ...f, ...patch } : f)));
 
-  // --- Bank accounts ---
-  const [bankAccounts, setBankAccounts] = useState<BankAccountFormData[]>([]);
-  const [bankModalOpened, setBankModalOpened] = useState(false);
-  const handleAddBankAccount = (data: BankAccountFormData) => setBankAccounts((p) => [...p, data]);
-  const handleRemoveBankAccount = (id: number) => setBankAccounts((p) => p.filter((a) => a.id !== id));
-
   const handleReset = () => {
     setCustomerType("Individual"); setFullLegalName(""); setPreferredName(""); setGender(null);
     setDateOfBirth(""); setNationality(null); setMaritalStatus(null); setOccupation("");
@@ -341,10 +366,10 @@ export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProp
     setMonthlyIncome(""); setAnnualIncome(""); setCreditRiskCategory(null);
     setBorrowerCategory(null); setLoanPurpose(null); setIntendedLoanProduct(null);
     setPreliminaryRiskRating(null); setBranch(null); setCreditOfficer(null); setRelationshipManager(null);
+    Object.values(uploadedDocs).forEach((d) => d.previewUrl && URL.revokeObjectURL(d.previewUrl));
     setUploadedDocs({});
     setKinName(""); setKinRelationship(null); setKinPhone(""); setKinAddress(""); setGuarantorLinked(false);
     setTags([]); setRelationshipNotes(""); setCustomFields([]);
-    setBankAccounts([]);
     setActiveTab("0");
   };
 
@@ -360,16 +385,16 @@ export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProp
   // ============================================================
 
   const renderIdentity = () => (
-    <div className="flex flex-col gap-2.5">
-      <PlainCard accent="brand">
-        <SectionHeader icon={IconUser} title="Customer type" badge="REQUIRED" description="What kind of profile is this?" accent="brand" />
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2">
+      <PlainCard accent="brand" dense>
+        <SectionHeader icon={IconUser} title="Customer type" badge="REQUIRED" description="What kind of profile is this?" accent="brand" dense />
+        <div className="flex items-center gap-1.5">
           {["Individual", "Joint", "Business", "SME", "Corporate", "Group"].map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setCustomerType(t)}
-              className="flex-1 h-9 rounded-lg text-xs font-semibold transition-all border whitespace-nowrap"
+              className="flex-1 h-7 rounded-lg text-[11px] font-semibold transition-all border whitespace-nowrap"
               style={
                 customerType === t
                   ? { background: `linear-gradient(135deg, ${theme.brand[5]}, ${theme.brand[7]})`, color: "#fff", borderColor: theme.brand[6], boxShadow: `0 2px 6px ${theme.brand[1]}` }
@@ -381,30 +406,130 @@ export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProp
           ))}
         </div>
       </PlainCard>
-
       <PlainCard accent="brand">
-        <SectionHeader icon={IconClipboardCheck} title="Identity" badge="REQUIRED" description="Name, demographics and how this customer is uniquely identified in Meridian" accent="brand" />
-        <div className="grid grid-cols-3 gap-x-8 gap-y-5">
-          <TextInput size="xs" label={<FieldLabel text="Customer Number"  />} value={customerNumber}  withAsterisk disabled classNames={gridLabelPropsReadOnly} />
-          <TextInput size="xs" label={<FieldLabel text="Full Legal Name" />} withAsterisk placeholder="e.g. Bwalya Mutale" classNames={gridLabelProps} value={fullLegalName} onChange={(e) => setFullLegalName(e.currentTarget.value)} />
-          <TextInput size="xs" label={<FieldLabel text="Preferred Name" />}  withAsterisk placeholder="What should we call them?" classNames={gridLabelProps} value={preferredName} onChange={(e) => setPreferredName(e.currentTarget.value)} />
+        <SectionHeader icon={IconClipboardCheck} title="Identity" badge="REQUIRED" accent="brand" />
 
-          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label={<FieldLabel text="Gender"/>} withAsterisk  placeholder="Select" data={["Male", "Female", "Other"]} classNames={gridLabelProps} value={gender} onChange={setGender} />
-          <TextInput size="xs" type="date" label={<FieldLabel text="Date of Birth"  />}  withAsterisk classNames={gridLabelProps} value={dateOfBirth} onChange={(e) => setDateOfBirth(e.currentTarget.value)} />
-          <TextInput size="xs" label={<FieldLabel text="Age" tag="(calculated)" />} value={calcAge(dateOfBirth)} disabled classNames={gridLabelPropsReadOnly} />
+        <div className="grid grid-cols-3 gap-x-6 gap-y-5">
+          <TextInput
+            size="xs"
+            label={<FieldLabel text="Customer number" tag="(auto)" />}
+            value={customerNumber}
+            disabled
+            classNames={gridLabelPropsReadOnly}
+          />
 
-          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label={<FieldLabel text="Nationality" />}  withAsterisk placeholder="Select" data={["Zambian", "Zimbabwean", "Malawian", "South African", "Other"]} classNames={gridLabelProps} value={nationality} onChange={setNationality} />
-          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label={<FieldLabel text="Marital Status" tag="Optional" />} placeholder="Select" data={["Single", "Married", "Divorced", "Widowed"]} classNames={gridLabelProps} value={maritalStatus} onChange={setMaritalStatus} />
-          <TextInput size="xs" label={<FieldLabel text="Occupation" tag="Optional" />} placeholder="e.g. Agronomist" classNames={gridLabelProps} value={occupation} onChange={(e) => setOccupation(e.currentTarget.value)} />
-          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label={<FieldLabel text="Industry" tag="Optional" />} placeholder="Select" data={["Agriculture", "Government", "Retail", "Manufacturing", "Education", "Other"]} classNames={gridLabelProps} value={industry} onChange={setIndustry} />
-          <TextInput size="xs" label={<FieldLabel text="Employer" tag="Optional" />} placeholder="e.g. Ministry of Agriculture" classNames={gridLabelProps} value={employer} onChange={(e) => setEmployer(e.currentTarget.value)} />
-          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label={<FieldLabel text="ID Type" tag="Optional" />} placeholder="Select" data={["National ID (NRC)", "Passport", "Driver's Licence"]} classNames={gridLabelProps} value={idTypeBasic} onChange={setIdTypeBasic} />
+          <TextInput
+            size="xs"
+            label={<FieldLabel text="Full legal name" />}
+            placeholder="e.g. Bwalya Mutale"
+            classNames={gridLabelProps}
+            value={fullLegalName}
+            withAsterisk
+            onChange={(e) => setFullLegalName(e.currentTarget.value)}
+          />
 
-          <TextInput size="xs" label={<FieldLabel text="ID / Passport Number" tag="Optional" />} placeholder="Enter ID number" classNames={gridLabelProps} value={idNumberBasic} onChange={(e) => setIdNumberBasic(e.currentTarget.value)} />
-          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label={<FieldLabel text="Preferred Language" tag="Optional" />} placeholder="Select" data={["English", "Bemba", "Nyanja", "Tonga"]} classNames={gridLabelProps} value={preferredLanguage} onChange={setPreferredLanguage} />
-          <NumberInput size="xs" label={<FieldLabel text="No. of Dependents" tag="Optional" />} placeholder="0" min={0} classNames={gridLabelProps} value={noOfDependents} onChange={(v) => setNoOfDependents(v as number | "")} />
+          <TextInput
+            size="xs"
+            label={<FieldLabel text="Preferred name" tag="Optional" />}
+            placeholder="What should we call them?"
+            classNames={gridLabelProps}
+            value={preferredName}
+            onChange={(e) => setPreferredName(e.currentTarget.value)}
+          />
+
+          <Select
+            size="xs"
+            searchable
+            rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+            label={<FieldLabel text="Gender" />}
+            placeholder="Select"
+            withAsterisk
+            data={["Male", "Female", "Other"]}
+            classNames={gridLabelProps}
+            value={gender}
+            onChange={setGender}
+          />
+
+          <TextInput
+            size="xs"
+            type="date"
+            label={<FieldLabel text="Date of birth" />}
+            classNames={gridLabelProps}
+            value={dateOfBirth}
+            withAsterisk
+            onChange={(e) => setDateOfBirth(e.currentTarget.value)}
+          />
+
+          <TextInput
+            size="xs"
+            label={<FieldLabel text="Age" tag="(calculated)" />}
+            value={calcAge(dateOfBirth)}
+            disabled
+            classNames={gridLabelPropsReadOnly}
+          />
+
+          <Select
+            size="xs"
+            searchable
+            rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+            label={<FieldLabel text="Nationality" />}
+            placeholder="Select"
+            withAsterisk
+            data={["Zambian", "Zimbabwean", "Malawian", "South African", "Other"]}
+            classNames={gridLabelProps}
+            value={nationality}
+            onChange={setNationality}
+          />
+
+          <Select
+            size="xs"
+            searchable
+            rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+            label={<FieldLabel text="Marital status" tag="Optional" />}
+            placeholder="Select"
+            data={["Single", "Married", "Divorced", "Widowed"]}
+            classNames={gridLabelProps}
+            value={maritalStatus}
+            onChange={setMaritalStatus}
+          />
+
+          <TextInput
+            size="xs"
+            label={<FieldLabel text="Occupation" tag="Optional" />}
+            placeholder="e.g. Agronomist"
+            classNames={gridLabelProps}
+            value={occupation}
+            onChange={(e) => setOccupation(e.currentTarget.value)}
+          />
+
+          <Select
+            size="xs"
+            searchable
+            rightSection={<IconChevronDown size={13} className="text-slate-400" />}
+            label={<FieldLabel text="Industry" tag="Optional" />}
+            placeholder="Select"
+            data={[
+              "Agriculture",
+              "Government",
+              "Retail",
+              "Manufacturing",
+              "Education",
+              "Other",
+            ]}
+            classNames={gridLabelProps}
+            value={industry}
+            onChange={setIndustry}
+          />
+
+          <TextInput
+            size="xs"
+            label={<FieldLabel text="Employer" tag="Optional" />}
+            placeholder="e.g. Ministry of Agriculture"
+            classNames={gridLabelProps}
+            value={employer}
+            onChange={(e) => setEmployer(e.currentTarget.value)}
+          />
         </div>
-        <Textarea mt="md" size="xs" label={<FieldLabel text="Notes" tag="Optional" />} placeholder="Enter any additional notes" minRows={2} classNames={gridLabelProps} value={notes} onChange={(e) => setNotes(e.currentTarget.value)} />
       </PlainCard>
     </div>
   );
@@ -603,26 +728,50 @@ export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProp
 
   const renderDocuments = () => (
     <PlainCard accent="indigoAlt">
-      <SectionHeader icon={IconUpload} title="Documents" badge="OPTIONAL" description="Drag and drop, or click a tile to attach a file" accent="indigoAlt" />
+      <SectionHeader icon={IconUpload} title="Documents" badge="OPTIONAL" description="Click a tile to choose a file from your device" accent="indigoAlt" />
       <div className="grid grid-cols-3 gap-3">
         {DOC_TILES.map((tile) => {
           const uploaded = uploadedDocs[tile.key];
           const TileIcon = tile.icon;
           return (
-            <div
-              key={tile.key}
-              onClick={() => (uploaded ? undefined : handleFakeUpload(tile.key))}
-              className={`rounded-xl border p-3.5 text-center cursor-pointer transition-colors ${uploaded ? "" : "border-dashed hover:border-slate-400"}`}
-              style={uploaded ? { borderColor: theme.brand[1], backgroundColor: theme.brand[0] } : { borderColor: "#cbd5e1" }}
-            >
-              <TileIcon size={18} className="mx-auto mb-2" style={{ color: uploaded ? theme.brand[6] : "#94a3b8" }} />
-              <Text size="xs" fw={700} className="text-slate-700">{tile.label}</Text>
-              <Text size="10px" className="text-slate-400 mt-0.5">{uploaded ? `Uploaded · ${uploaded}` : tile.hint}</Text>
-              {uploaded && (
-                <button type="button" onClick={(e) => { e.stopPropagation(); removeUpload(tile.key); }} className="text-[10px] font-semibold mt-1.5" style={{ color: theme.danger[6] }}>
-                  Remove
-                </button>
-              )}
+            <div key={tile.key}>
+              {/* Real, hidden file input — this is what actually opens
+                  the OS file picker and gives us a File object. */}
+              <input
+                ref={(el) => { fileInputRefs.current[tile.key] = el; }}
+                type="file"
+                accept={tile.accept}
+                className="hidden"
+                onChange={(e) => handleFileSelected(tile.key, e)}
+              />
+              <div
+                role="button"
+                tabIndex={isViewMode ? -1 : 0}
+                onClick={() => triggerUpload(tile.key)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); triggerUpload(tile.key); } }}
+                className={`rounded-xl border p-3.5 text-center transition-colors ${isViewMode ? "cursor-default" : "cursor-pointer"} ${uploaded ? "" : "border-dashed hover:border-slate-400"}`}
+                style={uploaded ? { borderColor: theme.brand[1], backgroundColor: theme.brand[0] } : { borderColor: "#cbd5e1" }}
+              >
+                {uploaded?.previewUrl ? (
+                  <img src={uploaded.previewUrl} alt={uploaded.name} className="w-full h-16 object-cover rounded-lg mb-2 border" style={{ borderColor: theme.brand[1] }} />
+                ) : (
+                  <TileIcon size={18} className="mx-auto mb-2" style={{ color: uploaded ? theme.brand[6] : "#94a3b8" }} />
+                )}
+                <Text size="xs" fw={700} className="text-slate-700">{tile.label}</Text>
+                <Text size="10px" className="text-slate-400 mt-0.5 truncate">
+                  {uploaded ? `${uploaded.name} · ${formatFileSize(uploaded.size)}` : tile.hint}
+                </Text>
+                {uploaded && !isViewMode && (
+                  <div className="flex items-center justify-center gap-3 mt-1.5">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); triggerUpload(tile.key); }} className="text-[10px] font-semibold" style={{ color: theme.brand[6] }}>
+                      Replace
+                    </button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); removeUpload(tile.key); }} className="text-[10px] font-semibold" style={{ color: theme.danger[6] }}>
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
@@ -716,54 +865,6 @@ export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProp
     </PlainCard>
   );
 
-  const renderBankAccounts = () => (
-    <PlainCard accent="indigoAlt">
-      <SectionHeader icon={IconWallet} title="Bank accounts" badge="OPTIONAL" description="Linked accounts for disbursements and repayments" accent="indigoAlt" />
-      <div className="flex items-center justify-between mb-3">
-        <Text size="sm" fw={700} className="text-slate-900">{bankAccounts.length} {bankAccounts.length === 1 ? "Account" : "Accounts"}</Text>
-        <Button size="xs" color="brand" leftSection={<IconPlus size={14} />} onClick={() => setBankModalOpened(true)}>Add Account</Button>
-      </div>
-      {bankAccounts.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-7 text-center" style={{ borderColor: "#cbd5e1" }}>
-          <IconBuildingBank size={24} className="mx-auto mb-2 text-slate-300" />
-          <Text size="sm" fw={600} className="text-slate-600">No bank accounts added yet</Text>
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 gap-3">
-          {bankAccounts.map((acc) => (
-            <div key={acc.id} className="rounded-xl border p-3 relative" style={{ borderColor: "#e2e8f0" }}>
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <IconCreditCard size={16} style={{ color: theme.brand[6] }} />
-                  <div>
-                    <Text size="sm" fw={700} className="text-slate-800 leading-tight">{acc.bank || "—"}</Text>
-                    <Text size="10px" className="text-slate-400">{acc.accountHolderName || acc.name || "—"}</Text>
-                  </div>
-                </div>
-                <ActionIcon size="sm" color="danger" variant="subtle" onClick={() => handleRemoveBankAccount(acc.id)}>
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </div>
-              <div className="pt-2 border-t border-slate-100 flex justify-between">
-                <Text size="10px" className="text-slate-400">Account No.</Text>
-                <Text size="10px" fw={600} className="font-mono text-slate-700">{acc.accountNumber || "—"}</Text>
-              </div>
-              <div className="flex justify-between mt-1">
-                <Text size="10px" className="text-slate-400">IFSC</Text>
-                <Text size="10px" fw={600} className="font-mono text-slate-700">{acc.ifsc || "—"}</Text>
-              </div>
-              {acc.isDefault && (
-                <span className="absolute top-2 right-9 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: theme.brand[0], color: theme.brand[6] }}>
-                  DEFAULT
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </PlainCard>
-  );
-
   const renderStep = () => {
     switch (currentStep) {
       case 0: return renderIdentity();
@@ -775,7 +876,6 @@ export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProp
       case 6: return renderDocuments();
       case 7: return renderKin();
       case 8: return renderTags();
-      case 9: return renderBankAccounts();
       default: return null;
     }
   };
@@ -811,7 +911,7 @@ export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProp
           </Box>
 
           {/* Stepper */}
-          <Box className="px-8 pt-1.5 pb-1.5 border-b border-slate-100 shrink-0 bg-white overflow-x-auto">
+          <Box className="px-8 pt-1.5 pb-1.5 border-b border-slate-100 shrink-0 bg-white overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
             <div className="flex items-center min-w-max">
               {STEPS.map((step, idx) => {
                 const isActive = currentStep === idx;
@@ -897,14 +997,6 @@ export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProp
           </div>
         </Box>
       </Modal>
-
-      <BankAccountModal
-        opened={bankModalOpened}
-        onClose={() => setBankModalOpened(false)}
-        onSubmit={handleAddBankAccount}
-        defaultName={fullLegalName}
-        defaultAccountFor="Customer"
-      />
     </>
   );
 }
