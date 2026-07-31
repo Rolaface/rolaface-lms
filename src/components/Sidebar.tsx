@@ -32,6 +32,7 @@ import {
   IconCreditCardPay,
   IconChartLine,
   IconScale,
+  IconHome
 } from "@tabler/icons-react";
 
 /* ───────────────── Nav item types (recursive) ───────────────── */
@@ -280,11 +281,10 @@ function NavNode({
       <Box className="w-full">
         <UnstyledButton
           onClick={() => toggleMenu(menuKey)}
-          className={`flex w-full items-center justify-between font-medium transition-colors ${
-            isActive || isOpen
+          className={`flex w-full items-center justify-between font-medium transition-colors ${isActive || isOpen
               ? "text-[#1E40AF]"
               : "text-gray-600 hover:text-[#1E40AF]"
-          }`}
+            }`}
           style={{ fontSize: textSize }}
         >
           <Box className="flex items-center gap-3">
@@ -327,9 +327,8 @@ function NavNode({
     <UnstyledButton
       component={Link}
       to={item.path}
-      className={`flex items-center gap-3 font-medium transition-colors ${
-        isActive ? "text-[#1E40AF]" : "text-gray-600 hover:text-[#1E40AF]"
-      }`}
+      className={`flex items-center gap-3 font-medium transition-colors ${isActive ? "text-[#1E40AF]" : "text-gray-600 hover:text-[#1E40AF]"
+        }`}
       style={{ fontSize: textSize }}
     >
       <Icon
@@ -378,6 +377,18 @@ export function Sidebar({
           variant="subtle"
           color="gray"
           className="shrink-0"
+          title="Switch Workspace"
+          onClick={() => {
+            window.location.href = `${import.meta.env.VITE_ERP_URL}/select-app`;
+          }}
+        >
+          <IconHome size={20} className="text-gray-500" />
+        </ActionIcon>
+
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          className="shrink-0"
           onClick={onToggle}
         >
           <IconMenu2 size={22} className="text-gray-500" />
@@ -392,7 +403,7 @@ export function Sidebar({
         {LOCAL_NAV_ITEMS.map((item) => {
           const isRootActive = item.matchPrefix
             ? (pathname.startsWith(item.path!) && item.path !== "/") ||
-              pathname === item.path
+            pathname === item.path
             : pathname === item.path;
 
           const ItemIcon = item.icon;
@@ -413,11 +424,10 @@ export function Sidebar({
                   }
                 }}
                 title={isCollapsed ? item.label : undefined}
-                className={`flex w-full items-center justify-between text-[15px] font-medium transition-colors py-1.5 ${isCollapsed ? "justify-center" : ""} ${
-                  isRootActive || (isOpen && hasSubItems && !isCollapsed)
+                className={`flex w-full items-center justify-between text-[15px] font-medium transition-colors py-1.5 ${isCollapsed ? "justify-center" : ""} ${isRootActive || (isOpen && hasSubItems && !isCollapsed)
                     ? "text-[#1E40AF]"
                     : "text-gray-600 hover:text-[#1E40AF]"
-                }`}
+                  }`}
                 style={{ fontSize: SIZES.rootText }}
               >
                 <Box
@@ -469,6 +479,7 @@ export function Sidebar({
         })}
       </Stack>
 
+
       {/* Footer: User Profile */}
       <Box
         className={`border-t border-gray-200 shrink-0 ${isCollapsed ? "p-2 flex flex-col items-center gap-4" : "p-4"}`}
@@ -504,19 +515,9 @@ export function Sidebar({
               </Box>
             )}
           </Box>
-
-          {!isCollapsed && (
-            <ActionIcon variant="subtle" color="red">
-              <IconLogout size={22} className="text-red-500" stroke={1.5} />
-            </ActionIcon>
-          )}
         </Box>
 
-        {isCollapsed && (
-          <ActionIcon variant="subtle" color="red" title="Logout">
-            <IconLogout size={22} className="text-red-500" stroke={1.5} />
-          </ActionIcon>
-        )}
+
       </Box>
     </Box>
   );
