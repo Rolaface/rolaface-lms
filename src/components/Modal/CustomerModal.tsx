@@ -38,7 +38,7 @@ const W = {
   xxl: 6, // residential address, mailing address, kin address
 };
 
-
+const LABEL_ROW_H = 20; // px
 
 const labelPropsPlain = {
   label: `text-[12px] font-semibold text-slate-700 mb-1 flex items-center`,
@@ -53,7 +53,7 @@ const FieldLabel = ({ text, tag, tone = "muted" }: { text: string; tag?: string;
     style={{ height: LABEL_ROW_H, lineHeight: `${LABEL_ROW_H}px` }}
   >
     <span className="text-[13px] font-semibold text-slate-800 whitespace-nowrap">{text}</span>
-
+ 
     <span
       className={`text-[11.5px] font-medium whitespace-nowrap ${tag ? (tone === "required" ? "text-rose-700" : "text-slate-400") : "invisible"}`}
     >
@@ -136,10 +136,7 @@ const PlainCard = ({ children, accent = "brand", dense = false }: { children: Re
   </Paper>
 );
 
-/* ---------------------------------------------------------------------
-   Section header — icon chip, title, status badge and helper copy,
-   matching the reference cards (Contact information / REQUIRED, etc).
---------------------------------------------------------------------- */
+
 const BADGE_STYLE: Record<string, { bg: string; color: string }> = {
   REQUIRED: { bg: theme.gold[0], color: theme.gold[6] },
   OPTIONAL: { bg: "#F1F5F9", color: "#64748B" },
