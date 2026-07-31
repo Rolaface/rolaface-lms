@@ -197,7 +197,11 @@ loan: {
   // =========================
   // LOAN REPAYMENT
   // =========================
-  loanRepayment: {},
+  loanRepayment: {
+    getLoanReapyAcc: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.get_loan_repayment_account`,
+    createLoanRepay: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.create`,
+    getLoanDues: `${ERP_BASE}/api/method/lending.loan_management.doctype.loan_repayment.loan_repayment.calculate_amounts`,
+  },
 
   // =========================
   // LOAN RESTRUCTURE

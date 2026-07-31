@@ -242,14 +242,7 @@ export const getLoanProducts = async (): Promise<LoanProductApiResponse> => {
    GET BY ID
 =========================================================== */
 
-export const getLoanProductById = async (
-  id: string
-): Promise<LoanProductByIdResponse> => {
-  const response: AxiosResponse<LoanProductByIdResponse> = await api.get(
-    `${LoanProductAPI.getById}?id=${id}`
-  );
-  return response.data;
-};
+
 
 /* ===========================================================
    CREATE

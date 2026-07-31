@@ -34,6 +34,8 @@ import {
   IconHash,
   IconCalendarStats,
 } from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
+import { getLoanRepaymentAccount } from "../../api/loanRepaymentApi";
 
 interface LoanPrepaymentModalProps {
   opened: boolean;
@@ -74,119 +76,6 @@ interface Borrower {
   loans: LoanAccount[];
 }
 
-// Static borrower directory — wire up to real borrower lookup as needed.
-const BORROWERS: Borrower[] = [
-  {
-    name: "Yash Joshi",
-    cif: "1009842",
-    phone: "+91 98765 43210",
-    status: "Standard",
-    loans: [
-      {
-        id: "LNA-2025-001",
-        type: "Vehicle Loan",
-        balance: 12450,
-        emiDate: "5th of Month",
-        principalDue: 450,
-        interestDue: 125.5,
-        penalty: 10,
-        lateFees: 25,
-      },
-      {
-        id: "LNA-2025-089",
-        type: "Personal Loan",
-        balance: 4200,
-        emiDate: "12th of Month",
-        principalDue: 210,
-        interestDue: 65,
-        penalty: 10,
-        lateFees: 0,
-      },
-    ],
-  },
-  {
-    name: "Meera Nair",
-    cif: "1010223",
-    phone: "+91 91234 56780",
-    status: "Standard",
-    loans: [
-      {
-        id: "LNA-2025-014",
-        type: "Home Loan",
-        balance: 284300,
-        emiDate: "1st of Month",
-        principalDue: 3200,
-        interestDue: 1450.75,
-        penalty: 10,
-        lateFees: 0,
-      },
-    ],
-  },
-  {
-    name: "Arjun Kapoor",
-    cif: "1011567",
-    phone: "+91 99887 66554",
-    status: "Overdue",
-    loans: [
-      {
-        id: "LNA-2025-032",
-        type: "Vehicle Loan",
-        balance: 8600,
-        emiDate: "18th of Month",
-        principalDue: 380,
-        interestDue: 95.25,
-        penalty: 10,
-        lateFees: 40,
-      },
-      {
-        id: "LNA-2025-047",
-        type: "Personal Loan",
-        balance: 2150,
-        emiDate: "25th of Month",
-        principalDue: 175,
-        interestDue: 42.5,
-        penalty: 10,
-        lateFees: 15,
-      },
-    ],
-  },
-  {
-    name: "Sanya Iyer",
-    cif: "1012890",
-    phone: "+91 90000 12345",
-    status: "Standard",
-    loans: [
-      {
-        id: "LNA-2025-058",
-        type: "Education Loan",
-        balance: 156000,
-        emiDate: "10th of Month",
-        principalDue: 1200,
-        interestDue: 380.6,
-        penalty: 10,
-        lateFees: 0,
-      },
-    ],
-  },
-  {
-    name: "Rohan Mehta",
-    cif: "1013456",
-    phone: "+91 98123 45678",
-    status: "Overdue",
-    loans: [
-      {
-        id: "LNA-2025-071",
-        type: "Vehicle Loan",
-        balance: 5400,
-        emiDate: "3rd of Month",
-        principalDue: 300,
-        interestDue: 88,
-        penalty: 10,
-        lateFees: 60,
-      },
-    ],
-  },
-];
 
 const PAYMENT_MODES = ["Direct Debit from A/C", "Cash", "Cheque", "NEFT/RTGS", "UPI"];
 
@@ -243,24 +132,38 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
   const [remark, setRemark] = useState("");
   const [scheduleModalOpened, setScheduleModalOpened] = useState(false);
 
-  // Collapse the borrower panel automatically once a loan account is picked,
-  // to free up room for the payment form. Expands again if selection is cleared.
-  useEffect(() => {
+    useEffect(() => {
     setBorrowerPanelCollapsed(!!selectedLoanId);
   }, [selectedLoanId]);
 
-  const matches = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return [];
-    const qDigits = q.replace(/\D/g, "");
-    return BORROWERS.filter((b) => {
-      const nameWords = b.name.toLowerCase().split(" ");
-      const matchesName = nameWords.some((word) => word.startsWith(q));
-      const matchesPhone = qDigits.length > 0 && b.phone.replace(/\D/g, "").includes(qDigits);
-      const matchesCif = b.cif.startsWith(q);
-      return matchesName || matchesPhone || matchesCif;
-    });
-  }, [search]);
+const { data: searchResponse, isLoading: isSearching } = useQuery({
+  queryKey: ["loanRepaymentAccounts", search],
+  queryFn: () => getLoanRepaymentAccount(search),
+  enabled: opened && search.trim().length > 0,
+});
+
+const matches: Borrower[] = useMemo(() => {
+  const items = searchResponse?.message ?? [];
+  return items.map((item) => ({
+    name: item.applicant_name || item.applicant,
+    cif: item.applicant, // no separate CIF field returned by API
+    phone: item.phone_number || "",
+    status: "Standard", // not returned by API
+    loans: [
+      {
+        id: item.against_loan,
+        type: "", // not returned by API
+        balance: item.sanctioned_amount ?? 0,
+        emiDate: "", // not returned by API
+        principalDue: 0, // requires getLoanDues, not implemented yet
+        interestDue: 0,
+        penalty: 0,
+        lateFees: 0,
+        remainingInstallments: 0,
+      },
+    ],
+  }));
+}, [searchResponse]);
 
   const selectedLoan = selectedBorrower?.loans.find((l) => l.id === selectedLoanId) ?? null;
   const totalDue = selectedLoan
@@ -305,18 +208,6 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
     }
   };
 
-  const handleNatureChange = (value: string) => {
-    const nature = value as LoanRepaymentFormData["natureOfPayment"];
-    setNatureOfPayment(nature);
-    if (!selectedLoan) return;
-    if (nature === "PAY_DUES") {
-      setAmountToPay(Math.round(totalDue * 100) / 100);
-    } else if (nature === "FULL_SETTLEMENT") {
-      setAmountToPay(selectedLoan.balance);
-    } else {
-      setAmountToPay("");
-    }
-  };
 
   const handleReset = () => {
     setSearch("");
@@ -441,14 +332,14 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
                   Search by A/C no, phone or name
                 </Text>
 
-                <TextInput
-                  size="sm"
-                  placeholder="e.g. Yash Joshi, 9876543210..."
-                  value={search}
-                  onChange={(e) => setSearch(e.currentTarget.value)}
-                  leftSection={<IconSearch size={14} className="text-gray-400" />}
-                  classNames={labelClass}
-                />
+               <TextInput
+  size="sm"
+  placeholder="Search by loan A/C, applicant or phone"
+  value={search}
+  onChange={(e) => setSearch(e.currentTarget.value)}
+  leftSection={<IconSearch size={14} className="text-gray-400" />}
+  classNames={labelClass}
+/>
 
                 {selectedBorrower ? (
                   <div className="mt-4">
@@ -484,14 +375,14 @@ export function LoanPrepaymentModal({ opened, onClose, onSubmit }: LoanPrepaymen
                     </div>
                   </div>
                 ) : (
-                  search.trim() && (
-                    <div className="flex flex-col gap-2 mt-4">
-                      {matches.length === 0 ? (
-                        <Text size="xs" c="dimmed" className="py-2">
-                          No borrowers found.
-                        </Text>
-                      ) : (
-                        matches.map((borrower) => (
+                 search.trim() && (
+  <div className="flex flex-col gap-2 mt-4">
+    {isSearching ? (
+      <Text size="xs" c="dimmed" className="py-2">Searching...</Text>
+    ) : matches.length === 0 ? (
+      <Text size="xs" c="dimmed" className="py-2">No borrowers found.</Text>
+    ) : (
+      matches.map((borrower) => (
                           <button
                             key={borrower.cif}
                             type="button"

@@ -5,15 +5,8 @@ import { Box, Text, Button, ActionIcon, Modal } from "@mantine/core";
 import {
   IconX, IconBriefcase, IconArrowRight, IconArrowLeft, IconCheck,
 } from "@tabler/icons-react";
-import {
-//   createLoanProduct,
-//   updateLoanProduct,
-  getLoanProductById,
-  getAccounts,
-  type CreateLoanProductPayload,
-} from "../../../api/LoanProduct/LoanProductAPi";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
-import {createLoanProduct, updateLoanProduct} from "../../../api/productApi";
+import {createLoanProduct, updateLoanProduct, getLoanProductById, getAllIncomeAccounts, getAllIPAccounts, getAllPrincipalAccounts } from "../../../api/productApi";
 import { STEPS, theme, toAccountOptions } from "./Constants";
 import { ProductDetailsTab } from "./ProductDetailsTab";
 import { AccountingTab, type AccountFieldsState, type InterestPenaltyAccountsState } from "./AccountingTab";
@@ -61,9 +54,7 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
       maxLoanAmount: (v) => (!v ? "Maximum Loan Amount is required" : null),
       npaThreshold: (v) => (!v ? "This field is required" : null),
       interestRate: (v) => (!v ? "Interest Rate is required" : null),
-    //   interestFrequency: (v) => (!v ? "Interest Frequency is required" : null),
       penaltyRate: (v) => (!v ? "Penalty Rate is required" : null),
-    //   penaltyFrequency: (v) => (!v ? "Penalty Frequency is required" : null),
       collectionSeq: {
         standard: (v) => (!v ? "Required" : null),
         subStandard: (v) => (!v ? "Required" : null),
@@ -73,7 +64,6 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     },
   });
 
-  // Non-required / table-style data kept outside the form (same as charges/collaterals in LoanAccountModal)
   const [generalAccs, setGeneralAccs] = useState<AccountFieldsState>({
     loanAccount: "", disbursementAccount: "", repaymentAccount: "", writeOffAccount: "",
     writeOffRecoveryAccount: "", subsidyAccount: "", securityDepositAccount: "",
@@ -84,40 +74,32 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
   const [sameAsInterest, setSameAsInterest] = useState(false);
   const [interestAccs, setInterestAccs] = useState<InterestPenaltyAccountsState>({ income: "", receivable: "", accrued: "", suspended: "", waiver: "" });
   const [penaltyAccs, setPenaltyAccs] = useState<InterestPenaltyAccountsState>({ income: "", receivable: "", accrued: "", suspended: "", waiver: "" });
-  // Not part of the Interest/Penalty side-by-side table since there's no
-  // penalty equivalent — the backend requires this only on the interest side.
+
   const [brokenPeriodRecoveryAccount, setBrokenPeriodRecoveryAccount] = useState("");
 
   const [charges, setCharges] = useState<ChargeRow[]>([]);
   const [accountsModalIndex, setAccountsModalIndex] = useState<number | null>(null);
 
-  // ---------- ACCOUNT LOOKUPS (real data, replaces the old dummyAccounts) ----------
-  // Income accounts -> used for every "Income Account" field (interest, penalty, charges)
-  const { data: incomeAccountsData } = useQuery({
-    queryKey: ["accounts", "Income"],
-    queryFn: () => getAccounts({ root_type: "Income" }),
-    enabled: opened,
-    staleTime: 5 * 60 * 1000,
-  });
+ const { data: incomeAccountsData } = useQuery({
+  queryKey: ["accounts", "Income"],
+  queryFn: () => getAllIncomeAccounts(),
+  enabled: opened,
+  staleTime: 5 * 60 * 1000,
+});
 
-  // Asset/Liability accounts -> used for principal-side balance accounts
-  // (loan, disbursement, repayment, receivable, accrued, suspense, waiver,
-  // security deposit, suspense collection, customer refund, subsidy)
-  const { data: principalAccountsData } = useQuery({
-    queryKey: ["accounts", "Asset,Liability"],
-    queryFn: () => getAccounts({ root_type: "Asset,Liability" }),
-    enabled: opened,
-    staleTime: 5 * 60 * 1000,
-  });
+const { data: principalAccountsData } = useQuery({
+  queryKey: ["accounts", "Asset,Liability"],
+  queryFn: () => getAllPrincipalAccounts(),
+  enabled: opened,
+  staleTime: 5 * 60 * 1000,
+});
 
-  // Unrestricted account list (no root_type filter) -> used for Write Off /
-  // Write Off Recovery accounts, per the API note.
-  const { data: allAccountsData } = useQuery({
-    queryKey: ["accounts", "all"],
-    queryFn: () => getAccounts(),
-    enabled: opened,
-    staleTime: 5 * 60 * 1000,
-  });
+const { data: allAccountsData } = useQuery({
+  queryKey: ["accounts", "all"],
+  queryFn: () => getAllIPAccounts(),
+  enabled: opened,
+  staleTime: 5 * 60 * 1000,
+});
 
   const incomeAccounts = toAccountOptions(incomeAccountsData);
   const principalAccounts = toAccountOptions(principalAccountsData);
