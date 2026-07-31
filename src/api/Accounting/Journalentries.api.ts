@@ -1,3 +1,13 @@
+import type { AxiosResponse } from "axios";
+import apiClient from "../../config/axios";
+import { API } from "../../config/api";
+
+const api = apiClient;
+export const JournalEntryAPI = API.Accounting.journalEntry;
+
+/* ===========================================================
+   TYPES
+=========================================================== */
 
 export interface JournalEntry {
   name: string;
@@ -8,37 +18,131 @@ export interface JournalEntry {
   user_remark?: string;
 }
 
-const DUMMY_ENTRIES: JournalEntry[] = [
-  { name: 'JE-2026-0001', posting_date: '2026-07-01', total_debit: 45000, total_credit: 45000, docstatus: 1, user_remark: 'Salary provision for June' },
-  { name: 'JE-2026-0002', posting_date: '2026-07-03', total_debit: 128500, total_credit: 128500, docstatus: 1, user_remark: 'Rent payment - July' },
-  { name: 'JE-2026-0003', posting_date: '2026-07-05', total_debit: 21400, total_credit: 21400, docstatus: 0, user_remark: 'Utility bill adjustment' },
-  { name: 'JE-2026-0004', posting_date: '2026-07-08', total_debit: 96000, total_credit: 96000, docstatus: 2, user_remark: 'Duplicate entry — voided' },
-  { name: 'JE-2026-0005', posting_date: '2026-07-10', total_debit: 264300, total_credit: 264300, docstatus: 1, user_remark: 'Customer receipt - Bwalya Ent.' },
-  { name: 'JE-2026-0006', posting_date: '2026-07-14', total_debit: 34600, total_credit: 34600, docstatus: 0, user_remark: 'GST output adjustment' },
-  { name: 'JE-2026-0007', posting_date: '2026-07-18', total_debit: 187400, total_credit: 187400, docstatus: 1, user_remark: 'Supplier payment - Harborview' },
-  { name: 'JE-2026-0008', posting_date: '2026-07-22', total_debit: 14760, total_credit: 14760, docstatus: 0, user_remark: 'Marketing expense booking' },
+export interface JournalEntryPagination {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+export interface JournalEntryListResponse {
+  status_code?: number;
+  status?: string;
+  message?: string;
+  data: JournalEntry[];
+  pagination?: JournalEntryPagination;
+}
+
+export interface CommonApiResponse {
+  status_code?: number;
+  status?: string;
+  message?: string;
+}
+
+export interface FetchJournalEntriesParams {
+  search?: string;
+  fromDate?: string;
+  toDate?: string;
+  orderBy?: string;
+  pageIndex?: number; // 0-based, used by the UI
+  pageSize?: number;
+}
+
+export interface FetchJournalEntriesResult {
+  data: JournalEntry[];
+  total: number;
+}
+
+const FIELDS = [
+  "name",
+  "posting_date",
+  "total_debit",
+  "total_credit",
+  "docstatus",
+  "user_remark",
 ];
 
-/** GET /accounting/journal-entries — replace body with axios/react-query call */
-export async function fetchJournalEntries(): Promise<JournalEntry[]> {
-  await new Promise((res) => setTimeout(res, 300));
-  return DUMMY_ENTRIES;
-}
+/* ===========================================================
+   GET ALL (list, with search / date-range / sort / pagination)
+=========================================================== */
 
-/** POST /accounting/journal-entries/:name/submit — replace body with a real mutation */
-export async function submitJournalEntry(name: string): Promise<void> {
-  await new Promise((res) => setTimeout(res, 200));
-  void name;
-}
+export const fetchJournalEntries = async (
+  params: FetchJournalEntriesParams = {}
+): Promise<FetchJournalEntriesResult> => {
+  const {
+    search,
+    fromDate,
+    toDate,
+    orderBy = "creation desc",
+    pageIndex = 0,
+    pageSize = 10,
+  } = params;
 
-/** POST /accounting/journal-entries/:name/cancel — replace body with a real mutation */
-export async function cancelJournalEntry(name: string): Promise<void> {
-  await new Promise((res) => setTimeout(res, 200));
-  void name;
-}
+  const filters: any[][] = [];
+  if (fromDate && toDate) {
+    const filterField = orderBy.startsWith("posting_date") ? "posting_date" : "creation";
+    if (filterField === "creation") {
+      filters.push([filterField, ">=", `${fromDate} 00:00:00`]);
+      filters.push([filterField, "<=", `${toDate} 23:59:59`]);
+    } else {
+      filters.push([filterField, ">=", fromDate]);
+      filters.push([filterField, "<=", toDate]);
+    }
+  }
 
-/** DELETE /accounting/journal-entries/:name — replace body with a real mutation */
-export async function deleteJournalEntry(name: string): Promise<void> {
-  await new Promise((res) => setTimeout(res, 200));
-  void name;
-}
+  const limitStart = pageIndex * pageSize;
+
+  const searchParams = new URLSearchParams();
+  searchParams.set("fields", JSON.stringify(FIELDS));
+  searchParams.set("limit_start", String(limitStart));
+  searchParams.set("limit_page_length", String(pageSize));
+  if (search) searchParams.set("search", search);
+  if (orderBy) searchParams.set("order_by", orderBy);
+  if (filters.length > 0) searchParams.set("filters", JSON.stringify(filters));
+
+  const response: AxiosResponse<JournalEntryListResponse> = await api.get(
+    `${JournalEntryAPI.getAll}?${searchParams.toString()}`
+  );
+
+  const res = response.data as any;
+  const data: JournalEntry[] = res?.data || res?.message?.data || [];
+  const pagination: JournalEntryPagination | undefined =
+    res?.pagination || res?.message?.pagination;
+
+  return {
+    data: Array.isArray(data) ? data : [],
+    total: pagination?.total ?? data.length,
+  };
+};
+
+/* ===========================================================
+   STATUS ACTIONS (submit / cancel)
+=========================================================== */
+
+export const submitJournalEntry = async (name: string): Promise<CommonApiResponse> => {
+  const response: AxiosResponse<CommonApiResponse> = await api.patch(
+    JournalEntryAPI.updateStatus,
+    { id: name, action: "approved" }
+  );
+  return response.data;
+};
+
+export const cancelJournalEntry = async (name: string): Promise<CommonApiResponse> => {
+  const response: AxiosResponse<CommonApiResponse> = await api.patch(
+    JournalEntryAPI.updateStatus,
+    { id: name, action: "cancelled" }
+  );
+  return response.data;
+};
+
+/* ===========================================================
+   DELETE
+=========================================================== */
+
+export const deleteJournalEntry = async (name: string): Promise<CommonApiResponse> => {
+  const url = `${JournalEntryAPI.delete}/${encodeURIComponent(name)}`;
+  const response: AxiosResponse<CommonApiResponse> = await api.delete(url);
+  return response.data;
+};

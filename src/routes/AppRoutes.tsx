@@ -3,6 +3,7 @@ import {
   createRoute,
   createRootRoute,
   Outlet,
+  redirect,
 } from "@tanstack/react-router";
 import { AppLayout } from "../layout/AppLayout";
 
@@ -48,7 +49,10 @@ import { Receivable } from "../view/Accounting/Receivable ";
 import { Payable } from "../view/Accounting/Payable";
 import { ProfitLoss } from "../view/Accounting/Profitloss";
 import { BalanceSheet } from "../view/Accounting/balancesheet";
-
+import { AccountingLayout } from "../view/Accounting/AccountingLayout";
+import { IconHierarchy2, IconReceipt2, IconFileText } from "@tabler/icons-react";
+import { RouteTabs, type RouteTabItem } from "../components/ui/RouteTabs";
+// import Login from "../view/pages/Login";//yeh mat hantna for me its imp
 const rootRoute = createRootRoute({
   component: () => (
     <AppLayout>
@@ -62,6 +66,12 @@ const indexRoute = createRoute({
   path: "/",
   component: Dashboard,
 });
+
+// const loginRoute = createRoute({
+//   getParentRoute: () => rootRoute,
+//   path: "/login",                    //yeh bhi
+//   component: Login,
+// });
 
 const customerRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -216,26 +226,58 @@ const reportsRoute = createRoute({
   component: Outlet,
 });
 
+/* ---------- Accounting (layout + children) ---------- */
+const GL_TABS: RouteTabItem[] = [
+  { path: "/accounting/general-ledger/chart-of-accounts", label: "Chart Of Accounts", icon: IconHierarchy2 },
+  { path: "/accounting/general-ledger/journal-entry", label: "Journal Entry", icon: IconReceipt2 },
+  { path: "/accounting/general-ledger/report", label: "General Ledger Report", icon: IconFileText },
+];
+
+function GeneralLedgerTabs() {
+  return <RouteTabs tabs={GL_TABS} />;
+}
+
 const accountingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/accounting",
-  component: Outlet,
+  component: AccountingLayout,
+});
+
+const accountingIndexRoute = createRoute({
+  getParentRoute: () => accountingRoute,
+  path: "/",
+  beforeLoad: () => {
+    throw redirect({ to: "/accounting/general-ledger/chart-of-accounts" });
+  },
+});
+const generalLedgerGroupRoute = createRoute({
+  getParentRoute: () => accountingRoute,
+  path: "/general-ledger",
+  component: GeneralLedgerTabs,
+});
+const generalLedgerIndexRoute = createRoute({
+  getParentRoute: () => generalLedgerGroupRoute,
+  path: "/",
+  beforeLoad: () => {
+    throw redirect({ to: "/accounting/general-ledger/chart-of-accounts" });
+  },
 });
 const chartOfAccountsRoute = createRoute({
-  getParentRoute: () => accountingRoute,
+  getParentRoute: () => generalLedgerGroupRoute,
   path: "/chart-of-accounts",
   component: ChartOfAccounts,
 });
 
-const generalLedgerRoute = createRoute({
-  getParentRoute: () => accountingRoute,
-  path: "/general-ledger-report",
-  component: GeneralLedger,
-});
 const journaEntryroutes = createRoute({
-  getParentRoute: () => accountingRoute,
+  getParentRoute: () => generalLedgerGroupRoute,
   path: "/journal-entry",
   component: JournalEntries,
+});
+
+const generalLedgerRoute = createRoute({
+  getParentRoute: () => generalLedgerGroupRoute,
+  path: "/report",
+  component: GeneralLedger,
 });
 
 const trialBalanceRoute = createRoute({
@@ -304,10 +346,14 @@ const routeTree = rootRoute.addChildren([
     operationsTransferRoute,
   ]),
   accountingRoute.addChildren([
-    chartOfAccountsRoute,
-    generalLedgerRoute,
+    accountingIndexRoute,
+    generalLedgerGroupRoute.addChildren([
+      generalLedgerIndexRoute,
+      chartOfAccountsRoute,
+      journaEntryroutes,
+      generalLedgerRoute,
+    ]),
     trialBalanceRoute,
-    journaEntryroutes,
     receivableRoute,
     payableeRoute,
     profitandlossRoute,
