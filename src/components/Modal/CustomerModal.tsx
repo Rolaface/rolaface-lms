@@ -656,40 +656,40 @@ export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProp
     </PlainCard>
   );
 
-  const renderBorrower = () => (
-    <PlainCard accent="brand">
-      <SectionHeader icon={IconCash} title="Borrower setup" badge="OPTIONAL" description="Convert this profile into a borrower record and assign ownership" accent="brand" />
-      <div className="flex items-center justify-between mb-1">
-        <Text size="sm" fw={700} className="text-slate-900">Convert to Borrower</Text>
-        <Switch checked={convertToBorrower} onChange={(e) => setConvertToBorrower(e.currentTarget.checked)} color="brand" />
-      </div>
-      {convertToBorrower && (
-        <Row className="mt-3 pt-3 border-t border-slate-100">
-          <F w={W.lg}>
-            <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Borrower Category" withAsterisk data={["Individual Borrower", "Joint Borrower", "Business Borrower", "Group Borrower"]} classNames={labelPropsPlain} value={borrowerCategory} onChange={setBorrowerCategory} />
-          </F>
-          <F w={W.lg}>
-            <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Loan Purpose" withAsterisk placeholder="Select" data={["Agriculture", "Working Capital", "Asset Finance", "Housing", "Education", "Other"]} classNames={labelPropsPlain} value={loanPurpose} onChange={setLoanPurpose} />
-          </F>
-          <F w={W.lg}>
-            <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Intended Loan Product" placeholder="Select" data={["Salary Advance", "Farmer Input Loan", "SME Working Capital", "Asset Finance"]} classNames={labelPropsPlain} value={intendedLoanProduct} onChange={setIntendedLoanProduct} />
-          </F>
-          <F w={W.sm}>
-            <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Preliminary Risk Rating" placeholder="Not yet rated" data={["Low", "Medium", "High"]} classNames={labelPropsPlain} value={preliminaryRiskRating} onChange={setPreliminaryRiskRating} />
-          </F>
-          <F w={W.lg}>
-            <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Branch" withAsterisk data={["Cairo Road, Lusaka", "Kitwe Branch", "Ndola Branch", "Livingstone Branch"]} classNames={labelPropsPlain} value={branch} onChange={setBranch} />
-          </F>
-          <F w={W.md}>
-            <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Credit Officer" placeholder="Unassigned" data={["M. Banda", "C. Phiri", "T. Mwansa"]} classNames={labelPropsPlain} value={creditOfficer} onChange={setCreditOfficer} />
-          </F>
-          <F w={W.md}>
-            <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Relationship Manager" placeholder="Unassigned" data={["K. Zulu", "N. Tembo"]} classNames={labelPropsPlain} value={relationshipManager} onChange={setRelationshipManager} />
-          </F>
-        </Row>
-      )}
-    </PlainCard>
-  );
+const renderBorrower = () => (
+  <PlainCard accent="brand">
+    <SectionHeader icon={IconCash} title="Borrower setup" badge="OPTIONAL" description="Convert this profile into a borrower record and assign ownership" accent="brand" />
+    <div className="flex items-center justify-between mb-1">
+      <Text size="sm" fw={700} className="text-slate-900">Convert to Borrower</Text>
+      <Switch checked={convertToBorrower} onChange={(e) => setConvertToBorrower(e.currentTarget.checked)} color="brand" />
+    </div>
+    {convertToBorrower && (
+      <Row className="mt-3 pt-3 border-t border-slate-100">
+        <F w={4}>
+          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Borrower Category" withAsterisk data={["Individual Borrower", "Joint Borrower", "Business Borrower", "Group Borrower"]} classNames={labelPropsPlain} value={borrowerCategory} onChange={setBorrowerCategory} />
+        </F>
+        <F w={4}>
+          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Loan Purpose" withAsterisk placeholder="Select" data={["Agriculture", "Working Capital", "Asset Finance", "Housing", "Education", "Other"]} classNames={labelPropsPlain} value={loanPurpose} onChange={setLoanPurpose} />
+        </F>
+        <F w={4}>
+          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Intended Loan Product" placeholder="Select" data={["Salary Advance", "Farmer Input Loan", "SME Working Capital", "Asset Finance"]} classNames={labelPropsPlain} value={intendedLoanProduct} onChange={setIntendedLoanProduct} />
+        </F>
+        <F w={4}>
+          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Preliminary Risk Rating" placeholder="Not yet rated" data={["Low", "Medium", "High"]} classNames={labelPropsPlain} value={preliminaryRiskRating} onChange={setPreliminaryRiskRating} />
+        </F>
+        <F w={4}>
+          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Branch" withAsterisk data={["Cairo Road, Lusaka", "Kitwe Branch", "Ndola Branch", "Livingstone Branch"]} classNames={labelPropsPlain} value={branch} onChange={setBranch} />
+        </F>
+        <F w={4}>
+          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Credit Officer" placeholder="Unassigned" data={["M. Banda", "C. Phiri", "T. Mwansa"]} classNames={labelPropsPlain} value={creditOfficer} onChange={setCreditOfficer} />
+        </F>
+        <F w={4}>
+          <Select size="xs" searchable rightSection={<IconChevronDown size={13} className="text-slate-400" />} label="Relationship Manager" placeholder="Unassigned" data={["K. Zulu", "N. Tembo"]} classNames={labelPropsPlain} value={relationshipManager} onChange={setRelationshipManager} />
+        </F>
+      </Row>
+    )}
+  </PlainCard>
+);
 
   const renderKyc = () => {
     const items = [
