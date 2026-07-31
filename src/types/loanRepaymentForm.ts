@@ -1,0 +1,63 @@
+// loanRepaymentForm.ts
+
+export interface LoanRepaymentPayload {
+  repayment_type: "Normal Repayment" | "Full Settlement";
+
+  applicant_type: "Customer";
+  applicant: string;
+
+  loan_product: string;
+  against_loan: string;
+
+  value_date: string;
+  amount_paid: number;
+
+  mode_of_payment: string;
+  reference_number: string;
+  reference_date: string;
+}
+
+export interface LoanRepaymentResponse {
+  message: {
+    name: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface LoanRepaymentAccountSearchItem {
+  against_loan: string;
+  applicant: string;
+  applicant_name?: string;
+  phone_number: string | null;
+  sanctioned_amount: number;
+  emi: number | null;
+}
+
+export interface LoanRepaymentAccountSearchResponse {
+  message: LoanRepaymentAccountSearchItem[];
+}
+
+export interface LoanDuesResponse {
+  message: {
+    penalty_amount: number;
+    interest_amount: number;
+    pending_principal_amount: number;
+    payable_principal_amount: number;
+    payable_amount: number;
+    unaccrued_interest: number;
+    unbooked_interest: number;
+    unbooked_penalty: number;
+    due_date: string | null;
+    total_charges_payable: number;
+    available_security_deposit: number;
+    written_off_amount: number;
+    unpaid_demands: unknown[];
+    excess_amount_paid: number;
+  };
+}
+
+export interface LoanDuesPayload {
+  payment_type: "Normal Repayment" | "Full Settlement";
+  posting_date: string;
+  against_loan: string;
+}
