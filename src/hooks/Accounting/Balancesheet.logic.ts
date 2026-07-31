@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { ExpandedState } from '@tanstack/react-table';
 import {
   type BSData,
   type BSFilters,
   type BSFilterMode,
   type BSPeriodicity,
+  type BSNode,
   fetchBalanceSheet,
 } from '../../api/Accounting/Balancesheet.api';
-
-const currentFiscalYear = () => new Date().getFullYear();
+import { getCompanyCurrentFiscalYear } from '../../api/utils/frappeUtilsApi';
 
 const currentMonthStart = () => {
   const d = new Date();
@@ -20,38 +21,74 @@ const currentMonthEnd = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
 };
 
+// Local fallback only — overwritten as soon as the real fiscal year loads below.
+const FALLBACK_FY = `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+
+const buildExpandedToDepth = (nodes: BSNode[], depth: number, path = ''): Record<string, boolean> => {
+  let state: Record<string, boolean> = {};
+  nodes.forEach((node, i) => {
+    const id = path ? `${path}.${i}` : `${i}`;
+    if (depth > 0 && node.children?.length) {
+      state[id] = true;
+      Object.assign(state, buildExpandedToDepth(node.children, depth - 1, id));
+    }
+  });
+  return state;
+};
+
 export function useBalanceSheet() {
   const [filters, setFilters] = useState<BSFilters>({
     mode: 'Fiscal Year',
     periodicity: 'Monthly',
-    fromFiscalYear: currentFiscalYear(),
-    toFiscalYear: currentFiscalYear(),
+    fromFiscalYear: FALLBACK_FY,
+    toFiscalYear: FALLBACK_FY,
     fromDate: currentMonthStart(),
     toDate: currentMonthEnd(),
   });
+  const [fyResolved, setFyResolved] = useState(false);
 
   const [data, setData] = useState<BSData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [expandedAssets, setExpandedAssets] = useState<Record<string, boolean> | boolean>({});
-  const [expandedLiabilities, setExpandedLiabilities] = useState<Record<string, boolean> | boolean>({});
-  const [expandedEquity, setExpandedEquity] = useState<Record<string, boolean> | boolean>({});
+  const [expandedAssets, setExpandedAssets] = useState<ExpandedState>({});
+  const [expandedLiabilities, setExpandedLiabilities] = useState<ExpandedState>({});
+  const [expandedEquity, setExpandedEquity] = useState<ExpandedState>({});
   const [allExpanded, setAllExpanded] = useState(false);
+
+  // Resolve the company's real current Fiscal Year once, then patch filters.
+  useEffect(() => {
+    let cancelled = false;
+    getCompanyCurrentFiscalYear()
+      .then((fy) => {
+        if (cancelled || !fy) return;
+        setFilters((f) => ({ ...f, fromFiscalYear: fy, toFiscalYear: fy }));
+      })
+      .catch(() => {
+        // fall back silently to the local guess if this lookup fails
+      })
+      .finally(() => {
+        if (!cancelled) setFyResolved(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const setMode = (mode: BSFilterMode) => {
     setFilters((f) => ({
       ...f,
       mode,
-      ...(mode === 'Date Range'
-        ? { fromDate: currentMonthStart(), toDate: currentMonthEnd() }
-        : { fromFiscalYear: currentFiscalYear(), toFiscalYear: currentFiscalYear() }),
+      ...(mode === 'Date Range' ? { fromDate: currentMonthStart(), toDate: currentMonthEnd() } : {}),
     }));
   };
 
   const setPeriodicity = (periodicity: BSPeriodicity) => setFilters((f) => ({ ...f, periodicity }));
-  const setFromFiscalYear = (v: number) => setFilters((f) => ({ ...f, fromFiscalYear: v }));
-  const setToFiscalYear = (v: number) => setFilters((f) => ({ ...f, toFiscalYear: v }));
+
+  // Single fiscal year field — sets both fromFiscalYear and toFiscalYear together,
+  // since the UI now shows one "Fiscal Year" input instead of a From/To pair.
+  const setFiscalYear = (v: string) => setFilters((f) => ({ ...f, fromFiscalYear: v, toFiscalYear: v }));
+
   const setFromDate = (v: string) => setFilters((f) => ({ ...f, fromDate: v }));
   const setToDate = (v: string) => setFilters((f) => ({ ...f, toDate: v }));
 
@@ -59,24 +96,32 @@ export function useBalanceSheet() {
     setLoading(true);
     setError(null);
     try {
+      if (f.mode === 'Date Range' && (!f.fromDate || !f.toDate)) {
+        setError('Please select a valid date range.');
+        return;
+      }
       const resp = await fetchBalanceSheet(f);
       setData(resp);
-      // Default: expand the top-level groups so the tree isn't fully collapsed on load
-      setExpandedAssets({ '0': true });
-      setExpandedLiabilities({ '0': true });
-      setExpandedEquity({ '0': true });
+      setExpandedAssets(buildExpandedToDepth(resp.assets, 2));
+      setExpandedLiabilities(buildExpandedToDepth(resp.liabilities, 2));
+      setExpandedEquity(buildExpandedToDepth(resp.equity, 2));
       setAllExpanded(false);
-    } catch {
-      setError('Failed to load Balance Sheet.');
+    } catch (err: any) {
+      setError(err?.message ?? 'Failed to load Balance Sheet.');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchBS(filters);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Wait for the real fiscal year before firing the first Fiscal-Year-mode request.
+    if (filters.mode === 'Fiscal Year' && !fyResolved) return;
+    if (filters.mode === 'Date Range' && (!filters.fromDate || !filters.toDate)) return;
+    if (filters.mode === 'Fiscal Year' && (!filters.fromFiscalYear || !filters.toFiscalYear)) return;
+
+    const timer = setTimeout(() => fetchBS(filters), 300);
+    return () => clearTimeout(timer);
+  }, [filters, fyResolved, fetchBS]);
 
   const handleRefresh = useCallback(() => fetchBS(filters), [fetchBS, filters]);
 
@@ -98,8 +143,7 @@ export function useBalanceSheet() {
     filters,
     setMode,
     setPeriodicity,
-    setFromFiscalYear,
-    setToFiscalYear,
+    setFiscalYear,
     setFromDate,
     setToDate,
 

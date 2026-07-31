@@ -115,45 +115,42 @@ function FilterBar({
           className="w-32"
         />
 
-        {filters.mode === 'Fiscal Year' ? (
-          <>
-            <TextInput
-              size="xs"
-              label="From FY"
-              type="number"
-              value={filters.from_fiscal_year}
-              onChange={(e) => setFilters((f) => ({ ...f, from_fiscal_year: Number(e.currentTarget.value) }))}
-              className="w-24"
-            />
-            <TextInput
-              size="xs"
-              label="To FY"
-              type="number"
-              value={filters.to_fiscal_year}
-              onChange={(e) => setFilters((f) => ({ ...f, to_fiscal_year: Number(e.currentTarget.value) }))}
-              className="w-24"
-            />
-          </>
-        ) : (
-          <>
-            <TextInput
-              size="xs"
-              label="From"
-              type="date"
-              value={filters.from_date}
-              onChange={(e) => setFilters((f) => ({ ...f, from_date: e.currentTarget.value }))}
-              className="w-[150px]"
-            />
-            <TextInput
-              size="xs"
-              label="To"
-              type="date"
-              value={filters.to_date}
-              onChange={(e) => setFilters((f) => ({ ...f, to_date: e.currentTarget.value }))}
-              className="w-[150px]"
-            />
-          </>
-        )}
+       {filters.mode === 'Fiscal Year' ? (
+  <TextInput
+    size="xs"
+    label="Fiscal Year"
+    type="text"
+    value={filters.from_fiscal_year}
+    onChange={(e) =>
+      setFilters((f) => ({
+        ...f,
+        from_fiscal_year: e.currentTarget.value,
+        to_fiscal_year: e.currentTarget.value,
+      }))
+    }
+    placeholder="2026-2027"
+    className="w-28"
+  />
+) : (
+  <>
+    <TextInput
+      size="xs"
+      label="From"
+      type="date"
+      value={filters.from_date}
+      onChange={(e) => setFilters((f) => ({ ...f, from_date: e.currentTarget.value }))}
+      className="w-[150px]"
+    />
+    <TextInput
+      size="xs"
+      label="To"
+      type="date"
+      value={filters.to_date}
+      onChange={(e) => setFilters((f) => ({ ...f, to_date: e.currentTarget.value }))}
+      className="w-[150px]"
+    />
+  </>
+)}
 
         <Group_ />
 
@@ -292,8 +289,6 @@ export function ProfitLoss() {
 
   return (
     <div className="flex flex-col gap-3 p-6">
-      <Text fz="xl" fw={700} c="gray.9">Profit &amp; Loss</Text>
-
       <KpiStrip data={data} loading={isLoading && !data} displayAmount={displayAmount} />
 
       <FilterBar

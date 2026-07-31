@@ -153,61 +153,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       },
     ],
   },
-  {
+{
     path: "/accounting",
     label: "Accounting",
     icon: IconFileInvoice,
     matchPrefix: true,
-    subItems: [
-      {
-        // group only — no path, holds Chart of Accounts + Journal Entry
-        label: "General Ledger",
-        icon: IconBookmarks,
-        subItems: [
-          {
-            path: "/accounting/chart-of-accounts",
-            label: "Chart Of Accounts",
-            icon: IconHierarchy2,
-          },
-          {
-            path: "/accounting/journal-entry",
-            label: "Journal Entry",
-            icon: IconReceipt2,
-          },
-          {
-            path: "/accounting/general-ledger-report",
-            label: "General Ledger report",
-            icon: IconFileText,
-          },
-        ],
-      },
-      {
-        path: "/accounting/Receivable",
-        label: "Receivable",
-        icon: IconCreditCardRefund,
-      },
-      {
-        path: "/accounting/Payable",
-        label: "Payable",
-        icon: IconCreditCardPay,
-      },
-
-      {
-        path: "/accounting/trial-balance",
-        label: "Trial Balance",
-        icon: IconReportAnalytics,
-      },
-      {
-        path: "/accounting/profit-loss",
-        label: "Profit & Loss",
-        icon: IconChartLine,
-      },
-      {
-        path: "/accounting/balance-sheet",
-        label: "Balancesheet",
-        icon: IconScale,
-      },
-    ],
   },
   {
     path: "/reports",

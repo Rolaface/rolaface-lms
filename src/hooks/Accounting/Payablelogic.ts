@@ -1,19 +1,32 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   type PayableFilters,
-  type PayableResponse,
   type PayableStatus,
   type PayableVoucherType,
+  type SelectOption,
   fetchPayables,
+  fetchSupplierOptions,
+  fetchCostCenterOptions,
+  fetchPayableAccountOptions,
   formatAmount,
 } from '../../api/Accounting/Payable.api';
+import { showApiError } from '../../utils/alert';
 
 const getTodayDate = () => new Date().toISOString().split('T')[0];
 
 const PAGE_SIZE = 20;
 
+/* ───────────────── Query key builder ───────────────── */
+
+export const payableKeys = {
+  all: ['payables'] as const,
+  list: (filters: PayableFilters, page: number, pageSize: number) =>
+    [...payableKeys.all, 'list', filters, page, pageSize] as const,
+};
+
 export function usePayable() {
-  // ── Filter state ──────────────────────────────────────────
+  // ── Filter state (UI-only, unchanged) ──────────────────────
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<PayableStatus | 'all'>('all');
   const [postingDate, setPostingDate] = useState(getTodayDate());
@@ -23,20 +36,17 @@ export function usePayable() {
   const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([]);
   const [selectedPayableAccount, setSelectedPayableAccount] = useState('');
 
-  // ── Data state ────────────────────────────────────────────
-  const [data, setData] = useState<PayableResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // ── Pagination ────────────────────────────────────────────
+  // ── Pagination ──────────────────────────────────────────────
   const [page, setPage] = useState(1);
 
   // ── View modal ────────────────────────────────────────────
   const [viewRowId, setViewRowId] = useState<string | null>(null);
 
-  const buildFilters = useCallback(
-    (): PayableFilters => ({
+  // ── Export (one-off fetch, not cached — no useQuery needed) ──
+  const [isExporting, setIsExporting] = useState(false);
+
+  const filters: PayableFilters = useMemo(
+    () => ({
       search: searchTerm,
       status: filterStatus,
       postingDate,
@@ -58,43 +68,56 @@ export function usePayable() {
     ],
   );
 
-  const fetchData = useCallback(async (pg: number) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const resp = await fetchPayables(buildFilters(), pg, PAGE_SIZE);
-      setData(resp);
-    } catch {
-      setError('Failed to fetch payables.');
-    } finally {
-      setIsLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildFilters]);
+  /* ── Main list query — refetches whenever filters or page change ── */
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+  } = useQuery({
+    queryKey: payableKeys.list(filters, page, PAGE_SIZE),
+    queryFn: () => fetchPayables(filters, page, PAGE_SIZE),
+    placeholderData: keepPreviousData, // avoids UI flash/empty state during pagination & filter changes
+    staleTime: 30_000,
+  });
 
-  // Reset to page 1 whenever a filter changes, then fetch
+  /* ── Dropdown master data — fetched once, cached 5 min ── */
+  const { data: supplierOptions = [] } = useQuery<SelectOption[]>({
+    queryKey: ['payable-suppliers'],
+    queryFn: fetchSupplierOptions,
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: costCenterOptions = [] } = useQuery<SelectOption[]>({
+    queryKey: ['payable-cost-centers'],
+    queryFn: fetchCostCenterOptions,
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: payableAccountOptions = [] } = useQuery<SelectOption[]>({
+    queryKey: ['payable-accounts'],
+    queryFn: fetchPayableAccountOptions,
+    staleTime: 5 * 60_000,
+  });
+
+  // Reset to page 1 whenever filters change (but not when page itself changes)
+  const filtersKey = JSON.stringify(filters);
+  const prevFiltersKey = useRef(filtersKey);
   useEffect(() => {
-    setPage(1);
-    fetchData(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    searchTerm,
-    filterStatus,
-    postingDate,
-    selectedGroupBy,
-    selectedCostCenter,
-    selectedSuppliers,
-    selectedPayableAccount,
-    selectedVoucherType,
-  ]);
+    if (prevFiltersKey.current !== filtersKey) {
+      prevFiltersKey.current = filtersKey;
+      setPage(1);
+    }
+  }, [filtersKey]);
 
-  const handlePageChange = useCallback(
-    (pg: number) => {
-      setPage(pg);
-      fetchData(pg);
-    },
-    [fetchData],
-  );
+  // Surface fetch errors via the alert system (side-effect, not render logic)
+  useEffect(() => {
+    if (isError) showApiError('Failed to fetch payables.');
+  }, [isError]);
+
+  const handlePageChange = useCallback((pg: number) => {
+    setPage(pg);
+  }, []);
 
   const hasActiveFilters =
     selectedSuppliers.length > 0 ||
@@ -117,21 +140,31 @@ export function usePayable() {
     setPostingDate(getTodayDate());
   }, []);
 
-  // Dummy-data export: builds the sheet from whatever the current filters
-  // return, at full page size — swap for a real "export all" API call later.
+  /* ── Export: deliberately bypasses the query cache — it's a one-off
+     "give me everything, right now" fetch, not something we want cached
+     or re-triggered by cache invalidation. ── */
   const handleExportExcel = useCallback(async () => {
     setIsExporting(true);
     try {
-      const resp = await fetchPayables(buildFilters(), 1, 999999);
+      const resp = await fetchPayables(filters, 1, 999999);
       return resp.rows;
+    } catch {
+      showApiError('Failed to export payables.');
+      return [];
     } finally {
       setIsExporting(false);
     }
-  }, [buildFilters]);
+  }, [filters]);
 
-  const displayAmount = useMemo(() => (currency: string | undefined, amount: number) => formatAmount(currency, amount), []);
+  const displayAmount = useMemo(
+    () => (currency: string | undefined, amount: number) => formatAmount(currency, amount),
+    [],
+  );
 
-  const viewRow = useMemo(() => data?.rows.find((r) => r.id === viewRowId) ?? null, [data?.rows, viewRowId]);
+  const viewRow = useMemo(
+    () => data?.rows.find((r) => r.id === viewRowId) ?? null,
+    [data?.rows, viewRowId],
+  );
 
   return {
     // filters
@@ -159,13 +192,19 @@ export function usePayable() {
     rows: data?.rows ?? [],
     pagination: data?.pagination ?? null,
     isLoading,
+    fetching: isFetching,
     isExporting,
-    error,
+    error: isError ? 'Failed to fetch payables.' : null, 
     page,
     pageSize: PAGE_SIZE,
     handlePageChange,
     handleExportExcel,
     displayAmount,
+
+    // dropdown options
+    supplierOptions,
+    costCenterOptions,
+    payableAccountOptions,
 
     // view modal
     viewRowId,

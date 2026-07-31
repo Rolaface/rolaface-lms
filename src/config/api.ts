@@ -1,3 +1,5 @@
+import { Receivable } from "../view/Accounting/Receivable ";
+
 // src/config/api.ts
 const ERP_BASE = (import.meta.env.VITE_API_BASE_URL ?? "") as string;
 
@@ -11,6 +13,70 @@ export const API = {
     // login: `${ERP_BASE}/api/method/...`,
     // logout: `${ERP_BASE}/api/method/...`,
   },
+  // =========================
+  // Accounting
+  // =========================
+Accounting: {
+  chartOfAccounts: {
+    createCOA: `${ERP_BASE}/api/method/erpnext.accounts.utils.add_ac`,
+    deleteCOA: `${ERP_BASE}/api/method/frappe.client.delete`,
+    getCOA: `${ERP_BASE}/api/method/custom_api.api.chart_of_account.get_chart_of_accounts`,
+    getCOAbyId: `${ERP_BASE}/api/resource/Account`,
+  
+    
+    getBalanceSheet: `${ERP_BASE}/api/method/custom_api.api.balance_sheet.get_balance_sheet`,
+    getCashFlow: `${ERP_BASE}/api/method/custom_api.api.cash_flow.get_cash_flow`,
+    getAllPayables: `${ERP_BASE}/api/method/custom_api.api.accounts_payable.get_accounts_payable`,
+    getAllReceivable: `${ERP_BASE}/api/method/custom_api.api.accounts_receivable.get_accounts_receivable`,
+    getLedger: `${ERP_BASE}/api/method/custom_api.api.chart_of_account.get_general_ledger_detail`,
+  },
+
+  journalEntry: {
+   getByIdOnly: `${ERP_BASE}/api/resource`,
+    create: `${ERP_BASE}/api/resource/Journal Entry`,
+    getAll: `${ERP_BASE}/api/resource/Journal Entry`,
+    getById: `${ERP_BASE}/api/resource/Journal Entry`,
+    update: `${ERP_BASE}/api/resource/Journal Entry`,
+    delete: `${ERP_BASE}/api/resource/Journal Entry`,
+    updateStatus: `${ERP_BASE}/api/method/custom_api.api.accounting.journal_entry.api.update_journal_entry_status`,
+  },
+
+  profitLoss: {
+    get: `${ERP_BASE}/api/method/custom_api.api.profit_loss.get_profit_and_loss`,
+  },
+
+  balanceSheet: {
+    get:`${ERP_BASE}/api/method/custom_api.api.balance_sheet.get_balance_sheet`,
+  },
+
+  generalLedger: {
+    get: `${ERP_BASE}/api/method/...`,
+  },
+  payable:{
+
+    getAllPayables: `${ERP_BASE}/api/method/custom_api.api.accounts_payable.get_accounts_payable`,
+   
+   
+  },
+  receivable:{
+    getAllReceivable: `${ERP_BASE}/api/method/custom_api.api.accounts_receivable.get_accounts_receivable`,
+   
+  },
+  trialbalnce:{ 
+     get:`${ERP_BASE}/api/method/custom_api.api.trial_balance.get_trial_balance`,
+    }
+
+
+},
+
+
+
+
+
+
+
+
+
   // =========================
   // CHARGES
   // =========================
@@ -191,6 +257,18 @@ loan: {
   // COMMON
   // =========================
   common: {},
+  lookup:{
+    getAllReceivable: `${ERP_BASE}/api/method/custom_api.api.accounts_receivable.get_accounts_receivable`,
+    getSuppliers:`${ERP_BASE}/api/method/custom_api.api.search.get_suppliers`,
+    getCostCenters: `${ERP_BASE}/api/method/custom_api.api.search.get_cost_centers`,
+    getPayableAccounts:`${ERP_BASE}/api/method/custom_api.api.search.get_payable_accounts`,
+     getCustomers:`${ERP_BASE}/api/method/custom_api.api.search.get_customers`,
+    getReceivableAccounts: `${ERP_BASE}/api/method/custom_api.api.search.get_receivable_accounts`,
+
+  },
+  frappeUtilsAPI:{
+ getCompanyCurrentFiscalYear: `${ERP_BASE}/api/method/custom_api.utils.frappe_utils.get_current_fiscal_year`,
+  },
 } as const;
 
 export default API;

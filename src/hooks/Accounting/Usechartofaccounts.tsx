@@ -1,17 +1,15 @@
-
-
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ExpandedState } from '@tanstack/react-table';
-import { modals } from '@mantine/modals';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Text } from '@mantine/core';
+import { showConfirm, showApiError, showSuccess } from '../../utils/alert';
 import {
   type COAAccount,
-  BASE_CURRENCY,
   fetchChartOfAccounts,
   deleteAccount,
 } from '../../api/Accounting/Chartofaccounts.api';
 
-/* ───────────────── Tree helpers ───────────────── */
+/* ───────────────── Tree helpers (unchanged) ───────────────── */
 
 function matchNode(node: COAAccount, term: string) {
   const t = term.toLowerCase();
@@ -37,7 +35,7 @@ function stripZero(nodes: COAAccount[]): COAAccount[] {
   const walk = (list: COAAccount[]): COAAccount[] =>
     list.reduce<COAAccount[]>((acc, node) => {
       const children = node.children?.length ? walk(node.children) : [];
-      const keep = node.is_group ? children.length > 0 : node.balance_in_account_currency !== 0;
+      const keep = node.is_group ? children.length > 0 : node.balance !== 0;
       if (keep) acc.push({ ...node, children });
       return acc;
     }, []);
@@ -68,27 +66,70 @@ function buildExpandedForSearch(nodes: COAAccount[], path = ''): Record<string, 
   return state;
 }
 
+/* ───────────────── Query key (co-locate for reuse in invalidation) ───────────────── */
+
+export const coaKeys = {
+  all: ['chartOfAccounts'] as const,
+};
+
 /* ───────────────── Hook ───────────────── */
 
 export function useChartOfAccounts() {
-  const [accounts, setAccounts] = useState<COAAccount[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [hideZero, setHideZero] = useState(false);
   const [viewAccount, setViewAccount] = useState<COAAccount | null>(null);
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [allExpanded, setAllExpanded] = useState(false);
 
-  const loadAccounts = useCallback(() => {
-    setLoading(true);
-    fetchChartOfAccounts()
-      .then(setAccounts)
-      .finally(() => setLoading(false));
-  }, []);
+  /* ── Fetch (replaces manual fetchChartOfAccounts + useEffect) ── */
+  const {
+    data,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: coaKeys.all,
+    queryFn: fetchChartOfAccounts,
+    staleTime: 60_000, // tune per how often COA changes
+  });
 
-  useEffect(() => {
-    loadAccounts();
-  }, [loadAccounts]);
+  const accounts = data?.accounts ?? [];
+  const baseCurrency = data?.baseCurrency ?? 'INR';
+
+  /* ── Delete mutation ── */
+  const deleteMutation = useMutation({
+    mutationFn: (accountName: string) => deleteAccount(accountName),
+    onSuccess: (_data, accountName) => {
+      showSuccess('Account deleted successfully');
+      // Optimistic-ish: patch the cache instead of a full refetch
+      queryClient.setQueryData<typeof data>(coaKeys.all, (old) => {
+        if (!old) return old;
+        const removeNode = (list: COAAccount[]): COAAccount[] =>
+          list
+            .filter((n) => n.name !== accountName)
+            .map((n) => ({ ...n, children: n.children ? removeNode(n.children) : n.children }));
+        return { ...old, accounts: removeNode(old.accounts) };
+      });
+    },
+    onError: (err: any) => {
+      showApiError(err?.response?.data?.message?.message ?? 'Failed to delete account');
+    },
+  });
+
+  const handleDelete = useCallback(
+    async (row: COAAccount) => {
+      const confirmed = await showConfirm(
+        `Are you sure you want to delete account "${row.account_name}"?`,
+        { title: 'Delete Account', confirmButtonText: 'Delete' },
+      );
+      if (confirmed) deleteMutation.mutate(row.name);
+    },
+    [deleteMutation],
+  );
+
+  /* ── UI-only handlers ── */
 
   const handleToggleExpand = useCallback(() => {
     if (allExpanded) {
@@ -109,8 +150,8 @@ export function useChartOfAccounts() {
   );
 
   const handleRefresh = useCallback(() => {
-    loadAccounts();
-  }, [loadAccounts]);
+    refetch();
+  }, [refetch]);
 
   const tableData: COAAccount[] = useMemo(() => {
     let data = filterTree(accounts, searchTerm);
@@ -144,8 +185,8 @@ export function useChartOfAccounts() {
           'Root Type': acc.root_type,
           Category: acc.is_group ? '── GROUP ──' : 'Account',
           Currency: acc.account_currency,
-          'Balance (Account CCY)': acc.is_group ? '—' : acc.balance_in_account_currency,
-          [`Balance (${BASE_CURRENCY})`]: acc.is_group ? '—' : acc.balance,
+          'Balance (Account CCY)': acc.is_group ? '—' : (acc.balance_in_account_currency ?? acc.balance),
+          [`Balance (${baseCurrency})`]: acc.is_group ? '—' : acc.balance,
         });
         if (acc.children?.length) flatten(acc.children, depth + 1);
       });
@@ -157,49 +198,28 @@ export function useChartOfAccounts() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Chart of Accounts');
     XLSX.writeFile(wb, 'chart_of_accounts.xlsx');
-  }, [tableData]);
-
-  const handleDelete = useCallback((row: COAAccount) => {
-    modals.openConfirmModal({
-      title: 'Delete Account',
-      children: (
-        <Text size="sm">
-          Are you sure you want to delete account "{row.account_name}"?
-        </Text>
-      ),
-      labels: { confirm: 'Delete', cancel: 'Cancel' },
-      confirmProps: { color: 'red' },
-      onConfirm: async () => {
-        await deleteAccount(row.name);
-        const removeNode = (list: COAAccount[]): COAAccount[] =>
-          list
-            .filter((n) => n.name !== row.name)
-            .map((n) => ({ ...n, children: n.children ? removeNode(n.children) : n.children }));
-        setAccounts((prev) => removeNode(prev));
-      },
-    });
-  }, []);
+  }, [tableData, baseCurrency]);
 
   return {
-    // filter bar state
     searchTerm,
     setSearchTerm,
     hideZero,
     setHideZero,
-    loading,
+    loading: isLoading,
+    fetching: isFetching,
     allExpanded,
     handleToggleExpand,
     handleRefresh,
     handleExport,
 
-    // table state
     tableData,
     expanded,
     handleExpandedChange,
+    baseCurrency,
 
-    // row actions / modal
     viewAccount,
     setViewAccount,
     handleDelete,
+    deleting: deleteMutation.isPending,
   };
 }

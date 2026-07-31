@@ -1,5 +1,3 @@
-
-
 import { useMemo } from 'react';
 import {
   useReactTable,
@@ -43,9 +41,6 @@ import { saveAs } from 'file-saver';
 
 import {
   type ReceivableRow,
-  CUSTOMER_OPTIONS,
-  COST_CENTER_OPTIONS,
-  RECEIVABLE_ACCOUNT_OPTIONS,
   VOUCHER_TYPE_OPTIONS,
 } from '../../api/Accounting/Receivable.api';
 import { useReceivable } from '../../hooks/Accounting/Receivablelogic';
@@ -150,6 +145,8 @@ export function Receivable() {
 
     kpis, rows, pagination, isLoading, isExporting, error,
     page, pageSize, handlePageChange, handleExportExcel, displayAmount,
+
+    customerOptions, costCenterOptions, receivableAccountOptions,
 
     viewRowId, setViewRowId, viewRow,
   } = useReceivable();
@@ -294,16 +291,6 @@ export function Receivable() {
  return (
   <div className="flex flex-col gap-3 p-6">
 
-    <div className="flex flex-col gap-1">
-      <h1 className="text-3xl font-bold text-gray-900">
-        Accounts Receivable
-      </h1>
-      <p className="text-sm text-gray-500">
-        Monitor outstanding invoices, overdue balances, and customer receivables.
-      </p>
-    </div>
-
-    {/* KPI strip */}
       {/* KPI strip */}
       {kpis ? (
         <KpiStrip kpis={kpis} loading={isLoading} displayAmount={displayAmount} />
@@ -374,7 +361,7 @@ export function Receivable() {
           <MultiSelect
             label="Customer"
             placeholder="All Customers"
-            data={CUSTOMER_OPTIONS}
+            data={customerOptions}
             value={selectedCustomers}
             onChange={setSelectedCustomers}
             size="xs"
@@ -386,22 +373,24 @@ export function Receivable() {
           <Select
             label="Cost Center"
             placeholder="All Cost Centers"
-            data={COST_CENTER_OPTIONS}
+            data={costCenterOptions}
             value={selectedCostCenter || null}
             onChange={(v) => setSelectedCostCenter(v ?? '')}
             size="xs"
             className="w-[160px]"
+            searchable
             clearable
           />
 
           <Select
             label="Account"
             placeholder="All Accounts"
-            data={RECEIVABLE_ACCOUNT_OPTIONS}
+            data={receivableAccountOptions}
             value={selectedReceivableAccount || null}
             onChange={(v) => setSelectedReceivableAccount(v ?? '')}
             size="xs"
             className="w-[170px]"
+            searchable
             clearable
           />
 
