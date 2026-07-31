@@ -403,7 +403,6 @@ export function Payable() {
 
   return (
     <div className="flex flex-col gap-3 p-6">
-      
       {/* KPI strip */}
       {kpis ? (
         <KpiStrip
@@ -472,26 +471,26 @@ export function Payable() {
             clearable
           />
 
-          <MultiSelect
+          <Select
             label="Group By"
             placeholder="None"
             data={[
               { value: "supplier", label: "Supplier" },
               { value: "voucher", label: "Voucher" },
             ]}
-            value={selectedGroupBy}
-            onChange={setSelectedGroupBy}
+            value={selectedGroupBy[0] ?? null}
+            onChange={(value) => setSelectedGroupBy(value ? [value] : [])}
             size="xs"
             className="w-[160px]"
             clearable
           />
 
-          <MultiSelect
+          <Select
             label="Supplier"
             placeholder="All Suppliers"
             data={supplierOptions}
-            value={selectedSuppliers}
-            onChange={setSelectedSuppliers}
+            value={selectedSuppliers[0] ?? null}
+            onChange={(value) => setSelectedSuppliers(value ? [value] : [])}
             size="xs"
             className="w-[200px]"
             searchable
