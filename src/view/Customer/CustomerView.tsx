@@ -5,6 +5,7 @@ import {
   Avatar,
   Badge,
   Button,
+  Group,
   Kbd,
   Paper,
   Progress,
@@ -68,6 +69,18 @@ interface InvestmentSummary {
   maturity: string;
 }
 
+interface RepaymentHistoryItem {
+  receipt: string;
+  date: string;
+  method: string;
+  collector: string;
+  principal: number;
+  interest: number;
+  penalty: number;
+  total: number;
+  balance: number;
+}
+
 interface SavingsSummary {
   id: string;
   accountNumber: string;
@@ -108,6 +121,18 @@ export interface BorrowerProfile {
   investments: InvestmentSummary[];
   savings: SavingsSummary[];
   fixedDeposits: FixedDepositSummary[];
+  creditScore: number;
+}
+
+interface CollateralItem {
+  id: string;
+  title: string;
+  type: string;
+  marketValue: number;
+  forcedSaleValue: number;
+  status: string;
+  subtitle?: string;
+  ownership?: string;
 }
 
 interface Tranche {
@@ -208,8 +233,15 @@ interface LoanDetailData {
   documents: DocumentItem[];
   documentChecklist: DocumentChecklist;
   activity: ActivityItem[];
+  collateral: CollateralItem[];
 }
-
+interface LoanAccountingEntry {
+  date: string;
+  description: string;
+  debit: number;
+  credit: number;
+  balance: number;
+}
 interface AccountDetailData {
   accountNumber: string;
   product: string;
@@ -309,25 +341,6 @@ const MOCK_LOANS: LoanSummary[] = [
     nextInstallment: 4620,
     repaidPercent: 38,
   },
-  {
-    id: 'LN-2023-05512',
-    loanNumber: 'LN-2023-05512',
-    product: 'Personal Instalment Loan',
-    status: 'Delinquent',
-    outstanding: 23180,
-    nextInstallment: 2110,
-    repaidPercent: 58,
-    dpd: 37,
-  },
-  {
-    id: 'LN-2022-01187',
-    loanNumber: 'LN-2022-01187',
-    product: 'Auto Loan',
-    status: 'Closed',
-    outstanding: 0,
-    nextInstallment: null,
-    repaidPercent: 100,
-  },
 ];
 
 const MOCK_INVESTMENTS: InvestmentSummary[] = [
@@ -390,7 +403,62 @@ export function getBorrowerProfile(customer: { id: number; name: string; mobile:
     investments: MOCK_INVESTMENTS,
     savings: MOCK_SAVINGS,
     fixedDeposits: MOCK_FIXED_DEPOSITS,
+    creditScore: 682,
   };
+}
+function AccountingTable({
+  accounting,
+}: {
+  accounting: LoanAccountingEntry[];
+}) {
+  return (
+    <Paper
+      radius="lg"
+      className="overflow-hidden"
+      style={{
+        border: "1px solid #ECE8DD",
+        boxShadow: "0 3px 14px rgba(36,31,61,0.06)",
+      }}
+    >
+      <Table
+        verticalSpacing="md"
+        horizontalSpacing="md"
+        highlightOnHover
+      >
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>Date</Table.Th>
+            <Table.Th>Description</Table.Th>
+            <Table.Th>Debit</Table.Th>
+            <Table.Th>Credit</Table.Th>
+            <Table.Th>Balance</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+
+        <Table.Tbody>
+          {accounting.map((row, index) => (
+            <Table.Tr key={index}>
+              <Table.Td>{row.date}</Table.Td>
+
+              <Table.Td>{row.description}</Table.Td>
+
+              <Table.Td className="font-mono">
+                {row.debit ? formatK(row.debit) : "—"}
+              </Table.Td>
+
+              <Table.Td className="font-mono">
+                {row.credit ? formatK(row.credit) : "—"}
+              </Table.Td>
+
+              <Table.Td className="font-mono">
+                {formatK(row.balance)}
+              </Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+    </Paper>
+  );
 }
 
 function buildHistory(base: number): RepaymentRow[] {
@@ -419,6 +487,28 @@ function buildHistory(base: number): RepaymentRow[] {
   }
   return rows;
 }
+const COLLATERAL: CollateralItem[] = [
+  {
+    id: "c1",
+    title: "Toyota Hilux — 2021",
+    type: "Motor vehicle",
+    subtitle: "Registration ABC 4471",
+    marketValue: 320000,
+    forcedSaleValue: 224000,
+    status: "Verified",
+    ownership: "Borrower",
+  },
+  {
+    id: "c2",
+    title: "Residential Land Title",
+    type: "Title Deed",
+    subtitle: "Plot 4471/L, Chalala",
+    marketValue: 410000,
+    forcedSaleValue: 287000,
+    status: "Insurance pending",
+    ownership: "Borrower",
+  },
+];
 
 // Generic generator so every loan (not just the one in the reference screenshots)
 // has plausible tab content.
@@ -429,6 +519,7 @@ function getLoanDetail(loan: LoanSummary): LoanDetailData {
 
   return {
     loanNumber: loan.loanNumber,
+    collateral: COLLATERAL,
     product: 'SME Working Capital',
     loanStatusLabel: isClosed ? 'Closed' : isDelinquent ? 'Overdue — Watch' : 'On track',
     purpose: 'Working capital expansion',
@@ -511,6 +602,82 @@ function getSavingsDetail(savings: SavingsSummary): AccountDetailData {
     documentChecklist: { complete: 6, total: 6, missingLabel: null },
     activity: ACTIVITY,
   };
+}
+
+function RepaymentHistoryTable({
+  history,
+}: {
+  history: RepaymentHistoryItem[];
+}) {
+  return (
+    <Paper
+      radius="lg"
+      className="overflow-hidden"
+      style={{
+        border: "1px solid #ECE8DD",
+        boxShadow: "0 3px 14px rgba(36,31,61,0.06)",
+      }}
+    >
+      <Table
+        verticalSpacing="md"
+        horizontalSpacing="md"
+        striped={false}
+        highlightOnHover
+      >
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>Receipt</Table.Th>
+            <Table.Th>Payment Date</Table.Th>
+            <Table.Th>Method</Table.Th>
+            <Table.Th>Collector</Table.Th>
+            <Table.Th>Principal</Table.Th>
+            <Table.Th>Interest</Table.Th>
+            <Table.Th>Penalty</Table.Th>
+            <Table.Th>Total</Table.Th>
+            <Table.Th>Balance</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+
+        <Table.Tbody>
+          {history.map((item) => (
+            <Table.Tr key={item.receipt}>
+              <Table.Td>{item.receipt}</Table.Td>
+
+              <Table.Td>{item.date}</Table.Td>
+
+              <Table.Td>
+                <Badge variant="light">
+                  {item.method}
+                </Badge>
+              </Table.Td>
+
+              <Table.Td>{item.collector}</Table.Td>
+
+              <Table.Td className="font-mono">
+                {formatK(item.principal)}
+              </Table.Td>
+
+              <Table.Td className="font-mono">
+                {formatK(item.interest)}
+              </Table.Td>
+
+              <Table.Td className="font-mono">
+                {formatK(item.penalty)}
+              </Table.Td>
+
+              <Table.Td fw={700}>
+                {formatK(item.total)}
+              </Table.Td>
+
+              <Table.Td className="font-mono">
+                {formatK(item.balance)}
+              </Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+    </Paper>
+  );
 }
 
 function getInvestmentDetail(inv: InvestmentSummary): AccountDetailData {
@@ -656,6 +823,85 @@ const docAccentMap: Record<DocIconKind, { bg: string; fg: string }> = {
   shield: { bg: brand.goldSoft, fg: brand.gold },
 };
 
+function CollateralSection({ collateral }: { collateral: CollateralItem[] }) {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {collateral.map((item) => (
+        <Paper
+          key={item.id}
+          radius="lg"
+          className="overflow-hidden"
+          style={{
+            border: "1px solid #ECE8DD",
+            boxShadow: "0 3px 14px rgba(36,31,61,0.06)",
+          }}
+        >
+          <div
+            className="flex items-center justify-center h-32"
+            style={{ background: "#F8F5EE" }}
+          >
+            <Text fz={34}>
+              {item.type === "Motor vehicle" ? "🚗" : "📄"}
+            </Text>
+          </div>
+
+          <div className="p-4">
+            <Text fw={700}>{item.title}</Text>
+
+            <Text fz="xs" c="dimmed" mb="md">
+              {item.type} • {item.subtitle}
+            </Text>
+
+            <div className="mb-3">
+              <div className="flex justify-between">
+                <Text fz="xs">Market value</Text>
+                <Text fz="xs">{formatK(item.marketValue)}</Text>
+              </div>
+
+              <Progress
+                value={100}
+                color="dark"
+                radius="xl"
+                size="sm"
+              />
+            </div>
+
+            <div className="mb-3">
+              <div className="flex justify-between">
+                <Text fz="xs">Forced sale value</Text>
+                <Text fz="xs">{formatK(item.forcedSaleValue)}</Text>
+              </div>
+
+              <Progress
+                value={(item.forcedSaleValue / item.marketValue) * 100}
+                color="gray"
+                radius="xl"
+                size="sm"
+              />
+            </div>
+
+            <Group gap="xs">
+              {item.status === "Verified" ? (
+                <Badge color="teal" variant="light">
+                  Verified
+                </Badge>
+              ) : (
+                <Badge color="orange" variant="light">
+                  {item.status}
+                </Badge>
+              )}
+
+              <Badge color="gray" variant="light">
+                Ownership: {item.ownership}
+              </Badge>
+            </Group>
+          </div>
+        </Paper>
+      ))}
+    </div>
+  );
+}
+
 function DocumentCard({ doc }: { doc: DocumentItem }) {
   const accent = doc.expiring ? { bg: brand.roseSoft, fg: brand.rose } : docAccentMap[doc.icon];
   return (
@@ -701,9 +947,29 @@ function RiskSnapshotPanel({ borrower }: { borrower: BorrowerProfile }) {
         p="md"
         style={{ boxShadow: '0 4px 16px rgba(36,31,61,0.07)', border: '1px solid #ECE8DD' }}
       >
-        <Text fz="xs" fw={700} c="gray.5" className="tracking-wider mb-3">
-          RISK SNAPSHOT
-        </Text>
+        <div className="flex items-center gap-4 mb-4">
+          <RingProgress
+            size={88}
+            thickness={8}
+            sections={[
+              {
+                value: borrower.creditScore / 8.5,
+                color: brand.gold,
+              },
+            ]}
+            rootColor="#ECE8DD"
+          />
+
+          <div>
+            <Text fz={18} fw={700}>
+              {borrower.creditScore}
+            </Text>
+
+            <Text fz="sm" c="dimmed">
+              Credit score · Medium risk
+            </Text>
+          </div>
+        </div>
 
 
 
@@ -886,6 +1152,114 @@ const activityKindTone: Record<ActivityKind, { bg: string; fg: string }> = {
   note: { bg: brand.goldSoft, fg: brand.gold },
 };
 
+function RepaymentSchedule({
+  schedule,
+}: {
+  schedule: ScheduleInstallment[];
+}) {
+  const colors: Record<ScheduleInstallment["status"], string> = {
+    "Paid on time": "#3F8B61",
+    "Paid late": "#C89A3C",
+    Overdue: "#B8533A",
+    Upcoming: "#F5F2EA",
+  };
+
+  return (
+    <Paper
+      radius="lg"
+      p="md"
+      style={{
+        border: "1px solid #ECE8DD",
+        boxShadow: "0 3px 14px rgba(36,31,61,0.06)",
+      }}
+    >
+      <div className="flex items-center gap-5 mb-4 flex-wrap">
+        <Group gap={18}>
+          <Group gap={6}>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 3,
+                background: "#3F8B61",
+              }}
+            />
+            <Text fz="xs">Paid on time</Text>
+          </Group>
+
+          <Group gap={6}>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 3,
+                background: "#C89A3C",
+              }}
+            />
+            <Text fz="xs">Paid late</Text>
+          </Group>
+
+          <Group gap={6}>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 3,
+                background: "#B8533A",
+              }}
+            />
+            <Text fz="xs">Overdue</Text>
+          </Group>
+
+          <Group gap={6}>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 3,
+                background: "#ECE8DD",
+              }}
+            />
+            <Text fz="xs">Upcoming</Text>
+          </Group>
+        </Group>
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        {schedule.map((item) => (
+          <div
+            key={item.id}
+            style={{
+              width: 40,
+              height: 56,
+              borderRadius: 8,
+              background:
+                item.status === "Upcoming"
+                  ? "#F5F2EA"
+                  : colors[item.status],
+              border:
+                item.status === "Upcoming"
+                  ? "1px solid #E5E1D6"
+                  : "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color:
+                item.status === "Upcoming"
+                  ? "#9CA3AF"
+                  : "#fff",
+              fontWeight: 700,
+              fontSize: 13,
+            }}
+          >
+            {item.no}
+          </div>
+        ))}
+      </div>
+    </Paper>
+  );
+}
+
 function ActivityFeed({ activity }: { activity: ActivityItem[] }) {
   const [filter, setFilter] = useState<'all' | ActivityKind>('all');
   const filtered = filter === 'all' ? activity : activity.filter((a) => a.kind === filter);
@@ -998,13 +1372,13 @@ function BorrowerSidebar({
   }
 
   return (
-    <div className="flex flex-col w-full lg:w-80 shrink-0 border-r border-gray-200 bg-white overflow-y-auto">
+    <div className="flex flex-col w-full lg:w-80 shrink-0 h-screen sticky top-0 border-r border-gray-200 bg-white">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
         <ActionIcon variant="subtle" color="gray" size="sm" onClick={onBack}>
           <IconArrowLeft size={16} />
         </ActionIcon>
-      
+
         <ActionIcon variant="subtle" color="gray" size="sm" className="ml-auto" onClick={onToggleCollapsed}>
           <IconChevronLeft size={16} />
         </ActionIcon>
@@ -1037,7 +1411,7 @@ function BorrowerSidebar({
           >
             {borrower.status}
           </Badge>
-        
+
         </div>
         <div className="flex flex-col gap-1.5 mb-3">
           <div className="flex justify-between">
@@ -1105,14 +1479,14 @@ function BorrowerSidebar({
                   loan.status === 'Delinquent' || loan.status === 'Overdue'
                     ? brand.rose
                     : loan.status === 'Closed'
-                    ? brand.slate
-                    : brand.teal;
+                      ? brand.slate
+                      : brand.teal;
                 const accentSoft =
                   loan.status === 'Delinquent' || loan.status === 'Overdue'
                     ? brand.roseSoft
                     : loan.status === 'Closed'
-                    ? brand.slateSoft
-                    : brand.tealSoft;
+                      ? brand.slateSoft
+                      : brand.tealSoft;
                 const selected = isSelected('loan', loan.id);
                 return (
                   <button
@@ -1547,7 +1921,9 @@ function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower: Borro
             <Tabs.Tab value="disbursement">Disbursement</Tabs.Tab>
             <Tabs.Tab value="schedule">Schedule</Tabs.Tab>
             <Tabs.Tab value="history">History</Tabs.Tab>
+
             <Tabs.Tab value="accounting">Accounting</Tabs.Tab>
+            <Tabs.Tab value="collateral">Collateral</Tabs.Tab>
             <Tabs.Tab value="documents">Documents</Tabs.Tab>
             <Tabs.Tab value="activity">Activity</Tabs.Tab>
           </Tabs.List>
@@ -1578,6 +1954,55 @@ function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower: Borro
                   <OverviewField label="LOAN OFFICER" value={detail.officer} />
                 </div>
               </Paper>
+
+              <SectionHeading
+  title="Repayment schedule"
+  aside="Tap any installment for the full breakdown"
+/>
+
+<RepaymentSchedule schedule={detail.schedule} />
+
+<SectionHeading
+  title="Repayment history"
+  aside={`${detail.history.length} most recent transactions`}
+/>
+
+<RepaymentHistoryTable
+  history={detail.history}
+/>
+<SectionHeading
+  title="Accounting"
+  aside="Journal entries posted against this loan"
+/>
+
+<AccountingTable
+  accounting={detail.accounting}
+/>
+
+              <SectionHeading
+                title="Collateral"
+                aside={`${detail.collateral.length} assets securing this loan`}
+              />
+
+              <CollateralSection collateral={detail.collateral} />
+
+              <SectionHeading
+                title="Documents"
+                aside={`${detail.documents.length} files on record`}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {detail.documents.map((doc) => (
+                  <DocumentCard key={doc.id} doc={doc} />
+                ))}
+              </div>
+
+              <SectionHeading
+                title="Activity & audit"
+                aside="Every touchpoint on this loan, in order"
+              />
+
+              <ActivityFeed activity={detail.activity} />
 
               <div>
                 <SectionHeading title="Disbursement" aside={`${detail.tranches.length} tranches released`} />
@@ -1754,6 +2179,15 @@ function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower: Borro
                 </Table.Tbody>
               </Table>
             </Paper>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="collateral">
+            <SectionHeading
+              title="Collateral"
+              aside={`${detail.collateral.length} assets securing this loan`}
+            />
+
+            <CollateralSection collateral={detail.collateral} />
           </Tabs.Panel>
 
           <Tabs.Panel value="documents">
