@@ -5,6 +5,20 @@ import { API } from "../../config/api";
 const api = apiClient;
 export const JournalEntryAPI = API.Accounting.journalEntry;
 
+/**
+ * NOTE: this file extends the original Journalentries.api.ts (list / submit /
+ * cancel / delete) with the create / edit / view endpoints that the old
+ * project's JournalEntryApi.ts had. Nothing in the existing exports below
+ * was changed — only new exports were appended.
+ *
+ * You'll need to add these keys to `API.Accounting.journalEntry` in
+ * config/api.ts (same convention as getAll / updateStatus / delete):
+ *   - create
+ *   - getById
+ *   - update
+ *   - getByIdOnly   (generic doctype list fetcher, used for Account / Party Type lookups)
+ */
+
 /* ===========================================================
    TYPES
 =========================================================== */
@@ -53,6 +67,31 @@ export interface FetchJournalEntriesParams {
 export interface FetchJournalEntriesResult {
   data: JournalEntry[];
   total: number;
+}
+
+/** Child table row shape sent to / received from the backend */
+export interface JournalEntryAccountPayload {
+  name?: string;
+  account: string;
+  account_currency?: string;
+  exchange_rate?: number;
+  debit_in_account_currency?: number;
+  credit_in_account_currency?: number;
+  party_type?: string;
+  party?: string;
+  user_remark?: string;
+}
+
+/** Full create/update payload — matches the old JournalEntryPayload exactly */
+export interface JournalEntryPayload {
+  posting_date: string;
+  voucher_type: string;
+  is_opening?: "Yes" | "No";
+  user_remark?: string;
+  cheque_no?: string;
+  cheque_date?: string;
+  multi_currency?: number;
+  accounts: JournalEntryAccountPayload[];
 }
 
 const FIELDS = [
@@ -118,6 +157,40 @@ export const fetchJournalEntries = async (
 };
 
 /* ===========================================================
+   GET BY ID (single entry, for edit/view)
+=========================================================== */
+
+export const getJournalEntryById = async (id: string): Promise<any> => {
+  const url = `${JournalEntryAPI.getById}/${encodeURIComponent(id)}`;
+  const response: AxiosResponse = await api.get(url);
+  return response.data;
+};
+
+/* ===========================================================
+   CREATE
+=========================================================== */
+
+export const createJournalEntry = async (
+  payload: JournalEntryPayload
+): Promise<any> => {
+  const response: AxiosResponse = await api.post(JournalEntryAPI.create, payload);
+  return response.data;
+};
+
+/* ===========================================================
+   UPDATE
+=========================================================== */
+
+export const updateJournalEntryById = async (
+  id: string,
+  payload: Partial<JournalEntryPayload>
+): Promise<any> => {
+  const url = `${JournalEntryAPI.update}/${encodeURIComponent(id)}`;
+  const response: AxiosResponse = await api.put(url, payload);
+  return response.data;
+};
+
+/* ===========================================================
    STATUS ACTIONS (submit / cancel)
 =========================================================== */
 
@@ -144,5 +217,27 @@ export const cancelJournalEntry = async (name: string): Promise<CommonApiRespons
 export const deleteJournalEntry = async (name: string): Promise<CommonApiResponse> => {
   const url = `${JournalEntryAPI.delete}/${encodeURIComponent(name)}`;
   const response: AxiosResponse<CommonApiResponse> = await api.delete(url);
+  return response.data;
+};
+
+/* ===========================================================
+   GENERIC DOCTYPE FETCHER (Account / Party Type lookups)
+   Same signature as the old project's getComponentById.
+=========================================================== */
+
+export const getComponentById = async (
+  id: string,
+  fields?: string[],
+  filters?: any[][],
+  orderBy?: string
+): Promise<any> => {
+  const url = `${JournalEntryAPI.getByIdOnly}/${encodeURIComponent(id)}`;
+  const params: Record<string, any> = { limit_page_length: 0 };
+
+  if (fields) params.fields = JSON.stringify(fields);
+  if (filters) params.filters = JSON.stringify(filters);
+  if (orderBy) params.order_by = orderBy;
+
+  const response: AxiosResponse = await api.get(url, { params });
   return response.data;
 };

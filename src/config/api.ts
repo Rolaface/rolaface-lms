@@ -264,6 +264,7 @@ loan: {
     getPayableAccounts:`${ERP_BASE}/api/method/custom_api.api.search.get_payable_accounts`,
      getCustomers:`${ERP_BASE}/api/method/custom_api.api.search.get_customers`,
     getReceivableAccounts: `${ERP_BASE}/api/method/custom_api.api.search.get_receivable_accounts`,
+    getCurrency: `${ERP_BASE}/api/method/erpnext.setup.utils.get_exchange_rate`,
 
   },
   frappeUtilsAPI:{
