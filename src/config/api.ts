@@ -201,6 +201,11 @@ loan: {
     getLoanReapyAcc: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.get_loan_repayment_account`,
     createLoanRepay: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.create`,
     getLoanDues: `${ERP_BASE}/api/method/lending.loan_management.doctype.loan_repayment.loan_repayment.calculate_amounts`,
+    updateLoanRepay: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.update`,
+    getLoanRepayById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.get_by_id`,
+    getAllLoanRepay: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.get_all`,
+    updateStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.update_status`,
+    deleteLoanRepay: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.delete`,
   },
 
   // =========================

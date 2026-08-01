@@ -15,6 +15,8 @@ import {
   Pagination,
   Tooltip,
   Title,
+  Loader,
+  Menu,
 } from '@mantine/core';
 import {
   IconEye,
@@ -26,6 +28,7 @@ import {
   IconSearch,
   IconFileOff,
   IconTrash,
+  IconDotsVertical,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -37,65 +40,21 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { LoanRepaymentModal, type LoanRepaymentFormData } from '../../../components/Modal/LoanRepaymentModal';
-
+import { getAllLoanRepayment,  deleteLoanRepayment,  changeLoanRepaymentStatus,} from '../../../api/loanRepaymentApi';
+import { modals } from '@mantine/modals';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 interface RepaymentRow {
-  id: number;
+  id: string;
   loanAc: string;
   customer: string;
   loanType: string;
+  docstatus: number;
   natureOfPayment: 'PAY_DUES' | 'PARTIAL' | 'FULL_SETTLEMENT';
   amountPaid: number;
   paymentMode: string;
   valueDate: string;
   status: 'COMPLETED' | 'PENDING' | 'FAILED';
 }
-
-const DUMMY_REPAYMENTS: RepaymentRow[] = [
-  {
-    id: 1,
-    loanAc: 'LNA-2025-001',
-    customer: 'Yash Joshi',
-    loanType: 'Vehicle Loan',
-    natureOfPayment: 'PAY_DUES',
-    amountPaid: 600.5,
-    paymentMode: 'Direct Debit from A/C',
-    valueDate: '2026-07-25',
-    status: 'COMPLETED',
-  },
-  {
-    id: 2,
-    loanAc: 'LNA-2025-089',
-    customer: 'Yash Joshi',
-    loanType: 'Personal Loan',
-    natureOfPayment: 'PARTIAL',
-    amountPaid: 150,
-    paymentMode: 'UPI',
-    valueDate: '2026-07-22',
-    status: 'COMPLETED',
-  },
-  {
-    id: 3,
-    loanAc: 'LNA-2025-014',
-    customer: 'Meera Nair',
-    loanType: 'Home Loan',
-    natureOfPayment: 'FULL_SETTLEMENT',
-    amountPaid: 284300,
-    paymentMode: 'NEFT/RTGS',
-    valueDate: '2026-07-19',
-    status: 'PENDING',
-  },
-  {
-    id: 4,
-    loanAc: 'LNA-2025-032',
-    customer: 'Arjun Kapoor',
-    loanType: 'Vehicle Loan',
-    natureOfPayment: 'PAY_DUES',
-    amountPaid: 475.25,
-    paymentMode: 'Cheque',
-    valueDate: '2026-07-10',
-    status: 'FAILED',
-  },
-];
 
 const columnHelper = createColumnHelper<RepaymentRow>();
 
@@ -119,59 +78,92 @@ function natureLabel(nature: RepaymentRow['natureOfPayment']) {
   return 'Full Settlement';
 }
 
-function statusColor(status: RepaymentRow['status']) {
-  if (status === 'COMPLETED') return 'green';
-  if (status === 'PENDING') return 'gold';
-  return 'danger';
-}
-
 export function LoanRepayment() {
   const [opened, { open, close }] = useDisclosure(false);
-
-  // filter state
+const STATUS_META: Record<number, { label: string; color: string }> = {
+  0: { label: 'DRAFT', color: 'gray' },
+  1: { label: 'SUBMITTED', color: 'blue' },
+  2: { label: 'CANCELLED', color: 'red' },
+};
   const [search, setSearch] = useState('');
   const [loanType, setLoanType] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
 
-  // table state
-  const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
+   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [selectedRepaymentId, setSelectedRepaymentId] = useState<string | null>(null);
+const [isViewMode, setIsViewMode] = useState(false);
 
-  const [rowsData, setRowsData] = useState(DUMMY_REPAYMENTS);
+const handleModalClose = () => {
+  close();
+  setSelectedRepaymentId(null);
+  setIsViewMode(false);
+};
 
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rowsData.filter((r) => {
-      const matchesSearch =
-        !q ||
-        r.customer.toLowerCase().includes(q) ||
-        r.loanAc.toLowerCase().includes(q);
-      const matchesLoanType = !loanType || r.loanType === loanType;
-      const matchesStatus = status === 'all' || r.status === status;
-      return matchesSearch && matchesLoanType && matchesStatus;
-    });
-  }, [rowsData, search, loanType, status]);
+const { data: repaymentsResponse, isLoading } = useQuery({
+  queryKey: ['loanRepayments'],
+  queryFn: getAllLoanRepayment,
+});
 
-  const handleDelete = (id: number) => {
-    setRowsData((prev) => prev.filter((r) => r.id !== id));
-  };
+const queryClient = useQueryClient();
 
-  const handleAddRepayment = (formData: LoanRepaymentFormData) => {
-    setRowsData((prev) => [
-      ...prev,
-      {
-        id: prev.length ? Math.max(...prev.map((r) => r.id)) + 1 : 1,
-        loanAc: formData.loanAc || '—',
-        customer: formData.customerName || '—',
-        loanType: formData.loanType || '—',
-        natureOfPayment: formData.natureOfPayment,
-        amountPaid: Number(formData.amountToPay) || 0,
-        paymentMode: formData.paymentMode || '—',
-        valueDate: formData.valueDate || '—',
-        status: 'PENDING',
-      },
-    ]);
-  };
+const { mutate: removeRepayment, isPending: isDeleting } = useMutation({
+  mutationFn: (id: string) => deleteLoanRepayment(id),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+  },
+});
+
+const { mutate: updateStatus } = useMutation({
+  mutationFn: ({ id, action }: { id: string; action: string }) =>
+    changeLoanRepaymentStatus(id, action),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+  },
+});
+
+const rowsData = useMemo(() => {
+  const list = repaymentsResponse?.message?.data?.repayments ?? [];
+  return list.map((item: any) => ({
+    id: item.name,
+    loanAc: item.against_loan || '—',
+    customer: item.applicant || '—',  
+    docstatus: item.docstatus,
+    loanType: item.loan_product || '—',
+    natureOfPayment: item.repayment_type,  
+    amountPaid: item.amount_paid || 0,
+    paymentMode: item.mode_of_payment || '—',
+    valueDate: item.value_date || '—',
+    // status: item.status, 
+  }));
+}, [repaymentsResponse]);
+
+const filteredData = useMemo(() => {
+  const q = search.trim().toLowerCase();
+  return rowsData.filter((r) => {
+    const matchesSearch =
+      !q ||
+      r.customer.toLowerCase().includes(q) ||
+      r.loanAc.toLowerCase().includes(q);
+    const matchesLoanType = !loanType || r.loanType === loanType;
+    const matchesStatus = status === 'all' || String(r.docstatus) === status;
+    return matchesSearch && matchesLoanType && matchesStatus;
+  });
+}, [rowsData, search, loanType, status]);
+
+const handleDelete = (id: string) => {
+  modals.openConfirmModal({
+    title: 'Delete loan repayment',
+    children: (
+      <Text size="sm">
+        Are you sure you want to delete repayment <b>{id}</b>? This cannot be undone.
+      </Text>
+    ),
+    labels: { confirm: 'Delete', cancel: 'Cancel' },
+    confirmProps: { color: 'red' },
+    onConfirm: () => removeRepayment(id),
+  });
+};
 
   const columns = useMemo(
     () => [
@@ -236,19 +228,22 @@ export function LoanRepayment() {
           </Text>
         ),
       }),
-      columnHelper.accessor('status', {
+      columnHelper.accessor('docstatus', {
         header: 'Status',
-        cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            color={statusColor(info.getValue())}
-            className="font-semibold tracking-wider"
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
-            {info.getValue()}
-          </Badge>
-        ),
+         cell: (info) => {
+                 const meta = STATUS_META[info.getValue()] || { label: info.getValue(), color: 'gray' };
+                 return (
+                   <Badge
+                     variant="light"
+                     size="sm"
+                     color={meta.color}
+                     className="font-semibold tracking-wider"
+                     styles={{ root: { fontSize: 10, padding: '0 8px' } }}
+                   >
+                     {meta.label}
+                   </Badge>
+                 );
+                },
       }),
       columnHelper.display({
         id: 'actions',
@@ -257,33 +252,78 @@ export function LoanRepayment() {
             Actions
           </Text>
         ),
-        cell: (info) => {
-          const row = info.row.original;
-          return (
-            <Group justify="flex-end" gap={6} wrap="nowrap">
-              <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="gray">
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="brand">
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Delete" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="danger"
-                  onClick={() => handleDelete(row.id)}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          );
-        },
+      cell: (info) => {
+  const row = info.row.original;
+  const isDraft = row.docstatus === 0;
+  const isSubmitted = row.docstatus === 1;
+  const isCancelled = row.docstatus === 2;
+  const canDelete = isDraft || isCancelled;
+
+  return (
+    <Group justify="flex-end" gap={6} wrap="nowrap">
+      <Tooltip label="View" withArrow>
+        <ActionIcon
+          size="sm"
+          variant="subtle"
+          color="gray"
+          onClick={() => {
+            setSelectedRepaymentId(row.id);
+            setIsViewMode(true);
+            open();
+          }}
+        >
+          <IconEye size={14} />
+        </ActionIcon>
+      </Tooltip>
+      <Tooltip label={isDraft ? "Edit" : "Only Drafts can be edited"} withArrow>
+        <ActionIcon
+          size="sm"
+          variant="subtle"
+          color={isDraft ? "brand" : "gray"}
+          disabled={!isDraft}
+          onClick={() => {
+            setSelectedRepaymentId(row.id);
+            setIsViewMode(false);
+            open();
+          }}
+        >
+          <IconPencil size={14} />
+        </ActionIcon>
+      </Tooltip>
+      <Tooltip label={canDelete ? "Delete" : "Submitted repayments cannot be deleted"} withArrow>
+        <ActionIcon
+          size="sm"
+          variant="subtle"
+          color={canDelete ? "danger" : "gray"}
+          disabled={!canDelete || isDeleting}
+          onClick={() => handleDelete(row.id)}
+        >
+          <IconTrash size={14} />
+        </ActionIcon>
+      </Tooltip>
+      {!isCancelled && (
+        <Menu shadow="md" width={140} position="bottom-end">
+          <Menu.Target>
+            <ActionIcon size="sm" variant="subtle" color="gray">
+              <IconDotsVertical size={14} />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {isDraft ? (
+              <Menu.Item onClick={() => updateStatus({ id: row.id, action: "approved" })}>
+                Submit
+              </Menu.Item>
+            ) : (
+              <Menu.Item color="red" onClick={() => updateStatus({ id: row.id, action: "cancelled" })}>
+                Cancel
+              </Menu.Item>
+            )}
+          </Menu.Dropdown>
+        </Menu>
+      )}
+    </Group>
+  );
+},
       }),
     ],
     []
@@ -312,25 +352,27 @@ export function LoanRepayment() {
     setStatus('all');
   };
 
-  const loanTypeOptions = Array.from(new Set(DUMMY_REPAYMENTS.map((r) => r.loanType)));
-
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
-      <LoanRepaymentModal opened={opened} onClose={close} onSubmit={handleAddRepayment} />
+      <LoanRepaymentModal opened={opened} onClose={handleModalClose} editId={selectedRepaymentId} isView={isViewMode}/>
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
         <Title order={2} className="text-gray-900 font-semibold">
           Loan Repayments
         </Title>
-        <Button
-          size="xs"
-          onClick={open}
-          className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 transition-opacity"
-          leftSection={<IconPlus size={14} />}
-        >
-          Process Repayment
-        </Button>
+       <Button
+  size="xs"
+  onClick={() => {
+    setSelectedRepaymentId(null);
+    setIsViewMode(false);
+    open();
+  }}
+  className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 transition-opacity"
+  leftSection={<IconPlus size={14} />}
+>
+  Process Repayment
+</Button>
       </div>
 
       {/* Filters Box */}
@@ -350,7 +392,7 @@ export function LoanRepayment() {
           <Select
             size="xs"
             placeholder="All Loan Types"
-            data={loanTypeOptions}
+            // data={loanTypeOptions}
             className="w-44"
             searchable
             clearable
@@ -361,22 +403,21 @@ export function LoanRepayment() {
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
-
-          <Radio.Group
-            name="status"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          >
-            <Group gap="sm">
-              <Radio size="xs" value="all" label="All" color="brand" />
-              <Radio size="xs" value="COMPLETED" label="Completed" color="brand" />
-              <Radio size="xs" value="PENDING" label="Pending" color="brand" />
-              <Radio size="xs" value="FAILED" label="Failed" color="brand" />
-            </Group>
-          </Radio.Group>
+<Radio.Group
+  name="status"
+  value={status}
+  onChange={(v) => {
+    setStatus(v);
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }}
+>
+  <Group gap="sm">
+    <Radio size="xs" value="all" label="All" color="brand" />
+    <Radio size="xs" value="0" label="Draft" color="brand" />
+    <Radio size="xs" value="1" label="Submitted" color="brand" />
+    <Radio size="xs" value="2" label="Cancelled" color="brand" />
+  </Group>
+</Radio.Group>
 
           <Button size="xs" variant="default" className="ml-auto px-4" onClick={resetFilters}>
             Reset
@@ -416,7 +457,18 @@ export function LoanRepayment() {
             ))}
           </Table.Thead>
           <Table.Tbody>
-            {rows.length === 0 ? (
+            {isLoading ? (
+  <Table.Tr>
+    <Table.Td colSpan={columns.length}>
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader size="sm" color="gray" />
+        <Text ta="center" c="dimmed" fz="xs" mt="sm">
+          Loading loan repayments...
+        </Text>
+      </div>
+    </Table.Td>
+  </Table.Tr>
+) : rows.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={columns.length}>
                   <div className="flex flex-col items-center py-8 text-gray-400">
