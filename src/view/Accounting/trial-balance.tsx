@@ -32,6 +32,7 @@ import {
   nf,
 } from "../../api/Accounting/Trialbalance.api";
 import { useTrialBalance } from "../../hooks/Accounting/Trialbalance.logic";
+import { DateInput } from "@mantine/dates";
 
 /* ───────────────── Filter bar ───────────────── */
 
@@ -53,14 +54,20 @@ function FilterBar({
           <Text fz="xs" fw={600} c="gray.5" className="uppercase tracking-wide">
             From
           </Text>
-          <TextInput
+
+          <DateInput
             size="xs"
-            type="date"
+            placeholder="From Date"
             value={filters.from_date}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, from_date: e.currentTarget.value }))
+            onChange={(value) =>
+              setFilters((f) => ({
+                ...f,
+                from_date: value || "",
+              }))
             }
+            valueFormat="DD/MM/YYYY"
             className="w-[150px]"
+            clearable
           />
         </Group>
 
@@ -68,14 +75,20 @@ function FilterBar({
           <Text fz="xs" fw={600} c="gray.5" className="uppercase tracking-wide">
             To
           </Text>
-          <TextInput
+
+          <DateInput
             size="xs"
-            type="date"
+            placeholder="To Date"
             value={filters.to_date}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, to_date: e.currentTarget.value }))
+            onChange={(value) =>
+              setFilters((f) => ({
+                ...f,
+                to_date: value || "",
+              }))
             }
+            valueFormat="DD/MM/YYYY"
             className="w-[150px]"
+            clearable
           />
         </Group>
 
@@ -87,10 +100,7 @@ function FilterBar({
             size="xs"
             placeholder="2026-2027"
             value={filters.fiscal_year}
-            onChange={(e) => {
-              const value = e.currentTarget.value;
-              setFilters((f) => ({ ...f, fiscal_year: value }));
-            }}
+            disabled
             className="w-28"
           />
         </Group>

@@ -7,8 +7,9 @@ import {
   submitJournalEntry,
   cancelJournalEntry,
   deleteJournalEntry,
-} from '../../api/Accounting/Journalentries.api';
-import { showApiError, showSuccess } from '../../utils/alert';
+} from '../../../api/Accounting/Journalentries.api';
+import { showApiError, showSuccess } from '../../../utils/alert';
+import { parseFrappeError } from '../../../utils/Accounitng/Journal-Entry/Journalentry.utils';
 
 export function useJournalEntries() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -35,7 +36,7 @@ export function useJournalEntries() {
         setTotal(res.total);
       })
       .catch((err: any) => {
-        showApiError(err?.message || 'Failed to load journal entries.');
+        showApiError(parseFrappeError(err) || 'Failed to load journal entries.');
       })
       .finally(() => setLoading(false));
   }, [search, fromDate, toDate, orderBy, pagination.pageIndex, pagination.pageSize]);
@@ -71,7 +72,7 @@ export function useJournalEntries() {
           showSuccess(`Entry ${name} has been submitted successfully.`);
           loadEntries();
         })
-        .catch((err: any) => showApiError(err?.message || 'Failed to submit entry.'));
+        .catch((err: any) => showApiError(parseFrappeError(err) || 'Failed to submit entry.'));
     },
     [loadEntries]
   );
@@ -89,7 +90,7 @@ export function useJournalEntries() {
             showSuccess(`Entry ${name} has been cancelled successfully.`);
             loadEntries();
           } catch (err: any) {
-            showApiError(err?.message || 'Failed to cancel entry.');
+            showApiError(parseFrappeError(err) || 'Failed to cancel entry.');
           }
         },
       });
@@ -110,7 +111,7 @@ export function useJournalEntries() {
             showSuccess(`Entry ${name} has been successfully deleted.`);
             loadEntries();
           } catch (err: any) {
-            showApiError(err?.message || 'Failed to delete entry.');
+            showApiError(parseFrappeError(err) || 'Failed to delete entry.');
           }
         },
       });
@@ -131,7 +132,7 @@ export function useJournalEntries() {
     orderBy,
     setOrderBy,
 
-    filteredData: entries, // now already the current page's data from server
+    filteredData: entries,
     total,
     pagination,
     setPagination,
