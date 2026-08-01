@@ -36,6 +36,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { CustomerModal } from '../../components/Modal/CustomerModal';
+import { Borrower360, getBorrowerProfile } from './CustomerView';
 
 // NOTE: requires `@tanstack/react-table` — install with:
 //   npm install @tanstack/react-table
@@ -124,6 +125,7 @@ export function Customer() {
   // local status map so the row can optimistically update without a backend
   const [statusOverrides, setStatusOverrides] = useState<Record<number, string>>({});
   const [customers, setCustomers] = useState(DUMMY_CUSTOMERS);
+  const [borrower360CustomerId, setBorrower360CustomerId] = useState<number | null>(null);
 
   const data = useMemo(
     () =>
@@ -242,7 +244,12 @@ export function Customer() {
           return (
             <Group justify="flex-end" gap={6} wrap="nowrap">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="gray">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="gray"
+                  onClick={() => setBorrower360CustomerId(row.id)}
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -295,13 +302,26 @@ export function Customer() {
 
   const countryOptions = Array.from(new Set(DUMMY_CUSTOMERS.map((c) => c.country)));
 
+  if (borrower360CustomerId !== null) {
+    const customer = customers.find((c) => c.id === borrower360CustomerId);
+    if (customer) {
+      const borrower = getBorrowerProfile({ id: customer.id, name: customer.name, mobile: customer.mobile });
+      return (
+        <Box className="p-8 mt-10">
+          <Borrower360 borrower={borrower} onBack={() => setBorrower360CustomerId(null)} />
+        </Box>
+      );
+    }
+    setBorrower360CustomerId(null);
+  }
+
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
       <CustomerModal opened={opened} onClose={close} />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
-         <Title order={2} className="text-gray-900 font-semibold">
+        <Title order={2} className="text-gray-900 font-semibold">
           Customers
         </Title>
         <Button
@@ -390,9 +410,8 @@ export function Customer() {
                   return (
                     <Table.Th
                       key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${
-                        canSort ? 'cursor-pointer' : ''
-                      }`}
+                      className={`text-gray-600 font-semibold select-none ${canSort ? 'cursor-pointer' : ''
+                        }`}
                       style={{ fontSize: 11, padding: '6px 10px' }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
