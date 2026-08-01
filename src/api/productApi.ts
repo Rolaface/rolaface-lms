@@ -95,3 +95,11 @@ export async function getAllPrincipalAccounts(searchTerm?: string) {
     });
     return data;
 }
+
+
+export async function getLoanProductById(id: string) {
+  const { data } = await apiClient.get(API.loanProduct.getById, { params: { id } });  
+  return data;
+}
+
+ 

@@ -35,6 +35,9 @@ import {
   IconScale,
   IconTrendingDown,
 } from "@tabler/icons-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { LoanRepaymentPayload } from "../../types/loanRepaymentForm";
+import { getLoanRepaymentAccount, createLoanRepayment, getLoanDues} from "../../api/loanRepaymentApi";
 
 interface LoanRepaymentModalProps {
   opened: boolean;
@@ -65,8 +68,7 @@ interface LoanAccount {
   interestDue: number;
   penalty: number;
   lateFees: number;
-  // Total number of EMIs still left on the schedule (used for the Payment Effect preview).
-  remainingInstallments: number;
+   remainingInstallments: number;
 }
 
 interface Borrower {
@@ -77,128 +79,11 @@ interface Borrower {
   loans: LoanAccount[];
 }
 
-// Static borrower directory — wire up to real borrower lookup as needed.
-const BORROWERS: Borrower[] = [
-  {
-    name: "Yash Joshi",
-    cif: "1009842",
-    phone: "+91 98765 43210",
-    status: "Standard",
-    loans: [
-      {
-        id: "LNA-2025-001",
-        type: "Vehicle Loan",
-        balance: 12450,
-        emiDate: "5th of Month",
-        principalDue: 450,
-        interestDue: 125.5,
-        penalty: 10,
-        lateFees: 25,
-        remainingInstallments: 28,
-      },
-      {
-        id: "LNA-2025-089",
-        type: "Personal Loan",
-        balance: 4200,
-        emiDate: "12th of Month",
-        principalDue: 210,
-        interestDue: 65,
-        penalty: 10,
-        lateFees: 0,
-        remainingInstallments: 20,
-      },
-    ],
-  },
-  {
-    name: "Meera Nair",
-    cif: "1010223",
-    phone: "+91 91234 56780",
-    status: "Standard",
-    loans: [
-      {
-        id: "LNA-2025-014",
-        type: "Home Loan",
-        balance: 284300,
-        emiDate: "1st of Month",
-        principalDue: 3200,
-        interestDue: 1450.75,
-        penalty: 10,
-        lateFees: 0,
-        remainingInstallments: 156,
-      },
-    ],
-  },
-  {
-    name: "Arjun Kapoor",
-    cif: "1011567",
-    phone: "+91 99887 66554",
-    status: "Overdue",
-    loans: [
-      {
-        id: "LNA-2025-032",
-        type: "Vehicle Loan",
-        balance: 8600,
-        emiDate: "18th of Month",
-        principalDue: 380,
-        interestDue: 95.25,
-        penalty: 10,
-        lateFees: 40,
-        remainingInstallments: 22,
-      },
-      {
-        id: "LNA-2025-047",
-        type: "Personal Loan",
-        balance: 2150,
-        emiDate: "25th of Month",
-        principalDue: 175,
-        interestDue: 42.5,
-        penalty: 10,
-        lateFees: 15,
-        remainingInstallments: 12,
-      },
-    ],
-  },
-  {
-    name: "Sanya Iyer",
-    cif: "1012890",
-    phone: "+91 90000 12345",
-    status: "Standard",
-    loans: [
-      {
-        id: "LNA-2025-058",
-        type: "Education Loan",
-        balance: 156000,
-        emiDate: "10th of Month",
-        principalDue: 1200,
-        interestDue: 380.6,
-        penalty: 10,
-        lateFees: 0,
-        remainingInstallments: 96,
-      },
-    ],
-  },
-  {
-    name: "Rohan Mehta",
-    cif: "1013456",
-    phone: "+91 98123 45678",
-    status: "Overdue",
-    loans: [
-      {
-        id: "LNA-2025-071",
-        type: "Vehicle Loan",
-        balance: 5400,
-        emiDate: "3rd of Month",
-        principalDue: 300,
-        interestDue: 88,
-        penalty: 10,
-        lateFees: 60,
-        remainingInstallments: 16,
-      },
-    ],
-  },
-];
 
 const PAYMENT_MODES = ["Direct Debit from A/C", "Cash", "Cheque", "NEFT/RTGS", "UPI"];
+function toRepaymentType(nature: LoanRepaymentFormData["natureOfPayment"]) {
+  return nature === "FULL_SETTLEMENT" ? "Full Settlement" : "Normal Repayment";
+}
 
 const labelClass = { label: "text-sm font-medium text-gray-700 mb-1" };
 const chevronDown = <IconChevronDown size={14} className="text-gray-500" />;
@@ -207,10 +92,7 @@ function formatCurrency(amount: number) {
   return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 }
 
-// Applies a payment against a loan using a standard collection waterfall:
-// penalty -> late fees -> interest -> principal. Returns the before/after
-// snapshot used by the Payment Effect preview.
-function computePaymentEffect(loan: LoanAccount, amount: number, nature: LoanRepaymentFormData["natureOfPayment"]) {
+ function computePaymentEffect(loan: LoanAccount, amount: number, nature: LoanRepaymentFormData["natureOfPayment"]) {
   const amt = Math.max(0, amount || 0);
 
   const totalOutstandingBefore = loan.balance + loan.interestDue + loan.penalty + loan.lateFees;
@@ -275,24 +157,61 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
 
   const [paymentEffectOpened, setPaymentEffectOpened] = useState(false);
 
-  // Collapse the borrower panel automatically once a loan account is picked,
-  // to free up room for the payment form. Expands again if selection is cleared.
-  useEffect(() => {
+   useEffect(() => {
     setBorrowerPanelCollapsed(!!selectedLoanId);
   }, [selectedLoanId]);
 
-  const matches = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return [];
-    const qDigits = q.replace(/\D/g, "");
-    return BORROWERS.filter((b) => {
-      const nameWords = b.name.toLowerCase().split(" ");
-      const matchesName = nameWords.some((word) => word.startsWith(q));
-      const matchesPhone = qDigits.length > 0 && b.phone.replace(/\D/g, "").includes(qDigits);
-      const matchesCif = b.cif.startsWith(q);
-      return matchesName || matchesPhone || matchesCif;
-    });
-  }, [search]);
+const { data: searchResponse, isLoading: isSearching } = useQuery({
+  queryKey: ["loanRepaymentAccounts", search],
+  queryFn: () => getLoanRepaymentAccount(search),
+  enabled: opened && search.trim().length > 0,
+});
+const matches: Borrower[] = useMemo(() => {
+  const items = searchResponse?.message ?? [];
+  return items.map((item) => ({
+    name: item.applicant_name || item.applicant,
+    cif: item.applicant,  
+    phone: item.phone_number || "",
+    status: "Standard",  
+    loans: [
+      {
+        id: item.against_loan,
+        type: "",  
+        balance: item.sanctioned_amount ?? 0,
+        emiDate: "",  
+        principalDue: 0,  
+        interestDue: 0,
+        penalty: 0,
+        lateFees: 0,
+        remainingInstallments: 0,
+      },
+    ],
+  }));
+}, [searchResponse]);
+
+const queryClient = useQueryClient();
+
+const { data: duesResponse, isFetching: isDuesLoading } = useQuery({
+  queryKey: ["loanDues", selectedLoanId, valueDate, natureOfPayment],
+  queryFn: () =>
+    getLoanDues({
+      payment_type: toRepaymentType(natureOfPayment),
+      posting_date: valueDate,
+      against_loan: selectedLoanId as string,
+    }),
+  enabled: !!selectedLoanId,
+});
+
+const dues = duesResponse?.message;
+
+useEffect(() => {
+  if (!dues) return;
+  if (natureOfPayment === "PAY_DUES") {
+    setAmountToPay(dues.payable_amount);
+  } else if (natureOfPayment === "FULL_SETTLEMENT") {
+    setAmountToPay(dues.payable_amount);
+  }
+}, [dues, natureOfPayment]);
 
   const selectedLoan = selectedBorrower?.loans.find((l) => l.id === selectedLoanId) ?? null;
   const totalDue = selectedLoan
@@ -338,18 +257,38 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
     }
   };
 
-  const handleNatureChange = (value: string) => {
-    const nature = value as LoanRepaymentFormData["natureOfPayment"];
-    setNatureOfPayment(nature);
-    if (!selectedLoan) return;
-    if (nature === "PAY_DUES") {
-      setAmountToPay(Math.round(totalDue * 100) / 100);
-    } else if (nature === "FULL_SETTLEMENT") {
-      setAmountToPay(selectedLoan.balance);
-    } else {
-      setAmountToPay("");
-    }
+ const handleNatureChange = (value: string) => {
+  setNatureOfPayment(value as LoanRepaymentFormData["natureOfPayment"]);
+  if (value === "PARTIAL") setAmountToPay("");
+};
+
+const createRepaymentMutation = useMutation({
+  mutationFn: createLoanRepayment,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
+    handleReset();
+    onClose();
+  },
+});
+
+const handleSubmit = () => {
+  if (!selectedLoan || !selectedBorrower) return;
+
+  const payload: LoanRepaymentPayload = {
+    repayment_type: toRepaymentType(natureOfPayment),
+    applicant_type: "Customer",
+    applicant: selectedBorrower.cif,
+    loan_product: "",  
+    against_loan: selectedLoan.id,
+    value_date: valueDate,
+    amount_paid: Number(amountToPay) || 0,
+    mode_of_payment: paymentMode as string,
+    reference_number: referenceNumber,
+    reference_date: referenceDate,
   };
+
+  createRepaymentMutation.mutate(payload);
+};
 
   const handleReset = () => {
     setSearch("");
@@ -363,23 +302,6 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
     setReferenceDate("");
     setAccountNumber("");
     setRemark("");
-  };
-
-  const handleSubmit = () => {
-    onSubmit?.({
-      loanAc: selectedLoan?.id ?? "",
-      customerName: selectedBorrower?.name ?? "",
-      loanType: selectedLoan?.type ?? "",
-      valueDate,
-      natureOfPayment,
-      amountToPay,
-      paymentMode,
-      referenceNumber,
-      referenceDate,
-      accountNumber,
-      remark,
-    });
-    onClose();
   };
 
   return (
@@ -473,14 +395,14 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
                   Search by A/C no, phone or name
                 </Text>
 
-                <TextInput
-                  size="sm"
-                  placeholder="e.g. Yash Joshi, 9876543210..."
-                  value={search}
-                  onChange={(e) => setSearch(e.currentTarget.value)}
-                  leftSection={<IconSearch size={14} className="text-gray-400" />}
-                  classNames={labelClass}
-                />
+               <TextInput
+                 size="sm"
+                 placeholder="Search by loan A/C, applicant or phone"
+                 value={search}
+                 onChange={(e) => setSearch(e.currentTarget.value)}
+                 leftSection={<IconSearch size={14} className="text-gray-400" />}
+                 classNames={labelClass}
+               />
 
                 {selectedBorrower ? (
                   <div className="mt-4">
@@ -517,13 +439,13 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
                   </div>
                 ) : (
                   search.trim() && (
-                    <div className="flex flex-col gap-2 mt-4">
-                      {matches.length === 0 ? (
-                        <Text size="xs" c="dimmed" className="py-2">
-                          No borrowers found.
-                        </Text>
-                      ) : (
-                        matches.map((borrower) => (
+  <div className="flex flex-col gap-2 mt-4">
+    {isSearching ? (
+      <Text size="xs" c="dimmed" className="py-2">Searching...</Text>
+    ) : matches.length === 0 ? (
+      <Text size="xs" c="dimmed" className="py-2">No borrowers found.</Text>
+    ) : (
+      matches.map((borrower) => (
                           <button
                             key={borrower.cif}
                             type="button"
@@ -671,6 +593,8 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
                     size="sm"
                     withAsterisk
                     label="Amount to Pay"
+                    hideControls
+                   min={0}
                     placeholder="Enter amount"
                     value={amountToPay}
                     onChange={(v) => setAmountToPay(v as number | "")}
@@ -807,78 +731,65 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
             </div>
 
             {selectedLoan ? (
-              <div className="flex flex-col gap-3">
+  <div className="flex flex-col gap-3">
+    <div className="bg-gray-50/60 border border-gray-100 rounded-md p-2.5">
+      <Text size="xs" c="dimmed">EMI Date</Text>
+      <Text size="sm" fw={600} className="text-gray-900">
+        {isDuesLoading ? "Loading..." : dues?.due_date || "—"}
+      </Text>
+    </div>
 
-                <div className="bg-gray-50/60 border border-gray-100 rounded-md p-2.5">
-                  <Text size="xs" c="dimmed">
-                    EMI Date
-                  </Text>
-                  <Text size="sm" fw={600} className="text-gray-900">
-                    {selectedLoan.emiDate}
-                  </Text>
-                </div>
+    <div className="bg-gray-50/60 border border-gray-100 rounded-md p-3 flex flex-col gap-1.5">
+      <div className="flex justify-between">
+        <Text size="xs" c="dimmed">Principal Due</Text>
+        <Text size="xs" className="font-mono text-gray-700">
+          {formatCurrency(dues?.payable_principal_amount ?? 0)}
+        </Text>
+      </div>
+      <div className="flex justify-between">
+        <Text size="xs" c="dimmed">Interest Due</Text>
+        <Text size="xs" className="font-mono text-gray-700">
+          {formatCurrency(dues?.interest_amount ?? 0)}
+        </Text>
+      </div>
+      <div className="flex justify-between">
+        <Text size="xs" c="dimmed">Penalty</Text>
+        <Text size="xs" className="font-mono text-gray-700">
+          {formatCurrency(dues?.penalty_amount ?? 0)}
+        </Text>
+      </div>
+      <div className="flex justify-between">
+        <Text size="xs" c="dimmed">Fees/Charges</Text>
+        <Text size="xs" className="font-mono text-gray-700">
+          {formatCurrency(dues?.total_charges_payable ?? 0)}
+        </Text>
+      </div>
+      <div className="border-t border-gray-100 my-1" />
+      <div className="flex justify-between items-center">
+        <Text size="sm" fw={700} className="text-gray-900">Total Amount Due</Text>
+        <Text size="sm" fw={700} className="text-gray-900 font-mono">
+          {formatCurrency(dues?.payable_amount ?? 0)}
+        </Text>
+      </div>
+    </div>
 
-                <div className="bg-gray-50/60 border border-gray-100 rounded-md p-3 flex flex-col gap-1.5">
-                  <div className="flex justify-between">
-                    <Text size="xs" c="dimmed">
-                      Principal Due
-                    </Text>
-                    <Text size="xs" className="font-mono text-gray-700">
-                      {formatCurrency(selectedLoan.principalDue)}
-                    </Text>
-                  </div>
-                  <div className="flex justify-between">
-                    <Text size="xs" c="dimmed">
-                      Interest Due
-                    </Text>
-                    <Text size="xs" className="font-mono text-gray-700">
-                      {formatCurrency(selectedLoan.interestDue)}
-                    </Text>
-                  </div>
-                  <div className="flex justify-between">
-                    <Text size="xs" c="dimmed">
-                      Penalty
-                    </Text>
-                    <Text size="xs" className="font-mono text-gray-700">
-                      {formatCurrency(selectedLoan.penalty)}
-                    </Text>
-                  </div>
-                  <div className="flex justify-between">
-                    <Text size="xs" c="dimmed">
-                      Fees/Charges
-                    </Text>
-                    <Text size="xs" className="font-mono text-gray-700">
-                      {formatCurrency(selectedLoan.lateFees)}
-                    </Text>
-                  </div>
-                  <div className="border-t border-gray-100 my-1" />
-                  <div className="flex justify-between items-center">
-                    <Text size="sm" fw={700} className="text-gray-900">
-                      Total Amount Due
-                    </Text>
-                    <Text size="sm" fw={700} className="text-gray-900 font-mono">
-                      {formatCurrency(totalDue)}
-                    </Text>
-                  </div>
-                </div>
-
-                <Button
-                  size="sm"
-                  variant="light"
-                  color="brand"
-                  fullWidth
-                  leftSection={<IconScale size={14} />}
-                  onClick={() => setPaymentEffectOpened(true)}
-                  className="font-semibold"
-                >
-                  Payment Effect
-                </Button>
-              </div>
-            ) : (
-              <Text size="xs" c="dimmed" className="py-8 text-center">
-                Select a loan account on the left to view dues.
-              </Text>
-            )}
+    <Button
+      size="sm"
+      variant="light"
+      color="brand"
+      fullWidth
+      leftSection={<IconScale size={14} />}
+      onClick={() => setPaymentEffectOpened(true)}
+      className="font-semibold"
+    >
+      Payment Effect
+    </Button>
+  </div>
+) : (
+  <Text size="xs" c="dimmed" className="py-8 text-center">
+    Select a loan account on the left to view dues.
+  </Text>
+)}
           </div>
         </div>
 
@@ -895,15 +806,16 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentM
             >
               Reset
             </Button>
-            <Button
-              size="sm"
-              disabled={!selectedLoan}
-              onClick={handleSubmit}
-              rightSection={<IconArrowRight size={16} />}
-              className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 font-semibold px-6"
-            >
-              Process Repayment
-            </Button>
+          <Button
+  size="sm"
+  disabled={!selectedLoan || createRepaymentMutation.isPending}
+  loading={createRepaymentMutation.isPending}
+  onClick={handleSubmit}
+  rightSection={!createRepaymentMutation.isPending ? <IconArrowRight size={16} /> : null}
+  className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 font-semibold px-6"
+>
+  Process Repayment
+</Button>
           </div>
         </div>
       </Box>

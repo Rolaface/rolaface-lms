@@ -1,3 +1,9 @@
+import type { AxiosResponse } from 'axios';
+import apiClient from '../../config/axios';
+import { API } from '../../config/api';
+
+const api = apiClient;
+
 /* ───────────────── Types ───────────────── */
 
 export type PLMode = 'Fiscal Year' | 'Date Range';
@@ -37,10 +43,40 @@ export interface PLData {
 export interface ProfitLossFilters {
   mode: PLMode;
   periodicity: PLPeriodicity;
-  from_fiscal_year: number;
-  to_fiscal_year: number;
+   from_fiscal_year: string;   
+  to_fiscal_year: string;
   from_date: string;
   to_date: string;
+}
+
+/* Raw shapes as they come off the wire, before normalization */
+interface RawPLNode {
+  account: string;
+  account_name: string;
+  is_group?: boolean | 0 | 1;
+  indent?: number;
+  periods?: Record<string, number>;
+  total?: number;
+  children?: RawPLNode[];
+}
+
+interface RawPLData {
+  company: string;
+  columns: PLColumn[];
+  income: RawPLNode[];
+  expense: RawPLNode[];
+  summary: PLSummaryItem[];
+}
+
+interface PLEnvelope {
+  status_code: number;
+  status: string;
+  message: string;
+  data: RawPLData;
+}
+
+interface PLApiResponse {
+  message: PLEnvelope;
 }
 
 /* ───────────────── Currency helpers ───────────────── */
@@ -59,123 +95,69 @@ export function nf(amount: number) {
   return amount.toLocaleString('en-IN', { maximumFractionDigits: 0 });
 }
 
-/* ───────────────── Period column generation ───────────────── */
+/* ───────────────── Node normalization ───────────────── */
 
-const MONTH_LABELS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
-
-export function buildPeriodColumns(periodicity: PLPeriodicity, fyLabel: string): PLColumn[] {
-  let periods: PLColumn[] = [];
-  if (periodicity === 'Monthly') {
-    periods = MONTH_LABELS.map((m) => ({ fieldname: m.toLowerCase(), label: `${m} ${fyLabel}` }));
-  } else if (periodicity === 'Quarterly') {
-    periods = ['Q1', 'Q2', 'Q3', 'Q4'].map((q) => ({ fieldname: q.toLowerCase(), label: `${q} ${fyLabel}` }));
-  } else if (periodicity === 'Half-Yearly') {
-    periods = ['H1', 'H2'].map((h) => ({ fieldname: h.toLowerCase(), label: `${h} ${fyLabel}` }));
-  } else {
-    periods = [{ fieldname: 'fy', label: `FY ${fyLabel}` }];
-  }
-  return [
-    { fieldname: 'account', label: 'Account' },
-    ...periods,
-    { fieldname: 'total', label: 'Total' },
-  ];
-}
-
-/* ───────────────── Dummy data ───────────────── */
-
-// deterministic pseudo-variation so numbers look organic without being random on every render
-function spread(base: number, count: number): number[] {
-  const weights = [1.0, 0.92, 1.08, 0.97, 1.12, 0.88, 1.03, 0.95, 1.1, 0.9, 1.05, 1.0];
-  return Array.from({ length: count }, (_, i) => Math.round((base / count) * weights[i % weights.length]));
-}
-
-interface RawAccount {
-  account: string;
-  account_name: string;
-  annual: number;
-}
-
-const INCOME_ACCOUNTS: RawAccount[] = [
-  { account: 'SALES-NSPL', account_name: 'Sales Revenue', annual: 14200000 },
-  { account: 'SERVICE-REV-NSPL', account_name: 'Service Revenue', annual: 3860000 },
-  { account: 'OTHER-INC-NSPL', account_name: 'Other Income', annual: 412000 },
-];
-
-const EXPENSE_ACCOUNTS: RawAccount[] = [
-  { account: 'SALARY-NSPL', account_name: 'Salaries & Wages', annual: 5120000 },
-  { account: 'RENT-NSPL', account_name: 'Rent Expense', annual: 960000 },
-  { account: 'UTIL-NSPL', account_name: 'Utilities', annual: 214000 },
-  { account: 'MKT-NSPL', account_name: 'Marketing Expenses', annual: 386000 },
-  { account: 'COGS-NSPL', account_name: 'Cost of Goods Sold', annual: 1941300 },
-];
-
-function buildNode(raw: RawAccount, columns: PLColumn[]): PLNode {
-  const periodCols = columns.filter((c) => c.fieldname !== 'account' && c.fieldname !== 'total');
-  const values = spread(raw.annual, periodCols.length);
-  const periods: Record<string, number> = {};
-  periodCols.forEach((c, i) => (periods[c.fieldname] = values[i]));
-  const total = values.reduce((s, v) => s + v, 0);
+// Mirrors the old project's `mapNode` — normalizes is_group (0/1 -> boolean),
+// defaults periods/total, and recurses into children so nested groups are typed too.
+function mapNode(raw: RawPLNode): PLNode {
   return {
     account: raw.account,
     account_name: raw.account_name,
-    is_group: false,
-    indent: 1,
-    periods,
-    total,
+    is_group: !!raw.is_group,
+    indent: raw.indent ?? 0,
+    periods: raw.periods ?? {},
+    total: raw.total ?? 0,
+    children: raw.children?.length ? raw.children.map(mapNode) : undefined,
   };
 }
 
-function buildGroup(label: string, accounts: RawAccount[], columns: PLColumn[]): PLNode {
-  const children = accounts.map((a) => buildNode(a, columns));
-  const periodCols = columns.filter((c) => c.fieldname !== 'account' && c.fieldname !== 'total');
-  const periods: Record<string, number> = {};
-  periodCols.forEach((c) => {
-    periods[c.fieldname] = children.reduce((s, ch) => s + (ch.periods[c.fieldname] ?? 0), 0);
-  });
-  const total = children.reduce((s, ch) => s + ch.total, 0);
+/* ───────────────── Param building ───────────────── */
+
+// Old project branched params by mode (filter_based_on) — same here.
+function buildParams(filters: ProfitLossFilters) {
+  if (filters.mode === 'Date Range') {
+    return {
+      periodicity: filters.periodicity,
+      from_date: filters.from_date,
+      to_date: filters.to_date,
+      filter_based_on: 'Date Range' as const,
+    };
+  }
   return {
-    account: label.toUpperCase(),
-    account_name: label,
-    is_group: true,
-    indent: 0,
-    periods,
-    total,
-    children,
+    periodicity: filters.periodicity,
+    from_fiscal_year: filters.from_fiscal_year,
+    to_fiscal_year: filters.to_fiscal_year,
+    filter_based_on: 'Fiscal Year' as const,
   };
 }
 
-function buildDummyPL(filters: ProfitLossFilters): PLData {
-  const fyLabel =
-    filters.mode === 'Fiscal Year'
-      ? String(filters.from_fiscal_year)
-      : `${filters.from_date} to ${filters.to_date}`;
+/* ───────────────── GET Profit & Loss ───────────────── */
 
-  const columns = buildPeriodColumns(filters.periodicity, fyLabel);
-
-  const income = [buildGroup('Income', INCOME_ACCOUNTS, columns)];
-  const expense = [buildGroup('Expenses', EXPENSE_ACCOUNTS, columns)];
-
-  const totalIncome = income[0].total;
-  const totalExpense = expense[0].total;
-  const netProfit = totalIncome - totalExpense;
-
-  const summary: PLSummaryItem[] = [
-    { label: 'Total Income', value: totalIncome, indicator: 'green' },
-    { label: 'Total Expense', value: totalExpense, indicator: 'red' },
-    { label: 'Net Profit', value: netProfit, indicator: netProfit >= 0 ? 'green' : 'red' },
-  ];
-
-  return {
-    company: 'NovaTech Solutions Pvt. Ltd.',
-    columns,
-    income,
-    expense,
-    summary,
-  };
-}
-
-/** Mimics: GET /accounting/profit-and-loss?periodicity=...&from_fiscal_year=... */
+/** GET /accounting/profit-and-loss?periodicity=...&from_fiscal_year=... (or date range) */
 export async function fetchProfitAndLoss(filters: ProfitLossFilters): Promise<PLData> {
-  await new Promise((res) => setTimeout(res, 400));
-  return buildDummyPL(filters);
+  const params = buildParams(filters);
+
+  // NOTE: rename this to whatever your new project's config/api.ts actually
+  // calls the P&L endpoint (matching the Receivable pattern e.g.
+  // API.Accounting.receivable.getAllReceivable).
+  const response: AxiosResponse<PLApiResponse> = await api.get(
+    API.Accounting.profitLoss.get,
+    { params },
+  );
+
+  const envelope = response.data.message;
+
+  if (envelope.status_code !== 200) {
+    throw new Error(envelope.message || 'Failed to load Profit & Loss.');
+  }
+
+  const d = envelope.data;
+
+  return {
+    company: d.company,
+    columns: d.columns,
+    income: d.income.map(mapNode),
+    expense: d.expense.map(mapNode),
+    summary: d.summary,
+  };
 }

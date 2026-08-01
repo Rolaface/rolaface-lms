@@ -1,21 +1,16 @@
 /* ───────────────────────────────────────────────────────────
    JournalEntries — UI layer
-   All rendering: column defs, filter bar, table, pagination
-   footer, and the page component wiring it all to
-   useJournalEntries(). No state or business logic here.
    ─────────────────────────────────────────────────────────── */
 
 import { useMemo } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
-  getPaginationRowModel,
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
 import {
   Box,
-  Button,
   TextInput,
   Select,
   Group,
@@ -26,13 +21,12 @@ import {
   Text,
   Pagination,
   Tooltip,
-  Title,
   Menu,
+  LoadingOverlay,
 } from '@mantine/core';
 import {
   IconEye,
   IconPencil,
-  IconPlus,
   IconSearch,
   IconFileText,
   IconDots,
@@ -178,16 +172,21 @@ function useColumns(
 
 export function JournalEntries() {
   const {
+    loading,
     search, setSearch,
     fromDate, setFromDate,
     toDate, setToDate,
     orderBy, setOrderBy,
     filteredData,
+    total,
     pagination, setPagination,
     handleSubmit, handleCancel, handleDelete,
   } = useJournalEntries();
 
   const columns = useColumns(handleSubmit, handleCancel, handleDelete);
+
+  const { pageIndex, pageSize } = pagination;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   const table = useReactTable({
     data: filteredData,
@@ -195,25 +194,17 @@ export function JournalEntries() {
     state: { pagination },
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true, // server already paginates — no client-side slicing
+    pageCount,
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
-  const { pageIndex, pageSize } = pagination;
+  const totalRows = total;
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   return (
-    <Box className="flex flex-col gap-4 p-8 ">
-      <div className="flex justify-between items-center">
-        <Title order={2} className="text-gray-900 font-semibold">
-          Journal Entries
-        </Title>
-        <Button size="xs" color="indigoAlt.4" leftSection={<IconPlus size={14} />}>
-          New Entry
-        </Button>
-      </div>
+    <Box className="flex flex-col gap-4 p-6 ">
 
       {/* Filters */}
       <Paper withBorder radius="md" p="xs" className="shadow-sm">
@@ -260,7 +251,8 @@ export function JournalEntries() {
       </Paper>
 
       {/* Table */}
-      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
+      <Paper withBorder radius="md" className="shadow-sm overflow-hidden" pos="relative">
+        <LoadingOverlay visible={loading} zIndex={5} overlayProps={{ blur: 1 }} />
         <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full">
           <Table.Thead className="bg-gray-50 border-b border-gray-200">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -317,7 +309,7 @@ export function JournalEntries() {
             </div>
           </div>
           <Pagination
-            total={table.getPageCount() || 1}
+            total={pageCount}
             value={pageIndex + 1}
             onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
             color="indigoAlt.4"

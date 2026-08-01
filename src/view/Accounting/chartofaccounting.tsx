@@ -1,5 +1,3 @@
-
-
 import { useMemo } from 'react';
 import {
   useReactTable,
@@ -10,7 +8,6 @@ import {
 } from '@tanstack/react-table';
 import {
   Box,
-  Title,
   Paper,
   TextInput,
   Checkbox,
@@ -42,7 +39,7 @@ import {
   IconAlertCircle,
 } from '@tabler/icons-react';
 
-import { type COAAccount, BASE_CURRENCY, formatAmount } from '../../api/Accounting/Chartofaccounts.api';
+import { type COAAccount, formatAmount } from '../../api/Accounting/Chartofaccounts.api';
 import { useChartOfAccounts } from '../../hooks/Accounting/Usechartofaccounts';
 
 // NOTE: excel export needs `xlsx` — install with: npm install xlsx
@@ -141,7 +138,7 @@ function ViewAccountModal({ account, onClose }: { account: COAAccount | null; on
           <Group justify="space-between">
             <Text fz="xs" c="gray.6">Balance</Text>
             <Text fz="xs" fw={600}>
-              {formatAmount(account.account_currency, account.balance_in_account_currency)}
+              {formatAmount(account.account_currency, account.balance_in_account_currency ?? account.balance)}
             </Text>
           </Group>
         </div>
@@ -152,7 +149,11 @@ function ViewAccountModal({ account, onClose }: { account: COAAccount | null; on
 
 /* ───────────────── Columns ───────────────── */
 
-function useColumns(onView: (a: COAAccount) => void, onDelete: (a: COAAccount) => void): ColumnDef<COAAccount>[] {
+function useColumns(
+  onView: (a: COAAccount) => void,
+  onDelete: (a: COAAccount) => void,
+  baseCurrency: string,
+): ColumnDef<COAAccount>[] {
   return useMemo<ColumnDef<COAAccount>[]>(
     () => [
       {
@@ -174,7 +175,7 @@ function useColumns(onView: (a: COAAccount) => void, onDelete: (a: COAAccount) =
               <Text fz="xs" fw={node.is_group ? 600 : 500} c={node.is_group ? 'gray.9' : 'gray.7'} truncate>
                 {node.account_name}
               </Text>
-              {node.disabled && (
+              {node.disabled === 1 && (
                 <Badge size="xs" variant="light" color="gray" className="shrink-0">
                   Disabled
                 </Badge>
@@ -207,24 +208,24 @@ function useColumns(onView: (a: COAAccount) => void, onDelete: (a: COAAccount) =
         size: 150,
         cell: ({ row }) => {
           const node = row.original;
-          if (node.is_group) return <Text fz="xs" c="gray.4" ta="right">—</Text>;
+          if (node.is_group === 1) return <Text fz="xs" c="gray.4" ta="right">—</Text>;
           return (
             <Text fz="xs" ta="right" fw={500} c="green.7" className="font-mono tabular-nums">
-              {formatAmount(node.account_currency, node.balance_in_account_currency)}
+              {formatAmount(node.account_currency, node.balance_in_account_currency ?? node.balance)}
             </Text>
           );
         },
       },
       {
         id: 'balance_base',
-        header: () => <Text fz="xs" fw={600} ta="right" w="100%">Balance ({BASE_CURRENCY})</Text>,
+        header: () => <Text fz="xs" fw={600} ta="right" w="100%">Balance ({baseCurrency})</Text>,
         size: 160,
         cell: ({ row }) => {
           const node = row.original;
-          if (node.is_group) return <Text fz="xs" c="gray.4" ta="right">—</Text>;
+          if (node.is_group === 1) return <Text fz="xs" c="gray.4" ta="right">—</Text>;
           return (
             <Text fz="xs" ta="right" fw={500} c="gray.8" className="font-mono tabular-nums">
-              {formatAmount(BASE_CURRENCY, node.balance)}
+              {formatAmount(baseCurrency, node.balance)}
             </Text>
           );
         },
@@ -248,7 +249,7 @@ function useColumns(onView: (a: COAAccount) => void, onDelete: (a: COAAccount) =
                   <Menu.Item leftSection={<IconEye size={13} />} onClick={() => onView(node)}>
                     View
                   </Menu.Item>
-                  {node.is_group ? (
+                  {node.is_group === 1 ? (
                     <Menu.Item leftSection={<IconGitBranch size={13} />}>Add Child</Menu.Item>
                   ) : (
                     <Menu.Item leftSection={<IconBookmark size={13} />}>View Ledger</Menu.Item>
@@ -268,7 +269,7 @@ function useColumns(onView: (a: COAAccount) => void, onDelete: (a: COAAccount) =
         },
       },
     ],
-    [onView, onDelete],
+    [onView, onDelete, baseCurrency],
   );
 }
 
@@ -283,9 +284,10 @@ export function ChartOfAccounts() {
     tableData, expanded, handleExpandedChange,
     viewAccount, setViewAccount,
     handleDelete,
+    baseCurrency,
   } = useChartOfAccounts();
 
-  const columns = useColumns(setViewAccount, handleDelete);
+  const columns = useColumns(setViewAccount, handleDelete, baseCurrency);
 
   const table = useReactTable({
     data: tableData,
@@ -302,15 +304,6 @@ export function ChartOfAccounts() {
   return (
     <Box className="flex flex-col gap-4 p-6">
       <ViewAccountModal account={viewAccount} onClose={() => setViewAccount(null)} />
-
-      <div className="flex justify-between items-center">
-        <Title order={2} className="text-gray-900 font-semibold">
-          Chart of Accounts
-        </Title>
-        <Button size="xs" color="indigoAlt.4">
-          Add Account
-        </Button>
-      </div>
 
       <FilterBar
         searchTerm={searchTerm}
