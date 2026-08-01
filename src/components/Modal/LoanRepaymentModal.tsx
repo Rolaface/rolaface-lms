@@ -1,4 +1,3 @@
-// LoanRepaymentModal.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Box,
@@ -37,12 +36,15 @@ import {
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LoanRepaymentPayload } from "../../types/loanRepaymentForm";
-import { getLoanRepaymentAccount, createLoanRepayment, getLoanDues} from "../../api/loanRepaymentApi";
+import { getLoanRepaymentAccount, createLoanRepayment, getLoanDues, getLoanRepaymentById, updateLoanRepayment} from "../../api/loanRepaymentApi";
+import { useForm } from "@mantine/form";
 
 interface LoanRepaymentModalProps {
   opened: boolean;
   onClose: () => void;
   onSubmit?: (data: LoanRepaymentFormData) => void;
+  editId?: string | null;
+  isView?: boolean;
 }
 
 export interface LoanRepaymentFormData {
@@ -80,7 +82,7 @@ interface Borrower {
 }
 
 
-const PAYMENT_MODES = ["Direct Debit from A/C", "Cash", "Cheque", "NEFT/RTGS", "UPI"];
+const  PAYMENT_MODES = ["Bank Draft", "Cash", "Cheque", "Credit Card", "Wire Transfer"];
 function toRepaymentType(nature: LoanRepaymentFormData["natureOfPayment"]) {
   return nature === "FULL_SETTLEMENT" ? "Full Settlement" : "Normal Repayment";
 }
@@ -138,23 +140,12 @@ function formatCurrency(amount: number) {
   };
 }
 
-export function LoanRepaymentModal({ opened, onClose, onSubmit }: LoanRepaymentModalProps) {
+export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }: LoanRepaymentModalProps) {
   const [search, setSearch] = useState("");
   const [selectedBorrower, setSelectedBorrower] = useState<Borrower | null>(null);
   const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
   const [borrowerPanelCollapsed, setBorrowerPanelCollapsed] = useState(false);
-
-  const [valueDate, setValueDate] = useState(new Date().toISOString().slice(0, 10));
-  const [natureOfPayment, setNatureOfPayment] = useState<LoanRepaymentFormData["natureOfPayment"]>(
-    "PAY_DUES"
-  );
-  const [amountToPay, setAmountToPay] = useState<number | "">("");
-  const [paymentMode, setPaymentMode] = useState<string | null>("Direct Debit from A/C");
-  const [referenceNumber, setReferenceNumber] = useState("");
-  const [referenceDate, setReferenceDate] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [remark, setRemark] = useState("");
-
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [paymentEffectOpened, setPaymentEffectOpened] = useState(false);
 
    useEffect(() => {
@@ -166,20 +157,21 @@ const { data: searchResponse, isLoading: isSearching } = useQuery({
   queryFn: () => getLoanRepaymentAccount(search),
   enabled: opened && search.trim().length > 0,
 });
+
 const matches: Borrower[] = useMemo(() => {
-  const items = searchResponse?.message ?? [];
+  const items = searchResponse?.message?.data ?? [];
   return items.map((item) => ({
     name: item.applicant_name || item.applicant,
-    cif: item.applicant,  
+    cif: item.applicant,
     phone: item.phone_number || "",
-    status: "Standard",  
+    status: "Standard",
     loans: [
       {
         id: item.against_loan,
-        type: "",  
-        balance: item.sanctioned_amount ?? 0,
-        emiDate: "",  
-        principalDue: 0,  
+        type: "",
+        balance: 0,
+        emiDate: "",
+        principalDue: 0,
         interestDue: 0,
         penalty: 0,
         lateFees: 0,
@@ -189,14 +181,90 @@ const matches: Borrower[] = useMemo(() => {
   }));
 }, [searchResponse]);
 
-const queryClient = useQueryClient();
+const form = useForm({
+  initialValues: {
+    valueDate: new Date().toISOString().slice(0, 10),
+    natureOfPayment: "PAY_DUES" as LoanRepaymentFormData["natureOfPayment"],
+    amountToPay: "" as number | "",
+    paymentMode: "Direct Debit from A/C" as string | null,
+    referenceNumber: "",
+    referenceDate: "",
+    accountNumber: "",
+    remark: "",
+  },
+  validate: {
+    valueDate: (v) => (!v ? "Value Date is required" : null),
+    amountToPay: (v) => (!v ? "Amount to Pay is required" : null),
+    paymentMode: (v) => (!v ? "Payment Mode is required" : null),
+    referenceDate: (v) => (!v ? "Reference Date is required" : null),
+    referenceNumber: (v) => (!v ? "Reference Number is required" : null),
+  },
+});
+
+const { data: editDetailsResponse, isLoading: isEditLoading } = useQuery({
+  queryKey: ["loanRepayment", editId],
+  queryFn: () => getLoanRepaymentById(editId as string),
+  enabled: opened && !!editId,
+});
+
+const updateRepaymentMutation = useMutation({
+  mutationFn: updateLoanRepayment,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
+    handleReset();
+    onClose();
+  },
+});
+
+useEffect(() => {
+  if (opened && editId && editDetailsResponse) {
+    const item = editDetailsResponse.message?.data || editDetailsResponse.message || editDetailsResponse;
+
+    setSelectedBorrower({
+      name: item.applicant,
+      cif: item.applicant,
+      phone: "",
+      status: "Standard",
+      loans: [
+        {
+          id: item.against_loan,
+          type: item.loan_product || "",
+          balance: 0,
+          emiDate: "",
+          principalDue: 0,
+          interestDue: 0,
+          penalty: 0,
+          lateFees: 0,
+          remainingInstallments: 0,
+        },
+      ],
+    });
+    setSelectedLoanId(item.against_loan);
+
+    form.setValues({
+      valueDate: item.value_date ? item.value_date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      natureOfPayment: item.repayment_type === "Full Settlement" ? "FULL_SETTLEMENT" : "PAY_DUES",
+      amountToPay: item.amount_paid ?? "",
+      paymentMode: item.mode_of_payment || null,
+      referenceNumber: item.reference_number || "",
+      referenceDate: item.reference_date || "",
+      accountNumber: "",
+      remark: "",
+    });
+  } else if (opened && !editId) {
+    handleReset();
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [opened, editId, editDetailsResponse]);
+
+  const queryClient = useQueryClient();
 
 const { data: duesResponse, isFetching: isDuesLoading } = useQuery({
-  queryKey: ["loanDues", selectedLoanId, valueDate, natureOfPayment],
+  queryKey: ["loanDues", selectedLoanId, form.values.valueDate, form.values.natureOfPayment],
   queryFn: () =>
     getLoanDues({
-      payment_type: toRepaymentType(natureOfPayment),
-      posting_date: valueDate,
+      payment_type: toRepaymentType(form.values.natureOfPayment),
+      posting_date: form.values.valueDate,
       against_loan: selectedLoanId as string,
     }),
   enabled: !!selectedLoanId,
@@ -206,60 +274,39 @@ const dues = duesResponse?.message;
 
 useEffect(() => {
   if (!dues) return;
-  if (natureOfPayment === "PAY_DUES") {
-    setAmountToPay(dues.payable_amount);
-  } else if (natureOfPayment === "FULL_SETTLEMENT") {
-    setAmountToPay(dues.payable_amount);
+  if (form.values.natureOfPayment === "PAY_DUES" || form.values.natureOfPayment === "FULL_SETTLEMENT") {
+    form.setFieldValue("amountToPay", dues.payable_amount);
   }
-}, [dues, natureOfPayment]);
+}, [dues, form.values.natureOfPayment]);
 
   const selectedLoan = selectedBorrower?.loans.find((l) => l.id === selectedLoanId) ?? null;
   const totalDue = selectedLoan
     ? selectedLoan.principalDue + selectedLoan.interestDue + selectedLoan.lateFees
     : 0;
 
-  const paymentEffect = useMemo(() => {
-    if (!selectedLoan) return null;
-    return computePaymentEffect(selectedLoan, Number(amountToPay) || 0, natureOfPayment);
-  }, [selectedLoan, amountToPay, natureOfPayment]);
+ const paymentEffect = useMemo(() => {
+  if (!selectedLoan) return null;
+  return computePaymentEffect(selectedLoan, Number(form.values.amountToPay) || 0, form.values.natureOfPayment);
+}, [selectedLoan, form.values.amountToPay, form.values.natureOfPayment]);
 
-  const handleSelectBorrower = (borrower: Borrower) => {
-    setSelectedBorrower(borrower);
-    setSelectedLoanId(borrower.loans[0]?.id ?? null);
-    const firstLoan = borrower.loans[0];
-    if (firstLoan) {
-      setAmountToPay(
-        Math.round((firstLoan.principalDue + firstLoan.interestDue + firstLoan.lateFees) * 100) /
-        100
-      );
-    }
-  };
+ const handleSelectBorrower = (borrower: Borrower) => {
+  setSelectedBorrower(borrower);
+  setSelectedLoanId(borrower.loans[0]?.id ?? null);
+};
 
-  const handleClearBorrower = () => {
-    setSelectedBorrower(null);
-    setSelectedLoanId(null);
-    setSearch("");
-    setAmountToPay("");
-    setReferenceNumber("");
-    setReferenceDate("");
-    setAccountNumber("");
-    setRemark("");
-  };
+ const handleClearBorrower = () => {
+  setSelectedBorrower(null);
+  setSelectedLoanId(null);
+  setSearch("");
+  form.reset();
+};
+const handleSelectLoan = (loan: LoanAccount) => {
+  setSelectedLoanId(loan.id);
+};
 
-  const handleSelectLoan = (loan: LoanAccount) => {
-    setSelectedLoanId(loan.id);
-    if (natureOfPayment === "PAY_DUES") {
-      setAmountToPay(
-        Math.round((loan.principalDue + loan.interestDue + loan.lateFees) * 100) / 100
-      );
-    } else if (natureOfPayment === "FULL_SETTLEMENT") {
-      setAmountToPay(loan.balance);
-    }
-  };
-
- const handleNatureChange = (value: string) => {
-  setNatureOfPayment(value as LoanRepaymentFormData["natureOfPayment"]);
-  if (value === "PARTIAL") setAmountToPay("");
+const handleNatureChange = (value: string) => {
+  form.setFieldValue("natureOfPayment", value as LoanRepaymentFormData["natureOfPayment"]);
+  if (value === "PARTIAL") form.setFieldValue("amountToPay", "");
 };
 
 const createRepaymentMutation = useMutation({
@@ -271,38 +318,34 @@ const createRepaymentMutation = useMutation({
   },
 });
 
-const handleSubmit = () => {
+const handleSubmit = (values: typeof form.values) => {
   if (!selectedLoan || !selectedBorrower) return;
 
   const payload: LoanRepaymentPayload = {
-    repayment_type: toRepaymentType(natureOfPayment),
+    repayment_type: toRepaymentType(values.natureOfPayment),
     applicant_type: "Customer",
     applicant: selectedBorrower.cif,
-    loan_product: "",  
+    loan_product: selectedLoan.type,
     against_loan: selectedLoan.id,
-    value_date: valueDate,
-    amount_paid: Number(amountToPay) || 0,
-    mode_of_payment: paymentMode as string,
-    reference_number: referenceNumber,
-    reference_date: referenceDate,
+    value_date: values.valueDate.slice(0, 10),
+    amount_paid: Number(values.amountToPay) || 0,
+    mode_of_payment: values.paymentMode as string,
+    reference_number: values.referenceNumber,
+    reference_date: values.referenceDate,
   };
 
-  createRepaymentMutation.mutate(payload);
+  if (editId) {
+    updateRepaymentMutation.mutate({ id: editId, payload });
+  } else {
+    createRepaymentMutation.mutate(payload);
+  }
 };
-
-  const handleReset = () => {
-    setSearch("");
-    setSelectedBorrower(null);
-    setSelectedLoanId(null);
-    setValueDate(new Date().toISOString().slice(0, 10));
-    setNatureOfPayment("PAY_DUES");
-    setAmountToPay("");
-    setPaymentMode("Direct Debit from A/C");
-    setReferenceNumber("");
-    setReferenceDate("");
-    setAccountNumber("");
-    setRemark("");
-  };
+const handleReset = () => {
+  setSearch("");
+  setSelectedBorrower(null);
+  setSelectedLoanId(null);
+  form.reset();
+};
 
   return (
     <Modal
@@ -329,9 +372,10 @@ const handleSubmit = () => {
               </Text>
             </div>
           </div>
-          <Button variant="subtle" color="gray" onClick={onClose} className="px-2" size="xs">
+       <Button variant="subtle" color="gray" onClick={onClose} className="px-2" size="xs">
             <IconX size={18} />
           </Button>
+
         </div>
 
         <div className="border-b border-gray-200" />
@@ -399,6 +443,7 @@ const handleSubmit = () => {
                  size="sm"
                  placeholder="Search by loan A/C, applicant or phone"
                  value={search}
+                 disabled={isView}
                  onChange={(e) => setSearch(e.currentTarget.value)}
                  leftSection={<IconSearch size={14} className="text-gray-400" />}
                  classNames={labelClass}
@@ -406,18 +451,20 @@ const handleSubmit = () => {
 
                 {selectedBorrower ? (
                   <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
-                        Selected Borrower
-                      </Text>
-                      <button
-                        type="button"
-                        onClick={handleClearBorrower}
-                        className="text-xs font-semibold text-[#4F46E5] hover:text-[#3730A3]"
-                      >
-                        Change
-                      </button>
-                    </div>
+                   <div className="flex items-center justify-between mb-2">
+  <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
+    Selected Borrower
+  </Text>
+  {!isView && (
+    <button
+      type="button"
+      onClick={handleClearBorrower}
+      className="text-xs font-semibold text-[#4F46E5] hover:text-[#3730A3]"
+    >
+      Change
+    </button>
+  )}
+</div>
                     <div className="text-left rounded-md border border-[#a5b4fc] bg-[#eef2ff] p-3">
                       <div className="flex items-center justify-between">
                         <Text size="sm" fw={700} className="text-gray-900">
@@ -481,24 +528,26 @@ const handleSubmit = () => {
                       Select Active Loan Account
                     </Text>
                     <div className="flex flex-col gap-2">
-                      {selectedBorrower.loans.map((loan) => (
-                        <button
-                          key={loan.id}
-                          type="button"
-                          onClick={() => handleSelectLoan(loan)}
-                          className={`text-left rounded-md border p-3 transition-colors ${selectedLoanId === loan.id
-                              ? "border-[#818cf8] bg-[#eef2ff] ring-1 ring-[#c7d2fe]"
-                              : "border-gray-200 hover:bg-gray-50"
-                            }`}
-                        >
-                          <Text size="sm" fw={700} className="text-gray-900">
-                            {loan.type} - {loan.id}
-                          </Text>
-                          <Text size="xs" c="dimmed" className="mt-0.5">
-                            Balance: {formatCurrency(loan.balance)} | EMI Date: {loan.emiDate}
-                          </Text>
-                        </button>
-                      ))}
+                     {selectedBorrower.loans.map((loan) => (
+  <button
+    key={loan.id}
+    type="button"
+    disabled={isView}
+    onClick={() => handleSelectLoan(loan)}
+    className={`text-left rounded-md border p-3 transition-colors ${
+      selectedLoanId === loan.id
+        ? "border-[#818cf8] bg-[#eef2ff] ring-1 ring-[#c7d2fe]"
+        : "border-gray-200 hover:bg-gray-50"
+    } ${isView ? "cursor-default opacity-80" : ""}`}
+  >
+    <Text size="sm" fw={700} className="text-gray-900">
+      {loan.type} - {loan.id}
+    </Text>
+    <Text size="xs" c="dimmed" className="mt-0.5">
+      Balance: {formatCurrency(loan.balance)} | EMI Date: {loan.emiDate}
+    </Text>
+  </button>
+))}
                     </div>
                   </div>
                 )}
@@ -530,16 +579,16 @@ const handleSubmit = () => {
 
               <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-3 gap-x-8 gap-y-3">
-                  <TextInput
-                    size="sm"
-                    withAsterisk
-                    type="date"
-                    label="Value Date"
-                    value={valueDate}
-                    onChange={(e) => setValueDate(e.currentTarget.value)}
-                    leftSection={<IconCalendarDue size={14} className="text-emerald-600" />}
-                    classNames={labelClass}
-                  />
+                 <TextInput
+  size="sm"
+  withAsterisk
+  type="date"
+  disabled={isView}
+  label="Value Date"
+  leftSection={<IconCalendarDue size={14} className="text-emerald-600" />}
+  classNames={labelClass}
+  {...form.getInputProps("valueDate")}
+/>
                 </div>
 
                 <div>
@@ -577,7 +626,7 @@ const handleSubmit = () => {
                         type="button"
                         onClick={() => handleNatureChange(option.value)}
                         className={`rounded-lg border py-3 px-3 text-center text-sm font-semibold transition-all duration-200 ${
-                          natureOfPayment === option.value
+                          form.values.natureOfPayment === option.value 
                             ? option.active
                             : `border-gray-200 bg-white text-gray-700 ${option.hover}`
                         }`}
@@ -589,72 +638,71 @@ const handleSubmit = () => {
                 </div>
 
                 <div className="grid grid-cols-3 gap-x-8 gap-y-3">
-                  <NumberInput
-                    size="sm"
-                    withAsterisk
-                    label="Amount to Pay"
-                    hideControls
-                   min={0}
-                    placeholder="Enter amount"
-                    value={amountToPay}
-                    onChange={(v) => setAmountToPay(v as number | "")}
-                    leftSection={<IconCurrencyDollar size={14} className="text-[#F26522]" />}
-                    thousandSeparator=","
-                    decimalScale={2}
-                    classNames={labelClass}
-                  />
-                  <Select
-                    size="sm"
-                    withAsterisk
-                    label="Payment Mode"
-                    placeholder="Select payment mode"
-                    data={PAYMENT_MODES}
-                    value={paymentMode}
-                    onChange={setPaymentMode}
-                    leftSection={<IconCreditCard size={14} className="text-[#4F46E5]" />}
-                    rightSection={chevronDown}
-                    classNames={labelClass}
-                  />
-                  <TextInput
-                    size="sm"
-                    label="Account Number"
-                    placeholder="Debit account number"
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.currentTarget.value)}
-                    leftSection={<IconCreditCard size={14} className="text-gray-400" />}
-                    classNames={labelClass}
-                  />
+                <NumberInput
+  size="sm"
+  withAsterisk
+  label="Amount to Pay"
+  placeholder="Enter amount"
+  disabled={isView}
+  leftSection={<IconCurrencyDollar size={14} className="text-[#F26522]" />}
+  thousandSeparator=","
+  decimalScale={2}
+  classNames={labelClass}
+  {...form.getInputProps("amountToPay")}
+/>
+                <Select
+  size="sm"
+  withAsterisk
+  label="Payment Mode"
+  disabled={isView}
+  placeholder="Select payment mode"
+  data={PAYMENT_MODES}
+  leftSection={<IconCreditCard size={14} className="text-[#4F46E5]" />}
+  rightSection={chevronDown}
+  classNames={labelClass}
+  {...form.getInputProps("paymentMode")}
+/>
+                 <TextInput
+  size="sm"
+  label="Account Number"
+  placeholder="Debit account number"
+  disabled={isView}
+  leftSection={<IconCreditCard size={14} className="text-gray-400" />}
+  classNames={labelClass}
+  {...form.getInputProps("accountNumber")}
+/>
                 </div>
                 <div className="grid grid-cols-3 gap-x-8 gap-y-3">
 
+               <TextInput
+  size="sm"
+  withAsterisk
+  label="Reference Number"
+  disabled={isView}
+  placeholder="e.g. UTR / cheque no."
+  leftSection={<IconHash size={14} className="text-gray-400" />}
+  classNames={labelClass}
+  {...form.getInputProps("referenceNumber")}
+/>
+                 <TextInput
+  size="sm"
+  withAsterisk
+  type="date"
+  label="Reference Date"
+  disabled={isView}
+  leftSection={<IconCalendar size={14} className="text-gray-400" />}
+  classNames={labelClass}
+  {...form.getInputProps("referenceDate")}
+/>
                   <TextInput
-                    size="sm"
-                    label="Reference Number"
-                    placeholder="e.g. UTR / cheque no."
-                    value={referenceNumber}
-                    onChange={(e) => setReferenceNumber(e.currentTarget.value)}
-                    leftSection={<IconHash size={14} className="text-gray-400" />}
-                    classNames={labelClass}
-                  />
-
-                  <TextInput
-                    size="sm"
-                    type="date"
-                    label="Reference Date"
-                    value={referenceDate}
-                    onChange={(e) => setReferenceDate(e.currentTarget.value)}
-                    leftSection={<IconCalendar size={14} className="text-gray-400" />}
-                    classNames={labelClass}
-                  />
-                  <TextInput
-                  size="sm"
-                  label="Remark"
-                  placeholder="Add a note about this repayment (optional)"
-                  value={remark}
-                  onChange={(e) => setRemark(e.currentTarget.value)}
-                  leftSection={<IconNotes size={14} className="text-gray-400" />}
-                  classNames={labelClass}
-                />
+  size="sm"
+  label="Remark"
+  placeholder="Add a note about this repayment (optional)"
+  disabled={isView}
+  leftSection={<IconNotes size={14} className="text-gray-400" />}
+  classNames={labelClass}
+  {...form.getInputProps("remark")}
+/>
                 </div>                
               </div>
             </div>
@@ -794,30 +842,28 @@ const handleSubmit = () => {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 p-4 px-6 flex justify-end items-center shrink-0">
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="subtle"
-              color="danger"
-              leftSection={<IconRefresh size={14} />}
-              onClick={handleReset}
-              className="font-semibold px-4"
-            >
-              Reset
-            </Button>
-          <Button
-  size="sm"
-  disabled={!selectedLoan || createRepaymentMutation.isPending}
-  loading={createRepaymentMutation.isPending}
-  onClick={handleSubmit}
-  rightSection={!createRepaymentMutation.isPending ? <IconArrowRight size={16} /> : null}
-  className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 font-semibold px-6"
->
-  Process Repayment
-</Button>
-          </div>
-        </div>
+        <div className="border-t border-gray-200 p-4 px-6 flex justify-between items-center shrink-0">
+  <Button variant="default" size="sm" onClick={onClose} className="font-semibold">
+    {isView ? "Close" : "Cancel"}
+  </Button>
+  {!isView && (
+    <div className="flex gap-2">
+      <Button size="sm" variant="subtle" color="danger" leftSection={<IconRefresh size={14} />} onClick={handleReset} className="font-semibold px-4">
+        Reset
+      </Button>
+      <Button
+        size="sm"
+        disabled={!selectedLoan || createRepaymentMutation.isPending || updateRepaymentMutation.isPending}
+        loading={createRepaymentMutation.isPending || updateRepaymentMutation.isPending}
+        onClick={() => form.onSubmit(handleSubmit)()}
+        rightSection={<IconArrowRight size={16} />}
+        className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 font-semibold px-6"
+      >
+        {editId ? "Update" : "Process Repayment"}
+      </Button>
+    </div>
+  )}
+</div>
       </Box>
 
       {/* Payment Effect Modal */}
@@ -840,9 +886,9 @@ const handleSubmit = () => {
                   Payment Effect
                 </Text>
                 <Text size="xs" c="dimmed">
-                  Projected impact of {amountToPay ? formatCurrency(Number(amountToPay)) : "this payment"} on{" "}
-                  {selectedLoan?.id ?? "the loan account"}.
-                </Text>
+  Projected impact of {form.values.amountToPay ? formatCurrency(Number(form.values.amountToPay)) : "this payment"} on{" "}
+  {selectedLoan?.id ?? "the loan account"}.
+</Text>
               </div>
             </div>
             <Button

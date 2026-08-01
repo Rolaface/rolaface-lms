@@ -23,20 +23,23 @@ export interface LoanRepaymentResponse {
     [key: string]: unknown;
   };
 }
-
 export interface LoanRepaymentAccountSearchItem {
   against_loan: string;
   applicant: string;
-  applicant_name?: string;
-  phone_number: string | null;
-  sanctioned_amount: number;
+  applicant_type: string;
+  applicant_name: string | null;
   emi: number | null;
+  phone_number: string | null;
 }
 
 export interface LoanRepaymentAccountSearchResponse {
-  message: LoanRepaymentAccountSearchItem[];
+  message: {
+    status_code: number;
+    status: string;
+    message: string;
+    data: LoanRepaymentAccountSearchItem[];
+  };
 }
-
 export interface LoanDuesResponse {
   message: {
     penalty_amount: number;
