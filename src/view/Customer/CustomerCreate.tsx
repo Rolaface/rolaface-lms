@@ -1,42 +1,14 @@
 import { useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  TextInput,
-  Select,
-  Radio,
-  Group,
-  Paper,
-  Table,
-  Badge,
-  ActionIcon,
-  Text,
-  Pagination,
-  Tooltip,
-  Title,
-} from '@mantine/core';
-import {
-  IconEye,
-  IconPencil,
-  IconPlus,
-  IconChevronUp,
-  IconChevronDown,
-  IconSelector,
-  IconSearch,
-  IconUsers,
-  IconTrash,
-} from '@tabler/icons-react';
+import { Box, Button, TextInput, Select, Radio, Group, Paper, Table, Badge, ActionIcon, Text, Pagination, Tooltip, Title } from '@mantine/core';
+import { IconEye, IconPencil, IconPlus, IconChevronUp, IconChevronDown, IconSelector, IconSearch, IconUsers, IconTrash } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
-  flexRender,
-  createColumnHelper,
-} from '@tanstack/react-table';
+import { useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
 import { CustomerModal } from '../../components/Modal/CustomerModal';
-import { Borrower360, getBorrowerProfile } from './CustomerView';
+import { getBorrowerProfile } from './mockdata';
+import { Borrower360 } from './CustomerView';
+
+export { getBorrowerProfile } from './mockdata';
+
 
 // NOTE: requires `@tanstack/react-table` — install with:
 //   npm install @tanstack/react-table
