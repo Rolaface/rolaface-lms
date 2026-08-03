@@ -14,6 +14,8 @@ import {
   Pagination,
   Tooltip,
   Title,
+  Loader,
+  Menu,
 } from '@mantine/core';
 import {
   IconEye,
@@ -24,6 +26,8 @@ import {
   IconSelector,
   IconSearch,
   IconTrash,
+  IconDotsVertical,
+  IconFileOff,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -34,68 +38,35 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { LoanWaiverModal, type LoanWaiverFormData } from '../../../components/Modal/LoanWaiverModal';
+import { modals } from '@mantine/modals';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { LoanWaiverModal } from '../../../components/Modal/LoanWaiverModal';
+import {
+  getAllLoanRepayment,
+  deleteLoanRepayment,
+  changeLoanRepaymentStatus,
+} from '../../../api/loanRepaymentApi';
+
+const WAIVER_TYPES = ['Interest Waiver', 'Penalty Waiver', 'Charges Waiver'];
 
 interface WaiverRow {
-  id: number;
+  id: string;
   loanAc: string;
   customer: string;
   loanType: string;
-  natureOfPayment: 'PAY_DUES' | 'PARTIAL' | 'FULL_SETTLEMENT';
+  repaymentType: string;
+  docstatus: number;
   amountPaid: number;
-  paymentMode: string;
   valueDate: string;
-  status: 'COMPLETED' | 'PENDING' | 'FAILED';
 }
 
-const DUMMY_WAIVERS: WaiverRow[] = [
-  {
-    id: 1,
-    loanAc: 'LNA-2025-001',
-    customer: 'Yash Joshi',
-    loanType: 'Vehicle Loan',
-    natureOfPayment: 'PAY_DUES',
-    amountPaid: 600.5,
-    paymentMode: 'Direct Debit from A/C',
-    valueDate: '2026-07-25',
-    status: 'COMPLETED',
-  },
-  {
-    id: 2,
-    loanAc: 'LNA-2025-089',
-    customer: 'Yash Joshi',
-    loanType: 'Personal Loan',
-    natureOfPayment: 'PARTIAL',
-    amountPaid: 150,
-    paymentMode: 'UPI',
-    valueDate: '2026-07-22',
-    status: 'COMPLETED',
-  },
-  {
-    id: 3,
-    loanAc: 'LNA-2025-014',
-    customer: 'Meera Nair',
-    loanType: 'Home Loan',
-    natureOfPayment: 'FULL_SETTLEMENT',
-    amountPaid: 284300,
-    paymentMode: 'NEFT/RTGS',
-    valueDate: '2026-07-19',
-    status: 'PENDING',
-  },
-  {
-    id: 4,
-    loanAc: 'LNA-2025-032',
-    customer: 'Arjun Kapoor',
-    loanType: 'Vehicle Loan',
-    natureOfPayment: 'PAY_DUES',
-    amountPaid: 475.25,
-    paymentMode: 'Cheque',
-    valueDate: '2026-07-10',
-    status: 'FAILED',
-  },
-];
-
 const columnHelper = createColumnHelper<WaiverRow>();
+
+const STATUS_META: Record<number, { label: string; color: string }> = {
+  0: { label: 'DRAFT', color: 'gray' },
+  1: { label: 'SUBMITTED', color: 'blue' },
+  2: { label: 'CANCELLED', color: 'red' },
+};
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   if (sorted === 'asc') return <IconChevronUp size={12} />;
@@ -105,22 +76,10 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
 
 const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
 
-function natureColor(nature: WaiverRow['natureOfPayment']) {
-  if (nature === 'PAY_DUES') return 'brand';
-  if (nature === 'PARTIAL') return 'gold';
+function natureColor(type: string) {
+  if (type === 'Interest Waiver') return 'brand';
+  if (type === 'Penalty Waiver') return 'gold';
   return 'accent';
-}
-
-function natureLabel(nature: WaiverRow['natureOfPayment']) {
-  if (nature === 'PAY_DUES') return 'Waive Dues';
-  if (nature === 'PARTIAL') return 'Partial Waiver';
-  return 'Full Waiver';
-}
-
-function statusColor(status: WaiverRow['status']) {
-  if (status === 'COMPLETED') return 'green';
-  if (status === 'PENDING') return 'gold';
-  return 'danger';
 }
 
 export function LoanWaiver() {
@@ -130,40 +89,77 @@ export function LoanWaiver() {
   const [status, setStatus] = useState('all');
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  const [rowsData, setRowsData] = useState(DUMMY_WAIVERS);
+  const [selectedWaiverId, setSelectedWaiverId] = useState<string | null>(null);
+  const [isViewMode, setIsViewMode] = useState(false);
+
+  const handleModalClose = () => {
+    close();
+    setSelectedWaiverId(null);
+    setIsViewMode(false);
+  };
+
+  const { data: repaymentsResponse, isLoading } = useQuery({
+    queryKey: ['loanRepayments'],
+    queryFn: getAllLoanRepayment,
+  });
+
+  const queryClient = useQueryClient();
+
+  const { mutate: removeWaiver, isPending: isDeleting } = useMutation({
+    mutationFn: (id: string) => deleteLoanRepayment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+    },
+  });
+
+  const { mutate: updateStatus } = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: string }) =>
+      changeLoanRepaymentStatus(id, action),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+    },
+  });
+
+  // Only rows whose repayment_type is one of the waiver types — the shared
+  // getAllLoanRepayment endpoint returns every repayment/waiver/etc. record.
+  const rowsData = useMemo(() => {
+    const list = repaymentsResponse?.message?.data?.repayments ?? [];
+    return list
+      .filter((item: any) => WAIVER_TYPES.includes(item.repayment_type))
+      .map((item: any) => ({
+        id: item.name,
+        loanAc: item.against_loan || '—',
+        customer: item.applicant || '—',
+        loanType: item.loan_product || '—',
+        repaymentType: item.repayment_type,
+        docstatus: item.docstatus,
+        amountPaid: item.amount_paid || 0,
+        valueDate: item.value_date || '—',
+      }));
+  }, [repaymentsResponse]);
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rowsData.filter((r) => {
-      const matchesSearch =
-        !q ||
-        r.customer.toLowerCase().includes(q) ||
-        r.loanAc.toLowerCase().includes(q);
+      const matchesSearch = !q || r.customer.toLowerCase().includes(q) || r.loanAc.toLowerCase().includes(q);
       const matchesLoanType = !loanType || r.loanType === loanType;
-      const matchesStatus = status === 'all' || r.status === status;
+      const matchesStatus = status === 'all' || String(r.docstatus) === status;
       return matchesSearch && matchesLoanType && matchesStatus;
     });
   }, [rowsData, search, loanType, status]);
 
-  const handleDelete = (id: number) => {
-    setRowsData((prev) => prev.filter((r) => r.id !== id));
-  };
-
-  const handleAddWaiver = (formData: LoanWaiverFormData) => {
-    setRowsData((prev) => [
-      ...prev,
-      {
-        id: prev.length ? Math.max(...prev.map((r) => r.id)) + 1 : 1,
-        loanAc: formData.loanAc || '—',
-        customer: formData.customerName || '—',
-        loanType: formData.loanType || '—',
-        natureOfPayment: formData.natureOfPayment,
-        amountPaid: Number(formData.amountToPay) || 0,
-        paymentMode: formData.paymentMode || '—',
-        valueDate: formData.valueDate || '—',
-        status: 'PENDING',
-      },
-    ]);
+  const handleDelete = (id: string) => {
+    modals.openConfirmModal({
+      title: 'Delete loan waiver',
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete waiver <b>{id}</b>? This cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => removeWaiver(id),
+    });
   };
 
   const columns = useMemo(
@@ -171,37 +167,22 @@ export function LoanWaiver() {
       columnHelper.accessor('loanAc', {
         header: 'Loan A/c',
         cell: (info) => (
-          <Text fz="xs" fw={600} c="gray.9" className="font-mono">
-            {info.getValue()}
-          </Text>
+          <Text fz="xs" fw={600} c="gray.9" className="font-mono">{info.getValue()}</Text>
         ),
       }),
       columnHelper.accessor('customer', {
         header: 'Customer',
-        cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            {info.getValue()}
-          </Text>
-        ),
+        cell: (info) => <Text fz="xs" c="gray.6">{info.getValue()}</Text>,
       }),
       columnHelper.accessor('loanType', {
         header: 'Loan Type',
-        cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            {info.getValue()}
-          </Text>
-        ),
+        cell: (info) => <Text fz="xs" c="gray.6">{info.getValue()}</Text>,
       }),
-      columnHelper.accessor('natureOfPayment', {
+      columnHelper.accessor('repaymentType', {
         header: 'Nature of Waiver',
         cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            color={natureColor(info.getValue())}
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
-            {natureLabel(info.getValue())}
+          <Badge variant="light" size="sm" color={natureColor(info.getValue())} styles={{ root: { fontSize: 10, padding: '0 8px' } }}>
+            {info.getValue()}
           </Badge>
         ),
       }),
@@ -213,73 +194,98 @@ export function LoanWaiver() {
           </Text>
         ),
       }),
-      columnHelper.accessor('paymentMode', {
-        header: 'Payment Mode',
-        cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            {info.getValue()}
-          </Text>
-        ),
-      }),
       columnHelper.accessor('valueDate', {
         header: 'Value Date',
-        cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            {info.getValue()}
-          </Text>
-        ),
+        cell: (info) => <Text fz="xs" c="gray.6">{info.getValue()}</Text>,
       }),
-      columnHelper.accessor('status', {
+      columnHelper.accessor('docstatus', {
         header: 'Status',
-        cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            color={statusColor(info.getValue())}
-            className="font-semibold tracking-wider"
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
-            {info.getValue()}
-          </Badge>
-        ),
+        cell: (info) => {
+          const meta = STATUS_META[info.getValue()] || { label: String(info.getValue()), color: 'gray' };
+          return (
+            <Badge variant="light" size="sm" color={meta.color} className="font-semibold tracking-wider" styles={{ root: { fontSize: 10, padding: '0 8px' } }}>
+              {meta.label}
+            </Badge>
+          );
+        },
       }),
       columnHelper.display({
         id: 'actions',
-        header: () => (
-          <Text fz="xs" fw={600} ta="right" w="100%">
-            Actions
-          </Text>
-        ),
+        header: () => <Text fz="xs" fw={600} ta="right" w="100%">Actions</Text>,
         cell: (info) => {
           const row = info.row.original;
+          const isDraft = row.docstatus === 0;
+          const isCancelled = row.docstatus === 2;
+          const canDelete = isDraft || isCancelled;
+
           return (
             <Group justify="flex-end" gap={6} wrap="nowrap">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="gray">
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="brand">
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Delete" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="danger"
+                  color="gray"
+                  onClick={() => {
+                    setSelectedWaiverId(row.id);
+                    setIsViewMode(true);
+                    open();
+                  }}
+                >
+                  <IconEye size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label={isDraft ? 'Edit' : 'Only Drafts can be edited'} withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color={isDraft ? 'brand' : 'gray'}
+                  disabled={!isDraft}
+                  onClick={() => {
+                    setSelectedWaiverId(row.id);
+                    setIsViewMode(false);
+                    open();
+                  }}
+                >
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label={canDelete ? 'Delete' : 'Submitted waivers cannot be deleted'} withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color={canDelete ? 'danger' : 'gray'}
+                  disabled={!canDelete || isDeleting}
                   onClick={() => handleDelete(row.id)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
+              {!isCancelled && (
+                <Menu shadow="md" width={140} position="bottom-end">
+                  <Menu.Target>
+                    <ActionIcon size="sm" variant="subtle" color="gray">
+                      <IconDotsVertical size={14} />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    {isDraft ? (
+                      <Menu.Item onClick={() => updateStatus({ id: row.id, action: 'approved' })}>
+                        Submit
+                      </Menu.Item>
+                    ) : (
+                      <Menu.Item color="red" onClick={() => updateStatus({ id: row.id, action: 'cancelled' })}>
+                        Cancel
+                      </Menu.Item>
+                    )}
+                  </Menu.Dropdown>
+                </Menu>
+              )}
             </Group>
           );
         },
       }),
     ],
-    []
+    [isDeleting]
   );
 
   const table = useReactTable({
@@ -305,19 +311,21 @@ export function LoanWaiver() {
     setStatus('all');
   };
 
-  const loanTypeOptions = Array.from(new Set(DUMMY_WAIVERS.map((r) => r.loanType)));
+  const loanTypeOptions = Array.from(new Set(rowsData.map((r) => r.loanType).filter(Boolean)));
 
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
-      <LoanWaiverModal opened={opened} onClose={close} onSubmit={handleAddWaiver} />
+      <LoanWaiverModal opened={opened} onClose={handleModalClose} editId={selectedWaiverId} isView={isViewMode} />
 
       <div className="flex justify-between items-center">
-        <Title order={2} className="text-gray-900 font-semibold">
-          Loan Waivers
-        </Title>
+        <Title order={2} className="text-gray-900 font-semibold">Loan Waivers</Title>
         <Button
           size="xs"
-          onClick={open}
+          onClick={() => {
+            setSelectedWaiverId(null);
+            setIsViewMode(false);
+            open();
+          }}
           className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 transition-opacity"
           leftSection={<IconPlus size={14} />}
         >
@@ -363,9 +371,9 @@ export function LoanWaiver() {
           >
             <Group gap="sm">
               <Radio size="xs" value="all" label="All" color="brand" />
-              <Radio size="xs" value="COMPLETED" label="Completed" color="brand" />
-              <Radio size="xs" value="PENDING" label="Pending" color="brand" />
-              <Radio size="xs" value="FAILED" label="Failed" color="brand" />
+              <Radio size="xs" value="0" label="Draft" color="brand" />
+              <Radio size="xs" value="1" label="Submitted" color="brand" />
+              <Radio size="xs" value="2" label="Cancelled" color="brand" />
             </Group>
           </Radio.Group>
 
@@ -385,17 +393,11 @@ export function LoanWaiver() {
                   return (
                     <Table.Th
                       key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${
-                        canSort ? 'cursor-pointer' : ''
-                      }`}
+                      className={`text-gray-600 font-semibold select-none ${canSort ? 'cursor-pointer' : ''}`}
                       style={{ fontSize: 11, padding: '6px 10px' }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
-                      <Group
-                        gap={4}
-                        wrap="nowrap"
-                        justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
-                      >
+                      <Group gap={4} wrap="nowrap" justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}>
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
                       </Group>
@@ -406,17 +408,29 @@ export function LoanWaiver() {
             ))}
           </Table.Thead>
           <Table.Tbody>
-            {rows.length === 0 ? (
+            {isLoading ? (
               <Table.Tr>
-                <Table.Td colSpan={9} className="text-center py-8 text-gray-500">
-                  No waiver records found.
+                <Table.Td colSpan={columns.length}>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader size="sm" color="gray" />
+                    <Text ta="center" c="dimmed" fz="xs" mt="sm">Loading loan waivers...</Text>
+                  </div>
+                </Table.Td>
+              </Table.Tr>
+            ) : rows.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={columns.length}>
+                  <div className="flex flex-col items-center py-8 text-gray-400">
+                    <IconFileOff size={32} className="mb-2 opacity-50" />
+                    <Text ta="center" c="dimmed" fz="xs">No waivers match your filters.</Text>
+                  </div>
                 </Table.Td>
               </Table.Tr>
             ) : (
               rows.map((row) => (
-                <Table.Tr key={row.id}>
+                <Table.Tr key={row.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
                   {row.getVisibleCells().map((cell) => (
-                    <Table.Td key={cell.id} style={{ padding: '10px 12px' }}>
+                    <Table.Td key={cell.id} style={{ padding: '5px 10px' }}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </Table.Td>
                   ))}
@@ -425,19 +439,35 @@ export function LoanWaiver() {
             )}
           </Table.Tbody>
         </Table>
-      </Paper>
 
-      <div className="flex items-center justify-between text-xs text-gray-500">
-        <Text>
-          Showing {firstRow}-{lastRow} of {totalRows} waivers
-        </Text>
-        <Pagination
-          page={pageIndex + 1}
-          onChange={(page) => setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))}
-          total={Math.ceil(totalRows / pageSize)}
-          size="xs"
-        />
-      </div>
+        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span>
+              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span>Rows:</span>
+              <Select
+                data={['10', '20', '50']}
+                value={String(pageSize)}
+                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                rightSection={chevronDown}
+                size="xs"
+                className="w-14"
+              />
+            </div>
+          </div>
+          <Pagination
+            total={table.getPageCount() || 1}
+            value={pageIndex + 1}
+            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+            color="brand"
+            size="xs"
+            radius="sm"
+            disabled={totalRows === 0}
+          />
+        </div>
+      </Paper>
     </Box>
   );
 }

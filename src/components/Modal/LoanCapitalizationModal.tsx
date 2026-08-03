@@ -1,5 +1,3 @@
-// @TODO No need of Nature Of Payment, Remove it
-
 import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
@@ -26,11 +24,22 @@ import {
   IconNotes,
   IconReportMoney,
 } from '@tabler/icons-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { LoanRepaymentPayload } from '../../types/loanRepaymentForm';
+import {
+  getLoanRepaymentAccount,
+  getLoanDues,
+  createLoanRepayment,
+  getLoanRepaymentById,
+  updateLoanRepayment,
+} from '../../api/loanRepaymentApi';
 
 interface LoanCapitalizationModalProps {
   opened: boolean;
   onClose: () => void;
   onSubmit?: (data: LoanCapitalizationFormData) => void;
+  editId?: string | null;
+  isView?: boolean;
 }
 
 export interface LoanCapitalizationFormData {
@@ -38,25 +47,20 @@ export interface LoanCapitalizationFormData {
   customerName: string;
   loanType: string;
   valueDate: string;
-  natureOfPayment: 'PAY_DUES' | 'PARTIAL' | 'FULL_SETTLEMENT';
   amountToPay: number | '';
   paymentMode: string | null;
   referenceNumber: string;
   referenceDate: string;
   accountNumber: string;
   remark: string;
+  capitalizedInterest: number | '';
+  capitalizedPenalty: number | '';
+  capitalizedFee: number | '';
 }
 
 interface LoanAccount {
   id: string;
   type: string;
-  balance: number;
-  emiDate: string;
-  principalDue: number;
-  interestDue: number;
-  penalty: number;
-  lateFees: number;
-  remainingInstallments: number;
 }
 
 interface Borrower {
@@ -67,92 +71,16 @@ interface Borrower {
   loans: LoanAccount[];
 }
 
-const BORROWERS: Borrower[] = [
-  {
-    name: 'Yash Joshi',
-    cif: '1009842',
-    phone: '+91 98765 43210',
-    status: 'Standard',
-    loans: [
-      {
-        id: 'LNA-2025-001',
-        type: 'Vehicle Loan',
-        balance: 12450,
-        emiDate: '5th of Month',
-        principalDue: 450,
-        interestDue: 125.5,
-        penalty: 10,
-        lateFees: 25,
-        remainingInstallments: 18,
-      },
-      {
-        id: 'LNA-2025-089',
-        type: 'Personal Loan',
-        balance: 4200,
-        emiDate: '12th of Month',
-        principalDue: 210,
-        interestDue: 65,
-        penalty: 10,
-        lateFees: 0,
-        remainingInstallments: 9,
-      },
-    ],
-  },
-  {
-    name: 'Meera Nair',
-    cif: '1010223',
-    phone: '+91 91234 56780',
-    status: 'Standard',
-    loans: [
-      {
-        id: 'LNA-2025-014',
-        type: 'Home Loan',
-        balance: 284300,
-        emiDate: '1st of Month',
-        principalDue: 3200,
-        interestDue: 1450.75,
-        penalty: 10,
-        lateFees: 0,
-        remainingInstallments: 96,
-      },
-    ],
-  },
-  {
-    name: 'Arjun Kapoor',
-    cif: '1011567',
-    phone: '+91 99887 66554',
-    status: 'Overdue',
-    loans: [
-      {
-        id: 'LNA-2025-032',
-        type: 'Vehicle Loan',
-        balance: 8600,
-        emiDate: '18th of Month',
-        principalDue: 380,
-        interestDue: 95.25,
-        penalty: 10,
-        lateFees: 40,
-        remainingInstallments: 14,
-      },
-      {
-        id: 'LNA-2025-047',
-        type: 'Personal Loan',
-        balance: 2150,
-        emiDate: '25th of Month',
-        principalDue: 175,
-        interestDue: 42.5,
-        penalty: 10,
-        lateFees: 15,
-        remainingInstallments: 6,
-      },
-    ],
-  },
-];
-
 const labelClass = { label: 'text-sm font-medium text-gray-700 mb-1' };
 
 function formatCurrency(amount: number) {
   return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+}
+
+function toCapitalizationType(field: 'interest' | 'penalty' | 'fee') {
+  if (field === 'interest') return 'Interest Capitalization';
+  if (field === 'penalty') return 'Penalty Capitalization';
+  return 'Charges Capitalization';
 }
 
 interface PaymentEffectRow {
@@ -228,108 +156,162 @@ function PaymentEffectModal({ opened, onClose, loanId, customerName, rows }: Pay
   );
 }
 
-export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapitalizationModalProps) {
+export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isView }: LoanCapitalizationModalProps) {
   const [search, setSearch] = useState('');
   const [selectedBorrower, setSelectedBorrower] = useState<Borrower | null>(null);
   const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
   const [borrowerPanelCollapsed, setBorrowerPanelCollapsed] = useState(false);
 
   const [valueDate, setValueDate] = useState(new Date().toISOString().slice(0, 10));
-  const [natureOfPayment, setNatureOfPayment] = useState<LoanCapitalizationFormData['natureOfPayment']>('PAY_DUES');
-  const [amountToPay, setAmountToPay] = useState<number | ''>('');
-  const [paymentMode, setPaymentMode] = useState<string | null>('Direct Debit from A/C');
-  const [referenceNumber, setReferenceNumber] = useState('');
-  const [referenceDate, setReferenceDate] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
   const [remark, setRemark] = useState('');
 
+  const [capitalizedInterest, setCapitalizedInterest] = useState<number | ''>('');
+  const [capitalizedPenalty, setCapitalizedPenalty] = useState<number | ''>('');
+  const [capitalizedFee, setCapitalizedFee] = useState<number | ''>('');
+
+  // Which capitalization type the loaded edit record actually is —
+  // only that field is editable/sent back on update.
+  const [editRecordType, setEditRecordType] = useState<string | null>(null);
+
   const [paymentEffectOpened, setPaymentEffectOpened] = useState(false);
+  const [isSubmittingAll, setIsSubmittingAll] = useState(false);
+
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setBorrowerPanelCollapsed(!!selectedLoanId);
   }, [selectedLoanId]);
 
-  const matches = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return [];
-    const qDigits = q.replace(/\D/g, '');
-    return BORROWERS.filter((b) => {
-      const nameWords = b.name.toLowerCase().split(' ');
-      const matchesName = nameWords.some((word) => word.startsWith(q));
-      const matchesPhone = qDigits.length > 0 && b.phone.replace(/\D/g, '').includes(qDigits);
-      const matchesCif = b.cif.startsWith(q);
-      return matchesName || matchesPhone || matchesCif;
-    });
-  }, [search]);
+  const { data: searchResponse, isLoading: isSearching } = useQuery({
+    queryKey: ['loanRepaymentAccounts', search],
+    queryFn: () => getLoanRepaymentAccount(search),
+    enabled: opened && search.trim().length > 0 && !editId,
+  });
+
+  const matches: Borrower[] = useMemo(() => {
+    const items = searchResponse?.message?.data ?? [];
+    return items.map((item) => ({
+      name: item.applicant_name || item.applicant,
+      cif: item.applicant,
+      phone: item.phone_number || '',
+      status: 'Standard',
+      loans: [{ id: item.against_loan, type: '' }],
+    }));
+  }, [searchResponse]);
 
   const selectedLoan = selectedBorrower?.loans.find((l) => l.id === selectedLoanId) ?? null;
-  const totalDue = selectedLoan
-    ? selectedLoan.principalDue + selectedLoan.interestDue + selectedLoan.lateFees
+
+  // payment_type fixed to "Normal Repayment" — this call only reads current
+  // outstanding breakdown, not a specific repayment schedule.
+  const { data: duesResponse, isFetching: isDuesLoading } = useQuery({
+    queryKey: ['loanDues', selectedLoanId, valueDate],
+    queryFn: () =>
+      getLoanDues({
+        payment_type: 'Normal Repayment',
+        posting_date: valueDate,
+        against_loan: selectedLoanId as string,
+      }),
+    enabled: !!selectedLoanId,
+  });
+
+  const dues = duesResponse?.message;
+
+  const { data: editDetailsResponse } = useQuery({
+    queryKey: ['loanRepayment', editId],
+    queryFn: () => getLoanRepaymentById(editId as string),
+    enabled: opened && !!editId,
+  });
+
+  useEffect(() => {
+    if (opened && editId && editDetailsResponse) {
+      const item = editDetailsResponse.message?.data || editDetailsResponse.message || editDetailsResponse;
+
+      setSelectedBorrower({
+        name: item.applicant,
+        cif: item.applicant,
+        phone: '',
+        status: 'Standard',
+        loans: [{ id: item.against_loan, type: item.loan_product || '' }],
+      });
+      setSelectedLoanId(item.against_loan);
+      setValueDate(item.value_date ? item.value_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
+      setRemark('');
+
+      setCapitalizedInterest('');
+      setCapitalizedPenalty('');
+      setCapitalizedFee('');
+      setEditRecordType(item.repayment_type);
+
+      if (item.repayment_type === 'Interest Capitalization') setCapitalizedInterest(item.amount_paid ?? '');
+      else if (item.repayment_type === 'Penalty Capitalization') setCapitalizedPenalty(item.amount_paid ?? '');
+      else if (item.repayment_type === 'Charges Capitalization') setCapitalizedFee(item.amount_paid ?? '');
+    } else if (opened && !editId) {
+      handleReset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened, editId, editDetailsResponse]);
+
+  const totalDue = dues
+    ? (dues.payable_principal_amount ?? 0) + (dues.interest_amount ?? 0) + (dues.penalty_amount ?? 0) + (dues.total_charges_payable ?? 0)
     : 0;
 
   const paymentEffectRows: PaymentEffectRow[] = useMemo(() => {
-    if (!selectedLoan) return [];
-    const paying = Number(amountToPay) || 0;
-    const isFullSettlement = natureOfPayment === 'FULL_SETTLEMENT';
-    const principalOutstandingBefore = selectedLoan.balance;
+    if (!selectedLoan || !dues) return [];
+    const totalCapitalized =
+      (Number(capitalizedInterest) || 0) + (Number(capitalizedPenalty) || 0) + (Number(capitalizedFee) || 0);
+    const principalDue = dues.payable_principal_amount ?? 0;
+    const interestDue = dues.interest_amount ?? 0;
     const clamp = (n: number) => Math.max(Math.round(n * 100) / 100, 0);
 
+    // Capitalization folds waived-as-added amounts into principal — principal
+    // goes up by the capitalized total, arrears/interest go down by the same.
     return [
       {
         component: 'Total Outstanding',
-        before: selectedLoan.balance,
-        after: isFullSettlement ? 0 : clamp(selectedLoan.balance - paying),
+        before: totalDue,
+        after: totalDue, // capitalization moves amounts between components, doesn't change total outstanding
       },
       {
         component: 'Principal Outstanding',
-        before: principalOutstandingBefore,
-        after: isFullSettlement ? 0 : clamp(principalOutstandingBefore - Math.max(paying - selectedLoan.interestDue, 0)),
+        before: principalDue,
+        after: clamp(principalDue + totalCapitalized),
       },
       {
         component: 'Arrears',
         before: totalDue,
-        after: isFullSettlement ? 0 : clamp(totalDue - paying),
-      },
-      {
-        component: 'Remaining Installments',
-        before: selectedLoan.remainingInstallments,
-        after: isFullSettlement ? 0 : Math.max(selectedLoan.remainingInstallments - (paying >= totalDue && totalDue > 0 ? 1 : 0), 0),
+        after: clamp(totalDue - totalCapitalized),
       },
       {
         component: 'Interest Payable',
-        before: selectedLoan.interestDue,
-        after: isFullSettlement ? 0 : clamp(selectedLoan.interestDue - Math.min(paying, selectedLoan.interestDue)),
+        before: interestDue,
+        after: clamp(interestDue - Math.min(Number(capitalizedInterest) || 0, interestDue)),
       },
     ];
-  }, [selectedLoan, amountToPay, natureOfPayment, totalDue]);
+  }, [selectedLoan, dues, capitalizedInterest, capitalizedPenalty, capitalizedFee, totalDue]);
 
   const handleSelectBorrower = (borrower: Borrower) => {
     setSelectedBorrower(borrower);
     setSelectedLoanId(borrower.loans[0]?.id ?? null);
-    const firstLoan = borrower.loans[0];
-    if (firstLoan) {
-      setAmountToPay(Math.round((firstLoan.principalDue + firstLoan.interestDue + firstLoan.lateFees) * 100) / 100);
-    }
+    setCapitalizedInterest('');
+    setCapitalizedPenalty('');
+    setCapitalizedFee('');
   };
 
   const handleClearBorrower = () => {
     setSelectedBorrower(null);
     setSelectedLoanId(null);
     setSearch('');
-    setAmountToPay('');
-    setReferenceNumber('');
-    setReferenceDate('');
-    setAccountNumber('');
     setRemark('');
+    setCapitalizedInterest('');
+    setCapitalizedPenalty('');
+    setCapitalizedFee('');
   };
 
   const handleSelectLoan = (loan: LoanAccount) => {
     setSelectedLoanId(loan.id);
-    if (natureOfPayment === 'PAY_DUES') {
-      setAmountToPay(Math.round((loan.principalDue + loan.interestDue + loan.lateFees) * 100) / 100);
-    } else if (natureOfPayment === 'FULL_SETTLEMENT') {
-      setAmountToPay(loan.balance);
-    }
+    setCapitalizedInterest('');
+    setCapitalizedPenalty('');
+    setCapitalizedFee('');
   };
 
   const handleReset = () => {
@@ -337,31 +319,98 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
     setSelectedBorrower(null);
     setSelectedLoanId(null);
     setValueDate(new Date().toISOString().slice(0, 10));
-    setNatureOfPayment('PAY_DUES');
-    setAmountToPay('');
-    setPaymentMode('Direct Debit from A/C');
-    setReferenceNumber('');
-    setReferenceDate('');
-    setAccountNumber('');
     setRemark('');
+    setCapitalizedInterest('');
+    setCapitalizedPenalty('');
+    setCapitalizedFee('');
+    setEditRecordType(null);
   };
 
-  const handleSubmit = () => {
-    onSubmit?.({
-      loanAc: selectedLoan?.id ?? '',
-      customerName: selectedBorrower?.name ?? '',
-      loanType: selectedLoan?.type ?? '',
-      valueDate,
-      natureOfPayment,
-      amountToPay,
-      paymentMode,
-      referenceNumber,
-      referenceDate,
-      accountNumber,
-      remark,
-    });
-    onClose();
+  const createCapitalizationMutation = useMutation({
+    mutationFn: createLoanRepayment,
+  });
+
+  const updateCapitalizationMutation = useMutation({
+    mutationFn: updateLoanRepayment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+      handleReset();
+      onClose();
+    },
+  });
+
+  const handleSubmit = async () => {
+    if (!selectedLoan || !selectedBorrower) return;
+
+    const basePayload = {
+      applicant_type: 'Customer' as const,
+      applicant: selectedBorrower.cif,
+      loan_product: selectedLoan.type,
+      against_loan: selectedLoan.id,
+      value_date: valueDate.slice(0, 10),
+      mode_of_payment: '',
+      reference_number: '',
+      reference_date: '',
+    };
+
+    if (editId) {
+      let amount = 0;
+      if (editRecordType === 'Interest Capitalization') amount = Number(capitalizedInterest) || 0;
+      else if (editRecordType === 'Penalty Capitalization') amount = Number(capitalizedPenalty) || 0;
+      else if (editRecordType === 'Charges Capitalization') amount = Number(capitalizedFee) || 0;
+
+      const payload: LoanRepaymentPayload = {
+        ...basePayload,
+        repayment_type: editRecordType as string,
+        amount_paid: amount,
+      };
+      updateCapitalizationMutation.mutate({ id: editId, payload });
+      return;
+    }
+
+    const entries: { repayment_type: string; amount: number }[] = [];
+    if (Number(capitalizedInterest) > 0) entries.push({ repayment_type: toCapitalizationType('interest'), amount: Number(capitalizedInterest) });
+    if (Number(capitalizedPenalty) > 0) entries.push({ repayment_type: toCapitalizationType('penalty'), amount: Number(capitalizedPenalty) });
+    if (Number(capitalizedFee) > 0) entries.push({ repayment_type: toCapitalizationType('fee'), amount: Number(capitalizedFee) });
+
+    if (entries.length === 0) return;
+
+    setIsSubmittingAll(true);
+    try {
+      for (const entry of entries) {
+        const payload: LoanRepaymentPayload = {
+          ...basePayload,
+          repayment_type: entry.repayment_type,
+          amount_paid: entry.amount,
+        };
+        await createCapitalizationMutation.mutateAsync(payload);
+      }
+      queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+      onSubmit?.({
+        loanAc: selectedLoan.id,
+        customerName: selectedBorrower.name,
+        loanType: selectedLoan.type,
+        valueDate,
+        amountToPay: '',
+        paymentMode: null,
+        referenceNumber: '',
+        referenceDate: '',
+        accountNumber: '',
+        remark,
+        capitalizedInterest,
+        capitalizedPenalty,
+        capitalizedFee,
+      });
+      handleReset();
+      onClose();
+    } finally {
+      setIsSubmittingAll(false);
+    }
   };
+
+  const isPending = isSubmittingAll || updateCapitalizationMutation.isPending;
+  const hasAnyCapitalizedAmount =
+    (Number(capitalizedInterest) || 0) > 0 || (Number(capitalizedPenalty) || 0) > 0 || (Number(capitalizedFee) || 0) > 0;
 
   return (
     <Modal opened={opened} onClose={onClose} size="1300px" withCloseButton={false} padding={0} radius="md">
@@ -429,8 +478,9 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
 
                 <TextInput
                   size="sm"
-                  placeholder="e.g. Yash Joshi, 9876543210..."
+                  placeholder="Search by loan A/C, applicant or phone"
                   value={search}
+                  disabled={isView}
                   onChange={(e) => setSearch(e.currentTarget.value)}
                   leftSection={<IconSearch size={14} className="text-gray-400" />}
                   classNames={labelClass}
@@ -442,9 +492,11 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
                       <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
                         Selected Borrower
                       </Text>
-                      <button type="button" onClick={handleClearBorrower} className="text-xs font-semibold text-[#4F46E5] hover:text-[#3730A3]">
-                        Change
-                      </button>
+                      {!isView && (
+                        <button type="button" onClick={handleClearBorrower} className="text-xs font-semibold text-[#4F46E5] hover:text-[#3730A3]">
+                          Change
+                        </button>
+                      )}
                     </div>
                     <div className="text-left rounded-md border border-[#a5b4fc] bg-[#eef2ff] p-3">
                       <div className="flex items-center justify-between">
@@ -463,10 +515,10 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
                 ) : (
                   search.trim() && (
                     <div className="flex flex-col gap-2 mt-4">
-                      {matches.length === 0 ? (
-                        <Text size="xs" c="dimmed" className="py-2">
-                          No borrowers found.
-                        </Text>
+                      {isSearching ? (
+                        <Text size="xs" c="dimmed" className="py-2">Searching...</Text>
+                      ) : matches.length === 0 ? (
+                        <Text size="xs" c="dimmed" className="py-2">No borrowers found.</Text>
                       ) : (
                         matches.map((borrower) => (
                           <button key={borrower.cif} type="button" onClick={() => handleSelectBorrower(borrower)} className="text-left rounded-md border border-gray-200 p-3 transition-colors hover:bg-gray-50">
@@ -495,12 +547,17 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
                     </Text>
                     <div className="flex flex-col gap-2">
                       {selectedBorrower.loans.map((loan) => (
-                        <button key={loan.id} type="button" onClick={() => handleSelectLoan(loan)} className={`text-left rounded-md border p-3 transition-colors ${selectedLoanId === loan.id ? 'border-[#818cf8] bg-[#eef2ff] ring-1 ring-[#c7d2fe]' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <button
+                          key={loan.id}
+                          type="button"
+                          disabled={isView}
+                          onClick={() => handleSelectLoan(loan)}
+                          className={`text-left rounded-md border p-3 transition-colors ${
+                            selectedLoanId === loan.id ? 'border-[#818cf8] bg-[#eef2ff] ring-1 ring-[#c7d2fe]' : 'border-gray-200 hover:bg-gray-50'
+                          } ${isView ? 'cursor-default opacity-80' : ''}`}
+                        >
                           <Text size="sm" fw={700} className="text-gray-900">
                             {loan.type} - {loan.id}
-                          </Text>
-                          <Text size="xs" c="dimmed" className="mt-0.5">
-                            Balance: {formatCurrency(loan.balance)} | EMI Date: {loan.emiDate}
                           </Text>
                         </button>
                       ))}
@@ -524,7 +581,17 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
               </div>
 
               <div className="grid grid-cols-3 gap-x-8 gap-y-3">
-                <TextInput size="sm" withAsterisk type="date" label="Value Date" value={valueDate} onChange={(e) => setValueDate(e.currentTarget.value)} leftSection={<IconCalendarDue size={14} className="text-emerald-600" />} classNames={labelClass} />
+                <TextInput
+                  size="sm"
+                  withAsterisk
+                  type="date"
+                  label="Value Date"
+                  disabled={isView}
+                  value={valueDate}
+                  onChange={(e) => setValueDate(e.currentTarget.value)}
+                  leftSection={<IconCalendarDue size={14} className="text-emerald-600" />}
+                  classNames={labelClass}
+                />
               </div>
 
               <div className="mt-6">
@@ -543,30 +610,75 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
                   <Table.Tbody>
                     <Table.Tr>
                       <Table.Td>Interest</Table.Td>
-                      <Table.Td className="font-mono text-right">$3,000.00</Table.Td>
+                      <Table.Td className="font-mono text-right">
+                        {isDuesLoading ? '...' : formatCurrency(dues?.interest_amount ?? 0)}
+                      </Table.Td>
                       <Table.Td>
-                        <NumberInput hideControls placeholder="0.00" thousandSeparator="," decimalScale={2} />
+                        <NumberInput
+                          hideControls
+                          placeholder="0.00"
+                          thousandSeparator=","
+                          decimalScale={2}
+                          min={0}
+                          max={dues?.interest_amount}
+                          disabled={isView || (editId ? editRecordType !== 'Interest Capitalization' : false)}
+                          value={capitalizedInterest}
+                          onChange={(v) => setCapitalizedInterest(v as number | '')}
+                        />
                       </Table.Td>
                     </Table.Tr>
                     <Table.Tr>
                       <Table.Td>Penalty</Table.Td>
-                      <Table.Td className="font-mono text-right">$4,000.00</Table.Td>
+                      <Table.Td className="font-mono text-right">
+                        {isDuesLoading ? '...' : formatCurrency(dues?.penalty_amount ?? 0)}
+                      </Table.Td>
                       <Table.Td>
-                        <NumberInput hideControls placeholder="0.00" thousandSeparator="," decimalScale={2} />
+                        <NumberInput
+                          hideControls
+                          placeholder="0.00"
+                          thousandSeparator=","
+                          decimalScale={2}
+                          min={0}
+                          max={dues?.penalty_amount}
+                          disabled={isView || (editId ? editRecordType !== 'Penalty Capitalization' : false)}
+                          value={capitalizedPenalty}
+                          onChange={(v) => setCapitalizedPenalty(v as number | '')}
+                        />
                       </Table.Td>
                     </Table.Tr>
                     <Table.Tr>
                       <Table.Td>Charge / Fee</Table.Td>
-                      <Table.Td className="font-mono text-right">$200.00</Table.Td>
+                      <Table.Td className="font-mono text-right">
+                        {isDuesLoading ? '...' : formatCurrency(dues?.total_charges_payable ?? 0)}
+                      </Table.Td>
                       <Table.Td>
-                        <NumberInput hideControls placeholder="0.00" thousandSeparator="," decimalScale={2} />
+                        <NumberInput
+                          hideControls
+                          placeholder="0.00"
+                          thousandSeparator=","
+                          decimalScale={2}
+                          min={0}
+                          max={dues?.total_charges_payable}
+                          disabled={isView || (editId ? editRecordType !== 'Charges Capitalization' : false)}
+                          value={capitalizedFee}
+                          onChange={(v) => setCapitalizedFee(v as number | '')}
+                        />
                       </Table.Td>
                     </Table.Tr>
                   </Table.Tbody>
                 </Table>
               </div>
 
-              <TextInput size="sm" label="Remark" placeholder="Add a note about this capitalization (optional)" value={remark} onChange={(e) => setRemark(e.currentTarget.value)} leftSection={<IconNotes size={14} className="text-gray-400" />} classNames={labelClass} />
+              <TextInput
+                size="sm"
+                label="Remark"
+                placeholder="Add a note about this capitalization (optional)"
+                disabled={isView}
+                value={remark}
+                onChange={(e) => setRemark(e.currentTarget.value)}
+                leftSection={<IconNotes size={14} className="text-gray-400" />}
+                classNames={labelClass}
+              />
             </div>
 
             {!selectedLoan && (
@@ -609,54 +721,42 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
             {selectedLoan ? (
               <div className="flex flex-col gap-3">
                 <div className="bg-gray-50/60 border border-gray-100 rounded-md p-2.5">
-                  <Text size="xs" c="dimmed">
-                    EMI Date
-                  </Text>
+                  <Text size="xs" c="dimmed">EMI Date</Text>
                   <Text size="sm" fw={600} className="text-gray-900">
-                    {selectedLoan.emiDate}
+                    {isDuesLoading ? 'Loading...' : dues?.due_date || '—'}
                   </Text>
                 </div>
 
                 <div className="bg-gray-50/60 border border-gray-100 rounded-md p-3 flex flex-col gap-1.5">
                   <div className="flex justify-between">
-                    <Text size="xs" c="dimmed">
-                      Principal Due
-                    </Text>
+                    <Text size="xs" c="dimmed">Principal Due</Text>
                     <Text size="xs" className="font-mono text-gray-700">
-                      {formatCurrency(selectedLoan.principalDue)}
+                      {formatCurrency(dues?.payable_principal_amount ?? 0)}
                     </Text>
                   </div>
                   <div className="flex justify-between">
-                    <Text size="xs" c="dimmed">
-                      Interest Due
-                    </Text>
+                    <Text size="xs" c="dimmed">Interest Due</Text>
                     <Text size="xs" className="font-mono text-gray-700">
-                      {formatCurrency(selectedLoan.interestDue)}
+                      {formatCurrency(dues?.interest_amount ?? 0)}
                     </Text>
                   </div>
                   <div className="flex justify-between">
-                    <Text size="xs" c="dimmed">
-                      Penalty
-                    </Text>
+                    <Text size="xs" c="dimmed">Penalty</Text>
                     <Text size="xs" className="font-mono text-gray-700">
-                      {formatCurrency(selectedLoan.penalty)}
+                      {formatCurrency(dues?.penalty_amount ?? 0)}
                     </Text>
                   </div>
                   <div className="flex justify-between">
-                    <Text size="xs" c="dimmed">
-                      Fees/Charges
-                    </Text>
+                    <Text size="xs" c="dimmed">Fees/Charges</Text>
                     <Text size="xs" className="font-mono text-gray-700">
-                      {formatCurrency(selectedLoan.lateFees)}
+                      {formatCurrency(dues?.total_charges_payable ?? 0)}
                     </Text>
                   </div>
                   <div className="border-t border-gray-100 my-1" />
                   <div className="flex justify-between items-center">
-                    <Text size="sm" fw={700} className="text-gray-900">
-                      Total Amount Due
-                    </Text>
+                    <Text size="sm" fw={700} className="text-gray-900">Total Amount Due</Text>
                     <Text size="sm" fw={700} className="text-gray-900 font-mono">
-                      {formatCurrency(totalDue)}
+                      {formatCurrency(dues?.payable_amount ?? 0)}
                     </Text>
                   </div>
                 </div>
@@ -671,23 +771,39 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit }: LoanCapit
 
         <div className="border-t border-gray-200 p-4 px-6 flex justify-between items-center shrink-0">
           <Button
-              size="sm"
-              variant="light"
-              color="brand"
-              disabled={!selectedLoan}
-              leftSection={<IconReportMoney size={14} />}
-              onClick={() => setPaymentEffectOpened(true)}
-              className="font-semibold px-4"
-            >
-              Payment Effect
-            </Button>
+            size="sm"
+            variant="light"
+            color="brand"
+            disabled={!selectedLoan}
+            leftSection={<IconReportMoney size={14} />}
+            onClick={() => setPaymentEffectOpened(true)}
+            className="font-semibold px-4"
+          >
+            Payment Effect
+          </Button>
           <div className="flex gap-2">
-            <Button size="sm" variant="subtle" color="danger" leftSection={<IconRefresh size={14} />} onClick={handleReset} className="font-semibold px-4">
-              Reset
-            </Button>
-            <Button size="sm" disabled={!selectedLoan} onClick={handleSubmit} rightSection={<IconArrowRight size={16} />} className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 font-semibold px-6">
-              Process Capitalization
-            </Button>
+            {!isView && (
+              <>
+                <Button size="sm" variant="subtle" color="danger" leftSection={<IconRefresh size={14} />} onClick={handleReset} className="font-semibold px-4">
+                  Reset
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!selectedLoan || !hasAnyCapitalizedAmount || isPending}
+                  loading={isPending}
+                  onClick={handleSubmit}
+                  rightSection={<IconArrowRight size={16} />}
+                  className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 font-semibold px-6"
+                >
+                  {editId ? 'Update' : 'Process Capitalization'}
+                </Button>
+              </>
+            )}
+            {isView && (
+              <Button variant="default" size="sm" onClick={onClose} className="font-semibold">
+                Close
+              </Button>
+            )}
           </div>
         </div>
       </Box>
