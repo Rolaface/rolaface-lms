@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Text } from '@mantine/core';
 import type { BorrowerProfile, SelectedItem } from '../../types/customerview';
 import { brand, getFixedDepositDetail, getInvestmentDetail, getSavingsDetail } from './mockdata';
-import { BorrowerSidebar, GlobalSearchBar } from './sharedui';
+import { BorrowerSidebar, GlobalSearchBar } from './Sharedui';
 import { AccountDetailView, LoanDetailView } from './DetailViews';
 
 /* ============================================================================

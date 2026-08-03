@@ -17,7 +17,7 @@ import {
   SectionHeading,
   StatusPill,
   TenureBar,
-} from './sharedui';
+} from './Sharedui';
 
 /* ============================================================================
    LOAN DETAIL (tabs: Overview, Disbursement, Schedule, History, Accounting,
