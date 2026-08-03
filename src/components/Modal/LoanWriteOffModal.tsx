@@ -45,7 +45,6 @@ export interface LoanWriteOffFormData {
   writeOffAccount: string | null;
 }
 
-// Static account/summary data — wire up to real account lookup as needed.
 const ACCOUNT_SUMMARY = {
   customerName: "Rohan Mehta",
   npa: true,
@@ -75,6 +74,7 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
   const [loanAccountsLoading, setLoanAccountsLoading] = useState(false);
   const [loanAcSearch, setLoanAcSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   useEffect(() => {
     if (!opened) return;
 
@@ -121,13 +121,24 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
 }, [opened, loanAcSearch]);
 
  useEffect(() => {
-  if (editData) {
+  if (!opened) return;
+
+ if (editData) {
     setLoanAc(editData.loan);
     setValueDate(editData.value_date);
     setWriteOffAmount(editData.write_off_amount);
     setWriteOffAccount(editData.write_off_account);
+    } else {
+   setLoanAc("");
+    setValueDate("");
+    setPrincipalOutstanding("");
+    setWriteOffPercentage("");
+    setWriteOffAmount("");
+    setWriteOffAccount(null);
+    setErrors({});
+
   }
-}, [editData]);
+}, [editData, opened]);
 
 useEffect(() => {
   if (editData && loanAccountOptions.length > 0) {
@@ -149,6 +160,7 @@ useEffect(() => {
   };
   const handleLoanAcChange = (value: string | null) => {
     setLoanAc(value ?? "");
+    if (value) setErrors((e) => ({ ...e, loanAc: "" }));
     const selected = loanAccountOptions.find((acc) => acc.name === value);
     if (selected) {
       setPrincipalOutstanding(selected.pending_principal_amount);
@@ -159,6 +171,7 @@ useEffect(() => {
 
   const handleAmountChange = (value: number | "") => {
     setWriteOffAmount(value);
+    if (value !== "") setErrors((e) => ({ ...e, writeOffAmount: "" }));
     if (value !== "" && principalOutstanding !== "" && Number(principalOutstanding) > 0) {
       const percentage = (Number(value) / Number(principalOutstanding)) * 100;
       setWriteOffPercentage(Math.round(percentage * 100) / 100);
@@ -174,12 +187,24 @@ useEffect(() => {
     setWriteOffPercentage("");
     setWriteOffAmount("");
     setWriteOffAccount(null);
+     setErrors({});
   };
 
+const validate = () => {
+   const next: Record<string, string> = {};
+   if (!loanAc) next.loanAc = "Loan A/c is required";
+   if (!valueDate) next.valueDate = "Value Date is required";
+   if (writeOffAmount === "") next.writeOffAmount = "Write-off Amount is required";
+   if (!writeOffAccount) next.writeOffAccount = "Write-off Account is required";
+   setErrors(next);
+   return Object.keys(next).length === 0;
+ };
+
   const handleSubmit = async () => {
-    if (!loanAc || !valueDate || writeOffAmount === "" || !writeOffAccount) {
-      return; // basic guard — add proper validation/toast as needed
-    }
+       if (!validate()) return;
+
+
+  if (!writeOffAccount) return;
 
     const postingDate = new Date().toISOString().split("T")[0]; // YYYY-MM-DD, today
 
@@ -273,6 +298,7 @@ useEffect(() => {
                 onSearchChange={setLoanAcSearch}
                 nothingFoundMessage={loanAccountsLoading ? "Loading..." : "No accounts found"}
                 leftSection={<IconSearch size={14} className="text-gray-400" />}
+                error={errors.loanAc}
                 classNames={labelClass}
               />
 
@@ -283,8 +309,12 @@ useEffect(() => {
                   type="date"
                   label="Value Date"
                   value={valueDate}
-                  onChange={(e) => setValueDate(e.currentTarget.value)}
+                   onChange={(e) => {
+                setValueDate(e.currentTarget.value);
+                   if (e.currentTarget.value) setErrors((er) => ({ ...er, valueDate: "" }));
+                 }}
                   leftSection={<IconCalendar size={14} className="text-emerald-600" />}
+                  error={errors.valueDate}
                   classNames={labelClass}
                 />
                 <NumberInput
@@ -296,6 +326,7 @@ useEffect(() => {
                   onChange={(v) => setPrincipalOutstanding(v as number | "")}
                   leftSection={<IconCurrencyRupee size={14} className="text-orange-500" />}
                   thousandSeparator=","
+                  
                   readOnly
                   classNames={labelClass}
                 />
@@ -328,6 +359,7 @@ useEffect(() => {
                     onChange={(v) => handleAmountChange(v as number | "")}
                     leftSection={<IconCurrencyRupee size={14} className="text-orange-500" />}
                     thousandSeparator=","
+                    error={errors.writeOffAmount}
                     classNames={labelClass}
                   />
                   <Text size="xs" c="dimmed" className="mt-1">
@@ -346,13 +378,17 @@ useEffect(() => {
       : accountOptions.map((a) => ({ value: a.value, label: a.label }))
   }
                 value={writeOffAccount}
-                onChange={setWriteOffAccount}
+                onChange={(value) => {
+                setWriteOffAccount(value);
+                 if (value) setErrors((e) => ({ ...e, writeOffAccount: "" }));
+               }}
                 searchable
                 searchValue={accountSearch}
                 onSearchChange={setAccountSearch}
                 nothingFoundMessage={accountsLoading ? "Loading..." : "No accounts found"}
                 leftSection={<IconBuildingBank size={14} className="text-indigo-500" />}
                 rightSection={chevronDown}
+                error={errors.writeOffAccount}
                 classNames={labelClass}
               />
             </div>
