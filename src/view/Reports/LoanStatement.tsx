@@ -54,7 +54,7 @@ const CASH_FLOW = [
 ];
 
 const LOAN_SNAPSHOT = [
-  ["Currency", "INR - Indian Rupee"],
+  ["Currency", "ZMW – Zambian Kwacha"],
   ["Loan Account", "LN-000456"],
   ["Loan Product", "Personal Loan"],
   ["Loan Amount", "₹5,00,000.00"],
