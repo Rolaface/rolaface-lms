@@ -1,11 +1,11 @@
 import { useState } from "react";
 import {
-  Box, Button, TextInput, Select, Radio, Group, Paper, Table, Badge,
-  ActionIcon, Switch, Text, Pagination, Tooltip, Title, Loader, Alert,
+  Box, Button, TextInput, Select, Group, Paper, Table, Badge,
+  ActionIcon, Text, Pagination, Tooltip, Title, Loader, Alert,
 } from "@mantine/core";
 import {
-  IconEye, IconPencil, IconPlus, IconChevronUp, IconChevronDown,
-  IconSelector, IconSearch, IconAlertCircle, IconTrash, IconFileText, IconReceipt2, IconCalendar, IconInfoCircle,
+  IconEye, IconPlus, IconChevronUp, IconChevronDown,
+  IconSelector, IconSearch, IconAlertCircle, IconFileText, IconReceipt2, IconCalendar,
   IconFilter, IconDownload, IconWallet, IconArrowUp,
   IconArrowDown, IconFileSpreadsheet, IconClipboardList
 } from "@tabler/icons-react";
@@ -54,6 +54,7 @@ const CASH_FLOW = [
 ];
 
 const LOAN_SNAPSHOT = [
+  ["Currency", "INR - Indian Rupee"],
   ["Loan Account", "LN-000456"],
   ["Loan Product", "Personal Loan"],
   ["Loan Amount", "₹5,00,000.00"],
@@ -103,30 +104,30 @@ const TYPE_BADGE: Record<string, { bg: string; color: string }> = {
 --------------------------------------------------------------------- */
 const inputClassNames = {
   label: "text-[12px] font-semibold text-slate-700 mb-1",
-  input: "min-h-[40px] h-[40px] text-[13px] border-slate-200 rounded-lg focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)]",
+  input: "min-h-[28px] h-[28px] text-[11.5px] px-2 border-slate-200 rounded-lg focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)]",
 };
 
 function SummaryCard({ card }: { card: (typeof SUMMARY_CARDS)[number] }) {
   const Icon = card.icon;
   const c = theme[card.color as keyof typeof theme];
   return (
-    <Paper withBorder radius="lg" p="md" className="flex-1 min-w-[190px] border-slate-200">
+    <Paper withBorder radius="lg" p="sm" className="flex-1 min-w-[190px] border-slate-200">
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Text size="xs" fw={600} c={card.highlight ? theme.brand[6] : "dimmed"}>{card.label}</Text>
         <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: c[0], color: (c as any)[6] }}>
           <Icon size={16} />
         </div>
       </Group>
-      <Text fw={800} className="text-[20px] text-slate-900 mt-2">{card.value}</Text>
-      <Text size="11px" c="dimmed" mt={2}>{card.note}</Text>
+      <Text fw={800} className="text-[17px] text-slate-900 mt-1.5">{card.value}</Text>
+      <Text size="10.5px" c="dimmed" mt={1}>{card.note}</Text>
     </Paper>
   );
 }
 
 function ChartCard({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <Paper withBorder radius="lg" p="md" className="border-slate-200 flex flex-col">
-      <Group justify="space-between" mb="sm">
+    <Paper withBorder radius="lg" p="sm" className="border-slate-200 flex flex-col">
+      <Group justify="space-between" mb={6}>
         <Text size="sm" fw={700} className="text-slate-800">{title}</Text>
         {right}
       </Group>
@@ -142,7 +143,6 @@ type SortKey = "date" | "balance" | null;
 --------------------------------------------------------------------- */
 export function LoanStatement() {
   const [tab, setTab] = useState("Overview");
-  const [includeClosed, setIncludeClosed] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -167,11 +167,11 @@ export function LoanStatement() {
 
   return (
     <Box className="bg-[#F7F8FB] text-slate-800 min-h-full">
-      <Box component="main" className="p-6 flex flex-col gap-5">
+      <Box component="main" className="p-4 flex flex-col gap-3.5">
         {/* Page header */}
         <Group justify="space-between" align="flex-start">
           <div>
-            <Title order={2} className="text-slate-900">Loan Statement</Title>
+            <Title order={3} className="text-slate-900">Loan Statement</Title>
             <Group gap={6} mt={4}>
               <Text size="12.5px" c="dimmed">Home</Text><Text size="12.5px" c="dimmed">›</Text>
               <Text size="12.5px" c="dimmed">Loan</Text><Text size="12.5px" c="dimmed">›</Text>
@@ -188,61 +188,51 @@ export function LoanStatement() {
         </Group>
 
         {/* Filters */}
-        <Paper withBorder radius="lg" p="md" className="border-slate-200">
-          <div className="grid grid-cols-4 gap-4">
-            <Select label="Customer" withAsterisk placeholder="Select customer" data={["CUST-000123 - Rahul Sharma"]} defaultValue="CUST-000123 - Rahul Sharma" classNames={inputClassNames} rightSection={<IconChevronDown size={13} className="text-slate-400" />} />
-              <Select label="Loan Account" withAsterisk placeholder="Select account" data={["LN-000456 - Personal Loan"]} defaultValue="LN-000456 - Personal Loan" classNames={inputClassNames} rightSection={<IconChevronDown size={13} className="text-slate-400" />} />
-              <TextInput label="From Date" withAsterisk type="date" defaultValue="2026-04-01" classNames={inputClassNames} rightSection={<IconCalendar size={14} className="text-slate-400" />} />
-              <TextInput label="To Date" withAsterisk type="date" defaultValue="2026-08-01" classNames={inputClassNames} rightSection={<IconCalendar size={14} className="text-slate-400" />} />
-            </div>
-            <Group mt="md" align="flex-end" gap="xl">
-              <Select label="Currency" data={["INR - Indian Rupee"]} defaultValue="INR - Indian Rupee" classNames={inputClassNames} className="w-64" rightSection={<IconChevronDown size={13} className="text-slate-400" />} />
-              <Group gap={8} h={40}>
-                <Text size="13px" fw={500} className="text-slate-600">Include Closed Transactions</Text>
-                <Tooltip label="Also include loans that have been fully closed or written off" withArrow>
-                  <IconInfoCircle size={13} className="text-slate-300" />
-                </Tooltip>
-                <Switch checked={includeClosed} onChange={(e) => setIncludeClosed(e.currentTarget.checked)} color="blue" />
-              </Group>
-            </Group>
-          </Paper>
-
-          <Alert variant="light" color="indigoAlt" icon={<IconAlertCircle size={16} />} radius="lg" className="border border-slate-200">
-            Balances below reflect transactions from <b>01/04/2026</b> to <b>01/08/2026</b> only. Toggle "Include Closed Transactions" to widen the range.
-          </Alert>
+        <Paper withBorder radius="lg" p="sm" className="border-slate-200">
+          <div className="flex flex-wrap gap-12">
+            <Select label="Customer" withAsterisk placeholder="Select customer" data={["CUST-000123 - Rahul Sharma"]} defaultValue="CUST-000123 - Rahul Sharma" classNames={inputClassNames} className="w-[280px]" rightSection={<IconChevronDown size={13} className="text-slate-400" />} />
+            <Select label="Loan Account" withAsterisk placeholder="Select account" data={["LN-000456 - Personal Loan"]} defaultValue="LN-000456 - Personal Loan" classNames={inputClassNames} className="w-[230px]" rightSection={<IconChevronDown size={13} className="text-slate-400" />} />
+            <TextInput label="From Date" withAsterisk type="date" defaultValue="2026-04-01" classNames={inputClassNames} className="w-[180px]" rightSection={<IconCalendar size={14} className="text-slate-400" />} />
+            <TextInput label="To Date" withAsterisk type="date" defaultValue="2026-08-01" classNames={inputClassNames} className="w-[180px]" rightSection={<IconCalendar size={14} className="text-slate-400" />} />
+          </div>
+        </Paper>
 
           {/* Summary */}
           <div>
-            <Group justify="space-between" mb="sm">
-              <Title order={4} className="text-slate-900">Loan Statement Summary</Title>
-              <Radio.Group value={tab} onChange={setTab}>
-                <Group gap={4} className="rounded-lg border border-slate-200 p-1 bg-white">
-                  {["Summary View", "Overview", "Detailed"].map((t) => (
-                    <Radio.Card
-                      key={t}
-                      value={t}
-                      radius="md"
-                      className="border-0 px-3 py-1.5 cursor-pointer"
-                      style={tab === t ? { backgroundColor: theme.brand[0], color: theme.brand[6] } : { color: "#94A3B8" }}
-                    >
-                      <Text size="12.5px" fw={700}>{t}</Text>
-                    </Radio.Card>
-                  ))}
-                </Group>
-              </Radio.Group>
+            <Group justify="space-between" mb={8}>
+              <Title order={5} className="text-slate-900">Loan Statement Summary</Title>
+              <Group gap={4} className="rounded-lg border border-slate-200 p-1 bg-white">
+                {["Summary View", "Overview", "Detailed"].map((t) => (
+                  <Button
+                    key={t}
+                    size="xs"
+                    radius="md"
+                    variant="subtle"
+                    onClick={() => setTab(t)}
+                    className="px-3"
+                    styles={{
+                      root: tab === t
+                        ? { backgroundColor: theme.brand[0], color: theme.brand[6] }
+                        : { color: "#94A3B8", backgroundColor: "transparent" },
+                    }}
+                  >
+                    <Text size="12.5px" fw={700} inherit>{t}</Text>
+                  </Button>
+                ))}
+              </Group>
             </Group>
-            <Group gap="md" wrap="nowrap" className="overflow-x-auto">
+            <Group gap="sm" wrap="nowrap" className="overflow-x-auto">
               {SUMMARY_CARDS.map((c) => <SummaryCard key={c.label} card={c} />)}
             </Group>
           </div>
 
           {/* Charts row */}
-          <div className="grid grid-cols-[1.3fr_1.3fr_1fr_1fr] gap-4">
+          <div className="grid grid-cols-[1.3fr_1.3fr_1fr_1fr] gap-3">
             <ChartCard
               title="Balance Trend"
               right={<Button variant="default" size="xs" radius="md" rightSection={<IconChevronDown size={12} />}>Monthly</Button>}
             >
-              <div className="h-[210px]">
+              <div className="h-[165px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={BALANCE_TREND} margin={{ top: 10, right: 8, left: -18, bottom: 0 }}>
                     <defs>
@@ -266,12 +256,12 @@ export function LoanStatement() {
             </ChartCard>
 
             <ChartCard title="Cash Flow (₹)">
-              <div className="h-[210px]">
+              <div className="h-[165px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={CASH_FLOW} margin={{ top: 10, right: 8, left: -18, bottom: 0 }}>
+                  <BarChart data={CASH_FLOW} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke="#F1F5F9" />
                     <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={(v) => `${v / 1000}k`} tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} width={34} />
+                    <YAxis tickFormatter={(v) => `${v / 1000}k`} tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} width={36} />
                     <RTooltip formatter={(v: number) => `₹${v.toLocaleString("en-IN")}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                     <Bar dataKey="Disbursal" fill={theme.indigoAlt[6]} radius={[3, 3, 0, 0]} maxBarSize={18} />
                     <Bar dataKey="Repayment" fill={theme.brand[6]} radius={[3, 3, 0, 0]} maxBarSize={18} />
@@ -287,7 +277,7 @@ export function LoanStatement() {
             </ChartCard>
 
             <ChartCard title="Loan Snapshot">
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-1.5">
                 {LOAN_SNAPSHOT.map(([k, v]) => (
                   <Group key={k} justify="space-between">
                     <Text size="12.5px" c="dimmed">{k}</Text>
@@ -299,10 +289,10 @@ export function LoanStatement() {
 
             <ChartCard title="Aging Summary (DPD)">
               <div className="flex flex-col items-center">
-                <div className="relative w-[110px] h-[110px]">
+                <div className="relative w-[92px] h-[92px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={AGING_PIE} dataKey="value" innerRadius={38} outerRadius={52} startAngle={90} endAngle={450} stroke="none">
+                      <Pie data={AGING_PIE} dataKey="value" innerRadius={30} outerRadius={42} startAngle={90} endAngle={450} stroke="none">
                         {AGING_PIE.map((e, i) => <Cell key={i} fill={e.color} />)}
                       </Pie>
                     </PieChart>
@@ -330,8 +320,8 @@ export function LoanStatement() {
 
           {/* Table */}
           <Paper withBorder radius="lg" className="border-slate-200 overflow-hidden">
-            <Group justify="space-between" p="md" className="border-b border-slate-100">
-              <Title order={4} className="text-slate-900">Loan Statement Details</Title>
+            <Group justify="space-between" p="sm" className="border-b border-slate-100">
+              <Title order={5} className="text-slate-900">Loan Statement Details</Title>
               <Group gap={10}>
                 <TextInput
                   placeholder="Search transactions..."
@@ -354,7 +344,7 @@ export function LoanStatement() {
                   No transactions match "{search}".
                 </Alert>
               ) : (
-                <Table verticalSpacing="sm" horizontalSpacing="md" className="text-[12.5px]">
+                <Table verticalSpacing="xs" horizontalSpacing="md" className="text-[12.5px]">
                   <Table.Thead>
                     <Table.Tr className="text-slate-400">
                       <Table.Th onClick={() => toggleSort("date")} className="cursor-pointer">
@@ -386,8 +376,6 @@ export function LoanStatement() {
                           <Table.Td>
                             <Group gap={4} justify="flex-end">
                               <Tooltip label="View"><ActionIcon variant="subtle" color="gray" size="sm"><IconEye size={14} /></ActionIcon></Tooltip>
-                              <Tooltip label="Edit"><ActionIcon variant="subtle" color="gray" size="sm"><IconPencil size={14} /></ActionIcon></Tooltip>
-                              <Tooltip label="Delete"><ActionIcon variant="subtle" color="red" size="sm"><IconTrash size={14} /></ActionIcon></Tooltip>
                             </Group>
                           </Table.Td>
                         </Table.Tr>
@@ -398,7 +386,7 @@ export function LoanStatement() {
               )}
             </div>
 
-            <Group justify="space-between" p="md" className="border-t border-slate-100">
+            <Group justify="space-between" p="sm" className="border-t border-slate-100">
               <Text size="12px" c="dimmed">Showing {rows.length} of {TRANSACTIONS.length} entries</Text>
               <Group gap={12}>
                 <Pagination total={1} value={page} onChange={setPage} color="blue" size="sm" radius="md" />
