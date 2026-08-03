@@ -1,8 +1,8 @@
 // loanRepaymentForm.ts
 
 export interface LoanRepaymentPayload {
-  repayment_type: "Normal Repayment" | "Full Settlement";
-
+  // repayment_type: "Normal Repayment" | "Full Settlement";
+  repayment_type: string;
   applicant_type: "Customer";
   applicant: string;
 
