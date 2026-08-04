@@ -354,7 +354,8 @@ export function LoanWaiverModal({ opened, onClose, onSubmit, editId, isView }: L
 
   return (
     <>
-      <Modal opened={opened} onClose={onClose} size="1300px" withCloseButton={false} padding={0} radius="md">
+      <Modal opened={opened} onClose={onClose} size="1300px" withCloseButton={false} padding={0} radius="md" closeOnClickOutside={false}
+      closeOnEscape={false}>
         <Box className="flex flex-col h-[700px] max-h-[90vh] overflow-hidden">
           <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
             <div className="flex items-center gap-3">

@@ -355,6 +355,8 @@ const handleReset = () => {
       withCloseButton={false}
       padding={0}
       radius="md"
+      closeOnClickOutside={false}
+      closeOnEscape={false}
     >
       <Box className="flex flex-col max-h-[90vh]">
         {/* Header */}

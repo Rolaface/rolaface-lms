@@ -238,10 +238,31 @@ loan: {
   // =========================
   guarantor: {},
 
+   // =========================
+  // COLLATERAL
+  // =========================
+  collateralType: {
+     createCollateralType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateralType.api.create_collateral_type`,
+    getCollateralType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateralType.api.get_collateral_types`,
+    getCollateralTypeById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateralType.api.get_collateral_type_by_id`,
+     updateCollateralType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateralType.api.update_collateral_type`,
+    deleteCollateralType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateralType.api.delete_collateral_type`,
+     enableCollateralType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateralType.api.enable_collateral_type`,
+    disableCollateralType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateralType.api.disable_collateral_type`,
+  },
+
   // =========================
   // COLLATERAL
   // =========================
-  collateral: {},
+  collateral: {
+     createCollateral: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateral.api.create_collateral`,
+    getCollateral: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateral.api.get_collateral`,
+    getCollateralById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateral.api.get_collateral_by_id`,
+    updateCollateral: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateral.api.update_collateral`,
+    deleteCollateral: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateral.api.delete_collateral`,
+    enableCollateral: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateral.api.enable_collateral`,
+    disableCollateral: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collateral.api.disable_collateral`,
+  },
 
   // =========================
   // REPORTS

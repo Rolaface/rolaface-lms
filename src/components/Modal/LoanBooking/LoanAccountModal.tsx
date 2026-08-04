@@ -256,7 +256,8 @@ const updateLoanMutation = useMutation({
 
   return (
     // <Modal opened={opened} onClose={onClose} size="95%" withCloseButton={false} padding={0} radius="md">
-    <Modal opened={opened} onClose={handleModalClose} size="95%" withCloseButton={false} padding={0} radius="md">
+    <Modal opened={opened} onClose={handleModalClose} size="95%" withCloseButton={false} padding={0} radius="md" closeOnClickOutside={false}
+      closeOnEscape={false}>
       {/* Wrap everything in the form element */}
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Box className="flex flex-col h-[90vh]">
