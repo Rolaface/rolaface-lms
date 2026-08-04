@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { modals } from '@mantine/modals';
 import {
   Box,
   Button,
@@ -15,6 +16,7 @@ import {
   Pagination,
   Tooltip,
   Title,
+  Loader,
 } from '@mantine/core';
 import {
   IconEye,
@@ -24,6 +26,8 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
+  IconFileText,
+  IconTrash,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -34,19 +38,20 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
 import { CollateralModal } from '../../components/Modal/CollateralModal';
+// Adjust import path as needed based on your structure
+import { 
+  getAllLoanSecurities, 
+  deleteLoanSecurity, 
+  enableLoanSecurity, 
+  disableLoanSecurity 
+} from '../../api/Collateral/loanSecurityApi';
 
-const DUMMY_COLLATERAL = [
-  { id: 1, code: 'COL_001', name: 'Downtown Commercial', type: 'Real Estate', value: 1500000, haircut: 15.000, ltv: 85, status: 'ACTIVE' },
-  { id: 2, code: 'COL_002', name: 'Company Fleet', type: 'Vehicles', value: 250000, haircut: 30.000, ltv: 70, status: 'ACTIVE' },
-  { id: 3, code: 'COL_003', name: 'Treasury Bonds 2025', type: 'Government Bonds', value: 500000, haircut: 5.000, ltv: 95, status: 'ACTIVE' },
-  { id: 4, code: 'COL_004', name: 'Tech Startup Shares', type: 'Shares/Equities', value: 100000, haircut: 50.000, ltv: 50, status: 'DISABLED' },
-  { id: 5, code: 'COL_005', name: 'Fixed Deposit A', type: 'Cash Deposits', value: 75000, haircut: 0.000, ltv: 100, status: 'ACTIVE' },
-];
+const columnHelper = createColumnHelper<any>();
 
-const columnHelper = createColumnHelper();
-
-function SortIcon({ sorted }) {
+function SortIcon({ sorted }: { sorted: string | boolean }) {
   if (sorted === 'asc') return <IconChevronUp size={12} />;
   if (sorted === 'desc') return <IconChevronDown size={12} />;
   return <IconSelector size={12} className="opacity-40" />;
@@ -56,31 +61,70 @@ const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
 
 export function Collateral() {
   const [opened, { open, close }] = useDisclosure(false);
+  
+  const [selectedSecurityId, setSelectedSecurityId] = useState<string | null>(null);
+  const [isViewMode, setIsViewMode] = useState(false);
+  
+  const handleModalClose = () => {
+    close();
+    setSelectedSecurityId(null);
+    setIsViewMode(false);
+  };
+
+  const queryClient = useQueryClient();
+
+  // Fetch Data
+  const { data: securitiesResponse, isLoading } = useQuery({
+    queryKey: ['collaterals'],
+    queryFn: () => getAllLoanSecurities({ page_size: 1000 }), // Client-side pagination
+  });
+
+  // Delete Mutation
+  const { mutate: removeSecurity, isPending: isDeleting } = useMutation({
+    mutationFn: (id: string) => deleteLoanSecurity(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collaterals'] });
+    },
+  });
+
+  // Status Toggle Mutation
+  const { mutate: toggleStatus } = useMutation({
+    mutationFn: ({ id, disableFlag }: { id: string; disableFlag: number }) =>
+      disableFlag === 1 ? disableLoanSecurity(id) : enableLoanSecurity(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collaterals'] });
+    },
+  });
 
   // filter state
   const [search, setSearch] = useState('');
-  const [type, setType] = useState(null);
+  const [type, setType] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
 
   // table state
   const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  // local status map for optimistic updates
-  const [statusOverrides, setStatusOverrides] = useState({});
-
-  const data = useMemo(
-    () =>
-      DUMMY_COLLATERAL.map((c) => ({
-        ...c,
-        status: statusOverrides[c.id] ?? c.status,
-      })),
-    [statusOverrides]
-  );
+  // Map API response
+  const data = useMemo(() => {
+    if (securitiesResponse?.status_code === 200 && securitiesResponse?.status === 'success' && securitiesResponse.data) {
+      return securitiesResponse.data.map((item: any) => ({
+        id: item.name,
+        code: item.loan_security_code || 'N/A',
+        name: item.loan_security_name || 'N/A',
+        type: item.loan_security_type || 'N/A',
+        value: item.original_security_value || 0,
+        haircut: item.haircut || 0,
+        ltv: item.loan_to_value_ratio || 0,
+        status: item.disabled === 1 ? 'DISABLED' : 'ACTIVE',
+      }));
+    }
+    return [];
+  }, [securitiesResponse]);
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return data.filter((c) => {
+    return data.filter((c: any) => {
       const matchesSearch = !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q);
       const matchesType = !type || c.type === type;
       const matchesStatus =
@@ -90,13 +134,6 @@ export function Collateral() {
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [data, search, type, status]);
-
-  const toggleStatus = (id, currentStatus) => {
-    setStatusOverrides((prev) => ({
-      ...prev,
-      [id]: currentStatus === 'ACTIVE' ? 'DISABLED' : 'ACTIVE',
-    }));
-  };
 
   const columns = useMemo(
     () => [
@@ -128,7 +165,7 @@ export function Collateral() {
         header: 'Orig. Value',
         cell: (info) => (
           <Text fz="xs" c="gray.6">
-            ${info.getValue().toLocaleString()}
+            ${Number(info.getValue() || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </Text>
         ),
         sortingFn: 'basic',
@@ -137,7 +174,7 @@ export function Collateral() {
         header: 'Haircut %',
         cell: (info) => (
           <Text fz="xs" c="gray.6">
-            {info.getValue().toFixed(3)}
+            {Number(info.getValue() || 0).toFixed(3)}
           </Text>
         ),
         sortingFn: 'basic',
@@ -178,24 +215,66 @@ export function Collateral() {
         cell: (info) => {
           const row = info.row.original;
           const isActive = row.status === 'ACTIVE';
+          
           return (
             <Group justify="flex-end" gap={6} wrap="nowrap">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="gray">
+                <ActionIcon 
+                  size="sm" 
+                  variant="subtle" 
+                  color="gray"
+                  onClick={() => {
+                    setSelectedSecurityId(row.id);
+                    setIsViewMode(true);
+                    open();
+                  }}
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="blue">
+                <ActionIcon 
+                  size="sm" 
+                  variant="subtle" 
+                  color="blue"
+                  onClick={() => {
+                    setSelectedSecurityId(row.id);
+                    setIsViewMode(false);
+                    open();
+                  }}
+                >
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={isActive ? 'Disable' : 'Activate'} withArrow>
+              <Tooltip label="Delete" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="red"
+                  disabled={isDeleting}
+                  onClick={() => {
+                    modals.openConfirmModal({
+                      title: 'Delete Collateral',
+                      children: (
+                        <Text size="sm">
+                          Are you sure you want to delete collateral <b>{row.code}</b>? This cannot be undone.
+                        </Text>
+                      ),
+                      labels: { confirm: 'Delete', cancel: 'Cancel' },
+                      confirmProps: { color: 'red' },
+                      onConfirm: () => removeSecurity(row.id),
+                    });
+                  }}
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label={isActive ? 'Disable' : 'Enable'} withArrow>
                 <Switch
                   size="xs"
                   color="green"
                   checked={isActive}
-                  onChange={() => toggleStatus(row.id, row.status)}
+                  onChange={() => toggleStatus({ id: row.id, disableFlag: isActive ? 1 : 0 })}
                 />
               </Tooltip>
             </Group>
@@ -203,7 +282,7 @@ export function Collateral() {
         },
       }),
     ],
-    []
+    [open, removeSecurity, toggleStatus, isDeleting]
   );
 
   const table = useReactTable({
@@ -229,9 +308,18 @@ export function Collateral() {
     setStatus('all');
   };
 
+  // Extract unique types dynamically from data for the dropdown filter
+  const typeOptions = Array.from(new Set(data.map((c: any) => c.type).filter(Boolean)));
+
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
-      <CollateralModal opened={opened} onClose={close} />
+      <CollateralModal 
+        opened={opened} 
+        onClose={handleModalClose} 
+        securityId={selectedSecurityId} 
+        isViewMode={isViewMode}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['collaterals'] })} 
+      />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
@@ -242,7 +330,11 @@ export function Collateral() {
           size="xs"
           bg="indigoAlt.4"
           className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-          onClick={open}
+          onClick={() => {
+            setSelectedSecurityId(null);
+            setIsViewMode(false);
+            open();
+          }}
           leftSection={<IconPlus size={14} />}
         >
           Add Collateral
@@ -266,7 +358,7 @@ export function Collateral() {
           <Select
             size="xs"
             placeholder="All Types"
-            data={['Real Estate', 'Vehicles', 'Government Bonds', 'Shares/Equities', 'Cash Deposits']}
+            data={typeOptions as string[]}
             className="w-40"
             searchable
             clearable
@@ -331,12 +423,26 @@ export function Collateral() {
             ))}
           </Table.Thead>
           <Table.Tbody>
-            {rows.length === 0 ? (
+            {isLoading ? (
+               <Table.Tr>
+                 <Table.Td colSpan={columns.length}>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader size="sm" color="gray" />
+                    <Text ta="center" c="dimmed" fz="xs" mt="sm">
+                      Loading collaterals...
+                    </Text>
+                  </div>
+                 </Table.Td>
+               </Table.Tr>
+            ) : rows.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={columns.length}>
-                  <Text ta="center" c="dimmed" fz="xs" py="sm">
-                    No collaterals match your filters.
-                  </Text>
+                  <div className="flex flex-col items-center py-8 text-gray-400">
+                    <IconFileText size={32} className="mb-2 opacity-50" />
+                    <Text ta="center" c="dimmed" fz="xs">
+                      No collaterals match your filters.
+                    </Text>
+                  </div>
                 </Table.Td>
               </Table.Tr>
             ) : (
@@ -381,6 +487,7 @@ export function Collateral() {
             color="indigoAlt.4"
             size="xs"
             radius="sm"
+            disabled={totalRows === 0}
           />
         </div>
       </Paper>

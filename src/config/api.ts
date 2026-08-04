@@ -209,6 +209,31 @@ loan: {
   },
 
   // =========================
+  // LOAN SECURITY
+  // =========================
+  loanSecurity: {
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security.api.create_loan_security`,
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security.api.get_loan_securities`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security.api.get_loan_security_by_id`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security.api.update_loan_security`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security.api.delete_loan_security`,
+    enable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security.api.enable_loan_security`,
+    disable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security.api.disable_loan_security`,
+  },
+  // =========================
+  // LOAN SECURITY TYPE
+  // =========================
+  loanSecurityType: {
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security_type.api.create_loan_security_type`,
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security_type.api.get_loan_security_types`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security_type.api.get_loan_security_type_by_id`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security_type.api.update_loan_security_type`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security_type.api.delete_loan_security_type`,
+    enable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security_type.api.enable_loan_security_type`,
+    disable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.security_type.api.disable_loan_security_type`,
+  },
+
+  // =========================
   // LOAN RESTRUCTURE
   // =========================
   loanRestructure: {},
@@ -270,6 +295,8 @@ loan: {
      getCustomers:`${ERP_BASE}/api/method/custom_api.api.search.get_customers`,
     getReceivableAccounts: `${ERP_BASE}/api/method/custom_api.api.search.get_receivable_accounts`,
     getCurrency: `${ERP_BASE}/api/method/erpnext.setup.utils.get_exchange_rate`,
+    getLoanSecurityType: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_security_types`,
+
 
   },
   frappeUtilsAPI:{
