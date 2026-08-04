@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { getLoanWriteOffs, getLoanWriteOffById, deleteLoanWriteOff,updateLoanWriteOffStatus} from "../../../api/lendingOperation/writeoff";
 import type { LoanWriteOffListItem, LoanWriteOffDetail, } from "../../../types/loanWriteOff";
 
@@ -77,41 +77,36 @@ export function LoanWriteOff() {
   const [apiPagination, setApiPagination] = useState({ total: 0, total_pages: 1 });
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
+ const fetchData = useCallback(async () => {
+  setLoading(true);
+   try {
+     const res = await getLoanWriteOffs({
+       page: pagination.pageIndex + 1,
+       page_size: pagination.pageSize,
+       search,
+     });
+     setRowsData(Array.isArray(res?.data) ? res.data : []);
+     setApiPagination({
+       total: res?.pagination?.total ?? 0,
+       total_pages: res?.pagination?.total_pages ?? 1,
+     });
+   } catch (err) {
+     console.error(err);
+     setRowsData([]);
+   } finally {
+     setLoading(false);
+   }
+ }, [pagination.pageIndex, pagination.pageSize, search]);
 
-    getLoanWriteOffs({
-      page: pagination.pageIndex + 1,
-      page_size: pagination.pageSize,
-      search,
-    })
-      .then((res) => {
-        if (active) {
-          setRowsData(Array.isArray(res?.data) ? res.data : []);
-          setApiPagination({
-            total: res?.pagination?.total ?? 0,
-            total_pages: res?.pagination?.total_pages ?? 1,
-          });
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        if (active) setRowsData([]);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [pagination.pageIndex, pagination.pageSize, search]);
+ useEffect(() => {
+   fetchData();
+ }, [fetchData]);
 
   const filteredData = useMemo(() => rowsData, [rowsData]);
 
   const handleAddWriteOff = () => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
+     fetchData();
   };
   const handleEditClick = async (id: string) => {
     try {
@@ -129,18 +124,7 @@ export function LoanWriteOff() {
     try {
       setDeletingId(id);
       await deleteLoanWriteOff(id);
-      // Refresh the list after deletion
-      setPagination((p) => ({ ...p })); // triggers useEffect refetch since deps unchanged; safer to force refetch below
-      const res = await getLoanWriteOffs({
-        page: pagination.pageIndex + 1,
-        page_size: pagination.pageSize,
-        search,
-      });
-      setRowsData(Array.isArray(res?.data) ? res.data : []);
-      setApiPagination({
-        total: res?.pagination?.total ?? 0,
-        total_pages: res?.pagination?.total_pages ?? 1,
-      });
+       await fetchData();
     } catch (err) {
       console.error(err);
     } finally {
@@ -152,16 +136,7 @@ export function LoanWriteOff() {
     setStatusUpdatingId(id);
     await updateLoanWriteOffStatus(id, action);
 
-    const res = await getLoanWriteOffs({
-      page: pagination.pageIndex + 1,
-      page_size: pagination.pageSize,
-      search,
-    });
-    setRowsData(Array.isArray(res?.data) ? res.data : []);
-    setApiPagination({
-      total: res?.pagination?.total ?? 0,
-      total_pages: res?.pagination?.total_pages ?? 1,
-    });
+    await fetchData();
   } catch (err) {
     console.error(err);
   } finally {
