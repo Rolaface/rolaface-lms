@@ -104,8 +104,25 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
 
           <TenureBar elapsed={detail.elapsedMonths} total={detail.tenureMonths} />
         </Paper>
+        <Tabs
+          value={tab}
+          onChange={(v) => v && setTab(v)}
+          variant="pills"
+          radius="xl"
+          styles={{
+            tab: {
+              color: "#6B7280",
+              background: "transparent",
+              border: "none",
 
-        <Tabs value={tab} onChange={(v) => v && setTab(v)} variant="pills" color="ink" radius="xl">
+              "&[data-active]": {
+                background: "#E5E7EB !important",
+                color: "#111827 !important",
+                fontWeight: 700,
+              },
+            },
+          }}
+        >
           <Tabs.List className="mb-5 flex-wrap gap-1 pb-3 border-b border-gray-200">
             <Tabs.Tab value="overview">Overview</Tabs.Tab>
             <Tabs.Tab value="disbursement">Disbursement</Tabs.Tab>
@@ -146,28 +163,28 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
               </Paper>
 
               <SectionHeading
-  title="Repayment schedule"
-  aside="Tap any installment for the full breakdown"
-/>
+                title="Repayment schedule"
+                aside="Tap any installment for the full breakdown"
+              />
 
-<RepaymentSchedule schedule={detail.schedule} />
+              <RepaymentSchedule schedule={detail.schedule} />
 
-<SectionHeading
-  title="Repayment history"
-  aside={`${detail.history.length} most recent transactions`}
-/>
+              <SectionHeading
+                title="Repayment history"
+                aside={`${detail.history.length} most recent transactions`}
+              />
 
-<RepaymentHistoryTable
-  history={detail.history}
-/>
-<SectionHeading
-  title="Accounting"
-  aside="Journal entries posted against this loan"
-/>
+              <RepaymentHistoryTable
+                history={detail.history}
+              />
+              <SectionHeading
+                title="Accounting"
+                aside="Journal entries posted against this loan"
+              />
 
-<AccountingTable
-  accounting={detail.accounting}
-/>
+              <AccountingTable
+                accounting={detail.accounting}
+              />
 
               <SectionHeading
                 title="Collateral"

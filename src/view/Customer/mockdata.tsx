@@ -27,14 +27,7 @@ import type {
   SavingsSummary,
 } from '../../types/customerview';
 
-/* ============================================================================
-   DESIGN TOKENS
-   A ledger-paper backdrop stays, but the accent system is now semantic
-   rather than decorative: indigo carries brand/primary actions, teal reads
-   as "healthy money", amber as "needs attention", rose as "past due", and
-   sky as neutral/informational. Every card, badge and icon pulls from this
-   one map so colour always means the same thing wherever it shows up.
-============================================================================ */
+
 
 export const brand = {
   // surfaces
@@ -425,6 +418,5 @@ export function getFixedDepositDetail(fd: FixedDepositSummary): AccountDetailDat
   };
 }
 
-// NOTE: LoanAccountingEntry is re-exported here for convenience since the
-// AccountingTable component consumes it alongside LedgerRow-shaped data.
+
 export type { LoanAccountingEntry };
