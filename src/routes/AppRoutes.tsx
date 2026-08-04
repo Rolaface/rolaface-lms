@@ -19,7 +19,7 @@ import { CollateralType } from "../view/Collateral/CollateralType/CollateralType
 import { Collateral } from "../view/Collateral/Collateral";
 // import { LoanApplication } from '../view/Origination/LoanApplication';
 import { LoanStatement } from "../view/Reports/LoanStatement";
-// import { ArrearReports } from '../view/Reports/ArrearReports';
+import { ArrearReports } from '../view/Reports/ArrearReports';
 
 import { LoanAccount } from "../view/LoanAccount/LoanAccount";
 import { LoanDisbursement } from "../view/Operations/LoanDisbursement/LoanDisbursement";
@@ -311,11 +311,11 @@ const reportsStatementRoute = createRoute({
   path: "/statement",
   component: LoanStatement,
 });
-// const reportsArrearsRoute = createRoute({
-//   getParentRoute: () => reportsRoute,
-//   path: '/arrears',
-//   component: ArrearReports,
-// });
+const reportsArrearsRoute = createRoute({
+  getParentRoute: () => reportsRoute,
+  path: '/arrears',
+  component: ArrearReports,
+});
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -360,7 +360,8 @@ const routeTree = rootRoute.addChildren([
     balancesheetRoute,
   ]),
 
-  reportsRoute.addChildren([reportsStatementRoute]),
+  reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute]),
+  
 ]);
 
 export const router = createRouter({ routeTree });
