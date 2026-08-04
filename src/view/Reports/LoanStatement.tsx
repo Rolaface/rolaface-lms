@@ -14,11 +14,7 @@ import {
   Tooltip as RTooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
 
-/* ---------------------------------------------------------------------
-   Palette — matches Sidebar.tsx's blue identity (#1E40AF / #3B82F6)
-   instead of inventing custom Mantine color names that may not exist
-   in this project's mantine.theme.ts.
---------------------------------------------------------------------- */
+
 const theme = {
   brand: { 0: "#EFF6FF", 1: "#DBEAFE", 5: "#3B82F6", 6: "#1E40AF", 7: "#1E3A8A" },
   accent: { 0: "#DCFCE7", 1: "#BBF7D0", 5: "#22C55E", 6: "#16A34A" },
