@@ -262,7 +262,7 @@ const updateLoanMutation = useMutation({
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Box className="flex flex-col h-[90vh]">
           {/* Header */}
-          <Box className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-5 py-3 flex justify-between items-center rounded-t-md shrink-0">
+          <Box className="px-5 py-3 flex justify-between items-center rounded-t-md shrink-0">
             <div className="flex items-center gap-3 min-w-0">
               <div className="p-1 rounded-md shrink-0">
                 <IconFileText size={22} className="text-white" />

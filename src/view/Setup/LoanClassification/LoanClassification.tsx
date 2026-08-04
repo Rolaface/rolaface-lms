@@ -2,29 +2,32 @@ import { useMemo, useState } from "react";
 import { modals } from "@mantine/modals";
 import {
   ActionIcon,
+  Box,
+  Button,
   Group,
   Loader,
+  Paper,
   Pagination,
   Select,
+  Table,
   Text,
+  TextInput,
+  Title,
   Tooltip,
 } from "@mantine/core";
-
 import {
   IconChevronDown,
   IconChevronUp,
   IconEye,
+  IconFileText,
   IconPencil,
   IconPlus,
-  IconRefresh,
   IconSelector,
   IconSearch,
   IconTrash,
 } from "@tabler/icons-react";
-
 import { useDisclosure } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
 import {
   createColumnHelper,
   flexRender,
@@ -41,88 +44,44 @@ import {
   deleteLoanClassification,
 } from "../../../api/LoanClassificationApi";
 
-// -----------------------------------------------------------------------------
-// Module-level constants (STABLE REFERENCES)
-// -----------------------------------------------------------------------------
-
-
 const EMPTY_CLASSIFICATIONS: LoanClassificationData[] = [];
-
 const DEFAULT_SORTING = [{ id: "code", desc: false }];
 
 const columnHelper = createColumnHelper<LoanClassificationData>();
 
-// -----------------------------------------------------------------------------
-// Table Helpers
-// -----------------------------------------------------------------------------
-
-function SortIcon({ sorted }: { sorted: string | boolean }) {
-  if (sorted === "asc") {
-    return <IconChevronUp size={12} />;
-  }
-
-  if (sorted === "desc") {
-    return <IconChevronDown size={12} />;
-  }
-
+function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
+  if (sorted === "asc") return <IconChevronUp size={12} />;
+  if (sorted === "desc") return <IconChevronDown size={12} />;
   return <IconSelector size={12} className="opacity-40" />;
 }
 
-// -----------------------------------------------------------------------------
-// Component
-// -----------------------------------------------------------------------------
+const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
 
 export function LoanClassification() {
   const queryClient = useQueryClient();
 
-  // ---------------------------------------------------------------------------
-  // Modal State
-  // ---------------------------------------------------------------------------
-
   const [opened, { open, close }] = useDisclosure(false);
-
   const [modalMode, setModalMode] = useState<"add" | "edit" | "view">("add");
-
-  const [selectedData, setSelectedData] =
-    useState<LoanClassificationData | null>(null);
+  const [selectedData, setSelectedData] = useState<LoanClassificationData | null>(null);
 
   const handleOpenModal = (
     mode: "add" | "edit" | "view",
-    data: LoanClassificationData | null = null,
+    data: LoanClassificationData | null = null
   ) => {
     setModalMode(mode);
     setSelectedData(data);
     open();
   };
 
-  // ---------------------------------------------------------------------------
-  // Filtering State
-  // ---------------------------------------------------------------------------
-
   const [search, setSearch] = useState("");
-
-  // ---------------------------------------------------------------------------
-  // Table State
-  // ---------------------------------------------------------------------------
-
   const [sorting, setSorting] = useState(DEFAULT_SORTING);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 10,
+  const { data: classifications = EMPTY_CLASSIFICATIONS, isLoading } = useQuery({
+    queryKey: ["loanClassifications"],
+    queryFn: () => getAllLoanClassifications(),
+    retry: false,
   });
-
-  // ---------------------------------------------------------------------------
-  // Fetch Classifications
-  // ---------------------------------------------------------------------------
-
-  const { data: classifications = EMPTY_CLASSIFICATIONS, isLoading } = useQuery(
-    {
-      queryKey: ["loanClassifications"],
-      queryFn: () => getAllLoanClassifications(),
-      retry: false,
-    },
-  );
 
   const { mutate: removeClassification, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteLoanClassification(id),
@@ -131,125 +90,102 @@ export function LoanClassification() {
     },
   });
 
-  // ---------------------------------------------------------------------------
-  // Filtering Logic
-  // ---------------------------------------------------------------------------
-
   const filteredData = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
-    return classifications.filter((classification) => {
+    const q = search.trim().toLowerCase();
+    return classifications.filter((c) => {
       const matchesSearch =
-        !query ||
-        classification.code.toLowerCase().includes(query) ||
-        classification.name.toLowerCase().includes(query);
-
+        !q ||
+        c.code.toLowerCase().includes(q) ||
+        c.name.toLowerCase().includes(q);
       return matchesSearch;
     });
   }, [classifications, search]);
-
-  // ---------------------------------------------------------------------------
-  // KPI Calculations (For Stitch Bento Cards)
-  // ---------------------------------------------------------------------------
-
-  const classificationStats = useMemo(() => {
-    const total = filteredData.length;
-
-    const writtenOff = filteredData.filter(
-      (item) => item.is_written_off,
-    ).length;
-
-    const averageProvision =
-      total === 0
-        ? 0
-        : filteredData.reduce((sum, item) => sum + item.provision_rate, 0) /
-          total;
-
-    const maxDPD = filteredData.reduce<number>((max, item) => {
-      if (item.max_dpd_range === null) {
-        return Math.max(max, 999);
-      }
-
-      return Math.max(max, item.max_dpd_range);
-    }, 0);
-
-    return {
-      total,
-      writtenOff,
-      averageProvision: averageProvision.toFixed(1),
-      maxDPD: maxDPD >= 999 ? "∞" : String(maxDPD),
-    };
-  }, [filteredData]);
-
-  // ---------------------------------------------------------------------------
-  // Table Columns
-  // ---------------------------------------------------------------------------
 
   const columns = useMemo(
     () => [
       columnHelper.accessor("level", {
         header: "Level",
-        cell: (info) => <Text size="xs">L{info.getValue()}</Text>,
+        cell: (info) => (
+          <Text fz="xs" c="gray.6">
+            L{info.getValue()}
+          </Text>
+        ),
       }),
-
       columnHelper.accessor("code", {
         header: "Code",
         cell: (info) => (
-          <Text size="xs" fw={600}>
+          <Text fz="xs" fw={600} c="gray.9" className="font-mono">
             {info.getValue()}
           </Text>
         ),
       }),
-
       columnHelper.accessor("name", {
         header: "Name",
-        cell: (info) => <Text size="xs">{info.getValue()}</Text>,
+        cell: (info) => (
+          <Text fz="xs" fw={500} c="gray.9">
+            {info.getValue()}
+          </Text>
+        ),
       }),
-
       columnHelper.accessor("min_dpd_range", {
         header: "Min DPD",
-        cell: (info) => <Text size="xs">{info.getValue()}</Text>,
+        cell: (info) => (
+          <Text fz="xs" c="gray.6">
+            {info.getValue()}
+          </Text>
+        ),
+        sortingFn: "basic",
       }),
-
       columnHelper.accessor("max_dpd_range", {
         header: "Max DPD",
-        cell: (info) => <Text size="xs">{info.getValue() ?? "∞"}</Text>,
+        cell: (info) => (
+          <Text fz="xs" c="gray.6">
+            {info.getValue() ?? "∞"}
+          </Text>
+        ),
+        sortingFn: "basic",
       }),
-
       columnHelper.accessor("provision_rate", {
         header: "Provision Rate",
-        cell: (info) => <Text size="xs">{info.getValue()}%</Text>,
+        cell: (info) => (
+          <Text fz="xs" c="gray.6">
+            {info.getValue()}%
+          </Text>
+        ),
+        sortingFn: "basic",
       }),
-
       columnHelper.display({
         id: "actions",
-        header: "Actions",
+        header: () => (
+          <Text fz="xs" fw={600} ta="right" w="100%">
+            Actions
+          </Text>
+        ),
         cell: (info) => {
           const row = info.row.original;
-
           return (
-            <Group justify="flex-end" gap={4}>
-              <Tooltip label="View">
+            <Group justify="flex-end" gap={6} wrap="nowrap">
+              <Tooltip label="View" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
+                  color="gray"
                   onClick={() => handleOpenModal("view", row)}
                 >
-                  <IconEye size={15} />
+                  <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
-
-              <Tooltip label="Edit">
+              <Tooltip label="Edit" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
+                  color="indigoAlt"
                   onClick={() => handleOpenModal("edit", row)}
                 >
-                  <IconPencil size={15} />
+                  <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
-
-              <Tooltip label="Delete">
+              <Tooltip label="Delete" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
@@ -270,7 +206,7 @@ export function LoanClassification() {
                     });
                   }}
                 >
-                  <IconTrash size={15} />
+                  <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
             </Group>
@@ -279,20 +215,13 @@ export function LoanClassification() {
       }),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isDeleting],
+    [isDeleting]
   );
-
-  // ---------------------------------------------------------------------------
-  // React Table Instance
-  // ---------------------------------------------------------------------------
 
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: {
-      sorting,
-      pagination,
-    },
+    state: { sorting, pagination },
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
@@ -301,26 +230,18 @@ export function LoanClassification() {
   });
 
   const rows = table.getRowModel().rows;
-
   const totalRows = filteredData.length;
-
   const { pageIndex, pageSize } = pagination;
-
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   const resetFilters = () => {
     setSearch("");
-
-    setPagination((previous) => ({
-      ...previous,
-      pageIndex: 0,
-    }));
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
   };
 
   return (
-    <div className="flex flex-col gap-6 p-8 mt-10 bg-[#f8f9ff] min-h-full">
+    <Box className="flex flex-col gap-4 p-8 mt-10">
       <LoanClassificationModal
         opened={opened}
         onClose={close}
@@ -328,316 +249,141 @@ export function LoanClassification() {
         data={selectedData}
       />
 
-      {/* ------------------------------------------------------------------
-          PAGE HEADER
-      ------------------------------------------------------------------ */}
-
-      <div className="flex flex-col gap-1">
-        <h1 className="text-[24px] leading-8 font-bold tracking-tight text-[#121c2a]">
+      {/* Header & Add Button */}
+      <div className="flex justify-between items-center">
+        <Title order={2} className="text-gray-900 font-semibold">
           Loan Classifications
-        </h1>
-
-        <p className="text-sm text-[#464653]">
-          Configure institution-wide loan classification, provisioning,
-          delinquency ranges, and write-off eligibility.
-        </p>
+        </Title>
+        <Button
+          size="xs"
+          bg="indigoAlt.4"
+          onClick={() => handleOpenModal("add")}
+          leftSection={<IconPlus size={14} />}
+        >
+          Add Classification
+        </Button>
       </div>
 
-      {/* ------------------------------------------------------------------
-          TABLE CARD
-      ------------------------------------------------------------------ */}
-
-      <div
-        className="
-          bg-white
-          border
-          border-[#c6c5d6]
-          rounded-lg
-          overflow-hidden
-          shadow-sm
-        "
-      >
-        {/* Toolbar */}
-
-        <div
-          className="
-            flex
-            items-center
-            justify-between
-            gap-4
-            p-4
-            border-b
-            border-[#c6c5d6]
-          "
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="
-                relative
-                flex
-                items-center
-              "
-            >
-              <IconSearch
-                size={18}
-                className="
-                  absolute
-                  left-3
-                  text-gray-400
-                "
-              />
-
-              <input
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-
-                  setPagination((previous) => ({
-                    ...previous,
-                    pageIndex: 0,
-                  }));
-                }}
-                placeholder="Search by Code or Classification Name"
-                className="
-                  h-10
-                  w-80
-                  pl-10
-                  pr-3
-                  rounded-l-md
-                  border
-                  border-[#c6c5d6]
-                  outline-none
-                  text-sm
-                  focus:border-[#474dc5]
-                "
-              />
-            </div>
-
-            <button
-              onClick={resetFilters}
-              className="
-                h-10
-                px-3
-                border
-                border-[#c6c5d6]
-                rounded-r-md
-                hover:bg-gray-50
-                flex
-                items-center
-              "
-            >
-              <IconRefresh size={18} />
-            </button>
-
-            {search && (
-              <div
-                className="
-                  flex
-                  items-center
-                  gap-2
-                  px-3
-                  py-1
-                  rounded-full
-                  bg-blue-50
-                  text-blue-700
-                  text-xs
-                "
-              >
-                Search:
-                <span className="font-semibold">{search}</span>
-                <button onClick={resetFilters} className="font-bold">
-                  ×
-                </button>
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={() => handleOpenModal("add")}
-            className="
-              h-10
-              px-5
-              rounded-md
-              bg-[#474dc5]
-              text-white
-              text-sm
-              font-medium
-              flex
-              items-center
-              gap-2
-              hover:opacity-90
-            "
-          >
-            <IconPlus size={18} />
-            Add Classification
-          </button>
+      {/* Filters Box */}
+      <Paper withBorder radius="md" p="xs" className="shadow-sm">
+        <div className="flex items-center gap-3 flex-wrap">
+          <TextInput
+            size="xs"
+            placeholder="Code / Classification Name"
+            leftSection={<IconSearch size={13} />}
+            className="flex-1 min-w-[200px]"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.currentTarget.value);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
+          />
+          <Button size="xs" variant="default" className="ml-auto px-4" onClick={resetFilters}>
+            Reset
+          </Button>
         </div>
+      </Paper>
 
-        {/* Table */}
-
-        <div className="overflow-auto">
-          <table
-            className="
-              w-full
-              text-left
-              border-collapse
-            "
-          >
-            <thead
-              className="
-                bg-[#eff4ff]
-                border-b
-                border-[#c6c5d6]
-              "
-            >
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <th
+      {/* Data Table */}
+      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
+        <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full">
+          <Table.Thead className="bg-gray-50 border-b border-gray-200">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <Table.Tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  const canSort = header.column.getCanSort();
+                  return (
+                    <Table.Th
                       key={header.id}
+                      className={`text-gray-600 font-semibold select-none ${
+                        canSort ? "cursor-pointer" : ""
+                      }`}
+                      style={{ fontSize: 11, padding: "6px 10px" }}
                       onClick={header.column.getToggleSortingHandler()}
-                      className="
-                        px-4
-                        py-3
-                        text-xs
-                        font-semibold
-                        text-[#464653]
-                        whitespace-nowrap
-                        cursor-pointer
-                      "
                     >
-                      <div
-                        className="
-                          flex
-                          items-center
-                          gap-1
-                        "
+                      <Group
+                        gap={4}
+                        wrap="nowrap"
+                        justify={header.id === "actions" ? "flex-end" : "flex-start"}
                       >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-
-                        {header.column.getCanSort() && (
-                          <SortIcon sorted={header.column.getIsSorted()} />
-                        )}
-                      </div>
-                    </th>
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
+                      </Group>
+                    </Table.Th>
+                  );
+                })}
+              </Table.Tr>
+            ))}
+          </Table.Thead>
+          <Table.Tbody>
+            {isLoading ? (
+              <Table.Tr>
+                <Table.Td colSpan={columns.length}>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader size="sm" color="gray" />
+                    <Text ta="center" c="dimmed" fz="xs" mt="sm">
+                      Loading loan classifications...
+                    </Text>
+                  </div>
+                </Table.Td>
+              </Table.Tr>
+            ) : rows.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={columns.length}>
+                  <div className="flex flex-col items-center py-8 text-gray-400">
+                    <IconFileText size={32} className="mb-2 opacity-50" />
+                    <Text ta="center" c="dimmed" fz="xs">
+                      No classifications found.
+                    </Text>
+                  </div>
+                </Table.Td>
+              </Table.Tr>
+            ) : (
+              rows.map((row) => (
+                <Table.Tr
+                  key={row.id}
+                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <Table.Td key={cell.id} style={{ padding: "5px 10px" }}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </Table.Td>
                   ))}
-                </tr>
-              ))}
-            </thead>
-
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={columns.length} className="text-center py-8">
-                    <div className="flex flex-col items-center gap-2">
-                      <Loader size="sm" color="gray" />
-                      <span className="text-sm text-gray-500">
-                        Loading loan classifications...
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="
-                      text-center
-                      py-8
-                      text-sm
-                      text-gray-500
-                    "
-                  >
-                    No classifications found.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="
-                      border-b
-                      border-gray-100
-                      hover:bg-blue-50/30
-                      transition
-                    "
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className="
-                          px-4
-                          py-3
-                          text-sm
-                          text-[#121c2a]
-                        "
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </Table.Tr>
+              ))
+            )}
+          </Table.Tbody>
+        </Table>
 
         {/* Pagination Footer */}
-
-        <div
-          className="
-            flex
-            justify-between
-            items-center
-            px-4
-            py-3
-            border-t
-            border-[#c6c5d6]
-          "
-        >
-          <span className="text-sm text-gray-500">
-            Showing{" "}
-            <span className="font-medium text-gray-900">
-              {firstRow}-{lastRow}
-            </span>{" "}
-            of <span className="font-medium text-gray-900">{totalRows}</span>{" "}
-            classifications
-          </span>
-
-          <div className="flex items-center gap-3">
-            <Select
-              size="xs"
-              value={String(pageSize)}
-              data={["10", "20", "50"]}
-              onChange={(value) =>
-                setPagination({
-                  pageIndex: 0,
-                  pageSize: Number(value) || 10,
-                })
-              }
-              className="w-20"
-            />
-
-            <Pagination
-              size="sm"
-              total={table.getPageCount() || 1}
-              value={pageIndex + 1}
-              onChange={(page) =>
-                setPagination((previous) => ({
-                  ...previous,
-                  pageIndex: page - 1,
-                }))
-              }
-            />
+        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span>
+              {totalRows === 0 ? "Showing 0 of 0" : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span>Rows:</span>
+              <Select
+                data={["10", "20", "50"]}
+                value={String(pageSize)}
+                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                rightSection={chevronDown}
+                size="xs"
+                className="w-14"
+              />
+            </div>
           </div>
+          <Pagination
+            total={table.getPageCount() || 1}
+            value={pageIndex + 1}
+            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+            color="indigoAlt.4"
+            size="xs"
+            radius="sm"
+            disabled={totalRows === 0}
+          />
         </div>
-      </div>
-    </div>
+      </Paper>
+    </Box>
   );
 }
