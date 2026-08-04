@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Modal,
   Box,
@@ -10,16 +10,28 @@ import {
   Button,
 } from "@mantine/core";
 import { IconBriefcase, IconX, IconPercentage, IconChevronDown } from "@tabler/icons-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { CreateCollateralPayload } from "../../types/collateralForm";
+import {
+  createCollateral,
+  updateCollateral,
+  getCollateralById,
+} from "../../api/collateralApi";
+import { useForm } from "@mantine/form";
+import { getAllCollateralTypes } from "../../api/collateralTypeApi";
 
 interface CollateralModalProps {
   opened: boolean;
   onClose: () => void;
+  editId?: string | null;
+  isView?: boolean;
 }
 
 const labelClass = { label: "text-sm font-medium text-gray-700 mb-1" };
 
-export function CollateralModal({ opened, onClose }: CollateralModalProps) {
-  const [formData, setFormData] = useState({
+export function CollateralModal({ opened, onClose, editId, isView }: CollateralModalProps) {
+  const form = useForm({
+  initialValues: {
     code: "",
     name: "",
     type: "",
@@ -27,24 +39,110 @@ export function CollateralModal({ opened, onClose }: CollateralModalProps) {
     originalValue: "" as number | "",
     ltv: "" as number | "",
     disabled: false,
+  },
+  validate: {
+    code: (v) => (!v ? "Collateral Code is required" : null),
+    name: (v) => (!v ? "Collateral Name is required" : null),
+    type: (v) => (!v ? "Collateral Type is required" : null),
+    originalValue: (v) => (!v ? "Original Collateral Value is required" : null),
+    ltv: (v) => (!v ? "Loan To Value Ratio is required" : null),
+  },
+});
+
+  const queryClient = useQueryClient();
+
+const { data: editDetailsResponse, isLoading: isEditLoading, refetch } = useQuery({
+  queryKey: ["collateral", editId],
+  queryFn: () => getCollateralById(editId as string),
+  enabled: opened && !!editId,
+});
+
+  useEffect(() => {
+    if (opened && editId && editDetailsResponse) {
+      const item = editDetailsResponse.data || editDetailsResponse.message?.data || editDetailsResponse;
+
+     form.setValues({
+  code: item.loan_security_code || "",
+  name: item.loan_security_name || "",
+  type: item.loan_security_type || "",
+  haircut: item.haircut ?? 0,
+  originalValue: item.original_security_value ?? "",
+  ltv: item.loan_to_value_ratio ?? "",
+  disabled: item.disabled === 1,
+});
+    } else if (opened && !editId) {
+      handleReset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened, editId, editDetailsResponse]);
+
+  const createMutation = useMutation({
+    mutationFn: createCollateral,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["collaterals"] });
+      handleReset();
+      onClose();
+    },
   });
 
-  const handleReset = () => {
-    setFormData({
-      code: "",
-      name: "",
-      type: "",
-      haircut: 0,
-      originalValue: "",
-      ltv: "",
-      disabled: false,
-    });
-  };
+const updateMutation = useMutation({
+  mutationFn: updateCollateral,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["collaterals"] });
+    queryClient.invalidateQueries({ queryKey: ["collateral", editId] });
+    handleReset();
+    onClose();
+  },
+});
+
+useEffect(() => {
+  if (opened && editId) {
+    refetch();
+  }
+}, [opened, editId]);
 
   const handleClose = () => {
     handleReset();
     onClose();
   };
+
+ const handleSubmit = () => {
+  const validation = form.validate();
+  if (validation.hasErrors) return;
+
+  const payload: CreateCollateralPayload = {
+    loan_security_code: form.values.code,
+    loan_security_type: form.values.type,
+    loan_security_name: form.values.name,
+    haircut: form.values.haircut,
+    loan_to_value_ratio: Number(form.values.ltv) || 0,
+    original_security_value: Number(form.values.originalValue) || 0,
+    disabled: form.values.disabled ? 1 : 0,
+  };
+
+  if (editId) {
+    updateMutation.mutate({ id: editId, payload });
+  } else {
+    createMutation.mutate(payload);
+  }
+};
+
+  const isPending = createMutation.isPending || updateMutation.isPending || isEditLoading;
+  const { data: collateralTypesResponse, isLoading: isTypesLoading } = useQuery({
+  queryKey: ["collateralTypes"],
+  queryFn: getAllCollateralTypes,
+  enabled: opened,
+});
+
+const collateralTypeOptions = useMemo(() => {
+  const list = collateralTypesResponse?.data || collateralTypesResponse?.message?.data || collateralTypesResponse || [];
+  if (!Array.isArray(list)) return [];
+  return list.map((item: any) => item.loan_security_type);
+}, [collateralTypesResponse]);
+
+const handleReset = () => {
+  form.reset();
+};
 
   return (
     <Modal
@@ -54,6 +152,8 @@ export function CollateralModal({ opened, onClose }: CollateralModalProps) {
       withCloseButton={false}
       padding={0}
       radius="md"
+      closeOnClickOutside={false}
+      closeOnEscape={false}
     >
       <Box className="flex flex-col">
         {/* Header */}
@@ -64,7 +164,7 @@ export function CollateralModal({ opened, onClose }: CollateralModalProps) {
             </div>
             <div>
               <Text size="md" fw={700} className="text-gray-900 leading-tight">
-                New Collateral
+                {editId ? (isView ? "View Collateral" : "Edit Collateral") : "New Collateral"}
               </Text>
               <Text size="xs" c="dimmed">
                 Define collateral details, valuation metrics, and status.
@@ -80,113 +180,103 @@ export function CollateralModal({ opened, onClose }: CollateralModalProps) {
 
         {/* Body */}
         <div className="flex-1 p-6">
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-            <TextInput
-              size="xs"
-              label="Collateral Code"
-              placeholder="Enter code"
-              withAsterisk
-              value={formData.code}
-              onChange={(e) => setFormData({ ...formData, code: e.currentTarget.value })}
-              classNames={labelClass}
-            />
+          <fieldset disabled={isView} className="border-0 p-0 m-0">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+             <TextInput
+  size="xs"
+  label="Collateral Code"
+  placeholder="Enter code"
+  withAsterisk
+  classNames={labelClass}
+  {...form.getInputProps("code")}
+/>
 
-            <Select
-              size="xs"
-              label="Collateral Type"
-              placeholder="Select type"
-              withAsterisk
-              data={[
-                "Real Estate",
-                "Vehicles",
-                "Government Bonds",
-                "Shares/Equities",
-                "Cash Deposits",
-              ]}
-              searchable
-              rightSection={<IconChevronDown size={14} className="text-gray-500" />}
-              value={formData.type}
-              onChange={(v) => setFormData({ ...formData, type: v || "" })}
-              classNames={labelClass}
-            />
+<Select
+  size="xs"
+  label="Collateral Type"
+  placeholder={isTypesLoading ? "Loading..." : "Select type"}
+  withAsterisk
+  data={collateralTypeOptions}
+  disabled={isTypesLoading}
+  searchable
+  rightSection={<IconChevronDown size={14} className="text-gray-500" />}
+  classNames={labelClass}
+  {...form.getInputProps("type")}
+/>
 
-            <div className="col-span-2">
-              <TextInput
-                size="xs"
-                label="Collateral Name"
-                placeholder="Enter full name"
-                withAsterisk
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.currentTarget.value })}
-                classNames={labelClass}
-              />
+<div className="col-span-2">
+  <TextInput
+    size="xs"
+    label="Collateral Name"
+    placeholder="Enter full name"
+    withAsterisk
+    classNames={labelClass}
+    {...form.getInputProps("name")}
+  />
+</div>
+
+<NumberInput
+  size="xs"
+  label="Original Collateral Value"
+  placeholder="0.00"
+  thousandSeparator=","
+  hideControls
+  classNames={labelClass}
+  {...form.getInputProps("originalValue")}
+/>
+
+<NumberInput
+  size="xs"
+  label="Loan To Value Ratio"
+  placeholder="0.00"
+  hideControls
+  rightSection={<IconPercentage size={13} className="text-gray-400" />}
+  classNames={labelClass}
+  {...form.getInputProps("ltv")}
+/>
+
+<NumberInput
+  size="xs"
+  label="Haircut %"
+  placeholder="0.000"
+  decimalScale={3}
+  fixedDecimalScale
+  hideControls
+  rightSection={<IconPercentage size={13} className="text-gray-400" />}
+  classNames={labelClass}
+  {...form.getInputProps("haircut")}
+/>
+
+<div className="flex items-center pt-6">
+  <Checkbox
+    size="xs"
+    label="Disabled"
+    color="indigo"
+    styles={{ label: { color: '#374151', fontWeight: 500 } }}
+    {...form.getInputProps("disabled", { type: "checkbox" })}
+  />
+</div>
             </div>
-
-            <NumberInput
-              size="xs"
-              label="Original Collateral Value"
-              placeholder="0.00"
-              thousandSeparator=","
-              hideControls
-              value={formData.originalValue}
-              onChange={(v) => setFormData({ ...formData, originalValue: v as number })}
-              classNames={labelClass}
-            />
-
-            <NumberInput
-              size="xs"
-              label="Loan To Value Ratio"
-              placeholder="0.00"
-              hideControls
-              value={formData.ltv}
-              onChange={(v) => setFormData({ ...formData, ltv: v as number })}
-              rightSection={<IconPercentage size={13} className="text-gray-400" />}
-              classNames={labelClass}
-            />
-
-            <NumberInput
-              size="xs"
-              label="Haircut %"
-              placeholder="0.000"
-              decimalScale={3}
-              fixedDecimalScale
-              hideControls
-              value={formData.haircut}
-              onChange={(v) => setFormData({ ...formData, haircut: v as number })}
-              rightSection={<IconPercentage size={13} className="text-gray-400" />}
-              classNames={labelClass}
-            />
-
-            {/* Checkbox aligned nicely with the other inputs */}
-            <div className="flex items-center pt-6">
-              <Checkbox
-                size="xs"
-                label="Disabled"
-                color="indigo"
-                checked={formData.disabled}
-                onChange={(e) => setFormData({ ...formData, disabled: e.currentTarget.checked })}
-                styles={{ label: { color: '#374151', fontWeight: 500 } }}
-              />
-            </div>
-          </div>
+          </fieldset>
         </div>
 
         {/* Footer */}
         <div className="border-t border-gray-200 p-4 px-6 flex justify-between items-center shrink-0 bg-gray-50/50">
           <Button size="xs" variant="default" onClick={handleClose} className="font-semibold px-5">
-            Cancel
+            {isView ? "Close" : "Cancel"}
           </Button>
-          
-          <Button
-            size="xs"
-            onClick={() => {
-              // Save logic here
-              onClose();
-            }}
-            className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 font-semibold px-6"
-          >
-            Save Collateral
-          </Button>
+
+          {!isView && (
+            <Button
+              size="xs"
+              disabled={isPending}
+              loading={isPending}
+              onClick={handleSubmit}
+              className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 font-semibold px-6"
+            >
+              {editId ? "Update Collateral" : "Save Collateral"}
+            </Button>
+          )}
         </div>
       </Box>
     </Modal>

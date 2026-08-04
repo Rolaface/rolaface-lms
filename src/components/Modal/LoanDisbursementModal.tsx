@@ -256,6 +256,8 @@ const handleSubmit = (values: typeof form.values) => {
       withCloseButton={false}
       padding={0}
       radius="md"
+      closeOnClickOutside={false}
+      closeOnEscape={false}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
       <Box className="flex flex-col">

@@ -15,6 +15,7 @@ import {
   Pagination,
   Tooltip,
   Title,
+  Loader, 
 } from '@mantine/core';
 import {
   IconEye,
@@ -23,7 +24,7 @@ import {
   IconChevronUp,
   IconChevronDown,
   IconSelector,
-  IconSearch,
+  IconSearch, IconTrash,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -34,19 +35,28 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CollateralModal } from '../../components/Modal/CollateralModal';
+import {
+  getAllCollaterals,
+  enableCollateral,
+  disableCollateral, deleteCollateral,
+} from '../../api/collateralApi';
+import { modals } from '@mantine/modals';
+interface CollateralRow {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  value: number;
+  haircut: number;
+  ltv: number;
+  status: string;
+}
 
-const DUMMY_COLLATERAL = [
-  { id: 1, code: 'COL_001', name: 'Downtown Commercial', type: 'Real Estate', value: 1500000, haircut: 15.000, ltv: 85, status: 'ACTIVE' },
-  { id: 2, code: 'COL_002', name: 'Company Fleet', type: 'Vehicles', value: 250000, haircut: 30.000, ltv: 70, status: 'ACTIVE' },
-  { id: 3, code: 'COL_003', name: 'Treasury Bonds 2025', type: 'Government Bonds', value: 500000, haircut: 5.000, ltv: 95, status: 'ACTIVE' },
-  { id: 4, code: 'COL_004', name: 'Tech Startup Shares', type: 'Shares/Equities', value: 100000, haircut: 50.000, ltv: 50, status: 'DISABLED' },
-  { id: 5, code: 'COL_005', name: 'Fixed Deposit A', type: 'Cash Deposits', value: 75000, haircut: 0.000, ltv: 100, status: 'ACTIVE' },
-];
+const columnHelper = createColumnHelper<CollateralRow>();
 
-const columnHelper = createColumnHelper();
-
-function SortIcon({ sorted }) {
+function SortIcon({ sorted }: { sorted: 'asc' | 'desc' | false }) {
   if (sorted === 'asc') return <IconChevronUp size={12} />;
   if (sorted === 'desc') return <IconChevronDown size={12} />;
   return <IconSelector size={12} className="opacity-40" />;
@@ -66,17 +76,72 @@ export function Collateral() {
   const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  // local status map for optimistic updates
-  const [statusOverrides, setStatusOverrides] = useState({});
+  // const [selectedCollateralId, setSelectedCollateralId] = useState(null);
+  const [selectedCollateralId, setSelectedCollateralId] = useState<string | null>(null);
+  const [isViewMode, setIsViewMode] = useState(false);
 
-  const data = useMemo(
-    () =>
-      DUMMY_COLLATERAL.map((c) => ({
-        ...c,
-        status: statusOverrides[c.id] ?? c.status,
-      })),
-    [statusOverrides]
-  );
+  const handleModalClose = () => {
+    close();
+    setSelectedCollateralId(null);
+    setIsViewMode(false);
+  };
+
+  const { data: collateralResponse, isLoading } = useQuery({
+    queryKey: ['collaterals'],
+    queryFn: getAllCollaterals,
+  });
+
+  const queryClient = useQueryClient();
+
+  const { mutate: enableItem } = useMutation({
+    mutationFn: (id: string) => enableCollateral(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collaterals'] });
+    },
+  });
+
+  const { mutate: disableItem } = useMutation({
+    mutationFn: (id: string) => disableCollateral(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collaterals'] });
+    },
+  });
+
+  const { mutate: removeItem, isPending: isDeleting } = useMutation({
+  mutationFn: (id: string) => deleteCollateral(id),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['collaterals'] });
+  },
+});
+
+const handleDelete = (id: string) => {
+  modals.openConfirmModal({
+    title: 'Delete collateral',
+    children: (
+      <Text size="sm">
+        Are you sure you want to delete this collateral? This cannot be undone.
+      </Text>
+    ),
+    labels: { confirm: 'Delete', cancel: 'Cancel' },
+    confirmProps: { color: 'red' },
+    onConfirm: () => removeItem(id),
+  });
+};
+
+  const data = useMemo(() => {
+    const list = collateralResponse?.data || collateralResponse?.message?.data || collateralResponse || [];
+    if (!Array.isArray(list)) return [];
+    return list.map((item) => ({
+      id: item.name,
+      code: item.loan_security_code,
+      name: item.loan_security_name,
+      type: item.loan_security_type,
+      value: item.original_security_value ?? 0,
+      haircut: item.haircut ?? 0,
+      ltv: item.loan_to_value_ratio ?? 0,
+      status: item.disabled === 1 ? 'DISABLED' : 'ACTIVE',
+    }));
+  }, [collateralResponse]);
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -91,11 +156,12 @@ export function Collateral() {
     });
   }, [data, search, type, status]);
 
-  const toggleStatus = (id, currentStatus) => {
-    setStatusOverrides((prev) => ({
-      ...prev,
-      [id]: currentStatus === 'ACTIVE' ? 'DISABLED' : 'ACTIVE',
-    }));
+  const handleToggleStatus = (id: string, currentStatus: string) => {
+    if (currentStatus === 'ACTIVE') {
+      disableItem(id);
+    } else {
+      enableItem(id);
+    }
   };
 
   const columns = useMemo(
@@ -181,21 +247,50 @@ export function Collateral() {
           return (
             <Group justify="flex-end" gap={6} wrap="nowrap">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="gray">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="gray"
+                  onClick={() => {
+                    setSelectedCollateralId(row.id);
+                    setIsViewMode(true);
+                    open();
+                  }}
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="blue">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="blue"
+                  onClick={() => {
+                    setSelectedCollateralId(row.id);
+                    setIsViewMode(false);
+                    open();
+                  }}
+                >
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
+              <Tooltip label="Delete" withArrow>
+  <ActionIcon
+    size="sm"
+    variant="subtle"
+    color="red"
+    disabled={isDeleting}
+    onClick={() => handleDelete(row.id)}
+  >
+    <IconTrash size={14} />
+  </ActionIcon>
+</Tooltip>
               <Tooltip label={isActive ? 'Disable' : 'Activate'} withArrow>
                 <Switch
                   size="xs"
                   color="green"
                   checked={isActive}
-                  onChange={() => toggleStatus(row.id, row.status)}
+                  onChange={() => handleToggleStatus(row.id, row.status)}
                 />
               </Tooltip>
             </Group>
@@ -231,7 +326,12 @@ export function Collateral() {
 
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
-      <CollateralModal opened={opened} onClose={close} />
+      <CollateralModal
+        opened={opened}
+        onClose={handleModalClose}
+        editId={selectedCollateralId}
+        isView={isViewMode}
+      />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
@@ -242,7 +342,11 @@ export function Collateral() {
           size="xs"
           bg="indigoAlt.4"
           className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-          onClick={open}
+          onClick={() => {
+            setSelectedCollateralId(null);
+            setIsViewMode(false);
+            open();
+          }}
           leftSection={<IconPlus size={14} />}
         >
           Add Collateral
@@ -331,7 +435,18 @@ export function Collateral() {
             ))}
           </Table.Thead>
           <Table.Tbody>
-            {rows.length === 0 ? (
+            {isLoading ? (
+              <Table.Tr>
+                <Table.Td colSpan={columns.length}>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader size="sm" color="gray" />
+                    <Text ta="center" c="dimmed" fz="xs" mt="sm">
+                      Loading collaterals...
+                    </Text>
+                  </div>
+                </Table.Td>
+              </Table.Tr>
+            ) : rows.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={columns.length}>
                   <Text ta="center" c="dimmed" fz="xs" py="sm">

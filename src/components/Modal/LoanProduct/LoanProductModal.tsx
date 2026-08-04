@@ -460,6 +460,8 @@ const updateMutation = useMutation({
         header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
         body: { flex: 1, display: "flex", flexDirection: "column", padding: 0, minHeight: 0, overflow: "hidden" },
       }}
+      closeOnClickOutside={false}
+      closeOnEscape={false}
     >
       {/* <form onSubmit={form.onSubmit(handleValidSubmit, handleInvalidSubmit)} style={{ height: "100%" }}> */}
       <form

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Modal,
   Box,
@@ -9,35 +9,120 @@ import {
   Button,
 } from "@mantine/core";
 import { IconCategory, IconX, IconPercentage } from "@tabler/icons-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { CreateCollateralTypePayload } from "../../types/collateralTypeForm";
+import {
+  createCollateralType,
+  updateCollateralType,
+  getCollateralTypeById,
+} from "../../api/collateralTypeApi";
+import { useForm } from "@mantine/form";
 
 interface CollateralTypeModalProps {
   opened: boolean;
   onClose: () => void;
+  editId?: string | null;
+  isView?: boolean;
 }
 
 const labelClass = { label: "text-sm font-medium text-gray-700 mb-1" };
 
-export function CollateralTypeModal({ opened, onClose }: CollateralTypeModalProps) {
-  const [formData, setFormData] = useState({
+export function CollateralTypeModal({ opened, onClose, editId, isView }: CollateralTypeModalProps) {
+const form = useForm({
+  initialValues: {
     type: "",
     haircut: 0,
     ltv: "" as number | "",
     disabled: false,
+  },
+  validate: {
+    type: (v) => (!v ? "Collateral Type is required" : null),
+    ltv: (v) => (!v ? "Loan To Value Ratio is required" : null),
+  },
+});
+
+  const queryClient = useQueryClient();
+
+  // const { data: editDetailsResponse, isLoading: isEditLoading } = useQuery({
+  //   queryKey: ["collateralType", editId],
+  //   queryFn: () => getCollateralTypeById(editId as string),
+  //   enabled: opened && !!editId,
+  // });
+const { data: editDetailsResponse, isLoading: isEditLoading, refetch } = useQuery({
+  queryKey: ["collateralType", editId],
+  queryFn: () => getCollateralTypeById(editId as string),
+  enabled: opened && !!editId,
+});
+
+const handleReset = () => {
+  form.reset();
+};
+
+  useEffect(() => {
+    if (opened && editId && editDetailsResponse) {
+      const item = editDetailsResponse.data || editDetailsResponse.message?.data || editDetailsResponse;
+
+      form.setValues({
+  type: item.loan_security_type || "",
+  haircut: item.haircut ?? 0,
+  ltv: item.loan_to_value_ratio ?? "",
+  disabled: item.disabled === 1,
+});
+    } else if (opened && !editId) {
+      handleReset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened, editId, editDetailsResponse]);
+
+  const createMutation = useMutation({
+    mutationFn: createCollateralType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["collateralTypes"] });
+      handleReset();
+      onClose();
+    },
   });
 
-  const handleReset = () => {
-    setFormData({
-      type: "",
-      haircut: 0,
-      ltv: "",
-      disabled: false,
-    });
-  };
+ const updateMutation = useMutation({
+  mutationFn: updateCollateralType,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["collateralTypes"] });
+    queryClient.invalidateQueries({ queryKey: ["collateralType", editId] });
+    handleReset();
+    onClose();
+  },
+});
+
+useEffect(() => {
+  if (opened && editId) {
+    refetch();
+  }
+}, [opened, editId]);
 
   const handleClose = () => {
     handleReset();
     onClose();
   };
+
+  const handleSubmit = () => {
+  const validation = form.validate();
+  if (validation.hasErrors) return;
+
+  const payload: CreateCollateralTypePayload = {
+    loan_security_type: form.values.type,
+    haircut: form.values.haircut,
+    loan_to_value_ratio: Number(form.values.ltv) || 0,
+    disabled: form.values.disabled ? 1 : 0,
+  };
+
+  if (editId) {
+    updateMutation.mutate({ id: editId, payload });
+  } else {
+    createMutation.mutate(payload);
+  }
+};
+
+  const isPending = createMutation.isPending || updateMutation.isPending || isEditLoading;
 
   return (
     <Modal
@@ -47,6 +132,8 @@ export function CollateralTypeModal({ opened, onClose }: CollateralTypeModalProp
       withCloseButton={false}
       padding={0}
       radius="md"
+      closeOnClickOutside={false}
+      closeOnEscape={false}
     >
       <Box className="flex flex-col">
         {/* Header */}
@@ -57,7 +144,7 @@ export function CollateralTypeModal({ opened, onClose }: CollateralTypeModalProp
             </div>
             <div>
               <Text size="md" fw={700} className="text-gray-900 leading-tight">
-                New Collateral Type
+                {editId ? (isView ? "View Collateral Type" : "Edit Collateral Type") : "New Collateral Type"}
               </Text>
               <Text size="xs" c="dimmed">
                 Define collateral category parameters and limits.
@@ -73,73 +160,72 @@ export function CollateralTypeModal({ opened, onClose }: CollateralTypeModalProp
 
         {/* Body */}
         <div className="flex-1 p-6">
-          <div className="flex flex-wrap sm:flex-nowrap items-end gap-5">
-            <TextInput
-              size="xs"
-              label="Collateral Type"
-              placeholder="e.g. Real Estate"
-              withAsterisk
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.currentTarget.value })}
-              classNames={labelClass}
-              className="flex-1"
-            />
+          <fieldset disabled={isView} className="border-0 p-0 m-0">
+            <div className="flex flex-wrap sm:flex-nowrap items-end gap-5">
+             <TextInput
+  size="xs"
+  label="Collateral Type"
+  placeholder="e.g. Real Estate"
+  withAsterisk
+  classNames={labelClass}
+  className="flex-1"
+  {...form.getInputProps("type")}
+/>
 
-            <NumberInput
-              size="xs"
-              label="Haircut %"
-              placeholder="0.000"
-              decimalScale={3}
-              fixedDecimalScale
-              hideControls
-              value={formData.haircut}
-              onChange={(v) => setFormData({ ...formData, haircut: v as number })}
-              rightSection={<IconPercentage size={13} className="text-gray-400" />}
-              classNames={labelClass}
-              className="flex-1"
-            />
+<NumberInput
+  size="xs"
+  label="Haircut %"
+  placeholder="0.000"
+  decimalScale={3}
+  fixedDecimalScale
+  hideControls
+  rightSection={<IconPercentage size={13} className="text-gray-400" />}
+  classNames={labelClass}
+  className="flex-1"
+  {...form.getInputProps("haircut")}
+/>
 
-            <NumberInput
-              size="xs"
-              label="Loan To Value Ratio"
-              placeholder="0.00"
-              hideControls
-              value={formData.ltv}
-              onChange={(v) => setFormData({ ...formData, ltv: v as number })}
-              rightSection={<IconPercentage size={13} className="text-gray-400" />}
-              classNames={labelClass}
-              className="flex-1"
-            />
+<NumberInput
+  size="xs"
+  label="Loan To Value Ratio"
+  placeholder="0.00"
+  hideControls
+  rightSection={<IconPercentage size={13} className="text-gray-400" />}
+  classNames={labelClass}
+  className="flex-1"
+  {...form.getInputProps("ltv")}
+/>
 
-            <div className="pb-[6px]">
-              <Checkbox
-                size="xs"
-                label="Disabled"
-                color="indigo"
-                checked={formData.disabled}
-                onChange={(e) => setFormData({ ...formData, disabled: e.currentTarget.checked })}
-                styles={{ label: { color: '#374151', fontWeight: 500 } }}
-              />
+<div className="pb-[6px]">
+  <Checkbox
+    size="xs"
+    label="Disabled"
+    color="indigo"
+    styles={{ label: { color: '#374151', fontWeight: 500 } }}
+    {...form.getInputProps("disabled", { type: "checkbox" })}
+  />
+</div>
             </div>
-          </div>
+          </fieldset>
         </div>
 
         {/* Footer */}
         <div className="border-t border-gray-200 p-4 px-6 flex justify-between items-center shrink-0 bg-gray-50/50">
           <Button size="xs" variant="default" onClick={handleClose} className="font-semibold px-5">
-            Cancel
+            {isView ? "Close" : "Cancel"}
           </Button>
-          
-          <Button
-            size="xs"
-            onClick={() => {
-              // Save logic here
-              onClose();
-            }}
-            className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 font-semibold px-6"
-          >
-            Save Type
-          </Button>
+
+          {!isView && (
+            <Button
+              size="xs"
+              disabled={isPending}
+              loading={isPending}
+              onClick={handleSubmit}
+              className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 font-semibold px-6"
+            >
+              {editId ? "Update Type" : "Save Type"}
+            </Button>
+          )}
         </div>
       </Box>
     </Modal>
