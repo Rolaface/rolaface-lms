@@ -98,7 +98,12 @@ export const mantineTheme = createTheme({
     sm: "var(--shadow-sm)",
     md: "var(--shadow-md)",
   },
-
+other: {
+    modalHeader: "#ffffff",
+    modalHeaderTextColor: "#0b1c30",
+    modalHeaderIconBg: "#4F46E5",    
+    modalHeaderSubTextColor: "#64748b", 
+  },
   components: {
     Modal: {
       defaultProps: {

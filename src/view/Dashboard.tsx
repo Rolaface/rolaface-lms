@@ -125,7 +125,8 @@ function PanelCard({ title, info, children }: { title: string; info?: boolean; c
   );
 }
 
-function CircularProgress({ percent, size = 168, strokeWidth = 15 }: { percent: number; size?: number; strokeWidth?: number }) {
+/* Thin ring — strokeWidth reduced from 13 -> 8 so the circle reads as slim, not chunky */
+function CircularProgress({ percent, size = 148, strokeWidth = 8 }: { percent: number; size?: number; strokeWidth?: number }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
@@ -140,27 +141,27 @@ function CircularProgress({ percent, size = 168, strokeWidth = 15 }: { percent: 
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <Text fw={800} className="text-[26px] text-slate-900">{percent}%</Text>
+        <Text fw={800} className="text-[24px] text-slate-900">{percent}%</Text>
       </div>
     </div>
   );
 }
 
+/* NPA block: mini trend chart on top, description centered below it.
+   Line strokeWidth thinned 1.5 -> 1 to match the slimmer look everywhere else. */
 function NpaBlock({ label, value, delta, trend }: { label: string; value: string; delta: string; trend: { m: number; v: number }[] }) {
   return (
-    <div>
-      <Text size="12px" c="dimmed" fw={500}>{label}</Text>
-      <Group justify="space-between" align="flex-end" mt={2}>
-        <Text fw={800} className="text-[22px] text-slate-900">{value}</Text>
-        <div className="w-20 h-9">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={trend} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-              <Line type="monotone" dataKey="v" stroke={cv("danger", 5)} strokeWidth={1.5} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </Group>
-      <Group gap={3} mt={2}>
+    <div className="flex flex-col items-center text-center">
+      <div className="w-full h-9">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={trend} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+            <Line type="monotone" dataKey="v" stroke={cv("danger", 5)} strokeWidth={1} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <Text size="11.5px" c="dimmed" fw={500} mt={6}>{label}</Text>
+      <Text fw={800} className="text-[19px] text-slate-900 leading-tight">{value}</Text>
+      <Group gap={3} justify="center" mt={1}>
         <IconArrowUp size={11} style={{ color: cv("danger", 6) }} />
         <Text size="11px" fw={600} style={{ color: cv("danger", 6) }}>{delta}</Text>
         <Text size="11px" c="dimmed">vs last month</Text>
@@ -172,8 +173,6 @@ function NpaBlock({ label, value, delta, trend }: { label: string; value: string
 /* ---------------------------- page -------------------------------- */
 
 export function Dashboard() {
-  const parTotal = PAR_BUCKETS.reduce((s, b) => s + b.value, 0);
-
   return (
     <Box className="bg-[#F7F8FB] text-slate-800 min-h-full">
       <Box component="main" className="p-4 flex flex-col gap-3.5">
@@ -198,15 +197,15 @@ export function Dashboard() {
           {STATS.map((s) => <StatCard key={s.title} stat={s} />)}
         </div>
 
-        {/* Panels row */}
-        <div className="grid grid-cols-[1fr_1fr_1.05fr_1.3fr_1fr] gap-3.5 items-stretch">
-          {/* Collection Efficiency Rate */}
+        {/* Panels row — smaller cards on the sides, bigger Disbursement vs Collection Trend in the middle */}
+        <div className="grid grid-cols-[0.82fr_0.82fr_0.88fr_1.95fr_0.82fr] gap-3.5 items-stretch">
+          {/* Collection Efficiency Rate — ring now thin (strokeWidth 8) */}
           <PanelCard title="Collection Efficiency Rate (%)" info>
-            <div className="flex flex-col items-center pt-2">
+            <div className="flex flex-col items-center pt-1">
               <CircularProgress percent={87.6} />
-              <Text size="12.5px" c="dimmed" mt={10}>Collected</Text>
-              <Text fw={700} size="13px" className="text-slate-700">$3.68M / $4.20M</Text>
-              <Badge mt={10} radius="sm" variant="light" color="green" size="md" className="!normal-case">
+              <Text size="12px" c="dimmed" mt={8}>Collected</Text>
+              <Text fw={700} size="12.5px" className="text-slate-700">$3.68M / $4.20M</Text>
+              <Badge mt={8} radius="sm" variant="light" color="green" size="sm" className="!normal-case">
                 <Group gap={4}>
                   <IconArrowUp size={11} />
                   <span>6.2% vs last month</span>
@@ -215,63 +214,61 @@ export function Dashboard() {
             </div>
           </PanelCard>
 
-          {/* NPA */}
+          {/* NPA — chart on top, description below, thin line strokes */}
           <PanelCard title="Non-Performing Assets (NPA)">
-            <div className="flex flex-col gap-5 pt-1">
+            <div className="flex flex-col gap-5 pt-6">
               <NpaBlock label="Gross NPA" value="3.42%" delta="0.35%" trend={GROSS_NPA_TREND} />
               <NpaBlock label="Net NPA" value="1.82%" delta="0.18%" trend={NET_NPA_TREND} />
             </div>
           </PanelCard>
 
-          {/* PAR buckets */}
+          {/* PAR buckets — pie ring thinned (inner/outer radius gap reduced), legend stacked below with thin dots */}
           <PanelCard title="PAR (Portfolio at Risk) Buckets">
-            <div className="flex items-center gap-3">
-              <div className="relative w-[110px] h-[110px] shrink-0">
+            <div className="flex flex-col items-center gap-3 pt-8">
+              <div className="relative w-[104px] h-[104px] shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={PAR_BUCKETS} dataKey="value" nameKey="label" innerRadius={34} outerRadius={54} startAngle={90} endAngle={450} stroke="none" paddingAngle={2}>
+                    <Pie data={PAR_BUCKETS} dataKey="value" nameKey="label" innerRadius={38} outerRadius={50} startAngle={90} endAngle={450} stroke="none" paddingAngle={2}>
                       {PAR_BUCKETS.map((b, i) => <Cell key={i} fill={b.color} />)}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <Text size="12px" fw={800} className="text-slate-900">{PAR_TOTAL}</Text>
-                  <Text size="8.5px" c="dimmed" ta="center" className="leading-tight">Total<br />at Risk</Text>
+                  <Text size="11.5px" fw={800} className="text-slate-900">{PAR_TOTAL}</Text>
+                  <Text size="8px" c="dimmed" ta="center" className="leading-tight">Total<br />at Risk</Text>
                 </div>
               </div>
-              <div className="flex flex-col gap-2.5 flex-1">
+              <div className="flex flex-col gap-2 w-full pt-6">
                 {PAR_BUCKETS.map((b) => (
-                  <div key={b.label}>
-                    <Group gap={6}>
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
-                      <Text size="11.5px" c="dimmed">{b.label}</Text>
+                  <Group key={b.label} justify="space-between" wrap="nowrap">
+                    <Group gap={5} wrap="nowrap">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
+                      <Text size="11px" c="dimmed">{b.label}</Text>
                     </Group>
-                    <Text size="12.5px" fw={700} className="text-slate-800 ml-[14px]">
+                    <Text size="11.5px" fw={700} className="text-slate-800 whitespace-nowrap">
                       {b.amt} <span className="text-slate-400 font-medium">({b.pct})</span>
                     </Text>
-                  </div>
+                  </Group>
                 ))}
               </div>
             </div>
           </PanelCard>
 
-          {/* Disbursement vs Collection Trend */}
-          <PanelCard
-            title="Disbursement vs Collection Trend"
-          >
+          {/* Disbursement vs Collection Trend — bigger card, bigger chart, thinner line strokes/dots */}
+          <PanelCard title="Disbursement vs Collection Trend">
             <Group gap={14} mb={4}>
-              <Group gap={5}><span className="w-2 h-2 rounded-full" style={{ backgroundColor: cv("brand", 6) }} /><Text size="11px" c="dimmed">Disbursement</Text></Group>
-              <Group gap={5}><span className="w-2 h-2 rounded-full" style={{ backgroundColor: cv("green", 6) }} /><Text size="11px" c="dimmed">Collection</Text></Group>
+              <Group gap={5}><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cv("brand", 6) }} /><Text size="11px" c="dimmed">Disbursement</Text></Group>
+              <Group gap={5}><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cv("green", 6) }} /><Text size="11px" c="dimmed">Collection</Text></Group>
             </Group>
-            <div className="h-[190px]">
+            <div className="h-[248px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={TREND} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="#F1F5F9" />
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
                   <YAxis tickFormatter={(v) => `$${v}M`} tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} width={44} />
                   <RTooltip formatter={(v: number) => `$${v}M`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Line type="monotone" dataKey="disbursement" stroke={cv("brand", 6)} strokeWidth={2} dot={{ r: 3, fill: cv("brand", 6) }} />
-                  <Line type="monotone" dataKey="collection" stroke={cv("green", 6)} strokeWidth={2} dot={{ r: 3, fill: cv("green", 6) }} />
+                  <Line type="monotone" dataKey="disbursement" stroke={cv("brand", 6)} strokeWidth={1.5} dot={{ r: 2.5, fill: cv("brand", 6) }} />
+                  <Line type="monotone" dataKey="collection" stroke={cv("green", 6)} strokeWidth={1.5} dot={{ r: 2.5, fill: cv("green", 6) }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -282,16 +279,16 @@ export function Dashboard() {
             <div className="flex flex-col gap-2">
               {RISK_GRADES.map((r) => (
                 <Group key={r.label} justify="space-between" p="xs" className="rounded-md" style={{ backgroundColor: r.bg }}>
-                  <Text size="12px" fw={700} style={{ color: r.color }}>{r.label}</Text>
-                  <Group gap={8}>
-                    <Text size="12.5px" fw={700} className="text-slate-800">{r.amt}</Text>
-                    <Text size="11px" c="dimmed">{r.pct}</Text>
+                  <Text size="11.5px" fw={700} style={{ color: r.color }}>{r.label}</Text>
+                  <Group gap={6}>
+                    <Text size="12px" fw={700} className="text-slate-800">{r.amt}</Text>
+                    <Text size="10.5px" c="dimmed">{r.pct}</Text>
                   </Group>
                 </Group>
               ))}
               <Group justify="space-between" mt={4} pt={8} className="border-t border-slate-100">
-                <Text size="12px" c="dimmed">Total Portfolio</Text>
-                <Text size="13px" fw={800} className="text-slate-900">$4.00M</Text>
+                <Text size="11.5px" c="dimmed">Total Portfolio</Text>
+                <Text size="12.5px" fw={800} className="text-slate-900">$4.00M</Text>
               </Group>
             </div>
           </PanelCard>
