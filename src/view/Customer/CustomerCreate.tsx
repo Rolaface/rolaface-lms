@@ -1,19 +1,27 @@
-import { useMemo, useState } from 'react';
-import { Box, Button, TextInput, Select, Radio, Group, Paper, Table, Badge, ActionIcon, Text, Pagination, Tooltip, Title } from '@mantine/core';
+import { useEffect, useMemo, useState } from 'react';
+import { Box, Button, TextInput, Select, Radio, Group, Paper, Table, Badge, ActionIcon, Text, Pagination, Tooltip, Title, Stack, Center } from '@mantine/core';
 import { IconEye, IconPencil, IconPlus, IconChevronUp, IconChevronDown, IconSelector, IconSearch, IconUsers, IconTrash } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import { useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
-import { CustomerModal } from '../../components/Modal/CustomerModal';
+import { CustomerModal } from '../../components/Modal/customer/CustomerModal';
 import { getBorrowerProfile } from './mockdata';
 import { Borrower360 } from './CustomerView';
 
 export { getBorrowerProfile } from './mockdata';
 
+interface CustomerRow {
+  id: number;
+  name: string;
+  type: string;
+  contact: string;
+  email: string;
+  mobile: string;
+  city: string;
+  country: string;
+  status: string;
+}
 
-// NOTE: requires `@tanstack/react-table` — install with:
-//   npm install @tanstack/react-table
-
-const DUMMY_CUSTOMERS = [
+const DUMMY_CUSTOMERS: CustomerRow[] = [
   {
     id: 1,
     name: 'Rola -di acono',
@@ -71,15 +79,38 @@ const DUMMY_CUSTOMERS = [
   },
 ];
 
-const columnHelper = createColumnHelper();
+const columnHelper = createColumnHelper<CustomerRow>();
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
-  if (sorted === 'asc') return <IconChevronUp size={12} />;
-  if (sorted === 'desc') return <IconChevronDown size={12} />;
-  return <IconSelector size={12} className="opacity-40" />;
+  const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
+  if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
+  if (sorted === 'desc') return <IconChevronDown size={12} color={color} />;
+  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
+// Dot + label status indicator — reads calmer than a solid-fill badge
+// and matches the semantic `success` / `danger` tokens from the theme.
+function StatusIndicator({ status }: { status: string }) {
+  const isActive = status === 'ACTIVE';
+  return (
+    <Group gap="xs" wrap="nowrap">
+      <Box
+        w={6}
+        h={6}
+        style={{
+          borderRadius: '50%',
+          background: isActive ? 'var(--mantine-color-success-6)' : 'var(--mantine-color-danger-5)',
+          flexShrink: 0,
+        }}
+      />
+      <Text fz="xs" fw={600} c={isActive ? 'success.7' : 'danger.7'} style={{ letterSpacing: 0.3 }}>
+        {status}
+      </Text>
+    </Group>
+  );
+}
+
+const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function Customer() {
   const [opened, { open, close }] = useDisclosure(false);
@@ -127,12 +158,18 @@ export function Customer() {
     setCustomers((prev) => prev.filter((c) => c.id !== id));
   };
 
+  useEffect(() => {
+    if (borrower360CustomerId !== null && !customers.some((c) => c.id === borrower360CustomerId)) {
+      setBorrower360CustomerId(null);
+    }
+  }, [borrower360CustomerId, customers]);
+
   const columns = useMemo(
     () => [
       columnHelper.accessor('name', {
         header: 'Customer Name',
         cell: (info) => (
-          <Text fz="xs" fw={600} c="gray.9">
+          <Text fz="xs" fw={600} c="slate.8">
             {info.getValue()}
           </Text>
         ),
@@ -143,7 +180,7 @@ export function Customer() {
           <Badge
             variant="light"
             size="sm"
-            color={info.getValue() === 'Company' ? 'indigo' : 'cyan'}
+            color={info.getValue() === 'Company' ? 'brand' : 'info'}
             styles={{ root: { fontSize: 10, padding: '0 8px' } }}
           >
             {info.getValue()}
@@ -153,7 +190,7 @@ export function Customer() {
       columnHelper.accessor('contact', {
         header: 'Primary Contact',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
+          <Text fz="xs" c="slate.6">
             {info.getValue()}
           </Text>
         ),
@@ -161,7 +198,7 @@ export function Customer() {
       columnHelper.accessor('email', {
         header: 'Email',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
+          <Text fz="xs" c="slate.6">
             {info.getValue()}
           </Text>
         ),
@@ -169,7 +206,7 @@ export function Customer() {
       columnHelper.accessor('mobile', {
         header: 'Mobile',
         cell: (info) => (
-          <Text fz="xs" c="gray.6" className="font-mono">
+          <Text fz="xs" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
             {info.getValue()}
           </Text>
         ),
@@ -177,7 +214,7 @@ export function Customer() {
       columnHelper.accessor('city', {
         header: 'City',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
+          <Text fz="xs" c="slate.6">
             {info.getValue()}
           </Text>
         ),
@@ -185,24 +222,14 @@ export function Customer() {
       columnHelper.accessor('country', {
         header: 'Country',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
+          <Text fz="xs" c="slate.6">
             {info.getValue()}
           </Text>
         ),
       }),
       columnHelper.accessor('status', {
         header: 'Status',
-        cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            color={info.getValue() === 'ACTIVE' ? 'green' : 'red'}
-            className="font-semibold tracking-wider"
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
-            {info.getValue()}
-          </Badge>
-        ),
+        cell: (info) => <StatusIndicator status={info.getValue()} />,
       }),
       columnHelper.display({
         id: 'actions',
@@ -214,19 +241,19 @@ export function Customer() {
         cell: (info) => {
           const row = info.row.original;
           return (
-            <Group justify="flex-end" gap={6} wrap="nowrap">
+            <Group justify="flex-end" gap="xs" wrap="nowrap">
               <Tooltip label="View" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="gray"
+                  color="slate"
                   onClick={() => setBorrower360CustomerId(row.id)}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="blue">
+                <ActionIcon size="sm" variant="subtle" color="brand">
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -234,7 +261,7 @@ export function Customer() {
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="red"
+                  color="danger"
                   onClick={() => handleDelete(row.id)}
                 >
                   <IconTrash size={14} />
@@ -279,42 +306,40 @@ export function Customer() {
     if (customer) {
       const borrower = getBorrowerProfile({ id: customer.id, name: customer.name, mobile: customer.mobile });
       return (
-        <Box className="p-8 mt-10">
+        <Box p="xl" mt="xl">
           <Borrower360 borrower={borrower} onBack={() => setBorrower360CustomerId(null)} />
         </Box>
       );
     }
-    setBorrower360CustomerId(null);
+    // customer no longer exists (deleted) — the effect above resets the id;
+    // render nothing for this frame instead of touching state here.
+    return null;
   }
 
   return (
-    <Box className="flex flex-col gap-4 p-8 mt-10">
+    <Stack gap="md" p="lg">
       <CustomerModal opened={opened} onClose={close} />
 
-      {/* Header & Add Button */}
-      <div className="flex justify-between items-center">
-        <Title order={2} className="text-gray-900 font-semibold">
-          Customers
-        </Title>
-        <Button
-          size="xs"
-          bg="indigoAlt.4"
-          onClick={open}
-          className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-          leftSection={<IconPlus size={14} />}
-        >
-          Add Customer
-        </Button>
-      </div>
+      {/* Header — title + subtitle, Add button lives in the filter bar */}
+      <Group justify="space-between" align="center">
+        <Stack gap="xs">
+          <Title order={2} c="slate.8" fw={600}>
+            Customers
+          </Title>
+          <Text fz="sm" c="slate.5">
+            Onboard new customers
+          </Text>
+        </Stack>
+      </Group>
 
       {/* Filters Box */}
-      <Paper withBorder radius="md" p="xs" className="shadow-sm">
-        <div className="flex items-center gap-3 flex-wrap">
+      <Paper withBorder radius="md" p="xs" shadow="xs">
+        <Group gap="sm" wrap="wrap" align="center">
           <TextInput
             size="xs"
             placeholder="Name / Email / Mobile"
             leftSection={<IconSearch size={13} />}
-            className="flex-1 min-w-[200px]"
+            style={{ flex: 1, minWidth: 200 }}
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
@@ -325,7 +350,7 @@ export function Customer() {
             size="xs"
             placeholder="All Types"
             data={['Individual', 'Company']}
-            className="w-36"
+            w={144}
             searchable
             clearable
             rightSection={chevronDown}
@@ -339,7 +364,7 @@ export function Customer() {
             size="xs"
             placeholder="All Countries"
             data={countryOptions}
-            className="w-40"
+            w={160}
             searchable
             clearable
             rightSection={chevronDown}
@@ -359,22 +384,29 @@ export function Customer() {
             }}
           >
             <Group gap="sm">
-              <Radio size="xs" value="all" label="All" color="indigoAlt.4" />
-              <Radio size="xs" value="ACTIVE" label="Active" color="indigoAlt.4" />
-              <Radio size="xs" value="INACTIVE" label="Inactive" color="indigoAlt.4" />
+              <Radio size="xs" value="all" label="All" color="brand" />
+              <Radio size="xs" value="ACTIVE" label="Active" color="brand" />
+              <Radio size="xs" value="INACTIVE" label="Inactive" color="brand" />
             </Group>
           </Radio.Group>
 
-          <Button size="xs" variant="default" className="ml-auto px-4" onClick={resetFilters}>
-            Reset
-          </Button>
-        </div>
+          {/* Reset + Add Customer grouped together at the end of the filter bar,
+              matching the "New Entry" placement pattern from the journal entries table */}
+          <Group gap="xs" ml="auto">
+            <Button size="xs" variant="default" px="md" onClick={resetFilters}>
+              Reset
+            </Button>
+            <Button size="xs" color="brand" onClick={open} leftSection={<IconPlus size={14} />}>
+              Add Customer
+            </Button>
+          </Group>
+        </Group>
       </Paper>
 
       {/* Data Table */}
-      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
-        <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full">
-          <Table.Thead className="bg-gray-50 border-b border-gray-200">
+      <Paper withBorder radius="md" shadow="xs" style={{ overflow: 'hidden' }}>
+        <Table verticalSpacing="xs" horizontalSpacing="sm" fz="xs" w="100%">
+          <Table.Thead bg="slate.0" style={{ borderBottom: '1px solid var(--mantine-color-slate-2)' }}>
             {table.getHeaderGroups().map((headerGroup) => (
               <Table.Tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -382,13 +414,20 @@ export function Customer() {
                   return (
                     <Table.Th
                       key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${canSort ? 'cursor-pointer' : ''
-                        }`}
-                      style={{ fontSize: 11, padding: '6px 10px' }}
+                      c="slate.5"
+                      fw={600}
+                      style={{
+                        fontSize: "var(--mantine-font-size-xs)",
+                        padding: '6px 10px',
+                        userSelect: 'none',
+                        cursor: canSort ? 'pointer' : 'default',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.03em',
+                      }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <Group
-                        gap={4}
+                        gap="xs"
                         wrap="nowrap"
                         justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
                       >
@@ -405,19 +444,19 @@ export function Customer() {
             {rows.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={columns.length}>
-                  <div className="flex flex-col items-center py-8 text-gray-400">
-                    <IconUsers size={32} className="mb-2 opacity-50" />
-                    <Text ta="center" c="dimmed" fz="xs">
+                  <Stack align="center" gap="xs" py="xl">
+                    <IconUsers size={32} color="var(--mantine-color-slate-4)" />
+                    <Text ta="center" c="slate.5" fz="xs">
                       No customers match your filters.
                     </Text>
-                  </div>
+                  </Stack>
                 </Table.Td>
               </Table.Tr>
             ) : (
               rows.map((row) => (
                 <Table.Tr
                   key={row.id}
-                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
+                  style={{ borderBottom: '1px solid var(--mantine-color-slate-1)' }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <Table.Td key={cell.id} style={{ padding: '5px 10px' }}>
@@ -431,12 +470,12 @@ export function Customer() {
         </Table>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+        <Group justify="space-between" px="sm" py="xs" bg="slate.0" style={{ borderTop: '1px solid var(--mantine-color-slate-2)' }}>
+          <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
             <span>
               {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
             </span>
-            <div className="flex items-center gap-1.5">
+            <Group gap="xs">
               <span>Rows:</span>
               <Select
                 data={['10', '20', '50']}
@@ -444,20 +483,20 @@ export function Customer() {
                 onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
                 rightSection={chevronDown}
                 size="xs"
-                className="w-14"
+                w={56}
               />
-            </div>
-          </div>
+            </Group>
+          </Group>
           <Pagination
             total={table.getPageCount() || 1}
             value={pageIndex + 1}
             onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-            color="indigoAlt.4"
+            color="brand"
             size="xs"
             radius="sm"
           />
-        </div>
+        </Group>
       </Paper>
-    </Box>
+    </Stack>
   );
 }

@@ -33,7 +33,7 @@ export const brand = {
   // surfaces
   cream: '#F5F2EA',
   canvas: '#EFEAE0',
-  paper: '#FFFFFF',
+  paper: "var(--mantine-color-white)",
 
   // ink / text
   ink: '#241F3D',
@@ -41,29 +41,29 @@ export const brand = {
   inkSoft: '#6B6787',
 
   // primary — brand & interactive actions
-  primary: '#4F3FF0',
-  primaryHover: '#4132D6',
-  primarySoft: '#EDEAFE',
+  primary: "var(--mantine-color-brand-5)",
+  primaryHover: "var(--mantine-color-brand-6)",
+  primarySoft: "var(--mantine-color-brand-0)",
 
   // success — healthy, on-track, positive money
   teal: '#0E8A73',
   tealSoft: '#DFF4EE',
 
   // warning — attention, watch-list, expiring
-  gold: '#C7821A',
-  goldSoft: '#FBEEDA',
+  gold: "var(--mantine-color-gold-7)",
+  goldSoft: "var(--mantine-color-gold-0)",
 
   // danger — overdue, delinquent
-  rose: '#D33F5E',
-  roseSoft: '#FCE6EB',
+  rose: "var(--mantine-color-danger-5)",
+  roseSoft: "var(--mantine-color-danger-0)",
 
   // info — neutral highlights, links, references
-  sky: '#1D7FB7',
-  skySoft: '#E4F1F9',
+  sky: "var(--mantine-color-info-7)",
+  skySoft: "var(--mantine-color-info-0)",
 
   // neutral — closed, inactive
-  slate: '#6B7280',
-  slateSoft: '#EEF0F2',
+  slate: "var(--mantine-color-slate-5)",
+  slateSoft: "var(--mantine-color-slate-1)",
 };
 
 export const serif = { fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' };
@@ -155,7 +155,7 @@ export const scheduleStatusColor: Record<string, string> = {
   'Paid on time': brand.teal,
   'Paid late': brand.gold,
   Overdue: brand.rose,
-  Upcoming: '#D8D3C4',
+  Upcoming: "var(--mantine-color-slate-3)",
 };
 
 /* ============================================================================
