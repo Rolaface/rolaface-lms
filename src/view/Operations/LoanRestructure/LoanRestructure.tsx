@@ -1,5 +1,6 @@
 // LoanRestructure.tsx
 import { useMemo, useState } from 'react';
+import { modals } from '@mantine/modals';
 import {
   Box,
   Button,
@@ -14,6 +15,8 @@ import {
   Text,
   Pagination,
   Tooltip,
+  Title,
+  Menu,
 } from '@mantine/core';
 import {
   IconEye,
@@ -25,6 +28,7 @@ import {
   IconSearch,
   IconFileOff,
   IconTrash,
+  IconDotsVertical,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -96,6 +100,13 @@ const DUMMY_RESTRUCTURES: RestructureRow[] = [
   },
 ];
 
+// Same status meta pattern as LoanAccount
+const STATUS_META: Record<string, { label: string; color: string }> = {
+  PENDING: { label: 'PENDING', color: 'yellow' },
+  APPROVED: { label: 'APPROVED', color: 'green' },
+  REJECTED: { label: 'REJECTED', color: 'red' },
+};
+
 const columnHelper = createColumnHelper<RestructureRow>();
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
@@ -118,11 +129,11 @@ function restructureTypeLabel(type: RestructureRow['restructureType']) {
   return 'Modify Maturity';
 }
 
-function statusColor(status: RestructureRow['status']) {
-  if (status === 'APPROVED') return 'green';
-  if (status === 'PENDING') return 'gold';
-  return 'danger';
-}
+const fmtAmount = (n: number) =>
+  n ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
+
+const fmtDate = (iso: string) =>
+  iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
 export function LoanRestructure() {
   const [opened, { open, close }] = useDisclosure(false);
@@ -155,6 +166,12 @@ export function LoanRestructure() {
     setRowsData((prev) => prev.filter((r) => r.id !== id));
   };
 
+  const handleStatusChange = (id: number, newStatus: RestructureRow['status']) => {
+    setRowsData((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
+    );
+  };
+
   const handleAddRestructure = (formData: RestructureFormData) => {
     setRowsData((prev) => [
       ...prev,
@@ -185,7 +202,7 @@ export function LoanRestructure() {
       columnHelper.accessor('customer', {
         header: 'Customer',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
+          <Text fz="xs" fw={500} c="gray.9">
             {info.getValue()}
           </Text>
         ),
@@ -223,31 +240,36 @@ export function LoanRestructure() {
         header: 'Value Date',
         cell: (info) => (
           <Text fz="xs" c="gray.6">
-            {info.getValue()}
+            {fmtDate(info.getValue())}
           </Text>
         ),
+        sortingFn: 'basic',
       }),
       columnHelper.accessor('totalCharges', {
         header: 'Charges',
         cell: (info) => (
-          <Text fz="xs" fw={600} c="gray.9" className="font-mono">
-            ${info.getValue().toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          <Text fz="xs" c="gray.6" className="font-mono">
+            ZMW {fmtAmount(info.getValue())}
           </Text>
         ),
+        sortingFn: 'basic',
       }),
       columnHelper.accessor('status', {
         header: 'Status',
-        cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            color={statusColor(info.getValue())}
-            className="font-semibold tracking-wider"
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
-            {info.getValue()}
-          </Badge>
-        ),
+        cell: (info) => {
+          const meta = STATUS_META[info.getValue()] || { label: info.getValue(), color: 'gray' };
+          return (
+            <Badge
+              variant="light"
+              size="sm"
+              color={meta.color}
+              className="font-semibold tracking-wider"
+              styles={{ root: { fontSize: 10, padding: '0 8px' } }}
+            >
+              {meta.label}
+            </Badge>
+          );
+        },
       }),
       columnHelper.display({
         id: 'actions',
@@ -258,6 +280,8 @@ export function LoanRestructure() {
         ),
         cell: (info) => {
           const row = info.row.original;
+          const isPending = row.status === 'PENDING';
+
           return (
             <Group justify="flex-end" gap={6} wrap="nowrap">
               <Tooltip label="View" withArrow>
@@ -265,21 +289,62 @@ export function LoanRestructure() {
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="brand">
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Delete" withArrow>
+              <Tooltip label={isPending ? 'Edit' : 'Only Pending can be edited'} withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="danger"
-                  onClick={() => handleDelete(row.id)}
+                  color={isPending ? 'blue' : 'gray'}
+                  disabled={!isPending}
+                >
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label={isPending ? 'Delete' : 'Only Pending can be deleted'} withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color={isPending ? 'red' : 'gray'}
+                  disabled={!isPending}
+                  onClick={() => {
+                    modals.openConfirmModal({
+                      title: 'Delete restructure request',
+                      children: (
+                        <Text size="sm">
+                          Are you sure you want to delete restructure request <b>{row.loanAc}</b>? This cannot be undone.
+                        </Text>
+                      ),
+                      labels: { confirm: 'Delete', cancel: 'Cancel' },
+                      confirmProps: { color: 'red' },
+                      onConfirm: () => handleDelete(row.id),
+                    });
+                  }}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
+              <Menu shadow="md" width={140} position="bottom-end">
+                <Menu.Target>
+                  <ActionIcon size="sm" variant="subtle" color="gray">
+                    <IconDotsVertical size={14} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {isPending ? (
+                    <>
+                      <Menu.Item onClick={() => handleStatusChange(row.id, 'APPROVED')}>
+                        Approve
+                      </Menu.Item>
+                      <Menu.Item color="red" onClick={() => handleStatusChange(row.id, 'REJECTED')}>
+                        Reject
+                      </Menu.Item>
+                    </>
+                  ) : (
+                    <Menu.Item color="red" onClick={() => handleStatusChange(row.id, 'PENDING')}>
+                      Revert to Pending
+                    </Menu.Item>
+                  )}
+                </Menu.Dropdown>
+              </Menu>
             </Group>
           );
         },
@@ -318,18 +383,19 @@ export function LoanRestructure() {
   ];
 
   return (
-    <Box className="flex flex-col gap-4">
+    <Box className="flex flex-col gap-4 p-8 mt-10">
       <LoanRestructureModal opened={opened} onClose={close} onSubmit={handleAddRestructure} />
 
       {/* Header & Add Button */}
       <div className="flex justify-between items-center">
-        <Text size="md" fw={700} className="text-gray-900">
+        <Title order={2} className="text-gray-900 font-semibold">
           Loan Restructures
-        </Text>
+        </Title>
         <Button
           size="xs"
+          bg="indigoAlt.4"
           onClick={open}
-          className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 transition-opacity"
+          className="bg-[#991B1B] hover:bg-red-900 transition-colors"
           leftSection={<IconPlus size={14} />}
         >
           Restructure Loan
@@ -355,6 +421,7 @@ export function LoanRestructure() {
             placeholder="All Restructure Types"
             data={restructureTypeOptions}
             className="w-48"
+            searchable
             clearable
             rightSection={chevronDown}
             value={restructureType}
@@ -373,10 +440,10 @@ export function LoanRestructure() {
             }}
           >
             <Group gap="sm">
-              <Radio size="xs" value="all" label="All" color="brand" />
-              <Radio size="xs" value="APPROVED" label="Approved" color="brand" />
-              <Radio size="xs" value="PENDING" label="Pending" color="brand" />
-              <Radio size="xs" value="REJECTED" label="Rejected" color="brand" />
+              <Radio size="xs" value="all" label="All" color="indigoAlt.4" />
+              <Radio size="xs" value="PENDING" label="Pending" color="indigoAlt.4" />
+              <Radio size="xs" value="APPROVED" label="Approved" color="indigoAlt.4" />
+              <Radio size="xs" value="REJECTED" label="Rejected" color="indigoAlt.4" />
             </Group>
           </Radio.Group>
 
@@ -468,9 +535,10 @@ export function LoanRestructure() {
             total={table.getPageCount() || 1}
             value={pageIndex + 1}
             onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-            color="brand"
+            color="indigoAlt.4"
             size="xs"
             radius="sm"
+            disabled={totalRows === 0}
           />
         </div>
       </Paper>

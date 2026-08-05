@@ -5,13 +5,6 @@ import { API } from "../../config/api";
 const api = apiClient;
 export const LoanProductAPI = API.loanProduct;
 
-/* ===========================================================
-   TYPES
-   Matches the real Loan Product doctype payload (see sample
-   JSON provided) — account fields are grouped under
-   accounts / interest_accounts / penalty_accounts /
-   write_off_accounts, NOT flat top-level fields.
-=========================================================== */
 
 export type ChargeBasedOn = "Percentage" | "Fixed Amount";
 
