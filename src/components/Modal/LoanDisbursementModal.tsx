@@ -95,9 +95,14 @@ export function LoanDisbursementModal({
 
    const dsbrAccountOptions = useMemo(() => {
      const list = dsbrAccountsResponse?.data || dsbrAccountsResponse?.message || dsbrAccountsResponse || [];
-    if (Array.isArray(list)) {
-      return list.map((item: any) => item.value || item.name || item);
-    }
+     if (Array.isArray(list)) {
+    return list.map((item: any) => ({
+      value: item.label,
+      label: item.label,
+    }));
+  }
+
+
     return [];
   }, [dsbrAccountsResponse]);
    const [beneficiaryAcSearch, setBeneficiaryAcSearch] = useState("");
