@@ -1,4 +1,17 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  Box,
+  Text,
+  Button,
+  Modal,
+  ActionIcon,
+  ThemeIcon,
+  Group,
+  TextInput,
+  Stack,
+} from "@mantine/core";
+import { IconX, IconCategory, IconCheck } from "@tabler/icons-react";
+import { GradientButton } from "../../shared/customer/Shared";
 
 export interface LoanCategoryFormData {
   code: string;
@@ -6,7 +19,7 @@ export interface LoanCategoryFormData {
 }
 
 interface AddLoanCategoryModalProps {
-  open: boolean;
+  opened: boolean;
   onClose: () => void;
   onSave: (data: LoanCategoryFormData) => void | Promise<void>;
   loading?: boolean;
@@ -17,243 +30,147 @@ interface FormErrors {
   name?: string;
 }
 
-const AddLoanCategoryModal: React.FC<AddLoanCategoryModalProps> = ({
-  open,
+const initialState: LoanCategoryFormData = { code: "", name: "" };
+
+export function AddLoanCategoryModal({
+  opened,
   onClose,
   onSave,
   loading = false,
-}) => {
-  const initialState: LoanCategoryFormData = {
-    code: "",
-    name: "",
-  };
-
-  const [form, setForm] = useState(initialState);
+}: AddLoanCategoryModalProps) {
+  const [form, setForm] = useState<LoanCategoryFormData>(initialState);
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const firstInputRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
-    if (!open) return;
-
-    setForm(initialState);
-    setErrors({});
-
-    const timer = setTimeout(() => {
-      firstInputRef.current?.focus();
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [open]);
-
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-
-    if (open) {
-      window.addEventListener("keydown", handleEscape);
+    if (opened) {
+      setForm(initialState);
+      setErrors({});
     }
+  }, [opened]);
 
-    return () => {
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [open, onClose]);
+  const handleChange = (field: keyof LoanCategoryFormData, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
 
   const validate = () => {
     const newErrors: FormErrors = {};
-
-    if (!form.code.trim()) {
-      newErrors.code = "Loan Category Code is required.";
-    }
-
-    if (!form.name.trim()) {
-      newErrors.name = "Loan Category Name is required.";
-    }
-
+    if (!form.code.trim()) newErrors.code = "Loan Category Code is required.";
+    if (!form.name.trim()) newErrors.name = "Loan Category Name is required.";
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleClose = () => {
+    setForm(initialState);
+    setErrors({});
+    onClose();
   };
 
   const handleSubmit = async () => {
     if (!validate()) return;
-
-    await onSave({
-      code: form.code.trim(),
-      name: form.name.trim(),
-    });
+    await onSave({ code: form.code.trim(), name: form.name.trim() });
   };
-
-  const handleChange = (
-    field: keyof LoanCategoryFormData,
-    value: string
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    if (errors[field]) {
-      setErrors((prev) => ({
-        ...prev,
-        [field]: undefined,
-      }));
-    }
-  };
-
-  if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
-      aria-labelledby="add-category-title"
-      aria-modal="true"
-      role="dialog"
+    <Modal
+      opened={opened}
+      onClose={handleClose}
+      size={520}
+      padding={0}
+      lockScroll
+      styles={{
+        content: { display: "flex", flexDirection: "column", overflow: "hidden" },
+        header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
+        body: { padding: 0, display: "flex", flexDirection: "column" },
+      }}
     >
-      <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
-
-        {/* Header */}
-        <div className="border-b border-slate-200 px-6 py-5">
-          <h2
-            id="add-category-title"
-            className="text-xl font-semibold text-slate-900"
+      <Box bg="white">
+        <Group
+          justify="space-between"
+          align="center"
+          px="xl"
+          py="sm"
+          bg="brand.6"
+          style={{ borderBottom: "1px solid var(--mantine-color-brand-7)" }}
+        >
+          <Group gap="sm">
+            <ThemeIcon radius="md" size={34} variant="white" color="brand">
+              <IconCategory size={16} />
+            </ThemeIcon>
+            <Box>
+              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
+                Add Loan Category
+              </Text>
+              <Text size="xs" fw={500} c="brand.1">
+                Create a new loan category for your organization
+              </Text>
+            </Box>
+          </Group>
+          <ActionIcon
+            variant="subtle"
+            color="white"
+            radius="xl"
+            size="md"
+            onClick={handleClose}
+            aria-label="Close"
           >
-            Add Loan Category
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Create a new loan category for your organization.
-          </p>
-        </div>
+            <IconX size={16} color="white" />
+          </ActionIcon>
+        </Group>
 
         {/* Body */}
-        <div className="space-y-6 px-6 py-6">
-
-          {/* Code */}
-          <div>
-            <label
-              htmlFor="loan-category-code"
-              className="mb-2 block text-sm font-medium text-slate-700"
-            >
-              Loan Category Code
-              <span className="ml-1 text-rose-500">*</span>
-            </label>
-
-            <input
-              ref={firstInputRef}
-              id="loan-category-code"
-              type="text"
-              aria-invalid={!!errors.code}
-              aria-describedby={
-                errors.code ? "loan-category-code-error" : undefined
-              }
+        <Box px="xl" py="lg" bg="slate.0">
+          <Stack gap="md">
+            <TextInput
+              label="Loan Category Code"
+              withAsterisk
+              radius="md"
               placeholder="e.g. HOME"
               value={form.code}
-              onChange={(e) =>
-                handleChange("code", e.target.value.toUpperCase())
-              }
-              className={`w-full rounded-xl border bg-gray-100 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 transition-all outline-none
-
-                ${
-                  errors.code
-                    ? "border-red-400 ring-2 ring-red-100"
-                    : "border-gray-200"
-                }
-
-                focus:border-indigo-600
-                focus:bg-white
-                focus:ring-4
-                focus:ring-indigo-100
-                hover:border-gray-300
-              `}
+              onChange={(e) => handleChange("code", e.currentTarget.value.toUpperCase())}
+              error={errors.code}
+              styles={{ input: { border: "1px solid var(--mantine-color-slate-2)" } }}
+              data-autofocus
             />
-
-            {errors.code && (
-              <p
-                id="loan-category-code-error"
-                className="mt-2 text-sm text-red-600"
-              >
-                {errors.code}
-              </p>
-            )}
-          </div>
-
-          {/* Name */}
-          <div>
-            <label
-              htmlFor="loan-category-name"
-              className="mb-2 block text-sm font-medium text-slate-700"
-            >
-              Loan Category Name
-              <span className="ml-1 text-rose-500">*</span>
-            </label>
-
-            <input
-              id="loan-category-name"
-              type="text"
-              aria-invalid={!!errors.name}
-              aria-describedby={
-                errors.name ? "loan-category-name-error" : undefined
-              }
+            <TextInput
+              label="Loan Category Name"
+              withAsterisk
+              radius="md"
               placeholder="Enter category name"
               value={form.name}
-              onChange={(e) =>
-                handleChange("name", e.target.value)
-              }
-              className={`w-full rounded-xl border bg-gray-100 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 transition-all outline-none
-
-                ${
-                  errors.name
-                    ? "border-red-400 ring-2 ring-red-100"
-                    : "border-gray-200"
-                }
-
-                focus:border-indigo-600
-                focus:bg-white
-                focus:ring-4
-                focus:ring-indigo-100
-                hover:border-gray-300
-              `}
+              onChange={(e) => handleChange("name", e.currentTarget.value)}
+              error={errors.name}
+              styles={{ input: { border: "1px solid var(--mantine-color-slate-2)" } }}
             />
-
-            {errors.name && (
-              <p
-                id="loan-category-name-error"
-                className="mt-2 text-sm text-red-600"
-              >
-                {errors.name}
-              </p>
-            )}
-          </div>
-        </div>
+          </Stack>
+        </Box>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-5">
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 active:scale-[0.98]"
-          >
+        <Group
+          justify="flex-end"
+          px="xl"
+          py="md"
+          gap="sm"
+          style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}
+        >
+          <Button variant="subtle" color="slate" onClick={handleClose}>
             Cancel
-          </button>
-
-          <button
-            type="button"
-            disabled={loading}
+          </Button>
+          <GradientButton
+            px="xl"
             onClick={handleSubmit}
-            className="rounded-xl bg-indigo-700 px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-indigo-800 focus:ring-4 focus:ring-indigo-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+            loading={loading}
+            rightSection={!loading ? <IconCheck size={14} /> : undefined}
           >
-            {loading ? "Saving..." : "Save Category"}
-          </button>
-
-        </div>
-      </div>
-    </div>
+            Save Category
+          </GradientButton>
+        </Group>
+      </Box>
+    </Modal>
   );
-};
+}
 
 export default AddLoanCategoryModal;
