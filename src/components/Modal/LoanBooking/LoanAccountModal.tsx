@@ -4,7 +4,7 @@ import { Box, Text, Button, Modal } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconX, IconMinus, IconFileText, IconCheck, IconCalculator } from "@tabler/icons-react";
 
-import { createLoan, getLoanById, updateLoan } from "../../../api/loanApi";
+import { createLoan, getLoanById, updateLoan, getReapymentScheduleById } from "../../../api/loanApi";
 import { calcEmi, buildAmortization, getTodayDate } from "../../../utils/loanCalculations";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { ANNUAL_RATE, DEFAULT_DOCUMENTS, TAB_ITEMS } from "./Constants";
@@ -16,8 +16,6 @@ import { CollateralTab, type CollateralItem } from "./CollateralTab";
 import { CoApplicantTab, type CoApplicant } from "./CoapplicationTab";
 import { DocumentsTab } from "./DocumentTab";
 import { LoanSummarySidebar } from "./LoanSummarySidebarTab";
-
-// import { CollateralModal } from "../CollateralModal";
 import { LoanSimulatorModal } from "../LoanSimulatorModal";
 
 interface LoanAccountModalProps {
@@ -95,13 +93,6 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
     () => Math.round((totalRepayment - (Number(form.values.loanAmount) || 0)) * 100) / 100,
     [totalRepayment, form.values.loanAmount]
   );
-  
-  const maturityDate = useMemo(() => {
-    if (!form.values.valueDate || !tenureMonths) return "";
-    const d = new Date(form.values.valueDate);
-    d.setMonth(d.getMonth() + tenureMonths);
-    return d.toISOString().split("T")[0];
-  }, [form.values.valueDate, tenureMonths]);
   
   const amortization = useMemo(
     () => buildAmortization(Number(form.values.loanAmount) || 0, ANNUAL_RATE, tenureMonths),
@@ -183,18 +174,24 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
     }
   };
 
-// const { data: existingLoanData, isLoading: isFetchingLoan } = useQuery({
-//     queryKey: ["loan", loanId],
-//     queryFn: () => getLoanById(loanId!),
-//     enabled: !!loanId && opened, 
-//   });
-
  const { data: existingLoanData, isLoading: isFetchingLoan, error, isError } = useQuery({
   queryKey: ["loan", loanId],
   queryFn: async () => await getLoanById(loanId as string),
   enabled: !!loanId && opened === true,
   refetchOnMount: "always", 
 });
+
+const { data: scheduleData, isLoading: isFetchingSchedule } = useQuery({
+  queryKey: ["loan-repayment-schedule", loanId],
+  queryFn: async () => await getReapymentScheduleById(loanId as string),
+  enabled: !!loanId && opened === true,
+  refetchOnMount: "always",
+});
+
+const fetchedRepaymentSchedule = scheduleData?.message?.data?.repayment_schedule ?? [];
+
+const fetchedMaturityDate = scheduleData?.message?.data?.maturity_date;
+const finalMaturityDate = fetchedMaturityDate;
 
  useEffect(() => {
   const loan = existingLoanData?.message?.data;
@@ -208,6 +205,7 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
       fixedRepaymentsIn: loan.repayment_method === "Repay Over Number of Periods" ? "TENOR" : "EMI",
       tenureValue: loan.repayment_periods || "",
       repaymentAmount: loan.monthly_repayment_amount || "",
+      valueDate: loan.posting_date,
       repaymentStartDate: loan.repayment_start_date || "",
       // moratoriumType: loan.moratorium_type || "None",
       moratoriumType: loan.moratorium_type || "Principal",
@@ -247,6 +245,8 @@ const updateLoanMutation = useMutation({
   const handleModalClose = () => {
      if (loanId) {
     queryClient.removeQueries({ queryKey: ["loan", loanId] }); 
+        queryClient.removeQueries({ queryKey: ["loan-repayment-schedule", loanId] });
+
   }
     handleReset(); 
     onClose();     
@@ -340,13 +340,20 @@ const updateLoanMutation = useMutation({
           >
             <div className="flex-1 overflow-y-auto p-6 min-w-0">
               {activeTab === "basic" && (
-                <BasicDetailsTab
-                  form={form}
-                  loanAcNumber={loanAcNumber}
-                  maturityDate={maturityDate}
-                />
+              <BasicDetailsTab
+  form={form}
+  loanAcNumber={loanAcNumber}
+  maturityDate={finalMaturityDate}
+/>
               )}
-              {activeTab === "schedule" && <RepaymentScheduleTab amortization={amortization} />}
+{activeTab === "schedule" && (
+  <RepaymentScheduleTab
+    amortization={amortization}
+    repaymentSchedule={fetchedRepaymentSchedule}
+    isFetchingSchedule={isFetchingSchedule}
+    isEditMode={!!loanId}
+  />
+)}
               {activeTab === "charges" && (
                 <ChargesTab
                   charges={charges}
@@ -384,7 +391,7 @@ const updateLoanMutation = useMutation({
               tenureMonths={tenureMonths}
               frequency={form.values.frequency}
               repaymentStartDate={form.values.repaymentStartDate}
-              maturityDate={maturityDate}
+              maturityDate={finalMaturityDate}
               moratoriumType={form.values.moratoriumType}
               estimatedEmi={estimatedEmi}
               totalInterest={totalInterest}
