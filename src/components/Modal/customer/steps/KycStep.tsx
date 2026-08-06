@@ -1,7 +1,6 @@
 import { SimpleGrid, Paper, Text, Group, Button } from "@mantine/core";
 import { IconShieldCheck } from "@tabler/icons-react";
 import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
-import { colorVar } from "../../../../utils/customer/utils";
 
 interface KycStepProps {
   kycStatus: Record<string, string>;
@@ -43,7 +42,7 @@ const ITEMS = [
 
 const statusColor = (s: string) =>
   s === "Clear"
-   ? "var(--mantine-color-success-6)"
+    ? "var(--mantine-color-success-6)"
     : s === "Not applicable"
       ? "var(--mantine-color-slate-4)"
       : "var(--mantine-color-warning-6)";
@@ -74,7 +73,7 @@ export function KycStep({ kycStatus, runCheck }: KycStepProps) {
             style={{ borderColor: "var(--mantine-color-slate-2)" }}
           >
             <Group justify="space-between" mb="xs" wrap="nowrap">
-             <Text size="sm" fw={700} c="slate.8">
+              <Text size="sm" fw={700} c="slate.8">
                 {it.title}
               </Text>
               <Text
@@ -90,7 +89,7 @@ export function KycStep({ kycStatus, runCheck }: KycStepProps) {
                 {kycStatus[it.key]}
               </Text>
             </Group>
-           <Text size="xs" c="slate.5" mb="xs" style={{ lineHeight: 1.4 }}>
+            <Text size="xs" c="slate.5" mb="xs" style={{ lineHeight: 1.4 }}>
               {it.desc}
             </Text>
             <Button

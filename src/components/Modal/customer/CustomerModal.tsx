@@ -17,6 +17,7 @@ import {
   IconUser,
   IconCheck,
   IconArrowRight,
+  IconChevronRight,
 } from "@tabler/icons-react";
 
 import { GradientButton } from "../../shared/customer/Shared";
@@ -132,7 +133,7 @@ export function CustomerModal({
     null,
   );
   const [loanPurpose, setLoanPurpose] = useState<string | null>(null);
-  const [intendedLoanProduct, setIntendedLoanProduct] =useState<string | null>(null);
+  const [intendedLoanProduct, setIntendedLoanProduct] = useState<string | null>(null);
   const [preliminaryRiskRating, setPreliminaryRiskRating] = useState<string | null>(null);
   const [branch, setBranch] = useState<string | null>(null);
   const [creditOfficer, setCreditOfficer] = useState<string | null>(null);
@@ -416,14 +417,14 @@ export function CustomerModal({
     <Modal
       opened={opened}
       onClose={handleModalClose}
-      size="88%"
+      size="80%"
       padding={0}
       lockScroll
       styles={{
         content: {
-          height: "90vh",
-          maxHeight: "90vh",
-          maxWidth: 1280,
+          height: "88vh",
+          maxHeight: "88vh",
+          maxWidth: 1180,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
@@ -498,100 +499,93 @@ export function CustomerModal({
           </ActionIcon>
         </Group>
 
-        <Group align="stretch" gap={0} style={{ flex: 1, minHeight: 0 }}>
-          {/* Vertical Stepper Sidebar — compact */}
-          <ScrollArea
-            w={220}
-            style={{
-              borderRight: "1px solid var(--mantine-color-slate-1)",
-              flexShrink: 0,
-            }}
-            bg="slate.0"
-            visibleFrom="lg"
-          >
-            <Box p="xs">
-              {STEPS.map((step, idx) => {
-                const isActive = currentStep === idx;
-                const isComplete = currentStep > idx;
-                const StepIcon = step.icon;
-                return (
-                  <Box key={step.label} pos="relative">
-                    {idx < STEPS.length - 1 && (
-                      <Box
-                        pos="absolute"
-                        left={17}
-                        top={30}
-                        bottom={-2}
-                        w={1}
-                        bg="slate.2"
-                      />
-                    )}
-                    <UnstyledButton
-                      onClick={() => setActiveTab(idx.toString())}
-                      px="xs"
-                      py={6}
-                      mb={2}
-                      style={{
-                        borderRadius: "var(--mantine-radius-md)",
-                        width: "100%",
-                        position: "relative",
-                        zIndex: 1,
-                        background: isActive
-                          ? "var(--mantine-color-white)"
-                          : "transparent",
-                        boxShadow: isActive
-                          ? "var(--mantine-shadow-sm)"
-                          : "none",
-                        border: isActive
-                          ? "1px solid var(--mantine-color-slate-2)"
-                          : "1px solid transparent",
-                      }}
-                    >
-                      <Group gap="sm" wrap="nowrap">
-                        <ThemeIcon
-                          radius="xl"
-                          size={26}
-                          variant={
-                            isActive || isComplete ? "filled" : "outline"
-                          }
-                          color={isActive || isComplete ? "brand" : "slate"}
-                        >
-                          {isComplete ? (
-                            <IconCheck size={12} />
-                          ) : (
-                            <StepIcon size={12} />
-                          )}
-                        </ThemeIcon>
-                        <Text
-                          size="xs"
-                          fw={isActive ? 700 : 500}
-                          c={
-                            isActive
-                              ? "brand.7"
-                              : isComplete
-                                ? "slate.7"
-                                : "slate.5"
-                          }
-                        >
-                          {step.label}
-                        </Text>
-                      </Group>
-                    </UnstyledButton>
-                  </Box>
-                );
-              })}
-            </Box>
-          </ScrollArea>
+        {/* Horizontal step navigation */}
+        <ScrollArea
+          type="auto"
+          scrollbarSize={4}
+          style={{
+            borderBottom: "1px solid var(--mantine-color-slate-2)",
+            flexShrink: 0,
+          }}
+          bg="slate.0"
+        >
+          <Group gap={4} px="xl" py="sm" wrap="nowrap">
+            {STEPS.map((step, idx) => {
+              const isActive = currentStep === idx;
+              const isComplete = currentStep > idx;
+              const StepIcon = step.icon;
+              return (
+                <Group key={step.label} gap={4} wrap="nowrap">
+                  <UnstyledButton
+                    onClick={() => setActiveTab(idx.toString())}
+                    px="sm"
+                    py={8}
+                    style={{
+                      borderRadius: "var(--mantine-radius-md)",
+                      whiteSpace: "nowrap",
+                      background: isActive
+                        ? "var(--mantine-color-white)"
+                        : "transparent",
+                      boxShadow: isActive
+                        ? "var(--mantine-shadow-sm)"
+                        : "none",
+                      border: isActive
+                        ? "1px solid var(--mantine-color-slate-2)"
+                        : "1px solid transparent",
+                      transition:
+                        "background-color 120ms ease, box-shadow 120ms ease",
+                    }}
+                  >
+                    <Group gap={8} wrap="nowrap">
+                      <ThemeIcon
+                        radius="xl"
+                        size={24}
+                        variant={
+                          isActive || isComplete ? "filled" : "outline"
+                        }
+                        color={isActive || isComplete ? "brand" : "slate"}
+                      >
+                        {isComplete ? (
+                          <IconCheck size={12} />
+                        ) : (
+                          <StepIcon size={12} />
+                        )}
+                      </ThemeIcon>
+                      <Text
+                        size="xs"
+                        fw={isActive ? 700 : 500}
+                        c={
+                          isActive
+                            ? "brand.7"
+                            : isComplete
+                              ? "slate.7"
+                              : "slate.5"
+                        }
+                      >
+                        {step.label}
+                      </Text>
+                    </Group>
+                  </UnstyledButton>
+                  {idx < STEPS.length - 1 && (
+                    <IconChevronRight
+                      size={12}
+                      color="var(--mantine-color-slate-3)"
+                    />
+                  )}
+                </Group>
+              );
+            })}
+          </Group>
+        </ScrollArea>
 
-          {/* Main Content — softer bg, tighter top padding */}
-          <ScrollArea style={{ flex: 1, minHeight: 0 }} bg="slate.0">
-           <Box maw={960} pt="md" pl="lg" pr="xl" pb={80}>
-              <Fieldset disabled={isViewMode} variant="unstyled" p={0} m={0}>
-                {renderStep()}
-              </Fieldset>
-            </Box>
-          </ScrollArea>
-        </Group>
+        {/* Main Content */}
+        <ScrollArea style={{ flex: 1, minHeight: 0 }} bg="slate.0">
+          <Box maw={1000} mx="auto" pt="md" pl="lg" pr="lg" pb={24}>
+            <Fieldset disabled={isViewMode} variant="unstyled" p={0} m={0}>
+              {renderStep()}
+            </Fieldset>
+          </Box>
+        </ScrollArea>
 
         {/* Footer */}
         <Group

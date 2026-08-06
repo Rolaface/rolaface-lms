@@ -1,5 +1,4 @@
 import {
-  Grid,
   TextInput,
   Select,
   Text,
@@ -8,6 +7,7 @@ import {
   Button,
   Divider,
   Stack,
+  Box,
 } from "@mantine/core";
 import {
   IconChevronDown,
@@ -16,7 +16,6 @@ import {
   IconUserPlus,
 } from "@tabler/icons-react";
 import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
-import { W } from "../../../constants/customer/constants";
 
 interface KinStepProps {
   kinName: string;
@@ -32,8 +31,29 @@ interface KinStepProps {
 }
 
 const chevron = (
- <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
+  <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
 );
+
+function FieldRow({
+  columns,
+  children,
+}: {
+  columns: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Box
+      style={{
+        display: "grid",
+        gridTemplateColumns: columns,
+        gap: "var(--mantine-spacing-md)",
+        marginBottom: "var(--mantine-spacing-sm)",
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
 
 export function KinStep(props: KinStepProps) {
   const {
@@ -58,45 +78,47 @@ export function KinStep(props: KinStepProps) {
         description="Emergency contact and any linked guarantor for this customer"
         accent="gold"
       />
-      <Grid gap="md" align="flex-end">
-        <Grid.Col span={W.lg}>
-          <TextInput
-            label="Next of Kin Name"
-            placeholder="Full name"
-            value={kinName}
-            onChange={(e) => setKinName(e.currentTarget.value)}
-          />
-        </Grid.Col>
-        <Grid.Col span={W.sm}>
-          <Select
-            searchable
-            rightSection={chevron}
-            label="Relationship"
-            placeholder="Select"
-            data={["Spouse", "Parent", "Sibling", "Child", "Friend", "Other"]}
-            value={kinRelationship}
-            onChange={setKinRelationship}
-          />
-        </Grid.Col>
-        <Grid.Col span={W.md}>
-          <TextInput
-            label="Phone"
-            placeholder="+260 9__ ___ ___"
-            value={kinPhone}
-            onChange={(e) => setKinPhone(e.currentTarget.value)}
-          />
-        </Grid.Col>
-        <Grid.Col span={W.xxl}>
-          <TextInput
-            label="Address"
-            placeholder="Plot / street, area"
-            value={kinAddress}
-            onChange={(e) => setKinAddress(e.currentTarget.value)}
-          />
-        </Grid.Col>
-      </Grid>
 
-      <Divider mt="lg" mb="sm" />
+      {/* Name/address need more room than phone/relationship which have
+          short, fixed-format values. */}
+      <FieldRow columns="1.3fr 0.9fr 1fr">
+        <TextInput
+          radius="md"
+          label="Next of Kin Name"
+          placeholder="Full name"
+          value={kinName}
+          onChange={(e) => setKinName(e.currentTarget.value)}
+        />
+        <Select
+          radius="md"
+          searchable
+          rightSection={chevron}
+          label="Relationship"
+          placeholder="Select"
+          data={["Spouse", "Parent", "Sibling", "Child", "Friend", "Other"]}
+          value={kinRelationship}
+          onChange={setKinRelationship}
+        />
+        <TextInput
+          radius="md"
+          label="Phone"
+          placeholder="+260 9__ ___ ___"
+          value={kinPhone}
+          onChange={(e) => setKinPhone(e.currentTarget.value)}
+        />
+      </FieldRow>
+
+      <FieldRow columns="1fr">
+        <TextInput
+          radius="md"
+          label="Address"
+          placeholder="Plot / street, area"
+          value={kinAddress}
+          onChange={(e) => setKinAddress(e.currentTarget.value)}
+        />
+      </FieldRow>
+
+      <Divider mt="lg" mb="sm" color="slate.2" />
       <Stack gap="sm">
         <Group justify="space-between">
           <Text size="sm" fw={700} c="slate.8">
@@ -110,12 +132,13 @@ export function KinStep(props: KinStepProps) {
           withBorder
           radius="md"
           p="md"
-         bg="slate.0"
+          bg="slate.0"
           style={{ borderColor: "var(--mantine-color-slate-2)" }}
         >
           <Group gap="sm">
             <Button
               size="xs"
+              radius="md"
               variant="light"
               color="brand"
               leftSection={<IconLink size={14} />}
@@ -125,13 +148,14 @@ export function KinStep(props: KinStepProps) {
             </Button>
             <Button
               size="xs"
+              radius="md"
               variant="default"
               leftSection={<IconUserPlus size={14} />}
             >
               Add New Guarantor
             </Button>
           </Group>
-         <Text size="xs" c="slate.5" mt="sm">
+          <Text size="xs" c="slate.5" mt="sm">
             {guarantorLinked
               ? "1 guarantor linked."
               : "No guarantor linked yet."}

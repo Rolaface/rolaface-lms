@@ -1,7 +1,6 @@
-import { Grid, Select, Switch, Text, Group, Divider } from "@mantine/core";
+import { Select, Switch, Text, Group, Divider, Box } from "@mantine/core";
 import { IconChevronDown, IconCash } from "@tabler/icons-react";
 import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
-import { W } from "../../../constants/customer/constants";
 
 interface BorrowerStepProps {
   convertToBorrower: boolean;
@@ -23,8 +22,29 @@ interface BorrowerStepProps {
 }
 
 const chevron = (
-   <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
+  <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
 );
+
+function FieldRow({
+  columns,
+  children,
+}: {
+  columns: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Box
+      style={{
+        display: "grid",
+        gridTemplateColumns: columns,
+        gap: "var(--mantine-spacing-md)",
+        marginBottom: "var(--mantine-spacing-sm)",
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
 
 export function BorrowerStep(props: BorrowerStepProps) {
   const {
@@ -55,7 +75,7 @@ export function BorrowerStep(props: BorrowerStepProps) {
         description="Convert this profile into a borrower record and assign ownership"
       />
       <Group justify="space-between" mb="xs">
-       <Text size="sm" fw={700} c="slate.8">
+        <Text size="sm" fw={700} c="slate.8">
           Convert to Borrower
         </Text>
         <Switch
@@ -64,111 +84,116 @@ export function BorrowerStep(props: BorrowerStepProps) {
           color="brand"
         />
       </Group>
+
       {convertToBorrower && (
         <>
-          <Divider mt="md" mb="md" />
-          <Grid gap="md" align="flex-end">
-            <Grid.Col span={W.lg}>
-              <Select
-                searchable
-                rightSection={chevron}
-                label="Borrower Category"
-                withAsterisk
-                data={[
-                  "Individual Borrower",
-                  "Joint Borrower",
-                  "Business Borrower",
-                  "Group Borrower",
-                ]}
-                value={borrowerCategory}
-                onChange={setBorrowerCategory}
-              />
-            </Grid.Col>
-            <Grid.Col span={W.lg}>
-              <Select
-                searchable
-                rightSection={chevron}
-                label="Loan Purpose"
-                withAsterisk
-                placeholder="Select"
-                data={[
-                  "Agriculture",
-                  "Working Capital",
-                  "Asset Finance",
-                  "Housing",
-                  "Education",
-                  "Other",
-                ]}
-                value={loanPurpose}
-                onChange={setLoanPurpose}
-              />
-            </Grid.Col>
-            <Grid.Col span={W.lg}>
-              <Select
-                searchable
-                rightSection={chevron}
-                label="Intended Loan Product"
-                placeholder="Select"
-                data={[
-                  "Salary Advance",
-                  "Farmer Input Loan",
-                  "SME Working Capital",
-                  "Asset Finance",
-                ]}
-                value={intendedLoanProduct}
-                onChange={setIntendedLoanProduct}
-              />
-            </Grid.Col>
-            <Grid.Col span={W.sm}>
-              <Select
-                searchable
-                rightSection={chevron}
-                label="Preliminary Risk Rating"
-                placeholder="Not yet rated"
-                data={["Low", "Medium", "High"]}
-                value={preliminaryRiskRating}
-                onChange={setPreliminaryRiskRating}
-              />
-            </Grid.Col>
-            <Grid.Col span={W.lg}>
-              <Select
-                searchable
-                rightSection={chevron}
-                label="Branch"
-                withAsterisk
-                data={[
-                  "Cairo Road, Lusaka",
-                  "Kitwe Branch",
-                  "Ndola Branch",
-                  "Livingstone Branch",
-                ]}
-                value={branch}
-                onChange={setBranch}
-              />
-            </Grid.Col>
-            <Grid.Col span={W.md}>
-              <Select
-                searchable
-                rightSection={chevron}
-                label="Credit Officer"
-                placeholder="Unassigned"
-                data={["M. Banda", "C. Phiri", "T. Mwansa"]}
-                value={creditOfficer}
-                onChange={setCreditOfficer}
-              />
-            </Grid.Col>
-            <Grid.Col span={W.md}>
-              <Select
-                searchable
-                rightSection={chevron}
-                label="Relationship Manager"
-                placeholder="Unassigned"
-                data={["K. Zulu", "N. Tembo"]}
-                value={relationshipManager}
-                onChange={setRelationshipManager}
-              />
-            </Grid.Col>
-          </Grid>
+          <Divider mt="md" mb="md" color="slate.2" />
+
+          <FieldRow columns="1.2fr 1.2fr 1.2fr">
+            <Select
+              radius="md"
+              searchable
+              rightSection={chevron}
+              label="Borrower Category"
+              placeholder="Select"
+              withAsterisk
+              data={[
+                "Individual Borrower",
+                "Joint Borrower",
+                "Business Borrower",
+                "Group Borrower",
+              ]}
+              value={borrowerCategory}
+              onChange={setBorrowerCategory}
+            />
+            <Select
+              radius="md"
+              searchable
+              rightSection={chevron}
+              label="Loan Purpose"
+              withAsterisk
+              placeholder="Select"
+              data={[
+                "Agriculture",
+                "Working Capital",
+                "Asset Finance",
+                "Housing",
+                "Education",
+                "Other",
+              ]}
+              value={loanPurpose}
+              onChange={setLoanPurpose}
+            />
+            <Select
+              radius="md"
+              searchable
+              rightSection={chevron}
+              label="Intended Loan Product"
+              placeholder="Select"
+              data={[
+                "Salary Advance",
+                "Farmer Input Loan",
+                "SME Working Capital",
+                "Asset Finance",
+              ]}
+              value={intendedLoanProduct}
+              onChange={setIntendedLoanProduct}
+            />
+          </FieldRow>
+
+          <FieldRow columns="1fr 1.2fr 1fr">
+            <Select
+              radius="md"
+              searchable
+              rightSection={chevron}
+              label="Preliminary Risk Rating"
+              placeholder="Not yet rated"
+              data={["Low", "Medium", "High"]}
+              value={preliminaryRiskRating}
+              onChange={setPreliminaryRiskRating}
+            />
+            <Select
+              radius="md"
+              searchable
+              rightSection={chevron}
+              label="Branch"
+              withAsterisk
+              placeholder="Select"
+              data={[
+                "Cairo Road, Lusaka",
+                "Kitwe Branch",
+                "Ndola Branch",
+                "Livingstone Branch",
+              ]}
+              value={branch}
+              onChange={setBranch}
+            />
+            <Select
+              radius="md"
+              searchable
+              rightSection={chevron}
+              label="Credit Officer"
+              placeholder="Unassigned"
+              data={["M. Banda", "C. Phiri", "T. Mwansa"]}
+              value={creditOfficer}
+              onChange={setCreditOfficer}
+            />
+          </FieldRow>
+
+          <FieldRow columns="1fr 1.2fr 1fr">
+            <Select
+              radius="md"
+              searchable
+              rightSection={chevron}
+              label="Relationship Manager"
+              placeholder="Unassigned"
+              data={["K. Zulu", "N. Tembo"]}
+              value={relationshipManager}
+              onChange={setRelationshipManager}
+            />
+            <Box />
+            <Box />
+          </FieldRow>
         </>
       )}
     </PlainCard>

@@ -1,10 +1,4 @@
-import {
-  Grid,
-  TextInput,
-  Select,
-  SegmentedControl,
-  Stack,
-} from "@mantine/core";
+import { SimpleGrid, TextInput, Select, SegmentedControl, Stack } from "@mantine/core";
 import { IconChevronDown, IconClipboardCheck } from "@tabler/icons-react";
 import {
   FieldLabel,
@@ -40,7 +34,10 @@ interface IdentityStepProps {
 
 const chevron = (
   <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
- );
+);
+
+const FIELD_MAW = 220;
+
 export function IdentityStep(props: IdentityStepProps) {
   const {
     customerNumber,
@@ -67,7 +64,7 @@ export function IdentityStep(props: IdentityStepProps) {
   } = props;
 
   return (
-    <Stack gap="sm">
+    <Stack gap="xs">
       <PlainCard dense>
         <SectionHeader
           icon={IconClipboardCheck}
@@ -78,7 +75,8 @@ export function IdentityStep(props: IdentityStepProps) {
         />
         <SegmentedControl
           fullWidth
-          size="xs"
+          size="sm"
+          radius="md"
           value={customerType}
           onChange={setCustomerType}
           color="brand"
@@ -90,6 +88,25 @@ export function IdentityStep(props: IdentityStepProps) {
             "Corporate",
             "Group",
           ]}
+          styles={{
+            root: {
+              background: "var(--mantine-color-slate-1)",
+              padding: 4,
+              border: "1px solid var(--mantine-color-slate-2)",
+            },
+            indicator: {
+              boxShadow: "var(--mantine-shadow-sm)",
+            },
+            label: {
+              fontWeight: 600,
+              fontSize: "var(--mantine-font-size-sm)",
+              paddingTop: 8,
+              paddingBottom: 8,
+              "&[data-active]": {
+                color: "var(--mantine-color-white)",
+              },
+            },
+          }}
         />
       </PlainCard>
 
@@ -99,125 +116,125 @@ export function IdentityStep(props: IdentityStepProps) {
           title="Identity"
           badge="REQUIRED"
         />
-        <Grid gap="lg">
-          <Grid.Col span={4}>
-            <TextInput
-              label={<FieldLabel text="Customer number" tag="(auto)" />}
-              value={customerNumber}
-              disabled
-              classNames={readOnlyClassNames}
-            />
-          </Grid.Col>
-          <Grid.Col span={4}>
-            <TextInput
-              label={<FieldLabel text="Full legal name" />}
-              placeholder="e.g. Bwalya Mutale"
-              withAsterisk
-              value={fullLegalName}
-              onChange={(e) => setFullLegalName(e.currentTarget.value)}
-            />
-          </Grid.Col>
-          <Grid.Col span={4}>
-            <TextInput
-              label={<FieldLabel text="Preferred name" tag="Optional" />}
-              placeholder="What should we call them?"
-              value={preferredName}
-              onChange={(e) => setPreferredName(e.currentTarget.value)}
-            />
-          </Grid.Col>
-          <Grid.Col span={4}>
-            <Select
-              searchable
-              rightSection={chevron}
-              label={<FieldLabel text="Gender" />}
-              placeholder="Select"
-              withAsterisk
-              data={["Male", "Female", "Other"]}
-              value={gender}
-              onChange={setGender}
-            />
-          </Grid.Col>
-          <Grid.Col span={4}>
-            <TextInput
-              type="date"
-              label={<FieldLabel text="Date of birth" />}
-              withAsterisk
-              value={dateOfBirth}
-              onChange={(e) => setDateOfBirth(e.currentTarget.value)}
-            />
-          </Grid.Col>
-          <Grid.Col span={4}>
-            <TextInput
-              label={<FieldLabel text="Age" tag="(calculated)" />}
-              value={calcAge(dateOfBirth)}
-              disabled
-              classNames={readOnlyClassNames}
-            />
-          </Grid.Col>
-          <Grid.Col span={4}>
-            <Select
-              searchable
-              rightSection={chevron}
-              label={<FieldLabel text="Nationality" />}
-              placeholder="Select"
-              withAsterisk
-              data={[
-                "Zambian",
-                "Zimbabwean",
-                "Malawian",
-                "South African",
-                "Other",
-              ]}
-              value={nationality}
-              onChange={setNationality}
-            />
-          </Grid.Col>
-          <Grid.Col span={4}>
-            <Select
-              searchable
-              rightSection={chevron}
-              label={<FieldLabel text="Marital status" tag="Optional" />}
-              placeholder="Select"
-              data={["Single", "Married", "Divorced", "Widowed"]}
-              value={maritalStatus}
-              onChange={setMaritalStatus}
-            />
-          </Grid.Col>
-          <Grid.Col span={4}>
-            <TextInput
-              label={<FieldLabel text="Occupation" tag="Optional" />}
-              placeholder="e.g. Agronomist"
-              value={occupation}
-              onChange={(e) => setOccupation(e.currentTarget.value)}
-            />
-          </Grid.Col>
-          <Grid.Col span={4}>
-            <Select
-              searchable
-              rightSection={chevron}
-              label={<FieldLabel text="Industry" tag="Optional" />}
-              placeholder="Select"
-              data={[
-                "Agriculture",
-                "Government",
-                "Retail",
-                "Manufacturing",
-                "Education",
-                "Other",
-              ]}
-              value={industry}
-              onChange={setIndustry}
-            />
-          </Grid.Col>
-          <Grid.Col span={4}>
-            <TextInput
-              label={<FieldLabel text="Employer" tag="Optional" />}
-              placeholder="e.g. Ministry of Agriculture"
-              value={employer}
-              onChange={(e) => setEmployer(e.currentTarget.value)}
-            />
-          </Grid.Col>
-        </Grid>
+        <SimpleGrid cols={4} spacing="md" verticalSpacing="sm">
+          <TextInput
+            maw={FIELD_MAW}
+            radius="md"
+            label={<FieldLabel text="Customer number" tag="(auto)" />}
+            value={customerNumber}
+            disabled
+            classNames={readOnlyClassNames}
+          />
+          <TextInput
+            maw={FIELD_MAW}
+            radius="md"
+            label={<FieldLabel text="Full legal name" />}
+            placeholder="e.g. Bwalya Mutale"
+            withAsterisk
+            value={fullLegalName}
+            onChange={(e) => setFullLegalName(e.currentTarget.value)}
+          />
+          <TextInput
+            maw={FIELD_MAW}
+            radius="md"
+            label={<FieldLabel text="Preferred name" tag="Optional" />}
+            placeholder="What should we call them?"
+            value={preferredName}
+            onChange={(e) => setPreferredName(e.currentTarget.value)}
+          />
+          <Select
+            maw={FIELD_MAW}
+            radius="md"
+            searchable
+            rightSection={chevron}
+            label={<FieldLabel text="Gender" />}
+            placeholder="Select"
+            withAsterisk
+            data={["Male", "Female", "Other"]}
+            value={gender}
+            onChange={setGender}
+          />
+          <TextInput
+            maw={FIELD_MAW}
+            radius="md"
+            type="date"
+            label={<FieldLabel text="Date of birth" />}
+            withAsterisk
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.currentTarget.value)}
+          />
+          <TextInput
+            maw={FIELD_MAW}
+            radius="md"
+            label={<FieldLabel text="Age" tag="(calculated)" />}
+            value={calcAge(dateOfBirth)}
+            disabled
+            classNames={readOnlyClassNames}
+          />
+          <Select
+            maw={FIELD_MAW}
+            radius="md"
+            searchable
+            rightSection={chevron}
+            label={<FieldLabel text="Nationality" />}
+            placeholder="Select"
+            withAsterisk
+            data={[
+              "Zambian",
+              "Zimbabwean",
+              "Malawian",
+              "South African",
+              "Other",
+            ]}
+            value={nationality}
+            onChange={setNationality}
+          />
+          <Select
+            maw={FIELD_MAW}
+            radius="md"
+            searchable
+            rightSection={chevron}
+            label={<FieldLabel text="Marital status" tag="Optional" />}
+            placeholder="Select"
+            data={["Single", "Married", "Divorced", "Widowed"]}
+            value={maritalStatus}
+            onChange={setMaritalStatus}
+          />
+          <TextInput
+            maw={FIELD_MAW}
+            radius="md"
+            label={<FieldLabel text="Occupation" tag="Optional" />}
+            placeholder="e.g. Agronomist"
+            value={occupation}
+            onChange={(e) => setOccupation(e.currentTarget.value)}
+          />
+          <Select
+            maw={FIELD_MAW}
+            radius="md"
+            searchable
+            rightSection={chevron}
+            label={<FieldLabel text="Industry" tag="Optional" />}
+            placeholder="Select"
+            data={[
+              "Agriculture",
+              "Government",
+              "Retail",
+              "Manufacturing",
+              "Education",
+              "Other",
+            ]}
+            value={industry}
+            onChange={setIndustry}
+          />
+          <TextInput
+            maw={FIELD_MAW}
+            radius="md"
+            label={<FieldLabel text="Employer" tag="Optional" />}
+            placeholder="e.g. Ministry of Agriculture"
+            value={employer}
+            onChange={(e) => setEmployer(e.currentTarget.value)}
+          />
+        </SimpleGrid>
       </PlainCard>
     </Stack>
   );
