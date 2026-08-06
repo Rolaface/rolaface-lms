@@ -49,6 +49,7 @@ import { Receivable } from "../view/Accounting/Receivable ";
 import { Payable } from "../view/Accounting/Payable";
 import { ProfitLoss } from "../view/Accounting/Profitloss";
 import { BalanceSheet } from "../view/Accounting/balancesheet";
+import { CashFlow } from "../view/Accounting/CashFlow";
 import { AccountingLayout } from "../view/Accounting/AccountingLayout";
 import { IconHierarchy2, IconReceipt2, IconFileText } from "@tabler/icons-react";
 import { RouteTabs, type RouteTabItem } from "../components/ui/RouteTabs";
@@ -287,12 +288,12 @@ const trialBalanceRoute = createRoute({
 });
 const receivableRoute = createRoute({
   getParentRoute: () => accountingRoute,
-  path: "/Receivable",
+  path: "/receivable",
   component: Receivable,
 });
 const payableeRoute = createRoute({
   getParentRoute: () => accountingRoute,
-  path: "/Payable",
+  path: "/payable",
   component: Payable,
 });
 const profitandlossRoute = createRoute({
@@ -305,7 +306,11 @@ const balancesheetRoute = createRoute({
   path: "/balance-sheet",
   component: BalanceSheet,
 });
-
+const cashflowRoute = createRoute({
+  getParentRoute: () => accountingRoute,
+  path: "/cash-flow",
+  component: CashFlow,
+});
 const reportsStatementRoute = createRoute({
   getParentRoute: () => reportsRoute,
   path: "/statement",
@@ -358,6 +363,7 @@ const routeTree = rootRoute.addChildren([
     payableeRoute,
     profitandlossRoute,
     balancesheetRoute,
+    cashflowRoute,
   ]),
 
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute]),

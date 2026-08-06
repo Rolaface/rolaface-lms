@@ -9,6 +9,7 @@ import {
 import {
   Box,
   Paper,
+  Table,
   TextInput,
   Checkbox,
   Button,
@@ -16,6 +17,7 @@ import {
   Text,
   ActionIcon,
   Loader,
+  Stack,
 } from "@mantine/core";
 import {
   IconRefresh,
@@ -36,6 +38,14 @@ import { DateInput } from "@mantine/dates";
 
 /* ───────────────── Filter bar ───────────────── */
 
+function FilterLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <Text fz="10px" fw={700} tt="uppercase" c="slate.4" style={{ letterSpacing: "0.08em" }}>
+      {children}
+    </Text>
+  );
+}
+
 function FilterBar({
   filters,
   setFilters,
@@ -48,13 +58,10 @@ function FilterBar({
   loading: boolean;
 }) {
   return (
-    <Paper withBorder radius="md" p="xs" className="shadow-sm">
-      <div className="flex items-center gap-3 flex-wrap">
+    <Paper withBorder radius="md" p="xs" shadow="sm">
+      <Group gap="sm" wrap="wrap" align="flex-end">
         <Group gap={4} wrap="nowrap">
-          <Text fz="xs" fw={600} c="gray.5" className="uppercase tracking-wide">
-            From
-          </Text>
-
+          <FilterLabel>From</FilterLabel>
           <DateInput
             size="xs"
             placeholder="From Date"
@@ -66,16 +73,13 @@ function FilterBar({
               }))
             }
             valueFormat="DD/MM/YYYY"
-            className="w-[150px]"
+            w={150}
             clearable
           />
         </Group>
 
         <Group gap={4} wrap="nowrap">
-          <Text fz="xs" fw={600} c="gray.5" className="uppercase tracking-wide">
-            To
-          </Text>
-
+          <FilterLabel>To</FilterLabel>
           <DateInput
             size="xs"
             placeholder="To Date"
@@ -87,25 +91,17 @@ function FilterBar({
               }))
             }
             valueFormat="DD/MM/YYYY"
-            className="w-[150px]"
+            w={150}
             clearable
           />
         </Group>
 
         <Group gap={4} wrap="nowrap">
-          <Text fz="xs" fw={600} c="gray.5" className="uppercase tracking-wide">
-            FY
-          </Text>
-          <TextInput
-            size="xs"
-            placeholder="2026-2027"
-            value={filters.fiscal_year}
-            disabled
-            className="w-28"
-          />
+          <FilterLabel>FY</FilterLabel>
+          <TextInput size="xs" placeholder="2026-2027" value={filters.fiscal_year} disabled w={110} />
         </Group>
 
-        <div className="w-px self-stretch bg-gray-200" />
+        <Box w={1} h={24} style={{ background: "var(--mantine-color-slate-2)", alignSelf: "stretch" }} />
 
         <Checkbox
           size="xs"
@@ -125,8 +121,7 @@ function FilterBar({
           onChange={(e) =>
             setFilters((f) => ({
               ...f,
-              with_period_closing_entry:
-                e.target?.checked ?? !f.with_period_closing_entry,
+              with_period_closing_entry: e.target?.checked ?? !f.with_period_closing_entry,
             }))
           }
         />
@@ -137,8 +132,7 @@ function FilterBar({
           onChange={(e) =>
             setFilters((f) => ({
               ...f,
-              show_closing_entries:
-                e.target?.checked ?? !f.show_closing_entries,
+              show_closing_entries: e.target?.checked ?? !f.show_closing_entries,
             }))
           }
         />
@@ -146,15 +140,13 @@ function FilterBar({
         <Button
           size="xs"
           variant="default"
-          className="ml-auto"
-          leftSection={
-            <IconRefresh size={13} className={loading ? "animate-spin" : ""} />
-          }
+          ml="auto"
+          leftSection={<IconRefresh size={13} className={loading ? "animate-spin" : ""} />}
           onClick={onRefresh}
         >
           Refresh
         </Button>
-      </div>
+      </Group>
     </Paper>
   );
 }
@@ -172,41 +164,27 @@ function useColumns(): ColumnDef<TBAccount>[] {
           const node = row.original;
           const canExpand = row.getCanExpand();
           return (
-            <div
-              className="flex items-center gap-1.5"
-              style={{ paddingLeft: row.depth * 18 }}
-            >
+            <Group gap={6} wrap="nowrap" style={{ paddingLeft: row.depth * 18 }}>
               {canExpand ? (
-                <ActionIcon
-                  size="xs"
-                  variant="subtle"
-                  color="gray"
-                  onClick={row.getToggleExpandedHandler()}
-                >
+                <ActionIcon size="xs" variant="subtle" color="slate" onClick={row.getToggleExpandedHandler()}>
                   <IconChevronRight
                     size={12}
-                    className={`transition-transform duration-150 ${row.getIsExpanded() ? "rotate-90" : ""}`}
+                    style={{
+                      transition: "transform 150ms ease",
+                      transform: row.getIsExpanded() ? "rotate(90deg)" : "none",
+                    }}
                   />
-                  {row.getIsExpanded() ? (
-                    <IconFolderOpen size={13} />
-                  ) : (
-                    <IconFolder size={13} />
-                  )}
+                  {row.getIsExpanded() ? <IconFolderOpen size={13} /> : <IconFolder size={13} />}
                 </ActionIcon>
               ) : (
-                <span className="w-[23px] flex items-center justify-center">
-                  <IconBook size={12} className="text-gray-400 opacity-60" />
-                </span>
+                <Box w={23} style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <IconBook size={12} color="var(--mantine-color-slate-4)" style={{ opacity: 0.6 }} />
+                </Box>
               )}
-              <Text
-                fz="xs"
-                fw={row.depth === 0 ? 600 : 400}
-                c="gray.8"
-                truncate
-              >
+              <Text fz="xs" fw={row.depth === 0 ? 600 : 400} c="slate.8" truncate>
                 {node.account_name}
               </Text>
-            </div>
+            </Group>
           );
         },
       },
@@ -218,13 +196,9 @@ function useColumns(): ColumnDef<TBAccount>[] {
           </Text>
         ),
         size: 130,
+        meta: { align: "right" },
         cell: ({ row }) => (
-          <Text
-            fz="xs"
-            ta="right"
-            c="gray.7"
-            className="font-mono tabular-nums"
-          >
+          <Text fz="xs" ta="right" c="slate.7" style={{ fontFamily: "var(--mantine-font-family-monospace)", fontVariantNumeric: "tabular-nums" }}>
             {nf(row.original.opening_debit)}
           </Text>
         ),
@@ -237,13 +211,9 @@ function useColumns(): ColumnDef<TBAccount>[] {
           </Text>
         ),
         size: 130,
+        meta: { align: "right" },
         cell: ({ row }) => (
-          <Text
-            fz="xs"
-            ta="right"
-            c="gray.7"
-            className="font-mono tabular-nums"
-          >
+          <Text fz="xs" ta="right" c="slate.7" style={{ fontFamily: "var(--mantine-font-family-monospace)", fontVariantNumeric: "tabular-nums" }}>
             {nf(row.original.opening_credit)}
           </Text>
         ),
@@ -256,14 +226,9 @@ function useColumns(): ColumnDef<TBAccount>[] {
           </Text>
         ),
         size: 130,
+        meta: { align: "right" },
         cell: ({ row }) => (
-          <Text
-            fz="xs"
-            ta="right"
-            fw={500}
-            c="blue.6"
-            className="font-mono tabular-nums"
-          >
+          <Text fz="xs" ta="right" fw={500} c="info.6" style={{ fontFamily: "var(--mantine-font-family-monospace)", fontVariantNumeric: "tabular-nums" }}>
             {nf(row.original.debit)}
           </Text>
         ),
@@ -276,14 +241,9 @@ function useColumns(): ColumnDef<TBAccount>[] {
           </Text>
         ),
         size: 130,
+        meta: { align: "right" },
         cell: ({ row }) => (
-          <Text
-            fz="xs"
-            ta="right"
-            fw={500}
-            c="orange.6"
-            className="font-mono tabular-nums"
-          >
+          <Text fz="xs" ta="right" fw={500} c="accent.6" style={{ fontFamily: "var(--mantine-font-family-monospace)", fontVariantNumeric: "tabular-nums" }}>
             {nf(row.original.credit)}
           </Text>
         ),
@@ -296,14 +256,9 @@ function useColumns(): ColumnDef<TBAccount>[] {
           </Text>
         ),
         size: 130,
+        meta: { align: "right" },
         cell: ({ row }) => (
-          <Text
-            fz="xs"
-            ta="right"
-            fw={700}
-            c="gray.9"
-            className="font-mono tabular-nums"
-          >
+          <Text fz="xs" ta="right" fw={700} c="slate.9" style={{ fontFamily: "var(--mantine-font-family-monospace)", fontVariantNumeric: "tabular-nums" }}>
             {nf(row.original.closing_debit)}
           </Text>
         ),
@@ -316,14 +271,9 @@ function useColumns(): ColumnDef<TBAccount>[] {
           </Text>
         ),
         size: 130,
+        meta: { align: "right" },
         cell: ({ row }) => (
-          <Text
-            fz="xs"
-            ta="right"
-            fw={700}
-            c="gray.9"
-            className="font-mono tabular-nums"
-          >
+          <Text fz="xs" ta="right" fw={700} c="slate.9" style={{ fontFamily: "var(--mantine-font-family-monospace)", fontVariantNumeric: "tabular-nums" }}>
             {nf(row.original.closing_credit)}
           </Text>
         ),
@@ -336,17 +286,8 @@ function useColumns(): ColumnDef<TBAccount>[] {
 /* ───────────────── Page ───────────────── */
 
 export function TrialBalance() {
-  const {
-    data,
-    loading,
-    error,
-    handleRefresh,
-    filters,
-    setFilters,
-    tableData,
-    expanded,
-    setExpanded,
-  } = useTrialBalance();
+  const { data, loading, error, handleRefresh, filters, setFilters, tableData, expanded, setExpanded } =
+    useTrialBalance();
 
   const columns = useColumns();
 
@@ -364,146 +305,116 @@ export function TrialBalance() {
 
   if (error && !data) {
     return (
-      <div className="flex flex-col items-center py-20 gap-3">
-        <IconAlertCircle size={26} className="text-red-500" />
-        <Text fz="sm" c="red">
+      <Stack align="center" py={80} gap="sm">
+        <IconAlertCircle size={26} color="var(--mantine-color-danger-5)" />
+        <Text fz="sm" c="danger.6">
           {error}
         </Text>
-        <Button
-          size="xs"
-          leftSection={<IconRefresh size={13} />}
-          onClick={handleRefresh}
-        >
+        <Button size="xs" leftSection={<IconRefresh size={13} />} onClick={handleRefresh}>
           Retry
         </Button>
-      </div>
+      </Stack>
     );
   }
 
   return (
-    <Box className="flex flex-col gap-4 p-6 ">
-      <div className="flex justify-between items-start flex-wrap gap-3"></div>
+    <Stack gap="md" p="lg">
+      <FilterBar filters={filters} setFilters={setFilters} onRefresh={handleRefresh} loading={loading} />
 
-      <FilterBar
-        filters={filters}
-        setFilters={setFilters}
-        onRefresh={handleRefresh}
-        loading={loading}
-      />
-
-      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
-        <div className="overflow-x-auto overflow-y-auto max-h-[520px] relative">
-          <table
-            className="border-collapse"
-            style={{
-              tableLayout: "fixed",
-              width: "max-content",
-              minWidth: "100%",
-            }}
-          >
-            <colgroup>
-              {table.getAllLeafColumns().map((col) => (
-                <col key={col.id} style={{ width: col.getSize() }} />
-              ))}
-            </colgroup>
-            <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
+      <Paper withBorder radius="md" shadow="sm" style={{ overflow: "hidden" }}>
+        <Box style={{ overflowX: "auto", overflowY: "auto", maxHeight: 520, position: "relative" }}>
+          <Table stickyHeader horizontalSpacing="sm" verticalSpacing={6} style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
+            <Table.Thead>
               {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id}>
-                  {hg.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className="px-3 py-2 text-[11px] font-semibold text-gray-600 whitespace-nowrap bg-gray-50 border-b border-gray-200"
-                    >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                    </th>
-                  ))}
-                </tr>
+                <Table.Tr key={hg.id}>
+                  {hg.headers.map((header) => {
+                    const align =
+                      (header.column.columnDef.meta as { align?: string } | undefined)?.align === "right"
+                        ? "right"
+                        : "left";
+                    return (
+                      <Table.Th key={header.id} style={{ width: header.getSize(), textAlign: align, whiteSpace: "nowrap" }}>
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                      </Table.Th>
+                    );
+                  })}
+                </Table.Tr>
               ))}
-            </thead>
-            <tbody>
+            </Table.Thead>
+            <Table.Tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={columns.length} style={{ height: 240 }}>
-                    <div className="flex justify-center items-center h-full">
+                <Table.Tr>
+                  <Table.Td colSpan={columns.length} h={240}>
+                    <Group justify="center">
                       <Loader size="sm" color="indigoAlt.4" />
-                    </div>
-                  </td>
-                </tr>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
               ) : rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="py-16 text-center text-xs text-gray-400"
-                  >
-                    No trial balance data.
-                  </td>
-                </tr>
+                <Table.Tr>
+                  <Table.Td colSpan={columns.length} py={64} ta="center">
+                    <Text fz="xs" c="slate.4">
+                      No trial balance data.
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
               ) : (
                 rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="hover:bg-gray-50/50 transition-colors h-[34px] border-b border-gray-100 last:border-0"
-                  >
+                  <Table.Tr key={row.id}>
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-3 py-1 whitespace-nowrap">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </td>
+                      <Table.Td key={cell.id} style={{ whiteSpace: "nowrap" }}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </Table.Td>
                     ))}
-                  </tr>
+                  </Table.Tr>
                 ))
               )}
-            </tbody>
+            </Table.Tbody>
 
             {!loading && rows.length > 0 && data && (
-              <tfoot className="sticky bottom-0 z-10">
-                <tr className="bg-gray-50 border-t-2 border-gray-300 h-[34px] shadow-[0_-1px_0_0_rgba(0,0,0,0.06)]">
-                  <td className="px-3 py-1 whitespace-nowrap bg-gray-50">
+              <Table.Tfoot style={{ position: "sticky", bottom: 0, background: "var(--mantine-color-slate-0)" }}>
+                <Table.Tr style={{ borderTop: "2px solid var(--mantine-color-slate-3)" }}>
+                  <Table.Td>
                     <Text fz="xs" fw={700} c="indigoAlt.6">
                       TOTAL
                     </Text>
-                  </td>
-                  <td className="px-3 py-1 whitespace-nowrap bg-gray-50 text-right">
-                    <Text fz="xs" fw={700} c="gray.8" className="font-mono">
+                  </Table.Td>
+                  <Table.Td style={{ textAlign: "right" }}>
+                    <Text fz="xs" fw={700} c="slate.8" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
                       {nf(data.totals.opening_debit)}
                     </Text>
-                  </td>
-                  <td className="px-3 py-1 whitespace-nowrap bg-gray-50 text-right">
-                    <Text fz="xs" fw={700} c="gray.8" className="font-mono">
+                  </Table.Td>
+                  <Table.Td style={{ textAlign: "right" }}>
+                    <Text fz="xs" fw={700} c="slate.8" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
                       {nf(data.totals.opening_credit)}
                     </Text>
-                  </td>
-                  <td className="px-3 py-1 whitespace-nowrap bg-gray-50 text-right">
-                    <Text fz="xs" fw={700} c="blue.6" className="font-mono">
+                  </Table.Td>
+                  <Table.Td style={{ textAlign: "right" }}>
+                    <Text fz="xs" fw={700} c="info.6" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
                       {nf(data.totals.debit)}
                     </Text>
-                  </td>
-                  <td className="px-3 py-1 whitespace-nowrap bg-gray-50 text-right">
-                    <Text fz="xs" fw={700} c="orange.6" className="font-mono">
+                  </Table.Td>
+                  <Table.Td style={{ textAlign: "right" }}>
+                    <Text fz="xs" fw={700} c="accent.6" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
                       {nf(data.totals.credit)}
                     </Text>
-                  </td>
-                  <td className="px-3 py-1 whitespace-nowrap bg-gray-50 text-right">
-                    <Text fz="xs" fw={700} c="gray.9" className="font-mono">
+                  </Table.Td>
+                  <Table.Td style={{ textAlign: "right" }}>
+                    <Text fz="xs" fw={700} c="slate.9" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
                       {nf(data.totals.closing_debit)}
                     </Text>
-                  </td>
-                  <td className="px-3 py-1 whitespace-nowrap bg-gray-50 text-right">
-                    <Text fz="xs" fw={700} c="gray.9" className="font-mono">
+                  </Table.Td>
+                  <Table.Td style={{ textAlign: "right" }}>
+                    <Text fz="xs" fw={700} c="slate.9" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
                       {nf(data.totals.closing_credit)}
                     </Text>
-                  </td>
-                </tr>
-              </tfoot>
+                  </Table.Td>
+                </Table.Tr>
+              </Table.Tfoot>
             )}
-          </table>
-        </div>
+          </Table>
+        </Box>
       </Paper>
-    </Box>
+    </Stack>
   );
 }

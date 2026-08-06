@@ -64,7 +64,10 @@ Accounting: {
   },
   trialbalnce:{ 
      get:`${ERP_BASE}/api/method/custom_api.api.trial_balance.get_trial_balance`,
-    }
+    },
+  cashFlow: {
+    get: `${ERP_BASE}/api/method/custom_api.api.cash_flow.get_cash_flow`,
+  },  
 
 
 },
