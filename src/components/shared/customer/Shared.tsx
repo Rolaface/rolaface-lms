@@ -117,8 +117,7 @@ export const SectionHeader = ({
   </Group>
 );
 
-// Gradient primary button, pointed at the theme's brand color — if
-// brand[5]/[7] ever change in mantine.theme.ts, every button below updates.
+
 type GradientButtonProps = ButtonProps & React.ComponentPropsWithoutRef<"button">;
 
 export const GradientButton = (props: GradientButtonProps) => (

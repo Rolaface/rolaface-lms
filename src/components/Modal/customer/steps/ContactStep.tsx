@@ -1,4 +1,4 @@
-import { Grid, TextInput, Select, Checkbox, Text, Group } from "@mantine/core";
+import { Grid, TextInput, Select, Checkbox, Text, Group, Divider } from "@mantine/core";
 import {
   IconChevronDown,
   IconMail,
@@ -41,8 +41,35 @@ interface ContactStepProps {
 }
 
 const chevron = (
-  <IconChevronDown size={13} color="var(--mantine-color-gray-5)" />
+  <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
 );
+
+// Local sub-section heading — same pattern used in IdentityStep, kept
+// local here rather than in Shared.tsx since it's only a visual grouping
+// aid, not a shared interactive component.
+function SubHeading({
+  icon: Icon,
+  label,
+}: {
+  icon: typeof IconPhone;
+  label: string;
+}) {
+  return (
+    <Group gap={6} mb="sm" mt="md">
+      <Icon size={13} color="var(--mantine-color-slate-4)" />
+      <Text
+        size="10px"
+        fw={700}
+        tt="uppercase"
+        c="slate.5"
+        style={{ letterSpacing: 0.5 }}
+      >
+        {label}
+      </Text>
+      <Divider flex={1} color="slate.1" />
+    </Group>
+  );
+}
 
 export function ContactStep(props: ContactStepProps) {
   const {
@@ -82,8 +109,10 @@ export function ContactStep(props: ContactStepProps) {
         accent="indigoAlt"
       />
 
-      <Grid gap="md" align="flex-end">
-        <Grid.Col span={W.xl}>
+      {/* --- Phone & email --- */}
+      <SubHeading icon={IconPhone} label="Phone & Email" />
+      <Grid gap="lg">
+        <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
           <TextInput
             label="Mobile Number"
             placeholder="+260 9__ ___ ___"
@@ -94,7 +123,7 @@ export function ContactStep(props: ContactStepProps) {
             onChange={(e) => setMobileNumber(e.currentTarget.value)}
           />
         </Grid.Col>
-        <Grid.Col span={W.xl}>
+        <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
           <TextInput
             label="Alternate Mobile"
             placeholder="+260 9__ ___ ___"
@@ -104,7 +133,7 @@ export function ContactStep(props: ContactStepProps) {
             onChange={(e) => setAlternateMobile(e.currentTarget.value)}
           />
         </Grid.Col>
-        <Grid.Col span={W.xl}>
+        <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
           <TextInput
             label="Email Address"
             placeholder="name@example.com"
@@ -114,7 +143,7 @@ export function ContactStep(props: ContactStepProps) {
             onChange={(e) => setEmail(e.currentTarget.value)}
           />
         </Grid.Col>
-        <Grid.Col span={W.sm}>
+        <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
           <Select
             searchable
             rightSection={chevron}
@@ -127,8 +156,10 @@ export function ContactStep(props: ContactStepProps) {
         </Grid.Col>
       </Grid>
 
-      <Grid gap="md" align="flex-end" mt="md">
-        <Grid.Col span={W.xxl}>
+      {/* --- Address --- */}
+      <SubHeading icon={IconMapPin} label="Address" />
+      <Grid gap="lg">
+        <Grid.Col span={{ base: 12, lg: 6 }}>
           <TextInput
             label="Residential Address"
             placeholder="Plot / street, area"
@@ -138,7 +169,7 @@ export function ContactStep(props: ContactStepProps) {
             onChange={(e) => setResidentialAddress(e.currentTarget.value)}
           />
         </Grid.Col>
-        <Grid.Col span={W.sm}>
+        <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
           <Select
             searchable
             rightSection={chevron}
@@ -151,7 +182,7 @@ export function ContactStep(props: ContactStepProps) {
             onChange={setCountry}
           />
         </Grid.Col>
-        <Grid.Col span={W.sm}>
+        <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
           <Select
             searchable
             rightSection={chevron}
@@ -162,7 +193,7 @@ export function ContactStep(props: ContactStepProps) {
             onChange={setProvince}
           />
         </Grid.Col>
-        <Grid.Col span={W.xs}>
+        <Grid.Col span={{ base: 12, sm: 4 }}>
           <TextInput
             label="District"
             placeholder="e.g. Chongwe"
@@ -170,7 +201,7 @@ export function ContactStep(props: ContactStepProps) {
             onChange={(e) => setDistrict(e.currentTarget.value)}
           />
         </Grid.Col>
-        <Grid.Col span={W.sm}>
+        <Grid.Col span={{ base: 12, sm: 4 }}>
           <TextInput
             label="City / Town"
             placeholder="e.g. Lusaka"
@@ -178,7 +209,7 @@ export function ContactStep(props: ContactStepProps) {
             onChange={(e) => setCityTown(e.currentTarget.value)}
           />
         </Grid.Col>
-        <Grid.Col span={W.xxs}>
+        <Grid.Col span={{ base: 12, sm: 4 }}>
           <TextInput
             label="Postal Code"
             placeholder="e.g. 10101"
@@ -188,8 +219,9 @@ export function ContactStep(props: ContactStepProps) {
         </Grid.Col>
       </Grid>
 
-      <Group justify="space-between" mt="sm" mb="xs">
-        <Text size="xs" fw={700} c="dark.7">
+      {/* --- Mailing address --- */}
+      <Group justify="space-between" mt="lg" mb="xs">
+        <Text size="xs" fw={700} c="slate.8">
           Mailing Address
         </Text>
         <Checkbox
@@ -199,11 +231,8 @@ export function ContactStep(props: ContactStepProps) {
           onChange={(e) => setSameAsResidential(e.currentTarget.checked)}
         />
       </Group>
-      {/* Fixed: this TextInput's Grid.Col now sits inside a Grid parent —
-          Mantine's Grid.Col reads column context from Grid, so a standalone
-          Grid.Col (as before) throws "Grid.Col was not found in tree". */}
       <Grid>
-        <Grid.Col span={W.xxl}>
+        <Grid.Col span={{ base: 12, lg: 6 }}>
           <TextInput
             placeholder="Plot / street, area"
             disabled={sameAsResidential}
