@@ -95,9 +95,14 @@ export function LoanDisbursementModal({
 
    const dsbrAccountOptions = useMemo(() => {
      const list = dsbrAccountsResponse?.data || dsbrAccountsResponse?.message || dsbrAccountsResponse || [];
-    if (Array.isArray(list)) {
-      return list.map((item: any) => item.value || item.name || item);
-    }
+     if (Array.isArray(list)) {
+    return list.map((item: any) => ({
+      value: item.label,
+      label: item.label,
+    }));
+  }
+
+
     return [];
   }, [dsbrAccountsResponse]);
    const [beneficiaryAcSearch, setBeneficiaryAcSearch] = useState("");
@@ -175,6 +180,7 @@ const handleSubmit = (values: typeof form.values) => {
       reference_date: values.refDate,
       repayment_start_date: values.valueDate, 
       disbursement_account: values.disbursementAc || undefined,
+      loan_account: values.beneficiaryAcNo || undefined,   
     };
 
     if (editId) {
@@ -194,7 +200,7 @@ const handleSubmit = (values: typeof form.values) => {
         disbursementAc: initialData.disbursementAccount || null, 
         refDate: initialData.referenceDate || "",
         refNo: initialData.referenceNumber || "",
-        beneficiaryAcNo: initialData.beneficiaryAcNo || "", 
+        beneficiaryAcNo: initialData.loanAccount || "",   
       });
     } else if (opened && !editId) {
       form.reset();
@@ -227,7 +233,7 @@ const handleSubmit = (values: typeof form.values) => {
         disbursementAc: item.disbursement_account || null, 
         refDate: item.reference_date || "",
         refNo: item.reference_number || "",
-        beneficiaryAcNo: item.bank_account || "", 
+        beneficiaryAcNo: item.loan_account || "",
       });
     } else if (opened && !editId) {
       form.reset();
@@ -364,22 +370,34 @@ const handleSubmit = (values: typeof form.values) => {
                         rightSection={chevronDown}
                         classNames={labelClass}
                       />
-                     <Select
-                        size="sm"
-                        withAsterisk
-                        searchable
-                        clearable
-                        label="Disbursement A/c"
-                        placeholder={isDsbrAccountsLoading ? "Loading..." : "Select disburse account"}
-                        data={dsbrAccountOptions}
-                        searchValue={dsbrAcSearch}
-                        onSearchChange={setDsbrAcSearch}
-                        disabled={isView || isDsbrAccountsLoading}
-                         {...form.getInputProps("disbursementAc")}
-                        leftSection={<IconHome size={14} className="text-indigo-500" />}
-                        rightSection={chevronDown}
-                        classNames={labelClass}
-                      />
+                    {editId ? (
+  <TextInput
+    size="sm"
+    withAsterisk
+    label="Disbursement A/c"
+    disabled={isView}
+    {...form.getInputProps("disbursementAc")}
+    leftSection={<IconHome size={14} className="text-indigo-500" />}
+    classNames={labelClass}
+  />
+) : (
+  <Select
+    size="sm"
+    withAsterisk
+    searchable
+    clearable
+    label="Disbursement A/c"
+    placeholder={isDsbrAccountsLoading ? "Loading..." : "Select disburse account"}
+    data={dsbrAccountOptions}
+    searchValue={dsbrAcSearch}
+    onSearchChange={setDsbrAcSearch}
+    disabled={isView || isDsbrAccountsLoading}
+    {...form.getInputProps("disbursementAc")}
+    leftSection={<IconHome size={14} className="text-indigo-500" />}
+    rightSection={chevronDown}
+    classNames={labelClass}
+  />
+)}
                     </div>
                   </div>
 
@@ -502,33 +520,37 @@ const handleSubmit = (values: typeof form.values) => {
                 value={selectedLoanApp ? formatCurrency(selectedLoanApp.loan_amount) : "₹0"}
                 bold
               />
-              <SummaryItem
-                icon={<IconClock size={14} className="text-orange-500" />}
-                iconBg="#FFF7ED"
-                label="Disbursement till Date"
-                value="₹0" // Defaulting to 0 as this field is not in the provided API snippet
-                bold
-              />
-              <SummaryItem
-                icon={<IconCreditCard size={14} className="text-indigo-500" />}
-                iconBg="#EEF2FF"
-                label="Mode of Disbursement"
-                value={
-                  selectedLoanApp ? (
-                     <Badge
-                      size="sm"
-                      variant="light"
-                      color="orange"
-                      className="font-semibold"
-                      styles={{ root: { fontSize: 10 } }}
-                    >
-                      —
-                    </Badge>
-                  ) : (
-                    <div className="w-4 h-4 rounded-full bg-orange-100" />
-                  )
-                }
-              />
+            <SummaryItem
+  icon={<IconClock size={14} className="text-orange-500" />}
+  iconBg="#FFF7ED"
+  label="Disbursement till Date"
+  value={
+    selectedLoanApp
+      ? formatCurrency(selectedLoanApp.current_disbursed_amount || 0)
+      : "₹0"
+  }
+  bold
+/>
+             <SummaryItem
+  icon={<IconCreditCard size={14} className="text-indigo-500" />}
+  iconBg="#EEF2FF"
+  label="Mode of Disbursement"
+  value={
+    form.values.modeOfPayment ? (
+      <Badge
+        size="sm"
+        variant="light"
+        color="orange"
+        className="font-semibold"
+        styles={{ root: { fontSize: 10 } }}
+      >
+        {form.values.modeOfPayment}
+      </Badge>
+    ) : (
+      <div className="w-4 h-4 rounded-full bg-orange-100" />
+    )
+  }
+/>
             </div>
           </div>
         </div>
