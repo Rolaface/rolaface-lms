@@ -16,6 +16,7 @@ import {
   Title,
   Stack,
   Avatar,
+  useMantineTheme,
 } from '@mantine/core';
 import {
   IconEye,
@@ -203,6 +204,7 @@ function IconText({ icon, children, mono = false }: { icon: React.ReactNode; chi
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function Customer() {
+  const theme = useMantineTheme();
   const [opened, { open, close }] = useDisclosure(false);
 
   const [search, setSearch] = useState('');
@@ -422,12 +424,14 @@ export function Customer() {
     <Stack gap="lg" p="lg">
       <CustomerModal opened={opened} onClose={close} />
 
-      {/* Scoped, purely visual */}
+      {/* Scoped, purely visual — now pulls from theme.other instead of
+          hand-tuned color-mix() literals so it stays in sync with the
+          brand color everywhere else. */}
       <style>{`
-        .lms-search:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--mantine-color-brand-5) 18%, transparent); }
+        .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
         .lms-row-actions { opacity: 1; }
         .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
-        .lms-row:hover td { background: color-mix(in srgb, var(--mantine-color-brand-5) 5%, var(--mantine-color-white)) !important; }
+        .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
         .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
         .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
       `}</style>
@@ -440,8 +444,8 @@ export function Customer() {
               width: 40,
               height: 40,
               borderRadius: 'var(--mantine-radius-md)',
-              background: 'linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-8))',
-              boxShadow: '0 6px 16px color-mix(in srgb, var(--mantine-color-brand-6) 30%, transparent)',
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadow,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -545,8 +549,8 @@ export function Customer() {
               onClick={open}
               leftSection={<IconPlus size={14} />}
               style={{
-                background: 'linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-7))',
-                boxShadow: '0 4px 10px color-mix(in srgb, var(--mantine-color-brand-6) 30%, transparent)',
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
               }}
             >
               Add Customer

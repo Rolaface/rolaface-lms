@@ -207,13 +207,18 @@ export const mantineTheme = createTheme({
   },
 
   other: {
-    // modal chrome
-    modalHeader: "#ffffff",
-    modalHeaderTextColor: "#0b1c30",
-    modalHeaderIconBg: "#4F46E5",
-    modalHeaderSubTextColor: "#64748b",
+    // ---- modal chrome ----
+    // These now describe the header exactly as CustomerModal.tsx renders it
+    // (solid brand-6 fill, white text) instead of the old, unused
+    // white-header / navy-text combo that nothing referenced.
+    modalHeaderBg: "var(--mantine-color-brand-6)",
+    modalHeaderBorder: "var(--mantine-color-brand-7)",
+    modalHeaderTextColor: "var(--mantine-color-white)",
+    modalHeaderSubTextColor: "var(--mantine-color-brand-1)",
+    modalHeaderDividerColor: "var(--mantine-color-brand-3)",
+    modalHeaderIconBg: "var(--mantine-color-white)",
 
-    // semantic text roles — reference these instead of hardcoding gray.6 etc.
+    // ---- semantic text roles — reference these instead of hardcoding gray.6 etc. ----
     textPrimary: "var(--mantine-color-slate-8)",
     textSecondary: "var(--mantine-color-slate-5)",
     textMuted: "var(--mantine-color-slate-4)",
@@ -221,10 +226,28 @@ export const mantineTheme = createTheme({
     surfaceMuted: "var(--mantine-color-slate-0)",
     surfaceHover: "var(--mantine-color-slate-1)",
 
-    // status dot colors, for the dot+label badge pattern
+    // ---- status dot colors, for the dot+label badge pattern ----
     statusActive: "var(--mantine-color-success-6)",
     statusInactive: "var(--mantine-color-danger-5)",
     statusPending: "var(--mantine-color-warning-5)",
+
+    // ---- brand gradient + glow — single source of truth ----
+    // Previously duplicated inline in Customer.tsx with mismatched
+    // stops (brand-8 in one place, brand-7 in another). Pick ONE
+    // gradient and reuse it everywhere so a brand color change only
+    // has to happen here.
+    brandGradient:
+      "linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-7))",
+    brandGlowShadow:
+      "0 6px 16px color-mix(in srgb, var(--mantine-color-brand-6) 30%, transparent)",
+    brandGlowShadowSm:
+      "0 4px 10px color-mix(in srgb, var(--mantine-color-brand-6) 30%, transparent)",
+
+    // ---- interaction states used in the customer table ----
+    searchFocusRing:
+      "0 0 0 3px color-mix(in srgb, var(--mantine-color-brand-5) 18%, transparent)",
+    rowHoverBg:
+      "color-mix(in srgb, var(--mantine-color-brand-5) 5%, var(--mantine-color-white))",
   },
 
   components: {

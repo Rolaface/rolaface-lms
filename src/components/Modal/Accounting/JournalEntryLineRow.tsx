@@ -6,6 +6,8 @@ import {
   NumberInput,
   ActionIcon,
   Tooltip,
+  Text,
+  Box,
 } from "@mantine/core";
 import { IconTrash, IconAlertTriangle } from "@tabler/icons-react";
 import type {
@@ -55,7 +57,9 @@ const JournalEntryLineRow: React.FC<JournalEntryLineRowProps> = ({
   return (
     <Table.Tr>
       <Table.Td ta="center">
-        <span className="text-xs text-gray-400">{index + 1}</span>
+        <Text fz="xs" c="slate.4">
+          {index + 1}
+        </Text>
       </Table.Td>
       <Table.Td>
         <Select
@@ -77,9 +81,19 @@ const JournalEntryLineRow: React.FC<JournalEntryLineRowProps> = ({
       </Table.Td>
 
       <Table.Td ta="center">
-        <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-1 rounded">
+        <Text
+          fz="10px"
+          fw={700}
+          c="slate.4"
+          style={{
+            background: "var(--mantine-color-slate-0)",
+            padding: "4px 6px",
+            borderRadius: "var(--mantine-radius-sm)",
+            display: "inline-block",
+          }}
+        >
           {entry.ccy || "CCY"}
-        </span>
+        </Text>
       </Table.Td>
 
       <Table.Td>
@@ -103,9 +117,9 @@ const JournalEntryLineRow: React.FC<JournalEntryLineRowProps> = ({
             multiline
             w={220}
             withArrow
-            color="red"
+            color="danger"
           >
-            <div className="relative">
+            <Box style={{ position: "relative" }}>
               <NumberInput
                 size="xs"
                 placeholder="0.00"
@@ -119,15 +133,15 @@ const JournalEntryLineRow: React.FC<JournalEntryLineRowProps> = ({
                 styles={{
                   input: {
                     textAlign: "right",
-                    borderColor: "#fca5a5",
+                    borderColor: "var(--mantine-color-danger-3)",
                     paddingRight: 24,
                   },
                 }}
                 rightSection={
-                  <IconAlertTriangle size={13} className="text-red-500" />
+                  <IconAlertTriangle size={13} color="var(--mantine-color-danger-5)" />
                 }
               />
-            </div>
+            </Box>
           </Tooltip>
         ) : (
           <NumberInput
@@ -184,7 +198,12 @@ const JournalEntryLineRow: React.FC<JournalEntryLineRowProps> = ({
           value={entry.exchange_rate}
           disabled
           readOnly
-          styles={{ input: { textAlign: "right", backgroundColor: "#f9fafb" } }}
+          styles={{
+            input: {
+              textAlign: "right",
+              backgroundColor: "var(--mantine-color-slate-0)",
+            },
+          }}
         />
       </Table.Td>
 
@@ -200,9 +219,10 @@ const JournalEntryLineRow: React.FC<JournalEntryLineRowProps> = ({
       {!isReadOnly && (
         <Table.Td ta="center">
           <ActionIcon
-            color="red"
+            color="danger"
             variant="subtle"
             size="sm"
+            radius="md"
             onClick={() => onRemove(index)}
           >
             <IconTrash size={14} />

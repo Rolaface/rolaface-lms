@@ -13,13 +13,13 @@ import {
   ActionIcon,
   TextInput,
   Select,
-  MultiSelect,
   Loader,
   Modal,
   Stack,
   Group,
   Text,
   Divider,
+  Box,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import {
@@ -60,113 +60,88 @@ function KpiStrip({
 
   const sections = [
     {
-      icon: <IconReceipt2 size={14} className="text-emerald-500" />,
+      icon: <IconReceipt2 size={14} color="var(--mantine-color-success-6)" />,
       label: "Outstanding",
       items: [
-        {
-          label: "Total",
-          value: fmt(kpis.total_outstanding),
-          color: "text-emerald-600",
-          bold: true,
-        },
-        {
-          label: "Overdue",
-          value: fmt(kpis.overdue_amount),
-          color: "text-red-500",
-          bold: true,
-        },
-        {
-          label: "Invoiced",
-          value: fmt(kpis.total_invoiced),
-          color: "text-blue-500",
-        },
+        { label: "Total", value: fmt(kpis.total_outstanding), color: "success.6", bold: true },
+        { label: "Overdue", value: fmt(kpis.overdue_amount), color: "danger.5", bold: true },
+        { label: "Invoiced", value: fmt(kpis.total_invoiced), color: "info.5" },
       ],
     },
     {
-      icon: <IconUsers size={14} className="text-indigoAlt-6" />,
+      icon: <IconUsers size={14} color="var(--mantine-color-brand-6)" />,
       label: "Customers",
       items: [
-        {
-          label: "Count",
-          value: String(kpis.total_customers),
-          color: "text-indigoAlt-6",
-          bold: true,
-        },
-        {
-          label: "Paid",
-          value: fmt(kpis.total_paid),
-          color: "text-emerald-600",
-        },
-        {
-          label: "Avg Days",
-          value: String(kpis.average_collection_days || "—"),
-          color: "text-indigoAlt-6",
-        },
+        { label: "Count", value: String(kpis.total_customers), color: "brand.6", bold: true },
+        { label: "Paid", value: fmt(kpis.total_paid), color: "success.6" },
+        { label: "Avg Days", value: String(kpis.average_collection_days || "—"), color: "brand.6" },
       ],
     },
     {
-      icon: <IconReceipt2 size={14} className="text-amber-400" />,
+      icon: <IconReceipt2 size={14} color="var(--mantine-color-warning-4)" />,
       label: "Aging",
       items: Object.entries(kpis.ageing_summary).map(([key, val]) => {
-        const label =
-          key === "121_above" ? "121d+" : `${key.replace("_", "–")}d`;
+        const label = key === "121_above" ? "121d+" : `${key.replace("_", "–")}d`;
         const bucket =
           key === "0_30"
-            ? "text-emerald-600"
+            ? "success.6"
             : key === "31_60"
-              ? "text-amber-500"
+              ? "warning.5"
               : key === "61_90"
-                ? "text-orange-500"
-                : "text-red-600";
+                ? "accent.5"
+                : "danger.6";
         return { label, value: fmt(val as number), color: bucket };
       }),
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+    <Box style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "var(--mantine-spacing-sm)" }}>
       {sections.map((sec) => (
         <Paper
           key={sec.label}
           withBorder
           radius="md"
-          className="px-4 py-3 flex flex-col gap-2 border-gray-200"
+          p="md"
+          style={{ borderColor: "var(--mantine-color-slate-2)" }}
         >
-          <div className="flex items-center gap-1.5">
+          <Group gap={6} mb="xs">
             {sec.icon}
-            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            <Text fz="10px" fw={700} tt="uppercase" c="slate.4" style={{ letterSpacing: "0.08em" }}>
               {sec.label}
-            </span>
-          </div>
-          <div
-            className={`grid gap-2 divide-x divide-gray-100`}
+            </Text>
+          </Group>
+          <Box
             style={{
+              display: "grid",
               gridTemplateColumns: `repeat(${sec.items.length}, minmax(0, 1fr))`,
+              gap: "var(--mantine-spacing-xs)",
             }}
           >
             {sec.items.map((item) => (
-              <div
-                key={item.label}
-                className="flex flex-col gap-0.5 px-2 first:pl-0 last:pr-0 min-w-0"
-              >
-                <span className="text-[10px] text-gray-500 truncate">
+              <Box key={item.label} style={{ minWidth: 0 }}>
+                <Text fz="10px" c="slate.5" truncate>
                   {item.label}
-                </span>
+                </Text>
                 {loading ? (
-                  <div className="h-3.5 w-12 bg-gray-100 rounded animate-pulse mt-0.5" />
+                  <Box h={14} w={48} mt={2} style={{ background: "var(--mantine-color-slate-1)", borderRadius: 4 }} className="animate-pulse" />
                 ) : (
-                  <span
-                    className={`text-[12px] tabular-nums truncate ${item.color} ${"bold" in item && item.bold ? "font-bold" : "font-medium"}`}
+                  <Text
+                    fz="12px"
+                    fw={"bold" in item && item.bold ? 700 : 500}
+                    c={item.color}
+                    truncate
+                    style={{ fontVariantNumeric: "tabular-nums" }}
                   >
                     {item.value}
-                  </span>
+                  </Text>
                 )}
-              </div>
+              </Box>
             ))}
-          </div>
+          </Box>
         </Paper>
       ))}
-    </div>
+    </Box>
   );
 }
 
@@ -174,10 +149,9 @@ function KpiStrip({
 
 function StatusBadge({ status }: { status: string }) {
   if (!status) return null;
-  const color =
-    status === "Paid" ? "teal" : status === "Overdue" ? "red" : "yellow";
+  const scale = status === "Paid" ? "success" : status === "Overdue" ? "danger" : "warning";
   return (
-    <Badge color={color} variant="light" size="sm" radius="sm">
+    <Badge color={scale} variant="light" size="sm" radius="sm">
       {status}
     </Badge>
   );
@@ -234,9 +208,9 @@ export function Receivable() {
         accessorKey: "id",
         header: "Voucher No",
         cell: ({ row }) => (
-          <span className="font-mono text-indigoAlt-6 text-xs font-semibold">
+          <Text fz="xs" fw={600} c="brand.6" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
             {row.original.id}
-          </span>
+          </Text>
         ),
       },
       {
@@ -244,7 +218,9 @@ export function Receivable() {
         accessorKey: "customer",
         header: "Customer",
         cell: ({ row }) => (
-          <span className="text-xs text-gray-800">{row.original.customer}</span>
+          <Text fz="xs" c="slate.8">
+            {row.original.customer}
+          </Text>
         ),
       },
       {
@@ -252,9 +228,9 @@ export function Receivable() {
         accessorKey: "voucherType",
         header: "Type",
         cell: ({ row }) => (
-          <span className="text-[11px] text-gray-500 font-medium">
+          <Text fz="11px" c="slate.5" fw={500}>
             {row.original.voucherType}
-          </span>
+          </Text>
         ),
       },
       {
@@ -263,9 +239,9 @@ export function Receivable() {
         header: "Total",
         meta: { align: "right" },
         cell: ({ row }) => (
-          <span className="text-xs tabular-nums text-blue-500 font-medium">
+          <Text fz="xs" fw={500} c="info.5" style={{ fontVariantNumeric: "tabular-nums" }}>
             {displayAmount(row.original.currency, row.original.invoicedAmount)}
-          </span>
+          </Text>
         ),
       },
       {
@@ -274,9 +250,9 @@ export function Receivable() {
         header: "Paid",
         meta: { align: "right" },
         cell: ({ row }) => (
-          <span className="text-xs tabular-nums text-emerald-600 font-medium">
+          <Text fz="xs" fw={500} c="success.6" style={{ fontVariantNumeric: "tabular-nums" }}>
             {displayAmount(row.original.currency, row.original.paidAmount)}
-          </span>
+          </Text>
         ),
       },
       {
@@ -285,47 +261,41 @@ export function Receivable() {
         header: "Outstanding",
         meta: { align: "right" },
         cell: ({ row }) => (
-          <span
-            className={`text-xs tabular-nums font-semibold ${row.original.outstandingAmount > 0 ? "text-red-500" : "text-emerald-600"}`}
+          <Text
+            fz="xs"
+            fw={600}
+            c={row.original.outstandingAmount > 0 ? "danger.5" : "success.6"}
+            style={{ fontVariantNumeric: "tabular-nums" }}
           >
-            {displayAmount(
-              row.original.currency,
-              row.original.outstandingAmount,
-            )}
-          </span>
+            {displayAmount(row.original.currency, row.original.outstandingAmount)}
+          </Text>
         ),
       },
       {
         id: "due",
         header: "Due / Posting Date",
         cell: ({ row }) => (
-          <span className="text-[11px] text-gray-500 tabular-nums">
+          <Text fz="11px" c="slate.5" style={{ fontVariantNumeric: "tabular-nums" }}>
             {row.original.dueDate ?? row.original.postingDate ?? "—"}
-          </span>
+          </Text>
         ),
       },
       {
         id: "age",
         header: "Aging",
         cell: ({ row }) => {
-          if (
-            !row.original.voucherType ||
-            row.original.voucherType !== "Sales Invoice"
-          )
-            return null;
+          if (!row.original.voucherType || row.original.voucherType !== "Sales Invoice") return null;
           return (
-            <div className="flex items-center gap-1">
+            <Group gap={4} wrap="nowrap">
               {row.original.overdue ? (
-                <IconAlertTriangle size={11} className="text-red-500" />
+                <IconAlertTriangle size={11} color="var(--mantine-color-danger-5)" />
               ) : (
-                <IconClock size={11} className="text-gray-400" />
+                <IconClock size={11} color="var(--mantine-color-slate-4)" />
               )}
-              <span
-                className={`text-[11px] font-medium ${row.original.overdue ? "text-red-500" : "text-gray-500"}`}
-              >
+              <Text fz="11px" fw={500} c={row.original.overdue ? "danger.5" : "slate.5"}>
                 {row.original.age}d {row.original.overdue ? "overdue" : "left"}
-              </span>
-            </div>
+              </Text>
+            </Group>
           );
         },
       },
@@ -339,16 +309,11 @@ export function Receivable() {
         header: "Actions",
         meta: { align: "center" },
         cell: ({ row }) => (
-          <div className="flex justify-center">
-            <ActionIcon
-              variant="subtle"
-              color="indigoAlt"
-              size="sm"
-              onClick={() => setViewRowId(row.original.id)}
-            >
+          <Group justify="center">
+            <ActionIcon variant="subtle" color="brand" size="sm" radius="md" onClick={() => setViewRowId(row.original.id)}>
               <IconEye size={14} />
             </ActionIcon>
-          </div>
+          </Group>
         ),
       },
     ],
@@ -381,11 +346,7 @@ export function Receivable() {
       Status: r.status,
     }));
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(
-      wb,
-      XLSX.utils.json_to_sheet(sheetData),
-      "Receivables",
-    );
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheetData), "Receivables");
     saveAs(
       new Blob([XLSX.write(wb, { bookType: "xlsx", type: "array" })], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -395,43 +356,43 @@ export function Receivable() {
   };
 
   return (
-    <div className="flex flex-col gap-3 p-6">
+    <Stack gap="sm" p="lg">
       {/* KPI strip */}
       {kpis ? (
-        <KpiStrip
-          kpis={kpis}
-          loading={isLoading}
-          displayAmount={displayAmount}
-        />
+        <KpiStrip kpis={kpis} loading={isLoading} displayAmount={displayAmount} />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <Box style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "var(--mantine-spacing-sm)" }}>
           {Array.from({ length: 3 }).map((_, i) => (
-            <div
+            <Box
               key={i}
-              className="bg-white border border-gray-200 rounded-md h-20 animate-pulse"
+              h={80}
+              style={{
+                background: "var(--mantine-color-white)",
+                border: "1px solid var(--mantine-color-slate-2)",
+                borderRadius: "var(--mantine-radius-md)",
+              }}
+              className="animate-pulse"
             />
           ))}
-        </div>
+        </Box>
       )}
 
       {/* Filter bar */}
-      <Paper withBorder radius="md" className="px-4 py-3 border-gray-200">
-        <div className="flex items-center gap-1.5 mb-2">
-          <IconAdjustmentsHorizontal size={13} className="text-gray-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+      <Paper withBorder radius="md" p="md" style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+        <Group gap={6} mb="sm">
+          <IconAdjustmentsHorizontal size={13} color="var(--mantine-color-slate-4)" />
+          <Text fz="10px" fw={700} tt="uppercase" c="slate.4" style={{ letterSpacing: "0.08em" }}>
             Filters
-          </span>
-        </div>
+          </Text>
+        </Group>
 
-        <div className="flex flex-wrap items-end gap-2">
+        <Group gap="sm" wrap="wrap" align="flex-end">
           <DatePickerInput
             label="Posting Date"
             value={postingDate ? new Date(postingDate) : null}
-            onChange={(d) =>
-              setPostingDate(d ? new Date(d).toISOString().split("T")[0] : "")
-            }
+            onChange={(d) => setPostingDate(d ? new Date(d).toISOString().split("T")[0] : "")}
             size="xs"
-            className="w-[150px]"
+            w={150}
             clearable
           />
 
@@ -444,11 +405,9 @@ export function Receivable() {
               { value: "Paid", label: "Paid" },
             ]}
             value={filterStatus}
-            onChange={(v) =>
-              setFilterStatus((v as typeof filterStatus) ?? "all")
-            }
+            onChange={(v) => setFilterStatus((v as typeof filterStatus) ?? "all")}
             size="xs"
-            className="w-[130px]"
+            w={130}
           />
 
           <Select
@@ -456,11 +415,9 @@ export function Receivable() {
             placeholder="All Types"
             data={VOUCHER_TYPE_OPTIONS.map((v) => ({ value: v, label: v }))}
             value={selectedVoucherType || null}
-            onChange={(v) =>
-              setSelectedVoucherType((v as typeof selectedVoucherType) ?? "")
-            }
+            onChange={(v) => setSelectedVoucherType((v as typeof selectedVoucherType) ?? "")}
             size="xs"
-            className="w-[150px]"
+            w={150}
             clearable
           />
 
@@ -474,7 +431,7 @@ export function Receivable() {
             value={selectedGroupBy[0] ?? null}
             onChange={(value) => setSelectedGroupBy(value ? [value] : [])}
             size="xs"
-            className="w-[160px]"
+            w={160}
             clearable
           />
 
@@ -485,7 +442,7 @@ export function Receivable() {
             value={selectedCustomers[0] ?? null}
             onChange={(value) => setSelectedCustomers(value ? [value] : [])}
             size="xs"
-            className="w-[200px]"
+            w={200}
             searchable
             clearable
           />
@@ -497,7 +454,7 @@ export function Receivable() {
             value={selectedCostCenter || null}
             onChange={(v) => setSelectedCostCenter(v ?? "")}
             size="xs"
-            className="w-[160px]"
+            w={160}
             searchable
             clearable
           />
@@ -509,31 +466,25 @@ export function Receivable() {
             value={selectedReceivableAccount || null}
             onChange={(v) => setSelectedReceivableAccount(v ?? "")}
             size="xs"
-            className="w-[170px]"
+            w={170}
             searchable
             clearable
           />
 
           {hasActiveFilters && (
-            <Button
-              variant="subtle"
-              color="red"
-              size="xs"
-              leftSection={<IconX size={12} />}
-              onClick={clearAll}
-            >
+            <Button variant="subtle" color="danger" size="xs" leftSection={<IconX size={12} />} onClick={clearAll}>
               Clear
             </Button>
           )}
 
-          <div className="ml-auto flex items-end gap-2">
+          <Group gap="sm" ml="auto" align="flex-end">
             <TextInput
               placeholder="Search voucher, customer…"
               leftSection={<IconSearch size={12} />}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.currentTarget.value)}
               size="xs"
-              className="w-[220px]"
+              w={220}
             />
             <Button
               variant="default"
@@ -550,52 +501,52 @@ export function Receivable() {
             >
               {isExporting ? "Exporting…" : "Export"}
             </Button>
-          </div>
-        </div>
+          </Group>
+        </Group>
       </Paper>
 
       {error && (
-        <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-md text-xs text-red-600">
-          {error}
-        </div>
+        <Box
+          px="sm"
+          py={8}
+          style={{
+            background: "var(--mantine-color-danger-0)",
+            border: "1px solid var(--mantine-color-danger-2)",
+            borderRadius: "var(--mantine-radius-md)",
+          }}
+        >
+          <Text fz="xs" c="danger.6">
+            {error}
+          </Text>
+        </Box>
       )}
 
       {/* Table */}
-      <Paper
-        withBorder
-        radius="md"
-        className="border-gray-200 overflow-hidden flex flex-col"
-      >
-        <div className="overflow-x-auto overflow-y-auto max-h-[520px] relative">
-          <Table
-            striped
-            highlightOnHover
-            verticalSpacing="xs"
-            horizontalSpacing="sm"
-            stickyHeader
-            className="min-w-full"
-          >
-            <Table.Thead className="bg-gray-50">
+      <Paper withBorder radius="md" style={{ borderColor: "var(--mantine-color-slate-2)", overflow: "hidden" }}>
+        <Box style={{ overflowX: "auto", overflowY: "auto", maxHeight: 520, position: "relative" }}>
+          <Table striped highlightOnHover verticalSpacing="xs" horizontalSpacing="sm" stickyHeader style={{ minWidth: "100%" }}>
+            <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
               {table.getHeaderGroups().map((hg) => (
                 <Table.Tr key={hg.id}>
                   {hg.headers.map((header) => {
                     const align =
-                      (
-                        header.column.columnDef.meta as
-                          { align?: string } | undefined
-                      )?.align === "right"
+                      (header.column.columnDef.meta as { align?: string } | undefined)?.align === "right"
                         ? "right"
                         : "left";
                     return (
                       <Table.Th
                         key={header.id}
-                        style={{ textAlign: align }}
-                        className="text-[10px] font-bold uppercase tracking-widest text-gray-500 whitespace-nowrap"
+                        style={{
+                          textAlign: align,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          color: "var(--mantine-color-slate-5)",
+                          whiteSpace: "nowrap",
+                        }}
                       >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                        {flexRender(header.column.columnDef.header, header.getContext())}
                       </Table.Th>
                     );
                   })}
@@ -605,19 +556,18 @@ export function Receivable() {
             <Table.Tbody>
               {isLoading && rows.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={columns.length} className="py-16">
-                    <div className="flex justify-center items-center">
-                      <Loader size="sm" color="indigoAlt" />
-                    </div>
+                  <Table.Td colSpan={columns.length} py={64}>
+                    <Group justify="center">
+                      <Loader size="sm" color="brand" />
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               ) : table.getRowModel().rows.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td
-                    colSpan={columns.length}
-                    className="py-16 text-center text-xs text-gray-400"
-                  >
-                    No receivables found matching your filters.
+                  <Table.Td colSpan={columns.length} py={64} ta="center">
+                    <Text fz="xs" c="slate.4">
+                      No receivables found matching your filters.
+                    </Text>
                   </Table.Td>
                 </Table.Tr>
               ) : (
@@ -625,22 +575,12 @@ export function Receivable() {
                   <Table.Tr key={row.id}>
                     {row.getVisibleCells().map((cell) => {
                       const align =
-                        (
-                          cell.column.columnDef.meta as
-                            { align?: string } | undefined
-                        )?.align === "right"
+                        (cell.column.columnDef.meta as { align?: string } | undefined)?.align === "right"
                           ? "right"
                           : "left";
                       return (
-                        <Table.Td
-                          key={cell.id}
-                          style={{ textAlign: align }}
-                          className="whitespace-nowrap"
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
+                        <Table.Td key={cell.id} style={{ textAlign: align, whiteSpace: "nowrap" }}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </Table.Td>
                       );
                     })}
@@ -651,42 +591,50 @@ export function Receivable() {
           </Table>
 
           {isLoading && rows.length > 0 && (
-            <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
-              <Loader size="sm" color="indigoAlt" />
-            </div>
+            <Box
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "color-mix(in srgb, var(--mantine-color-white) 60%, transparent)",
+                backdropFilter: "blur(1px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Loader size="sm" color="brand" />
+            </Box>
           )}
-        </div>
+        </Box>
 
         {/* Pagination footer */}
-        <div className="border-t border-gray-200 bg-gray-50/50 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[11px] text-gray-500">
+        <Group
+          justify="space-between"
+          px="sm"
+          py={8}
+          wrap="wrap"
+          style={{ borderTop: "1px solid var(--mantine-color-slate-2)", background: "var(--mantine-color-slate-0)" }}
+        >
+          <Text fz="11px" c="slate.5">
             {pagination && pagination.total_entries > 0 ? (
               <>
                 Showing{" "}
-                <span className="font-semibold text-gray-800">
+                <Text component="span" fz="11px" fw={600} c="slate.8">
                   {(pagination.page - 1) * pagination.page_size + 1}–
-                  {Math.min(
-                    pagination.page * pagination.page_size,
-                    pagination.total_entries,
-                  )}
-                </span>{" "}
+                  {Math.min(pagination.page * pagination.page_size, pagination.total_entries)}
+                </Text>{" "}
                 of{" "}
-                <span className="font-semibold text-gray-800">
+                <Text component="span" fz="11px" fw={600} c="slate.8">
                   {pagination.total_entries}
-                </span>
+                </Text>
               </>
             ) : (
               "No entries"
             )}
-          </span>
+          </Text>
           {pagination && pagination.total_pages > 1 && (
-            <div className="flex items-center gap-1">
-              <ActionIcon
-                variant="default"
-                size="sm"
-                disabled={!pagination.has_prev || isLoading}
-                onClick={() => handlePageChange(page - 1)}
-              >
+            <Group gap={4}>
+              <ActionIcon variant="default" size="sm" disabled={!pagination.has_prev || isLoading} onClick={() => handlePageChange(page - 1)}>
                 <IconChevronLeft size={13} />
               </ActionIcon>
               {Array.from({ length: pagination.total_pages }, (_, i) => i + 1)
@@ -696,106 +644,87 @@ export function Receivable() {
                     key={p}
                     size="xs"
                     variant={p === page ? "filled" : "default"}
-                    color={p === page ? "indigoAlt" : undefined}
+                    color={p === page ? "brand" : undefined}
                     disabled={isLoading}
                     onClick={() => handlePageChange(p)}
-                    className="px-2"
+                    px={8}
                   >
                     {p}
                   </Button>
                 ))}
-              <ActionIcon
-                variant="default"
-                size="sm"
-                disabled={!pagination.has_next || isLoading}
-                onClick={() => handlePageChange(page + 1)}
-              >
+              <ActionIcon variant="default" size="sm" disabled={!pagination.has_next || isLoading} onClick={() => handlePageChange(page + 1)}>
                 <IconChevronRight size={13} />
               </ActionIcon>
-            </div>
+            </Group>
           )}
-        </div>
+        </Group>
       </Paper>
 
       {/* View details modal */}
-      <Modal
-        opened={!!viewRowId}
-        onClose={() => setViewRowId(null)}
-        title="Voucher Details"
-        size="md"
-        radius="md"
-      >
+      <Modal opened={!!viewRowId} onClose={() => setViewRowId(null)} title="Voucher Details" size="md" radius="md">
         {viewRow && (
           <Stack gap="xs">
             <Group justify="space-between">
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="slate.5">
                 Voucher No
               </Text>
-              <Text size="sm" fw={600} className="font-mono text-indigoAlt-6">
+              <Text size="sm" fw={600} c="brand.6" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
                 {viewRow.id}
               </Text>
             </Group>
             <Group justify="space-between">
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="slate.5">
                 Customer
               </Text>
               <Text size="sm">{viewRow.customer}</Text>
             </Group>
             <Group justify="space-between">
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="slate.5">
                 Voucher Type
               </Text>
               <Text size="sm">{viewRow.voucherType}</Text>
             </Group>
-            <Divider />
+            <Divider color="slate.2" />
             <Group justify="space-between">
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="slate.5">
                 Invoiced Amount
               </Text>
-              <Text size="sm" className="text-blue-500 font-medium">
+              <Text size="sm" fw={500} c="info.5">
                 {displayAmount(viewRow.currency, viewRow.invoicedAmount)}
               </Text>
             </Group>
             <Group justify="space-between">
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="slate.5">
                 Paid Amount
               </Text>
-              <Text size="sm" className="text-emerald-600 font-medium">
+              <Text size="sm" fw={500} c="success.6">
                 {displayAmount(viewRow.currency, viewRow.paidAmount)}
               </Text>
             </Group>
             <Group justify="space-between">
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="slate.5">
                 Outstanding Amount
               </Text>
-              <Text
-                size="sm"
-                fw={700}
-                className={
-                  viewRow.outstandingAmount > 0
-                    ? "text-red-500"
-                    : "text-emerald-600"
-                }
-              >
+              <Text size="sm" fw={700} c={viewRow.outstandingAmount > 0 ? "danger.5" : "success.6"}>
                 {displayAmount(viewRow.currency, viewRow.outstandingAmount)}
               </Text>
             </Group>
-            <Divider />
+            <Divider color="slate.2" />
             <Group justify="space-between">
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="slate.5">
                 Posting Date
               </Text>
               <Text size="sm">{viewRow.postingDate ?? "—"}</Text>
             </Group>
             <Group justify="space-between">
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="slate.5">
                 Due Date
               </Text>
               <Text size="sm">{viewRow.dueDate ?? "—"}</Text>
             </Group>
             {viewRow.status && (
               <Group justify="space-between">
-                <Text size="xs" c="dimmed">
+                <Text size="xs" c="slate.5">
                   Status
                 </Text>
                 <StatusBadge status={viewRow.status} />
@@ -804,6 +733,6 @@ export function Receivable() {
           </Stack>
         )}
       </Modal>
-    </div>
+    </Stack>
   );
 }

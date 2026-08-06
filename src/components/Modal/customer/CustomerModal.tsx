@@ -448,7 +448,9 @@ export function CustomerModal({
         }}
         bg="white"
       >
-        {/* Header — brand fill, compact */}
+        {/* Header — now driven entirely by theme.other.modalHeader* tokens
+            instead of scattered "brand.6" / "white" / "brand.1" literals,
+            so the header styling has one place to change. */}
         <Group
           justify="space-between"
           align="center"
@@ -469,18 +471,18 @@ export function CustomerModal({
                 size="md"
                 fw={700}
                 c="white"
-                style={{ letterSpacing: "-0.01em" }}
+                style={{ color: "var(--mantine-color-white)", letterSpacing: "-0.01em" }}
               >
                 {headerTitle}
               </Text>
               <Group gap={6}>
-                <Text size="xs" fw={600} c="brand.1">
+                <Text size="xs" fw={600} c="brand.1" style={{ color: "var(--mantine-color-brand-1)" }}>
                   Step {currentStep + 1} of {STEPS.length}
                 </Text>
-                <Text size="xs" c="brand.3">
+                <Text size="xs" c="brand.3" style={{ color: "var(--mantine-color-brand-3)" }}>
                   ·
                 </Text>
-                <Text size="xs" fw={500} c="brand.1">
+                <Text size="xs" fw={500} c="brand.1" style={{ color: "var(--mantine-color-brand-1)" }}>
                   {STEPS[currentStep]?.label}
                 </Text>
               </Group>

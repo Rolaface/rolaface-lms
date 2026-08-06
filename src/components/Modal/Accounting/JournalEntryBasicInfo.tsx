@@ -1,4 +1,4 @@
-import { Grid, Select, Switch, TextInput } from "@mantine/core";
+import { Grid, Select, Switch, TextInput, Text, Group, Box } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 
 import type {
@@ -21,8 +21,6 @@ const voucherTypes = [
   { value: "Bank Entry", label: "Bank Entry" },
 ];
 
-const labelProps = { className: "text-xs font-medium text-gray-700 mb-1.5" };
-
 export default function JournalEntryBasicInfo({
   form,
   errors,
@@ -35,10 +33,7 @@ export default function JournalEntryBasicInfo({
     <Grid gap="md" align="end">
       <Grid.Col span={{ base: 12, md: 1.5 }}>
         <DateInput
-          size="sm"
-          radius="md"
           label="Posting Date"
-          labelProps={labelProps}
           value={form.postingDate ? new Date(form.postingDate) : null}
           onChange={(value) => onFieldChange("postingDate", value ?? "")}
           error={errors.postingDate}
@@ -50,10 +45,7 @@ export default function JournalEntryBasicInfo({
 
       <Grid.Col span={{ base: 12, md: 3 }}>
         <Select
-          size="sm"
-          radius="md"
           label="Voucher Type"
-          labelProps={labelProps}
           data={voucherTypes}
           value={form.voucher_type}
           allowDeselect={false}
@@ -72,10 +64,7 @@ export default function JournalEntryBasicInfo({
         <>
           <Grid.Col span={{ base: 12, md: 3 }}>
             <TextInput
-              size="sm"
-              radius="md"
               label="Reference Number"
-              labelProps={labelProps}
               value={form.cheque_no}
               onChange={(e) => onFieldChange("cheque_no", e.currentTarget.value)}
               error={errors.cheque_no}
@@ -85,10 +74,7 @@ export default function JournalEntryBasicInfo({
 
           <Grid.Col span={{ base: 12, md: 1.5 }}>
             <DateInput
-              size="sm"
-              radius="md"
               label="Reference Date"
-              labelProps={labelProps}
               value={form.cheque_date ? new Date(form.cheque_date) : null}
               onChange={(value) => onFieldChange("cheque_date", value ?? "")}
               disabled={isReadOnly}
@@ -99,12 +85,9 @@ export default function JournalEntryBasicInfo({
         </>
       )}
 
-      <Grid.Col span={{ base: 12, md: 5}}>
+      <Grid.Col span={{ base: 12, md: 5 }}>
         <TextInput
-          size="sm"
-          radius="md"
           label="Remarks"
-          labelProps={labelProps}
           placeholder="General entry remarks..."
           value={form.remarks}
           onChange={(e) => onFieldChange("remarks", e.currentTarget.value)}
@@ -114,20 +97,22 @@ export default function JournalEntryBasicInfo({
       </Grid.Col>
 
       <Grid.Col span={{ base: 12, md: 2 }}>
-        <div className="space-y-1.5">
-          <span className="text-xs font-medium text-gray-700 block">Opening Entry</span>
-          <div className="flex items-center h-9 gap-2">
+        <Box>
+          <Text fz="xs" fw={600} c="slate.6" mb={4}>
+            Opening Entry
+          </Text>
+          <Group gap="xs" align="center" style={{ height: 34 }}>
             <Switch
               checked={form.isOpening}
               onChange={(e) => onFieldChange("isOpening", e.currentTarget.checked)}
               disabled={isReadOnly}
-              color="indigo"
+              color="brand"
             />
-            <span className="text-xs text-gray-600">
+            <Text fz="xs" c="slate.6">
               {form.isOpening ? "Yes" : "No"}
-            </span>
-          </div>
-        </div>
+            </Text>
+          </Group>
+        </Box>
       </Grid.Col>
     </Grid>
   );

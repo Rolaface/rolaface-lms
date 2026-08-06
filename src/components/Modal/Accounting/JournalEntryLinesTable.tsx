@@ -1,4 +1,4 @@
-import { Badge, Button, Table, Text } from "@mantine/core";
+import { Badge, Button, Table, Text, Paper, Group, Box } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
 
 import JournalEntryLineRow from "./JournalEntryLineRow";
@@ -39,23 +39,27 @@ export default function JournalEntryLinesTable({
   onRowChange,
 }: JournalEntryLinesTableProps) {
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-3">
-        <Text size="sm" fw={700} className="text-gray-800">
+    <Box>
+      <Group gap="xs" mb="sm">
+        <Text fz="sm" fw={700} c="slate.8">
           Account Entries
         </Text>
         <Badge
           size="xs"
           radius="xl"
           variant="light"
-          color="gray"
+          color="slate"
           styles={{ label: { fontWeight: 700, fontSize: 10 } }}
         >
           {rows.length} ROWS
         </Badge>
-      </div>
+      </Group>
 
-      <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <Paper
+        radius="md"
+        withBorder
+        style={{ borderColor: "var(--mantine-color-slate-2)", overflow: "hidden" }}
+      >
         <Table
           verticalSpacing={6}
           horizontalSpacing="xs"
@@ -63,12 +67,12 @@ export default function JournalEntryLinesTable({
           layout="fixed"
           w="100%"
           styles={{
-            thead: { backgroundColor: "#f9fafb" },
+            thead: { backgroundColor: "var(--mantine-color-slate-0)" },
             th: {
               fontSize: 11,
               textTransform: "uppercase",
               letterSpacing: "0.03em",
-              color: "#6b7280",
+              color: "var(--mantine-color-slate-5)",
               fontWeight: 600,
               padding: "8px 8px",
             },
@@ -102,7 +106,7 @@ export default function JournalEntryLinesTable({
             {rows.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={isReadOnly ? 9 : 10} ta="center" py="xl">
-                  <Text c="dimmed" size="sm">
+                  <Text c="slate.5" fz="sm">
                     No journal entry lines added.
                   </Text>
                 </Table.Td>
@@ -128,20 +132,26 @@ export default function JournalEntryLinesTable({
         </Table>
 
         {!isReadOnly && (
-          <div className="p-3 bg-gray-50 border-t border-gray-200">
+          <Box
+            p="sm"
+            style={{
+              background: "var(--mantine-color-slate-0)",
+              borderTop: "1px solid var(--mantine-color-slate-2)",
+            }}
+          >
             <Button
               size="xs"
               variant="subtle"
-              color="indigo"
+              color="brand"
               radius="md"
               leftSection={<IconPlus size={14} />}
               onClick={onAddRow}
             >
               Add New Row
             </Button>
-          </div>
+          </Box>
         )}
-      </div>
-    </div>
+      </Paper>
+    </Box>
   );
 }

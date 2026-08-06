@@ -20,6 +20,8 @@ import {
   Menu,
   LoadingOverlay,
   Button,
+  Title,
+  Stack,
 } from "@mantine/core";
 import {
   IconEye,
@@ -60,9 +62,43 @@ function formatDate(date: string) {
 }
 
 function statusInfo(docstatus: JournalEntry["docstatus"]) {
-  if (docstatus === 1) return { label: "Submitted", color: "green" };
-  if (docstatus === 2) return { label: "Cancelled", color: "red" };
-  return { label: "Draft", color: "gray" };
+  if (docstatus === 1) return { label: "Submitted", scale: "success" as const };
+  if (docstatus === 2) return { label: "Cancelled", scale: "danger" as const };
+  return { label: "Draft", scale: "slate" as const };
+}
+
+function StatusBadge({ docstatus }: { docstatus: JournalEntry["docstatus"] }) {
+  const { label, scale } = statusInfo(docstatus);
+  return (
+    <Badge
+      variant="light"
+      color={scale}
+      radius="xl"
+      size="sm"
+      styles={{
+        root: {
+          textTransform: "none",
+          fontWeight: 700,
+          letterSpacing: 0.2,
+          paddingLeft: 8,
+          paddingRight: 10,
+          border: `1px solid var(--mantine-color-${scale}-2)`,
+        },
+      }}
+      leftSection={
+        <Box
+          w={6}
+          h={6}
+          style={{
+            borderRadius: "50%",
+            background: `var(--mantine-color-${scale}-6)`,
+          }}
+        />
+      }
+    >
+      {label}
+    </Badge>
+  );
 }
 
 const columnHelper = createColumnHelper<JournalEntry>();
@@ -80,8 +116,12 @@ function useColumns(
         header: "Entry Number",
         cell: (info) => (
           <Group gap={6} wrap="nowrap">
-            <IconFileText size={14} className="text-gray-400 shrink-0" />
-            <Text fz="xs" fw={600} c="gray.9">
+            <IconFileText
+              size={14}
+              color="var(--mantine-color-slate-4)"
+              style={{ flexShrink: 0 }}
+            />
+            <Text fz="sm" fw={700} c="slate.8">
               {info.getValue()}
             </Text>
           </Group>
@@ -90,26 +130,14 @@ function useColumns(
       columnHelper.accessor("posting_date", {
         header: "Posting Date",
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
+          <Text fz="xs" c="slate.6">
             {formatDate(info.getValue())}
           </Text>
         ),
       }),
       columnHelper.accessor("docstatus", {
         header: "Status",
-        cell: (info) => {
-          const { label, color } = statusInfo(info.getValue());
-          return (
-            <Badge
-              variant="light"
-              size="sm"
-              color={color}
-              styles={{ root: { fontSize: 10, padding: "0 8px" } }}
-            >
-              {label}
-            </Badge>
-          );
-        },
+        cell: (info) => <StatusBadge docstatus={info.getValue()} />,
       }),
       columnHelper.accessor("total_debit", {
         header: () => (
@@ -121,8 +149,14 @@ function useColumns(
           <Text
             fz="xs"
             ta="right"
-            c="gray.8"
-            className="font-mono bg-gray-50 rounded px-2 py-1 inline-block w-full"
+            fw={600}
+            c="slate.7"
+            style={{
+              fontFamily: "var(--mantine-font-family-monospace)",
+              background: "var(--mantine-color-slate-0)",
+              borderRadius: "var(--mantine-radius-sm)",
+              padding: "4px 8px",
+            }}
           >
             {info.getValue().toFixed(2)}
           </Text>
@@ -138,8 +172,14 @@ function useColumns(
           <Text
             fz="xs"
             ta="right"
-            c="gray.8"
-            className="font-mono bg-gray-50 rounded px-2 py-1 inline-block w-full"
+            fw={600}
+            c="slate.7"
+            style={{
+              fontFamily: "var(--mantine-font-family-monospace)",
+              background: "var(--mantine-color-slate-0)",
+              borderRadius: "var(--mantine-radius-sm)",
+              padding: "4px 8px",
+            }}
           >
             {info.getValue().toFixed(2)}
           </Text>
@@ -148,7 +188,7 @@ function useColumns(
       columnHelper.accessor("user_remark", {
         header: "Remark",
         cell: (info) => (
-          <Text fz="xs" c="gray.6" truncate className="max-w-[220px]">
+          <Text fz="xs" c="slate.6" truncate style={{ maxWidth: 220 }}>
             {info.getValue() || "—"}
           </Text>
         ),
@@ -156,7 +196,7 @@ function useColumns(
       columnHelper.display({
         id: "actions",
         header: () => (
-          <Text fz="xs" fw={600} ta="center" w="100%">
+          <Text fz="xs" fw={600} ta="right" w="100%">
             Actions
           </Text>
         ),
@@ -165,12 +205,13 @@ function useColumns(
           const isDraft = row.docstatus === 0;
           const isSubmitted = row.docstatus === 1;
           return (
-            <Group justify="center" gap={4} wrap="nowrap">
+            <Group justify="flex-end" gap={4} wrap="nowrap">
               <Tooltip label="View" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="gray"
+                  color="slate"
+                  radius="md"
                   onClick={() => onView(row.name)}
                 >
                   <IconEye size={14} />
@@ -183,16 +224,22 @@ function useColumns(
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="blue"
+                  color="brand"
+                  radius="md"
                   disabled={!isDraft}
                   onClick={() => onEdit(row.name)}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Menu shadow="md" width={160} position="bottom-end">
+              <Menu shadow="md" width={170} position="bottom-end" radius="md">
                 <Menu.Target>
-                  <ActionIcon size="sm" variant="subtle" color="gray">
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="slate"
+                    radius="md"
+                  >
                     <IconDots size={14} />
                   </ActionIcon>
                 </Menu.Target>
@@ -200,7 +247,10 @@ function useColumns(
                   {isDraft && (
                     <Menu.Item
                       leftSection={
-                        <IconCircleCheck size={13} className="text-green-600" />
+                        <IconCircleCheck
+                          size={13}
+                          color="var(--mantine-color-success-6)"
+                        />
                       }
                       onClick={() => onSubmit(row.name)}
                     >
@@ -209,7 +259,7 @@ function useColumns(
                   )}
                   {isSubmitted ? (
                     <Menu.Item
-                      color="red"
+                      color="danger"
                       leftSection={<IconBan size={13} />}
                       onClick={() => onCancel(row.name)}
                     >
@@ -217,7 +267,7 @@ function useColumns(
                     </Menu.Item>
                   ) : (
                     <Menu.Item
-                      color="red"
+                      color="danger"
                       leftSection={<IconTrash size={13} />}
                       onClick={() => onDelete(row.name)}
                     >
@@ -288,7 +338,7 @@ export function JournalEntries() {
     handleDelete,
     openView,
     openEdit,
-  ); // CHANGED
+  );
 
   const { pageIndex, pageSize } = pagination;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -309,110 +359,165 @@ export function JournalEntries() {
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   return (
-    <Box className="flex flex-col gap-4 p-6 ">
-      <Paper withBorder radius="md" p="xs" className="shadow-sm">
-        <div className="flex items-center gap-3 flex-wrap">
+    <Stack gap="lg" p="lg">
+      {/* Scoped, purely visual — matches Customer table conventions */}
+      <style>{`
+        .je-search:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--mantine-color-brand-5) 18%, transparent); }
+        .je-row-actions { opacity: 1; }
+        .je-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+        .je-row:hover td { background: color-mix(in srgb, var(--mantine-color-brand-5) 5%, var(--mantine-color-white)) !important; }
+        .je-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+        .je-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+      `}</style>
+
+   
+
+      {/* Toolbar */}
+      <Paper
+        radius="xl"
+        p="xs"
+        style={{
+          background: "var(--mantine-color-slate-0)",
+          border: "1px solid var(--mantine-color-slate-2)",
+        }}
+      >
+        <Group gap="sm" wrap="wrap" align="center">
           <TextInput
-            size="xs"
+            className="je-search"
+            radius="xl"
             placeholder="Search journal entries..."
-            leftSection={<IconSearch size={13} />}
-            className="flex-1 min-w-[220px]"
+            leftSection={<IconSearch size={14} />}
+            style={{ flex: 1, minWidth: 220 }}
+            styles={{
+              input: { border: "1px solid var(--mantine-color-slate-2)" },
+            }}
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
+
           <Group gap={4} wrap="nowrap">
             <Text
               fz="xs"
-              fw={600}
-              c="gray.5"
-              className="uppercase tracking-wide"
+              fw={700}
+              c="slate.5"
+              tt="uppercase"
+              style={{ letterSpacing: 0.4 }}
             >
               From
             </Text>
             <DateInput
-              size="xs"
+              radius="xl"
               placeholder="From Date"
               value={fromDate}
               onChange={(value) => setFromDate(value || "")}
               valueFormat="DD/MM/YYYY"
-              className="w-[150px]"
+              w={150}
               clearable
             />
           </Group>
           <Group gap={4} wrap="nowrap">
             <Text
               fz="xs"
-              fw={600}
-              c="gray.5"
-              className="uppercase tracking-wide"
+              fw={700}
+              c="slate.5"
+              tt="uppercase"
+              style={{ letterSpacing: 0.4 }}
             >
               To
             </Text>
             <DateInput
-              size="xs"
+              radius="xl"
               placeholder="To Date"
               value={toDate}
               onChange={(value) => setToDate(value || "")}
               valueFormat="DD/MM/YYYY"
-              className="w-[150px]"
+              w={150}
               clearable
             />
           </Group>
-          <Group gap="xs" ml="auto">
-            <Select
-              size="xs"
-              data={[
-                { value: "posting_date desc", label: "Posting Date" },
-                { value: "creation desc", label: "Creation Date" },
-              ]}
-              value={orderBy}
-              onChange={(v) => setOrderBy(v || "creation desc")}
-              className="w-40"
-            />
 
+          <Select
+            radius="xl"
+            data={[
+              { value: "posting_date desc", label: "Posting Date" },
+              { value: "creation desc", label: "Creation Date" },
+            ]}
+            value={orderBy}
+            onChange={(v) => setOrderBy(v || "creation desc")}
+            w={166}
+          />
+
+          <Group gap="xs" ml="auto">
             <Button
-              leftSection={<IconPlus size={16} />}
-              onClick={openNew} // CHANGED
-              color="indigo"
-              radius="md"
-              size="sm"
+              radius="xl"
+              color="brand"
+              onClick={openNew}
+              leftSection={<IconPlus size={14} />}
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-7))",
+                boxShadow:
+                  "0 4px 10px color-mix(in srgb, var(--mantine-color-brand-6) 30%, transparent)",
+              }}
             >
               New Entry
             </Button>
           </Group>
-        </div>
+        </Group>
       </Paper>
 
+      {/* Data Table — floating rounded row-cards, matches Customer table */}
       <Paper
-        withBorder
-        radius="md"
-        className="shadow-sm overflow-hidden"
+        radius="lg"
+        p="sm"
         pos="relative"
+        style={{
+          background: "var(--mantine-color-slate-0)",
+          border: "1px solid var(--mantine-color-slate-2)",
+        }}
       >
         <LoadingOverlay
           visible={loading}
           zIndex={5}
           overlayProps={{ blur: 1 }}
         />
+
         <Table
-          verticalSpacing={4}
+          verticalSpacing="sm"
           horizontalSpacing="sm"
           fz="xs"
-          className="w-full"
+          w="100%"
+          style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
         >
-          <Table.Thead className="bg-gray-50 border-b border-gray-200">
+          <Table.Thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <Table.Tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <Table.Th
                     key={header.id}
-                    className="text-gray-600 font-semibold select-none"
-                    style={{ fontSize: 11, padding: "6px 10px" }}
+                    c="slate.5"
+                    fw={700}
+                    style={{
+                      fontSize: "var(--mantine-font-size-xs)",
+                      padding: "0 10px 6px",
+                      userSelect: "none",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      border: "none",
+                    }}
                   >
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext(),
-                    )}
+                    <Group
+                      gap="xs"
+                      wrap="nowrap"
+                      justify={
+                        header.id === "actions" ? "flex-end" : "flex-start"
+                      }
+                    >
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
+                    </Group>
                   </Table.Th>
                 ))}
               </Table.Tr>
@@ -421,43 +526,76 @@ export function JournalEntries() {
           <Table.Tbody>
             {rows.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={columns.length}>
-                  <div className="flex flex-col items-center py-8 text-gray-400">
-                    <IconFileInvoice size={32} className="mb-2 opacity-50" />
-                    <Text ta="center" c="dimmed" fz="xs">
+                <Table.Td colSpan={columns.length} style={{ border: "none" }}>
+                  <Stack align="center" gap="xs" py="xl">
+                    <Box
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: "50%",
+                        background: "var(--mantine-color-white)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "1px solid var(--mantine-color-slate-2)",
+                      }}
+                    >
+                      <IconFileInvoice
+                        size={26}
+                        color="var(--mantine-color-slate-4)"
+                      />
+                    </Box>
+                    <Text ta="center" c="slate.5" fz="xs">
                       No journal entries found.
                     </Text>
-                  </div>
+                  </Stack>
                 </Table.Td>
               </Table.Tr>
             ) : (
-              rows.map((row) => (
-                <Table.Tr
-                  key={row.id}
-                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <Table.Td key={cell.id} style={{ padding: "5px 10px" }}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </Table.Td>
-                  ))}
-                </Table.Tr>
-              ))
+              rows.map((row) => {
+                const { scale } = statusInfo(row.original.docstatus);
+                const cells = row.getVisibleCells();
+                return (
+                  <Table.Tr key={row.id} className="je-row">
+                    {cells.map((cell, idx) => (
+                      <Table.Td
+                        key={cell.id}
+                        style={{
+                          padding: "10px 10px",
+                          border: "none",
+                          boxShadow: "var(--mantine-shadow-xs)",
+                          borderLeft:
+                            idx === 0
+                              ? `3px solid var(--mantine-color-${scale}-4)`
+                              : undefined,
+                        }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </Table.Td>
+                    ))}
+                  </Table.Tr>
+                );
+              })
             )}
           </Table.Tbody>
         </Table>
 
-        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+        {/* Pagination Footer */}
+        <Group justify="space-between" px="sm" pt="xs">
+          <Group
+            gap="sm"
+            c="slate.6"
+            style={{ fontSize: "var(--mantine-font-size-xs)" }}
+          >
             <span>
               {totalRows === 0
                 ? "Showing 0 of 0"
                 : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
             </span>
-            <div className="flex items-center gap-1.5">
+            <Group gap="xs">
               <span>Rows:</span>
               <Select
                 data={["10", "20", "50"]}
@@ -466,21 +604,22 @@ export function JournalEntries() {
                   setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
                 }
                 size="xs"
-                className="w-14"
+                radius="xl"
+                w={60}
               />
-            </div>
-          </div>
+            </Group>
+          </Group>
           <Pagination
             total={pageCount}
             value={pageIndex + 1}
             onChange={(p) =>
               setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
             }
-            color="indigoAlt.4"
+            color="brand"
             size="xs"
-            radius="sm"
+            radius="xl"
           />
-        </div>
+        </Group>
       </Paper>
 
       <JournalEntryModal
@@ -491,6 +630,6 @@ export function JournalEntries() {
         isReadOnly={modalReadOnly}
         baseCurrency={baseCurrency}
       />
-    </Box>
+    </Stack>
   );
 }

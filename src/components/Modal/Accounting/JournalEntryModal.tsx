@@ -1,4 +1,16 @@
-import { Box, Text, ActionIcon, Modal, Button, Group } from "@mantine/core";
+import {
+  Box,
+  Text,
+  ActionIcon,
+  Modal,
+  Button,
+  Group,
+  ThemeIcon,
+  ScrollArea,
+  Fieldset,
+  Divider,
+  Paper,
+} from "@mantine/core";
 import {
   IconX,
   IconFileText,
@@ -14,6 +26,29 @@ import type { JournalEntryModalProps as BaseModalProps } from "../../../types/Ac
 
 interface JournalEntryModalProps extends BaseModalProps {
   baseCurrency: string;
+}
+
+function SummaryRow({
+  label,
+  value,
+  strong = false,
+  accent,
+}: {
+  label: string;
+  value: React.ReactNode;
+  strong?: boolean;
+  accent?: "brand";
+}) {
+  return (
+    <Group justify="space-between" gap="xs" wrap="nowrap">
+      <Text fz="xs" c={accent ? `${accent}.6` : "slate.5"} fw={accent ? 600 : 400}>
+        {label}
+      </Text>
+      <Text fz="xs" fw={strong ? 700 : 700} c="slate.8" style={{ whiteSpace: "nowrap" }}>
+        {value}
+      </Text>
+    </Group>
+  );
 }
 
 export default function JournalEntryModal({
@@ -57,6 +92,12 @@ export default function JournalEntryModal({
       ? `Edit Entry: ${entryId}`
       : "New Journal Entry";
 
+  const headerSubtitle = isReadOnly
+    ? "Viewing journal entry details"
+    : entryId
+      ? "Update existing manual journal entry"
+      : "Create a new manual journal entry record";
+
   const handleModalClose = () => {
     reset();
     onClose();
@@ -69,11 +110,9 @@ export default function JournalEntryModal({
     <Modal
       opened={opened}
       onClose={handleModalClose}
-      size="1300px"
-      withCloseButton={false}
+      size={1180}
       padding={0}
-      radius="lg"
-      overlayProps={{ backgroundOpacity: 0.45, blur: 2 }}
+      lockScroll
       styles={{
         content: {
           height: "90vh",
@@ -94,225 +133,228 @@ export default function JournalEntryModal({
       }}
     >
       <Box
-        className="flex flex-col h-full bg-white"
         style={{
           height: "100%",
           display: "flex",
           flexDirection: "column",
           minHeight: 0,
-          borderRadius: 16,
-          overflow: "hidden",
         }}
+        bg="white"
       >
-        {/* Header */}
-        <Box className="flex justify-between items-center px-6 py-4 shrink-0 bg-white border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-lg shrink-0">
-              <IconFileText size={17} className="text-white" />
-            </div>
-            <div>
-              <Text size="lg" fw={700} className="text-slate-800 leading-tight">
+        {/* Header — brand fill, matches CustomerModal */}
+        <Group
+          justify="space-between"
+          align="center"
+          px="xl"
+          py="sm"
+          bg="brand.6"
+          style={{
+            borderBottom: "1px solid var(--mantine-color-brand-7)",
+            flexShrink: 0,
+          }}
+        >
+          <Group gap="sm">
+            <ThemeIcon radius="md" size={34} variant="white" color="brand">
+              <IconFileText size={16} />
+            </ThemeIcon>
+            <Box>
+              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
                 {headerTitle}
               </Text>
-              <Text size="xs" className="text-slate-500">
-                {isReadOnly
-                  ? "Viewing journal entry details"
-                  : entryId
-                    ? "Update existing manual journal entry"
-                    : "Create a new manual journal entry record"}
+              <Text size="xs" fw={500} c="brand.1">
+                {headerSubtitle}
               </Text>
-            </div>
-          </div>
+            </Box>
+          </Group>
           <ActionIcon
-            type="button"
             variant="subtle"
-            color="gray"
-            radius="md"
-            size="lg"
+            color="white"
+            radius="xl"
+            size="md"
             onClick={handleModalClose}
             aria-label="Close"
           >
-            <IconX size={20} />
+            <IconX size={16} color="white" />
           </ActionIcon>
-        </Box>
+        </Group>
 
-        {/* Body: main + right sidebar (totals only) */}
-        <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Body: main + right sidebar */}
+        <Box style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
           {/* Main scrollable content */}
-          <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-6 min-h-0 min-w-0">
-            <fieldset
-              disabled={isReadOnly}
-              className="border-0 p-0 m-0 space-y-6 min-w-0"
-            >
-              <JournalEntryBasicInfo
-                form={form}
-                errors={errors}
-                isReadOnly={isReadOnly}
-                onFieldChange={handleFieldChange}
-              />
+          <ScrollArea type="auto" scrollbarSize={8} style={{ flex: 1, minHeight: 0 }} bg="slate.0">
+            <Box p="lg">
+              <Fieldset disabled={isReadOnly} variant="unstyled" p={0} m={0}>
+                <Paper
+                  radius="md"
+                  p="md"
+                  mb="md"
+                  withBorder
+                  style={{ borderColor: "var(--mantine-color-slate-2)", background: "var(--mantine-color-white)" }}
+                >
+                  <JournalEntryBasicInfo
+                    form={form}
+                    errors={errors}
+                    isReadOnly={isReadOnly}
+                    onFieldChange={handleFieldChange}
+                  />
+                </Paper>
 
-              <JournalEntryLinesTable
-                rows={entries}
-                accountOptions={accountOptions}
-                partyTypeOptions={partyTypeOptions}
-                customerOptions={customerOptions}
-                supplierOptions={supplierOptions}
-                isReadOnly={isReadOnly}
-                rowErrors={rowErrors}
-                onAddRow={handleAddRow}
-                onRemoveRow={handleRemoveRow}
-                onRowChange={handleRowChange}
-              />
-            </fieldset>
-          </main>
+                <JournalEntryLinesTable
+                  rows={entries}
+                  accountOptions={accountOptions}
+                  partyTypeOptions={partyTypeOptions}
+                  customerOptions={customerOptions}
+                  supplierOptions={supplierOptions}
+                  isReadOnly={isReadOnly}
+                  rowErrors={rowErrors}
+                  onAddRow={handleAddRow}
+                  onRemoveRow={handleRemoveRow}
+                  onRowChange={handleRowChange}
+                />
+              </Fieldset>
+            </Box>
+          </ScrollArea>
 
           {/* Right sidebar: entry summary */}
-          <aside className="w-full max-w-[220px] min-w-[220px] shrink-0 border-l border-gray-100 bg-gray-50 p-5 overflow-y-auto space-y-4">
-            <div>
-              <div className="flex items-center gap-1.5 mb-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-                <Text
-                  size="xs"
-                  fw={700}
-                  tt="uppercase"
-                  className="text-indigo-600 tracking-wider"
-                >
-                  Entry Summary
-                </Text>
-              </div>
+          <Box
+            style={{
+              width: 240,
+              minWidth: 240,
+              flexShrink: 0,
+              borderLeft: "1px solid var(--mantine-color-slate-2)",
+              overflowY: "auto",
+            }}
+            bg="slate.0"
+            p="md"
+          >
+            <Group gap={6} mb="sm">
+              <Box w={6} h={6} style={{ borderRadius: "50%", background: "var(--mantine-color-brand-5)" }} />
+              <Text fz="10px" fw={700} tt="uppercase" c="brand.6" style={{ letterSpacing: 0.5 }}>
+                Entry Summary
+              </Text>
+            </Group>
 
-              <div className="bg-white p-3.5 rounded-lg border border-gray-200 shadow-sm space-y-3">
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-xs text-gray-500">Voucher Type</span>
-                  <span className="text-xs font-bold text-gray-900 whitespace-nowrap">
-                    {form.voucher_type}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-xs text-gray-500">Posting Date</span>
-                  <span className="text-xs font-bold text-gray-900 whitespace-nowrap">
-                    {form.postingDate
+            <Paper
+              radius="md"
+              p="sm"
+              withBorder
+              style={{ borderColor: "var(--mantine-color-slate-2)", background: "var(--mantine-color-white)" }}
+            >
+              <Box mb="xs">
+                <SummaryRow label="Voucher Type" value={form.voucher_type} />
+              </Box>
+              <Box mb="xs">
+                <SummaryRow
+                  label="Posting Date"
+                  value={
+                    form.postingDate
                       ? new Date(form.postingDate).toLocaleDateString("en-GB", {
                           day: "2-digit",
                           month: "short",
                           year: "numeric",
                         })
-                      : "—"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-xs text-gray-500">Opening Entry</span>
-                  <span className="text-xs font-bold text-gray-900">
-                    {form.isOpening ? "Yes" : "No"}
-                  </span>
-                </div>
+                      : "—"
+                  }
+                />
+              </Box>
+              <Box mb="sm">
+                <SummaryRow label="Opening Entry" value={form.isOpening ? "Yes" : "No"} />
+              </Box>
 
-                <div className="border-t border-gray-100" />
+              <Divider color="slate.1" mb="sm" />
 
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-xs text-indigo-600 font-medium">
-                    Total Line Entries
-                  </span>
-                  <span className="text-xs font-bold text-gray-900">
-                    {entries.length}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-xs text-gray-500">Debit</span>
-                  <span
-                    className="text-xs font-bold text-gray-900"
-                    style={{ fontVariantNumeric: "tabular-nums" }}
-                  >
-                    {totals.debit.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-xs text-gray-500">Credit</span>
-                  <span
-                    className="text-xs font-bold text-gray-900"
-                    style={{ fontVariantNumeric: "tabular-nums" }}
-                  >
-                    {totals.credit.toFixed(2)}
-                  </span>
-                </div>
+              <Box mb="xs">
+                <SummaryRow label="Total Line Entries" value={entries.length} accent="brand" />
+              </Box>
+              <Box mb="xs">
+                <SummaryRow label="Debit" value={totals.debit.toFixed(2)} />
+              </Box>
+              <Box mb="sm">
+                <SummaryRow label="Credit" value={totals.credit.toFixed(2)} />
+              </Box>
 
-                <div className="pt-2.5 border-t border-gray-100 flex justify-between items-center gap-2">
-                  <span className="text-xs font-medium text-gray-700">Status</span>
-                  <span
-                    className={`flex items-center gap-1 text-xs font-bold ${
-                      balanced ? "text-green-600" : "text-red-600"
-                    }`}
+              <Divider color="slate.1" mb="sm" />
+
+              <Group justify="space-between" wrap="nowrap">
+                <Text fz="xs" fw={600} c="slate.6">
+                  Status
+                </Text>
+                <Group gap={4} wrap="nowrap">
+                  <ThemeIcon
+                    size={16}
+                    radius="xl"
+                    variant="light"
+                    color={balanced ? "success" : "danger"}
                   >
-                    {balanced ? (
-                      <IconCheck size={12} stroke={3} />
-                    ) : (
-                      <IconX size={12} stroke={3} />
-                    )}
+                    {balanced ? <IconCheck size={10} /> : <IconX size={10} />}
+                  </ThemeIcon>
+                  <Text fz="xs" fw={700} c={balanced ? "success.7" : "danger.7"}>
                     {balanced ? "Balanced" : "Unbalanced"}
-                  </span>
-                </div>
-              </div>
-            </div>
+                  </Text>
+                </Group>
+              </Group>
+            </Paper>
 
             {!isReadOnly && !entryId && (
-              <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <IconInfoCircle size={12} className="text-indigo-500 shrink-0" />
-                  <Text size="xs" fw={700} className="text-indigo-600">
+              <Paper
+                radius="md"
+                p="sm"
+                mt="md"
+                style={{
+                  background: "var(--mantine-color-brand-0)",
+                  border: "1px solid var(--mantine-color-brand-1)",
+                }}
+              >
+                <Group gap={6} mb={4} wrap="nowrap">
+                  <IconInfoCircle size={12} color="var(--mantine-color-brand-5)" />
+                  <Text fz="xs" fw={700} c="brand.6">
                     Draft Status
                   </Text>
-                </div>
-                <Text size="xs" className="text-indigo-500 leading-snug">
-                  This entry will be saved as a draft and won't affect the
-                  ledger until submitted.
+                </Group>
+                <Text fz="xs" c="brand.6" style={{ lineHeight: 1.4 }}>
+                  This entry will be saved as a draft and won't affect the ledger until submitted.
                 </Text>
-              </div>
+              </Paper>
             )}
-          </aside>
-        </div>
+          </Box>
+        </Box>
 
-        {/* Footer: actions */}
-        <div className="bg-white border-t border-gray-100 px-6 py-3 flex justify-end items-center shrink-0 shadow-[0_-2px_10px_rgba(15,23,42,0.04)]">
-          <Group gap="xs">
-            <Button
-              type="button"
-              size="sm"
-              variant="default"
-              radius="md"
-              onClick={handleModalClose}
-              className="font-semibold px-5 border-slate-200"
-            >
-              {isReadOnly ? "Close" : "Cancel"}
-            </Button>
+        {/* Footer */}
+        <Group
+          justify="flex-end"
+          px="xl"
+          py="md"
+          style={{
+            borderTop: "1px solid var(--mantine-color-slate-2)",
+            flexShrink: 0,
+          }}
+        >
+          <Button variant="subtle" color="slate" radius="md" onClick={handleModalClose}>
+            {isReadOnly ? "Close" : "Cancel"}
+          </Button>
 
-            {!isReadOnly && (
-              <>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="default"
-                  radius="md"
-                  onClick={reset}
-                  className="font-semibold px-5 border-slate-200"
-                >
-                  Reset
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  radius="md"
-                  color="indigo"
-                  loading={loading}
-                  leftSection={<IconCheck size={16} />}
-                  onClick={handleSubmit}
-                  className="font-semibold px-6"
-                >
-                  {entryId ? "Update Entry" : "Save Entry"}
-                </Button>
-              </>
-            )}
-          </Group>
-        </div>
+          {!isReadOnly && (
+            <>
+              <Button variant="subtle" color="danger" radius="md" onClick={reset}>
+                Reset
+              </Button>
+              <Button
+                radius="md"
+                color="brand"
+                loading={loading}
+                leftSection={<IconCheck size={14} />}
+                onClick={handleSubmit}
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-7))",
+                  boxShadow: "0 4px 10px color-mix(in srgb, var(--mantine-color-brand-6) 30%, transparent)",
+                }}
+              >
+                {entryId ? "Update Entry" : "Save Entry"}
+              </Button>
+            </>
+          )}
+        </Group>
       </Box>
     </Modal>
   );
