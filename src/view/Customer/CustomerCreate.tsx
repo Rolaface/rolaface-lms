@@ -1,6 +1,36 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Box, Button, TextInput, Select, Radio, Group, Paper, Table, Badge, ActionIcon, Text, Pagination, Tooltip, Title, Stack, Center } from '@mantine/core';
-import { IconEye, IconPencil, IconPlus, IconChevronUp, IconChevronDown, IconSelector, IconSearch, IconUsers, IconTrash } from '@tabler/icons-react';
+import {
+  Box,
+  Button,
+  TextInput,
+  Select,
+  SegmentedControl,
+  Group,
+  Paper,
+  Table,
+  Badge,
+  ActionIcon,
+  Text,
+  Pagination,
+  Tooltip,
+  Title,
+  Stack,
+  Avatar,
+} from '@mantine/core';
+import {
+  IconEye,
+  IconPencil,
+  IconPlus,
+  IconChevronUp,
+  IconChevronDown,
+  IconSelector,
+  IconSearch,
+  IconUsers,
+  IconTrash,
+  IconMail,
+  IconPhone,
+  IconWorld,
+} from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import { useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
 import { CustomerModal } from '../../components/Modal/customer/CustomerModal';
@@ -81,6 +111,12 @@ const DUMMY_CUSTOMERS: CustomerRow[] = [
 
 const columnHelper = createColumnHelper<CustomerRow>();
 
+// Decorative only — falls back to a plain globe icon for any country not listed.
+const COUNTRY_FLAGS: Record<string, string> = {
+  Zambia: '🇿🇲',
+  Italy: '🇮🇹',
+};
+
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
   if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
@@ -88,23 +124,77 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-// Dot + label status indicator — reads calmer than a solid-fill badge
-// and matches the semantic `success` / `danger` tokens from the theme.
-function StatusIndicator({ status }: { status: string }) {
+
+function StatusBadge({ status }: { status: string }) {
   const isActive = status === 'ACTIVE';
+  const scale = isActive ? 'success' : 'danger';
   return (
-    <Group gap="xs" wrap="nowrap">
-      <Box
-        w={6}
-        h={6}
-        style={{
-          borderRadius: '50%',
-          background: isActive ? 'var(--mantine-color-success-6)' : 'var(--mantine-color-danger-5)',
-          flexShrink: 0,
-        }}
-      />
-      <Text fz="xs" fw={600} c={isActive ? 'success.7' : 'danger.7'} style={{ letterSpacing: 0.3 }}>
-        {status}
+    <Badge
+      variant="light"
+      color={scale}
+      radius="xl"
+      size="sm"
+      styles={{
+        root: {
+          textTransform: 'none',
+          fontWeight: 700,
+          letterSpacing: 0.2,
+          paddingLeft: 8,
+          paddingRight: 10,
+          border: `1px solid var(--mantine-color-${scale}-2)`,
+        },
+      }}
+      leftSection={
+        <Box
+          w={6}
+          h={6}
+          style={{ borderRadius: '50%', background: `var(--mantine-color-${scale}-6)` }}
+        />
+      }
+    >
+      {status}
+    </Badge>
+  );
+}
+
+
+function NameCell({ name, type }: { name: string; type: string }) {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+
+  return (
+    <Group gap={10} wrap="nowrap">
+      <Avatar
+        size={34}
+        radius="md"
+        variant="light"
+        color={type === 'Company' ? 'brand' : 'info'}
+        style={{ fontSize: 12, fontWeight: 700, flexShrink: 0 }}
+      >
+        {initials}
+      </Avatar>
+      <Text fz="sm" fw={700} c="slate.8">
+        {name}
+      </Text>
+    </Group>
+  );
+}
+
+function IconText({ icon, children, mono = false }: { icon: React.ReactNode; children: React.ReactNode; mono?: boolean }) {
+  return (
+    <Group gap={6} wrap="nowrap">
+      <Box style={{ color: 'var(--mantine-color-slate-4)', display: 'flex', flexShrink: 0 }}>{icon}</Box>
+      <Text
+        fz="xs"
+        c="slate.6"
+        style={mono ? { fontFamily: 'var(--mantine-font-family-monospace)' } : undefined}
+      >
+        {children}
       </Text>
     </Group>
   );
@@ -115,17 +205,14 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function Customer() {
   const [opened, { open, close }] = useDisclosure(false);
 
-  // filter state
   const [search, setSearch] = useState('');
   const [type, setType] = useState<string | null>(null);
   const [country, setCountry] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
 
-  // table state
   const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  // local status map so the row can optimistically update without a backend
   const [statusOverrides, setStatusOverrides] = useState<Record<number, string>>({});
   const [customers, setCustomers] = useState(DUMMY_CUSTOMERS);
   const [borrower360CustomerId, setBorrower360CustomerId] = useState<number | null>(null);
@@ -138,6 +225,16 @@ export function Customer() {
       })),
     [customers, statusOverrides]
   );
+
+
+  const stats = useMemo(() => {
+    const activeCount = data.filter((c) => c.status === 'ACTIVE').length;
+    return {
+      total: data.length,
+      active: activeCount,
+      inactive: data.length - activeCount,
+    };
+  }, [data]);
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -168,11 +265,7 @@ export function Customer() {
     () => [
       columnHelper.accessor('name', {
         header: 'Customer Name',
-        cell: (info) => (
-          <Text fz="xs" fw={600} c="slate.8">
-            {info.getValue()}
-          </Text>
-        ),
+        cell: (info) => <NameCell name={info.getValue()} type={info.row.original.type} />,
       }),
       columnHelper.accessor('type', {
         header: 'Type',
@@ -180,6 +273,7 @@ export function Customer() {
           <Badge
             variant="light"
             size="sm"
+            radius="sm"
             color={info.getValue() === 'Company' ? 'brand' : 'info'}
             styles={{ root: { fontSize: 10, padding: '0 8px' } }}
           >
@@ -197,18 +291,14 @@ export function Customer() {
       }),
       columnHelper.accessor('email', {
         header: 'Email',
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {info.getValue()}
-          </Text>
-        ),
+        cell: (info) => <IconText icon={<IconMail size={13} />}>{info.getValue()}</IconText>,
       }),
       columnHelper.accessor('mobile', {
         header: 'Mobile',
         cell: (info) => (
-          <Text fz="xs" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+          <IconText icon={<IconPhone size={13} />} mono>
             {info.getValue()}
-          </Text>
+          </IconText>
         ),
       }),
       columnHelper.accessor('city', {
@@ -221,15 +311,27 @@ export function Customer() {
       }),
       columnHelper.accessor('country', {
         header: 'Country',
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {info.getValue()}
-          </Text>
-        ),
+        cell: (info) => {
+          const flag = COUNTRY_FLAGS[info.getValue()];
+          return (
+            <Group gap={6} wrap="nowrap">
+              {flag ? (
+                <Text fz="sm" style={{ lineHeight: 1 }}>
+                  {flag}
+                </Text>
+              ) : (
+                <IconWorld size={13} color="var(--mantine-color-slate-4)" />
+              )}
+              <Text fz="xs" c="slate.6">
+                {info.getValue()}
+              </Text>
+            </Group>
+          );
+        },
       }),
       columnHelper.accessor('status', {
         header: 'Status',
-        cell: (info) => <StatusIndicator status={info.getValue()} />,
+        cell: (info) => <StatusBadge status={info.getValue()} />,
       }),
       columnHelper.display({
         id: 'actions',
@@ -241,19 +343,20 @@ export function Customer() {
         cell: (info) => {
           const row = info.row.original;
           return (
-            <Group justify="flex-end" gap="xs" wrap="nowrap">
+            <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
                   color="slate"
+                  radius="md"
                   onClick={() => setBorrower360CustomerId(row.id)}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="brand">
+                <ActionIcon size="sm" variant="subtle" color="brand" radius="md">
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -262,6 +365,7 @@ export function Customer() {
                   size="sm"
                   variant="subtle"
                   color="danger"
+                  radius="md"
                   onClick={() => handleDelete(row.id)}
                 >
                   <IconTrash size={14} />
@@ -311,35 +415,73 @@ export function Customer() {
         </Box>
       );
     }
-    // customer no longer exists (deleted) — the effect above resets the id;
-    // render nothing for this frame instead of touching state here.
     return null;
   }
 
   return (
-    <Stack gap="md" p="lg">
+    <Stack gap="lg" p="lg">
       <CustomerModal opened={opened} onClose={close} />
 
-      {/* Header — title + subtitle, Add button lives in the filter bar */}
-      <Group justify="space-between" align="center">
-        <Stack gap="xs">
-          <Title order={2} c="slate.8" fw={600}>
-            Customers
-          </Title>
-          <Text fz="sm" c="slate.5">
-            Onboard new customers
-          </Text>
-        </Stack>
+      {/* Scoped, purely visual */}
+      <style>{`
+        .lms-search:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--mantine-color-brand-5) 18%, transparent); }
+        .lms-row-actions { opacity: 0; transition: opacity 150ms ease; }
+        .lms-row:hover .lms-row-actions,
+        .lms-row:focus-within .lms-row-actions { opacity: 1; }
+        .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+        .lms-row:hover td { background: color-mix(in srgb, var(--mantine-color-brand-5) 5%, var(--mantine-color-white)) !important; }
+        .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+        .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+      `}</style>
+
+      {/* Header — icon tile + title on the left, live KPI chips on the right */}
+      <Group justify="space-between" align="center" wrap="wrap" gap="md">
+        <Group gap="sm" align="center">
+          <Box
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 'var(--mantine-radius-md)',
+              background: 'linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-8))',
+              boxShadow: '0 6px 16px color-mix(in srgb, var(--mantine-color-brand-6) 30%, transparent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <IconUsers size={20} color="var(--mantine-color-white)" stroke={1.8} />
+          </Box>
+          <Stack gap={2}>
+            <Title order={2} c="slate.8" fw={700}>
+              Customers
+            </Title>
+            <Text fz="sm" c="slate.5">
+              Onboard new customers
+            </Text>
+          </Stack>
+        </Group>
+
+     
       </Group>
 
-      {/* Filters Box */}
-      <Paper withBorder radius="md" p="xs" shadow="xs">
+      {/* Toolbar — pill search + pill filters + segmented status control */}
+      <Paper
+        radius="xl"
+        p="xs"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
         <Group gap="sm" wrap="wrap" align="center">
           <TextInput
-            size="xs"
+            className="lms-search"
+            size="sm"
+            radius="xl"
             placeholder="Name / Email / Mobile"
-            leftSection={<IconSearch size={13} />}
-            style={{ flex: 1, minWidth: 200 }}
+            leftSection={<IconSearch size={14} />}
+            style={{ flex: 1, minWidth: 220 }}
+            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
@@ -347,10 +489,11 @@ export function Customer() {
             }}
           />
           <Select
-            size="xs"
+            size="sm"
+            radius="xl"
             placeholder="All Types"
             data={['Individual', 'Company']}
-            w={144}
+            w={150}
             searchable
             clearable
             rightSection={chevronDown}
@@ -361,10 +504,11 @@ export function Customer() {
             }}
           />
           <Select
-            size="xs"
+            size="sm"
+            radius="xl"
             placeholder="All Countries"
             data={countryOptions}
-            w={160}
+            w={166}
             searchable
             clearable
             rightSection={chevronDown}
@@ -375,38 +519,61 @@ export function Customer() {
             }}
           />
 
-          <Radio.Group
-            name="status"
+
+          <SegmentedControl
+            size="xs"
+            radius="xl"
+            color="brand"
             value={status}
             onChange={(v) => {
               setStatus(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
-          >
-            <Group gap="sm">
-              <Radio size="xs" value="all" label="All" color="brand" />
-              <Radio size="xs" value="ACTIVE" label="Active" color="brand" />
-              <Radio size="xs" value="INACTIVE" label="Inactive" color="brand" />
-            </Group>
-          </Radio.Group>
+            data={[
+              { label: 'All', value: 'all' },
+              { label: 'Active', value: 'ACTIVE' },
+              { label: 'Inactive', value: 'INACTIVE' },
+            ]}
+          />
 
-          {/* Reset + Add Customer grouped together at the end of the filter bar,
-              matching the "New Entry" placement pattern from the journal entries table */}
           <Group gap="xs" ml="auto">
-            <Button size="xs" variant="default" px="md" onClick={resetFilters}>
+            <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>
               Reset
             </Button>
-            <Button size="xs" color="brand" onClick={open} leftSection={<IconPlus size={14} />}>
+            <Button
+              size="sm"
+              radius="xl"
+              color="brand"
+              onClick={open}
+              leftSection={<IconPlus size={14} />}
+              style={{
+                background: 'linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-7))',
+                boxShadow: '0 4px 10px color-mix(in srgb, var(--mantine-color-brand-6) 30%, transparent)',
+              }}
+            >
               Add Customer
             </Button>
           </Group>
         </Group>
       </Paper>
 
-      {/* Data Table */}
-      <Paper withBorder radius="md" shadow="xs" style={{ overflow: 'hidden' }}>
-        <Table verticalSpacing="xs" horizontalSpacing="sm" fz="xs" w="100%">
-          <Table.Thead bg="slate.0" style={{ borderBottom: '1px solid var(--mantine-color-slate-2)' }}>
+      {/* Data Table — floating rounded row-cards on a soft canvas */}
+      <Paper
+        radius="lg"
+        p="sm"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        <Table
+          verticalSpacing="sm"
+          horizontalSpacing="sm"
+          fz="xs"
+          w="100%"
+          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+        >
+          <Table.Thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <Table.Tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -415,14 +582,15 @@ export function Customer() {
                     <Table.Th
                       key={header.id}
                       c="slate.5"
-                      fw={600}
+                      fw={700}
                       style={{
-                        fontSize: "var(--mantine-font-size-xs)",
-                        padding: '6px 10px',
+                        fontSize: 'var(--mantine-font-size-xs)',
+                        padding: '0 10px 6px',
                         userSelect: 'none',
                         cursor: canSort ? 'pointer' : 'default',
                         textTransform: 'uppercase',
-                        letterSpacing: '0.03em',
+                        letterSpacing: '0.04em',
+                        border: 'none',
                       }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
@@ -443,9 +611,22 @@ export function Customer() {
           <Table.Tbody>
             {rows.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={columns.length}>
+                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
                   <Stack align="center" gap="xs" py="xl">
-                    <IconUsers size={32} color="var(--mantine-color-slate-4)" />
+                    <Box
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: '50%',
+                        background: 'var(--mantine-color-white)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid var(--mantine-color-slate-2)',
+                      }}
+                    >
+                      <IconUsers size={26} color="var(--mantine-color-slate-4)" />
+                    </Box>
                     <Text ta="center" c="slate.5" fz="xs">
                       No customers match your filters.
                     </Text>
@@ -453,25 +634,37 @@ export function Customer() {
                 </Table.Td>
               </Table.Tr>
             ) : (
-              rows.map((row) => (
-                <Table.Tr
-                  key={row.id}
-                  style={{ borderBottom: '1px solid var(--mantine-color-slate-1)' }}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <Table.Td key={cell.id} style={{ padding: '5px 10px' }}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </Table.Td>
-                  ))}
-                </Table.Tr>
-              ))
+              rows.map((row) => {
+                const isActive = row.original.status === 'ACTIVE';
+                const cells = row.getVisibleCells();
+                return (
+                  <Table.Tr key={row.id} className="lms-row">
+                    {cells.map((cell, idx) => (
+                      <Table.Td
+                        key={cell.id}
+                        style={{
+                          padding: '10px 10px',
+                          border: 'none',
+                          boxShadow: 'var(--mantine-shadow-xs)',
+                          borderLeft:
+                            idx === 0
+                              ? `3px solid var(--mantine-color-${isActive ? 'success' : 'danger'}-4)`
+                              : undefined,
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </Table.Td>
+                    ))}
+                  </Table.Tr>
+                );
+              })
             )}
           </Table.Tbody>
         </Table>
 
         {/* Pagination Footer */}
-        <Group justify="space-between" px="sm" py="xs" bg="slate.0" style={{ borderTop: '1px solid var(--mantine-color-slate-2)' }}>
-          <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
+        <Group justify="space-between" px="sm" pt="xs">
+          <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
             <span>
               {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
             </span>
@@ -483,7 +676,8 @@ export function Customer() {
                 onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
                 rightSection={chevronDown}
                 size="xs"
-                w={56}
+                radius="xl"
+                w={60}
               />
             </Group>
           </Group>
@@ -493,7 +687,7 @@ export function Customer() {
             onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
             color="brand"
             size="xs"
-            radius="sm"
+            radius="xl"
           />
         </Group>
       </Paper>

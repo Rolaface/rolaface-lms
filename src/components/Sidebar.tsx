@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Box,
@@ -7,6 +7,7 @@ import {
   UnstyledButton,
   Avatar,
   ActionIcon,
+  Tooltip,
 } from "@mantine/core";
 import {
   IconShieldCheck,
@@ -19,37 +20,28 @@ import {
   IconLogout,
   IconMoneybag,
   IconChevronDown,
-  IconChevronUp,
   IconBuildingBank,
   IconListDetails,
   IconReportAnalytics,
   IconCreditCard,
   IconFileInvoice,
-  IconHierarchy2,
-  IconReceipt2,
-  IconBookmarks,
-  IconCreditCardRefund,
-  IconCreditCardPay,
-  IconChartLine,
-  IconScale,
-  IconHome
+  IconHome,
 } from "@tabler/icons-react";
 
 /* ───────────────── Nav item types (recursive) ───────────────── */
 
 interface NavItem {
-  path?: string; // omit for a group that only holds children (e.g. "General Ledger")
+  path?: string; // omit for a group that only holds children
   label: string;
   icon: React.ComponentType<{
     size?: number;
     stroke?: number;
-    className?: string;
+    style?: React.CSSProperties;
   }>;
   matchPrefix?: boolean;
   subItems?: NavItem[];
 }
 
-// Updated Navigation Items with Submenus
 const LOCAL_NAV_ITEMS: NavItem[] = [
   {
     path: "/",
@@ -64,11 +56,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconShieldCheck,
     matchPrefix: true,
     subItems: [
-      {
-        path: "/collateral/type",
-        label: "Collateral Type",
-        icon: IconListDetails,
-      },
+      { path: "/collateral/type", label: "Collateral Type", icon: IconListDetails },
       { path: "/collateral/list", label: "Collateral", icon: IconShieldCheck },
     ],
   },
@@ -78,21 +66,9 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconSettings,
     matchPrefix: true,
     subItems: [
-      {
-        path: "/setup/category",
-        label: "Loan Category",
-        icon: IconListDetails,
-      },
-      {
-        path: "/setup/classification",
-        label: "Loan Classification",
-        icon: IconFileText,
-      },
-      {
-        path: "/setup/collection",
-        label: "Collection Order",
-        icon: IconListDetails,
-      },
+      { path: "/setup/category", label: "Loan Category", icon: IconListDetails },
+      { path: "/setup/classification", label: "Loan Classification", icon: IconFileText },
+      { path: "/setup/collection", label: "Collection Order", icon: IconListDetails },
       { path: "/setup/fees", label: "Fee and Charges", icon: IconCreditCard },
       { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank },
     ],
@@ -103,11 +79,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconFileText,
     matchPrefix: true,
     subItems: [
-      {
-        path: "/origination/application",
-        label: "Loan Application",
-        icon: IconFileText,
-      },
+      { path: "/origination/application", label: "Loan Application", icon: IconFileText },
     ],
   },
   {
@@ -116,86 +88,100 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconMoneybag,
     matchPrefix: true,
     subItems: [
-      {
-        path: "/operations/booking",
-        label: "Loan Booking",
-        icon: IconFileText,
-      },
-      {
-        path: "/operations/disbursement",
-        label: "Loan Disbursement",
-        icon: IconCreditCard,
-      },
-      {
-        path: "/operations/repayment",
-        label: "Loan Repayment",
-        icon: IconCalculator,
-      },
+      { path: "/operations/booking", label: "Loan Booking", icon: IconFileText },
+      { path: "/operations/disbursement", label: "Loan Disbursement", icon: IconCreditCard },
+      { path: "/operations/repayment", label: "Loan Repayment", icon: IconCalculator },
       { path: "/operations/waiver", label: "Loan Waiver", icon: IconFileText },
-      {
-        path: "/operations/capitalization",
-        label: "Loan Capitalization",
-        icon: IconFileText,
-      },
-      {
-        path: "/operations/restructure",
-        label: "Loan Restructure",
-        icon: IconSettings,
-      },
-      {
-        path: "/operations/writeoff",
-        label: "Loan Write-Off",
-        icon: IconFileText,
-      },
-      {
-        path: "/operations/transfer",
-        label: "Loan Transfer",
-        icon: IconBuildingBank,
-      },
+      { path: "/operations/capitalization", label: "Loan Capitalization", icon: IconFileText },
+      { path: "/operations/restructure", label: "Loan Restructure", icon: IconSettings },
+      { path: "/operations/writeoff", label: "Loan Write-Off", icon: IconFileText },
+      { path: "/operations/transfer", label: "Loan Transfer", icon: IconBuildingBank },
     ],
   },
- {
-  path: "/accounting",
-  label: "Accounting",
-  icon: IconFileInvoice,
-  matchPrefix: true,
-},
+  {
+    path: "/accounting",
+    label: "Accounting",
+    icon: IconFileInvoice,
+    matchPrefix: true,
+  },
   {
     path: "/reports",
     label: "Lending Reports",
     icon: IconReportAnalytics,
     matchPrefix: true,
     subItems: [
-      {
-        path: "/reports/statement",
-        label: "Loan Statement",
-        icon: IconFileText,
-      },
-      {
-        path: "/reports/arrears",
-        label: "Arrear Reports",
-        icon: IconReportAnalytics,
-      },
+      { path: "/reports/statement", label: "Loan Statement", icon: IconFileText },
+      { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics },
     ],
   },
 ];
 
 // Size config — tweak these to scale text/icons up or down
 const SIZES = {
-  rootIcon: 22,
-  subIcon: 18,
-  subSubIcon: 16,
-  rootText: 15,
-  subText: 14,
+  rootIcon: 19,
+  subIcon: 16,
+  subSubIcon: 15,
+  rootText: 14.5,
+  subText: 13.5,
   subSubText: 13,
-  chevron: 16,
-  logoIcon: 28,
-  avatarLetter: "md",
+  chevron: 15,
 };
 
+/* ───────────────── Design tokens (all sourced from the Mantine theme) ─────────────────
+   Nothing below is a hardcoded color — every value reads off the `brand` / `slate`
+   color scales defined in mantineTheme, via Mantine's CSS variables. */
+
+const tk = {
+  textDefault: "var(--mantine-color-slate-6)",
+  textMuted: "var(--mantine-color-slate-4)",
+  textHeading: "var(--mantine-color-slate-8)",
+  textActive: "var(--mantine-color-brand-7)",
+  iconDefault: "var(--mantine-color-slate-5)",
+  border: "var(--mantine-color-slate-2)",
+  surface: "var(--mantine-color-white)",
+  surfaceMuted: "var(--mantine-color-slate-0)",
+  surfaceHover: "color-mix(in srgb, var(--mantine-color-brand-5) 6%, transparent)",
+  activeBg:
+    "linear-gradient(90deg, color-mix(in srgb, var(--mantine-color-brand-5) 12%, transparent), color-mix(in srgb, var(--mantine-color-brand-5) 4%, transparent))",
+  activeBar: "linear-gradient(180deg, var(--mantine-color-brand-4), var(--mantine-color-brand-7))",
+  activeIconBg: "var(--mantine-color-white)",
+  activeIconShadow: "0 1px 2px color-mix(in srgb, var(--mantine-color-brand-8) 20%, transparent)",
+  ring: "color-mix(in srgb, var(--mantine-color-brand-5) 35%, transparent)",
+  logoGlow: "0 6px 16px color-mix(in srgb, var(--mantine-color-brand-6) 35%, transparent)",
+  logoGradient: "linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-8))",
+};
+
+/* ───────────────── Accordion wrapper: smooth height animation via CSS grid ───────────────── */
+
+function Collapse({ open, children }: { open: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateRows: open ? "1fr" : "0fr",
+        transition: "grid-template-rows 240ms cubic-bezier(0.4, 0, 0.2, 1)",
+      }}
+    >
+      <div style={{ overflow: "hidden", minHeight: 0 }}>{children}</div>
+    </div>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <IconChevronDown
+      size={SIZES.chevron}
+      style={{
+        color: open ? "var(--mantine-color-brand-6)" : tk.textMuted,
+        transform: open ? "rotate(180deg)" : "rotate(0deg)",
+        transition: "transform 220ms ease, color 150ms ease",
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
 /* ───────────────── Recursive submenu node ───────────────── */
-/* Handles both a leaf link (has `path`, no `subItems`) and a group
-   (has `subItems`, with or without its own `path`) at any nesting depth. */
 
 function NavNode({
   item,
@@ -205,7 +191,7 @@ function NavNode({
   toggleMenu,
 }: {
   item: NavItem;
-  depth: number; // 1 = first-level submenu item, 2 = nested group, ...
+  depth: number;
   pathname: string;
   openMenus: Record<string, boolean>;
   toggleMenu: (key: string) => void;
@@ -224,38 +210,41 @@ function NavNode({
   const textSize = depth >= 2 ? SIZES.subSubText : SIZES.subText;
   const iconSize = depth >= 2 ? SIZES.subSubIcon : SIZES.subIcon;
 
+  const rowStyle: React.CSSProperties = {
+    fontSize: textSize,
+    color: isActive || isOpen ? tk.textActive : tk.textDefault,
+    fontWeight: isActive ? 600 : 500,
+    borderRadius: "var(--mantine-radius-sm)",
+    padding: "6px 8px",
+    transition: "background-color 150ms ease, color 150ms ease, transform 150ms ease",
+  };
+
   if (hasSubItems) {
-    // Group node — no path (or a path that's just a section landing page),
-    // renders a toggle button + nested children.
     return (
       <Box className="w-full">
         <UnstyledButton
           onClick={() => toggleMenu(menuKey)}
-          className={`flex w-full items-center justify-between font-medium transition-colors ${isActive || isOpen
-              ? "text-[#1E40AF]"
-              : "text-gray-600 hover:text-[#1E40AF]"
-            }`}
-          style={{ fontSize: textSize }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = tk.surfaceHover)}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+          className="flex w-full items-center justify-between"
+          style={rowStyle}
         >
           <Box className="flex items-center gap-3">
             <Icon
               size={iconSize}
-              stroke={1.5}
-              className={
-                isActive || isOpen ? "text-[#1E40AF]" : "text-gray-500"
-              }
+              stroke={1.6}
+              style={{ color: isActive || isOpen ? "var(--mantine-color-brand-6)" : tk.iconDefault }}
             />
             <span>{item.label}</span>
           </Box>
-          {isOpen ? (
-            <IconChevronUp size={SIZES.chevron} className="text-[#1E40AF]" />
-          ) : (
-            <IconChevronDown size={SIZES.chevron} className="text-gray-400" />
-          )}
+          <Chevron open={isOpen} />
         </UnstyledButton>
 
-        {isOpen && (
-          <Box className="ml-[11px] mt-2 mb-2 flex flex-col gap-3 border-l-2 border-gray-200 py-1 pl-6">
+        <Collapse open={isOpen}>
+          <Box
+            className="ml-[11px] mt-2 mb-1 flex flex-col gap-1 py-1 pl-5"
+            style={{ borderLeft: `2px solid ${tk.border}` }}
+          >
             {item.subItems!.map((sub) => (
               <NavNode
                 key={sub.label}
@@ -267,25 +256,34 @@ function NavNode({
               />
             ))}
           </Box>
-        )}
+        </Collapse>
       </Box>
     );
   }
 
-  // Leaf node — a real route link
   return (
     <UnstyledButton
       component={Link}
       to={item.path}
-      className={`flex items-center gap-3 font-medium transition-colors ${isActive ? "text-[#1E40AF]" : "text-gray-600 hover:text-[#1E40AF]"
-        }`}
-      style={{ fontSize: textSize }}
+      onMouseEnter={(e) => {
+        if (!isActive) e.currentTarget.style.backgroundColor = tk.surfaceHover;
+      }}
+      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isActive ? "transparent" : "transparent")}
+      className="flex items-center gap-3"
+      style={{ ...rowStyle, color: isActive ? tk.textActive : tk.textDefault }}
     >
-      <Icon
-        size={iconSize}
-        stroke={1.5}
-        className={isActive ? "text-[#1E40AF]" : "text-gray-500"}
-      />
+      {isActive && (
+        <span
+          style={{
+            width: 4,
+            height: 4,
+            borderRadius: 999,
+            background: "var(--mantine-color-brand-6)",
+            flexShrink: 0,
+          }}
+        />
+      )}
+      <Icon size={iconSize} stroke={1.6} style={{ color: isActive ? "var(--mantine-color-brand-6)" : tk.iconDefault }} />
       <span>{item.label}</span>
     </UnstyledButton>
   );
@@ -294,180 +292,271 @@ function NavNode({
 export function Sidebar({
   isCollapsed,
   onToggle,
+  onLogout,
 }: {
   isCollapsed: boolean;
   onToggle: () => void;
+  onLogout?: () => void;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-
-  // Keyed by `${depth}-${label}` so labels can repeat across sections/depths
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [openMenus, setOpenMenus] = React.useState<Record<string, boolean>>({});
 
   const toggleMenu = (key: string) => {
     setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   return (
-    <Box className="flex h-full flex-col bg-white overflow-hidden">
-      {/* Sub Header: Logo, Company Name & Toggle */}
+    <Box
+      className="flex h-full flex-col overflow-hidden"
+      style={{
+        background: tk.surface,
+        borderRight: `1px solid ${tk.border}`,
+      }}
+    >
+      {/* Thin scrollbar + focus ring, scoped to this component */}
+      <style>{`
+        .lms-nav-scroll::-webkit-scrollbar { width: 6px; }
+        .lms-nav-scroll::-webkit-scrollbar-thumb {
+          background: var(--mantine-color-slate-3);
+          border-radius: 999px;
+        }
+        .lms-nav-scroll::-webkit-scrollbar-thumb:hover {
+          background: var(--mantine-color-slate-4);
+        }
+        .lms-nav-scroll { scrollbar-width: thin; scrollbar-color: var(--mantine-color-slate-3) transparent; }
+        .lms-focusable:focus-visible {
+          outline: 2px solid var(--mantine-color-brand-5);
+          outline-offset: 2px;
+        }
+      `}</style>
+
+      {/* Header: Logo, Company Name & Toggle */}
       <Box
-        className={`flex items-center border-b border-gray-200 py-5 ${isCollapsed ? "px-4 justify-center flex-col gap-4" : "px-6 gap-4"}`}
+        className={`flex items-center py-5 ${isCollapsed ? "px-4 justify-center flex-col gap-4" : "px-5 gap-3"}`}
+        style={{ borderBottom: `1px solid ${tk.border}` }}
       >
-        <Box className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
-          <IconShieldCheck size={28} className="text-[#3B82F6]" />
+        <Box
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+          style={{ background: tk.logoGradient, boxShadow: tk.logoGlow }}
+        >
+          <IconShieldCheck size={24} stroke={2} color="var(--mantine-color-white)" />
         </Box>
 
         {!isCollapsed && (
-          <Text fw={700} size="md" className="flex-1 text-gray-900">
-            LMS
-          </Text>
+          <Box className="flex-1 min-w-0">
+            <Text fw={700} size="md" style={{ color: tk.textHeading, letterSpacing: "0.01em" }}>
+              LMS
+            </Text>
+          </Box>
         )}
 
-        <ActionIcon
-          variant="subtle"
-          color="gray"
-          className="shrink-0"
-          title="Switch Workspace"
-          onClick={() => {
-            window.location.href = `${import.meta.env.VITE_ERP_URL}/select-app`;
-          }}
-        >
-          <IconHome size={20} className="text-gray-500" />
-        </ActionIcon>
+        <Tooltip label="Switch workspace" position="bottom" disabled={isCollapsed}>
+          <ActionIcon
+            variant="subtle"
+            radius="md"
+            className="lms-focusable shrink-0"
+            onClick={() => {
+              window.location.href = `${import.meta.env.VITE_ERP_URL}/select-app`;
+            }}
+            style={{ color: tk.iconDefault }}
+          >
+            <IconHome size={18} />
+          </ActionIcon>
+        </Tooltip>
 
-        <ActionIcon
-          variant="subtle"
-          color="gray"
-          className="shrink-0"
-          onClick={onToggle}
-        >
-          <IconMenu2 size={22} className="text-gray-500" />
-        </ActionIcon>
+        {!isCollapsed && (
+          <ActionIcon
+            variant="subtle"
+            radius="md"
+            className="lms-focusable shrink-0"
+            onClick={onToggle}
+            style={{ color: tk.iconDefault }}
+          >
+            <IconMenu2 size={19} />
+          </ActionIcon>
+        )}
       </Box>
 
-      {/* Navigation Items */}
+      {isCollapsed && (
+        <Box className="flex justify-center pt-3">
+          <ActionIcon variant="subtle" radius="md" onClick={onToggle} style={{ color: tk.iconDefault }}>
+            <IconMenu2 size={19} />
+          </ActionIcon>
+        </Box>
+      )}
+
+      {/* Navigation */}
       <Stack
-        gap={16}
-        className={`flex-1 py-8 overflow-y-auto ${isCollapsed ? "px-4 items-center" : "px-6"}`}
+        gap={4}
+        className={`lms-nav-scroll flex-1 py-4 overflow-y-auto ${isCollapsed ? "px-3 items-center" : "px-4"}`}
       >
         {LOCAL_NAV_ITEMS.map((item) => {
           const isRootActive = item.matchPrefix
-            ? (pathname.startsWith(item.path!) && item.path !== "/") ||
-            pathname === item.path
+            ? (pathname.startsWith(item.path!) && item.path !== "/") || pathname === item.path
             : pathname === item.path;
 
           const ItemIcon = item.icon;
           const hasSubItems = !!item.subItems?.length;
           const menuKey = `0-${item.label}`;
           const isOpen = openMenus[menuKey] === true;
+          const highlighted = isRootActive || (isOpen && hasSubItems && !isCollapsed);
 
-          return (
-            <Box key={item.label} className="w-full">
-              <UnstyledButton
-                {...(hasSubItems && !isCollapsed
-                  ? { component: "button" as any }
-                  : { component: Link, to: item.path })}
-                onClick={(e: React.MouseEvent) => {
-                  if (hasSubItems && !isCollapsed) {
-                    e.preventDefault();
-                    toggleMenu(menuKey);
-                  }
-                }}
-                title={isCollapsed ? item.label : undefined}
-                className={`flex w-full items-center justify-between text-[15px] font-medium transition-colors py-1.5 ${isCollapsed ? "justify-center" : ""} ${isRootActive || (isOpen && hasSubItems && !isCollapsed)
-                    ? "text-[#1E40AF]"
-                    : "text-gray-600 hover:text-[#1E40AF]"
-                  }`}
-                style={{ fontSize: SIZES.rootText }}
-              >
+          const button = (
+            <UnstyledButton
+              {...(hasSubItems && !isCollapsed
+                ? { component: "button" as any }
+                : { component: Link, to: item.path })}
+              onClick={(e: React.MouseEvent) => {
+                if (hasSubItems && !isCollapsed) {
+                  e.preventDefault();
+                  toggleMenu(menuKey);
+                }
+              }}
+              className={`lms-focusable relative flex w-full items-center justify-between overflow-hidden ${isCollapsed ? "justify-center" : ""}`}
+              style={{
+                fontSize: SIZES.rootText,
+                fontWeight: isRootActive ? 700 : 600,
+                color: highlighted ? tk.textActive : tk.textDefault,
+                background: isRootActive ? tk.activeBg : "transparent",
+                borderRadius: "var(--mantine-radius-md)",
+                padding: isCollapsed ? "10px" : "9px 10px",
+                transition: "background-color 150ms ease, color 150ms ease",
+              }}
+              onMouseEnter={(e) => {
+                if (!isRootActive) e.currentTarget.style.backgroundColor = tk.surfaceHover;
+              }}
+              onMouseLeave={(e) => {
+                if (!isRootActive) e.currentTarget.style.backgroundColor = "transparent";
+              }}
+            >
+              {isRootActive && (
+                <span
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: "14%",
+                    bottom: "14%",
+                    width: 3,
+                    borderRadius: 999,
+                    background: tk.activeBar,
+                  }}
+                />
+              )}
+
+              <Box className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
                 <Box
-                  className={`flex items-center ${isCollapsed ? "justify-center" : "gap-4"}`}
+                  className="flex items-center justify-center shrink-0"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: "var(--mantine-radius-sm)",
+                    background: isRootActive ? tk.activeIconBg : "transparent",
+                    boxShadow: isRootActive ? tk.activeIconShadow : "none",
+                    transition: "background-color 150ms ease, box-shadow 150ms ease",
+                  }}
                 >
                   <ItemIcon
                     size={SIZES.rootIcon}
-                    stroke={1.5}
-                    className={
-                      isRootActive || (isOpen && hasSubItems && !isCollapsed)
-                        ? "text-[#1E40AF]"
-                        : "text-gray-500"
-                    }
+                    stroke={1.7}
+                    style={{ color: highlighted ? "var(--mantine-color-brand-6)" : tk.iconDefault }}
                   />
-                  {!isCollapsed && <span>{item.label}</span>}
                 </Box>
+                {!isCollapsed && <span>{item.label}</span>}
+              </Box>
 
-                {!isCollapsed && hasSubItems && (
-                  <Box className="text-gray-400">
-                    {isOpen ? (
-                      <IconChevronUp
-                        size={SIZES.chevron}
-                        className="text-[#1E40AF]"
+              {!isCollapsed && hasSubItems && <Chevron open={isOpen} />}
+            </UnstyledButton>
+          );
+
+          return (
+            <Box key={item.label} className="w-full">
+              {isCollapsed ? (
+                <Tooltip label={item.label} position="right" offset={12}>
+                  {button}
+                </Tooltip>
+              ) : (
+                button
+              )}
+
+              {hasSubItems && !isCollapsed && (
+                <Collapse open={isOpen}>
+                  <Box
+                    className="ml-[26px] mt-1.5 mb-1 flex flex-col gap-1 py-1 pl-5"
+                    style={{ borderLeft: `2px solid ${tk.border}` }}
+                  >
+                    {item.subItems!.map((sub) => (
+                      <NavNode
+                        key={sub.label}
+                        item={sub}
+                        depth={1}
+                        pathname={pathname}
+                        openMenus={openMenus}
+                        toggleMenu={toggleMenu}
                       />
-                    ) : (
-                      <IconChevronDown size={16} />
-                    )}
+                    ))}
                   </Box>
-                )}
-              </UnstyledButton>
-
-              {/* First-level submenu — each entry may itself be a group (e.g. "General Ledger") */}
-              {hasSubItems && !isCollapsed && isOpen && (
-                <Box className="ml-[11px] mt-2 mb-2 flex flex-col gap-3 border-l-2 border-gray-200 py-1 pl-6">
-                  {item.subItems!.map((sub) => (
-                    <NavNode
-                      key={sub.label}
-                      item={sub}
-                      depth={1}
-                      pathname={pathname}
-                      openMenus={openMenus}
-                      toggleMenu={toggleMenu}
-                    />
-                  ))}
-                </Box>
+                </Collapse>
               )}
             </Box>
           );
         })}
       </Stack>
 
-
       {/* Footer: User Profile */}
       <Box
-        className={`border-t border-gray-200 shrink-0 ${isCollapsed ? "p-2 flex flex-col items-center gap-4" : "p-4"}`}
+        className={`shrink-0 ${isCollapsed ? "p-3 flex flex-col items-center gap-3" : "p-3"}`}
+        style={{ borderTop: `1px solid ${tk.border}` }}
       >
         <Box
-          className={`flex items-center rounded-lg px-2 py-1 ${isCollapsed ? "justify-center" : "justify-between"}`}
+          className={`flex items-center rounded-lg px-2 py-2 ${isCollapsed ? "justify-center" : "justify-between gap-2"}`}
+          style={{ transition: "background-color 150ms ease" }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = tk.surfaceMuted)}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
         >
-          <Box className="flex items-center gap-3">
-            <Avatar
-              color="blue"
-              radius="xl"
-              size={isCollapsed ? "sm" : "md"}
-              className="bg-[#1E3A8A]"
+          <Box className="flex items-center gap-3 min-w-0">
+            <Box
+              className="flex items-center justify-center shrink-0"
+              style={{
+                width: isCollapsed ? 34 : 38,
+                height: isCollapsed ? 34 : 38,
+                borderRadius: 999,
+                padding: 2,
+                background: `linear-gradient(135deg, var(--mantine-color-brand-4), var(--mantine-color-brand-7))`,
+              }}
             >
-              A
-            </Avatar>
+              <Avatar color="brand" radius="xl" size={isCollapsed ? "sm" : "md"} style={{ border: `2px solid ${tk.surface}` }}>
+                A
+              </Avatar>
+            </Box>
 
             {!isCollapsed && (
-              <Box>
-                <Text
-                  size="sm"
-                  fw={700}
-                  className="text-gray-900 leading-tight"
-                >
+              <Box className="min-w-0">
+                <Text size="sm" fw={700} style={{ color: tk.textHeading, lineHeight: 1.2 }} truncate>
                   Administrator
                 </Text>
-                <Text
-                  size="xs"
-                  className="text-gray-500 uppercase tracking-wide font-medium mt-0.5"
-                >
-                  Administrator
+                <Text size="xs" style={{ color: tk.textMuted, letterSpacing: "0.03em", marginTop: 2 }}>
+                  ADMINISTRATOR
                 </Text>
               </Box>
             )}
           </Box>
+
+          {!isCollapsed && (
+            <Tooltip label="Sign out">
+              <ActionIcon
+                variant="subtle"
+                radius="md"
+                className="lms-focusable shrink-0"
+                onClick={onLogout}
+                style={{ color: tk.iconDefault }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--mantine-color-danger-6)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = tk.iconDefault)}
+              >
+                <IconLogout size={17} />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Box>
-
-
       </Box>
     </Box>
   );

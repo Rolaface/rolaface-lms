@@ -1,10 +1,10 @@
-import { Fragment, useState } from "react";
-import { Box, Text, Button, Modal, ActionIcon, Tooltip, ThemeIcon, Group, ScrollArea, UnstyledButton, Fieldset } from "@mantine/core";
+import { useState } from "react";
+import { Box, Text, Button, Modal, ActionIcon, ThemeIcon, Group, ScrollArea, Fieldset, Timeline } from "@mantine/core";
 import { IconX, IconUser, IconCheck, IconArrowLeft, IconArrowRight } from "@tabler/icons-react";
 
 import { GradientButton } from "../../shared/customer/Shared";
 import { STEPS } from "../../constants/customer/constants";
-import { colorVar, nextId } from "../../../utils/customer/utils";
+import { nextId } from "../../../utils/customer/utils";
 import type { IdDocument, CustomField, UploadedDoc } from "../../../types/customer/types";
 
 import { IdentityStep } from "./steps/IdentityStep";
@@ -241,70 +241,85 @@ export function CustomerModal({ opened, onClose, isViewMode }: CustomerModalProp
       padding={0}
       lockScroll
       styles={{
-        content: { height: "93vh", maxHeight: "93vh", maxWidth: 1280, display: "flex", flexDirection: "column", overflow: "hidden" },
+        content: { height: "93vh", maxHeight: "93vh", maxWidth: 1320, display: "flex", flexDirection: "column", overflow: "hidden" },
         header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
         body: { flex: 1, display: "flex", flexDirection: "column", padding: 0, minHeight: 0, overflow: "hidden" },
       }}
     >
       <Box style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }} bg="white">
         {/* Header */}
-        <Group justify="space-between" align="flex-start" px="lg" pt="sm" pb="xs" style={{ borderBottom: "1px solid var(--mantine-color-gray-1)", flexShrink: 0 }}>
-          <Group align="flex-start" gap="sm">
-            <ThemeIcon radius="md" size={36} variant="gradient" gradient={{ from: "brand.5", to: "brand.7", deg: 135 }}>
-              <HeaderIcon size={17} />
+        <Group justify="space-between" align="flex-start" px="lg" pt="md" pb="sm" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", flexShrink: 0 }}>
+          <Group align="center" gap="sm">
+            <ThemeIcon radius="md" size={40} variant="gradient" gradient={{ from: "brand.5", to: "brand.7", deg: 135 }}>
+              <HeaderIcon size={18} />
             </ThemeIcon>
-            <Text size="lg" fw={800} c="dark.9">{headerTitle}</Text>
+            <Box>
+              <Text size="lg" fw={800} c="slate.8" lh={1.2}>{headerTitle}</Text>
+              <Text size="xs" c="slate.4" mt={2}>
+                Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep]?.label}
+              </Text>
+            </Box>
           </Group>
-          <ActionIcon variant="light" color="gray" radius="xl" size="lg" onClick={handleModalClose} aria-label="Close">
+          <ActionIcon variant="light" color="slate" radius="xl" size="lg" onClick={handleModalClose} aria-label="Close">
             <IconX size={18} />
           </ActionIcon>
         </Group>
 
-        {/* Stepper */}
-        <ScrollArea type="never" px="xl" py="xs" style={{ borderBottom: "1px solid var(--mantine-color-gray-1)", flexShrink: 0 }}>
-          <Group wrap="nowrap" gap={0}>
-            {STEPS.map((step, idx) => {
-              const isActive = currentStep === idx;
-              const isComplete = currentStep > idx;
-              const StepIcon = step.icon;
-              return (
-                <Fragment key={step.label}>
-                  <Tooltip label={step.label} position="bottom" withArrow>
-                    <UnstyledButton onClick={() => setActiveTab(idx.toString())}>
-                      <Group gap="xs" wrap="nowrap">
-                        <ThemeIcon
-                          radius="xl"
-                          size={28}
-                          variant={isActive || isComplete ? "filled" : "outline"}
-                          color={isActive || isComplete ? "brand" : "gray"}
-                          style={isActive ? { boxShadow: `0 0 0 3px ${colorVar("brand", 1)}` } : undefined}
-                        >
-                          {isComplete ? <IconCheck size={13} /> : <StepIcon size={13} />}
-                        </ThemeIcon>
-                        <Text size="xs" fw={700} visibleFrom="xl" style={{ whiteSpace: "nowrap" }} c={isActive ? "brand.6" : isComplete ? "dark.4" : "dimmed"}>
+        {/* Body — sidebar stepper + scrollable step content */}
+        <Box style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
+          {/* Sidebar */}
+          <ScrollArea
+            type="auto"
+            bg="slate.0"
+            style={{ width: 232, flexShrink: 0, borderRight: "1px solid var(--mantine-color-slate-2)" }}
+          >
+            <Timeline active={currentStep} bulletSize={30} lineWidth={2} color="brand" p="md">
+              {STEPS.map((step, idx) => {
+                const isActive = currentStep === idx;
+                const isComplete = currentStep > idx;
+                const StepIcon = step.icon;
+                return (
+                  <Timeline.Item
+                    key={step.label}
+                    bullet={isComplete ? <IconCheck size={14} /> : <StepIcon size={14} />}
+                    onClick={() => setActiveTab(idx.toString())}
+                    style={{ cursor: "pointer" }}
+                    title={
+                      // Padding/shadow live on this inner box only, so the highlight hugs
+                      // the label instead of stretching across the Timeline item's full
+                      // row height (which includes the connector spacing to the next step).
+                      <Box
+                        display="inline-block"
+                        px={isActive ? 10 : 0}
+                        py={5}
+                        style={{
+                          borderRadius: "var(--mantine-radius-md)",
+                          background: isActive ? "var(--mantine-color-white)" : "transparent",
+                          boxShadow: isActive ? "var(--mantine-shadow-xs)" : "none",
+                          transition: "background-color 120ms ease, box-shadow 120ms ease",
+                        }}
+                      >
+                        <Text size="sm" fw={700} c={isActive ? "brand.6" : isComplete ? "slate.7" : "slate.4"}>
                           {step.label}
                         </Text>
-                      </Group>
-                    </UnstyledButton>
-                  </Tooltip>
-                  {idx < STEPS.length - 1 && (
-                    <Box w={32} h={2} mx="sm" style={{ borderRadius: 999, backgroundColor: isComplete ? colorVar("brand", 5) : "var(--mantine-color-gray-2)", flexShrink: 0 }} />
-                  )}
-                </Fragment>
-              );
-            })}
-          </Group>
-        </ScrollArea>
+                      </Box>
+                    }
+                  />
+                );
+              })}
+            </Timeline>
+          </ScrollArea>
 
-        {/* Body — only scroll container in the modal */}
-        <ScrollArea style={{ flex: 1, minHeight: 0 }} bg="gray.0" p="md" px="lg">
-          <Fieldset disabled={isViewMode} variant="unstyled" p={0} m={0}>
-            {renderStep()}
-          </Fieldset>
-        </ScrollArea>
+          {/* Step content */}
+          <ScrollArea style={{ flex: 1, minHeight: 0 }} bg="slate.0" p="md" px="lg">
+            <Fieldset disabled={isViewMode} variant="unstyled" p={0} m={0}>
+              {renderStep()}
+            </Fieldset>
+          </ScrollArea>
+        </Box>
 
         {/* Footer */}
-        <Group justify="flex-end" px="lg" py="xs" style={{ borderTop: "1px solid var(--mantine-color-gray-1)", flexShrink: 0 }}>
+        <Group justify="flex-end" px="lg" py="xs" style={{ borderTop: "1px solid var(--mantine-color-slate-2)", flexShrink: 0 }}>
           <Button size="sm" variant="default" onClick={handleModalClose} px="lg">
             {isViewMode ? "Close" : "Cancel"}
           </Button>
