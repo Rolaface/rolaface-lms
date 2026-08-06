@@ -244,7 +244,13 @@ export function ContactStep(props: ContactStepProps) {
           onChange={(e) => setSameAsResidential(e.currentTarget.checked)}
         />
       </Group>
-      <FieldRow columns="2fr 1fr 1fr">
+      <Box
+        style={{
+          display: "grid",
+          gridTemplateColumns: "2fr 1fr 1fr",
+          gap: "var(--mantine-spacing-md)",
+        }}
+      >
         <TextInput
           radius="md"
           placeholder="Plot / street, area"
@@ -252,7 +258,7 @@ export function ContactStep(props: ContactStepProps) {
           value={sameAsResidential ? residentialAddress : mailingAddress}
           onChange={(e) => setMailingAddress(e.currentTarget.value)}
         />
-      </FieldRow>
+      </Box>
     </PlainCard>
   );
 }

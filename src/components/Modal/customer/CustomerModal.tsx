@@ -417,14 +417,13 @@ export function CustomerModal({
     <Modal
       opened={opened}
       onClose={handleModalClose}
-      size="80%"
+      size={1040}
       padding={0}
       lockScroll
       styles={{
         content: {
           height: "88vh",
           maxHeight: "88vh",
-          maxWidth: 1180,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
@@ -578,8 +577,8 @@ export function CustomerModal({
           </Group>
         </Box>
         {/* Main Content */}
-        <ScrollArea style={{ flex: 1, minHeight: 0 }} bg="slate.0">
-          <Box maw={1000} mx="auto" pt="md" pl="lg" pr="lg" pb={24}>
+        <ScrollArea type="auto" scrollbarSize={8} style={{ flex: 1, minHeight: 0 }} bg="slate.0">
+          <Box mx="auto" pt="md" pl="lg" pr="lg" pb="md">
             <Fieldset disabled={isViewMode} variant="unstyled" p={0} m={0}>
               {renderStep()}
             </Fieldset>

@@ -425,9 +425,7 @@ export function Customer() {
       {/* Scoped, purely visual */}
       <style>{`
         .lms-search:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--mantine-color-brand-5) 18%, transparent); }
-        .lms-row-actions { opacity: 0; transition: opacity 150ms ease; }
-        .lms-row:hover .lms-row-actions,
-        .lms-row:focus-within .lms-row-actions { opacity: 1; }
+        .lms-row-actions { opacity: 1; }
         .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
         .lms-row:hover td { background: color-mix(in srgb, var(--mantine-color-brand-5) 5%, var(--mantine-color-white)) !important; }
         .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
