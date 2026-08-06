@@ -22,6 +22,7 @@ import {
   Button,
   Title,
   Stack,
+  useMantineTheme,
 } from "@mantine/core";
 import {
   IconEye,
@@ -286,6 +287,7 @@ function useColumns(
 }
 
 export function JournalEntries() {
+  const theme = useMantineTheme();
   const [opened, setOpened] = useState(false);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   const [modalReadOnly, setModalReadOnly] = useState(false);
@@ -360,12 +362,13 @@ export function JournalEntries() {
 
   return (
     <Stack gap="lg" p="lg">
-      {/* Scoped, purely visual — matches Customer table conventions */}
+      {/* Scoped, purely visual — now pulls from theme.other so it stays
+          in sync with the Customer table and the brand color everywhere else. */}
       <style>{`
-        .je-search:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--mantine-color-brand-5) 18%, transparent); }
+        .je-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
         .je-row-actions { opacity: 1; }
         .je-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
-        .je-row:hover td { background: color-mix(in srgb, var(--mantine-color-brand-5) 5%, var(--mantine-color-white)) !important; }
+        .je-row:hover td { background: ${theme.other.rowHoverBg} !important; }
         .je-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
         .je-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
       `}</style>
@@ -454,10 +457,8 @@ export function JournalEntries() {
               onClick={openNew}
               leftSection={<IconPlus size={14} />}
               style={{
-                background:
-                  "linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-7))",
-                boxShadow:
-                  "0 4px 10px color-mix(in srgb, var(--mantine-color-brand-6) 30%, transparent)",
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
               }}
             >
               New Entry

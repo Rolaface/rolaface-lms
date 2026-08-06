@@ -10,6 +10,7 @@ import {
   Fieldset,
   Divider,
   Paper,
+  useMantineTheme,
 } from "@mantine/core";
 import {
   IconX,
@@ -59,6 +60,7 @@ export default function JournalEntryModal({
   isReadOnly = false,
   baseCurrency,
 }: JournalEntryModalProps) {
+  const theme = useMantineTheme();
   const {
     form,
     entries,
@@ -345,9 +347,8 @@ export default function JournalEntryModal({
                 leftSection={<IconCheck size={14} />}
                 onClick={handleSubmit}
                 style={{
-                  background:
-                    "linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-7))",
-                  boxShadow: "0 4px 10px color-mix(in srgb, var(--mantine-color-brand-6) 30%, transparent)",
+                  background: theme.other.brandGradient,
+                  boxShadow: theme.other.brandGlowShadowSm,
                 }}
               >
                 {entryId ? "Update Entry" : "Save Entry"}
