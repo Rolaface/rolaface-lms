@@ -499,17 +499,17 @@ export function CustomerModal({
           </ActionIcon>
         </Group>
 
-        {/* Horizontal step navigation */}
-        <ScrollArea
-          type="auto"
-          scrollbarSize={4}
+
+        <Box
+          px="md"
+          py={8}
           style={{
             borderBottom: "1px solid var(--mantine-color-slate-2)",
             flexShrink: 0,
           }}
           bg="slate.0"
         >
-          <Group gap={4} px="xl" py="sm" wrap="nowrap">
+          <Group gap={4} wrap="nowrap">
             {STEPS.map((step, idx) => {
               const isActive = currentStep === idx;
               const isComplete = currentStep > idx;
@@ -518,17 +518,16 @@ export function CustomerModal({
                 <Group key={step.label} gap={4} wrap="nowrap">
                   <UnstyledButton
                     onClick={() => setActiveTab(idx.toString())}
-                    px="sm"
-                    py={8}
+                    px={8}
+                    py={6}
                     style={{
-                      borderRadius: "var(--mantine-radius-md)",
+                      borderRadius: "var(--mantine-radius-sm)",
                       whiteSpace: "nowrap",
+                      flexShrink: 0,
                       background: isActive
                         ? "var(--mantine-color-white)"
                         : "transparent",
-                      boxShadow: isActive
-                        ? "var(--mantine-shadow-sm)"
-                        : "none",
+                      boxShadow: isActive ? "var(--mantine-shadow-sm)" : "none",
                       border: isActive
                         ? "1px solid var(--mantine-color-slate-2)"
                         : "1px solid transparent",
@@ -536,19 +535,18 @@ export function CustomerModal({
                         "background-color 120ms ease, box-shadow 120ms ease",
                     }}
                   >
-                    <Group gap={8} wrap="nowrap">
+                    <Group gap={6} wrap="nowrap">
                       <ThemeIcon
                         radius="xl"
-                        size={24}
-                        variant={
-                          isActive || isComplete ? "filled" : "outline"
-                        }
+                        size={20}
+                        variant={isActive || isComplete ? "filled" : "outline"}
                         color={isActive || isComplete ? "brand" : "slate"}
+                        style={{ flexShrink: 0 }}
                       >
                         {isComplete ? (
-                          <IconCheck size={12} />
+                          <IconCheck size={10} />
                         ) : (
-                          <StepIcon size={12} />
+                          <StepIcon size={10} />
                         )}
                       </ThemeIcon>
                       <Text
@@ -561,6 +559,7 @@ export function CustomerModal({
                               ? "slate.7"
                               : "slate.5"
                         }
+                        style={{ whiteSpace: "nowrap" }}
                       >
                         {step.label}
                       </Text>
@@ -568,16 +567,16 @@ export function CustomerModal({
                   </UnstyledButton>
                   {idx < STEPS.length - 1 && (
                     <IconChevronRight
-                      size={12}
+                      size={11}
                       color="var(--mantine-color-slate-3)"
+                      style={{ flexShrink: 0 }}
                     />
                   )}
                 </Group>
               );
             })}
           </Group>
-        </ScrollArea>
-
+        </Box>
         {/* Main Content */}
         <ScrollArea style={{ flex: 1, minHeight: 0 }} bg="slate.0">
           <Box maw={1000} mx="auto" pt="md" pl="lg" pr="lg" pb={24}>
