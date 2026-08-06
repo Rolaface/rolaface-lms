@@ -1,17 +1,23 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  ActionIcon,
   Box,
   Button,
+  Fieldset,
   Grid,
+  Group,
   Modal,
   NumberInput,
+  Paper,
   Switch,
   Text,
   TextInput,
+  ThemeIcon,
 } from "@mantine/core";
-import { IconFileText, IconX } from "@tabler/icons-react";
+import { IconCheck, IconFileText, IconX } from "@tabler/icons-react";
 
+import { GradientButton } from "../shared/customer/Shared";
 import type { LoanClassificationData } from "../../types/loanClassification";
 import {
   createLoanClassification,
@@ -47,6 +53,24 @@ const EMPTY_FORM_STATE: LoanClassificationFormState = {
   provision_rate: "",
   is_written_off: false,
 };
+
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Paper
+      radius="md"
+      p="md"
+      style={{
+        background: 'var(--mantine-color-slate-0)',
+        border: '1px solid var(--mantine-color-slate-2)',
+      }}
+    >
+      <Text fz="xs" fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: '0.04em' }} mb="sm">
+        {title}
+      </Text>
+      {children}
+    </Paper>
+  );
+}
 
 export function LoanClassificationModal({
   opened,
@@ -160,145 +184,178 @@ export function LoanClassificationModal({
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} size="lg" withCloseButton={false} padding={0} radius="md">
-      <Box className="flex flex-col">
-        <Box color="brand" className=" px-5 py-3 flex justify-between items-center rounded-t-md shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-1 rounded-md shrink-0">
-              <IconFileText size={22} className="text-white" />
-            </div>
-            <Text size="md" fw={600} className="leading-tight truncate">
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      size={640}
+      padding={0}
+      lockScroll
+      styles={{
+        content: { display: "flex", flexDirection: "column", overflow: "hidden" },
+        header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
+        body: { padding: 0, display: "flex", flexDirection: "column" },
+      }}
+    >
+      <Box bg="white">
+        {/* Header — same brand.6 bar + ThemeIcon + close pattern as CustomerModal */}
+        <Group
+          justify="space-between"
+          align="center"
+          px="xl"
+          py="sm"
+          bg="brand.6"
+          style={{ borderBottom: "1px solid var(--mantine-color-brand-7)" }}
+        >
+          <Group gap="sm">
+            <ThemeIcon radius="md" size={34} variant="white" color="brand">
+              <IconFileText size={16} />
+            </ThemeIcon>
+            <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
               {title}
             </Text>
-          </div>
-          <Button variant="subtle" onClick={onClose} className="text-white hover:bg-white/10 px-2" size="xs">
-            <IconX size={18} />
-          </Button>
-        </Box>
+          </Group>
+          <ActionIcon
+            variant="subtle"
+            color="white"
+            radius="xl"
+            size="md"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <IconX size={16} color="white" />
+          </ActionIcon>
+        </Group>
 
         {/* Body */}
-        <fieldset disabled={isView} className="border-0 p-0 m-0">
-          <Box className="flex flex-col gap-5 px-6 py-6">
-            {/* Classification Identity */}
-            <Box className="flex flex-col gap-3 rounded-md border border-gray-200 bg-gray-50 p-4">
-              <Text size="xs" fw={700} tt="uppercase" c="dimmed" className="tracking-wide">
-                Classification Identity
-              </Text>
+        <Box px="xl" py="lg" bg="slate.0">
+          <Fieldset disabled={isView} variant="unstyled" p={0} m={0}>
+            <Box style={{ display: "flex", flexDirection: "column", gap: "var(--mantine-spacing-md)" }}>
+              <SectionCard title="Classification Identity">
+                <Grid gutter="md">
+                  <Grid.Col span={3}>
+                    <NumberInput
+                      label="Level"
+                      placeholder="1"
+                      withAsterisk={!isView}
+                      value={formData.level === "" ? "" : Number(formData.level)}
+                      onChange={(v) => updateField("level", v === "" ? "" : String(v))}
+                      size="sm"
+                      radius="md"
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={4.5}>
+                    <TextInput
+                      label="Classification Code"
+                      placeholder="e.g. SUB"
+                      withAsterisk={!isView}
+                      disabled={isView || mode === "edit"}
+                      value={formData.code}
+                      onChange={(e) => updateField("code", e.currentTarget.value)}
+                      size="sm"
+                      radius="md"
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={4.5}>
+                    <TextInput
+                      label="Classification Name"
+                      placeholder="e.g. Substandard"
+                      withAsterisk={!isView}
+                      value={formData.name}
+                      onChange={(e) => updateField("name", e.currentTarget.value)}
+                      size="sm"
+                      radius="md"
+                    />
+                  </Grid.Col>
+                </Grid>
+              </SectionCard>
 
-              <Grid gutter="md">
-                <Grid.Col span={3}>
-                  <NumberInput
-                    label="Level"
-                    placeholder="1"
-                    withAsterisk={!isView}
-                    value={formData.level === "" ? "" : Number(formData.level)}
-                    onChange={(v) => updateField("level", v === "" ? "" : String(v))}
-                    size="sm"
-                  />
-                </Grid.Col>
-                <Grid.Col span={4.5}>
-                  <TextInput
-                    label="Classification Code"
-                    placeholder="e.g. SUB"
-                    withAsterisk={!isView}
-                    disabled={isView || mode === "edit"}
-                    value={formData.code}
-                    onChange={(e) => updateField("code", e.currentTarget.value)}
-                    size="sm"
-                  />
-                </Grid.Col>
-                <Grid.Col span={4.5}>
-                  <TextInput
-                    label="Classification Name"
-                    placeholder="e.g. Substandard"
-                    withAsterisk={!isView}
-                    value={formData.name}
-                    onChange={(e) => updateField("name", e.currentTarget.value)}
-                    size="sm"
-                  />
-                </Grid.Col>
-              </Grid>
+              <SectionCard title="Delinquency Configuration">
+                <Grid gutter="md" mb="sm">
+                  <Grid.Col span={4}>
+                    <NumberInput
+                      label="From DPD"
+                      placeholder="91"
+                      withAsterisk={!isView}
+                      value={formData.min_dpd_range === "" ? "" : Number(formData.min_dpd_range)}
+                      onChange={(v) => updateField("min_dpd_range", v === "" ? "" : String(v))}
+                      size="sm"
+                      radius="md"
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={4}>
+                    <NumberInput
+                      label="To DPD"
+                      placeholder="180"
+                      withAsterisk={!isView}
+                      value={formData.max_dpd_range === "" ? "" : Number(formData.max_dpd_range)}
+                      onChange={(v) => updateField("max_dpd_range", v === "" ? "" : String(v))}
+                      size="sm"
+                      radius="md"
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={4}>
+                    <NumberInput
+                      label="Provision Rate"
+                      placeholder="20.00"
+                      withAsterisk={!isView}
+                      rightSection={<Text size="xs" c="dimmed">%</Text>}
+                      value={formData.provision_rate === "" ? "" : Number(formData.provision_rate)}
+                      onChange={(v) => updateField("provision_rate", v === "" ? "" : String(v))}
+                      size="sm"
+                      radius="md"
+                    />
+                  </Grid.Col>
+                </Grid>
+
+                <Switch
+                  label="Written off"
+                  checked={formData.is_written_off}
+                  onChange={(e) => updateField("is_written_off", e.currentTarget.checked)}
+                  color="brand"
+                />
+              </SectionCard>
+
+              {formError && !isView && (
+                <Text
+                  size="xs"
+                  fw={600}
+                  c="danger"
+                  style={{
+                    border: "1px solid var(--mantine-color-danger-2)",
+                    background: "var(--mantine-color-danger-0)",
+                    borderRadius: "var(--mantine-radius-md)",
+                    padding: "8px 12px",
+                  }}
+                >
+                  {formError}
+                </Text>
+              )}
             </Box>
-
-            {/* Delinquency Configuration */}
-            <Box className="flex flex-col gap-3 rounded-md border border-gray-200 bg-gray-50 p-4">
-              <Text size="xs" fw={700} tt="uppercase" c="dimmed" className="tracking-wide">
-                Delinquency Configuration
-              </Text>
-
-              <Grid gutter="md">
-                <Grid.Col span={4}>
-                  <NumberInput
-                    label="From DPD"
-                    placeholder="91"
-                    withAsterisk={!isView}
-                    value={formData.min_dpd_range === "" ? "" : Number(formData.min_dpd_range)}
-                    onChange={(v) => updateField("min_dpd_range", v === "" ? "" : String(v))}
-                    size="sm"
-                  />
-                </Grid.Col>
-                <Grid.Col span={4}>
-                  <NumberInput
-                    label="To DPD"
-                    placeholder="180"
-                    withAsterisk={!isView}
-                    value={formData.max_dpd_range === "" ? "" : Number(formData.max_dpd_range)}
-                    onChange={(v) => updateField("max_dpd_range", v === "" ? "" : String(v))}
-                    size="sm"
-                  />
-                </Grid.Col>
-                <Grid.Col span={4}>
-                  <NumberInput
-                    label="Provision Rate"
-                    placeholder="20.00"
-                    withAsterisk={!isView}
-                    rightSection={<Text size="xs" c="dimmed">%</Text>}
-                    value={formData.provision_rate === "" ? "" : Number(formData.provision_rate)}
-                    onChange={(v) => updateField("provision_rate", v === "" ? "" : String(v))}
-                    size="sm"
-                  />
-                </Grid.Col>
-              </Grid>
-
-              <Switch
-                label="Written off"
-                checked={formData.is_written_off}
-                onChange={(e) => updateField("is_written_off", e.currentTarget.checked)}
-                color="indigoAlt"
-              />
-            </Box>
-
-            {formError && !isView && (
-              <Text size="xs" c="red" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 font-medium">
-                {formError}
-              </Text>
-            )}
-          </Box>
-        </fieldset>
+          </Fieldset>
+        </Box>
 
         {/* Footer */}
-        <div className="bg-white border-t border-gray-100 p-3 px-5 flex justify-end items-center gap-3 shrink-0 rounded-b-md">
-          <Button
-            size="sm"
-            variant="default"
-            onClick={onClose}
-            disabled={isSaving}
-            className="font-semibold px-5 text-slate-700 border-slate-200"
-          >
+        <Group
+          justify="flex-end"
+          px="xl"
+          py="md"
+          gap="sm"
+          style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}
+        >
+          <Button variant="subtle" color="slate" onClick={onClose} disabled={isSaving}>
             {isView ? "Close" : "Cancel"}
           </Button>
-
           {!isView && (
-            <Button
-              size="sm"
+            <GradientButton
+              px="xl"
               onClick={handleSave}
               loading={isSaving}
-              className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0 font-semibold px-6"
+              rightSection={!isSaving ? <IconCheck size={14} /> : undefined}
             >
               Save Classification
-            </Button>
+            </GradientButton>
           )}
-        </div>
+        </Group>
       </Box>
     </Modal>
   );
