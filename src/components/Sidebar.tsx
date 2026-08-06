@@ -351,6 +351,18 @@ const isActive = item.path
   );
 }
 
+function getInitialOpenMenus(pathname: string): Record<string, boolean> {
+  return {
+    "0-Collateral": pathname.startsWith("/collateral"),
+    "0-Lending Setup": pathname.startsWith("/setup"),
+    "0-Origination": pathname.startsWith("/origination"),
+    "0-Lending Operations": pathname.startsWith("/operations"),
+    "0-Accounting": pathname.startsWith("/accounting"),
+    "1-General Ledger": pathname.startsWith("/accounting/general-ledger"),
+    "0-Lending Reports": pathname.startsWith("/reports"),
+  };
+}
+
 export function Sidebar({
   isCollapsed,
   onToggle,
@@ -361,7 +373,9 @@ export function Sidebar({
   onLogout?: () => void;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [openMenus, setOpenMenus] = React.useState<Record<string, boolean>>({});
+ const [openMenus, setOpenMenus] = React.useState<Record<string, boolean>>(() =>
+  getInitialOpenMenus(pathname)
+);
 
   const toggleMenu = (key: string) => {
     setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));

@@ -53,7 +53,7 @@ import { CashFlow } from "../view/Accounting/CashFlow";
 import { AccountingLayout } from "../view/Accounting/AccountingLayout";
 import { IconHierarchy2, IconReceipt2, IconFileText } from "@tabler/icons-react";
 import { RouteTabs, type RouteTabItem } from "../components/ui/RouteTabs";
-// import Login from "../view/pages/Login";//yeh mat hantna for me its imp
+import Login from "../view/pages/Login";//yeh mat hantna for me its imp
 const rootRoute = createRootRoute({
   component: () => (
     <AppLayout>
@@ -68,11 +68,11 @@ const indexRoute = createRoute({
   component: Dashboard,
 });
 
-// const loginRoute = createRoute({
-//   getParentRoute: () => rootRoute,
-//   path: "/login",                    //yeh bhi
-//   component: Login,
-// });
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/login",                    //yeh bhi
+  component: Login,
+});
 
 const customerRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -323,6 +323,7 @@ const reportsArrearsRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
+  loginRoute,
   indexRoute,
   loanAccountRoute,
   customerRoute,
