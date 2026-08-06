@@ -43,10 +43,10 @@ const ITEMS = [
 
 const statusColor = (s: string) =>
   s === "Clear"
-    ? colorVar("brand", 6)
+   ? "var(--mantine-color-success-6)"
     : s === "Not applicable"
       ? "var(--mantine-color-slate-4)"
-      : colorVar("gold", 6);
+      : "var(--mantine-color-warning-6)";
 const actionLabel = (s: string) =>
   s === "Pending"
     ? "Run check \u2192"
@@ -74,7 +74,7 @@ export function KycStep({ kycStatus, runCheck }: KycStepProps) {
             style={{ borderColor: "var(--mantine-color-slate-2)" }}
           >
             <Group justify="space-between" mb="xs" wrap="nowrap">
-              <Text size="sm" fw={700} c="dark.8">
+             <Text size="sm" fw={700} c="slate.8">
                 {it.title}
               </Text>
               <Text
@@ -90,7 +90,7 @@ export function KycStep({ kycStatus, runCheck }: KycStepProps) {
                 {kycStatus[it.key]}
               </Text>
             </Group>
-            <Text size="xs" c="dimmed" mb="xs" style={{ lineHeight: 1.4 }}>
+           <Text size="xs" c="slate.5" mb="xs" style={{ lineHeight: 1.4 }}>
               {it.desc}
             </Text>
             <Button

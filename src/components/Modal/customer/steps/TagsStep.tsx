@@ -28,7 +28,7 @@ export function TagsStep(props: TagsStepProps) {
     <PlainCard>
       <SectionHeader icon={IconTag} title="Tags, notes & custom fields" badge="OPTIONAL" description="Segment this customer and capture anything Meridian doesn't have a field for yet" />
 
-      <Text size="xs" fw={700} c="dark.7" mb="xs">Tags</Text>
+     <Text size="xs" fw={700} c="slate.8" mb="xs">Tags</Text>
       <Group gap="xs" mb="xs">
         {tags.map((tag) => (
           <Badge
@@ -63,7 +63,7 @@ export function TagsStep(props: TagsStepProps) {
           <Badge
             key={tag}
             variant="outline"
-            color="gray"
+          color="slate"
             radius="xl"
             size="md"
             style={{ cursor: "pointer", fontWeight: 500 }}
@@ -78,8 +78,8 @@ export function TagsStep(props: TagsStepProps) {
       <Textarea mt="sm" size="xs" label="Relationship Notes" placeholder="Internal remarks visible to staff only" minRows={2} value={relationshipNotes} onChange={(e) => setRelationshipNotes(e.currentTarget.value)} />
 
       <Group justify="space-between" mt="md" mb="xs">
-        <Text size="xs" fw={700} c="dark.7">Custom Fields</Text>
-        <Text size="10px" c="dimmed">— define your own, no redesign needed</Text>
+      <Text size="xs" fw={700} c="slate.8">Custom Fields</Text>
+       <Text size="10px" c="slate.5">— define your own, no redesign needed</Text>
       </Group>
       <Stack gap="xs">
         {customFields.map((field) => (

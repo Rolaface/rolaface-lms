@@ -23,7 +23,7 @@ interface BorrowerStepProps {
 }
 
 const chevron = (
-  <IconChevronDown size={13} color="var(--mantine-color-gray-5)" />
+   <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
 );
 
 export function BorrowerStep(props: BorrowerStepProps) {
@@ -55,7 +55,7 @@ export function BorrowerStep(props: BorrowerStepProps) {
         description="Convert this profile into a borrower record and assign ownership"
       />
       <Group justify="space-between" mb="xs">
-        <Text size="sm" fw={700} c="dark.9">
+       <Text size="sm" fw={700} c="slate.8">
           Convert to Borrower
         </Text>
         <Switch

@@ -32,7 +32,7 @@ interface IdentificationStepProps {
 }
 
 const chevron = (
-  <IconChevronDown size={13} color="var(--mantine-color-gray-5)" />
+   <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
 );
 
 export function IdentificationStep({
@@ -57,7 +57,7 @@ export function IdentificationStep({
             withBorder
             radius="md"
             p="md"
-            bg="gray.0"
+           bg="slate.0"
             style={{ borderColor: "var(--mantine-color-slate-2)" }}
           >
             <Group justify="space-between" mb="sm">

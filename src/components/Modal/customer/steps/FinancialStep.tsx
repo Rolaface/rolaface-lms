@@ -22,7 +22,7 @@ interface FinancialStepProps {
 }
 
 const chevron = (
-  <IconChevronDown size={13} color="var(--mantine-color-gray-5)" />
+   <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
 );
 
 export function FinancialStep(props: FinancialStepProps) {

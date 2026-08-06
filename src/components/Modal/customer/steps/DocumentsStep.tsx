@@ -107,10 +107,10 @@ export function DocumentsStep({
                       />
                     </Center>
                   )}
-                  <Text size="xs" fw={700} c="dark.7">
+                  <Text size="xs" fw={700} c="slate.8">
                     {tile.label}
                   </Text>
-                  <Text size="xxs" c="dimmed" mt="xs" truncate>
+                  <Text size="xxs" c="slate.5" mt="xs" truncate>
                     {uploaded
                       ? `${uploaded.name} \u00b7 ${formatFileSize(uploaded.size)}`
                       : tile.hint}

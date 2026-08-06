@@ -32,7 +32,7 @@ interface KinStepProps {
 }
 
 const chevron = (
-  <IconChevronDown size={13} color="var(--mantine-color-gray-5)" />
+ <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
 );
 
 export function KinStep(props: KinStepProps) {
@@ -99,10 +99,10 @@ export function KinStep(props: KinStepProps) {
       <Divider mt="lg" mb="sm" />
       <Stack gap="sm">
         <Group justify="space-between">
-          <Text size="sm" fw={700} c="dark.9">
+          <Text size="sm" fw={700} c="slate.8">
             Guarantor
           </Text>
-          <Text size="10px" c="dimmed">
+          <Text size="10px" c="slate.5">
             — link an existing customer or add a new one
           </Text>
         </Group>
@@ -110,7 +110,7 @@ export function KinStep(props: KinStepProps) {
           withBorder
           radius="md"
           p="md"
-          bg="gray.0"
+         bg="slate.0"
           style={{ borderColor: "var(--mantine-color-slate-2)" }}
         >
           <Group gap="sm">
@@ -131,7 +131,7 @@ export function KinStep(props: KinStepProps) {
               Add New Guarantor
             </Button>
           </Group>
-          <Text size="xs" c="dimmed" mt="sm">
+         <Text size="xs" c="slate.5" mt="sm">
             {guarantorLinked
               ? "1 guarantor linked."
               : "No guarantor linked yet."}
