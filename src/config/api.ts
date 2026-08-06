@@ -130,6 +130,7 @@ loan: {
   updateLoan:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.update_loan`,
   deleteLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.delete_loan`,
   statusLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.update_loan_status`,
+  getLoanScheduleById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_repayment_schedule_by_id`,
 },
 
   // =========================

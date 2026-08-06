@@ -61,3 +61,8 @@ export async function updateLoan({id, payload,}: {
 
   return data;
 }
+
+export async function getReapymentScheduleById(id: string) {
+  const { data } = await apiClient.get(API.loan.getLoanScheduleById, { params: { id } });
+  return data;
+}
