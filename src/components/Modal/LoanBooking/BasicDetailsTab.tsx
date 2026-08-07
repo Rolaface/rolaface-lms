@@ -115,7 +115,7 @@ const { data: productResponse, isLoading: isProductsLoading } = useQuery({
             value={selectedCustomerName} // <-- Automatically gets 'Ayush'
             classNames={labelClass}
           />
-         <Select
+         {/* <Select
             size="sm"
             label="Product Code"
             placeholder={isProductsLoading ? "Loading..." : "Search product code..."}
@@ -127,7 +127,29 @@ const { data: productResponse, isLoading: isProductsLoading } = useQuery({
             rightSection={chevronDown}
             classNames={labelClass}
             {...form.getInputProps("productCode")}
-          />
+          /> */}
+          <Select
+  size="sm"
+  label="Product Code"
+  placeholder={isProductsLoading ? "Loading..." : "Search product code..."}
+  data={productOptions}
+  disabled={isProductsLoading}
+  searchable
+  clearable
+  leftSection={<FieldIcon Icon={IconHash} bg="#EEF2FF" color="#4F46E5" />}
+  rightSection={chevronDown}
+  classNames={labelClass}
+  value={form.values.productCode}
+  error={form.errors.productCode}
+  onChange={(value) => {
+    form.setFieldValue("productCode", value);
+
+    const products = productResponse?.data || [];
+    const found = products.find((p: any) => p.name === value);
+
+    form.setFieldValue("rateOfInterest", found?.rate_of_interest ?? 0);
+  }}
+/>
           <TextInput
             size="sm"
             label="Product Name"
