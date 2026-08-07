@@ -1,6 +1,18 @@
 import { useState, useEffect, useRef } from "react";
-import { Modal, Box, Text, TextInput, Button, Group, Paper, ThemeIcon, Stack } from "@mantine/core";
-import { IconGripVertical, IconListNumbers, IconX } from "@tabler/icons-react";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Group,
+  Modal,
+  Paper,
+  Stack,
+  Text,
+  TextInput,
+  ThemeIcon,
+} from "@mantine/core";
+import { IconCheck, IconGripVertical, IconListNumbers, IconX } from "@tabler/icons-react";
+import { GradientButton } from "../shared/customer/Shared";
 
 export interface ComponentItem {
   id: string;
@@ -22,8 +34,6 @@ const DEFAULT_COMPONENTS: ComponentItem[] = [
   { id: "5", name: "Charges" },
 ];
 
-const labelClass = { label: "text-sm font-medium text-gray-700 mb-1" };
-
 export function LoanCollectionSequenceOrderModal({
   opened,
   onClose,
@@ -36,8 +46,8 @@ export function LoanCollectionSequenceOrderModal({
     mode === "add"
       ? "New Collection Order"
       : mode === "edit"
-      ? "Edit Collection Order"
-      : "View Collection Order";
+        ? "Edit Collection Order"
+        : "View Collection Order";
 
   const description =
     mode === "view"
@@ -82,7 +92,7 @@ export function LoanCollectionSequenceOrderModal({
   // Drag and Drop Handlers
   const dragStart = (e: React.DragEvent<HTMLDivElement>, position: number) => {
     dragItem.current = position;
-    // Small timeout ensures the drag ghost image generates before we apply the opacity class
+    // Small timeout ensures the drag ghost image generates before we apply the opacity style
     setTimeout(() => {
       setDraggedIndex(position);
     }, 0);
@@ -109,133 +119,181 @@ export function LoanCollectionSequenceOrderModal({
     <Modal
       opened={opened}
       onClose={handleClose}
-      size="600px"
-      withCloseButton={false}
+      size={600}
       padding={0}
-      radius="md"
+      lockScroll
+      styles={{
+        content: { display: "flex", flexDirection: "column", overflow: "hidden" },
+        header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
+        body: { padding: 0, display: "flex", flexDirection: "column" },
+      }}
     >
-      <Box className="flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#7C3AED] flex items-center justify-center">
-              <IconListNumbers size={20} className="text-white" />
-            </div>
-            <div>
-              <Text size="md" fw={700} className="text-gray-900 leading-tight">
+      <Box bg="white">
+        {/* Header — same brand.6 bar + ThemeIcon + close pattern as CustomerModal */}
+        <Group
+          justify="space-between"
+          align="center"
+          px="xl"
+          py="sm"
+          bg="brand.6"
+          style={{ borderBottom: "1px solid var(--mantine-color-brand-7)" }}
+        >
+          <Group gap="sm">
+            <ThemeIcon radius="md" size={34} variant="white" color="brand">
+              <IconListNumbers size={16} />
+            </ThemeIcon>
+            <Box>
+              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
                 {title}
               </Text>
-              <Text size="xs" c="dimmed">
+              <Text size="xs" fw={500} c="brand.1">
                 {description}
               </Text>
-            </div>
-          </div>
-          <Button variant="subtle" color="gray" onClick={handleClose} className="px-2" size="xs">
-            <IconX size={18} />
-          </Button>
-        </div>
-
-        <div className="border-b border-gray-200" />
+            </Box>
+          </Group>
+          <ActionIcon
+            variant="subtle"
+            color="white"
+            radius="xl"
+            size="md"
+            onClick={handleClose}
+            aria-label="Close"
+          >
+            <IconX size={16} color="white" />
+          </ActionIcon>
+        </Group>
 
         {/* Body */}
-        <div className="flex-1 p-6 flex flex-col gap-5">
-          <TextInput
-            size="xs"
-            label="Collection Order Name"
-            placeholder="e.g. Standard Write-Off Liquidation Order"
-            value={sequenceName}
-            onChange={(e) => setSequenceName(e.currentTarget.value)}
-            readOnly={isView}
-            variant={isView ? "filled" : "default"}
-            classNames={labelClass}
-            withAsterisk={!isView}
-          />
+        <Box px="xl" py="lg" bg="slate.0">
+          <Stack gap="md">
+            <TextInput
+              size="sm"
+              radius="md"
+              label="Collection Order Name"
+              placeholder="e.g. Standard Write-Off Liquidation Order"
+              value={sequenceName}
+              onChange={(e) => setSequenceName(e.currentTarget.value)}
+              readOnly={isView}
+              variant={isView ? "filled" : "default"}
+              withAsterisk={!isView}
+              styles={{ input: { border: "1px solid var(--mantine-color-slate-2)" } }}
+            />
 
-          <Box>
-            <div className="mb-2">
-              <Text size="sm" fw={600} className="text-gray-700">
+            <Box>
+              <Text size="sm" fw={600} c="slate.7">
                 Component Offset Order
               </Text>
               {!isView && (
-                <Text size="xs" c="dimmed">
+                <Text size="xs" c="slate.5" mb="xs">
                   Drag and drop the rows to change the collection sequence.
                 </Text>
               )}
-            </div>
 
-            <Paper withBorder radius="md" className="overflow-hidden bg-white shadow-sm border-gray-200">
-              {/* Header row */}
-              <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200 bg-gray-50/80">
-                <div className="w-[20px]" /> {/* Spacer for grip icon */}
-                <Text size="xs" fw={600} w={30} ta="center" className="text-gray-500">
-                  No.
-                </Text>
-                <Text size="xs" fw={600} className="text-gray-500 flex-1">
-                  Demand Type
-                </Text>
-              </div>
+              <Paper
+                radius="md"
+                mt={isView ? 8 : 0}
+                style={{
+                  overflow: "hidden",
+                  border: "1px solid var(--mantine-color-slate-2)",
+                  boxShadow: "var(--mantine-shadow-xs)",
+                }}
+              >
+                {/* Header row */}
+                <Group
+                  gap="sm"
+                  wrap="nowrap"
+                  px="md"
+                  py={8}
+                  style={{
+                    borderBottom: "1px solid var(--mantine-color-slate-2)",
+                    background: "var(--mantine-color-slate-0)",
+                  }}
+                >
+                  <Box w={20} />
+                  <Text size="xs" fw={700} w={30} ta="center" c="slate.5">
+                    No.
+                  </Text>
+                  <Text size="xs" fw={700} c="slate.5" style={{ flex: 1 }}>
+                    Demand Type
+                  </Text>
+                </Group>
 
-              {/* Draggable items */}
-              <Stack gap={0}>
-                {components.map((comp, index) => {
-                  const isDragging = draggedIndex === index;
+                {/* Draggable items */}
+                <Stack gap={0}>
+                  {components.map((comp, index) => {
+                    const isDragging = draggedIndex === index;
 
-                  return (
-                    <div
-                      key={comp.name}
-                      draggable={!isView}
-                      onDragStart={(e) => dragStart(e, index)}
-                      onDragEnter={(e) => dragEnter(e, index)}
-                      onDragEnd={drop}
-                      onDragOver={(e) => e.preventDefault()}
-                      className={`
-                        flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-0 bg-white transition-all
-                        ${!isView ? "cursor-grab active:cursor-grabbing hover:bg-indigo-50/30" : ""}
-                        ${isDragging ? "opacity-30 bg-gray-50 scale-[0.99]" : ""}
-                      `}
-                    >
-                      <ThemeIcon
-                        variant="subtle"
-                        color={isView ? "gray" : "indigo"}
-                        size="sm"
-                        className={`${isView ? "opacity-0" : "opacity-40 cursor-grab active:cursor-grabbing hover:opacity-100"}`}
+                    return (
+                      <Group
+                        key={comp.name}
+                        gap="sm"
+                        wrap="nowrap"
+                        px="md"
+                        py={10}
+                        draggable={!isView}
+                        onDragStart={(e) => dragStart(e, index)}
+                        onDragEnter={(e) => dragEnter(e, index)}
+                        onDragEnd={drop}
+                        onDragOver={(e) => e.preventDefault()}
+                        style={{
+                          borderBottom:
+                            index < components.length - 1
+                              ? "1px solid var(--mantine-color-slate-1)"
+                              : "none",
+                          background: isDragging
+                            ? "var(--mantine-color-slate-0)"
+                            : "var(--mantine-color-white)",
+                          opacity: isDragging ? 0.35 : 1,
+                          cursor: isView ? "default" : "grab",
+                          transition: "background-color 120ms ease, opacity 120ms ease",
+                        }}
                       >
-                        <IconGripVertical size={16} />
-                      </ThemeIcon>
+                        <ThemeIcon
+                          variant="subtle"
+                          color={isView ? "slate" : "brand"}
+                          size="sm"
+                          style={{ opacity: isView ? 0 : 0.5, cursor: isView ? "default" : "grab" }}
+                        >
+                          <IconGripVertical size={16} />
+                        </ThemeIcon>
 
-                      <Text size="sm" fw={600} w={30} ta="center" className="text-gray-400">
-                        {index + 1}
-                      </Text>
+                        <Text size="sm" fw={600} w={30} ta="center" c="slate.4">
+                          {index + 1}
+                        </Text>
 
-                      <Text size="sm" fw={500} className="text-gray-700 flex-1">
-                        {comp.name}
-                      </Text>
-                    </div>
-                  );
-                })}
-              </Stack>
-            </Paper>
-          </Box>
-        </div>
+                        <Text size="sm" fw={500} c="slate.7" style={{ flex: 1 }}>
+                          {comp.name}
+                        </Text>
+                      </Group>
+                    );
+                  })}
+                </Stack>
+              </Paper>
+            </Box>
+          </Stack>
+        </Box>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 p-4 px-6 flex justify-between items-center shrink-0 bg-gray-50/50">
-          <Button size="xs" variant="default" onClick={handleClose} className="font-semibold px-5">
+        <Group
+          justify="flex-end"
+          px="xl"
+          py="md"
+          gap="sm"
+          style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}
+        >
+          <Button variant="subtle" color="slate" onClick={handleClose}>
             {isView ? "Close" : "Cancel"}
           </Button>
-
           {!isView && (
-            <Button
-              size="xs"
-              onClick={() => {
-                handleClose();
-              }}
-              className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 font-semibold px-6"
+            <GradientButton
+              px="xl"
+              onClick={handleClose}
+              rightSection={<IconCheck size={14} />}
             >
               Save Sequence
-            </Button>
+            </GradientButton>
           )}
-        </div>
+        </Group>
       </Box>
     </Modal>
   );

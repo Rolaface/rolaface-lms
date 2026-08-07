@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {getFeeAndCharges,deleteFeeAndCharge} from '../../../api/loanChargesApi';
+import { useMemo, useState } from 'react';
+import { modals } from '@mantine/modals';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getFeeAndCharges, deleteFeeAndCharge } from '../../../api/loanChargesApi';
 import {
   Box,
   Button,
   TextInput,
-  Select,
   Group,
   Paper,
   Table,
@@ -14,7 +14,11 @@ import {
   Pagination,
   Tooltip,
   Title,
-} from "@mantine/core";
+  Select,
+  Stack,
+  Loader,
+  useMantineTheme,
+} from '@mantine/core';
 import {
   IconEye,
   IconPencil,
@@ -24,35 +28,34 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
-} from "@tabler/icons-react";
-import { useDisclosure } from "@mantine/hooks";
-
+  IconReceipt2,
+} from '@tabler/icons-react';
+import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
   flexRender,
   createColumnHelper,
-} from "@tanstack/react-table";
-import { FeeAndChargesModal, type FeeAndCharge } from "../../../components/Modal/FeeAndChargesModal";
-import { queryClient } from "../../../config/queryClient";
-
+} from '@tanstack/react-table';
+import { FeeAndChargesModal, type FeeAndCharge } from '../../../components/Modal/FeeAndChargesModal';
 
 const columnHelper = createColumnHelper<FeeAndCharge>();
 
 function SortIcon({ sorted }: { sorted: string | boolean }) {
-  if (sorted === "asc") return <IconChevronUp size={12} />;
-  if (sorted === "desc") return <IconChevronDown size={12} />;
-  return <IconSelector size={12} className="opacity-40" />;
+  const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
+  if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
+  if (sorted === 'desc') return <IconChevronDown size={12} color={color} />;
+  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
+const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-// --- MAIN TABLE COMPONENT ---
 export function FeeAndCharges() {
+  const theme = useMantineTheme();
+  const queryClient = useQueryClient();
   const [opened, { open, close }] = useDisclosure(false);
-  
-  // Modal Action State
+
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
   const [selectedData, setSelectedData] = useState<FeeAndCharge | null>(null);
 
@@ -62,29 +65,26 @@ export function FeeAndCharges() {
     open();
   };
 
-  // filter state
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
 
-  // table state - Using inline type to fix Vite export error
-  const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([
-    { id: "name", desc: false },
-  ]);
+  const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([{ id: 'name', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
- const { data: chargesResponse, isLoading, isError } = useQuery({
-   queryKey: ["fee-and-charges", pagination.pageIndex, pagination.pageSize, search],
+
+  const { data: chargesResponse, isLoading, isError } = useQuery({
+    queryKey: ['fee-and-charges', pagination.pageIndex, pagination.pageSize, search],
     queryFn: () =>
       getFeeAndCharges({
-        page: pagination.pageIndex + 1, 
+        page: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
         search: search || undefined,
       }),
     placeholderData: (prev) => prev,
   });
-  
- const deleteMutation = useMutation({
+
+  const deleteMutation = useMutation({
     mutationFn: deleteFeeAndCharge,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fee-and-charges"] });
+      queryClient.invalidateQueries({ queryKey: ['fee-and-charges'] });
     },
   });
 
@@ -102,65 +102,90 @@ export function FeeAndCharges() {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("name", {
-        header: "Fee/Charge Name",
+      columnHelper.accessor('name', {
+        header: 'Fee/Charge Name',
         cell: (info) => (
-          <Text fz="xs" fw={600} c="gray.9">
-            {info.getValue()}
-          </Text>
+          <Group gap={10} wrap="nowrap">
+            <Box
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 'var(--mantine-radius-md)',
+                background: 'var(--mantine-color-brand-0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <IconReceipt2 size={15} color="var(--mantine-color-brand-6)" />
+            </Box>
+            <Text fz="sm" fw={700} c="slate.8">
+              {info.getValue()}
+            </Text>
+          </Group>
         ),
       }),
-
       columnHelper.display({
-        id: "actions",
+        id: 'actions',
         header: () => (
           <Text fz="xs" fw={600} ta="right" w="100%">
             Actions
           </Text>
         ),
         cell: (info) => (
-          <Group justify="flex-end" gap={6} wrap="nowrap">
+          <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
             <Tooltip label="View" withArrow>
-              <ActionIcon 
-                size="sm" 
-                variant="subtle" 
-                color="gray" 
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="slate"
+                radius="md"
                 onClick={() => handleOpenModal('view', info.row.original)}
               >
                 <IconEye size={14} />
               </ActionIcon>
             </Tooltip>
-
             <Tooltip label="Edit" withArrow>
-              <ActionIcon 
-                size="sm" 
-                variant="subtle" 
-                color="blue" 
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="brand"
+                radius="md"
                 onClick={() => handleOpenModal('edit', info.row.original)}
               >
                 <IconPencil size={14} />
               </ActionIcon>
             </Tooltip>
-             <Tooltip label="Delete" withArrow>
+            <Tooltip label="Delete" withArrow>
               <ActionIcon
                 size="sm"
                 variant="subtle"
-                color="red"
+                color="danger"
+                radius="md"
                 loading={deleteMutation.isPending && deleteMutation.variables === info.row.original.name}
                 onClick={() => {
-                  if (confirm(`Delete "${info.row.original.name}"?`)) {
-                    deleteMutation.mutate(String(info.row.original.id));
-                  }
+                  modals.openConfirmModal({
+                    title: 'Delete fee/charge',
+                    children: (
+                      <Text size="sm">
+                        Are you sure you want to delete <b>{info.row.original.name}</b>? This cannot be undone.
+                      </Text>
+                    ),
+                    labels: { confirm: 'Delete', cancel: 'Cancel' },
+                    confirmProps: { color: 'danger' },
+                    onConfirm: () => deleteMutation.mutate(String(info.row.original.id)),
+                  });
                 }}
               >
                 <IconTrash size={14} />
               </ActionIcon>
-           </Tooltip>
+            </Tooltip>
           </Group>
         ),
       }),
     ],
-     [deleteMutation.isPending, deleteMutation.variables],
+    [deleteMutation.isPending, deleteMutation.variables]
   );
 
   const table = useReactTable({
@@ -172,7 +197,7 @@ export function FeeAndCharges() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     manualPagination: true,
-  pageCount: serverPagination?.total_pages ?? 1,
+    pageCount: serverPagination?.total_pages ?? 1,
   });
 
   const rows = table.getRowModel().rows;
@@ -182,56 +207,108 @@ export function FeeAndCharges() {
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   return (
-    <Box className="flex flex-col gap-4 p-8 mt-10">
-      <FeeAndChargesModal 
-        opened={opened} 
-        onClose={close} 
-        mode={modalMode} 
-        data={selectedData} 
-      />
+    <Stack gap="lg" p="lg">
+      <FeeAndChargesModal opened={opened} onClose={close} mode={modalMode} data={selectedData} />
 
-      {/* Header & Add Button */}
-      <div className="flex justify-between items-center">
-        <Title order={2} className="text-gray-900 font-semibold">
-          Fee and Charges
-        </Title>
-        <Button
-          size="xs"
-          bg="indigoAlt.4"
-          className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-          onClick={() => handleOpenModal('add')}
-          leftSection={<IconPlus size={14} />}
-        >
-          Add Fee/Charge
-        </Button>
-      </div>
+      {/* Scoped, purely visual — pulls from theme.other to stay in sync
+          with the brand color everywhere else (mirrors Customer.tsx). */}
+      <style>{`
+        .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
+        .lms-row-actions { opacity: 1; }
+        .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+        .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
+        .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+        .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+      `}</style>
 
-      {/* Filters Box */}
-      <Paper withBorder radius="md" p="xs" className="shadow-sm">
-        <div className="flex items-center gap-3 flex-wrap">
+      {/* Header — icon tile + title on the left */}
+      <Group justify="space-between" align="center" wrap="wrap" gap="md">
+        <Group gap="sm" align="center">
+          <Box
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 'var(--mantine-radius-md)',
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadow,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <IconReceipt2 size={20} color="var(--mantine-color-white)" stroke={1.8} />
+          </Box>
+          <Stack gap={2}>
+            <Title order={2} c="slate.8" fw={700}>
+              Fee and Charges
+            </Title>
+            <Text fz="sm" c="slate.5">
+              Manage loan fees and charge items
+            </Text>
+          </Stack>
+        </Group>
+      </Group>
+
+      {/* Toolbar — pill search */}
+      <Paper
+        radius="xl"
+        p="xs"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        <Group gap="sm" wrap="wrap" align="center">
           <TextInput
-            size="xs"
+            className="lms-search"
+            size="sm"
+            radius="xl"
             placeholder="Search Name"
-            leftSection={<IconSearch size={13} />}
-            className="flex-1 min-w-[250px] max-w-sm"
+            leftSection={<IconSearch size={14} />}
+            style={{ flex: 1, minWidth: 220 }}
+            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
-        </div>
+
+          <Group gap="xs" ml="auto">
+            <Button
+              size="sm"
+              radius="xl"
+              color="brand"
+              onClick={() => handleOpenModal('add')}
+              leftSection={<IconPlus size={14} />}
+              style={{
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
+              }}
+            >
+              Add Fee/Charge
+            </Button>
+          </Group>
+        </Group>
       </Paper>
 
-      {/* Data Table */}
-      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
+      {/* Data Table — floating rounded row-cards on a soft canvas */}
+      <Paper
+        radius="lg"
+        p="sm"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
         <Table
-          verticalSpacing={6}
+          verticalSpacing="sm"
           horizontalSpacing="sm"
           fz="xs"
-          className="w-full"
+          w="100%"
+          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
         >
-          <Table.Thead className="bg-gray-50 border-b border-gray-200">
+          <Table.Thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <Table.Tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -239,26 +316,26 @@ export function FeeAndCharges() {
                   return (
                     <Table.Th
                       key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${
-                        canSort ? "cursor-pointer" : ""
-                      }`}
-                      style={{ fontSize: 11, padding: "8px 10px" }}
+                      c="slate.5"
+                      fw={700}
+                      style={{
+                        fontSize: 'var(--mantine-font-size-xs)',
+                        padding: '0 10px 6px',
+                        userSelect: 'none',
+                        cursor: canSort ? 'pointer' : 'default',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        border: 'none',
+                      }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <Group
-                        gap={4}
+                        gap="xs"
                         wrap="nowrap"
-                        justify={
-                          header.id === "actions" ? "flex-end" : "flex-start"
-                        }
+                        justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
                       >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                        {canSort && (
-                          <SortIcon sorted={header.column.getIsSorted() as string | boolean} />
-                        )}
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
                       </Group>
                     </Table.Th>
                   );
@@ -267,84 +344,104 @@ export function FeeAndCharges() {
             ))}
           </Table.Thead>
           <Table.Tbody>
-             {isLoading ? (
-           <Table.Tr>
-                <Table.Td colSpan={columns.length}>
-                  <Text ta="center" c="dimmed" fz="xs" py="sm">
-                    Loading...
-                  </Text>
+            {isLoading ? (
+              <Table.Tr>
+                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                  <Stack align="center" gap="xs" py="xl">
+                    <Loader size="sm" color="brand" />
+                    <Text ta="center" c="slate.5" fz="xs">
+                      Loading fees and charges...
+                    </Text>
+                  </Stack>
                 </Table.Td>
               </Table.Tr>
             ) : isError ? (
               <Table.Tr>
-                <Table.Td colSpan={columns.length}>
-                  <Text ta="center" c="red" fz="xs" py="sm">
+                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                  <Text ta="center" c="danger" fz="xs" py="xl">
                     Failed to load fees and charges.
                   </Text>
                 </Table.Td>
               </Table.Tr>
-         ) : rows.length === 0 ? (
+            ) : rows.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={columns.length}>
-                  <Text ta="center" c="dimmed" fz="xs" py="sm">
-                    No fees or charges match your search.
-                  </Text>
+                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                  <Stack align="center" gap="xs" py="xl">
+                    <Box
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: '50%',
+                        background: 'var(--mantine-color-white)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid var(--mantine-color-slate-2)',
+                      }}
+                    >
+                      <IconReceipt2 size={26} color="var(--mantine-color-slate-4)" />
+                    </Box>
+                    <Text ta="center" c="slate.5" fz="xs">
+                      No fees or charges match your search.
+                    </Text>
+                  </Stack>
                 </Table.Td>
               </Table.Tr>
             ) : (
-              rows.map((row) => (
-                <Table.Tr
-                  key={row.id}
-                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <Table.Td key={cell.id} style={{ padding: "8px 10px" }}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </Table.Td>
-                  ))}
-                </Table.Tr>
-              ))
+              rows.map((row) => {
+                const cells = row.getVisibleCells();
+                return (
+                  <Table.Tr key={row.id} className="lms-row">
+                    {cells.map((cell, idx) => (
+                      <Table.Td
+                        key={cell.id}
+                        style={{
+                          padding: '10px 10px',
+                          border: 'none',
+                          boxShadow: 'var(--mantine-shadow-xs)',
+                          borderLeft: idx === 0 ? '3px solid var(--mantine-color-brand-4)' : undefined,
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </Table.Td>
+                    ))}
+                  </Table.Tr>
+                );
+              })
             )}
           </Table.Tbody>
         </Table>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+        <Group justify="space-between" px="sm" pt="xs">
+          <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
             <span>
-              {totalRows === 0
-                ? "Showing 0 of 0"
-                : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
             </span>
-            <div className="flex items-center gap-1.5">
+            <Group gap="xs">
               <span>Rows:</span>
               <Select
-                data={["10", "20", "50"]}
+                data={['10', '20', '50']}
                 value={String(pageSize)}
-                onChange={(v) =>
-                  setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
-                }
+                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
                 rightSection={chevronDown}
                 size="xs"
-                className="w-14"
+                radius="xl"
+                w={60}
               />
-            </div>
-          </div>
+            </Group>
+          </Group>
           <Pagination
             total={table.getPageCount() || 1}
             value={pageIndex + 1}
-            onChange={(p) =>
-              setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
-            }
-            color="indigoAlt.4"
+            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+            color="brand"
             size="xs"
-            radius="sm"
+            radius="xl"
+            disabled={totalRows === 0}
           />
-        </div>
+        </Group>
       </Paper>
-    </Box>
+    </Stack>
   );
 }
