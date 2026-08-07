@@ -10,7 +10,7 @@ import {
 const today = () => new Date().toISOString().split('T')[0];
 const startOfYear = () => `${new Date().getFullYear()}-01-01`;
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 15;
 
 export function useGeneralLedger(initialAccount: string = '') {
   const [account, setAccount] = useState(initialAccount);

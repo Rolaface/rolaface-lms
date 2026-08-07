@@ -361,9 +361,11 @@ export function JournalEntries() {
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   return (
-    <Stack gap="lg" p="lg">
-      {/* Scoped, purely visual — now pulls from theme.other so it stays
-          in sync with the Customer table and the brand color everywhere else. */}
+    // h="100%" + flex column: this Stack must sit inside a parent that
+    // actually has a bounded height (layout shell / route container).
+    // That's what lets the middle Paper claim remaining space instead
+    // of the page growing — no hardcoded vh/px anywhere.
+    <Stack gap="lg" p="lg" h="100%" style={{ minHeight: 0 }}>
       <style>{`
         .je-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
         .je-row-actions { opacity: 1; }
@@ -371,15 +373,15 @@ export function JournalEntries() {
         .je-row:hover td { background: ${theme.other.rowHoverBg} !important; }
         .je-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
         .je-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+        .je-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
       `}</style>
 
-   
-
-      {/* Toolbar */}
+      {/* Toolbar — fixed height, does not shrink */}
       <Paper
         radius="xl"
         p="xs"
         style={{
+          flexShrink: 0,
           background: "var(--mantine-color-slate-0)",
           border: "1px solid var(--mantine-color-slate-2)",
         }}
@@ -467,12 +469,20 @@ export function JournalEntries() {
         </Group>
       </Paper>
 
-      {/* Data Table — floating rounded row-cards, matches Customer table */}
+      {/* Data Table Paper — this is the flex child that fills remaining
+          height and owns the scroll. flex:1 + minHeight:0 is the part
+          that actually makes overflow:auto work inside a flex column
+          (without minHeight:0 the child refuses to shrink and the page
+          scrolls instead of the table). */}
       <Paper
         radius="lg"
         p="sm"
         pos="relative"
         style={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
           background: "var(--mantine-color-slate-0)",
           border: "1px solid var(--mantine-color-slate-2)",
         }}
@@ -483,109 +493,118 @@ export function JournalEntries() {
           overlayProps={{ blur: 1 }}
         />
 
-        <Table
-          verticalSpacing="sm"
-          horizontalSpacing="sm"
-          fz="xs"
-          w="100%"
-          style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
-        >
-          <Table.Thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <Table.Tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <Table.Th
-                    key={header.id}
-                    c="slate.5"
-                    fw={700}
-                    style={{
-                      fontSize: "var(--mantine-font-size-xs)",
-                      padding: "0 10px 6px",
-                      userSelect: "none",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
-                      border: "none",
-                    }}
-                  >
-                    <Group
-                      gap="xs"
-                      wrap="nowrap"
-                      justify={
-                        header.id === "actions" ? "flex-end" : "flex-start"
-                      }
-                    >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                    </Group>
-                  </Table.Th>
-                ))}
-              </Table.Tr>
-            ))}
-          </Table.Thead>
-          <Table.Tbody>
-            {rows.length === 0 ? (
-              <Table.Tr>
-                <Table.Td colSpan={columns.length} style={{ border: "none" }}>
-                  <Stack align="center" gap="xs" py="xl">
-                    <Box
+        <Box style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          <Table
+            verticalSpacing="sm"
+            horizontalSpacing="sm"
+            fz="xs"
+            w="100%"
+            style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+          >
+            <Table.Thead>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <Table.Tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <Table.Th
+                      key={header.id}
+                      className="je-thead-cell"
+                      c="slate.5"
+                      fw={700}
                       style={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: "50%",
-                        background: "var(--mantine-color-white)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        border: "1px solid var(--mantine-color-slate-2)",
+                        fontSize: "var(--mantine-font-size-xs)",
+                        padding: "0 10px 6px",
+                        userSelect: "none",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        border: "none",
                       }}
                     >
-                      <IconFileInvoice
-                        size={26}
-                        color="var(--mantine-color-slate-4)"
-                      />
-                    </Box>
-                    <Text ta="center" c="slate.5" fz="xs">
-                      No journal entries found.
-                    </Text>
-                  </Stack>
-                </Table.Td>
-              </Table.Tr>
-            ) : (
-              rows.map((row) => {
-                const { scale } = statusInfo(row.original.docstatus);
-                const cells = row.getVisibleCells();
-                return (
-                  <Table.Tr key={row.id} className="je-row">
-                    {cells.map((cell, idx) => (
-                      <Table.Td
-                        key={cell.id}
-                        style={{
-                          padding: "10px 10px",
-                          border: "none",
-                          boxShadow: "var(--mantine-shadow-xs)",
-                          borderLeft:
-                            idx === 0
-                              ? `3px solid var(--mantine-color-${scale}-4)`
-                              : undefined,
-                        }}
+                      <Group
+                        gap="xs"
+                        wrap="nowrap"
+                        justify={
+                          header.id === "actions" ? "flex-end" : "flex-start"
+                        }
                       >
                         {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
+                          header.column.columnDef.header,
+                          header.getContext(),
                         )}
-                      </Table.Td>
-                    ))}
-                  </Table.Tr>
-                );
-              })
-            )}
-          </Table.Tbody>
-        </Table>
+                      </Group>
+                    </Table.Th>
+                  ))}
+                </Table.Tr>
+              ))}
+            </Table.Thead>
+            <Table.Tbody>
+              {rows.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={columns.length} style={{ border: "none" }}>
+                    <Stack align="center" gap="xs" py="xl">
+                      <Box
+                        style={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: "50%",
+                          background: "var(--mantine-color-white)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          border: "1px solid var(--mantine-color-slate-2)",
+                        }}
+                      >
+                        <IconFileInvoice
+                          size={26}
+                          color="var(--mantine-color-slate-4)"
+                        />
+                      </Box>
+                      <Text ta="center" c="slate.5" fz="xs">
+                        No journal entries found.
+                      </Text>
+                    </Stack>
+                  </Table.Td>
+                </Table.Tr>
+              ) : (
+                rows.map((row) => {
+                  const { scale } = statusInfo(row.original.docstatus);
+                  const cells = row.getVisibleCells();
+                  return (
+                    <Table.Tr key={row.id} className="je-row">
+                      {cells.map((cell, idx) => (
+                        <Table.Td
+                          key={cell.id}
+                          style={{
+                            padding: "10px 10px",
+                            border: "none",
+                            boxShadow: "var(--mantine-shadow-xs)",
+                            borderLeft:
+                              idx === 0
+                                ? `3px solid var(--mantine-color-${scale}-4)`
+                                : undefined,
+                          }}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </Table.Td>
+                      ))}
+                    </Table.Tr>
+                  );
+                })
+              )}
+            </Table.Tbody>
+          </Table>
+        </Box>
 
-        {/* Pagination Footer */}
-        <Group justify="space-between" px="sm" pt="xs">
+        {/* Pagination Footer — fixed height, does not shrink, stays
+            outside the scroll Box */}
+        <Group
+          justify="space-between"
+          px="sm"
+          pt="xs"
+          style={{ flexShrink: 0 }}
+        >
           <Group
             gap="sm"
             c="slate.6"

@@ -50,7 +50,7 @@ Accounting: {
   },
 
   generalLedger: {
-    get: `${ERP_BASE}/api/method/...`,
+    get: `${ERP_BASE}/api/method/frappe.desk.query_report.run`,
   },
   payable:{
 
