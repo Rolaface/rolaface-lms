@@ -83,7 +83,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconFileText,
     matchPrefix: true,
     subItems: [
-      { path: "/origination/application", label: "Loan Application", icon: IconFileText },
+      { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText },
     ],
   },
   {
