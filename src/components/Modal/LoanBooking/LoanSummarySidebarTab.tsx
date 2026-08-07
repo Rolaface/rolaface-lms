@@ -16,6 +16,7 @@ function SummaryRow({ label, value, bold }: { label: string; value: string; bold
 
 interface LoanSummarySidebarProps {
   productCode: string | null;
+  rateOfInterest: number,
   summaryPrincipal: number;
   currency: string | null;
   tenureMonths: number;
@@ -30,6 +31,7 @@ interface LoanSummarySidebarProps {
 
 export function LoanSummarySidebar({
   productCode,
+  rateOfInterest,
   summaryPrincipal,
   currency,
   tenureMonths,
@@ -53,7 +55,7 @@ export function LoanSummarySidebar({
           value={summaryPrincipal ? `${summaryPrincipal.toLocaleString("en-US")} ${currency}` : "—"}
           bold
         />
-        <SummaryRow label="Interest Rate" value={`${ANNUAL_RATE}% p.a.`} />
+        <SummaryRow label="Interest Rate" value={`${rateOfInterest}% p.a.`} />
         <SummaryRow label="Tenure" value={tenureMonths ? `${tenureMonths} months` : "—"} />
         <SummaryRow label="Frequency" value={frequency || "—"} bold />
         <SummaryRow label="Repayment Start" value={repaymentStartDate || "—"} />
