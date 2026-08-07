@@ -17,7 +17,7 @@ import { LendingSetup } from "../view/Setup/LendingSetup";
 // TODO: create these view components (placeholders shown for now)
 import { CollateralType } from "../view/Collateral/CollateralType/CollateralType";
 import { Collateral } from "../view/Collateral/Collateral";
-// import { LoanApplication } from '../view/Origination/LoanApplication';
+import { LoanApplication } from '../view/Origination/LoanApplication';
 import { LoanStatement } from "../view/Reports/LoanStatement";
 import { ArrearReports } from '../view/Reports/ArrearReports';
 
@@ -92,6 +92,7 @@ const loanAccountRoute = createRoute({
 //   component: Loan,
 // });
 
+
 /* ---------- Collateral (layout + children) ---------- */
 const collateralRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -156,6 +157,11 @@ const originationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/origination",
   component: Outlet,
+});
+const originationLoanApplicationRoute = createRoute({
+  getParentRoute: () => originationRoute,
+  path: "/loanApplication",
+  component: LoanApplication,
 });
 // const originationApplicationRoute = createRoute({
 //   getParentRoute: () => originationRoute,
@@ -327,7 +333,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loanAccountRoute,
   customerRoute,
-  // loanRoute,
+    // loanRoute,
   collateralRoute.addChildren([collateralTypeRoute, collateralListRoute]),
   setupRoute.addChildren([
     setupCategoryRoute,
@@ -338,7 +344,7 @@ const routeTree = rootRoute.addChildren([
     setupFeesRoute,
     setupProductRoute,
   ]),
-  // originationRoute.addChildren([originationApplicationRoute]),
+  originationRoute.addChildren([originationLoanApplicationRoute]),
   operationsRoute.addChildren([
     operationsBookingRoute,
     operationsDisbursementRoute,

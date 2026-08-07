@@ -46,6 +46,7 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
   const form = useForm({
     initialValues: {
       customerNumber: "",
+      rateOfInterest: "" as number | "",
       productCode: "",
       loanAppNumber: "",
       refNumber: "",
@@ -79,10 +80,17 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
     return form.values.tenureValue === "" ? 0 : Number(form.values.tenureValue);
   }, [form.values.tenureValue]);
 
-  const estimatedEmi = useMemo(
-    () => calcEmi(Number(form.values.loanAmount) || 0, ANNUAL_RATE, tenureMonths),
-    [form.values.loanAmount, tenureMonths]
-  );
+const effectiveRate = Number(form.values.rateOfInterest);
+
+const estimatedEmi = useMemo(
+  () => calcEmi(Number(form.values.loanAmount) || 0, effectiveRate, tenureMonths),
+  [form.values.loanAmount, tenureMonths, effectiveRate]
+);
+
+const amortization = useMemo(
+  () => buildAmortization(Number(form.values.loanAmount) || 0, effectiveRate, tenureMonths),
+  [form.values.loanAmount, tenureMonths, effectiveRate]
+);
   
   const totalRepayment = useMemo(
     () => Math.round(estimatedEmi * tenureMonths * 100) / 100,
@@ -92,11 +100,6 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
   const totalInterest = useMemo(
     () => Math.round((totalRepayment - (Number(form.values.loanAmount) || 0)) * 100) / 100,
     [totalRepayment, form.values.loanAmount]
-  );
-  
-  const amortization = useMemo(
-    () => buildAmortization(Number(form.values.loanAmount) || 0, ANNUAL_RATE, tenureMonths),
-    [form.values.loanAmount, tenureMonths]
   );
   
   const summaryPrincipal = Number(form.values.loanAmount) || 0;
@@ -133,10 +136,10 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
       applicant: values.customerNumber,
       loan_product: values.productCode,
       loan_amount: Number(values.loanAmount),
-      rate_of_interest: ANNUAL_RATE, 
+      rate_of_interest: effectiveRate, 
       penalty_charges_rate: 0,
       is_term_loan: 1,
-      posting_date: values.trnDate,
+      posting_date: values.valueDate,
       repayment_method:
         values.fixedRepaymentsIn === "TENOR"
           ? "Repay Over Number of Periods"
@@ -201,6 +204,7 @@ const finalMaturityDate = fetchedMaturityDate;
       customerNumber: loan.applicant || "",
       productCode: loan.loan_product || "",
       loanAmount: loan.loan_amount || "",
+      rateOfInterest: loan.rate_of_interest,
       trnDate: loan.posting_date || getTodayDate(),
       fixedRepaymentsIn: loan.repayment_method === "Repay Over Number of Periods" ? "TENOR" : "EMI",
       tenureValue: loan.repayment_periods || "",
@@ -386,6 +390,7 @@ const updateLoanMutation = useMutation({
 
             <LoanSummarySidebar
               productCode={form.values.productCode}
+              rateOfInterest={effectiveRate}
               summaryPrincipal={summaryPrincipal}
               currency={form.values.currency}
               tenureMonths={tenureMonths}
