@@ -1,4 +1,5 @@
-import { Text, Table } from "@mantine/core";
+import { Text, Table, Paper, Loader } from "@mantine/core";
+import { IconCalendarStats } from "@tabler/icons-react";
 import type { AmortizationRow } from "../../../utils/loanCalculations";
 
 interface FetchedScheduleRow {
@@ -17,6 +18,21 @@ interface RepaymentScheduleTabProps {
   isEditMode?: boolean;
 }
 
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return (
+    <Table.Tr>
+      <Table.Td colSpan={7} className="text-center py-12">
+        <div className="flex flex-col items-center gap-2">
+          <IconCalendarStats size={22} style={{ color: "var(--mantine-color-slate-3)" }} />
+          <Text size="xs" c="slate.4">
+            {children}
+          </Text>
+        </div>
+      </Table.Td>
+    </Table.Tr>
+  );
+}
+
 export function RepaymentScheduleTab({
   amortization,
   repaymentSchedule = [],
@@ -27,35 +43,31 @@ export function RepaymentScheduleTab({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="border border-slate-200 rounded-md overflow-hidden">
+      <Paper withBorder radius="lg" shadow="xs" style={{ overflow: "hidden" }}>
+        <div style={{ maxHeight: 480, overflowY: "auto" }}>
         <Table.ScrollContainer minWidth={720}>
           <Table verticalSpacing="sm" fz="xs">
-            <Table.Thead className="bg-slate-50">
+            <Table.Thead>
               <Table.Tr>
-                <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
-                  Installment Number
-                </Table.Th>
-                <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">Date</Table.Th>
-                <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
-                  Beginning Bal.
-                </Table.Th>
-                <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
-                  Principal
-                </Table.Th>
-                <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
-                  Interest
-                </Table.Th>
-                <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">EMI</Table.Th>
-                <Table.Th className="uppercase text-[10px] tracking-wide text-slate-500">
-                  Ending Bal.
-                </Table.Th>
+                <Table.Th>Installment Number</Table.Th>
+                <Table.Th>Date</Table.Th>
+                <Table.Th>Beginning Bal.</Table.Th>
+                <Table.Th>Principal</Table.Th>
+                <Table.Th>Interest</Table.Th>
+                <Table.Th>EMI</Table.Th>
+                <Table.Th>Ending Bal.</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {isFetchingSchedule ? (
                 <Table.Tr>
-                  <Table.Td colSpan={7} className="text-center py-8 text-slate-400 bg-slate-50/50">
-                    Loading schedule...
+                  <Table.Td colSpan={7} className="text-center py-10">
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader size="xs" color="brand" />
+                      <Text size="xs" c="slate.4">
+                        Loading schedule...
+                      </Text>
+                    </div>
                   </Table.Td>
                 </Table.Tr>
               ) : useFetched ? (
@@ -63,46 +75,39 @@ export function RepaymentScheduleTab({
                   <Table.Tr key={row.no}>
                     <Table.Td>{row.no}</Table.Td>
                     <Table.Td>{row.payment_date}</Table.Td>
-                    <Table.Td className="font-mono">
+                    <Table.Td ff="monospace">
                       {(row.balance_loan_amount + row.principal_amount).toFixed(2)}
                     </Table.Td>
-                    <Table.Td className="font-mono">{row.principal_amount.toFixed(2)}</Table.Td>
-                    <Table.Td className="font-mono">{row.interest_amount.toFixed(2)}</Table.Td>
-                    <Table.Td className="font-mono">{row.total_payment.toFixed(2)}</Table.Td>
-                    <Table.Td className="font-mono">{row.balance_loan_amount.toFixed(2)}</Table.Td>
+                    <Table.Td ff="monospace">{row.principal_amount.toFixed(2)}</Table.Td>
+                    <Table.Td ff="monospace">{row.interest_amount.toFixed(2)}</Table.Td>
+                    <Table.Td ff="monospace">{row.total_payment.toFixed(2)}</Table.Td>
+                    <Table.Td ff="monospace">{row.balance_loan_amount.toFixed(2)}</Table.Td>
                   </Table.Tr>
                 ))
-            ) : isEditMode ? (
-  <Table.Tr>
-    <Table.Td colSpan={7} className="text-center py-8 text-slate-400 bg-slate-50/50">
-      No schedules are being generated for this loan yet.
-    </Table.Td>
-  </Table.Tr>
-) : amortization.length === 0 ? (
-  <Table.Tr>
-    <Table.Td colSpan={7} className="text-center py-8 text-slate-400 bg-slate-50/50">
-      Schedule regenerates automatically once Basic Details are complete.
-    </Table.Td>
-  </Table.Tr>
-) : (
+              ) : isEditMode ? (
+                <EmptyState>No schedules are being generated for this loan yet.</EmptyState>
+              ) : amortization.length === 0 ? (
+                <EmptyState>Schedule regenerates automatically once Basic Details are complete.</EmptyState>
+              ) : (
                 amortization.map((row) => (
                   <Table.Tr key={row.inst}>
                     <Table.Td>{row.inst}</Table.Td>
                     <Table.Td>{row.date}</Table.Td>
-                    <Table.Td className="font-mono">{row.beginning.toFixed(2)}</Table.Td>
-                    <Table.Td className="font-mono">{row.principal.toFixed(2)}</Table.Td>
-                    <Table.Td className="font-mono">{row.interest.toFixed(2)}</Table.Td>
-                    <Table.Td className="font-mono">{row.emi.toFixed(2)}</Table.Td>
-                    <Table.Td className="font-mono">{row.ending.toFixed(2)}</Table.Td>
+                    <Table.Td ff="monospace">{row.beginning.toFixed(2)}</Table.Td>
+                    <Table.Td ff="monospace">{row.principal.toFixed(2)}</Table.Td>
+                    <Table.Td ff="monospace">{row.interest.toFixed(2)}</Table.Td>
+                    <Table.Td ff="monospace">{row.emi.toFixed(2)}</Table.Td>
+                    <Table.Td ff="monospace">{row.ending.toFixed(2)}</Table.Td>
                   </Table.Tr>
                 ))
               )}
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
-      </div>
+        </div>
+      </Paper>
       {!useFetched && amortization.length > 0 && (
-        <Text size="xs" c="dimmed">
+        <Text size="xs" c="slate.4">
           Schedule regenerates automatically once Basic Details are complete.
         </Text>
       )}

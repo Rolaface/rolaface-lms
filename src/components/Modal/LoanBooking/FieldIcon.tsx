@@ -1,15 +1,15 @@
-export function FieldIcon({
-  Icon,
-  bg,
-  color,
-}: {
-  Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
-  bg: string;
-  color: string;
-}) {
+import { ThemeIcon, type MantineColor } from "@mantine/core";
+import type { ComponentType } from "react";
+
+interface FieldIconProps {
+  Icon: ComponentType<{ size?: number }>;
+  color: MantineColor;
+}
+
+export function FieldIcon({ Icon, color }: FieldIconProps) {
   return (
-    <div className="p-1.5 rounded-md flex items-center justify-center" style={{ backgroundColor: bg }}>
-      <Icon size={14} style={{ color }} />
-    </div>
+    <ThemeIcon variant="light" color={color} radius="md" size={30}>
+      <Icon size={15} />
+    </ThemeIcon>
   );
 }

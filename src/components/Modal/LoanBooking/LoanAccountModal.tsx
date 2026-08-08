@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Box, Text, Button, Modal } from "@mantine/core";
+import { Box, Text, Button, Modal, Group, ThemeIcon, Badge, useMantineTheme } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { IconX, IconMinus, IconFileText, IconCheck, IconCalculator } from "@tabler/icons-react";
+import { IconX, IconMinus, IconBuildingBank, IconCheck, IconCalculator } from "@tabler/icons-react";
 
 import { createLoan, getLoanById, updateLoan, getReapymentScheduleById } from "../../../api/loanApi";
 import { calcEmi, buildAmortization, getTodayDate } from "../../../utils/loanCalculations";
@@ -17,6 +17,7 @@ import { CoApplicantTab, type CoApplicant } from "./CoapplicationTab";
 import { DocumentsTab } from "./DocumentTab";
 import { LoanSummarySidebar } from "./LoanSummarySidebarTab";
 import { LoanSimulatorModal } from "../LoanSimulatorModal";
+import { ModalFooter } from "../../shared/ModalFooter";
 
 interface LoanAccountModalProps {
   opened: boolean;
@@ -27,19 +28,24 @@ interface LoanAccountModalProps {
 
 export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAccountModalProps) {
   const queryClient = useQueryClient();
+  const theme = useMantineTheme();
   const [activeTab, setActiveTab] = useState<string | null>("basic");
-  
+
   // UI Only States (Modals, Sub-tabs, etc)
   const [loanAcNumber] = useState("");
   const [collateralModalOpened, setCollateralModalOpened] = useState(false);
   const [collateralSearch, setCollateralSearch] = useState("");
   const [simulatorModalOpened, setSimulatorModalOpened] = useState(false);
   const [coApplicantSearch, setCoApplicantSearch] = useState("");
-  
-  // Array Data (Charges, Collaterals, etc) kept outside the form for simplicity
-  const [charges, setCharges] = useState<ChargeRow[]>([]);
+
+
+  const [charges, setCharges] = useState<ChargeRow[]>([
+    { id: Date.now().toString(), feeType: "", percentage: "", amount: "", appliedOn: getTodayDate() },
+  ]);
   const [collaterals, setCollaterals] = useState<CollateralItem[]>([]);
-  const [coApplicants, setCoApplicants] = useState<CoApplicant[]>([]);
+  const [coApplicants, setCoApplicants] = useState<CoApplicant[]>([
+    { id: Date.now().toString(), name: "", email: "", mobile: "" },
+  ]);
   const [documents, setDocuments] = useState(DEFAULT_DOCUMENTS);
 
   // Initialize Mantine Form
@@ -80,33 +86,36 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
     return form.values.tenureValue === "" ? 0 : Number(form.values.tenureValue);
   }, [form.values.tenureValue]);
 
-const effectiveRate = Number(form.values.rateOfInterest);
+  const effectiveRate = Number(form.values.rateOfInterest);
 
-const estimatedEmi = useMemo(
-  () => calcEmi(Number(form.values.loanAmount) || 0, effectiveRate, tenureMonths),
-  [form.values.loanAmount, tenureMonths, effectiveRate]
-);
+  const estimatedEmi = useMemo(
+    () => calcEmi(Number(form.values.loanAmount) || 0, effectiveRate, tenureMonths),
+    [form.values.loanAmount, tenureMonths, effectiveRate]
+  );
 
-const amortization = useMemo(
-  () => buildAmortization(Number(form.values.loanAmount) || 0, effectiveRate, tenureMonths),
-  [form.values.loanAmount, tenureMonths, effectiveRate]
-);
-  
+  const amortization = useMemo(
+    () => buildAmortization(Number(form.values.loanAmount) || 0, effectiveRate, tenureMonths),
+    [form.values.loanAmount, tenureMonths, effectiveRate]
+  );
+
   const totalRepayment = useMemo(
     () => Math.round(estimatedEmi * tenureMonths * 100) / 100,
     [estimatedEmi, tenureMonths]
   );
-  
+
   const totalInterest = useMemo(
     () => Math.round((totalRepayment - (Number(form.values.loanAmount) || 0)) * 100) / 100,
     [totalRepayment, form.values.loanAmount]
   );
-  
+
   const summaryPrincipal = Number(form.values.loanAmount) || 0;
 
   // --- Array Handlers ---
   const handleAddCharge = () =>
-    setCharges((prev) => [...prev, { id: Date.now().toString(), feeType: "", percentage: "", amount: "", appliedOn: getTodayDate() }]);
+    setCharges((prev) => [
+      ...prev,
+      { id: Date.now().toString(), feeType: "", percentage: "", amount: "", appliedOn: getTodayDate() },
+    ]);
   const handleUpdateCharge = (id: string, field: keyof ChargeRow, value: string | number) =>
     setCharges((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
   const handleRemoveCharge = (id: string) => setCharges((prev) => prev.filter((c) => c.id !== id));
@@ -125,7 +134,6 @@ const amortization = useMemo(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loans"] });
       handleModalClose();
-      // onClose();
     },
   });
 
@@ -136,7 +144,7 @@ const amortization = useMemo(
       applicant: values.customerNumber,
       loan_product: values.productCode,
       loan_amount: Number(values.loanAmount),
-      rate_of_interest: effectiveRate, 
+      rate_of_interest: effectiveRate,
       penalty_charges_rate: 0,
       is_term_loan: 1,
       posting_date: values.valueDate,
@@ -156,20 +164,19 @@ const amortization = useMemo(
       payload.repayment_start_date = values.repaymentStartDate;
     }
 
-   if (
-      values.moratoriumType && 
-      values.moratoriumType !== "None" && 
-      values.moratoriumPeriod !== "" && 
+    if (
+      values.moratoriumType &&
+      values.moratoriumType !== "None" &&
+      values.moratoriumPeriod !== "" &&
       Number(values.moratoriumPeriod) > 0
     ) {
       payload.moratorium_type = values.moratoriumType;
       payload.moratorium_tenure = Number(values.moratoriumPeriod);
-       if (payload.moratorium_type === "EMI") {
+      if (payload.moratorium_type === "EMI") {
         payload.treatment_of_interest = "Capitalize";
       }
     }
 
-    // createLoanMutation.mutate(payload);
     if (loanId) {
       updateLoanMutation.mutate({ id: loanId, payload });
     } else {
@@ -177,119 +184,159 @@ const amortization = useMemo(
     }
   };
 
- const { data: existingLoanData, isLoading: isFetchingLoan, error, isError } = useQuery({
-  queryKey: ["loan", loanId],
-  queryFn: async () => await getLoanById(loanId as string),
-  enabled: !!loanId && opened === true,
-  refetchOnMount: "always", 
-});
+  const { data: existingLoanData, isLoading: isFetchingLoan } = useQuery({
+    queryKey: ["loan", loanId],
+    queryFn: async () => await getLoanById(loanId as string),
+    enabled: !!loanId && opened === true,
+    refetchOnMount: "always",
+  });
 
-const { data: scheduleData, isLoading: isFetchingSchedule } = useQuery({
-  queryKey: ["loan-repayment-schedule", loanId],
-  queryFn: async () => await getReapymentScheduleById(loanId as string),
-  enabled: !!loanId && opened === true,
-  refetchOnMount: "always",
-});
+  const { data: scheduleData, isLoading: isFetchingSchedule } = useQuery({
+    queryKey: ["loan-repayment-schedule", loanId],
+    queryFn: async () => await getReapymentScheduleById(loanId as string),
+    enabled: !!loanId && opened === true,
+    refetchOnMount: "always",
+  });
 
-const fetchedRepaymentSchedule = scheduleData?.message?.data?.repayment_schedule ?? [];
+  const fetchedRepaymentSchedule = scheduleData?.message?.data?.repayment_schedule ?? [];
 
-const fetchedMaturityDate = scheduleData?.message?.data?.maturity_date;
-const finalMaturityDate = fetchedMaturityDate;
+  const fetchedMaturityDate = scheduleData?.message?.data?.maturity_date;
+  const finalMaturityDate = fetchedMaturityDate;
 
- useEffect(() => {
-  const loan = existingLoanData?.message?.data;
+  useEffect(() => {
+    const loan = existingLoanData?.message?.data;
 
-  if (loan) {
-    form.setValues({
-      customerNumber: loan.applicant || "",
-      productCode: loan.loan_product || "",
-      loanAmount: loan.loan_amount || "",
-      rateOfInterest: loan.rate_of_interest,
-      trnDate: loan.posting_date || getTodayDate(),
-      fixedRepaymentsIn: loan.repayment_method === "Repay Over Number of Periods" ? "TENOR" : "EMI",
-      tenureValue: loan.repayment_periods || "",
-      repaymentAmount: loan.monthly_repayment_amount || "",
-      valueDate: loan.posting_date,
-      repaymentStartDate: loan.repayment_start_date || "",
-      // moratoriumType: loan.moratorium_type || "None",
-      moratoriumType: loan.moratorium_type || "Principal",
-      moratoriumPeriod: loan.moratorium_tenure || "",
-    });
-  }
-}, [existingLoanData]);
+    if (loan) {
+      form.setValues({
+        customerNumber: loan.applicant || "",
+        productCode: loan.loan_product || "",
+        loanAmount: loan.loan_amount || "",
+        rateOfInterest: loan.rate_of_interest,
+        trnDate: loan.posting_date || getTodayDate(),
+        fixedRepaymentsIn: loan.repayment_method === "Repay Over Number of Periods" ? "TENOR" : "EMI",
+        tenureValue: loan.repayment_periods || "",
+        repaymentAmount: loan.monthly_repayment_amount || "",
+        valueDate: loan.posting_date,
+        repaymentStartDate: loan.repayment_start_date || "",
+        moratoriumType: loan.moratorium_type || "Principal",
+        moratoriumPeriod: loan.moratorium_tenure || "",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingLoanData]);
 
-// const updateLoanMutation = useMutation({
-//     mutationFn: updateLoan,
-//     onSuccess: () => {
-//       queryClient.invalidateQueries({ queryKey: ["loans"] });
-//       handleModalClose();
-//     },
-//   });
-const updateLoanMutation = useMutation({
-  mutationFn: updateLoan,
-  onSuccess: (data, variables) => {
-    queryClient.invalidateQueries({ queryKey: ["loans"] });
-    queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });  
-    handleModalClose();
-  },
-});
+  const updateLoanMutation = useMutation({
+    mutationFn: updateLoan,
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
+      handleModalClose();
+    },
+  });
 
   const handleReset = () => {
     form.reset();
-    setCharges([]);
+    setCharges([{ id: Date.now().toString(), feeType: "", percentage: "", amount: "", appliedOn: getTodayDate() }]);
     setCollaterals([]);
-    setCoApplicants([]);
+    setCoApplicants([{ id: Date.now().toString(), name: "", email: "", mobile: "" }]);
     setCoApplicantSearch("");
     setDocuments(DEFAULT_DOCUMENTS);
     setActiveTab("basic");
     createLoanMutation.reset();
   };
 
-  // --- ADD THIS FUNCTION ---
   const handleModalClose = () => {
-     if (loanId) {
-    queryClient.removeQueries({ queryKey: ["loan", loanId] }); 
-        queryClient.removeQueries({ queryKey: ["loan-repayment-schedule", loanId] });
-
-  }
-    handleReset(); 
-    onClose();     
+    if (loanId) {
+      queryClient.removeQueries({ queryKey: ["loan", loanId] });
+      queryClient.removeQueries({ queryKey: ["loan-repayment-schedule", loanId] });
+    }
+    handleReset();
+    onClose();
   };
 
   const activeTabIndex = TAB_ITEMS.findIndex((t) => t.value === activeTab);
 
   return (
-    // <Modal opened={opened} onClose={onClose} size="95%" withCloseButton={false} padding={0} radius="md">
-    <Modal opened={opened} onClose={handleModalClose} size="95%" withCloseButton={false} padding={0} radius="md" closeOnClickOutside={false}
-      closeOnEscape={false}>
-      {/* Wrap everything in the form element */}
+    <Modal
+      opened={opened}
+      onClose={handleModalClose}
+      size="95%"
+      withCloseButton={false}
+      padding={0}
+      radius="lg"
+      closeOnClickOutside={false}
+      closeOnEscape={false}
+      styles={{
+        content: {
+          height: "95vh",
+          maxHeight: "95vh",
+        },
+        body: {
+          height: "100%",
+          padding: 0,
+        },
+      }}
+    >
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Box className="flex flex-col h-[90vh]">
+        <Box className="flex flex-col h-full">
           {/* Header */}
-          <Box className="px-5 py-3 flex justify-between items-center rounded-t-md shrink-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="p-1 rounded-md shrink-0">
-                <IconFileText size={22} className="text-white" />
-              </div>
+          <Box
+            className="px-6 py-4 flex justify-between items-center rounded-t-md shrink-0"
+            style={{
+              background: theme.other.brandGradient,
+              borderBottom: "1px solid var(--mantine-color-brand-7)",
+            }}
+          >
+            <Group gap="md" className="min-w-0" wrap="nowrap">
+              <ThemeIcon
+                size={48}
+                radius="xl"
+                style={{
+                  background: "rgba(255,255,255,0.18)",
+                  color: "var(--mantine-color-white)",
+                }}
+              >
+                <IconBuildingBank size={24} />
+              </ThemeIcon>
               <div className="min-w-0">
-                <Text size="md" fw={600} className="leading-tight truncate">
-  {/* {loanId ? "Update Loan Booking" : "New Loan Booking"} */}
-  {loanId ? (isViewMode ? "View Loan Booking" : "Update Loan Booking") : "New Loan Booking"}
-</Text>
+                <Text size="lg" fw={700} c="white" className="leading-tight truncate">
+                  {loanId ? (isViewMode ? "View Loan Booking" : "Update Loan Booking") : "New Loan Booking"}
+                </Text>
+                <Text size="xs" c="brand.1" className="leading-tight truncate">
+                  Lending Operations{loanId ? ` · Account ${loanId}` : ""}
+                </Text>
               </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button variant="subtle" className="text-white hover:bg-white/10 px-2" size="xs">
+            </Group>
+            <Group gap="xs" className="shrink-0" wrap="nowrap">
+              {isViewMode && (
+                <Badge variant="light" color="gray" radius="sm" size="sm">
+                  View Only
+                </Badge>
+              )}
+              <Button
+                variant="subtle"
+                size="xs"
+                px={8}
+                style={{ color: "var(--mantine-color-white)" }}
+                className="hover:bg-white/10"
+              >
                 <IconMinus size={18} />
               </Button>
-             <Button variant="subtle" onClick={handleModalClose} className="text-white hover:bg-white/10 px-2" size="xs">
-  <IconX size={18} />
-</Button>
-            </div>
+              <Button
+                variant="subtle"
+                size="xs"
+                px={8}
+                onClick={handleModalClose}
+                style={{ color: "var(--mantine-color-white)" }}
+                className="hover:bg-white/10"
+              >
+                <IconX size={18} />
+              </Button>
+            </Group>
           </Box>
 
           {/* Stepper */}
-          <Box className="px-5 pt-4 pb-4 bg-white border-b border-slate-100 shrink-0">
+          <Box className="px-6 pt-4 pb-3 bg-white shrink-0">
             <div className="flex items-center overflow-x-auto w-full">
               {TAB_ITEMS.map((tab, idx) => {
                 const isActive = idx === activeTabIndex;
@@ -300,34 +347,36 @@ const updateLoanMutation = useMutation({
                     <button
                       type="button"
                       onClick={() => setActiveTab(tab.value)}
-                      className="flex items-center gap-2 text-left shrink-0 group"
+                      className="flex items-center gap-2 shrink-0 rounded-xl px-3 py-2 transition-colors"
+                      style={{
+                        background: isActive ? "var(--mantine-color-brand-0)" : "transparent",
+                      }}
                     >
-                      <div
-                        className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 transition-all ${
-                          isActive
-                            ? "bg-indigo-600 text-white ring-4 ring-indigo-100"
-                            : isComplete
-                            ? "bg-indigo-500 text-white"
-                            : "bg-white text-slate-400 border-2 border-slate-200 group-hover:border-slate-300"
-                        }`}
+                      <ThemeIcon
+                        size={30}
+                        radius="xl"
+                        variant={isActive || isComplete ? "filled" : "light"}
+                        color={isActive || isComplete ? "brand" : "slate"}
                       >
                         {isComplete ? <IconCheck size={14} /> : <StepIcon size={14} />}
-                      </div>
+                      </ThemeIcon>
                       <Text
-                        size="xs"
+                        size="sm"
                         fw={700}
-                        className={`whitespace-nowrap ${
-                          isActive ? "text-indigo-600" : isComplete ? "text-slate-700" : "text-slate-400"
-                        }`}
+                        c={isActive ? "brand.7" : isComplete ? "slate.7" : "slate.4"}
+                        className="whitespace-nowrap"
                       >
                         {tab.label}
                       </Text>
                     </button>
                     {idx < TAB_ITEMS.length - 1 && (
                       <div
-                        className={`flex-1 min-w-[2rem] h-[2px] mx-3 rounded-full transition-colors ${
-                          isComplete ? "bg-indigo-400" : "bg-slate-200"
-                        }`}
+                        className="flex-1 min-w-[1.5rem] h-[2px] mx-2 rounded-full transition-colors"
+                        style={{
+                          background: isComplete
+                            ? "var(--mantine-color-brand-4)"
+                            : "var(--mantine-color-slate-2)",
+                        }}
                       />
                     )}
                   </Fragment>
@@ -336,28 +385,25 @@ const updateLoanMutation = useMutation({
             </div>
           </Box>
 
-          {/* Body */}
-          {/* <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-white"> */}
-          <fieldset 
-            disabled={isViewMode} 
-            className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-white border-0 p-0 m-0 min-w-0 min-h-0"
+          {/* Body — one shared scroll region, so the summary panel on the
+             right always matches the height of the active tab's content
+             instead of clipping inside its own short scrollbar. */}
+          <fieldset
+            disabled={isViewMode}
+            className="flex-1 flex flex-col lg:flex-row overflow-y-auto bg-white border-0 p-0 m-0 min-w-0 min-h-0"
           >
-            <div className="flex-1 overflow-y-auto p-6 min-w-0">
+            <div className="flex-1 p-6 min-w-0">
               {activeTab === "basic" && (
-              <BasicDetailsTab
-  form={form}
-  loanAcNumber={loanAcNumber}
-  maturityDate={finalMaturityDate}
-/>
+                <BasicDetailsTab form={form} loanAcNumber={loanAcNumber} maturityDate={finalMaturityDate} />
               )}
-{activeTab === "schedule" && (
-  <RepaymentScheduleTab
-    amortization={amortization}
-    repaymentSchedule={fetchedRepaymentSchedule}
-    isFetchingSchedule={isFetchingSchedule}
-    isEditMode={!!loanId}
-  />
-)}
+              {activeTab === "schedule" && (
+                <RepaymentScheduleTab
+                  amortization={amortization}
+                  repaymentSchedule={fetchedRepaymentSchedule}
+                  isFetchingSchedule={isFetchingSchedule}
+                  isEditMode={!!loanId}
+                />
+              )}
               {activeTab === "charges" && (
                 <ChargesTab
                   charges={charges}
@@ -402,83 +448,32 @@ const updateLoanMutation = useMutation({
               totalInterest={totalInterest}
               totalRepayment={totalRepayment}
             />
-          {/* </div> */}
           </fieldset>
 
-          {/* Footer */}
-          <div className="bg-white border-t border-slate-100 p-3 px-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 shrink-0 rounded-b-md">
-            <div className="flex items-center gap-4">
-              {/* <Button
-  size="sm"
-  variant="default"
-  onClick={handleModalClose}
-  disabled={createLoanMutation.isPending}
-  className="font-semibold px-5 text-slate-700 border-slate-200"
->
-  Cancel
-</Button>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="text-xs font-semibold text-red-500 hover:text-red-600 transition-colors"
-              >
-                Reset
-              </button> */}
+          {/* Footer — shared ModalFooter, no Reset action exposed. */}
+          <ModalFooter
+            variant="theme"
+            isViewMode={isViewMode}
+            onClose={handleModalClose}
+            onSaveDraft={!isViewMode ? () => { } : undefined}
+            submitLabel={loanId ? "Update " : "Save"}
+            submitLoading={createLoanMutation.isPending || updateLoanMutation.isPending || isFetchingLoan}
+            errorMessage={createLoanMutation.isError ? parseFrappeError(createLoanMutation.error) : undefined}
+            leftSlot={
               <button
                 type="button"
                 onClick={() => setSimulatorModalOpened(true)}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition-colors ml-2"
+                className="text-xs font-semibold flex items-center gap-1 transition-colors"
+                style={{ color: "var(--mantine-color-brand-6)" }}
               >
                 <IconCalculator size={14} />
                 Loan Simulator
               </button>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
-              {createLoanMutation.isError && !isViewMode && (
-                <Text size="xs" c="red" className="sm:mr-2">
-                  {parseFrappeError(createLoanMutation.error)}
-                </Text>
-              )}
-              <Button
-                size="sm"
-                variant="default"
-                onClick={handleModalClose}
-                disabled={createLoanMutation.isPending}
-                className="font-semibold px-5 text-slate-700 border-slate-200"
-              >
-                {isViewMode ? "Close" : "Cancel"}
-              </Button>
-              
-              {/* Only show action buttons if NOT in view mode */}
-              {!isViewMode && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="text-xs font-semibold text-red-500 hover:text-red-600 transition-colors"
-                  >
-                    Reset
-                  </button>
-                  <Button size="sm" variant="default" className="font-semibold px-5 text-slate-700 border-slate-200">
-                    Save as Draft
-                  </Button>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    loading={createLoanMutation.isPending || updateLoanMutation.isPending || isFetchingLoan}
-                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0 font-semibold px-6"
-                  >
-                    {loanId ? "Update Application" : "Submit Application"}
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
+            }
+          />
         </Box>
       </form>
 
-      {/* <CollateralModal opened={collateralModalOpened} onClose={() => setCollateralModalOpened(false)} /> */}
       <LoanSimulatorModal opened={simulatorModalOpened} onClose={() => setSimulatorModalOpened(false)} />
     </Modal>
   );
