@@ -4,7 +4,7 @@ import {
   Button,
   TextInput,
   Select,
-  Radio,
+  SegmentedControl,
   Group,
   Paper,
   Table,
@@ -15,7 +15,10 @@ import {
   Pagination,
   Tooltip,
   Title,
-  Loader, 
+  Stack,
+  Avatar,
+  Loader,
+  useMantineTheme,
 } from '@mantine/core';
 import {
   IconEye,
@@ -24,7 +27,12 @@ import {
   IconChevronUp,
   IconChevronDown,
   IconSelector,
-  IconSearch, IconTrash,
+  IconSearch,
+  IconShieldLock,
+  IconTrash,
+  IconCoin,
+  IconPercentage,
+  IconGauge,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -36,13 +44,15 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { modals } from '@mantine/modals';
 import { CollateralModal } from '../../components/Modal/CollateralModal';
 import {
   getAllCollaterals,
   enableCollateral,
-  disableCollateral, deleteCollateral,
+  disableCollateral,
+  deleteCollateral,
 } from '../../api/collateralApi';
-import { modals } from '@mantine/modals';
+
 interface CollateralRow {
   id: string;
   code: string;
@@ -56,27 +66,107 @@ interface CollateralRow {
 
 const columnHelper = createColumnHelper<CollateralRow>();
 
-function SortIcon({ sorted }: { sorted: 'asc' | 'desc' | false }) {
-  if (sorted === 'asc') return <IconChevronUp size={12} />;
-  if (sorted === 'desc') return <IconChevronDown size={12} />;
-  return <IconSelector size={12} className="opacity-40" />;
+function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
+  const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
+  if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
+  if (sorted === 'desc') return <IconChevronDown size={12} color={color} />;
+  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
+function StatusBadge({ status }: { status: string }) {
+  const isActive = status === 'ACTIVE';
+  const scale = isActive ? 'success' : 'danger';
+  return (
+    <Badge
+      variant="light"
+      color={scale}
+      radius="xl"
+      size="sm"
+      styles={{
+        root: {
+          textTransform: 'none',
+          fontWeight: 700,
+          letterSpacing: 0.2,
+          paddingLeft: 8,
+          paddingRight: 10,
+          border: `1px solid var(--mantine-color-${scale}-2)`,
+        },
+      }}
+      leftSection={
+        <Box
+          w={6}
+          h={6}
+          style={{ borderRadius: '50%', background: `var(--mantine-color-${scale}-6)` }}
+        />
+      }
+    >
+      {status}
+    </Badge>
+  );
+}
+
+function NameCell({ name, type }: { name: string; type: string }) {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+
+  return (
+    <Group gap={10} wrap="nowrap">
+      <Avatar
+        size={34}
+        radius="md"
+        variant="light"
+        color="brand"
+        style={{ fontSize: 12, fontWeight: 700, flexShrink: 0 }}
+      >
+        {initials || <IconShieldLock size={16} />}
+      </Avatar>
+      <Box>
+        <Text fz="sm" fw={700} c="slate.8">
+          {name}
+        </Text>
+        <Text fz="xs" c="slate.5">
+          {type}
+        </Text>
+      </Box>
+    </Group>
+  );
+}
+
+function IconText({ icon, children, mono = false }: { icon: React.ReactNode; children: React.ReactNode; mono?: boolean }) {
+  return (
+    <Group gap={6} wrap="nowrap">
+      <Box style={{ color: 'var(--mantine-color-slate-4)', display: 'flex', flexShrink: 0 }}>{icon}</Box>
+      <Text
+        fz="xs"
+        c="slate.6"
+        style={mono ? { fontFamily: 'var(--mantine-font-family-monospace)' } : undefined}
+      >
+        {children}
+      </Text>
+    </Group>
+  );
+}
+
+const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function Collateral() {
+  const theme = useMantineTheme();
   const [opened, { open, close }] = useDisclosure(false);
 
   // filter state
   const [search, setSearch] = useState('');
-  const [type, setType] = useState(null);
+  const [type, setType] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
 
   // table state
   const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  // const [selectedCollateralId, setSelectedCollateralId] = useState(null);
   const [selectedCollateralId, setSelectedCollateralId] = useState<string | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
 
@@ -108,30 +198,30 @@ export function Collateral() {
   });
 
   const { mutate: removeItem, isPending: isDeleting } = useMutation({
-  mutationFn: (id: string) => deleteCollateral(id),
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['collaterals'] });
-  },
-});
-
-const handleDelete = (id: string) => {
-  modals.openConfirmModal({
-    title: 'Delete collateral',
-    children: (
-      <Text size="sm">
-        Are you sure you want to delete this collateral? This cannot be undone.
-      </Text>
-    ),
-    labels: { confirm: 'Delete', cancel: 'Cancel' },
-    confirmProps: { color: 'red' },
-    onConfirm: () => removeItem(id),
+    mutationFn: (id: string) => deleteCollateral(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collaterals'] });
+    },
   });
-};
+
+  const handleDelete = (id: string) => {
+    modals.openConfirmModal({
+      title: 'Delete collateral',
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this collateral? This cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'danger' },
+      onConfirm: () => removeItem(id),
+    });
+  };
 
   const data = useMemo(() => {
     const list = collateralResponse?.data || collateralResponse?.message?.data || collateralResponse || [];
     if (!Array.isArray(list)) return [];
-    return list.map((item) => ({
+    return list.map((item: any) => ({
       id: item.name,
       code: item.loan_security_code,
       name: item.loan_security_name,
@@ -143,15 +233,25 @@ const handleDelete = (id: string) => {
     }));
   }, [collateralResponse]);
 
+  const stats = useMemo(() => {
+    const activeCount = data.filter((c) => c.status === 'ACTIVE').length;
+    return {
+      total: data.length,
+      active: activeCount,
+      disabled: data.length - activeCount,
+    };
+  }, [data]);
+
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
     return data.filter((c) => {
-      const matchesSearch = !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q);
+      const matchesSearch =
+        !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q);
       const matchesType = !type || c.type === type;
       const matchesStatus =
         status === 'all' ||
-        (status === 'active' && c.status === 'ACTIVE') ||
-        (status === 'disabled' && c.status === 'DISABLED');
+        (status === 'ACTIVE' && c.status === 'ACTIVE') ||
+        (status === 'DISABLED' && c.status === 'DISABLED');
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [data, search, type, status]);
@@ -166,73 +266,42 @@ const handleDelete = (id: string) => {
 
   const columns = useMemo(
     () => [
+      columnHelper.accessor('name', {
+        header: 'Collateral',
+        cell: (info) => <NameCell name={info.getValue()} type={info.row.original.type} />,
+      }),
       columnHelper.accessor('code', {
         header: 'Code',
         cell: (info) => (
-          <Text fz="xs" fw={600} c="gray.7">
+          <IconText icon={<IconShieldLock size={13} />} mono>
             {info.getValue()}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor('name', {
-        header: 'Collateral Name',
-        cell: (info) => (
-          <Text fz="xs" fw={500} c="gray.9">
-            {info.getValue()}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor('type', {
-        header: 'Type',
-        cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            {info.getValue()}
-          </Text>
+          </IconText>
         ),
       }),
       columnHelper.accessor('value', {
         header: 'Orig. Value',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            ${info.getValue().toLocaleString()}
-          </Text>
+          <IconText icon={<IconCoin size={13} />}>${info.getValue().toLocaleString()}</IconText>
         ),
         sortingFn: 'basic',
       }),
       columnHelper.accessor('haircut', {
         header: 'Haircut %',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            {info.getValue().toFixed(3)}
-          </Text>
+          <IconText icon={<IconPercentage size={13} />}>{info.getValue().toFixed(3)}</IconText>
         ),
         sortingFn: 'basic',
       }),
       columnHelper.accessor('ltv', {
         header: 'LTV %',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            {info.getValue()}%
-          </Text>
+          <IconText icon={<IconGauge size={13} />}>{info.getValue()}%</IconText>
         ),
         sortingFn: 'basic',
       }),
       columnHelper.accessor('status', {
         header: 'Status',
-        cell: (info) => {
-          const isActive = info.getValue() === 'ACTIVE';
-          return (
-            <Badge
-              variant="light"
-              size="sm"
-              color={isActive ? 'green' : 'red'}
-              className="font-semibold tracking-wider"
-              styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-            >
-              {info.getValue()}
-            </Badge>
-          );
-        },
+        cell: (info) => <StatusBadge status={info.getValue()} />,
       }),
       columnHelper.display({
         id: 'actions',
@@ -245,12 +314,13 @@ const handleDelete = (id: string) => {
           const row = info.row.original;
           const isActive = row.status === 'ACTIVE';
           return (
-            <Group justify="flex-end" gap={6} wrap="nowrap">
+            <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="gray"
+                  color="slate"
+                  radius="md"
                   onClick={() => {
                     setSelectedCollateralId(row.id);
                     setIsViewMode(true);
@@ -264,7 +334,8 @@ const handleDelete = (id: string) => {
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="blue"
+                  color="brand"
+                  radius="md"
                   onClick={() => {
                     setSelectedCollateralId(row.id);
                     setIsViewMode(false);
@@ -275,20 +346,21 @@ const handleDelete = (id: string) => {
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Delete" withArrow>
-  <ActionIcon
-    size="sm"
-    variant="subtle"
-    color="red"
-    disabled={isDeleting}
-    onClick={() => handleDelete(row.id)}
-  >
-    <IconTrash size={14} />
-  </ActionIcon>
-</Tooltip>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="danger"
+                  radius="md"
+                  disabled={isDeleting}
+                  onClick={() => handleDelete(row.id)}
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
+              </Tooltip>
               <Tooltip label={isActive ? 'Disable' : 'Activate'} withArrow>
                 <Switch
                   size="xs"
-                  color="green"
+                  color="success"
                   checked={isActive}
                   onChange={() => handleToggleStatus(row.id, row.status)}
                 />
@@ -298,7 +370,7 @@ const handleDelete = (id: string) => {
         },
       }),
     ],
-    []
+    [isDeleting]
   );
 
   const table = useReactTable({
@@ -324,8 +396,10 @@ const handleDelete = (id: string) => {
     setStatus('all');
   };
 
+  const typeOptions = Array.from(new Set(data.map((c) => c.type).filter(Boolean)));
+
   return (
-    <Box className="flex flex-col gap-4 p-8 mt-10">
+    <Stack gap="lg" p="lg">
       <CollateralModal
         opened={opened}
         onClose={handleModalClose}
@@ -333,34 +407,63 @@ const handleDelete = (id: string) => {
         isView={isViewMode}
       />
 
-      {/* Header & Add Button */}
-      <div className="flex justify-between items-center">
-        <Title order={2} className="text-gray-900 font-semibold">
-          Collaterals
-        </Title>
-        <Button
-          size="xs"
-          bg="indigoAlt.4"
-          className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-          onClick={() => {
-            setSelectedCollateralId(null);
-            setIsViewMode(false);
-            open();
-          }}
-          leftSection={<IconPlus size={14} />}
-        >
-          Add Collateral
-        </Button>
-      </div>
+      {/* Scoped, purely visual — mirrors the Customers module styling,
+          pulling from theme.other instead of one-off literals. */}
+      <style>{`
+        .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
+        .lms-row-actions { opacity: 1; }
+        .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+        .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
+        .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+        .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+      `}</style>
 
-      {/* Filters Box */}
-      <Paper withBorder radius="md" p="xs" className="shadow-sm">
-        <div className="flex items-center gap-3 flex-wrap">
+      {/* Header — icon tile + title on the left */}
+      <Group justify="space-between" align="center" wrap="wrap" gap="md">
+        <Group gap="sm" align="center">
+          <Box
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 'var(--mantine-radius-md)',
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadow,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <IconShieldLock size={20} color="var(--mantine-color-white)" stroke={1.8} />
+          </Box>
+          <Stack gap={2}>
+            <Title order={2} c="slate.8" fw={700}>
+              Collaterals
+            </Title>
+            <Text fz="sm" c="slate.5">
+              Manage pledged assets and valuation metrics
+            </Text>
+          </Stack>
+        </Group>
+      </Group>
+
+      {/* Toolbar — pill search + pill filters + segmented status control */}
+      <Paper
+        radius="xl"
+        p="xs"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        <Group gap="sm" wrap="wrap" align="center">
           <TextInput
-            size="xs"
-            placeholder="Search Code or Name"
-            leftSection={<IconSearch size={13} />}
-            className="flex-1 min-w-[200px]"
+            className="lms-search"
+            size="sm"
+            radius="xl"
+            placeholder="Code / Name"
+            leftSection={<IconSearch size={14} />}
+            style={{ flex: 1, minWidth: 220 }}
+            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
@@ -368,10 +471,11 @@ const handleDelete = (id: string) => {
             }}
           />
           <Select
-            size="xs"
+            size="sm"
+            radius="xl"
             placeholder="All Types"
-            data={['Real Estate', 'Vehicles', 'Government Bonds', 'Shares/Equities', 'Cash Deposits']}
-            className="w-40"
+            data={typeOptions}
+            w={180}
             searchable
             clearable
             rightSection={chevronDown}
@@ -382,31 +486,64 @@ const handleDelete = (id: string) => {
             }}
           />
 
-          <Radio.Group
-            name="status"
+          <SegmentedControl
+            size="xs"
+            radius="xl"
+            color="brand"
             value={status}
             onChange={(v) => {
               setStatus(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
-          >
-            <Group gap="sm">
-              <Radio size="xs" value="all" label="All" color="indigoAlt.4" />
-              <Radio size="xs" value="active" label="Active" color="indigoAlt.4" />
-              <Radio size="xs" value="disabled" label="Disabled" color="indigoAlt.4" />
-            </Group>
-          </Radio.Group>
+            data={[
+              { label: 'All', value: 'all' },
+              { label: 'Active', value: 'ACTIVE' },
+              { label: 'Disabled', value: 'DISABLED' },
+            ]}
+          />
 
-          <Button size="xs" variant="default" className="ml-auto px-4" onClick={resetFilters}>
-            Reset
-          </Button>
-        </div>
+          <Group gap="xs" ml="auto">
+            <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>
+              Reset
+            </Button>
+            <Button
+              size="sm"
+              radius="xl"
+              color="brand"
+              onClick={() => {
+                setSelectedCollateralId(null);
+                setIsViewMode(false);
+                open();
+              }}
+              leftSection={<IconPlus size={14} />}
+              style={{
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
+              }}
+            >
+              Add Collateral
+            </Button>
+          </Group>
+        </Group>
       </Paper>
 
-      {/* Data Table */}
-      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
-        <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full">
-          <Table.Thead className="bg-gray-50 border-b border-gray-200">
+      {/* Data Table — floating rounded row-cards on a soft canvas */}
+      <Paper
+        radius="lg"
+        p="sm"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        <Table
+          verticalSpacing="sm"
+          horizontalSpacing="sm"
+          fz="xs"
+          w="100%"
+          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+        >
+          <Table.Thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <Table.Tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -414,14 +551,21 @@ const handleDelete = (id: string) => {
                   return (
                     <Table.Th
                       key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${
-                        canSort ? 'cursor-pointer' : ''
-                      }`}
-                      style={{ fontSize: 11, padding: '6px 10px' }}
+                      c="slate.5"
+                      fw={700}
+                      style={{
+                        fontSize: 'var(--mantine-font-size-xs)',
+                        padding: '0 10px 6px',
+                        userSelect: 'none',
+                        cursor: canSort ? 'pointer' : 'default',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        border: 'none',
+                      }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <Group
-                        gap={4}
+                        gap="xs"
                         wrap="nowrap"
                         justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
                       >
@@ -437,47 +581,75 @@ const handleDelete = (id: string) => {
           <Table.Tbody>
             {isLoading ? (
               <Table.Tr>
-                <Table.Td colSpan={columns.length}>
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <Loader size="sm" color="gray" />
-                    <Text ta="center" c="dimmed" fz="xs" mt="sm">
+                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                  <Stack align="center" gap="xs" py="xl">
+                    <Loader size="sm" color="brand" />
+                    <Text ta="center" c="slate.5" fz="xs">
                       Loading collaterals...
                     </Text>
-                  </div>
+                  </Stack>
                 </Table.Td>
               </Table.Tr>
             ) : rows.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={columns.length}>
-                  <Text ta="center" c="dimmed" fz="xs" py="sm">
-                    No collaterals match your filters.
-                  </Text>
+                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                  <Stack align="center" gap="xs" py="xl">
+                    <Box
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: '50%',
+                        background: 'var(--mantine-color-white)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid var(--mantine-color-slate-2)',
+                      }}
+                    >
+                      <IconShieldLock size={26} color="var(--mantine-color-slate-4)" />
+                    </Box>
+                    <Text ta="center" c="slate.5" fz="xs">
+                      No collaterals match your filters.
+                    </Text>
+                  </Stack>
                 </Table.Td>
               </Table.Tr>
             ) : (
-              rows.map((row) => (
-                <Table.Tr
-                  key={row.id}
-                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <Table.Td key={cell.id} style={{ padding: '5px 10px' }}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </Table.Td>
-                  ))}
-                </Table.Tr>
-              ))
+              rows.map((row) => {
+                const isActive = row.original.status === 'ACTIVE';
+                const cells = row.getVisibleCells();
+                return (
+                  <Table.Tr key={row.id} className="lms-row">
+                    {cells.map((cell, idx) => (
+                      <Table.Td
+                        key={cell.id}
+                        style={{
+                          padding: '10px 10px',
+                          border: 'none',
+                          boxShadow: 'var(--mantine-shadow-xs)',
+                          borderLeft:
+                            idx === 0
+                              ? `3px solid var(--mantine-color-${isActive ? 'success' : 'danger'}-4)`
+                              : undefined,
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </Table.Td>
+                    ))}
+                  </Table.Tr>
+                );
+              })
             )}
           </Table.Tbody>
         </Table>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+        <Group justify="space-between" px="sm" pt="xs">
+          <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
             <span>
               {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
             </span>
-            <div className="flex items-center gap-1.5">
+            <Group gap="xs">
               <span>Rows:</span>
               <Select
                 data={['10', '20', '50']}
@@ -485,20 +657,21 @@ const handleDelete = (id: string) => {
                 onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
                 rightSection={chevronDown}
                 size="xs"
-                className="w-14"
+                radius="xl"
+                w={60}
               />
-            </div>
-          </div>
+            </Group>
+          </Group>
           <Pagination
             total={table.getPageCount() || 1}
             value={pageIndex + 1}
             onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-            color="indigoAlt.4"
+            color="brand"
             size="xs"
-            radius="sm"
+            radius="xl"
           />
-        </div>
+        </Group>
       </Paper>
-    </Box>
+    </Stack>
   );
 }
