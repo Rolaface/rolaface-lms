@@ -1,12 +1,10 @@
 import { useEffect } from "react";
-import apiClient from "../../config/axios";
-import { API } from "../../config/api";
+import { getCompanyInfo, getLoginUser } from "../../api/erpDataApi";
 import { useCompanyStore } from "../../store/companyStore";
-
-const COMPANY_ID = import.meta.env.VITE_COMPANY_ID as string;
+import { ensureCurrencies } from "../../store/currencyStore"; 
 
 export function useBootstrapFromERP() {
-  const setCompany = useCompanyStore((s) => s.setCompany);  
+  const setCompany = useCompanyStore((s) => s.setCompany);
 
   useEffect(() => {
     const sid = localStorage.getItem("session_id");
@@ -14,26 +12,24 @@ export function useBootstrapFromERP() {
 
     const bootstrap = async () => {
       try {
-        // 1. User info
-        const userRes = await apiClient.get(API.Company.getUserDetails);
-        const userData = userRes.data?.message?.data;
+        const userData = await getLoginUser();
         if (userData) {
           localStorage.setItem("auth_user", JSON.stringify(userData));
         }
 
-        // 2. Company info
-        const companyRes = await apiClient.get(API.Company.getById, {
-          params: { custom_company_id: COMPANY_ID },
-        });
-        const companyData = companyRes.data?.data;
+        const companyData = await getCompanyInfo();
         if (companyData) {
-          setCompany({                          
+          setCompany({
             companyName: companyData.companyName,
             baseCurrency: companyData.baseCurrency,
             tpin: companyData.tpin,
             industryType: companyData.industryType,
             primaryBusinessDomain: companyData.primaryBusinessDomain,
           });
+
+          if (companyData.baseCurrency) {
+            await ensureCurrencies([companyData.baseCurrency]);
+          }
         }
       } catch (err) {
         console.error("[LMS] Bootstrap failed:", err);
@@ -41,5 +37,5 @@ export function useBootstrapFromERP() {
     };
 
     bootstrap();
-  }, [setCompany]);   
+  }, [setCompany]);
 }

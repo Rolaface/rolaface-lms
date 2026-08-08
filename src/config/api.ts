@@ -1,6 +1,3 @@
-import { Receivable } from "../view/Accounting/Receivable ";
-
-// src/config/api.ts
 const ERP_BASE = (import.meta.env.VITE_API_BASE_URL ?? "") as string;
 
 export { ERP_BASE };
@@ -13,9 +10,11 @@ export const API = {
     // login: `${ERP_BASE}/api/method/...`,
     // logout: `${ERP_BASE}/api/method/...`,
   },
-  // =========================
-  // Accounting
-  // =========================
+Company:{
+  getById: `${ERP_BASE}/api/method/custom_api.api.organization.company.api.get`,
+  getUserDetails: `${ERP_BASE}/api/method/auth_api.user_management.api.auth.get_login_user`,
+  getCurrency: `${ERP_BASE}/api/method/custom_api.api.search.get_currencies`,
+},
 Accounting: {
   chartOfAccounts: {
     createCOA: `${ERP_BASE}/api/method/erpnext.accounts.utils.add_ac`,

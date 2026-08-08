@@ -1,9 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import apiClient from "../config/axios";
-import { API } from "../config/api";
+import { getCompanyInfo } from "../api/erpDataApi";
 
-const COMPANY_ID = import.meta.env.VITE_COMPANY_ID as string;
 
 interface CompanyState {
   baseCurrency: string;
@@ -46,11 +44,7 @@ export const useCompanyStore = create<CompanyState>()(
       fetchCompany: async () => {
         set({ loading: true });
         try {
-          const res = await apiClient.get(API.Company.getById, {
-            params: { custom_company_id: COMPANY_ID },
-          });
-          const companyData = res.data?.data;   
-
+          const companyData = await getCompanyInfo();   
           if (companyData) {
             set({
               baseCurrency: companyData.baseCurrency,
@@ -70,7 +64,7 @@ export const useCompanyStore = create<CompanyState>()(
       },
     }),
     {
-      name: "company-info",  
+      name: "company-info",
     },
   ),
 );
