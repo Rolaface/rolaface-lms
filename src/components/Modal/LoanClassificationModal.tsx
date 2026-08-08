@@ -214,7 +214,7 @@ export function LoanClassificationModal({
           <Fieldset disabled={isView} variant="unstyled" p={0} m={0}>
             <Box style={{ display: "flex", flexDirection: "column", gap: "var(--mantine-spacing-md)" }}>
               <Grid gutter="md">
-                <Grid.Col span={3}>
+                <Grid.Col span={4}>
                   <NumberInput
                     label="Level"
                     placeholder="1"
@@ -223,9 +223,10 @@ export function LoanClassificationModal({
                     onChange={(v) => updateField("level", v === "" ? "" : String(v))}
                     size="sm"
                     radius="md"
+                    hideControls
                   />
                 </Grid.Col>
-                <Grid.Col span={4.5}>
+                <Grid.Col span={4}>
                   <TextInput
                     label="Classification Code"
                     placeholder="e.g. SUB"
@@ -237,7 +238,7 @@ export function LoanClassificationModal({
                     radius="md"
                   />
                 </Grid.Col>
-                <Grid.Col span={4.5}>
+                <Grid.Col span={4}>
                   <TextInput
                     label="Classification Name"
                     placeholder="e.g. Substandard"
@@ -249,7 +250,6 @@ export function LoanClassificationModal({
                   />
                 </Grid.Col>
               </Grid>
-
               <Grid gutter="md">
                 <Grid.Col span={4}>
                   <NumberInput
@@ -260,6 +260,7 @@ export function LoanClassificationModal({
                     onChange={(v) => updateField("min_dpd_range", v === "" ? "" : String(v))}
                     size="sm"
                     radius="md"
+                    hideControls
                   />
                 </Grid.Col>
                 <Grid.Col span={4}>
@@ -271,6 +272,7 @@ export function LoanClassificationModal({
                     onChange={(v) => updateField("max_dpd_range", v === "" ? "" : String(v))}
                     size="sm"
                     radius="md"
+                    hideControls
                   />
                 </Grid.Col>
                 <Grid.Col span={4}>
@@ -283,6 +285,7 @@ export function LoanClassificationModal({
                     onChange={(v) => updateField("provision_rate", v === "" ? "" : String(v))}
                     size="sm"
                     radius="md"
+                    hideControls
                   />
                 </Grid.Col>
               </Grid>
