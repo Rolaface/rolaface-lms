@@ -1,6 +1,8 @@
 import { ReactNode } from 'react';
 import { Button, Group, Text, useMantineTheme } from '@mantine/core';
 
+const FOOTER_MIN_HEIGHT = 60; 
+
 interface ModalFooterProps {
   leftSlot?: ReactNode;
   isViewMode?: boolean;
@@ -44,8 +46,11 @@ export function ModalFooter({
       <Group
         justify="space-between"
         px="xl"
-        py="md"
-        style={{ borderTop: '1px solid var(--mantine-color-slate-2)', flexShrink: 0 }}
+        style={{
+          borderTop: '1px solid var(--mantine-color-slate-2)',
+          flexShrink: 0,
+          minHeight: FOOTER_MIN_HEIGHT,
+        }}
       >
         <Group gap="sm">
           <Button variant="subtle" color="slate" onClick={onClose} disabled={submitLoading}>
@@ -97,7 +102,10 @@ export function ModalFooter({
   }
 
   return (
-    <div className="bg-white border-t border-slate-100 p-3 px-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 shrink-0 rounded-b-md">
+    <div
+      className="bg-white border-t border-slate-100 px-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 shrink-0 rounded-b-md"
+      style={{ minHeight: FOOTER_MIN_HEIGHT }}
+    >
       <div className="flex items-center gap-3">
         <Button
           size="sm"
