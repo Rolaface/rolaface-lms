@@ -90,7 +90,7 @@ export function AddLoanCategoryModal({
     <Modal
       opened={opened}
       onClose={handleClose}
-      size={520}
+      size={600}
       padding={0}
       lockScroll
       styles={{
@@ -167,7 +167,6 @@ export function AddLoanCategoryModal({
           onSubmit={handleSubmit}
           submitLabel="Save"
           submitLoading={loading}
-          submitIcon={!loading ? <IconCheck size={14} /> : undefined}
           errorMessage={errorMessage}
         />
       </Box>

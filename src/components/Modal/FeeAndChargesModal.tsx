@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import {
   ActionIcon,
   Box,
-  Button,
   Group,
   Modal,
   Stack,
@@ -19,8 +18,9 @@ import {
   getFeeAndChargeById,
 } from '../../api/loanChargesApi';
 
-import { GradientButton } from '../shared/customer/Shared';
 import { parseFrappeError } from '../../utils/parseFrappeError';
+import { showSuccess, showApiError } from '../../utils/alert';
+import { ModalFooter } from '../shared/ModalFooter'; 
 import type { CreateFeeAndChargePayload } from '../../types/loanCharges';
 
 export interface FeeAndCharge {
@@ -44,6 +44,11 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
     mode === 'add' ? 'New Fee and Charge' :
     mode === 'edit' ? 'Edit Fee and Charge' :
     'View Fee and Charge';
+
+  const description =
+    mode === 'view'
+      ? 'Viewing details for this fee/charge.'
+      : 'Define a fee or charge to apply on loan accounts.';
 
   const form = useForm({
     initialValues: { name: '' },
@@ -79,7 +84,13 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
   const saveChargeMutation = useMutation({
     mutationFn: (payload: CreateFeeAndChargePayload & { id?: string }) =>
       payload.id ? updateFeeAndCharge(payload as CreateFeeAndChargePayload & { id: string }) : createFeeAndCharge(payload),
-    onSuccess: () => onClose(),
+    onSuccess: () => {
+      showSuccess(mode === 'edit' ? 'Fee/Charge updated successfully.' : 'Fee/Charge created successfully.');
+      onClose();
+    },
+    onError: (err) => {
+      showApiError(parseFrappeError(err));
+    },
   });
 
   const handleSubmit = (values: typeof form.values) => {
@@ -111,7 +122,7 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
       }}
     >
       <Box bg="white">
-        {/* Header — same brand.6 bar + ThemeIcon + close pattern as CustomerModal */}
+        {/* Header */}
         <Group
           justify="space-between"
           align="center"
@@ -124,9 +135,14 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
               <IconReceipt2 size={16} />
             </ThemeIcon>
-            <Text size="md" fw={700} c="white" style={{ letterSpacing: '-0.01em' }}>
-              {title}
-            </Text>
+            <Box>
+              <Text size="md" fw={700} c="white" style={{ letterSpacing: '-0.01em' }}>
+                {title}
+              </Text>
+              <Text size="xs" fw={500} c="brand.1">
+                {description}
+              </Text>
+            </Box>
           </Group>
           <ActionIcon
             variant="subtle"
@@ -160,46 +176,17 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
                 withAsterisk={!isView}
                 styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
               />
-              {!isView && saveChargeMutation.isError && (
-                <Text
-                  size="xs"
-                  fw={600}
-                  c="danger"
-                  style={{
-                    border: '1px solid var(--mantine-color-danger-2)',
-                    background: 'var(--mantine-color-danger-0)',
-                    borderRadius: 'var(--mantine-radius-md)',
-                    padding: '8px 12px',
-                  }}
-                >
-                  {parseFrappeError(saveChargeMutation.error)}
-                </Text>
-              )}
             </Stack>
           </Box>
 
           {/* Footer */}
-          <Group
-            justify="flex-end"
-            px="xl"
-            py="md"
-            gap="sm"
-            style={{ borderTop: '1px solid var(--mantine-color-slate-2)' }}
-          >
-            <Button variant="subtle" color="slate" onClick={onClose}>
-              {isView ? 'Close' : 'Cancel'}
-            </Button>
-            {!isView && (
-              <GradientButton
-                type="submit"
-                px="xl"
-                loading={saveChargeMutation.isPending}
-                rightSection={!saveChargeMutation.isPending ? <IconCheck size={14} /> : undefined}
-              >
-                Save
-              </GradientButton>
-            )}
-          </Group>
+          <ModalFooter
+            variant="theme"
+            isViewMode={isView}
+            onClose={onClose}
+            submitLabel="Save"
+            submitLoading={saveChargeMutation.isPending}
+          />
         </form>
       </Box>
     </Modal>
