@@ -13,7 +13,7 @@ import {
   Fieldset,
   Divider,
 } from "@mantine/core";
-import { IconShieldCheck, IconX, IconPercentage } from "@tabler/icons-react";
+import { IconShieldCheck, IconX, IconPercentage, IconCheck } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateCollateralTypePayload } from "../../types/collateralTypeForm";
 import {
@@ -22,6 +22,7 @@ import {
   getCollateralTypeById,
 } from "../../api/collateralTypeApi";
 import { useForm } from "@mantine/form";
+import { ModalFooter } from "../shared/ModalFooter";
 
 interface CollateralTypeModalProps {
   opened: boolean;
@@ -228,41 +229,15 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
             />
           </Fieldset>
         </Box>
-
-        {/* Footer */}
-        <Group
-          justify="space-between"
-          px="xl"
-          py="md"
-          style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}
-        >
-          <Group gap="md">
-            <Button variant="subtle" color="slate" onClick={handleClose}>
-              {isView ? "Close" : "Cancel"}
-            </Button>
-            {!isView && (
-              <>
-                <Divider orientation="vertical" color="slate.2" />
-                <Button variant="subtle" color="danger" onClick={handleReset}>
-                  Reset Form
-                </Button>
-              </>
-            )}
-          </Group>
-
-          {!isView && (
-            <Button
-              px="xl"
-              color="brand"
-              radius="md"
-              disabled={isPending}
-              loading={isPending}
-              onClick={handleSubmit}
-            >
-              {editId ? "Update Type" : "Save Type"}
-            </Button>
-          )}
-        </Group>
+ <ModalFooter
+          variant="theme"
+          isViewMode={isView}
+          onClose={handleClose}
+          onSubmit={handleSubmit}
+          submitLabel={editId ? "Update" : "Save "}
+          submitLoading={isPending}
+          submitDisabled={isPending}
+        />
       </Box>
     </Modal>
   );
