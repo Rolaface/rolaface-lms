@@ -7,13 +7,12 @@ import {
   NumberInput,
   Select,
   Checkbox,
-  Button,
-  ActionIcon,
   ThemeIcon,
   Group,
   Fieldset,
   Divider,
   Grid,
+  ActionIcon,
 } from "@mantine/core";
 import {
   IconShieldLock,
@@ -31,6 +30,9 @@ import {
   getCollateralById,
 } from "../../api/collateralApi";
 import { getAllCollateralTypes } from "../../api/collateralTypeApi";
+import { ModalFooter } from "../shared/ModalFooter";
+
+
 
 interface CollateralModalProps {
   opened: boolean;
@@ -234,7 +236,8 @@ export function CollateralModal({ opened, onClose, editId, isView }: CollateralM
         <Box px="xl" py="lg" bg="slate.0" style={{ flex: 1 }}>
           <Fieldset disabled={isView} variant="unstyled" p={0} m={0}>
             <Grid gutter="lg">
-              <Grid.Col span={6}>
+              {/* Code, Type, Name now share a single row (span 4 each) */}
+              <Grid.Col span={4}>
                 <TextInput
                   size="sm"
                   radius="md"
@@ -244,7 +247,7 @@ export function CollateralModal({ opened, onClose, editId, isView }: CollateralM
                   {...form.getInputProps("code")}
                 />
               </Grid.Col>
-              <Grid.Col span={6}>
+              <Grid.Col span={4}>
                 <Select
                   size="sm"
                   radius="md"
@@ -258,7 +261,7 @@ export function CollateralModal({ opened, onClose, editId, isView }: CollateralM
                   {...form.getInputProps("type")}
                 />
               </Grid.Col>
-              <Grid.Col span={12}>
+              <Grid.Col span={4}>
                 <TextInput
                   size="sm"
                   radius="md"
@@ -317,40 +320,15 @@ export function CollateralModal({ opened, onClose, editId, isView }: CollateralM
             </Grid>
           </Fieldset>
         </Box>
-
-        {/* Footer */}
-        <Group
-          justify="space-between"
-          px="xl"
-          py="md"
-          style={{
-            borderTop: "1px solid var(--mantine-color-slate-2)",
-            flexShrink: 0,
-          }}
-        >
-          <Button variant="subtle" color="slate" onClick={handleClose}>
-            {isView ? "Close" : "Cancel"}
-          </Button>
-
-          {!isView && (
-            <Button
-              px="xl"
-              disabled={isPending}
-              loading={isPending}
-              onClick={handleSubmit}
-              rightSection={<IconCheck size={14} />}
-              styles={(theme) => ({
-                root: {
-                  background: theme.other.brandGradient,
-                  boxShadow: theme.other.brandGlowShadowSm,
-                  border: "none",
-                },
-              })}
-            >
-              {editId ? "Update Collateral" : "Save Collateral"}
-            </Button>
-          )}
-        </Group>
+        <ModalFooter
+          variant="theme"
+          isViewMode={isView}
+          onClose={handleClose}
+          onSubmit={handleSubmit}
+          submitLabel={editId ? "Update" : "Save "}
+          submitLoading={isPending}
+          submitDisabled={isPending}
+        />
       </Box>
     </Modal>
   );

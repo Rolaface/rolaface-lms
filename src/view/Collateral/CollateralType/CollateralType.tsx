@@ -362,23 +362,7 @@ export function CollateralType() {
           </Stack>
         </Group>
 
-        <Button
-          size="sm"
-          radius="xl"
-          color="brand"
-          onClick={() => {
-            setSelectedCollateralId(null);
-            setIsViewMode(false);
-            open();
-          }}
-          leftSection={<IconPlus size={14} />}
-          style={{
-            background: theme.other.brandGradient,
-            boxShadow: theme.other.brandGlowShadowSm,
-          }}
-        >
-          Add Collateral Type
-        </Button>
+    
       </Group>
 
       {/* Toolbar — pill search + segmented status control */}
@@ -425,6 +409,23 @@ export function CollateralType() {
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
             Reset
           </Button>
+           <Button
+          size="sm"
+          radius="xl"
+          color="brand"
+          onClick={() => {
+            setSelectedCollateralId(null);
+            setIsViewMode(false);
+            open();
+          }}
+          leftSection={<IconPlus size={14} />}
+          style={{
+            background: theme.other.brandGradient,
+            boxShadow: theme.other.brandGlowShadowSm,
+          }}
+        >
+          Add Collateral Type
+        </Button>
         </Group>
       </Paper>
 
