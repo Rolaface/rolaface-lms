@@ -3,13 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ActionIcon,
   Box,
-  Button,
   Fieldset,
   Grid,
   Group,
   Modal,
   NumberInput,
-  Paper,
   Switch,
   Text,
   TextInput,
@@ -17,13 +15,14 @@ import {
 } from "@mantine/core";
 import { IconCheck, IconFileText, IconX } from "@tabler/icons-react";
 
-import { GradientButton } from "../shared/customer/Shared";
 import type { LoanClassificationData } from "../../types/loanClassification";
 import {
   createLoanClassification,
   updateLoanClassification,
 } from "../../api/LoanClassificationApi";
 import { parseFrappeError } from "../../utils/parseFrappeError";
+import { showSuccess, showApiError } from "../../utils/alert"
+import { ModalFooter } from "../shared/ModalFooter";
 
 export type { LoanClassificationData } from "../../types/loanClassification";
 
@@ -54,24 +53,6 @@ const EMPTY_FORM_STATE: LoanClassificationFormState = {
   is_written_off: false,
 };
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <Paper
-      radius="md"
-      p="md"
-      style={{
-        background: 'var(--mantine-color-slate-0)',
-        border: '1px solid var(--mantine-color-slate-2)',
-      }}
-    >
-      <Text fz="xs" fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: '0.04em' }} mb="sm">
-        {title}
-      </Text>
-      {children}
-    </Paper>
-  );
-}
-
 export function LoanClassificationModal({
   opened,
   onClose,
@@ -89,7 +70,6 @@ export function LoanClassificationModal({
         : "View Loan Classification";
 
   const [formData, setFormData] = useState<LoanClassificationFormState>(EMPTY_FORM_STATE);
-  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (opened && data) {
@@ -105,7 +85,6 @@ export function LoanClassificationModal({
     } else if (opened && mode === "add") {
       setFormData(EMPTY_FORM_STATE);
     }
-    setFormError(null);
   }, [opened, data, mode]);
 
   const updateField = <K extends keyof LoanClassificationFormState>(
@@ -119,11 +98,12 @@ export function LoanClassificationModal({
     mutationFn: (payload: LoanClassificationData) => createLoanClassification(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanClassifications"] });
+      showSuccess("Loan classification created successfully.");
       onClose();
     },
     onError: (err) => {
       console.error("Create loan classification failed:", err);
-      setFormError(parseFrappeError(err));
+      showApiError(parseFrappeError(err));
     },
   });
 
@@ -132,37 +112,36 @@ export function LoanClassificationModal({
       updateLoanClassification(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanClassifications"] });
+      showSuccess("Loan classification updated successfully.");
       onClose();
     },
     onError: (err) => {
       console.error("Update loan classification failed:", err);
-      setFormError(parseFrappeError(err));
+      showApiError(parseFrappeError(err));
     },
   });
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   const handleSave = () => {
-    setFormError(null);
-
     if (formData.level === "") {
-      setFormError("Level is required.");
+      showApiError("Level is required.", "Validation Error");
       return;
     }
     if (!formData.code.trim() || !formData.name.trim()) {
-      setFormError("Code and Name are required.");
+      showApiError("Code and Name are required.", "Validation Error");
       return;
     }
     if (formData.min_dpd_range === "" || formData.max_dpd_range === "") {
-      setFormError("Min and Max DPD are required.");
+      showApiError("Min and Max DPD are required.", "Validation Error");
       return;
     }
     if (Number(formData.max_dpd_range) < Number(formData.min_dpd_range)) {
-      setFormError("Max DPD must be greater than or equal to Min DPD.");
+      showApiError("Max DPD must be greater than or equal to Min DPD.", "Validation Error");
       return;
     }
     if (formData.provision_rate === "") {
-      setFormError("Provision rate is required.");
+      showApiError("Provision rate is required.", "Validation Error");
       return;
     }
 
@@ -197,7 +176,7 @@ export function LoanClassificationModal({
       }}
     >
       <Box bg="white">
-        {/* Header — same brand.6 bar + ThemeIcon + close pattern as CustomerModal */}
+        {/* Header */}
         <Group
           justify="space-between"
           align="center"
@@ -210,9 +189,13 @@ export function LoanClassificationModal({
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
               <IconFileText size={16} />
             </ThemeIcon>
-            <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
-              {title}
-            </Text>
+            <Box>
+              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
+                {title}
+              </Text>
+              <Text size="xs" fw={500} c="brand.1">
+                Manage levels and provisioning              </Text>
+            </Box>
           </Group>
           <ActionIcon
             variant="subtle"
@@ -226,136 +209,103 @@ export function LoanClassificationModal({
           </ActionIcon>
         </Group>
 
-        {/* Body */}
+        {/* Body — flat, no card wrappers */}
         <Box px="xl" py="lg" bg="slate.0">
           <Fieldset disabled={isView} variant="unstyled" p={0} m={0}>
             <Box style={{ display: "flex", flexDirection: "column", gap: "var(--mantine-spacing-md)" }}>
-              <SectionCard title="Classification Identity">
-                <Grid gutter="md">
-                  <Grid.Col span={3}>
-                    <NumberInput
-                      label="Level"
-                      placeholder="1"
-                      withAsterisk={!isView}
-                      value={formData.level === "" ? "" : Number(formData.level)}
-                      onChange={(v) => updateField("level", v === "" ? "" : String(v))}
-                      size="sm"
-                      radius="md"
-                    />
-                  </Grid.Col>
-                  <Grid.Col span={4.5}>
-                    <TextInput
-                      label="Classification Code"
-                      placeholder="e.g. SUB"
-                      withAsterisk={!isView}
-                      disabled={isView || mode === "edit"}
-                      value={formData.code}
-                      onChange={(e) => updateField("code", e.currentTarget.value)}
-                      size="sm"
-                      radius="md"
-                    />
-                  </Grid.Col>
-                  <Grid.Col span={4.5}>
-                    <TextInput
-                      label="Classification Name"
-                      placeholder="e.g. Substandard"
-                      withAsterisk={!isView}
-                      value={formData.name}
-                      onChange={(e) => updateField("name", e.currentTarget.value)}
-                      size="sm"
-                      radius="md"
-                    />
-                  </Grid.Col>
-                </Grid>
-              </SectionCard>
+              <Grid gutter="md">
+                <Grid.Col span={3}>
+                  <NumberInput
+                    label="Level"
+                    placeholder="1"
+                    withAsterisk={!isView}
+                    value={formData.level === "" ? "" : Number(formData.level)}
+                    onChange={(v) => updateField("level", v === "" ? "" : String(v))}
+                    size="sm"
+                    radius="md"
+                  />
+                </Grid.Col>
+                <Grid.Col span={4.5}>
+                  <TextInput
+                    label="Classification Code"
+                    placeholder="e.g. SUB"
+                    withAsterisk={!isView}
+                    disabled={isView || mode === "edit"}
+                    value={formData.code}
+                    onChange={(e) => updateField("code", e.currentTarget.value)}
+                    size="sm"
+                    radius="md"
+                  />
+                </Grid.Col>
+                <Grid.Col span={4.5}>
+                  <TextInput
+                    label="Classification Name"
+                    placeholder="e.g. Substandard"
+                    withAsterisk={!isView}
+                    value={formData.name}
+                    onChange={(e) => updateField("name", e.currentTarget.value)}
+                    size="sm"
+                    radius="md"
+                  />
+                </Grid.Col>
+              </Grid>
 
-              <SectionCard title="Delinquency Configuration">
-                <Grid gutter="md" mb="sm">
-                  <Grid.Col span={4}>
-                    <NumberInput
-                      label="From DPD"
-                      placeholder="91"
-                      withAsterisk={!isView}
-                      value={formData.min_dpd_range === "" ? "" : Number(formData.min_dpd_range)}
-                      onChange={(v) => updateField("min_dpd_range", v === "" ? "" : String(v))}
-                      size="sm"
-                      radius="md"
-                    />
-                  </Grid.Col>
-                  <Grid.Col span={4}>
-                    <NumberInput
-                      label="To DPD"
-                      placeholder="180"
-                      withAsterisk={!isView}
-                      value={formData.max_dpd_range === "" ? "" : Number(formData.max_dpd_range)}
-                      onChange={(v) => updateField("max_dpd_range", v === "" ? "" : String(v))}
-                      size="sm"
-                      radius="md"
-                    />
-                  </Grid.Col>
-                  <Grid.Col span={4}>
-                    <NumberInput
-                      label="Provision Rate"
-                      placeholder="20.00"
-                      withAsterisk={!isView}
-                      rightSection={<Text size="xs" c="dimmed">%</Text>}
-                      value={formData.provision_rate === "" ? "" : Number(formData.provision_rate)}
-                      onChange={(v) => updateField("provision_rate", v === "" ? "" : String(v))}
-                      size="sm"
-                      radius="md"
-                    />
-                  </Grid.Col>
-                </Grid>
+              <Grid gutter="md">
+                <Grid.Col span={4}>
+                  <NumberInput
+                    label="From DPD"
+                    placeholder="91"
+                    withAsterisk={!isView}
+                    value={formData.min_dpd_range === "" ? "" : Number(formData.min_dpd_range)}
+                    onChange={(v) => updateField("min_dpd_range", v === "" ? "" : String(v))}
+                    size="sm"
+                    radius="md"
+                  />
+                </Grid.Col>
+                <Grid.Col span={4}>
+                  <NumberInput
+                    label="To DPD"
+                    placeholder="180"
+                    withAsterisk={!isView}
+                    value={formData.max_dpd_range === "" ? "" : Number(formData.max_dpd_range)}
+                    onChange={(v) => updateField("max_dpd_range", v === "" ? "" : String(v))}
+                    size="sm"
+                    radius="md"
+                  />
+                </Grid.Col>
+                <Grid.Col span={4}>
+                  <NumberInput
+                    label="Provision Rate"
+                    placeholder="20.00"
+                    withAsterisk={!isView}
+                    rightSection={<Text size="xs" c="dimmed">%</Text>}
+                    value={formData.provision_rate === "" ? "" : Number(formData.provision_rate)}
+                    onChange={(v) => updateField("provision_rate", v === "" ? "" : String(v))}
+                    size="sm"
+                    radius="md"
+                  />
+                </Grid.Col>
+              </Grid>
 
-                <Switch
-                  label="Written off"
-                  checked={formData.is_written_off}
-                  onChange={(e) => updateField("is_written_off", e.currentTarget.checked)}
-                  color="brand"
-                />
-              </SectionCard>
-
-              {formError && !isView && (
-                <Text
-                  size="xs"
-                  fw={600}
-                  c="danger"
-                  style={{
-                    border: "1px solid var(--mantine-color-danger-2)",
-                    background: "var(--mantine-color-danger-0)",
-                    borderRadius: "var(--mantine-radius-md)",
-                    padding: "8px 12px",
-                  }}
-                >
-                  {formError}
-                </Text>
-              )}
+              <Switch
+                label="Written off"
+                checked={formData.is_written_off}
+                onChange={(e) => updateField("is_written_off", e.currentTarget.checked)}
+                color="brand"
+              />
             </Box>
           </Fieldset>
         </Box>
 
         {/* Footer */}
-        <Group
-          justify="flex-end"
-          px="xl"
-          py="md"
-          gap="sm"
-          style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}
-        >
-          <Button variant="subtle" color="slate" onClick={onClose} disabled={isSaving}>
-            {isView ? "Close" : "Cancel"}
-          </Button>
-          {!isView && (
-            <GradientButton
-              px="xl"
-              onClick={handleSave}
-              loading={isSaving}
-              rightSection={!isSaving ? <IconCheck size={14} /> : undefined}
-            >
-              Save Classification
-            </GradientButton>
-          )}
-        </Group>
+        <ModalFooter
+          variant="theme"
+          isViewMode={isView}
+          onClose={onClose}
+          onSubmit={handleSave}
+          submitLabel="Save"
+          submitLoading={isSaving}
+        />
       </Box>
     </Modal>
   );

@@ -9,7 +9,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconX, IconCategory, IconCheck } from "@tabler/icons-react";
-import { ModalFooter } from "../../shared/ModalFooter"; // 👈 adjust path
+import { ModalFooter } from "../../shared/ModalFooter";
 import { showApiError, showSuccess } from "../../../utils/alert";
 
 export interface LoanCategoryFormData {
