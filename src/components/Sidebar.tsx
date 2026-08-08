@@ -25,7 +25,11 @@ import {
   IconReportAnalytics,
   IconCreditCard,
   IconFileInvoice,
-  IconHome,
+  IconHome, IconHierarchy2,
+  IconReceipt2,
+  IconScale,
+  IconChartBar,
+  IconArrowsExchange,
 } from "@tabler/icons-react";
 
 /* ───────────────── Nav item types (recursive) ───────────────── */
@@ -79,7 +83,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconFileText,
     matchPrefix: true,
     subItems: [
-      { path: "/origination/application", label: "Loan Application", icon: IconFileText },
+      { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText },
     ],
   },
   {
@@ -98,12 +102,66 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/operations/transfer", label: "Loan Transfer", icon: IconBuildingBank },
     ],
   },
-  {
-    path: "/accounting",
-    label: "Accounting",
-    icon: IconFileInvoice,
-    matchPrefix: true,
-  },
+{
+  path: "/accounting",
+  label: "Accounting",
+  icon: IconFileInvoice,
+  matchPrefix: true,
+  subItems: [
+    {
+      path: "/accounting/general-ledger",
+      label: "General Ledger",
+      icon: IconBuildingBank,
+      subItems: [
+        {
+          path: "/accounting/general-ledger/chart-of-accounts",
+          label: "Chart of Accounts",
+          icon: IconHierarchy2,
+        },
+        {
+          path: "/accounting/general-ledger/journal-entry",
+          label: "Journal Entry",
+          icon: IconReceipt2,
+        },
+        {
+          path: "/accounting/general-ledger/report",
+          label: "General Ledger Report",
+          icon: IconFileText,
+        },
+      ],
+    },
+    {
+      path: "/accounting/trial-balance",
+      label: "Trial Balance",
+      icon: IconScale,
+    },
+    {
+      path: "/accounting/receivable",
+      label: "Receivable",
+      icon: IconUsers,
+    },
+    {
+      path: "/accounting/payable",
+      label: "Payable",
+      icon: IconBuildingBank,
+    },
+    {
+      path: "/accounting/profit-loss",
+      label: "Profit & Loss",
+      icon: IconChartBar,
+    },
+    {
+      path: "/accounting/balance-sheet",
+      label: "Balance Sheet",
+      icon: IconReportAnalytics,
+    },
+    {
+      path: "/accounting/cash-flow",
+      label: "Cash Flow",
+      icon: IconArrowsExchange,
+    },
+  ],
+},
   {
     path: "/reports",
     label: "Lending Reports",
@@ -201,11 +259,15 @@ function NavNode({
   const isOpen = openMenus[menuKey] === true;
   const Icon = item.icon;
 
-  const isActive = item.path
-    ? pathname === item.path
-    : hasSubItems
-      ? item.subItems!.some((s) => (s.path ? pathname === s.path : false))
-      : false;
+const isActive = item.path
+  ? pathname === item.path || pathname.startsWith(item.path + "/")
+  : hasSubItems
+    ? item.subItems!.some((s) =>
+        s.path
+          ? pathname === s.path || pathname.startsWith(s.path + "/")
+          : false
+      )
+    : false;
 
   const textSize = depth >= 2 ? SIZES.subSubText : SIZES.subText;
   const iconSize = depth >= 2 ? SIZES.subSubIcon : SIZES.subIcon;
@@ -289,6 +351,18 @@ function NavNode({
   );
 }
 
+function getInitialOpenMenus(pathname: string): Record<string, boolean> {
+  return {
+    "0-Collateral": pathname.startsWith("/collateral"),
+    "0-Lending Setup": pathname.startsWith("/setup"),
+    "0-Origination": pathname.startsWith("/origination"),
+    "0-Lending Operations": pathname.startsWith("/operations"),
+    "0-Accounting": pathname.startsWith("/accounting"),
+    "1-General Ledger": pathname.startsWith("/accounting/general-ledger"),
+    "0-Lending Reports": pathname.startsWith("/reports"),
+  };
+}
+
 export function Sidebar({
   isCollapsed,
   onToggle,
@@ -299,7 +373,9 @@ export function Sidebar({
   onLogout?: () => void;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [openMenus, setOpenMenus] = React.useState<Record<string, boolean>>({});
+ const [openMenus, setOpenMenus] = React.useState<Record<string, boolean>>(() =>
+  getInitialOpenMenus(pathname)
+);
 
   const toggleMenu = (key: string) => {
     setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));

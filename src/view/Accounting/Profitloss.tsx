@@ -8,12 +8,17 @@ import {
   type ExpandedState,
 } from '@tanstack/react-table';
 import {
+  Box,
   Paper,
+  Table,
   Select,
   TextInput,
   Button,
   Loader,
   Text,
+  Group,
+  Stack,
+  SimpleGrid,
 } from '@mantine/core';
 import {
   IconRefresh,
@@ -56,26 +61,27 @@ function KpiStrip({
   const items = data?.summary ?? [];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
       {(loading || !data ? Array.from({ length: 3 }) : items).map((item: any, i) => (
-        <Paper key={item?.label ?? i} withBorder radius="md" className="px-4 py-3 flex flex-col gap-1.5 border-gray-200">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+        <Paper key={item?.label ?? i} withBorder radius="md" p="sm">
+          <Text fz="10px" fw={700} tt="uppercase" c="slate.4" style={{ letterSpacing: '0.08em' }} mb={4}>
             {item?.label ?? '—'}
-          </span>
+          </Text>
           {loading || !data ? (
-            <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
+            <Box h={16} w={96} style={{ background: 'var(--mantine-color-slate-1)', borderRadius: 4 }} className="animate-pulse" />
           ) : (
-            <span
-              className={`text-sm font-extrabold tabular-nums ${
-                item.indicator === 'green' ? 'text-emerald-600' : 'text-red-500'
-              }`}
+            <Text
+              fz="sm"
+              fw={800}
+              c={item.indicator === 'green' ? 'success.6' : 'danger.5'}
+              style={{ fontVariantNumeric: 'tabular-nums' }}
             >
               {displayAmount(item.value)}
-            </span>
+            </Text>
           )}
         </Paper>
       ))}
-    </div>
+    </SimpleGrid>
   );
 }
 
@@ -92,8 +98,8 @@ function FilterBar({
   onToggleExpand: () => void;
 }) {
   return (
-    <Paper withBorder radius="md" p="xs" className="shadow-sm">
-      <div className="flex items-center gap-3 flex-wrap">
+    <Paper withBorder radius="md" p="xs" shadow="sm">
+      <Group gap="sm" wrap="wrap" align="flex-end">
         <Select
           size="xs"
           label="Mode"
@@ -103,7 +109,7 @@ function FilterBar({
             const mode = (v || 'Fiscal Year') as typeof filters.mode;
             setFilters((f) => ({ ...f, mode }));
           }}
-          className="w-36"
+          w={144}
         />
 
         <Select
@@ -112,52 +118,52 @@ function FilterBar({
           data={['Monthly', 'Quarterly', 'Half-Yearly', 'Yearly']}
           value={filters.periodicity}
           onChange={(v) => setFilters((f) => ({ ...f, periodicity: (v || 'Monthly') as typeof filters.periodicity }))}
-          className="w-32"
+          w={128}
         />
 
-       {filters.mode === 'Fiscal Year' ? (
-  <TextInput
-    size="xs"
-    label="Fiscal Year"
-    type="text"
-    value={filters.from_fiscal_year}
-    onChange={(e) =>
-      setFilters((f) => ({
-        ...f,
-        from_fiscal_year: e.currentTarget.value,
-        to_fiscal_year: e.currentTarget.value,
-      }))
-    }
-    placeholder="2026-2027"
-    className="w-28"
-  />
-) : (
-  <>
-    <TextInput
-      size="xs"
-      label="From"
-      type="date"
-      value={filters.from_date}
-      onChange={(e) => setFilters((f) => ({ ...f, from_date: e.currentTarget.value }))}
-      className="w-[150px]"
-    />
-    <TextInput
-      size="xs"
-      label="To"
-      type="date"
-      value={filters.to_date}
-      onChange={(e) => setFilters((f) => ({ ...f, to_date: e.currentTarget.value }))}
-      className="w-[150px]"
-    />
-  </>
-)}
+        {filters.mode === 'Fiscal Year' ? (
+          <TextInput
+            size="xs"
+            label="Fiscal Year"
+            type="text"
+            value={filters.from_fiscal_year}
+            onChange={(e) =>
+              setFilters((f) => ({
+                ...f,
+                from_fiscal_year: e.currentTarget.value,
+                to_fiscal_year: e.currentTarget.value,
+              }))
+            }
+            placeholder="2026-2027"
+            w={112}
+          />
+        ) : (
+          <>
+            <TextInput
+              size="xs"
+              label="From"
+              type="date"
+              value={filters.from_date}
+              onChange={(e) => setFilters((f) => ({ ...f, from_date: e.currentTarget.value }))}
+              w={150}
+            />
+            <TextInput
+              size="xs"
+              label="To"
+              type="date"
+              value={filters.to_date}
+              onChange={(e) => setFilters((f) => ({ ...f, to_date: e.currentTarget.value }))}
+              w={150}
+            />
+          </>
+        )}
 
-        <Group_ />
+        <Box w={1} h={24} style={{ background: 'var(--mantine-color-slate-2)', alignSelf: 'stretch' }} />
 
         <Button
           size="xs"
           variant="default"
-          className="ml-auto"
+          ml="auto"
           leftSection={allExpanded ? <IconChevronRight size={13} /> : <IconLayoutList size={13} />}
           onClick={onToggleExpand}
         >
@@ -171,14 +177,9 @@ function FilterBar({
         >
           Refresh
         </Button>
-      </div>
+      </Group>
     </Paper>
   );
-}
-
-// spacer to keep flex-wrap gaps consistent without importing Group just for this
-function Group_() {
-  return <div className="w-px self-stretch bg-gray-200" />;
 }
 
 /* ───────────────── Page ───────────────── */
@@ -216,26 +217,39 @@ export function ProfitLoss() {
             const node = row.original;
             const canExpand = row.getCanExpand();
             return (
-              <div className="flex items-center gap-1.5" style={{ paddingLeft: row.depth * 18 }}>
+              <Group gap={6} wrap="nowrap" style={{ paddingLeft: row.depth * 18 }}>
                 {canExpand ? (
-                  <button
+                  <Box
+                    component="button"
                     type="button"
                     onClick={row.getToggleExpandedHandler()}
-                    className="shrink-0 text-gray-400 hover:text-gray-700 flex items-center gap-1"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      flexShrink: 0,
+                      color: 'var(--mantine-color-slate-4)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
                   >
                     <IconChevronRight
                       size={12}
-                      className={`transition-transform duration-150 ${row.getIsExpanded() ? 'rotate-90' : ''}`}
+                      style={{
+                        transition: 'transform 150ms ease',
+                        transform: row.getIsExpanded() ? 'rotate(90deg)' : 'none',
+                      }}
                     />
                     {row.getIsExpanded() ? <IconFolderOpen size={13} /> : <IconFolder size={13} />}
-                  </button>
+                  </Box>
                 ) : (
-                  <IconFileText size={12} className="text-gray-400 opacity-60 shrink-0" />
+                  <IconFileText size={12} color="var(--mantine-color-slate-4)" style={{ opacity: 0.6, flexShrink: 0 }} />
                 )}
-                <Text fz="xs" fw={node.is_group ? 600 : 400} c="gray.8" truncate>
+                <Text fz="xs" fw={node.is_group ? 600 : 400} c="slate.8" truncate>
                   {node.account_name}
                 </Text>
-              </div>
+              </Group>
             );
           },
         };
@@ -245,13 +259,14 @@ export function ProfitLoss() {
         id: col.fieldname,
         header: () => <Text fz="xs" fw={600} ta="right" w="100%">{col.label}</Text>,
         size: isTotal ? 130 : 110,
+        meta: { align: 'right' },
         cell: ({ row }) => (
           <Text
             fz="xs"
             ta="right"
             fw={isTotal ? 600 : 400}
-            c={isTotal ? 'gray.9' : 'gray.7'}
-            className="font-mono tabular-nums"
+            c={isTotal ? 'slate.9' : 'slate.7'}
+            style={{ fontFamily: 'var(--mantine-font-family-monospace)', fontVariantNumeric: 'tabular-nums' }}
           >
             {isTotal ? displayAmount(row.original.total) : displayAmount(row.original.periods?.[col.fieldname] ?? 0)}
           </Text>
@@ -277,18 +292,18 @@ export function ProfitLoss() {
 
   if (error && !data) {
     return (
-      <div className="flex flex-col items-center py-20 gap-3">
-        <IconAlertCircle size={26} className="text-red-500" />
-        <Text fz="sm" c="red">{error}</Text>
+      <Stack align="center" py={80} gap="sm">
+        <IconAlertCircle size={26} color="var(--mantine-color-danger-5)" />
+        <Text fz="sm" c="danger.6">{error}</Text>
         <Button size="xs" leftSection={<IconRefresh size={13} />} onClick={handleRefresh}>
           Retry
         </Button>
-      </div>
+      </Stack>
     );
   }
 
   return (
-    <div className="flex flex-col gap-3 p-6">
+    <Stack gap="sm" p="lg">
       <KpiStrip data={data} loading={isLoading && !data} displayAmount={displayAmount} />
 
       <FilterBar
@@ -300,60 +315,75 @@ export function ProfitLoss() {
         onToggleExpand={handleToggleExpand}
       />
 
-      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
-        <div className="overflow-x-auto overflow-y-auto max-h-[520px] relative">
-          <table className="border-collapse" style={{ tableLayout: 'fixed', width: 'max-content', minWidth: '100%' }}>
-            <colgroup>
-              {table.getAllLeafColumns().map((col) => (
-                <col key={col.id} style={{ width: col.getSize() }} />
-              ))}
-            </colgroup>
-            <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
+      <Paper withBorder radius="md" shadow="sm" style={{ overflow: 'hidden' }}>
+        <Box style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 520, position: 'relative' }}>
+          <Table stickyHeader horizontalSpacing="sm" verticalSpacing={6} style={{ tableLayout: 'fixed', width: 'max-content', minWidth: '100%' }}>
+            <Table.Thead>
               {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id}>
-                  {hg.headers.map((header) => (
-                    <th key={header.id} className="px-3 py-2 text-[11px] font-semibold text-gray-600 whitespace-nowrap bg-gray-50 border-b border-gray-200">
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
-                  ))}
-                </tr>
+                <Table.Tr key={hg.id}>
+                  {hg.headers.map((header) => {
+                    const align =
+                      (header.column.columnDef.meta as { align?: string } | undefined)?.align === 'right'
+                        ? 'right'
+                        : 'left';
+                    return (
+                      <Table.Th key={header.id} style={{ width: header.getSize(), textAlign: align, whiteSpace: 'nowrap' }}>
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                      </Table.Th>
+                    );
+                  })}
+                </Table.Tr>
               ))}
-            </thead>
-            <tbody>
+            </Table.Thead>
+            <Table.Tbody>
               {isLoading && !data ? (
-                <tr>
-                  <td colSpan={columns.length} style={{ height: 260 }}>
-                    <div className="flex justify-center items-center h-full">
+                <Table.Tr>
+                  <Table.Td colSpan={columns.length} h={260}>
+                    <Group justify="center">
                       <Loader size="sm" color="indigoAlt.4" />
-                    </div>
-                  </td>
-                </tr>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
               ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan={columns.length} className="py-16 text-center text-xs text-gray-400">
-                    No Profit &amp; Loss data.
-                  </td>
-                </tr>
+                <Table.Tr>
+                  <Table.Td colSpan={columns.length} py={64} ta="center">
+                    <Text fz="xs" c="slate.4">
+                      No Profit &amp; Loss data.
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
               ) : (
                 rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50/50 transition-colors h-[34px] border-b border-gray-100 last:border-0">
+                  <Table.Tr key={row.id}>
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-3 py-1 whitespace-nowrap">
+                      <Table.Td key={cell.id} style={{ whiteSpace: 'nowrap' }}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
+                      </Table.Td>
                     ))}
-                  </tr>
+                  </Table.Tr>
                 ))
               )}
-            </tbody>
-          </table>
+            </Table.Tbody>
+          </Table>
+
           {isLoading && data && (
-            <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-20">
+            <Box
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'color-mix(in srgb, var(--mantine-color-white) 60%, transparent)',
+                backdropFilter: 'blur(1px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 20,
+              }}
+            >
               <Loader size="sm" color="indigoAlt.4" />
-            </div>
+            </Box>
           )}
-        </div>
+        </Box>
       </Paper>
-    </div>
+    </Stack>
   );
 }

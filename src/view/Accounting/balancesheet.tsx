@@ -7,7 +7,19 @@ import {
   type ColumnDef,
   type ExpandedState,
 } from "@tanstack/react-table";
-import { Loader } from "@mantine/core";
+import {
+  Box,
+  Paper,
+  Table,
+  Select,
+  TextInput,
+  Button,
+  Loader,
+  Text,
+  Group,
+  Stack,
+  SimpleGrid,
+} from "@mantine/core";
 import {
   IconRefresh,
   IconChevronRight,
@@ -36,36 +48,30 @@ function KpiStrip({
   loading: boolean;
 }) {
   const colorFor = (item: BSSummaryItem) => {
-    if (item.indicator === "green") return "text-emerald-600";
-    if (item.indicator === "red") return "text-red-500";
-    return "text-gray-800";
+    if (item.indicator === "green") return "success.6";
+    if (item.indicator === "red") return "danger.5";
+    return "slate.8";
   };
 
-  const items =
-    loading || summary.length === 0 ? Array.from({ length: 4 }) : summary;
+  const items = loading || summary.length === 0 ? Array.from({ length: 4 }) : summary;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
       {items.map((item: any, i) => (
-        <div
-          key={item?.label ?? i}
-          className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex flex-col gap-1.5"
-        >
-          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 truncate">
+        <Paper key={item?.label ?? i} withBorder radius="md" p="sm">
+          <Text fz="10px" fw={700} tt="uppercase" c="slate.4" style={{ letterSpacing: "0.08em" }} mb={4} truncate>
             {item?.label ?? "—"}
-          </span>
+          </Text>
           {loading || !item ? (
-            <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
+            <Box h={16} w={96} style={{ background: "var(--mantine-color-slate-1)", borderRadius: 4 }} className="animate-pulse" />
           ) : (
-            <span
-              className={`text-sm font-bold tabular-nums ${colorFor(item)}`}
-            >
+            <Text fz="sm" fw={700} c={colorFor(item)} style={{ fontVariantNumeric: "tabular-nums" }}>
               {formatAmount(item.currency ?? "INR", item.value)}
-            </span>
+            </Text>
           )}
-        </div>
+        </Paper>
       ))}
-    </div>
+    </SimpleGrid>
   );
 }
 
@@ -85,119 +91,90 @@ function FilterBar({ bs }: { bs: ReturnType<typeof useBalanceSheet> }) {
     handleToggleExpand,
   } = bs;
 
-  const selectClass =
-    "h-8 px-2 text-xs border border-gray-200 rounded-md bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400";
-  const inputClass =
-    "h-8 px-2 text-xs border border-gray-200 rounded-md bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400";
-  const btnClass =
-    "h-8 px-3 flex items-center gap-1.5 text-xs font-semibold border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-indigo-300 rounded-md transition-colors whitespace-nowrap";
-
   return (
-    <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex flex-wrap items-end gap-3">
-      <div className="flex flex-col gap-1">
-        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-          Mode
-        </label>
-        <select
-          className={selectClass}
+    <Paper withBorder radius="md" p="sm">
+      <Group gap="sm" wrap="wrap" align="flex-end">
+        <Select
+          size="xs"
+          label="Mode"
+          data={["Fiscal Year", "Date Range"]}
           value={filters.mode}
-          onChange={(e) => setMode(e.target.value as any)}
-        >
-          <option value="Fiscal Year">Fiscal Year</option>
-          <option value="Date Range">Date Range</option>
-        </select>
-      </div>
+          onChange={(v) => setMode((v ?? "Fiscal Year") as any)}
+          w={144}
+        />
 
-      <div className="flex flex-col gap-1">
-        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-          Period
-        </label>
-        <select
-          className={selectClass}
+        <Select
+          size="xs"
+          label="Period"
+          data={["Monthly", "Quarterly", "Half-Yearly", "Yearly"]}
           value={filters.periodicity}
-          onChange={(e) => setPeriodicity(e.target.value as any)}
-        >
-          <option value="Monthly">Monthly</option>
-          <option value="Quarterly">Quarterly</option>
-          <option value="Half-Yearly">Half-Yearly</option>
-          <option value="Yearly">Yearly</option>
-        </select>
-      </div>
+          onChange={(v) => setPeriodicity((v ?? "Monthly") as any)}
+          w={128}
+        />
 
-      {filters.mode === "Fiscal Year" ? (
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-            Fiscal Year
-          </label>
-          <input
-            type="text"
-            className={`${inputClass} w-28`}
+        {filters.mode === "Fiscal Year" ? (
+          <TextInput
+            size="xs"
+            label="Fiscal Year"
             value={filters.fromFiscalYear}
-            onChange={(e) => setFiscalYear(e.target.value)}
+            onChange={(e) => setFiscalYear(e.currentTarget.value)}
             placeholder="2026-2027"
+            w={112}
           />
-        </div>
-      ) : (
-        <>
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-              From
-            </label>
-            <input
+        ) : (
+          <>
+            <TextInput
+              size="xs"
+              label="From"
               type="date"
-              className={`${inputClass} w-[150px]`}
               value={filters.fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
+              onChange={(e) => setFromDate(e.currentTarget.value)}
+              w={150}
             />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-              To
-            </label>
-            <input
+            <TextInput
+              size="xs"
+              label="To"
               type="date"
-              className={`${inputClass} w-[150px]`}
               value={filters.toDate}
-              onChange={(e) => setToDate(e.target.value)}
+              onChange={(e) => setToDate(e.currentTarget.value)}
+              w={150}
             />
-          </div>
-        </>
-      )}
+          </>
+        )}
 
-      <div className="flex items-center gap-2 ml-auto">
-        <button onClick={handleToggleExpand} className={btnClass}>
-          {allExpanded ? (
-            <IconChevronRight size={13} />
-          ) : (
-            <IconLayoutList size={13} />
-          )}
-          {allExpanded ? "Collapse" : "Expand All"}
-        </button>
-        <button onClick={handleRefresh} className={btnClass}>
-          <IconRefresh size={13} className={loading ? "animate-spin" : ""} />
-          Refresh
-        </button>
-      </div>
-    </div>
+        <Group gap="xs" ml="auto">
+          <Button
+            size="xs"
+            variant="default"
+            leftSection={allExpanded ? <IconChevronRight size={13} /> : <IconLayoutList size={13} />}
+            onClick={handleToggleExpand}
+          >
+            {allExpanded ? "Collapse" : "Expand All"}
+          </Button>
+          <Button
+            size="xs"
+            variant="default"
+            leftSection={<IconRefresh size={13} className={loading ? "animate-spin" : ""} />}
+            onClick={handleRefresh}
+          >
+            Refresh
+          </Button>
+        </Group>
+      </Group>
+    </Paper>
   );
 }
 
 /* ───────────────── Section header ───────────────── */
 
-function SectionHeader({
-  label,
-  accentClass,
-}: {
-  label: string;
-  accentClass: string;
-}) {
+function SectionHeader({ label, accentColor }: { label: string; accentColor: string }) {
   return (
-    <div className="flex items-center gap-2 px-1">
-      <span className={`w-1 h-4 rounded-full inline-block ${accentClass}`} />
-      <span className="text-xs font-bold text-gray-800 uppercase tracking-widest">
+    <Group gap={8} px={4}>
+      <Box w={4} h={16} style={{ borderRadius: 999, background: `var(--mantine-color-${accentColor})`, flexShrink: 0 }} />
+      <Text fz="xs" fw={700} tt="uppercase" c="slate.8" style={{ letterSpacing: "0.08em" }}>
         {label}
-      </span>
-    </div>
+      </Text>
+    </Group>
   );
 }
 
@@ -228,101 +205,65 @@ function BSTreeTable({
     getExpandedRowModel: getExpandedRowModel(),
   });
 
-  const leafColumns = table.getAllLeafColumns();
-
   return (
-    <div className="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden flex flex-col">
-      <div className="overflow-x-auto overflow-y-auto max-h-[420px] relative">
-        <table
-          className="border-collapse"
-          style={{
-            tableLayout: "fixed",
-            width: "max-content",
-            minWidth: "100%",
-          }}
-        >
-          <colgroup>
-            {leafColumns.map((col) => (
-              <col key={col.id} style={{ width: col.getSize() }} />
-            ))}
-          </colgroup>
-          <thead className="sticky top-0 z-10 bg-gray-50 border-b-2 border-gray-200">
+    <Paper withBorder radius="md" shadow="sm" style={{ overflow: "hidden" }}>
+      <Box style={{ overflowX: "auto", overflowY: "auto", maxHeight: 420, position: "relative" }}>
+        <Table stickyHeader horizontalSpacing="sm" verticalSpacing={6} style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
+          <Table.Thead>
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id}>
+              <Table.Tr key={hg.id}>
                 {hg.headers.map((header) => {
                   const align =
-                    (
-                      header.column.columnDef.meta as
-                        { align?: string } | undefined
-                    )?.align === "right"
-                      ? "text-right"
-                      : "text-left";
+                    (header.column.columnDef.meta as { align?: string } | undefined)?.align === "right"
+                      ? "right"
+                      : "left";
                   return (
-                    <th
-                      key={header.id}
-                      className={`px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 whitespace-nowrap bg-gray-50 border-b-2 border-gray-200 ${align}`}
-                    >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                    </th>
+                    <Table.Th key={header.id} style={{ width: header.getSize(), textAlign: align, whiteSpace: "nowrap" }}>
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                    </Table.Th>
                   );
                 })}
-              </tr>
+              </Table.Tr>
             ))}
-          </thead>
-          <tbody>
+          </Table.Thead>
+          <Table.Tbody>
             {loading ? (
-              <tr>
-                <td colSpan={columns.length} style={{ height: "160px" }}>
-                  <div className="flex justify-center items-center h-full">
-                    <Loader size="sm" color="indigo" />
-                  </div>
-                </td>
-              </tr>
+              <Table.Tr>
+                <Table.Td colSpan={columns.length} h={160}>
+                  <Group justify="center">
+                    <Loader size="sm" color="indigoAlt.4" />
+                  </Group>
+                </Table.Td>
+              </Table.Tr>
             ) : table.getRowModel().rows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={columns.length}
-                  className="py-10 text-center text-xs text-gray-400"
-                >
-                  {emptyMessage}
-                </td>
-              </tr>
+              <Table.Tr>
+                <Table.Td colSpan={columns.length} py={40} ta="center">
+                  <Text fz="xs" c="slate.4">
+                    {emptyMessage}
+                  </Text>
+                </Table.Td>
+              </Table.Tr>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="hover:bg-gray-50/50 transition-colors h-[34px] border-b border-gray-100 last:border-0"
-                >
+                <Table.Tr key={row.id}>
                   {row.getVisibleCells().map((cell) => {
                     const align =
-                      (
-                        cell.column.columnDef.meta as
-                          { align?: string } | undefined
-                      )?.align === "right"
-                        ? "text-right"
-                        : "text-left";
+                      (cell.column.columnDef.meta as { align?: string } | undefined)?.align === "right"
+                        ? "right"
+                        : "left";
                     return (
-                      <td
-                        key={cell.id}
-                        className={`px-3 py-1 whitespace-nowrap ${align}`}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </td>
+                      <Table.Td key={cell.id} style={{ textAlign: align, whiteSpace: "nowrap" }}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </Table.Td>
                     );
                   })}
-                </tr>
+                </Table.Tr>
               ))
             )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </Table.Tbody>
+        </Table>
+      </Box>
+    </Paper>
   );
 }
 
@@ -344,35 +285,39 @@ export function BalanceSheet() {
             const node = row.original;
             const canExpand = row.getCanExpand();
             return (
-              <div
-                className="flex items-center gap-1.5"
-                style={{ paddingLeft: `${row.depth * 18}px` }}
-              >
+              <Group gap={6} wrap="nowrap" style={{ paddingLeft: row.depth * 18 }}>
                 {canExpand ? (
-                  <button
+                  <Box
+                    component="button"
                     type="button"
                     onClick={row.getToggleExpandedHandler()}
-                    className="shrink-0 text-gray-400 hover:text-gray-700 flex items-center gap-1"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      flexShrink: 0,
+                      color: "var(--mantine-color-slate-4)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
                   >
                     <IconChevronRight
                       size={13}
-                      className={`transition-transform duration-150 ${row.getIsExpanded() ? "rotate-90" : ""}`}
+                      style={{
+                        transition: "transform 150ms ease",
+                        transform: row.getIsExpanded() ? "rotate(90deg)" : "none",
+                      }}
                     />
-                    {row.getIsExpanded() ? (
-                      <IconFolderOpen size={14} />
-                    ) : (
-                      <IconFolder size={14} />
-                    )}
-                  </button>
+                    {row.getIsExpanded() ? <IconFolderOpen size={14} /> : <IconFolder size={14} />}
+                  </Box>
                 ) : (
-                  <IconFileText size={13} className="text-gray-300 shrink-0" />
+                  <IconFileText size={13} color="var(--mantine-color-slate-3)" style={{ flexShrink: 0 }} />
                 )}
-                <span
-                  className={`text-xs truncate ${node.is_group ? "font-bold text-gray-900" : "text-gray-700"}`}
-                >
+                <Text fz="xs" fw={node.is_group ? 700 : 400} c={node.is_group ? "slate.9" : "slate.7"} truncate>
                   {node.account_name}
-                </span>
-              </div>
+                </Text>
+              </Group>
             );
           },
         };
@@ -383,14 +328,14 @@ export function BalanceSheet() {
         size: col.width ?? 130,
         meta: { align: "right" },
         cell: ({ row }) => (
-          <span
-            className={`text-xs tabular-nums ${row.original.is_group ? "font-bold text-gray-900" : "text-gray-700"}`}
+          <Text
+            fz="xs"
+            fw={row.original.is_group ? 700 : 400}
+            c={row.original.is_group ? "slate.9" : "slate.7"}
+            style={{ fontVariantNumeric: "tabular-nums" }}
           >
-            {formatAmount(
-              row.original.currency ?? "INR",
-              row.original.periods?.[col.fieldname] ?? 0,
-            )}
-          </span>
+            {formatAmount(row.original.currency ?? "INR", row.original.periods?.[col.fieldname] ?? 0)}
+          </Text>
         ),
       };
     });
@@ -398,31 +343,31 @@ export function BalanceSheet() {
 
   if (error && !data) {
     return (
-      <div className="flex flex-col items-center py-20 gap-3">
-        <IconAlertCircle size={26} className="text-red-500" />
-        <p className="text-red-500 text-sm">{error}</p>
-        <button
+      <Stack align="center" py={80} gap="sm">
+        <IconAlertCircle size={26} color="var(--mantine-color-danger-5)" />
+        <Text fz="sm" c="danger.6">
+          {error}
+        </Text>
+        <Button
+          size="xs"
+          color="brand"
+          leftSection={<IconRefresh size={14} />}
           onClick={bs.handleRefresh}
-          className="flex items-center gap-2 px-4 py-2 bg-[#1E3A8A] text-white text-sm font-semibold rounded-md hover:bg-[#1E3A8A]/90"
         >
-          <IconRefresh size={14} />
           Retry
-        </button>
-      </div>
+        </Button>
+      </Stack>
     );
   }
 
   return (
-    <div className="flex flex-col gap-3 p-6">
+    <Stack gap="sm" p="lg">
       <KpiStrip summary={data?.summary ?? []} loading={loading && !data} />
 
       <FilterBar bs={bs} />
 
-      <div className="flex flex-col gap-2">
-        <SectionHeader
-          label="Application of Funds (Assets)"
-          accentClass="bg-blue-600"
-        />
+      <Stack gap={8}>
+        <SectionHeader label="Application of Funds (Assets)" accentColor="info-6" />
         <BSTreeTable
           data={data?.assets ?? []}
           columns={columns}
@@ -433,13 +378,10 @@ export function BalanceSheet() {
           loading={loading && !data}
           emptyMessage="No asset accounts found."
         />
-      </div>
+      </Stack>
 
-      <div className="flex flex-col gap-2">
-        <SectionHeader
-          label="Source of Funds (Liabilities)"
-          accentClass="bg-red-500"
-        />
+      <Stack gap={8}>
+        <SectionHeader label="Source of Funds (Liabilities)" accentColor="danger-5" />
         <BSTreeTable
           data={data?.liabilities ?? []}
           columns={columns}
@@ -450,10 +392,10 @@ export function BalanceSheet() {
           loading={loading && !data}
           emptyMessage="No liability accounts found."
         />
-      </div>
+      </Stack>
 
-      <div className="flex flex-col gap-2">
-        <SectionHeader label="Equity" accentClass="bg-violet-500" />
+      <Stack gap={8}>
+        <SectionHeader label="Equity" accentColor="indigoAlt-5" />
         <BSTreeTable
           data={data?.equity ?? []}
           columns={columns}
@@ -464,7 +406,7 @@ export function BalanceSheet() {
           loading={loading && !data}
           emptyMessage="No equity accounts found."
         />
-      </div>
-    </div>
+      </Stack>
+    </Stack>
   );
 }

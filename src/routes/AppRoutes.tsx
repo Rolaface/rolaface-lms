@@ -17,7 +17,7 @@ import { LendingSetup } from "../view/Setup/LendingSetup";
 // TODO: create these view components (placeholders shown for now)
 import { CollateralType } from "../view/Collateral/CollateralType/CollateralType";
 import { Collateral } from "../view/Collateral/Collateral";
-// import { LoanApplication } from '../view/Origination/LoanApplication';
+import { LoanApplication } from '../view/Origination/LoanApplication';
 import { LoanStatement } from "../view/Reports/LoanStatement";
 import { ArrearReports } from '../view/Reports/ArrearReports';
 
@@ -49,10 +49,11 @@ import { Receivable } from "../view/Accounting/Receivable ";
 import { Payable } from "../view/Accounting/Payable";
 import { ProfitLoss } from "../view/Accounting/Profitloss";
 import { BalanceSheet } from "../view/Accounting/balancesheet";
+import { CashFlow } from "../view/Accounting/CashFlow";
 import { AccountingLayout } from "../view/Accounting/AccountingLayout";
 import { IconHierarchy2, IconReceipt2, IconFileText } from "@tabler/icons-react";
 import { RouteTabs, type RouteTabItem } from "../components/ui/RouteTabs";
-// import Login from "../view/pages/Login";//yeh mat hantna for me its imp
+import Login from "../view/pages/Login";//yeh mat hantna for me its imp
 const rootRoute = createRootRoute({
   component: () => (
     <AppLayout>
@@ -67,11 +68,11 @@ const indexRoute = createRoute({
   component: Dashboard,
 });
 
-// const loginRoute = createRoute({
-//   getParentRoute: () => rootRoute,
-//   path: "/login",                    //yeh bhi
-//   component: Login,
-// });
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/login",                    //yeh bhi
+  component: Login,
+});
 
 const customerRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -90,6 +91,7 @@ const loanAccountRoute = createRoute({
 //   path: '/loan',
 //   component: Loan,
 // });
+
 
 /* ---------- Collateral (layout + children) ---------- */
 const collateralRoute = createRoute({
@@ -155,6 +157,11 @@ const originationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/origination",
   component: Outlet,
+});
+const originationLoanApplicationRoute = createRoute({
+  getParentRoute: () => originationRoute,
+  path: "/loanApplication",
+  component: LoanApplication,
 });
 // const originationApplicationRoute = createRoute({
 //   getParentRoute: () => originationRoute,
@@ -287,12 +294,12 @@ const trialBalanceRoute = createRoute({
 });
 const receivableRoute = createRoute({
   getParentRoute: () => accountingRoute,
-  path: "/Receivable",
+  path: "/receivable",
   component: Receivable,
 });
 const payableeRoute = createRoute({
   getParentRoute: () => accountingRoute,
-  path: "/Payable",
+  path: "/payable",
   component: Payable,
 });
 const profitandlossRoute = createRoute({
@@ -305,7 +312,11 @@ const balancesheetRoute = createRoute({
   path: "/balance-sheet",
   component: BalanceSheet,
 });
-
+const cashflowRoute = createRoute({
+  getParentRoute: () => accountingRoute,
+  path: "/cash-flow",
+  component: CashFlow,
+});
 const reportsStatementRoute = createRoute({
   getParentRoute: () => reportsRoute,
   path: "/statement",
@@ -318,10 +329,11 @@ const reportsArrearsRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
+  loginRoute,
   indexRoute,
   loanAccountRoute,
   customerRoute,
-  // loanRoute,
+    // loanRoute,
   collateralRoute.addChildren([collateralTypeRoute, collateralListRoute]),
   setupRoute.addChildren([
     setupCategoryRoute,
@@ -332,7 +344,7 @@ const routeTree = rootRoute.addChildren([
     setupFeesRoute,
     setupProductRoute,
   ]),
-  // originationRoute.addChildren([originationApplicationRoute]),
+  originationRoute.addChildren([originationLoanApplicationRoute]),
   operationsRoute.addChildren([
     operationsBookingRoute,
     operationsDisbursementRoute,
@@ -358,6 +370,7 @@ const routeTree = rootRoute.addChildren([
     payableeRoute,
     profitandlossRoute,
     balancesheetRoute,
+    cashflowRoute,
   ]),
 
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute]),

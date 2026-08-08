@@ -1,9 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState } from 'react';
 import {
   Box,
   Button,
   TextInput,
-  Select,
   Group,
   Paper,
   Table,
@@ -13,7 +12,10 @@ import {
   Tooltip,
   Title,
   Badge,
-} from "@mantine/core";
+  Select,
+  Stack,
+  useMantineTheme,
+} from '@mantine/core';
 import {
   IconEye,
   IconPencil,
@@ -22,8 +24,9 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
-} from "@tabler/icons-react";
-import { useDisclosure } from "@mantine/hooks";
+  IconListNumbers,
+} from '@tabler/icons-react';
+import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -31,92 +34,114 @@ import {
   getPaginationRowModel,
   flexRender,
   createColumnHelper,
-} from "@tanstack/react-table";
-import { LoanCollectionSequenceOrderModal } from "../../../components/Modal/LoanCollectionSequenceOrderModal";
+} from '@tanstack/react-table';
+import type { SortDirection } from '@tanstack/react-table';
+import { LoanCollectionSequenceOrderModal } from '../../../components/Modal/LoanCollectionSequenceOrderModal';
 
-// --- DUMMY DATA ---
-const DUMMY_SEQUENCES = [
+interface SequenceRow {
+  id: number;
+  sequenceName: string;
+  order: string[];
+}
+
+const DUMMY_SEQUENCES: SequenceRow[] = [
   {
     id: 1,
-    sequenceName: "Standard Settlement Order",
-    order: ["Principal", "Interest", "Additional Interest", "Penalty", "Charges"],
+    sequenceName: 'Standard Settlement Order',
+    order: ['Principal', 'Interest', 'Additional Interest', 'Penalty', 'Charges'],
   },
   {
     id: 2,
-    sequenceName: "Penalty First Order",
-    order: ["Penalty", "Charges", "Interest", "Additional Interest", "Principal"],
+    sequenceName: 'Penalty First Order',
+    order: ['Penalty', 'Charges', 'Interest', 'Additional Interest', 'Principal'],
   },
   {
     id: 3,
-    sequenceName: "Interest Heavy Offset",
-    order: ["Interest", "Principal", "Additional Interest", "Penalty", "Charges"],
+    sequenceName: 'Interest Heavy Offset',
+    order: ['Interest', 'Principal', 'Additional Interest', 'Penalty', 'Charges'],
   },
 ];
 
-const columnHelper = createColumnHelper();
+const columnHelper = createColumnHelper<SequenceRow>();
 
-function SortIcon({ sorted }) {
-  if (sorted === "asc") return <IconChevronUp size={12} />;
-  if (sorted === "desc") return <IconChevronDown size={12} />;
-  return <IconSelector size={12} className="opacity-40" />;
+function SortIcon({ sorted }: { sorted: false | SortDirection }) {
+  const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
+  if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
+  if (sorted === 'desc') return <IconChevronDown size={12} color={color} />;
+  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
+const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-// --- MAIN TABLE COMPONENT ---
 export function LoanCollectionSequenceOrder() {
+  const theme = useMantineTheme();
   const [opened, { open, close }] = useDisclosure(false);
-  
-  // Modal Action State
-  const [modalMode, setModalMode] = useState('add');
-  const [selectedData, setSelectedData] = useState(null);
 
-  const handleOpenModal = (mode, data = null) => {
+  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
+  const [selectedData, setSelectedData] = useState<SequenceRow | null>(null);
+
+  const handleOpenModal = (mode: 'add' | 'edit' | 'view', data: SequenceRow | null = null) => {
     setModalMode(mode);
     setSelectedData(data);
     open();
   };
 
-  // filter state
-  const [search, setSearch] = useState("");
-
-  // table state
-  const [sorting, setSorting] = useState([
-    { id: "sequenceName", desc: false },
-  ]);
+  const [search, setSearch] = useState('');
+  const [sorting, setSorting] = useState([{ id: 'sequenceName', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return DUMMY_SEQUENCES.filter((p) => {
-      return !q || p.sequenceName.toLowerCase().includes(q);
-    });
+    return DUMMY_SEQUENCES.filter((p) => !q || p.sequenceName.toLowerCase().includes(q));
   }, [search]);
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("sequenceName", {
-        header: "Sequence Name",
+      columnHelper.accessor('sequenceName', {
+        header: 'Sequence Name',
         cell: (info) => (
-          <Text fz="xs" fw={600} c="gray.9">
-            {info.getValue()}
-          </Text>
+          <Group gap={10} wrap="nowrap">
+            <Box
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 'var(--mantine-radius-md)',
+                background: 'var(--mantine-color-brand-0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <IconListNumbers size={15} color="var(--mantine-color-brand-6)" />
+            </Box>
+            <Text fz="sm" fw={700} c="slate.8">
+              {info.getValue()}
+            </Text>
+          </Group>
         ),
       }),
-
-      columnHelper.accessor("order", {
-        header: "Component Order",
+      columnHelper.accessor('order', {
+        header: 'Component Order',
         cell: (info) => {
           const items = info.getValue();
           return (
             <Group gap={4} wrap="wrap">
               {items.map((item, index) => (
                 <Group gap={4} key={index} wrap="nowrap">
-                  <Badge variant="dot" color="indigoAlt.4" radius="sm" size="sm" className="font-medium text-gray-700">
+                  <Badge
+                    variant="light"
+                    color="brand"
+                    radius="sm"
+                    size="sm"
+                    styles={{ root: { fontSize: 10, padding: '0 8px', fontWeight: 600 } }}
+                  >
                     {item}
                   </Badge>
                   {index < items.length - 1 && (
-                    <Text size="xs" c="dimmed">→</Text>
+                    <Text size="xs" c="slate.4">
+                      →
+                    </Text>
                   )}
                 </Group>
               ))}
@@ -124,32 +149,32 @@ export function LoanCollectionSequenceOrder() {
           );
         },
       }),
-
       columnHelper.display({
-        id: "actions",
+        id: 'actions',
         header: () => (
           <Text fz="xs" fw={600} ta="right" w="100%">
             Actions
           </Text>
         ),
         cell: (info) => (
-          <Group justify="flex-end" gap={6} wrap="nowrap">
+          <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
             <Tooltip label="View" withArrow>
-              <ActionIcon 
-                size="sm" 
-                variant="subtle" 
-                color="gray" 
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="slate"
+                radius="md"
                 onClick={() => handleOpenModal('view', info.row.original)}
               >
                 <IconEye size={14} />
               </ActionIcon>
             </Tooltip>
-
             <Tooltip label="Edit" withArrow>
-              <ActionIcon 
-                size="sm" 
-                variant="subtle" 
-                color="blue" 
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="brand"
+                radius="md"
                 onClick={() => handleOpenModal('edit', info.row.original)}
               >
                 <IconPencil size={14} />
@@ -159,7 +184,7 @@ export function LoanCollectionSequenceOrder() {
         ),
       }),
     ],
-    [],
+    []
   );
 
   const table = useReactTable({
@@ -180,43 +205,76 @@ export function LoanCollectionSequenceOrder() {
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   const resetFilters = () => {
-    setSearch("");
+    setSearch('');
     setPagination((p) => ({ ...p, pageIndex: 0 }));
   };
 
   return (
-    <Box className="flex flex-col gap-4 p-8 mt-10">
-      <LoanCollectionSequenceOrderModal 
-        opened={opened} 
-        onClose={close} 
-        mode={modalMode} 
-        data={selectedData} 
+    <Stack gap="lg" p="lg">
+      <LoanCollectionSequenceOrderModal
+        opened={opened}
+        onClose={close}
+        mode={modalMode}
+        data={selectedData}
       />
 
-      {/* Header & Add Button */}
-      <div className="flex justify-between items-center">
-        <Title order={2} className="text-gray-900 font-semibold">
-          Collection Sequence Order
-        </Title>
-        <Button
-          size="xs"
-          bg="indigoAlt.4"
-          className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-          onClick={() => handleOpenModal('add')}
-          leftSection={<IconPlus size={14} />}
-        >
-          Add Sequence
-        </Button>
-      </div>
+      {/* Scoped, purely visual — pulls from theme.other to stay in sync
+          with the brand color everywhere else (mirrors Customer.tsx). */}
+      <style>{`
+        .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
+        .lms-row-actions { opacity: 1; }
+        .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+        .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
+        .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+        .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+      `}</style>
 
-      {/* Filters Box */}
-      <Paper withBorder radius="md" p="xs" className="shadow-sm">
-        <div className="flex items-center gap-3 flex-wrap">
+      {/* Header — icon tile + title on the left */}
+      <Group justify="space-between" align="center" wrap="wrap" gap="md">
+        <Group gap="sm" align="center">
+          <Box
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 'var(--mantine-radius-md)',
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadow,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <IconListNumbers size={20} color="var(--mantine-color-white)" stroke={1.8} />
+          </Box>
+          <Stack gap={2}>
+            <Title order={2} c="slate.8" fw={700}>
+              Collection Sequence Order
+            </Title>
+            <Text fz="sm" c="slate.5">
+              Define component liquidation order
+            </Text>
+          </Stack>
+        </Group>
+      </Group>
+
+      {/* Toolbar — pill search */}
+      <Paper
+        radius="xl"
+        p="xs"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        <Group gap="sm" wrap="wrap" align="center">
           <TextInput
-            size="xs"
+            className="lms-search"
+            size="sm"
+            radius="xl"
             placeholder="Search Sequence Name"
-            leftSection={<IconSearch size={13} />}
-            className="flex-1 min-w-[250px] max-w-sm"
+            leftSection={<IconSearch size={14} />}
+            style={{ flex: 1, minWidth: 220 }}
+            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
@@ -224,26 +282,44 @@ export function LoanCollectionSequenceOrder() {
             }}
           />
 
-          <Button
-            size="xs"
-            variant="default"
-            className="ml-auto px-4"
-            onClick={resetFilters}
-          >
-            Reset
-          </Button>
-        </div>
+          <Group gap="xs" ml="auto">
+            <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>
+              Reset
+            </Button>
+            <Button
+              size="sm"
+              radius="xl"
+              color="brand"
+              onClick={() => handleOpenModal('add')}
+              leftSection={<IconPlus size={14} />}
+              style={{
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
+              }}
+            >
+              Add Sequence
+            </Button>
+          </Group>
+        </Group>
       </Paper>
 
-      {/* Data Table */}
-      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
+      {/* Data Table — floating rounded row-cards on a soft canvas */}
+      <Paper
+        radius="lg"
+        p="sm"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
         <Table
-          verticalSpacing={6}
+          verticalSpacing="sm"
           horizontalSpacing="sm"
           fz="xs"
-          className="w-full"
+          w="100%"
+          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
         >
-          <Table.Thead className="bg-gray-50 border-b border-gray-200">
+          <Table.Thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <Table.Tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -251,26 +327,26 @@ export function LoanCollectionSequenceOrder() {
                   return (
                     <Table.Th
                       key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${
-                        canSort ? "cursor-pointer" : ""
-                      }`}
-                      style={{ fontSize: 11, padding: "8px 10px" }}
+                      c="slate.5"
+                      fw={700}
+                      style={{
+                        fontSize: 'var(--mantine-font-size-xs)',
+                        padding: '0 10px 6px',
+                        userSelect: 'none',
+                        cursor: canSort ? 'pointer' : 'default',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        border: 'none',
+                      }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <Group
-                        gap={4}
+                        gap="xs"
                         wrap="nowrap"
-                        justify={
-                          header.id === "actions" ? "flex-end" : "flex-start"
-                        }
+                        justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
                       >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                        {canSort && (
-                          <SortIcon sorted={header.column.getIsSorted()} />
-                        )}
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
                       </Group>
                     </Table.Th>
                   );
@@ -281,66 +357,82 @@ export function LoanCollectionSequenceOrder() {
           <Table.Tbody>
             {rows.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={columns.length}>
-                  <Text ta="center" c="dimmed" fz="xs" py="sm">
-                    No sequences match your search.
-                  </Text>
+                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                  <Stack align="center" gap="xs" py="xl">
+                    <Box
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: '50%',
+                        background: 'var(--mantine-color-white)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid var(--mantine-color-slate-2)',
+                      }}
+                    >
+                      <IconListNumbers size={26} color="var(--mantine-color-slate-4)" />
+                    </Box>
+                    <Text ta="center" c="slate.5" fz="xs">
+                      No sequences match your search.
+                    </Text>
+                  </Stack>
                 </Table.Td>
               </Table.Tr>
             ) : (
-              rows.map((row) => (
-                <Table.Tr
-                  key={row.id}
-                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <Table.Td key={cell.id} style={{ padding: "8px 10px" }}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </Table.Td>
-                  ))}
-                </Table.Tr>
-              ))
+              rows.map((row) => {
+                const cells = row.getVisibleCells();
+                return (
+                  <Table.Tr key={row.id} className="lms-row">
+                    {cells.map((cell, idx) => (
+                      <Table.Td
+                        key={cell.id}
+                        style={{
+                          padding: '10px 10px',
+                          border: 'none',
+                          boxShadow: 'var(--mantine-shadow-xs)',
+                          borderLeft: idx === 0 ? '3px solid var(--mantine-color-brand-4)' : undefined,
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </Table.Td>
+                    ))}
+                  </Table.Tr>
+                );
+              })
             )}
           </Table.Tbody>
         </Table>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+        <Group justify="space-between" px="sm" pt="xs">
+          <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
             <span>
-              {totalRows === 0
-                ? "Showing 0 of 0"
-                : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
             </span>
-            <div className="flex items-center gap-1.5">
+            <Group gap="xs">
               <span>Rows:</span>
               <Select
-                data={["10", "20", "50"]}
+                data={['10', '20', '50']}
                 value={String(pageSize)}
-                onChange={(v) =>
-                  setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
-                }
+                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
                 rightSection={chevronDown}
                 size="xs"
-                className="w-14"
+                radius="xl"
+                w={60}
               />
-            </div>
-          </div>
+            </Group>
+          </Group>
           <Pagination
             total={table.getPageCount() || 1}
             value={pageIndex + 1}
-            onChange={(p) =>
-              setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
-            }
-            color="indigoAlt.4"
+            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+            color="brand"
             size="xs"
-            radius="sm"
+            radius="xl"
           />
-        </div>
+        </Group>
       </Paper>
-    </Box>
+    </Stack>
   );
 }

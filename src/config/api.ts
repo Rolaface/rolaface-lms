@@ -64,7 +64,10 @@ Accounting: {
   },
   trialbalnce:{ 
      get:`${ERP_BASE}/api/method/custom_api.api.trial_balance.get_trial_balance`,
-    }
+    },
+  cashFlow: {
+    get: `${ERP_BASE}/api/method/custom_api.api.cash_flow.get_cash_flow`,
+  },  
 
 
 },
@@ -127,7 +130,9 @@ loan: {
   updateLoan:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.update_loan`,
   deleteLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.delete_loan`,
   statusLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.update_loan_status`,
+  getLoanScheduleById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_repayment_schedule_by_id`,
 },
+
 
   // =========================
   // LOAN PRODUCT
@@ -169,7 +174,15 @@ loan: {
   // =========================
   // LOAN APPLICATION
   // =========================
-  loanApplication: {},
+  loanApplication: {
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.create_loan_application`,
+    getLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.get_loan_applications`,
+    getLoanApplicationById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.get_loan_application_by_id`,
+    updateLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.update_loan_application`,
+    deleteLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.delete_loan_application`,
+    statusLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.update_loan_application_status`,
+    getCountries: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.get_countries`,
+  },
 
   // =========================
   // LOAN APPROVAL

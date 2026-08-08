@@ -43,6 +43,7 @@ import { LoanRepaymentModal, type LoanRepaymentFormData } from '../../../compone
 import { getAllLoanRepayment, deleteLoanRepayment, changeLoanRepaymentStatus } from '../../../api/loanRepaymentApi';
 import { modals } from '@mantine/modals';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { parseFrappeError } from '../../../utils/parseFrappeError';
 
 interface RepaymentRow {
   id: string;
@@ -115,20 +116,72 @@ export function LoanRepayment() {
 
   const queryClient = useQueryClient();
 
-  const { mutate: removeRepayment, isPending: isDeleting } = useMutation({
-    mutationFn: (id: string) => deleteLoanRepayment(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-    },
-  });
+  // const { mutate: removeRepayment, isPending: isDeleting } = useMutation({
+  //   mutationFn: (id: string) => deleteLoanRepayment(id),
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+  //   },
+  // });
 
-  const { mutate: updateStatus } = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: string }) =>
-      changeLoanRepaymentStatus(id, action),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-    },
+  // const { mutate: updateStatus } = useMutation({
+  //   mutationFn: ({ id, action }: { id: string; action: string }) =>
+  //     changeLoanRepaymentStatus(id, action),
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+  //   },
+  // });
+  const { mutate: removeRepayment, isPending: isDeleting } = useMutation({
+  mutationFn: (id: string) => deleteLoanRepayment(id),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+  },
+  onError: (error: any) => {
+  const errorMessage = parseFrappeError(error);
+
+  modals.open({
+    title: <Text fw={600} c="red">Action Failed</Text>,
+    children: (
+      <div>
+        <Text size="sm" mb="lg">
+          {errorMessage}
+        </Text>
+        <Group justify="flex-end">
+          <Button onClick={() => modals.closeAll()} variant="default">
+            Close
+          </Button>
+        </Group>
+      </div>
+    ),
   });
+},
+});
+
+const { mutate: updateStatus } = useMutation({
+  mutationFn: ({ id, action }: { id: string; action: string }) =>
+    changeLoanRepaymentStatus(id, action),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+  },
+ onError: (error: any) => {
+  const errorMessage = parseFrappeError(error);
+
+  modals.open({
+    title: <Text fw={600} c="red">Action Failed</Text>,
+    children: (
+      <div>
+        <Text size="sm" mb="lg">
+          {errorMessage}
+        </Text>
+        <Group justify="flex-end">
+          <Button onClick={() => modals.closeAll()} variant="default">
+            Close
+          </Button>
+        </Group>
+      </div>
+    ),
+  });
+},
+});
 
   const rowsData = useMemo(() => {
     const list = repaymentsResponse?.message?.data?.repayments ?? [];
@@ -317,15 +370,44 @@ export function LoanRepayment() {
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    {isDraft ? (
-                      <Menu.Item onClick={() => updateStatus({ id: row.id, action: 'approved' })}>
-                        Submit
-                      </Menu.Item>
-                    ) : (
-                      <Menu.Item color="red" onClick={() => updateStatus({ id: row.id, action: 'cancelled' })}>
-                        Cancel
-                      </Menu.Item>
-                    )}
+                   {isDraft ? (
+  <Menu.Item
+    onClick={() => {
+      modals.openConfirmModal({
+        title: 'Submit loan',
+        children: (
+          <Text size="sm">
+            Are you sure you want to submit loan <b>{row.id}</b> for approval?
+          </Text>
+        ),
+        labels: { confirm: 'Submit', cancel: 'Cancel' },
+        confirmProps: { color: 'green' },
+        onConfirm: () => updateStatus({ id: row.id, action: 'approved' }),
+      });
+    }}
+  >
+    Submit
+  </Menu.Item>
+) : (
+  <Menu.Item
+    color="red"
+    onClick={() => {
+      modals.openConfirmModal({
+        title: 'Cancel loan',
+        children: (
+          <Text size="sm">
+            Are you sure you want to cancel loan <b>{row.id}</b>? This cannot be undone.
+          </Text>
+        ),
+        labels: { confirm: 'Cancel Loan', cancel: 'Back' },
+        confirmProps: { color: 'red' },
+        onConfirm: () => updateStatus({ id: row.id, action: 'cancelled' }),
+      });
+    }}
+  >
+    Cancel
+  </Menu.Item>
+)}
                   </Menu.Dropdown>
                 </Menu>
               )}

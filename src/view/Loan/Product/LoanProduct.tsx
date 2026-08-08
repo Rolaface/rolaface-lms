@@ -1,24 +1,50 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { modals } from '@mantine/modals';
 import {
-  Box, Button, TextInput, Select, Radio, Group, Paper, Table, Badge,
-  ActionIcon, Switch, Text, Pagination, Tooltip, Title, Loader, Alert,
+  Box,
+  Button,
+  TextInput,
+  Select,
+  SegmentedControl,
+  Group,
+  Paper,
+  Table,
+  Badge,
+  ActionIcon,
+  Switch,
+  Text,
+  Pagination,
+  Tooltip,
+  Title,
+  Stack,
+  Loader,
+  Alert,
+  useMantineTheme,
 } from '@mantine/core';
 import {
-  IconEye, IconPencil, IconPlus, IconChevronUp, IconChevronDown,
-  IconSelector, IconSearch, IconAlertCircle, IconTrash,
+  IconEye,
+  IconPencil,
+  IconPlus,
+  IconChevronUp,
+  IconChevronDown,
+  IconSelector,
+  IconSearch,
+  IconAlertCircle,
+  IconTrash,
+  IconBriefcase,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
-  useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel,
-  flexRender, createColumnHelper,
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  flexRender,
+  createColumnHelper,
 } from '@tanstack/react-table';
 import { LoanProductModal } from '../../../components/Modal/LoanProduct/LoanProductModal';
 import {
   getLoanProducts,
-  // deleteLoanProduct,
-  // enableLoanProduct,
-  // disableLoanProduct,
   type LoanProductRaw,
 } from '../../../api/LoanProduct/LoanProductAPi';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
@@ -37,18 +63,51 @@ interface NormalizedProduct {
 
 const columnHelper = createColumnHelper<NormalizedProduct>();
 
-function SortIcon({ sorted }: { sorted: string | false }) {
-  if (sorted === 'asc') return <IconChevronUp size={12} />;
-  if (sorted === 'desc') return <IconChevronDown size={12} />;
-  return <IconSelector size={12} className="opacity-40" />;
+function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
+  const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
+  if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
+  if (sorted === 'desc') return <IconChevronDown size={12} color={color} />;
+  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
+function StatusBadge({ status }: { status: string }) {
+  const isActive = status === 'ACTIVE';
+  const scale = isActive ? 'success' : 'danger';
+  return (
+    <Badge
+      variant="light"
+      color={scale}
+      radius="xl"
+      size="sm"
+      styles={{
+        root: {
+          textTransform: 'none',
+          fontWeight: 700,
+          letterSpacing: 0.2,
+          paddingLeft: 8,
+          paddingRight: 10,
+          border: `1px solid var(--mantine-color-${scale}-2)`,
+        },
+      }}
+      leftSection={
+        <Box
+          w={6}
+          h={6}
+          style={{ borderRadius: '50%', background: `var(--mantine-color-${scale}-6)` }}
+        />
+      }
+    >
+      {status}
+    </Badge>
+  );
+}
+
+const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function LoanProduct() {
+  const theme = useMantineTheme();
   const [opened, { open, close }] = useDisclosure(false);
 
-  // NEW — which product is being viewed/edited
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
 
@@ -90,7 +149,7 @@ export function LoanProduct() {
       }));
       setProducts(normalized);
     } catch (err: any) {
-  setError(parseFrappeError(err));
+      setError(parseFrappeError(err));
     } finally {
       setLoading(false);
     }
@@ -118,7 +177,6 @@ export function LoanProduct() {
     });
   }, [products, search, category, status]);
 
-  // NEW — real backend call instead of local-only toggle
   const handleToggleStatus = async (id: string, currentStatus: 'ACTIVE' | 'INACTIVE') => {
     setError(null);
     try {
@@ -129,11 +187,11 @@ export function LoanProduct() {
       }
       await fetchProducts();
     } catch (err: any) {
-  setError(parseFrappeError(err));
+      setError(parseFrappeError(err));
     }
   };
 
-const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string) => {
     setError(null);
     try {
       await deleteLoanProduct(id);
@@ -142,77 +200,110 @@ const handleDelete = async (id: string) => {
       setError(parseFrappeError(err));
     }
   };
+
   const columns = useMemo(
     () => [
       columnHelper.accessor('name', {
         header: 'Product Name',
-        cell: (info) => <Text fz="xs" fw={500} c="gray.9">{info.getValue()}</Text>,
+        cell: (info) => (
+          <Text fz="sm" fw={700} c="slate.8">
+            {info.getValue()}
+          </Text>
+        ),
       }),
       columnHelper.accessor('code', {
         header: 'Code',
-        cell: (info) => <Text fz="xs" c="gray.6">{info.getValue()}</Text>,
+        cell: (info) => (
+          <Text fz="xs" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+            {info.getValue()}
+          </Text>
+        ),
       }),
       columnHelper.accessor('category', {
         header: 'Category',
-        cell: (info) => <Text fz="xs" c="gray.6">{info.getValue()}</Text>,
-      }),
-      columnHelper.accessor('rate', {
-        header: 'Base Rate',
-        cell: (info) => <Text fz="xs" c="gray.6">{Number(info.getValue()).toFixed(2)}%</Text>,
-        sortingFn: 'basic',
-      }),
-      columnHelper.accessor('status', {
-        header: 'Status',
         cell: (info) => (
-          <Badge variant="light" size="sm" color={info.getValue() === 'ACTIVE' ? 'green' : 'red'} className="font-semibold tracking-wider" styles={{ root: { fontSize: 10, padding: '0 8px' } }}>
+          <Badge
+            variant="light"
+            size="sm"
+            radius="sm"
+            color="brand"
+            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
+          >
             {info.getValue()}
           </Badge>
         ),
       }),
+      columnHelper.accessor('rate', {
+        header: 'Base Rate',
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {Number(info.getValue()).toFixed(2)}%
+          </Text>
+        ),
+        sortingFn: 'basic',
+      }),
+      columnHelper.accessor('status', {
+        header: 'Status',
+        cell: (info) => <StatusBadge status={info.getValue()} />,
+      }),
       columnHelper.display({
         id: 'actions',
-        header: () => <Text fz="xs" fw={600} ta="right" w="100%">Actions</Text>,
+        header: () => (
+          <Text fz="xs" fw={600} ta="right" w="100%">
+            Actions
+          </Text>
+        ),
         cell: (info) => {
           const row = info.row.original;
           return (
-            <Group justify="flex-end" gap={6} wrap="nowrap">
+            <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
                 <ActionIcon
-                  size="sm" variant="subtle" color="gray"
-                  onClick={() => { setSelectedProductId(row.id); setIsViewMode(true); open(); }}
+                  size="sm"
+                  variant="subtle"
+                  color="slate"
+                  radius="md"
+                  onClick={() => {
+                    setSelectedProductId(row.id);
+                    setIsViewMode(true);
+                    open();
+                  }}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
                 <ActionIcon
-                  size="sm" variant="subtle" color="blue"
-                  onClick={() => { setSelectedProductId(row.id); setIsViewMode(false); open(); }}
+                  size="sm"
+                  variant="subtle"
+                  color="brand"
+                  radius="md"
+                  onClick={() => {
+                    setSelectedProductId(row.id);
+                    setIsViewMode(false);
+                    open();
+                  }}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
-              {/* <Tooltip label="Delete" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="red" onClick={() => handleDelete(row.id)}>
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip> */}
-             <Tooltip label="Delete" withArrow>
+              <Tooltip label="Delete" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="red"
+                  color="danger"
+                  radius="md"
                   onClick={() => {
                     modals.openConfirmModal({
                       title: 'Delete Loan Product',
                       children: (
                         <Text size="sm">
-                          Are you sure you want to delete loan product <b>{row.name}</b>? This cannot be undone.
+                          Are you sure you want to delete loan product <b>{row.name}</b>? This cannot be
+                          undone.
                         </Text>
                       ),
-                      // Add the labels property here:
                       labels: { confirm: 'Delete', cancel: 'Cancel' },
-                      confirmProps: { color: 'red' },
+                      confirmProps: { color: 'danger' },
                       onConfirm: () => handleDelete(row.id),
                     });
                   }}
@@ -221,7 +312,12 @@ const handleDelete = async (id: string) => {
                 </ActionIcon>
               </Tooltip>
               <Tooltip label={row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} withArrow>
-                <Switch size="xs" color="green" checked={row.status === 'ACTIVE'} onChange={() => handleToggleStatus(row.id, row.status)} />
+                <Switch
+                  size="xs"
+                  color="success"
+                  checked={row.status === 'ACTIVE'}
+                  onChange={() => handleToggleStatus(row.id, row.status)}
+                />
               </Tooltip>
             </Group>
           );
@@ -255,7 +351,7 @@ const handleDelete = async (id: string) => {
   };
 
   return (
-    <Box className="flex flex-col gap-4 p-8 mt-10">
+    <Stack gap="lg" p="lg">
       <LoanProductModal
         opened={opened}
         onClose={handleModalClose}
@@ -264,56 +360,160 @@ const handleDelete = async (id: string) => {
         isViewMode={isViewMode}
       />
 
-      <div className="flex justify-between items-center">
-        <Title order={2} className="text-gray-900 font-semibold">Loan Products</Title>
+      {/* Scoped, purely visual — pulls from theme.other so it stays in sync
+          with the brand color everywhere else, same as Customer module. */}
+      <style>{`
+        .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
+        .lms-row-actions { opacity: 1; }
+        .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+        .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
+        .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+        .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+      `}</style>
+
+      {/* Header — icon tile + title on the left, same pattern as Customers */}
+      <Group justify="space-between" align="center" wrap="wrap" gap="md">
+        <Group gap="sm" align="center">
+          <Box
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 'var(--mantine-radius-md)',
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadow,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <IconBriefcase size={20} color="var(--mantine-color-white)" stroke={1.8} />
+          </Box>
+          <Stack gap={2}>
+            <Title order={2} c="slate.8" fw={700}>
+              Loan Products
+            </Title>
+            <Text fz="sm" c="slate.5">
+              Configure and manage loan products
+            </Text>
+          </Stack>
+        </Group>
+
         <Button
-          size="xs" bg="indigoAlt.4"
-          onClick={() => { setSelectedProductId(null); setIsViewMode(false); open(); }}
-          className="bg-[#991B1B] hover:bg-red-900 transition-colors"
+          size="sm"
+          radius="xl"
+          color="brand"
+          onClick={() => {
+            setSelectedProductId(null);
+            setIsViewMode(false);
+            open();
+          }}
           leftSection={<IconPlus size={14} />}
+          style={{
+            background: theme.other.brandGradient,
+            boxShadow: theme.other.brandGlowShadowSm,
+          }}
         >
           Add Product
         </Button>
-      </div>
+      </Group>
 
       {error && (
-        <Alert color="red" icon={<IconAlertCircle size={16} />} withCloseButton onClose={() => setError(null)}>
+        <Alert
+          color="danger"
+          radius="lg"
+          icon={<IconAlertCircle size={16} />}
+          withCloseButton
+          onClose={() => setError(null)}
+        >
           {error}
         </Alert>
       )}
 
-      <Paper withBorder radius="md" p="xs" className="shadow-sm">
-        <div className="flex items-center gap-3 flex-wrap">
+      {/* Toolbar — pill search + pill filter + segmented status control */}
+      <Paper
+        radius="xl"
+        p="xs"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        <Group gap="sm" wrap="wrap" align="center">
           <TextInput
-            size="xs" placeholder="Product Name / Code" leftSection={<IconSearch size={13} />}
-            className="flex-1 min-w-[180px]" value={search}
-            onChange={(e) => { setSearch(e.currentTarget.value); setPagination((p) => ({ ...p, pageIndex: 0 })); }}
+            className="lms-search"
+            size="sm"
+            radius="xl"
+            placeholder="Product Name / Code"
+            leftSection={<IconSearch size={14} />}
+            style={{ flex: 1, minWidth: 220 }}
+            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.currentTarget.value);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
           />
           <Select
-            size="xs" placeholder="All Categories" data={categoryOptions}
-            className="w-40" searchable clearable rightSection={chevronDown}
-            value={category} onChange={(v) => { setCategory(v); setPagination((p) => ({ ...p, pageIndex: 0 })); }}
+            size="sm"
+            radius="xl"
+            placeholder="All Categories"
+            data={categoryOptions}
+            w={166}
+            searchable
+            clearable
+            rightSection={chevronDown}
+            value={category}
+            onChange={(v) => {
+              setCategory(v);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
           />
-          <Radio.Group name="status" value={status} onChange={(v) => { setStatus(v); setPagination((p) => ({ ...p, pageIndex: 0 })); }}>
-            <Group gap="sm">
-              <Radio size="xs" value="all" label="All" color="indigoAlt.4" />
-              <Radio size="xs" value="active" label="Active" color="indigoAlt.4" />
-              <Radio size="xs" value="inactive" label="Inactive" color="indigoAlt.4" />
-            </Group>
-          </Radio.Group>
-          <Button size="xs" variant="default" className="ml-auto px-4" onClick={resetFilters}>Reset</Button>
-        </div>
+
+          <SegmentedControl
+            size="xs"
+            radius="xl"
+            color="brand"
+            value={status}
+            onChange={(v) => {
+              setStatus(v);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
+            data={[
+              { label: 'All', value: 'all' },
+              { label: 'Active', value: 'active' },
+              { label: 'Inactive', value: 'inactive' },
+            ]}
+          />
+
+          <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
+            Reset
+          </Button>
+        </Group>
       </Paper>
 
-      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
+      {/* Data Table — floating rounded row-cards on a soft canvas */}
+      <Paper
+        radius="lg"
+        p="sm"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
         {loading ? (
-          <div className="flex justify-center items-center py-16">
+          <Group justify="center" py="xl">
             <Loader size="sm" color="brand" />
-          </div>
+          </Group>
         ) : (
           <>
-            <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full">
-              <Table.Thead className="bg-gray-50 border-b border-gray-200">
+            <Table
+              verticalSpacing="sm"
+              horizontalSpacing="sm"
+              fz="xs"
+              w="100%"
+              style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+            >
+              <Table.Thead>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <Table.Tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => {
@@ -321,11 +521,24 @@ const handleDelete = async (id: string) => {
                       return (
                         <Table.Th
                           key={header.id}
-                          className={`text-gray-600 font-semibold select-none ${canSort ? 'cursor-pointer' : ''}`}
-                          style={{ fontSize: 11, padding: '6px 10px' }}
+                          c="slate.5"
+                          fw={700}
+                          style={{
+                            fontSize: 'var(--mantine-font-size-xs)',
+                            padding: '0 10px 6px',
+                            userSelect: 'none',
+                            cursor: canSort ? 'pointer' : 'default',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                            border: 'none',
+                          }}
                           onClick={header.column.getToggleSortingHandler()}
                         >
-                          <Group gap={4} wrap="nowrap" justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}>
+                          <Group
+                            gap="xs"
+                            wrap="nowrap"
+                            justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
+                          >
                             {flexRender(header.column.columnDef.header, header.getContext())}
                             {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
                           </Group>
@@ -338,45 +551,88 @@ const handleDelete = async (id: string) => {
               <Table.Tbody>
                 {rows.length === 0 ? (
                   <Table.Tr>
-                    <Table.Td colSpan={columns.length}>
-                      <Text ta="center" c="dimmed" fz="xs" py="sm">No products match your filters.</Text>
+                    <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                      <Stack align="center" gap="xs" py="xl">
+                        <Box
+                          style={{
+                            width: 52,
+                            height: 52,
+                            borderRadius: '50%',
+                            background: 'var(--mantine-color-white)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid var(--mantine-color-slate-2)',
+                          }}
+                        >
+                          <IconBriefcase size={24} color="var(--mantine-color-slate-4)" />
+                        </Box>
+                        <Text ta="center" c="slate.5" fz="xs">
+                          No products match your filters.
+                        </Text>
+                      </Stack>
                     </Table.Td>
                   </Table.Tr>
                 ) : (
-                  rows.map((row) => (
-                    <Table.Tr key={row.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
-                      {row.getVisibleCells().map((cell) => (
-                        <Table.Td key={cell.id} style={{ padding: '5px 10px' }}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </Table.Td>
-                      ))}
-                    </Table.Tr>
-                  ))
+                  rows.map((row) => {
+                    const isActive = row.original.status === 'ACTIVE';
+                    const cells = row.getVisibleCells();
+                    return (
+                      <Table.Tr key={row.id} className="lms-row">
+                        {cells.map((cell, idx) => (
+                          <Table.Td
+                            key={cell.id}
+                            style={{
+                              padding: '10px 10px',
+                              border: 'none',
+                              boxShadow: 'var(--mantine-shadow-xs)',
+                              borderLeft:
+                                idx === 0
+                                  ? `3px solid var(--mantine-color-${isActive ? 'success' : 'danger'}-4)`
+                                  : undefined,
+                            }}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </Table.Td>
+                        ))}
+                      </Table.Tr>
+                    );
+                  })
                 )}
               </Table.Tbody>
             </Table>
 
-            <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <span>{totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}</span>
-                <div className="flex items-center gap-1.5">
+            {/* Pagination Footer */}
+            <Group justify="space-between" px="sm" pt="xs">
+              <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
+                <span>
+                  {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+                </span>
+                <Group gap="xs">
                   <span>Rows:</span>
                   <Select
-                    data={['10', '20', '50']} value={String(pageSize)}
+                    data={['10', '20', '50']}
+                    value={String(pageSize)}
                     onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
-                    rightSection={chevronDown} size="xs" className="w-14"
+                    rightSection={chevronDown}
+                    size="xs"
+                    radius="xl"
+                    w={60}
                   />
-                </div>
-              </div>
+                </Group>
+              </Group>
               <Pagination
-                total={table.getPageCount() || 1} value={pageIndex + 1}
+                total={table.getPageCount() || 1}
+                value={pageIndex + 1}
                 onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-                color="indigoAlt.4" size="xs" radius="sm"
+                color="brand"
+                size="xs"
+                radius="xl"
               />
-            </div>
+            </Group>
           </>
         )}
       </Paper>
-    </Box>
+    </Stack>
   );
 }
