@@ -160,22 +160,24 @@ export const mantineTheme = createTheme({
   fontFamilyMonospace:
     "'JetBrains Mono', 'SF Mono', ui-monospace, 'Roboto Mono', monospace",
   fontSizes: {
-    micro: rem(9),
-    xxs: rem(10),
-    xs: rem(11.5),
-    sm: rem(13),
-    md: rem(14),
-    lg: rem(16),
-    xl: rem(18),
+    micro: rem(10),
+    xxs: rem(11),
+    xs: rem(12.5),
+    sm: rem(14),
+    md: rem(15.5),
+    lg: rem(17.5),
+    xl: rem(20),
   },
 
   lineHeights: {
-    xs: "1.4",
-    sm: "1.45",
-    md: "1.5",
-    lg: "1.55",
-    xl: "1.6",
+    xs: "1.45",
+    sm: "1.5",
+    md: "1.55",
+    lg: "1.6",
+    xl: "1.65",
   },
+
+
 
   headings: {
     fontFamily: "var(--font-main)",
@@ -194,10 +196,9 @@ export const mantineTheme = createTheme({
     xs: "var(--radius-sm, 4px)",
     sm: "var(--radius-sm, 6px)",
     md: "var(--radius-main, 8px)",
-    lg: "var(--radius-main, 10px)",
+    lg: "var(--radius-main, 12px)",   // was 10px
     xl: "var(--radius-main, 14px)",
   },
-
   shadows: {
     xs: "0 1px 2px rgba(15, 23, 42, 0.04)",
     sm: "var(--shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04))",
@@ -367,22 +368,35 @@ export const mantineTheme = createTheme({
     },
 
     TextInput: {
-      defaultProps: {
-        radius: "sm",
-        size: "sm",
-      },
+      defaultProps: { radius: "lg", size: "md" },
       styles: {
         input: {
           borderColor: "var(--mantine-color-slate-3)",
-          "&:focus": {
-            borderColor: "var(--mantine-color-brand-5)",
-          },
+          fontSize: rem(14.5),
+          "&:focus": { borderColor: "var(--mantine-color-brand-5)" },
         },
         label: {
-          fontSize: rem(12.5),
+          fontSize: rem(13.5),
           fontWeight: 600,
           color: "var(--mantine-color-slate-6)",
-          marginBottom: rem(4),
+          marginBottom: rem(6),
+        },
+      },
+    },
+
+    NumberInput: {
+      defaultProps: { radius: "lg", size: "md" },
+    },
+
+    Select: {
+      defaultProps: { radius: "lg", size: "md" },
+      styles: {
+        input: { borderColor: "var(--mantine-color-slate-3)" },
+        label: {
+          fontSize: rem(13.5),
+          fontWeight: 600,
+          color: "var(--mantine-color-slate-6)",
+          marginBottom: rem(6),
         },
       },
     },
@@ -394,12 +408,7 @@ export const mantineTheme = createTheme({
       },
     },
 
-    NumberInput: {
-      defaultProps: {
-        radius: "sm",
-        size: "sm",
-      },
-    },
+
 
     DateInput: {
       defaultProps: {
@@ -432,14 +441,22 @@ export const mantineTheme = createTheme({
       },
     },
 
-    Select: {
+    SegmentedControl: {
       defaultProps: {
-        radius: "sm",
-        size: "sm",
+        radius: "md",
       },
       styles: {
-        input: {
-          borderColor: "var(--mantine-color-slate-3)",
+        root: {
+          background: "var(--mantine-color-slate-1)",
+          padding: rem(4),
+        },
+        indicator: {
+          boxShadow: "var(--mantine-shadow-sm)",
+        },
+        label: {
+          fontWeight: 700,
+          fontSize: rem(13.5),
+          padding: `${rem(9)} ${rem(14)}`,
         },
       },
     },
@@ -466,3 +483,5 @@ export const mantineTheme = createTheme({
     },
   },
 });
+
+
