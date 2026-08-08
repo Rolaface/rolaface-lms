@@ -398,23 +398,7 @@ export function LoanProduct() {
           </Stack>
         </Group>
 
-        <Button
-          size="sm"
-          radius="xl"
-          color="brand"
-          onClick={() => {
-            setSelectedProductId(null);
-            setIsViewMode(false);
-            open();
-          }}
-          leftSection={<IconPlus size={14} />}
-          style={{
-            background: theme.other.brandGradient,
-            boxShadow: theme.other.brandGlowShadowSm,
-          }}
-        >
-          Add Product
-        </Button>
+      
       </Group>
 
       {error && (
@@ -488,6 +472,23 @@ export function LoanProduct() {
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
             Reset
           </Button>
+            <Button
+          size="sm"
+          radius="xl"
+          color="brand"
+          onClick={() => {
+            setSelectedProductId(null);
+            setIsViewMode(false);
+            open();
+          }}
+          leftSection={<IconPlus size={14} />}
+          style={{
+            background: theme.other.brandGradient,
+            boxShadow: theme.other.brandGlowShadowSm,
+          }}
+        >
+          Add Product
+        </Button>
         </Group>
       </Paper>
 
