@@ -1,10 +1,19 @@
 import { useMemo, useState } from "react";
-import { Modal, Text, NumberInput, Button, Box, Tooltip, ActionIcon } from "@mantine/core";
+import {
+  Modal,
+  Text,
+  NumberInput,
+  Button,
+  ActionIcon,
+  ThemeIcon,
+  Paper,
+  Group,
+  useMantineTheme,
+} from "@mantine/core";
 import {
   IconCalculator,
   IconPercentage,
   IconCalendarStats,
-  IconCurrencyDollar,
   IconInfoCircle,
   IconX,
   IconCurrency,
@@ -16,13 +25,11 @@ interface LoanSimulatorModalProps {
   onApply?: (principal: number, tenure: number) => void;
 }
 
-const labelClass = { label: "text-sm font-bold text-slate-800 mb-1" };
-
-function FieldIcon({ Icon, bg, color }: { Icon: any; bg: string; color: string }) {
+function FieldIcon({ Icon }: { Icon: any }) {
   return (
-    <div className="p-1.5 rounded-md flex items-center justify-center" style={{ backgroundColor: bg }}>
-      <Icon size={14} style={{ color }} />
-    </div>
+    <ThemeIcon variant="light" color="slate" radius="md" size={28}>
+      <Icon size={14} />
+    </ThemeIcon>
   );
 }
 
@@ -41,6 +48,7 @@ function calcPrincipalFromEmi(emi: number, annualRate: number, tenureMonths: num
 }
 
 export function LoanSimulatorModal({ opened, onClose, onApply }: LoanSimulatorModalProps) {
+  const theme = useMantineTheme();
   const [simPrincipal, setSimPrincipal] = useState<number | "">(50000);
   const [simRate, setSimRate] = useState<number | "">(14.5);
   const [simTenure, setSimTenure] = useState<number | "">(12);
@@ -84,126 +92,174 @@ export function LoanSimulatorModal({ opened, onClose, onApply }: LoanSimulatorMo
   };
 
   return (
-    <Modal 
-      opened={opened} 
-      onClose={onClose} 
-      size="1100px" 
-      withCloseButton={false} 
-      padding="xl" 
-      radius="md"
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      size={640}
+      withCloseButton={false}
+      padding="lg"
+      radius="lg"
     >
-      {/* Custom Clean Header */}
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <div className="flex items-center gap-1.5 mb-1">
-            <Text size="sm" fw={800} className="text-slate-800 uppercase tracking-wide">
-              LOAN SIMULATOR
-            </Text>
-            <IconInfoCircle size={15} className="text-slate-400" />
-          </div>
-        </div>
-        <ActionIcon onClick={onClose} variant="subtle" color="gray" size="lg">
+      {/* Header */}
+      <Group justify="space-between" align="flex-start" mb="lg" wrap="nowrap">
+        <Group gap={6}>
+          <Text size="sm" fw={800} c="slate.8" tt="uppercase" style={{ letterSpacing: "0.04em" }}>
+            Loan Simulator
+          </Text>
+          <IconInfoCircle size={15} color="var(--mantine-color-slate-4)" />
+        </Group>
+        <ActionIcon onClick={onClose} variant="subtle" color="slate" size="lg" radius="md">
           <IconX size={20} />
         </ActionIcon>
-      </div>
+      </Group>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        
+      <div
+        className="grid grid-cols-1 gap-6"
+        style={{ gridTemplateColumns: "240px 1fr" }}
+      >
         {/* Left Column - Inputs */}
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
           <NumberInput
-            size="md"
             label="Principal"
-             hideControls
+            hideControls
             min={0}
             value={simPrincipal}
             onChange={(v) => handleSimPrincipalChange(v as number | "")}
-            leftSection={<FieldIcon Icon={IconCurrency} bg="#FFF7ED" color="#EA580C" />}
+            leftSection={<FieldIcon Icon={IconCurrency} />}
             thousandSeparator=","
-            classNames={labelClass}
+            maw={240}
           />
-          
+
           <NumberInput
-            size="md"
             label="Interest Rate (% p.a.)"
-             hideControls
+            hideControls
             min={0}
             value={simRate}
             onChange={(v) => setSimRate(v as number | "")}
-            leftSection={<FieldIcon Icon={IconPercentage} bg="#EEF2FF" color="#4F46E5" />}
-            classNames={labelClass}
+            leftSection={<FieldIcon Icon={IconPercentage} />}
+            maw={240}
           />
-          
+
           <NumberInput
-            size="md"
             label="Tenure (months)"
             value={simTenure}
-             hideControls
+            hideControls
             min={0}
             onChange={(v) => setSimTenure(v as number | "")}
-            leftSection={<FieldIcon Icon={IconCalendarStats} bg="#ECFDF5" color="#059669" />}
-            classNames={labelClass}
+            leftSection={<FieldIcon Icon={IconCalendarStats} />}
+            maw={240}
           />
-          
-          <div>
+
+          <div style={{ maxWidth: 240 }}>
             <NumberInput
-              size="md"
               label="EMI"
-               hideControls
-            min={0}
+              hideControls
+              min={0}
               value={simMode === "emiToPrincipal" ? simEmi : simComputedEmi || ""}
               onChange={(v) => handleSimEmiChange(v as number | "")}
-              leftSection={<FieldIcon Icon={IconCalculator} bg="#FFF7ED" color="#EA580C" />}
-              classNames={labelClass}
+              leftSection={<FieldIcon Icon={IconCalculator} />}
             />
-            <Text size="sm" c="dimmed" className="mt-1.5">
+            <Text size="xs" c="slate.4" mt={6}>
               Enter an EMI to back-calculate the Principal below.
             </Text>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-md px-4 py-3 text-sm text-slate-600 mt-2">
-            Showing <span className="font-bold text-[#4F46E5]">{simMode === "principalToEmi" ? "Principal → EMI" : "EMI → Principal"}</span>. Type a value into {simMode === "principalToEmi" ? "EMI" : "Principal"} to switch to {simMode === "principalToEmi" ? "EMI → Principal" : "Principal → EMI"} mode.
-          </div>
+          <Paper
+            radius="md"
+            p="sm"
+            style={{
+              background: "var(--mantine-color-slate-0)",
+              border: "1px solid var(--mantine-color-slate-2)",
+            }}
+          >
+            <Text size="xs" c="slate.6">
+              Showing{" "}
+              <Text span fw={700} c="brand.6">
+                {simMode === "principalToEmi" ? "Principal → EMI" : "EMI → Principal"}
+              </Text>
+              . Type a value into {simMode === "principalToEmi" ? "EMI" : "Principal"} to switch to{" "}
+              {simMode === "principalToEmi" ? "EMI → Principal" : "Principal → EMI"} mode.
+            </Text>
+          </Paper>
 
           <Button
             size="md"
-            className="bg-[#4338CA] hover:bg-[#3730A3] border-0 font-semibold mt-2"
+            fullWidth
             onClick={() => {
               if (onApply) onApply(simComputedPrincipal, Number(simTenure) || 0);
               onClose();
+            }}
+            styles={{
+              root: {
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
+                border: "none",
+              },
             }}
           >
             Apply to Loan Form →
           </Button>
         </div>
 
-        {/* Right Column - Results Card */}
-        <div className="bg-[#FFF9F0] border border-[#FED7AA] rounded-lg p-8 flex flex-col h-full">
-          <Text size="xs" fw={800} className="text-[#EA580C] uppercase tracking-wide mb-3">
-            ESTIMATED EMI
+        {/* Right Column - Results Card — sized to its own content, not stretched */}
+        <Paper
+          radius="lg"
+          shadow="md"
+          p="lg"
+          style={{
+            background: "var(--mantine-color-gold-0)",
+            border: "1px solid var(--mantine-color-gold-2)",
+            alignSelf: "start",
+          }}
+        >
+          <Text size="xs" fw={800} c="gold.7" tt="uppercase" mb={6} style={{ letterSpacing: "0.04em" }}>
+            Estimated EMI
           </Text>
-          <Text fw={800} className="text-[#EA580C] mb-8" style={{ fontSize: 36, lineHeight: 1 }}>
+          <Text fw={800} c="gold.7" mb="md" style={{ fontSize: 32, lineHeight: 1 }}>
             {formatCurrency(simComputedEmi)}
           </Text>
 
-          <div className="flex flex-col mt-auto gap-0">
-            <div className="flex justify-between items-center text-[15px] text-slate-700 border-t border-[#FED7AA] py-4">
-              <span>Principal</span>
-              <span className="font-mono font-medium">{formatCurrency(simComputedPrincipal)}</span>
-            </div>
-            
-            <div className="flex justify-between items-center text-[15px] text-slate-700 border-t border-[#FED7AA] py-4">
-              <span>Total Interest Payable</span>
-              <span className="font-mono font-medium">{formatCurrency(simTotalInterest)}</span>
-            </div>
-            
-            <div className="flex justify-between items-center text-[15px] text-slate-700 border-t border-[#FED7AA] pt-4 pb-1">
-              <span>Total Repayment</span>
-              <span className="font-mono font-medium">{formatCurrency(simTotalRepayment)}</span>
-            </div>
+          <div className="flex flex-col gap-0">
+            <Group
+              justify="space-between"
+              py="sm"
+              style={{ borderTop: "1px solid var(--mantine-color-gold-2)" }}
+            >
+              <Text size="sm" c="slate.7">
+                Principal
+              </Text>
+              <Text size="sm" fw={600} c="slate.7" ff="monospace">
+                {formatCurrency(simComputedPrincipal)}
+              </Text>
+            </Group>
+
+            <Group
+              justify="space-between"
+              py="sm"
+              style={{ borderTop: "1px solid var(--mantine-color-gold-2)" }}
+            >
+              <Text size="sm" c="slate.7">
+                Total Interest Payable
+              </Text>
+              <Text size="sm" fw={600} c="slate.7" ff="monospace">
+                {formatCurrency(simTotalInterest)}
+              </Text>
+            </Group>
+
+            <Group
+              justify="space-between"
+              pt="sm"
+              style={{ borderTop: "1px solid var(--mantine-color-gold-2)" }}
+            >
+              <Text size="sm" c="slate.7">
+                Total Repayment
+              </Text>
+              <Text size="sm" fw={600} c="slate.7" ff="monospace">
+                {formatCurrency(simTotalRepayment)}
+              </Text>
+            </Group>
           </div>
-        </div>
-        
+        </Paper>
       </div>
     </Modal>
   );
