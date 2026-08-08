@@ -518,12 +518,15 @@ const [loanTypeSelected, setLoanTypeSelected] = useState(false);
                 </Button>
               </Group>
 
-              <Group gap="md">
-                {activeStep > 0 && (
-                  <Button variant="default" radius="md" onClick={handleBack}>
-                    Back
-                  </Button>
-                )}
+            <Group gap="md">
+                <Button 
+                  variant="default" 
+                  radius="md" 
+                  onClick={activeStep === 0 ? () => setLoanTypeSelected(false) : handleBack}
+                >
+                  Back
+                </Button>
+                
                 <Button
                   color="brand"
                   radius="md"
