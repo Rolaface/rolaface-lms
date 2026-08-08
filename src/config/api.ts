@@ -1,6 +1,3 @@
-import { Receivable } from "../view/Accounting/Receivable ";
-
-// src/config/api.ts
 const ERP_BASE = (import.meta.env.VITE_API_BASE_URL ?? "") as string;
 
 export { ERP_BASE };
@@ -13,9 +10,11 @@ export const API = {
     // login: `${ERP_BASE}/api/method/...`,
     // logout: `${ERP_BASE}/api/method/...`,
   },
-  // =========================
-  // Accounting
-  // =========================
+Company:{
+  getById: `${ERP_BASE}/api/method/custom_api.api.organization.company.api.get`,
+  getUserDetails: `${ERP_BASE}/api/method/auth_api.user_management.api.auth.get_login_user`,
+  getCurrency: `${ERP_BASE}/api/method/custom_api.api.search.get_currencies`,
+},
 Accounting: {
   chartOfAccounts: {
     createCOA: `${ERP_BASE}/api/method/erpnext.accounts.utils.add_ac`,
@@ -133,6 +132,7 @@ loan: {
   getLoanScheduleById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_repayment_schedule_by_id`,
 },
 
+
   // =========================
   // LOAN PRODUCT
   // =========================
@@ -173,7 +173,15 @@ loan: {
   // =========================
   // LOAN APPLICATION
   // =========================
-  loanApplication: {},
+  loanApplication: {
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.create_loan_application`,
+    getLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.get_loan_applications`,
+    getLoanApplicationById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.get_loan_application_by_id`,
+    updateLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.update_loan_application`,
+    deleteLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.delete_loan_application`,
+    statusLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.update_loan_application_status`,
+    getCountries: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.get_countries`,
+  },
 
   // =========================
   // LOAN APPROVAL

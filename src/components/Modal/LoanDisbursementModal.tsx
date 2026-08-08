@@ -97,7 +97,7 @@ export function LoanDisbursementModal({
      const list = dsbrAccountsResponse?.data || dsbrAccountsResponse?.message || dsbrAccountsResponse || [];
      if (Array.isArray(list)) {
     return list.map((item: any) => ({
-      value: item.label,
+      value: item.value,
       label: item.label,
     }));
   }
