@@ -234,7 +234,7 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
           isViewMode={isView}
           onClose={handleClose}
           onSubmit={handleSubmit}
-          submitLabel={editId ? "Update Type" : "Save "}
+          submitLabel={editId ? "Update" : "Save "}
           submitLoading={isPending}
           submitDisabled={isPending}
         />

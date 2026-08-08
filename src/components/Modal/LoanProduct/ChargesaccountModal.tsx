@@ -48,7 +48,6 @@ export function ChargeAccountsModal({
           </div>
           <div>
             <Text size="sm" fw={800} className="text-slate-900 leading-tight">Editing accounts for: {charge.type || "Untitled charge"}</Text>
-            <Text size="xs" className="text-slate-400 mt-0.5">Row #{accountsModalIndex + 1} · {charge.basedOn === "Percentage" ? `${charge.percentage || "0"}%` : charge.amount || "0"}</Text>
           </div>
         </div>
         <ActionIcon type="button" variant="light" color="gray" radius="xl" size="lg" onClick={() => setAccountsModalIndex(null)} aria-label="Close" className="hover:bg-slate-100">
@@ -59,10 +58,7 @@ export function ChargeAccountsModal({
       <div className="flex-1 min-h-0 overflow-y-auto p-6 bg-[#F7F8FB]" style={{ flex: "1 1 0%", minHeight: 0, overflowY: "auto" }}>
         <fieldset disabled={isViewMode} className="border-0 p-0 m-0">
           <div className="rounded-xl border p-5 bg-white" style={{ borderColor: theme.brand[1] }}>
-            <div className="flex items-center gap-2 mb-4">
-              <IconWallet size={16} style={{ color: theme.brand[6] }} />
-              <Text size="xs" fw={700} className="uppercase tracking-wide" style={{ color: theme.brand[6] }}>Charge Accounts</Text>
-            </div>
+          
             <div className="grid grid-cols-2 gap-x-5 gap-y-4">
               <Select size="xs" searchable label="Income Account" placeholder="Select income account" data={incomeAccounts} value={charge.incomeAccount} onChange={(v) => update("incomeAccount", v || "")} rightSection={<IconChevronDown size={13} className="text-slate-400" />} leftSection={<IconChip icon={IconWallet} color="gold" />} leftSectionWidth={44} classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }} />
               <Select size="xs" searchable label="Receivable Account" placeholder="Select receivable account" data={principalAccounts} value={charge.receivableAccount} onChange={(v) => update("receivableAccount", v || "")} rightSection={<IconChevronDown size={13} className="text-slate-400" />} leftSection={<IconChip icon={IconReceipt2} color="brand" />} leftSectionWidth={44} classNames={{ label: fieldLabelProps.label, input: `${fieldLabelProps.input} !pl-[50px]` }} />
