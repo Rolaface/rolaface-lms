@@ -10,10 +10,8 @@ import {
   ThemeIcon,
   Group,
   ScrollArea,
-  UnstyledButton,
   Fieldset,
-  Divider,
-  useMantineTheme,
+  UnstyledButton,
 } from "@mantine/core";
 import {
   IconX,
@@ -21,6 +19,7 @@ import {
   IconArrowRight,
   IconArrowLeft,
   IconCheck,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import {
@@ -37,6 +36,8 @@ import { AccountingTab, type AccountFieldsState, type InterestPenaltyAccountsSta
 import { CollectionTab } from "./CollectionsTab";
 import { ChargesTab, type ChargeRow } from "./ChargesTab";
 import { ChargeAccountsModal } from "./ChargesaccountModal";
+import { ModalFooter } from "../../shared/ModalFooter";
+import { showApiError, showConfirm, showSuccess } from "../../../utils/alert";
 
 interface LoanProductProps {
   opened: boolean;
@@ -47,7 +48,6 @@ interface LoanProductProps {
 }
 
 export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isViewMode }: LoanProductProps) {
-  const theme = useMantineTheme();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<string | null>("0");
 
@@ -311,11 +311,14 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     mutationFn: createLoanProduct,
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["loanProducts"] });
+      showSuccess("Loan product created successfully");
       await onSaved?.();
       handleModalClose();
     },
     onError: (err: any) => {
-      setSubmitError(parseFrappeError(err));
+      const message = parseFrappeError(err);
+      setSubmitError(message);
+      showApiError(message);
     },
   });
 
@@ -324,11 +327,14 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     onSuccess: async (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["loanProducts"] });
       queryClient.invalidateQueries({ queryKey: ["loanProduct", variables.id] });
+      showSuccess("Loan product updated successfully");
       await onSaved?.();
       handleModalClose();
     },
     onError: (err: any) => {
-      setSubmitError(parseFrappeError(err));
+      const message = parseFrappeError(err);
+      setSubmitError(message);
+      showApiError(message);
     },
   });
 
@@ -345,7 +351,9 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
 
     const missingAccounts = getMissingAccountingFields();
     if (missingAccounts.length > 0) {
-      setSubmitError(`Missing required accounts: ${missingAccounts.join(", ")}`);
+      const message = `Missing required accounts: ${missingAccounts.join(", ")}`;
+      setSubmitError(message);
+      showApiError(message, "Validation Error");
       setActiveTab("1");
       return;
     }
@@ -397,7 +405,8 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     if (activeTab === "1") {
       const missing = getMissingAccountingFields();
       if (missing.length > 0) {
-        setSubmitError(`Missing required accounts: ${missing.join(", ")}`);
+        const message = `Missing required accounts: ${missing.join(", ")}`;
+        setSubmitError(message);
         return false;
       }
       setSubmitError(null);
@@ -427,7 +436,7 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     if (current > 0) setActiveTab((current - 1).toString());
   };
 
-  const handleReset = () => {
+  const doReset = () => {
     form.reset();
     setGeneralAccs({ loanAccount: "", disbursementAccount: "", repaymentAccount: "", writeOffAccount: "", writeOffRecoveryAccount: "", subsidyAccount: "", securityDepositAccount: "", suspenseCollectionAccount: "", customerRefundAccount: "" });
     setSameAsInterest(false);
@@ -440,6 +449,17 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     setSubmitError(null);
     createMutation.reset();
     updateMutation.reset();
+  };
+
+  const handleReset = doReset;
+
+  // Confirm before wiping out everything the user has entered.
+  const handleResetClick = async () => {
+    const confirmed = await showConfirm(
+      "This will clear everything you've entered on this form. This action cannot be undone.",
+      { title: "Reset this form?", confirmButtonText: "Reset", confirmButtonColor: "red" }
+    );
+    if (confirmed) doReset();
   };
 
   const handleModalClose = () => {
@@ -458,6 +478,23 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
       ? "View Loan Product"
       : "Update Loan Product"
     : "Create Loan Product";
+
+  const isLastStep = currentStep === 3;
+  const hideSubmit = isViewMode && isLastStep;
+  const submitLabel = isLastStep
+    ? loanProductId
+      ? "Update Product"
+      : "Save"
+    : isViewMode
+      ? "Next"
+      : "Save & Continue";
+  const handleFooterSubmit = () => {
+    if (currentStep < 3) {
+      handleNext();
+    } else {
+      form.onSubmit(handleValidSubmit, handleInvalidSubmit)();
+    }
+  };
 
   return (
     <Modal
@@ -557,72 +594,80 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
             </ActionIcon>
           </Group>
 
-          {/* Step tracker — circular icon badges linked by a connecting rail,
-              each with a bold label + short description underneath. */}
+          {/* Tab bar — same compact pill-style tabs as CustomerModal, so both
+              modules share one navigation pattern. */}
           <Box
-            px="xl"
-            py="md"
+            px="md"
+            py={8}
             style={{
               borderBottom: "1px solid var(--mantine-color-slate-2)",
               flexShrink: 0,
             }}
-            bg="white"
+            bg="slate.0"
           >
             <ScrollArea type="auto" scrollbarSize={4} offsetScrollbars={false}>
-              <Group gap={0} wrap="nowrap" align="center">
+              <Group gap={18} wrap="nowrap">
                 {STEPS.map((step, idx) => {
                   const isActive = currentStep === idx;
                   const isComplete = currentStep > idx;
                   const StepIcon = step.icon;
                   return (
-                    <Group key={step.label} gap={0} wrap="nowrap" style={{ flex: idx < STEPS.length - 1 ? 1 : undefined }}>
+                    <Group key={step.label} gap={18} wrap="nowrap">
                       <UnstyledButton
                         type="button"
                         onClick={() => setActiveTab(idx.toString())}
-                        style={{ flexShrink: 0 }}
+                        px={14}
+                        py={7}
+                        style={{
+                          borderRadius: "var(--mantine-radius-sm)",
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
+                          background: isActive
+                            ? "var(--mantine-color-white)"
+                            : "transparent",
+                          boxShadow: isActive ? "var(--mantine-shadow-sm)" : "none",
+                          border: isActive
+                            ? "1px solid var(--mantine-color-slate-2)"
+                            : "1px solid transparent",
+                          transition:
+                            "background-color 120ms ease, box-shadow 120ms ease",
+                        }}
                       >
-                        <Group gap="sm" wrap="nowrap" align="center">
+                        <Group gap={6} wrap="nowrap">
                           <ThemeIcon
                             radius="xl"
-                            size={36}
-                            variant={isActive ? "gradient" : isComplete ? "filled" : "light"}
-                            gradient={isActive ? { from: 'brand.6', to: 'brand.7', deg: 135 } : undefined}
-                            color={isComplete ? "brand" : "slate"}
-                            style={{
-                              flexShrink: 0,
-                              boxShadow: isActive ? theme.other.brandGlowShadowSm : 'none',
-                            }}
+                            size={20}
+                            variant={isActive || isComplete ? "filled" : "outline"}
+                            color={isActive || isComplete ? "brand" : "slate"}
+                            style={{ flexShrink: 0 }}
                           >
-                            {isComplete ? <IconCheck size={16} /> : <StepIcon size={16} />}
-                          </ThemeIcon>
-                          <Box style={{ textAlign: 'left' }}>
-                            <Text
-                              size="sm"
-                              fw={700}
-                              c={isActive || isComplete ? "slate.8" : "slate.5"}
-                              style={{ whiteSpace: "nowrap", lineHeight: 1.2 }}
-                            >
-                              {step.label}
-                            </Text>
-                            {step.desc && (
-                              <Text size="xs" c="slate.5" style={{ whiteSpace: "nowrap", lineHeight: 1.3 }}>
-                                {step.desc}
-                              </Text>
+                            {isComplete ? (
+                              <IconCheck size={10} />
+                            ) : (
+                              <StepIcon size={10} />
                             )}
-                          </Box>
+                          </ThemeIcon>
+                          <Text
+                            size="xs"
+                            fw={isActive ? 700 : 500}
+                            c={
+                              isActive
+                                ? "brand.7"
+                                : isComplete
+                                  ? "slate.7"
+                                  : "slate.5"
+                            }
+                            style={{ whiteSpace: "nowrap" }}
+                          >
+                            {step.label}
+                          </Text>
                         </Group>
                       </UnstyledButton>
                       {idx < STEPS.length - 1 && (
-                        <Box
-                          style={{
-                            flex: 1,
-                            height: 1,
-                            minWidth: 32,
-                            margin: '0 16px',
-                            background: isComplete
-                              ? 'var(--mantine-color-brand-4)'
-                              : 'var(--mantine-color-slate-2)',
-                          }}
+                        <IconChevronRight
+                          size={11}
+                          color="var(--mantine-color-slate-3)"
+                          style={{ flexShrink: 0 }}
                         />
                       )}
                     </Group>
@@ -677,90 +722,19 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
             writeOffAccounts={writeOffAccounts}
           />
 
-          {/* Footer — same layout/order as CustomerModal: Cancel · divider ·
-              Reset on the left, Back / Save-Next / Submit on the right. */}
-          <Group
-            justify="space-between"
-            px="xl"
-            py="md"
-            style={{
-              borderTop: "1px solid var(--mantine-color-slate-2)",
-              flexShrink: 0,
-            }}
-          >
-            <Group gap="md">
-              <Button type="button" variant="subtle" color="slate" onClick={handleModalClose}>
-                {isViewMode ? "Close" : "Cancel"}
-              </Button>
-              {!isViewMode && (
-                <>
-                  <Divider orientation="vertical" color="slate.2" />
-                  <Button type="button" variant="subtle" color="danger" onClick={handleReset}>
-                    Reset Form
-                  </Button>
-                </>
-              )}
-            </Group>
-
-            <Group gap="sm">
-              {submitError && (
-                <Text size="xs" c="danger.6" maw={320}>
-                  {submitError}
-                </Text>
-              )}
-
-              {currentStep > 0 && (
-                <Button
-                  type="button"
-                  variant="default"
-                  onClick={handleBack}
-                  leftSection={<IconArrowLeft size={14} />}
-                  px="lg"
-                >
-                  Back
-                </Button>
-              )}
-
-              {!isViewMode && (
-                <Button
-                  type="button"
-                  px="xl"
-                  color="brand"
-                  loading={currentStep === 3 ? isSaving : false}
-                  onClick={() => {
-                    if (currentStep < 3) {
-                      handleNext();
-                    } else {
-                      form.onSubmit(handleValidSubmit, handleInvalidSubmit)();
-                    }
-                  }}
-                  rightSection={currentStep < 3 ? <IconArrowRight size={14} /> : <IconCheck size={14} />}
-                  style={{
-                    background: theme.other.brandGradient,
-                    boxShadow: theme.other.brandGlowShadowSm,
-                  }}
-                >
-                  {currentStep < 3 ? "Save & Continue" : loanProductId ? "Update Product" : "Create Product"}
-                </Button>
-              )}
-
-              {isViewMode && currentStep < 3 && (
-                <Button
-                  type="button"
-                  px="xl"
-                  color="brand"
-                  onClick={handleNext}
-                  rightSection={<IconArrowRight size={14} />}
-                  style={{
-                    background: theme.other.brandGradient,
-                    boxShadow: theme.other.brandGlowShadowSm,
-                  }}
-                >
-                  Next
-                </Button>
-              )}
-            </Group>
-          </Group>
+          {/* Footer — shared ModalFooter component (same one CustomerModal can use),
+              with the wizard's Back button slotted in on the right via rightSlot. */}
+          <ModalFooter
+            variant="theme"
+            isViewMode={isViewMode}
+            onClose={handleModalClose}
+            submitLabel={submitLabel}
+            submitLoading={isLastStep ? isSaving : false}
+            hideSubmit={hideSubmit}
+            onSubmit={handleFooterSubmit}
+            errorMessage={submitError ?? undefined}
+            
+          />
         </Box>
       </form>
     </Modal>

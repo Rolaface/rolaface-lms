@@ -53,8 +53,7 @@ export function ChargesTab({
         <Table size="xs" verticalSpacing="xs" horizontalSpacing={6} className="table-fixed w-full">
           <Table.Thead className="bg-slate-50">
             <Table.Tr>
-              <Table.Th className="w-6"><Checkbox size="xs" aria-label="Select all" /></Table.Th>
-              <Table.Th className="w-6">No.</Table.Th>
+              <Table.Th className="w-6"></Table.Th>
               <Table.Th className="w-52">Charge Type</Table.Th>
               <Table.Th className="w-36">Charge Based On</Table.Th>
               <Table.Th className="w-24">Percentage</Table.Th>
@@ -65,7 +64,7 @@ export function ChargesTab({
           <Table.Tbody>
             {charges.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={7} className="text-center py-8 text-slate-400 bg-slate-50/50">
+                <Table.Td colSpan={6} className="text-center py-8 text-slate-400 bg-slate-50/50">
                   No rows yet — add a charge to get started
                 </Table.Td>
               </Table.Tr>
@@ -73,7 +72,6 @@ export function ChargesTab({
               charges.map((charge, index) => (
                 <Table.Tr key={charge.id} className="hover:bg-slate-50/60">
                   <Table.Td></Table.Td>
-                  <Table.Td className="text-xs text-slate-500 font-medium">{index + 1}</Table.Td>
                   <Table.Td>
 <Select 
   size="xs" 
@@ -123,7 +121,7 @@ export function ChargesTab({
             )}
             {!isViewMode && (
               <Table.Tr className="cursor-pointer hover:bg-slate-50/60" onClick={handleAddCharge}>
-                <Table.Td colSpan={7} className="py-2.5">
+                <Table.Td colSpan={6} className="py-2.5">
                   <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: theme.brand[6] }}>
                     <IconPlus size={14} />Add charge
                   </div>
