@@ -28,7 +28,7 @@ export function CollectionTab({ form }: CollectionTabProps) {
   );
 
   return (
-    <PlainCard description="Configure collection sequence for different asset classifications.">
+    <PlainCard>
       <div className="grid grid-cols-4 gap-x-5">
         {collectionAssetColumns.map((col) => (
           <div key={col.key} className="flex flex-col gap-3">
