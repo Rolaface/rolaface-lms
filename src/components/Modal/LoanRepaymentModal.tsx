@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Box, Button, Modal, Text, useMantineTheme } from "@mantine/core";
-import { IconArrowRight, IconRefresh, IconWallet, IconX } from "@tabler/icons-react";
+import { IconArrowRight, IconCash, IconX } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@mantine/form";
 import type { LoanRepaymentPayload } from "../../types/loanRepaymentForm";
@@ -253,7 +253,7 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }
         <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl flex items-center justify-center" style={{ background: theme.other.brandGradient }}>
-              <IconWallet size={20} style={{ color: "var(--mantine-color-white)" }} />
+              <IconCash size={20} style={{ color: "var(--mantine-color-white)" }} />
             </div>
             <div>
               <Text size="md" fw={700} c="slate.8" className="leading-tight">

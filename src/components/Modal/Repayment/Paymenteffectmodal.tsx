@@ -1,5 +1,5 @@
 import { Box, Button, Modal, Table, Text, useMantineTheme } from "@mantine/core";
-import { IconArrowsExchange, IconX } from "@tabler/icons-react";
+import { IconCreditCard, IconX } from "@tabler/icons-react";
 import type { LoanAccount, PaymentEffectResult } from "../../../types/loanRepayment";
 import { formatCurrency } from "../../../utils/Loanrepaymentutils";
 
@@ -42,7 +42,7 @@ export function PaymentEffectModal({ opened, onClose, selectedLoan, amountToPay,
               className="p-2.5 rounded-xl flex items-center justify-center"
               style={{ background: theme.other.brandGradient }}
             >
-              <IconArrowsExchange size={20} style={{ color: "var(--mantine-color-white)" }} />
+              <IconCreditCard size={20} style={{ color: "var(--mantine-color-white)" }} />
             </div>
             <div>
               <Text size="md" fw={700} c="slate.8" className="leading-tight">

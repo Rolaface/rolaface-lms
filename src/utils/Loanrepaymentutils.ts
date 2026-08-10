@@ -8,10 +8,6 @@ export function toRepaymentType(nature: LoanRepaymentFormValues["natureOfPayment
   return nature === "FULL_SETTLEMENT" ? "Full Settlement" : "Normal Repayment";
 }
 
-// Nature-of-payment options, each mapped to a semantic theme color key
-// (success / warning / brand) and a sensible icon instead of ad-hoc styling.
-// Adding/reordering options here is the only thing needed to change the
-// segmented control — styling always resolves through the Mantine theme.
 export const PAYMENT_NATURE_OPTIONS = [
   { label: "Pay Dues", value: "PAY_DUES", color: "success", icon: IconClipboardText },
   { label: "Pay Any", value: "PARTIAL", color: "warning", icon: IconCoins },

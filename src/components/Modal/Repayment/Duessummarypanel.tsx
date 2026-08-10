@@ -1,5 +1,5 @@
 import { Button, ScrollArea, Text, useMantineTheme } from "@mantine/core";
-import { IconReportMoney, IconScale } from "@tabler/icons-react";
+import { IconReportMoney, IconCreditCard } from "@tabler/icons-react";
 import type { LoanAccount, LoanDuesSummary } from "../../../types/loanRepayment";
 import { formatCurrency } from "../../../utils/Loanrepaymentutils";
 
@@ -96,7 +96,7 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
               variant="light"
               color="brand"
               fullWidth
-              leftSection={<IconScale size={14} />}
+              leftSection={<IconCreditCard size={14} />}
               onClick={onOpenPaymentEffect}
             >
               Payment Effect

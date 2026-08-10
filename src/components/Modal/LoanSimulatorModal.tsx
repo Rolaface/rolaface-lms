@@ -106,7 +106,6 @@ export function LoanSimulatorModal({ opened, onClose, onApply }: LoanSimulatorMo
           <Text size="sm" fw={800} c="slate.8" tt="uppercase" style={{ letterSpacing: "0.04em" }}>
             Loan Simulator
           </Text>
-          <IconInfoCircle size={15} color="var(--mantine-color-slate-4)" />
         </Group>
         <ActionIcon onClick={onClose} variant="subtle" color="slate" size="lg" radius="md">
           <IconX size={20} />
