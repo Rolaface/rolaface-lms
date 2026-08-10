@@ -3,9 +3,9 @@ import {
   IconAlertTriangle,
   IconCalendarDue,
   IconChecklist,
-  IconNotes,
+  IconMessage,
   IconPercentage,
-  IconReceipt2,
+  IconNotes,
   IconCreditCard,
 } from "@tabler/icons-react";
 import type { LoanWaiverBorrower, LoanWaiverLoanAccount } from "../../../types/loanwaiver";
@@ -185,7 +185,7 @@ export function WaiverExecutionPanel({
               <Table.Tr style={{ background: "var(--mantine-color-slate-0)" }}>
                 <Table.Td>
                   <div className="flex items-center gap-2">
-                    <IconReceipt2 size={14} style={{ color: "var(--mantine-color-accent-6)" }} />
+                    <IconNotes size={14} style={{ color: "var(--mantine-color-accent-6)" }} />
                     <Text size="sm" c="slate.7">
                       Charge / Fee
                     </Text>
@@ -221,7 +221,7 @@ export function WaiverExecutionPanel({
           disabled={isView}
           value={remark}
           onChange={(e) => onRemarkChange(e.currentTarget.value)}
-          leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+          leftSection={<IconMessage size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
           className="mt-4"
         />
       </div>
