@@ -221,6 +221,11 @@ export const mantineTheme = createTheme({
     modalHeaderDividerColor: "var(--mantine-color-brand-3)",
     modalHeaderIconBg: "var(--mantine-color-white)",
 
+    headerIconOverlayBg:
+      "color-mix(in srgb, var(--mantine-color-white) 18%, transparent)",
+    headerButtonHoverBg:
+      "color-mix(in srgb, var(--mantine-color-white) 10%, transparent)",
+
     // ---- semantic text roles — reference these instead of hardcoding gray.6 etc. ----
     textPrimary: "var(--mantine-color-slate-8)",
     textSecondary: "var(--mantine-color-slate-5)",
@@ -369,8 +374,9 @@ export const mantineTheme = createTheme({
       },
     },
 
-TextInput: {
-      defaultProps: { radius: "lg", size: "xs" },   
+  
+    TextInput: {
+      defaultProps: { radius: "lg", size: "xs" },
       styles: {
         input: {
           borderColor: "var(--mantine-color-slate-3)",
@@ -387,11 +393,11 @@ TextInput: {
     },
 
     NumberInput: {
-      defaultProps: { radius: "lg", size: "xs" },  
+      defaultProps: { radius: "lg", size: "xs" },
     },
 
     Select: {
-      defaultProps: { radius: "lg", size: "xs" },  
+      defaultProps: { radius: "lg", size: "xs" },
       styles: {
         input: { borderColor: "var(--mantine-color-slate-3)" },
         label: {
@@ -402,6 +408,7 @@ TextInput: {
         },
       },
     },
+
     Textarea: {
       defaultProps: {
         radius: "sm",

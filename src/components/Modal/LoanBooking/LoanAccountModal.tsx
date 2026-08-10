@@ -301,7 +301,7 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
                 size={48}
                 radius="xl"
                 style={{
-                  background: "rgba(255,255,255,0.18)",
+                  background: theme.other.headerIconOverlayBg,
                   color: "var(--mantine-color-white)",
                 }}
               >
@@ -327,7 +327,7 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
                 size="xs"
                 px={8}
                 style={{ color: "var(--mantine-color-white)" }}
-                className="hover:bg-white/10"
+                styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
               >
                 <IconMinus size={18} />
               </Button>
@@ -337,7 +337,7 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
                 px={8}
                 onClick={handleModalClose}
                 style={{ color: "var(--mantine-color-white)" }}
-                className="hover:bg-white/10"
+                styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
               >
                 <IconX size={18} />
               </Button>
@@ -426,9 +426,11 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
           </Box>
 
 
-          <fieldset
+          <Box
+            component="fieldset"
             disabled={isViewMode}
-            className="flex-1 flex flex-col lg:flex-row overflow-y-auto bg-white border-0 p-0 m-0 min-w-0 min-h-0"
+            bg="white"
+            className="flex-1 flex flex-col lg:flex-row overflow-y-auto border-0 p-0 m-0 min-w-0 min-h-0"
           >
             <div className="flex-1 p-6 min-w-0">
               {activeTab === "basic" && (
@@ -486,7 +488,7 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
               totalInterest={totalInterest}
               totalRepayment={totalRepayment}
             />
-          </fieldset>
+          </Box>
 
           {/* Footer — shared ModalFooter, no Reset action exposed. */}
           <ModalFooter
