@@ -1,6 +1,7 @@
 // LoanDisbursementModal.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "@mantine/form";
+import { modals } from "@mantine/modals";
 import {
   Box,
   Text,
@@ -11,6 +12,7 @@ import {
   Modal,
   Tabs,
   Badge,
+  Group,
 } from "@mantine/core";
 import {
   IconX,
@@ -31,6 +33,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createLoanDisbursement, getAllDsbrAccount, updateLoanDisbursement, getLoanDisbursementById} from "../../api/loanDisbursementAPi"; 
 import {getAllApplicationDsbr} from "../../api/loanApi";
 import type { LoanDisbursementPayload, } from "../../types/loanDisbursementForm";
+import { parseFrappeError } from "../../utils/parseFrappeError";
 
 interface LoanDisbursementModalProps {
   opened: boolean;
@@ -137,15 +140,32 @@ export function LoanDisbursementModal({
       valueDate: (v) => (!v ? "Value Date is required" : null),
       disburseAmount: (v) => (!v ? "Disburse Amount is required" : null),
       modeOfPayment: (v) => (!v ? "Mode of Payment is required" : null),
-      disbursementAc: (v) => (!v ? "Disbursement Account is required" : null),
+      // disbursementAc: (v) => (!v ? "Disbursement Account is required" : null),
       refDate: (v) => (!v ? "Ref Date is required" : null),
       refNo: (v) => (!v ? "Ref No is required" : null),
-      beneficiaryAcNo: (v) => (!v ? "Beneficiary A/c No is required" : null),
+      // beneficiaryAcNo: (v) => (!v ? "Beneficiary A/c No is required" : null),
     },
   });
 
   const queryClient = useQueryClient();
 
+  // const createDisbursementMutation = useMutation({
+  //   mutationFn: createLoanDisbursement,
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
+  //     handleReset();
+  //     onClose();
+  //   },
+  // });
+
+  // const updateDisbursementMutation = useMutation({
+  //   mutationFn: updateLoanDisbursement,
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
+  //     handleReset();
+  //     onClose();
+  //   },
+  // });
   const createDisbursementMutation = useMutation({
     mutationFn: createLoanDisbursement,
     onSuccess: () => {
@@ -153,14 +173,54 @@ export function LoanDisbursementModal({
       handleReset();
       onClose();
     },
+    onError: (error: any) => {
+      const errorMessage = parseFrappeError(error);
+
+      modals.open({
+        title: <Text fw={600} c="red">Action Failed</Text>,
+        children: (
+          <div>
+            <Text size="sm" mb="lg">
+              {errorMessage}
+            </Text>
+            <Group justify="flex-end">
+              <Button onClick={() => modals.closeAll()} variant="default">
+                Close
+              </Button>
+            </Group>
+          </div>
+        ),
+      });
+    },
   });
 
-  const updateDisbursementMutation = useMutation({
+ const updateDisbursementMutation = useMutation({
     mutationFn: updateLoanDisbursement,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
+       queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
+      queryClient.invalidateQueries({ queryKey: ["loanDisbursement", editId] }); 
+      
       handleReset();
       onClose();
+    },
+    onError: (error: any) => {
+      const errorMessage = parseFrappeError(error);
+
+      modals.open({
+        title: <Text fw={600} c="red">Action Failed</Text>,
+        children: (
+          <div>
+            <Text size="sm" mb="lg">
+              {errorMessage}
+            </Text>
+            <Group justify="flex-end">
+              <Button onClick={() => modals.closeAll()} variant="default">
+                Close
+              </Button>
+            </Group>
+          </div>
+        ),
+      });
     },
   });
 
@@ -178,9 +238,9 @@ const handleSubmit = (values: typeof form.values) => {
       mode_of_payment: values.modeOfPayment as string,
       reference_number: values.refNo,
       reference_date: values.refDate,
-      repayment_start_date: values.valueDate, 
+      repayment_start_date: selectedLoanApp?.repayment_start_date || undefined, 
       disbursement_account: values.disbursementAc || undefined,
-      loan_account: values.beneficiaryAcNo || undefined,   
+      loan_account: selectedLoanApp?.loan_account || undefined,   
     };
 
     if (editId) {
@@ -208,7 +268,7 @@ const handleSubmit = (values: typeof form.values) => {
     }
   }, [opened, editId, initialData]);
 
-  const { data: loanAppsResponse, isLoading: isLoanAppsLoading } = useQuery({
+  const { data: loanAppsResponse, isLoading: isLoanAppsLoading, refetch: refetchLoanApps} = useQuery({
     queryKey: ["loanApplications"],
     queryFn: getAllApplicationDsbr,
     enabled: opened,
@@ -254,6 +314,12 @@ const handleSubmit = (values: typeof form.values) => {
     return loanAppsResponse.data.find((app: any) => app.name === form.values.acNo);
   }, [loanAppsResponse, form.values.acNo]);
 
+useEffect(() => {
+    if (!editId) {
+      form.setFieldValue("beneficiaryAcNo", selectedLoanApp?.loan_account || "");
+    }
+   }, [form.values.acNo, selectedLoanApp]);
+
   return (
     <Modal
       opened={opened}
@@ -293,20 +359,19 @@ const handleSubmit = (values: typeof form.values) => {
           <div className="flex-1 overflow-y-auto p-6">
             <fieldset disabled={isView} className="border-0 p-0 m-0">
             <div className="grid grid-cols-3 gap-4 mb-5">
-             <Select
-                size="sm"
-                withAsterisk
-                searchable
-                clearable
-                label="Application Number"
-                placeholder={isLoanAppsLoading ? "Loading..." : "Search loan account"}
-                data={loanAppOptions}
-                disabled={isLoanAppsLoading}
-                leftSection={<IconSearch size={14} className="text-gray-400" />}
-                rightSection={chevronDown}
-                classNames={labelClass}
-                {...form.getInputProps("acNo")}
-              />
+           <Select
+  size="sm"
+  withAsterisk
+  searchable
+  clearable={!!form.values.acNo}  
+  label="Application Number"
+  placeholder={isLoanAppsLoading ? "Loading..." : "Search loan account"}
+  data={loanAppOptions}
+  disabled={isLoanAppsLoading}
+  leftSection={<IconSearch size={14} className="text-gray-400" />}
+  onClick={() => refetchLoanApps()}
+  {...form.getInputProps("acNo")}
+/>
              <TextInput
                 size="sm"
                 withAsterisk
@@ -320,6 +385,8 @@ const handleSubmit = (values: typeof form.values) => {
                 size="sm"
                 withAsterisk
                 label="Disburse Amount"
+                 hideControls
+                 min={0}
                 placeholder="Enter amount"
                  {...form.getInputProps("disburseAmount")}
                 leftSection={<IconCurrencyRupee size={14} className="text-orange-500" />}
@@ -373,7 +440,7 @@ const handleSubmit = (values: typeof form.values) => {
                     {editId ? (
   <TextInput
     size="sm"
-    withAsterisk
+    // withAsterisk
     label="Disbursement A/c"
     disabled={isView}
     {...form.getInputProps("disbursementAc")}
@@ -383,7 +450,7 @@ const handleSubmit = (values: typeof form.values) => {
 ) : (
   <Select
     size="sm"
-    withAsterisk
+    // withAsterisk
     searchable
     clearable
     label="Disbursement A/c"
@@ -430,7 +497,7 @@ const handleSubmit = (values: typeof form.values) => {
                         leftSection={<IconCalendar size={14} className="text-orange-500" />}
                         classNames={labelClass}
                       />
-                     <Select
+                     {/* <Select
                         size="sm"
                         withAsterisk
                         searchable
@@ -445,7 +512,17 @@ const handleSubmit = (values: typeof form.values) => {
                         leftSection={<IconHome size={14} className="text-indigo-500" />}
                         rightSection={chevronDown}
                         classNames={labelClass}
-                      />
+                      /> */}
+<TextInput
+  size="sm"
+  // withAsterisk
+  label="A/c No"
+  placeholder="Loan account number"
+  disabled 
+  {...form.getInputProps("beneficiaryAcNo")}
+  leftSection={<IconHome size={14} className="text-indigo-500" />}
+  classNames={labelClass}
+/>
                     </div>
                   </div>
                 </div>
@@ -491,15 +568,11 @@ const handleSubmit = (values: typeof form.values) => {
          {/* Summary sidebar */}
           <div className="w-[280px] border-l border-gray-200 p-5 shrink-0 overflow-y-auto">
             <div className="flex items-center gap-2 mb-0.5">
-              <div className="w-1 h-4 rounded bg-gradient-to-b from-[#7C3AED] to-[#4F46E5]" />
-              <Text size="sm" fw={700} className="text-gray-900">
+              {/* <div className="w-1 h-4 rounded bg-gradient-to-b from-[#7C3AED] to-[#4F46E5]" /> */}
+              {/* <Text size="sm" fw={700} className="text-gray-900">
                 Summary
-              </Text>
+              </Text> */}
             </div>
-            <Text size="xs" c="dimmed" className="ml-3 mb-4">
-              Live account status
-            </Text>
-
             <div className="flex flex-col gap-3">
               <SummaryItem
                 icon={<IconUser size={14} className="text-gray-500" />}
@@ -529,6 +602,13 @@ const handleSubmit = (values: typeof form.values) => {
       ? formatCurrency(selectedLoanApp.current_disbursed_amount || 0)
       : "₹0"
   }
+  bold
+/>
+<SummaryItem
+  icon={<IconCalendar size={14} className="text-emerald-600" />}
+  iconBg="#ECFDF5"
+  label="Repayment Start Date"
+  value={selectedLoanApp?.repayment_start_date || "—"} 
   bold
 />
              <SummaryItem

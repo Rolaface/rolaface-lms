@@ -248,7 +248,8 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }
       closeOnClickOutside={false}
       closeOnEscape={false}
     >
-      <Box className="flex flex-col max-h-[90vh]">
+      {/* <Box className="flex flex-col max-h-[90vh]"> */}
+      <Box className="flex flex-col h-[700px] max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
           <div className="flex items-center gap-3">
