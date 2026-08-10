@@ -29,6 +29,7 @@ import {
   IconSelector,
   IconSearch,
   IconReceipt2,
+  IconReceipt,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -236,7 +237,7 @@ export function FeeAndCharges() {
               justifyContent: 'center',
             }}
           >
-            <IconReceipt2 size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconReceipt size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>

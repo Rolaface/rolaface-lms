@@ -30,6 +30,7 @@ import {
   IconScale,
   IconChartBar,
   IconArrowsExchange,
+  IconReceipt,
 } from "@tabler/icons-react";
 
 /* ───────────────── Nav item types (recursive) ───────────────── */
@@ -73,7 +74,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/setup/category", label: "Loan Category", icon: IconListDetails },
       { path: "/setup/classification", label: "Loan Classification", icon: IconFileText },
       { path: "/setup/collection", label: "Collection Order", icon: IconListDetails },
-      { path: "/setup/fees", label: "Fee and Charges", icon: IconCreditCard },
+      { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt },
       { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank },
     ],
   },
