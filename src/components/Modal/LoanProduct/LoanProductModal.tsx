@@ -483,7 +483,7 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
   const hideSubmit = isViewMode && isLastStep;
   const submitLabel = isLastStep
     ? loanProductId
-      ? "Update Product"
+      ? "Update"
       : "Save"
     : isViewMode
       ? "Next"

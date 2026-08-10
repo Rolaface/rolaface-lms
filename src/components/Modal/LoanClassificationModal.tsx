@@ -13,7 +13,7 @@ import {
   TextInput,
   ThemeIcon,
 } from "@mantine/core";
-import { IconCheck, IconFileText, IconX } from "@tabler/icons-react";
+import { IconCheck, IconFileText, IconLayersLinked, IconX } from "@tabler/icons-react";
 
 import type { LoanClassificationData } from "../../types/loanClassification";
 import {
@@ -187,7 +187,7 @@ export function LoanClassificationModal({
         >
           <Group gap="sm">
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
-              <IconFileText size={16} />
+            < IconLayersLinked size={20} stroke={1.8} />
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
