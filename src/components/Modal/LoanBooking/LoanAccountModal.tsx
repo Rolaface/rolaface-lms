@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Box, Text, Button, Modal, Group, ThemeIcon, Badge, useMantineTheme, ScrollArea, UnstyledButton } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { IconX, IconMinus, IconBuildingBank, IconCheck, IconCalculator, IconChevronRight } from "@tabler/icons-react";
+import { IconX, IconMinus, IconFileText, IconCheck, IconCalculator, IconChevronRight } from "@tabler/icons-react";
 
 import { createLoan, getLoanById, updateLoan, getReapymentScheduleById } from "../../../api/loanApi";
 import { calcEmi, buildAmortization, getTodayDate } from "../../../utils/loanCalculations";
@@ -305,7 +305,7 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
                   color: "var(--mantine-color-white)",
                 }}
               >
-                <IconBuildingBank size={24} />
+                <IconFileText size={24} />
               </ThemeIcon>
               <div className="min-w-0">
                 <Text size="lg" fw={700} c="white" className="leading-tight truncate">
