@@ -135,7 +135,7 @@ export function AddLoanCategoryModal({
 
         {/* Body */}
         <Box px="xl" py="lg" bg="slate.0">
-          <Group grow align="flex-start" gap="md">
+         <Group align="flex-start" gap="md" wrap="nowrap">
             <TextInput
               label="Loan Category Code"
               withAsterisk
@@ -146,6 +146,7 @@ export function AddLoanCategoryModal({
               error={errors.code}
               styles={{ input: { border: "1px solid var(--mantine-color-slate-2)" } }}
               data-autofocus
+              style={{ flex: 1 }}
             />
             <TextInput
               label="Loan Category Name"
@@ -156,6 +157,7 @@ export function AddLoanCategoryModal({
               onChange={(e) => handleChange("name", e.currentTarget.value)}
               error={errors.name}
               styles={{ input: { border: "1px solid var(--mantine-color-slate-2)" } }}
+              style={{ flex: 2 }}
             />
           </Group>
         </Box>
