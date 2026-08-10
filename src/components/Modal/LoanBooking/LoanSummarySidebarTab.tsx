@@ -153,9 +153,6 @@ export function LoanSummarySidebar({
             </Stack>
           </SummaryCard>
 
-          <Text size="xxs" c="slate.4" fs="italic">
-            Figures are indicative and recalculate automatically. Final schedule is generated on save.
-          </Text>
         </div>
       </div>
     </div>
