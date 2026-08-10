@@ -109,7 +109,7 @@ export function BasicDetailsTab({
   return (
     <div className="flex flex-col gap-3">
       <Paper withBorder radius="lg" shadow="md" p="lg">
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg" verticalSpacing="sm">
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
           <Select
             label="Customer Number"
             placeholder={isCustomersLoading ? "Loading..." : "Search customer number..."}
@@ -188,7 +188,7 @@ export function BasicDetailsTab({
 
       <Paper withBorder radius="lg" shadow="md" p="lg">
         <div className="flex flex-col gap-3">
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg" verticalSpacing="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
             <TextInput
               type="date"
               label="Transaction Date"
@@ -217,7 +217,7 @@ export function BasicDetailsTab({
           </SimpleGrid>
 
           {/* Frequency and Repayment Amount swapped */}
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg" verticalSpacing="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
             <Input.Wrapper label="Fixed Repayments In">
               <SegmentedControl
                 data={["TENOR", "EMI"]}
@@ -251,29 +251,8 @@ export function BasicDetailsTab({
             />
           </SimpleGrid>
 
-          {/* Order after both swaps: Moratorium Type, Moratorium Period, Maturity Date, Repayment Start Date */}
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg" verticalSpacing="sm">
-            <Input.Wrapper label="Moratorium Type">
-              <SegmentedControl
-                size="xs"
-                data={[
-                  { label: "Principal", value: "Principal" },
-                  { label: "EMI", value: "EMI" },
-                ]}
-                fullWidth
-                color="brand"
-                value={form.values.moratoriumType}
-                onChange={(val) => form.setFieldValue("moratoriumType", val)}
-              />
-            </Input.Wrapper>
-            <NumberInput
-              label="Moratorium Period"
-              placeholder="0"
-              hideControls
-              min={0}
-              disabled={!moratoriumEnabled}
-              {...form.getInputProps("moratoriumPeriod")}
-            />
+         
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
             <TextInput
               type="date"
               label="Maturity Date"
@@ -288,6 +267,33 @@ export function BasicDetailsTab({
             />
           </SimpleGrid>
         </div>
+      </Paper>
+
+    
+      <Paper withBorder radius="lg" shadow="md" p="lg">
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
+          <Input.Wrapper label="Moratorium Type">
+            <SegmentedControl
+              size="xs"
+              data={[
+                { label: "Principal", value: "Principal" },
+                { label: "EMI", value: "EMI" },
+              ]}
+              fullWidth
+              color="brand"
+              value={form.values.moratoriumType}
+              onChange={(val) => form.setFieldValue("moratoriumType", val)}
+            />
+          </Input.Wrapper>
+          <NumberInput
+            label="Moratorium Period"
+            placeholder="0"
+            hideControls
+            min={0}
+            disabled={!moratoriumEnabled}
+            {...form.getInputProps("moratoriumPeriod")}
+          />
+        </SimpleGrid>
       </Paper>
     </div>
   );

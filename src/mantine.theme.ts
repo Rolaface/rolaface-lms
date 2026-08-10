@@ -6,6 +6,8 @@ export const mantineTheme = createTheme({
   defaultRadius: "sm",
   cursorType: "pointer",
 
+  
+
   breakpoints: {
     xs: "30em", // 480px — below your supported floor, kept for Mantine internals that expect it
     sm: "40em", // 640px
@@ -367,8 +369,8 @@ export const mantineTheme = createTheme({
       },
     },
 
-    TextInput: {
-      defaultProps: { radius: "lg", size: "md" },
+TextInput: {
+      defaultProps: { radius: "lg", size: "xs" },   
       styles: {
         input: {
           borderColor: "var(--mantine-color-slate-3)",
@@ -385,11 +387,11 @@ export const mantineTheme = createTheme({
     },
 
     NumberInput: {
-      defaultProps: { radius: "lg", size: "md" },
+      defaultProps: { radius: "lg", size: "xs" },  
     },
 
     Select: {
-      defaultProps: { radius: "lg", size: "md" },
+      defaultProps: { radius: "lg", size: "xs" },  
       styles: {
         input: { borderColor: "var(--mantine-color-slate-3)" },
         label: {
@@ -400,7 +402,6 @@ export const mantineTheme = createTheme({
         },
       },
     },
-
     Textarea: {
       defaultProps: {
         radius: "sm",
@@ -440,7 +441,7 @@ export const mantineTheme = createTheme({
         },
       },
     },
-
+    
     SegmentedControl: {
       defaultProps: {
         radius: "md",
@@ -448,15 +449,16 @@ export const mantineTheme = createTheme({
       styles: {
         root: {
           background: "var(--mantine-color-slate-1)",
-          padding: rem(4),
+          padding: rem(3),
         },
         indicator: {
           boxShadow: "var(--mantine-shadow-sm)",
         },
         label: {
           fontWeight: 700,
-          fontSize: rem(13.5),
-          padding: `${rem(9)} ${rem(14)}`,
+          fontSize: rem(11.5),
+          padding: `${rem(5)} ${rem(10)}`,
+          whiteSpace: "nowrap",
         },
       },
     },

@@ -1,8 +1,8 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Box, Text, Button, Modal, Group, ThemeIcon, Badge, useMantineTheme } from "@mantine/core";
+import { Box, Text, Button, Modal, Group, ThemeIcon, Badge, useMantineTheme, ScrollArea, UnstyledButton } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { IconX, IconMinus, IconBuildingBank, IconCheck, IconCalculator } from "@tabler/icons-react";
+import { IconX, IconMinus, IconBuildingBank, IconCheck, IconCalculator, IconChevronRight } from "@tabler/icons-react";
 
 import { createLoan, getLoanById, updateLoan, getReapymentScheduleById } from "../../../api/loanApi";
 import { calcEmi, buildAmortization, getTodayDate } from "../../../utils/loanCalculations";
@@ -266,19 +266,28 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
       radius="lg"
       closeOnClickOutside={false}
       closeOnEscape={false}
-      styles={{
+       styles={{
         content: {
-          height: "95vh",
           maxHeight: "95vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         },
         body: {
-          height: "100%",
           padding: 0,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+          flex: 1,
+          overflow: "hidden",
         },
       }}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Box className="flex flex-col h-full">
+      <form
+        onSubmit={form.onSubmit(handleSubmit)}
+        style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}
+      >
+        <Box className="flex flex-col flex-1 min-h-0">
           {/* Header */}
           <Box
             className="px-6 py-4 flex justify-between items-center rounded-t-md shrink-0"
@@ -335,59 +344,88 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
             </Group>
           </Box>
 
-          {/* Stepper */}
-          <Box className="px-6 pt-4 pb-3 bg-white shrink-0">
-            <div className="flex items-center overflow-x-auto w-full">
-              {TAB_ITEMS.map((tab, idx) => {
-                const isActive = idx === activeTabIndex;
-                const isComplete = idx < activeTabIndex;
-                const StepIcon = tab.icon;
-                return (
-                  <Fragment key={tab.value}>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab(tab.value)}
-                      className="flex items-center gap-2 shrink-0 rounded-xl px-3 py-2 transition-colors"
-                      style={{
-                        background: isActive ? "var(--mantine-color-brand-0)" : "transparent",
-                      }}
-                    >
-                      <ThemeIcon
-                        size={30}
-                        radius="xl"
-                        variant={isActive || isComplete ? "filled" : "light"}
-                        color={isActive || isComplete ? "brand" : "slate"}
-                      >
-                        {isComplete ? <IconCheck size={14} /> : <StepIcon size={14} />}
-                      </ThemeIcon>
-                      <Text
-                        size="sm"
-                        fw={700}
-                        c={isActive ? "brand.7" : isComplete ? "slate.7" : "slate.4"}
-                        className="whitespace-nowrap"
-                      >
-                        {tab.label}
-                      </Text>
-                    </button>
-                    {idx < TAB_ITEMS.length - 1 && (
-                      <div
-                        className="flex-1 min-w-[1.5rem] h-[2px] mx-2 rounded-full transition-colors"
+          <Box
+            px="md"
+            py={8}
+            style={{
+              borderBottom: "1px solid var(--mantine-color-slate-2)",
+              flexShrink: 0,
+            }}
+            bg="slate.0"
+          >
+            <ScrollArea type="auto" scrollbarSize={4} offsetScrollbars={false}>
+              <Group gap={18} wrap="nowrap">
+                {TAB_ITEMS.map((tab, idx) => {
+                  const isActive = idx === activeTabIndex;
+                  const isComplete = idx < activeTabIndex;
+                  const StepIcon = tab.icon;
+                  return (
+                    <Group key={tab.value} gap={18} wrap="nowrap">
+                      <UnstyledButton
+                        type="button"
+                        onClick={() => setActiveTab(tab.value)}
+                        px={14}
+                        py={7}
                         style={{
-                          background: isComplete
-                            ? "var(--mantine-color-brand-4)"
-                            : "var(--mantine-color-slate-2)",
+                          borderRadius: "var(--mantine-radius-sm)",
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
+                          background: isActive
+                            ? "var(--mantine-color-white)"
+                            : "transparent",
+                          boxShadow: isActive ? "var(--mantine-shadow-sm)" : "none",
+                          border: isActive
+                            ? "1px solid var(--mantine-color-slate-2)"
+                            : "1px solid transparent",
+                          transition:
+                            "background-color 120ms ease, box-shadow 120ms ease",
                         }}
-                      />
-                    )}
-                  </Fragment>
-                );
-              })}
-            </div>
+                      >
+                        <Group gap={6} wrap="nowrap">
+                          <ThemeIcon
+                            radius="xl"
+                            size={20}
+                            variant={isActive || isComplete ? "filled" : "outline"}
+                            color={isActive || isComplete ? "brand" : "slate"}
+                            style={{ flexShrink: 0 }}
+                          >
+                            {isComplete ? (
+                              <IconCheck size={10} />
+                            ) : (
+                              <StepIcon size={10} />
+                            )}
+                          </ThemeIcon>
+                          <Text
+                            size="xs"
+                            fw={isActive ? 700 : 500}
+                            c={
+                              isActive
+                                ? "brand.7"
+                                : isComplete
+                                  ? "slate.7"
+                                  : "slate.5"
+                            }
+                            style={{ whiteSpace: "nowrap" }}
+                          >
+                            {tab.label}
+                          </Text>
+                        </Group>
+                      </UnstyledButton>
+                      {idx < TAB_ITEMS.length - 1 && (
+                        <IconChevronRight
+                          size={11}
+                          color="var(--mantine-color-slate-3)"
+                          style={{ flexShrink: 0 }}
+                        />
+                      )}
+                    </Group>
+                  );
+                })}
+              </Group>
+            </ScrollArea>
           </Box>
 
-          {/* Body — one shared scroll region, so the summary panel on the
-             right always matches the height of the active tab's content
-             instead of clipping inside its own short scrollbar. */}
+
           <fieldset
             disabled={isViewMode}
             className="flex-1 flex flex-col lg:flex-row overflow-y-auto bg-white border-0 p-0 m-0 min-w-0 min-h-0"
