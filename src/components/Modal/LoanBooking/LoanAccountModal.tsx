@@ -312,7 +312,7 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
                   {loanId ? (isViewMode ? "View Loan Booking" : "Update Loan Booking") : "New Loan Booking"}
                 </Text>
                 <Text size="xs" c="brand.1" className="leading-tight truncate">
-                  Lending Operations{loanId ? ` · Account ${loanId}` : ""}
+                 {loanId ? ` · Account ${loanId}` : ""}
                 </Text>
               </div>
             </Group>
