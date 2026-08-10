@@ -1,12 +1,22 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
-import { getLoanWriteOffs, getLoanWriteOffById, deleteLoanWriteOff,updateLoanWriteOffStatus} from "../../../api/lendingOperation/writeoff";
-import type { LoanWriteOffListItem, LoanWriteOffDetail, } from "../../../types/loanWriteOff";
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  getLoanWriteOffs,
+  getLoanWriteOffById,
+  deleteLoanWriteOff,
+  updateLoanWriteOffStatus,
+} from '../../../api/lendingOperation/writeoff';
+import type { LoanWriteOffListItem, LoanWriteOffDetail } from '../../../types/loanWriteOff';
+import {
+  showSuccess,
+  showApiError,
+  showConfirm,
+} from '../../../utils/alert'; // <-- adjust path to wherever you keep showSuccess/showApiError/showConfirm
 
 import {
   Box,
   Button,
   TextInput,
-  Select,
   Group,
   Paper,
   Table,
@@ -15,149 +25,170 @@ import {
   Pagination,
   Tooltip,
   Title,
-   Menu, 
+  Select,
+  Stack,
+  Loader,
+  Menu,
+  useMantineTheme,
 } from '@mantine/core';
 import {
   IconEye,
   IconPencil,
+  IconTrash,
   IconPlus,
   IconChevronUp,
   IconChevronDown,
   IconSelector,
   IconSearch,
   IconFileOff,
-  IconTrash,
-  IconDotsVertical,  
-  IconCheck,         
-  IconSend, 
+  IconDotsVertical,
+  IconCheck,
+  IconSend,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getPaginationRowModel,
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { LoanWriteOffModal, type LoanWriteOffFormData } from '../../../components/Modal/LoanWriteOffModal';
-
+import { LoanWriteOffModal } from '../../../components/Modal/LoanWriteOffModal';
 
 const columnHelper = createColumnHelper<LoanWriteOffListItem>();
 
-function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
-  if (sorted === 'asc') return <IconChevronUp size={12} />;
-  if (sorted === 'desc') return <IconChevronDown size={12} />;
-  return <IconSelector size={12} className="opacity-40" />;
+function SortIcon({ sorted }: { sorted: string | boolean }) {
+  const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
+  if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
+  if (sorted === 'desc') return <IconChevronDown size={12} color={color} />;
+  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
-
-function classificationColor(classification: string) {
-  if (classification === 'Sub-Standard') return 'yellow';
-  if (classification === 'Doubtful') return 'orange';
-  if (classification === 'Loss') return 'red';
-  return 'gray';
-}
+const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function LoanWriteOff() {
+  const theme = useMantineTheme();
+  const queryClient = useQueryClient();
   const [opened, { open, close }] = useDisclosure(false);
-  const [editData, setEditData] = useState<LoanWriteOffDetail | null>(null);
 
-  // filter state
+  const [editData, setEditData] = useState<LoanWriteOffDetail | null>(null);
   const [search, setSearch] = useState('');
 
-
-  // table state
-  const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
+  const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([
+    { id: 'posting_date', desc: true },
+  ]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  const [rowsData, setRowsData] = useState<LoanWriteOffListItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [apiPagination, setApiPagination] = useState({ total: 0, total_pages: 1 });
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
- const fetchData = useCallback(async () => {
-  setLoading(true);
-   try {
-     const res = await getLoanWriteOffs({
-       page: pagination.pageIndex + 1,
-       page_size: pagination.pageSize,
-       search,
-     });
-     setRowsData(Array.isArray(res?.data) ? res.data : []);
-     setApiPagination({
-       total: res?.pagination?.total ?? 0,
-       total_pages: res?.pagination?.total_pages ?? 1,
-     });
-   } catch (err) {
-     console.error(err);
-     setRowsData([]);
-   } finally {
-     setLoading(false);
-   }
- }, [pagination.pageIndex, pagination.pageSize, search]);
+  const { data: writeOffResponse, isLoading, isError } = useQuery({
+    queryKey: ['loan-write-offs', pagination.pageIndex, pagination.pageSize, search],
+    queryFn: () =>
+      getLoanWriteOffs({
+        page: pagination.pageIndex + 1,
+        page_size: pagination.pageSize,
+        search: search || undefined,
+      }),
+    placeholderData: (prev) => prev,
+  });
 
- useEffect(() => {
-   fetchData();
- }, [fetchData]);
+  const filteredData: LoanWriteOffListItem[] = writeOffResponse?.data ?? [];
+  const serverPagination = writeOffResponse?.pagination;
 
-  const filteredData = useMemo(() => rowsData, [rowsData]);
+  /* ---------------- mutations ---------------- */
 
-  const handleAddWriteOff = () => {
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
-     fetchData();
+  const deleteMutation = useMutation({
+    mutationFn: deleteLoanWriteOff,
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ['loan-write-offs'] });
+      showSuccess(`Write-off "${id}" deleted successfully.`);
+    },
+    onError: () => {
+      showApiError('Failed to delete the write-off. Please try again.');
+    },
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'approved' | 'submitted' }) =>
+      updateLoanWriteOffStatus(id, action),
+    onSuccess: (_data, { action }) => {
+      queryClient.invalidateQueries({ queryKey: ['loan-write-offs'] });
+      showSuccess(
+        action === 'approved' ? 'Write-off approved successfully.' : 'Write-off submitted successfully.'
+      );
+    },
+    onError: (_err, { action }) => {
+      showApiError(`Failed to ${action === 'approved' ? 'approve' : 'submit'} the write-off.`);
+    },
+  });
+
+  /* ---------------- handlers ---------------- */
+
+  const handleAddClick = () => {
+    setEditData(null);
+    open();
   };
+
   const handleEditClick = async (id: string) => {
     try {
       const detail = await getLoanWriteOffById(id);
       setEditData(detail);
       open();
     } catch (err) {
-      console.error(err);
+      showApiError('Failed to load write-off details.');
     }
   };
+
   const handleDeleteClick = async (id: string) => {
-    const confirmed = window.confirm(`Are you sure you want to delete write-off "${id}"?`);
+    const confirmed = await showConfirm(
+      `Are you sure you want to delete write-off "${id}"? This cannot be undone.`,
+      { title: 'Delete write-off' }
+    );
     if (!confirmed) return;
-
-    try {
-      setDeletingId(id);
-      await deleteLoanWriteOff(id);
-       await fetchData();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setDeletingId(null);
-    }
+    deleteMutation.mutate(id);
   };
-  const handleStatusChange = async (id: string, action: "approved" | "submitted") => {
-  try {
-    setStatusUpdatingId(id);
-    await updateLoanWriteOffStatus(id, action);
 
-    await fetchData();
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setStatusUpdatingId(null);
-  }
-};
+  const handleStatusChange = (id: string, action: 'approved' | 'submitted') => {
+    statusMutation.mutate({ id, action });
+  };
+
+  const handleModalSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['loan-write-offs'] });
+    showSuccess(editData ? 'Write-off updated successfully.' : 'Write-off created successfully.');
+    close();
+    setEditData(null);
+  };
+
+  /* ---------------- columns ---------------- */
 
   const columns = useMemo(
     () => [
       columnHelper.accessor('name', {
         header: 'Write-off ID',
         cell: (info) => (
-          <Text fz="xs" fw={600} c="gray.9" className="font-mono">
-            {info.getValue()}
-          </Text>
+          <Group gap={10} wrap="nowrap">
+            <Box
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 'var(--mantine-radius-md)',
+                background: 'var(--mantine-color-brand-0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <IconFileOff size={15} color="var(--mantine-color-brand-6)" />
+            </Box>
+            <Text fz="sm" fw={700} c="slate.8">
+              {info.getValue()}
+            </Text>
+          </Group>
         ),
       }),
       columnHelper.accessor('loan', {
         header: 'Loan A/c',
         cell: (info) => (
-          <Text fz="xs" fw={600} c="gray.9" className="font-mono">
+          <Text fz="xs" fw={600} c="slate.7">
             {info.getValue()}
           </Text>
         ),
@@ -165,7 +196,7 @@ export function LoanWriteOff() {
       columnHelper.accessor('applicant', {
         header: 'Applicant',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
+          <Text fz="xs" c="slate.6">
             {info.getValue()}
           </Text>
         ),
@@ -173,7 +204,7 @@ export function LoanWriteOff() {
       columnHelper.accessor('loan_product', {
         header: 'Loan Product',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
+          <Text fz="xs" c="slate.6">
             {info.getValue()}
           </Text>
         ),
@@ -181,7 +212,7 @@ export function LoanWriteOff() {
       columnHelper.accessor('write_off_amount', {
         header: 'Write-off Amount',
         cell: (info) => (
-          <Text fz="xs" fw={600} c="gray.9" className="font-mono">
+          <Text fz="xs" fw={700} c="slate.8">
             ₹{Number(info.getValue()).toLocaleString('en-IN')}
           </Text>
         ),
@@ -189,7 +220,7 @@ export function LoanWriteOff() {
       columnHelper.accessor('posting_date', {
         header: 'Posting Date',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
+          <Text fz="xs" c="slate.6">
             {info.getValue()}
           </Text>
         ),
@@ -204,9 +235,9 @@ export function LoanWriteOff() {
         cell: (info) => {
           const row = info.row.original;
           return (
-            <Group justify="flex-end" gap={6} wrap="nowrap">
+            <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="gray">
+                <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -214,118 +245,146 @@ export function LoanWriteOff() {
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="blue"
+                  color="brand"
+                  radius="md"
                   onClick={() => handleEditClick(row.name)}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
-              
               <Tooltip label="Delete" withArrow>
-  <ActionIcon
-    size="sm"
-    variant="subtle"
-    color="red"
-    loading={deletingId === row.name}
-    onClick={() => handleDeleteClick(row.name)}
-  >
-    <IconTrash size={14} />
-  </ActionIcon>
-</Tooltip>
-<Menu shadow="md" width={160} position="bottom-end" withinPortal>
-  <Menu.Target>
-    <ActionIcon
-      size="sm"
-      variant="subtle"
-      color="gray"
-      loading={statusUpdatingId === row.name}
-    >
-      <IconDotsVertical size={14} />
-    </ActionIcon>
-  </Menu.Target>
-  <Menu.Dropdown>
-    <Menu.Item
-      leftSection={<IconSend size={14} />}
-      onClick={() => handleStatusChange(row.name, "submitted")}
-    >
-      Submit
-    </Menu.Item>
-    <Menu.Item
-      leftSection={<IconCheck size={14} />}
-      onClick={() => handleStatusChange(row.name, "approved")}
-    >
-      Approve
-    </Menu.Item>
-  </Menu.Dropdown>
-</Menu>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="danger"
+                  radius="md"
+                  loading={deleteMutation.isPending && deleteMutation.variables === row.name}
+                  onClick={() => handleDeleteClick(row.name)}
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Menu shadow="md" width={160} position="bottom-end" withinPortal radius="md">
+                <Menu.Target>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="slate"
+                    radius="md"
+                    loading={statusMutation.isPending && statusMutation.variables?.id === row.name}
+                  >
+                    <IconDotsVertical size={14} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<IconSend size={14} />}
+                    onClick={() => handleStatusChange(row.name, 'submitted')}
+                  >
+                    Submit
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<IconCheck size={14} />}
+                    onClick={() => handleStatusChange(row.name, 'approved')}
+                  >
+                    Approve
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
             </Group>
           );
         },
       }),
     ],
-    []
+    [deleteMutation.isPending, deleteMutation.variables, statusMutation.isPending, statusMutation.variables]
   );
 
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting },
+    state: { sorting, pagination },
     onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     manualPagination: true,
+    pageCount: serverPagination?.total_pages ?? 1,
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = apiPagination.total;
+  const totalRows = serverPagination?.total ?? 0;
   const { pageIndex, pageSize } = pagination;
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
-  const resetFilters = () => {
-    setSearch('');
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
-  };
-
-
   return (
-    <Box className="flex flex-col gap-4 p-8 mt-10">
+    <Stack gap="lg" p="lg">
       <LoanWriteOffModal
         opened={opened}
         onClose={() => {
           close();
           setEditData(null);
         }}
-        onSubmit={handleAddWriteOff}
+        onSubmit={handleModalSuccess}
         editData={editData}
       />
 
-      {/* Header & Add Button */}
-      <div className="flex justify-between items-center">
-        <Title order={2} className="text-gray-900 font-semibold">
-          Loan Write-offs
-        </Title>
-        <Button
-          size="xs"
-          onClick={() => {
-            setEditData(null);
-            open();
-          }}
-          className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 transition-opacity"
-          leftSection={<IconPlus size={14} />}
-        >
-          Write Off Loan
-        </Button>
-      </div>
+      {/* Scoped, purely visual — pulls from theme.other, mirrors FeeAndCharges.tsx */}
+      <style>{`
+        .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
+        .lms-row-actions { opacity: 1; }
+        .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+        .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
+        .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+        .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+      `}</style>
 
-      {/* Filters Box */}
-      <Paper withBorder radius="md" p="xs" className="shadow-sm">
-        <div className="flex items-center gap-3 flex-wrap">
+      {/* Header — icon tile + title on the left */}
+      <Group justify="space-between" align="center" wrap="wrap" gap="md">
+        <Group gap="sm" align="center">
+          <Box
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 'var(--mantine-radius-md)',
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadow,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <IconFileOff size={20} color="var(--mantine-color-white)" stroke={1.8} />
+          </Box>
+          <Stack gap={2}>
+            <Title order={2} c="slate.8" fw={700}>
+              Loan Write-offs
+            </Title>
+            <Text fz="sm" c="slate.5">
+              Manage and track loan write-off requests
+            </Text>
+          </Stack>
+        </Group>
+      </Group>
+
+      {/* Toolbar — pill search */}
+      <Paper
+        radius="xl"
+        p="xs"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        <Group gap="sm" wrap="wrap" align="center">
           <TextInput
-            size="xs"
-            placeholder="Loan A/c / Customer"
-            leftSection={<IconSearch size={13} />}
-            className="flex-1 min-w-[200px]"
+            className="lms-search"
+            size="sm"
+            radius="xl"
+            placeholder="Search Loan A/c / Customer"
+            leftSection={<IconSearch size={14} />}
+            style={{ flex: 1, minWidth: 220 }}
+            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
@@ -333,16 +392,41 @@ export function LoanWriteOff() {
             }}
           />
 
-          <Button size="xs" variant="default" className="ml-auto px-4" onClick={resetFilters}>
-            Reset
-          </Button>
-        </div>
+          <Group gap="xs" ml="auto">
+            <Button
+              size="sm"
+              radius="xl"
+              color="brand"
+              onClick={handleAddClick}
+              leftSection={<IconPlus size={14} />}
+              style={{
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
+              }}
+            >
+              Write Off Loan
+            </Button>
+          </Group>
+        </Group>
       </Paper>
 
-      {/* Data Table */}
-      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
-        <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full">
-          <Table.Thead className="bg-gray-50 border-b border-gray-200">
+      {/* Data Table — floating rounded row-cards on a soft canvas */}
+      <Paper
+        radius="lg"
+        p="sm"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        <Table
+          verticalSpacing="sm"
+          horizontalSpacing="sm"
+          fz="xs"
+          w="100%"
+          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+        >
+          <Table.Thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <Table.Tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -350,13 +434,21 @@ export function LoanWriteOff() {
                   return (
                     <Table.Th
                       key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${canSort ? 'cursor-pointer' : ''
-                        }`}
-                      style={{ fontSize: 11, padding: '6px 10px' }}
+                      c="slate.5"
+                      fw={700}
+                      style={{
+                        fontSize: 'var(--mantine-font-size-xs)',
+                        padding: '0 10px 6px',
+                        userSelect: 'none',
+                        cursor: canSort ? 'pointer' : 'default',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        border: 'none',
+                      }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <Group
-                        gap={4}
+                        gap="xs"
                         wrap="nowrap"
                         justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
                       >
@@ -370,41 +462,81 @@ export function LoanWriteOff() {
             ))}
           </Table.Thead>
           <Table.Tbody>
-            {rows.length === 0 ? (
+            {isLoading ? (
               <Table.Tr>
-                <Table.Td colSpan={columns.length}>
-                  <div className="flex flex-col items-center py-8 text-gray-400">
-                    <IconFileOff size={32} className="mb-2 opacity-50" />
-                    <Text ta="center" c="dimmed" fz="xs">
-                      No write-offs match your filters.
+                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                  <Stack align="center" gap="xs" py="xl">
+                    <Loader size="sm" color="brand" />
+                    <Text ta="center" c="slate.5" fz="xs">
+                      Loading write-offs...
                     </Text>
-                  </div>
+                  </Stack>
+                </Table.Td>
+              </Table.Tr>
+            ) : isError ? (
+              <Table.Tr>
+                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                  <Text ta="center" c="danger" fz="xs" py="xl">
+                    Failed to load write-offs.
+                  </Text>
+                </Table.Td>
+              </Table.Tr>
+            ) : rows.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                  <Stack align="center" gap="xs" py="xl">
+                    <Box
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: '50%',
+                        background: 'var(--mantine-color-white)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid var(--mantine-color-slate-2)',
+                      }}
+                    >
+                      <IconFileOff size={26} color="var(--mantine-color-slate-4)" />
+                    </Box>
+                    <Text ta="center" c="slate.5" fz="xs">
+                      No write-offs match your search.
+                    </Text>
+                  </Stack>
                 </Table.Td>
               </Table.Tr>
             ) : (
-              rows.map((row) => (
-                <Table.Tr
-                  key={row.id}
-                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <Table.Td key={cell.id} style={{ padding: '5px 10px' }}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </Table.Td>
-                  ))}
-                </Table.Tr>
-              ))
+              rows.map((row) => {
+                const cells = row.getVisibleCells();
+                return (
+                  <Table.Tr key={row.id} className="lms-row">
+                    {cells.map((cell, idx) => (
+                      <Table.Td
+                        key={cell.id}
+                        style={{
+                          padding: '10px 10px',
+                          border: 'none',
+                          boxShadow: 'var(--mantine-shadow-xs)',
+                          borderLeft: idx === 0 ? '3px solid var(--mantine-color-brand-4)' : undefined,
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </Table.Td>
+                    ))}
+                  </Table.Tr>
+                );
+              })
             )}
           </Table.Tbody>
         </Table>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+        <Group justify="space-between" px="sm" pt="xs">
+          <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
             <span>
               {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
             </span>
-            <div className="flex items-center gap-1.5">
+            <Group gap="xs">
               <span>Rows:</span>
               <Select
                 data={['10', '20', '50']}
@@ -412,20 +544,22 @@ export function LoanWriteOff() {
                 onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
                 rightSection={chevronDown}
                 size="xs"
-                className="w-14"
+                radius="xl"
+                w={60}
               />
-            </div>
-          </div>
+            </Group>
+          </Group>
           <Pagination
-            total={apiPagination.total_pages || 1}
+            total={table.getPageCount() || 1}
             value={pageIndex + 1}
             onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-            color="indigo"
+            color="brand"
             size="xs"
-            radius="sm"
+            radius="xl"
+            disabled={totalRows === 0}
           />
-        </div>
+        </Group>
       </Paper>
-    </Box>
+    </Stack>
   );
 }

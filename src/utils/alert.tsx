@@ -3,12 +3,6 @@ import { modals } from '@mantine/modals';
 import { ThemeIcon } from '@mantine/core';
 import { IconCheck, IconX, IconAlertTriangle } from '@tabler/icons-react';
 import React from 'react';
-
-/* ---------------------------------------------------------
-   Toast variants — using Mantine's built-in `color` prop,
-   no custom CSS injection needed.
---------------------------------------------------------- */
-
 /** Success toast */
 export function showSuccess(message: string, title: string = 'Success') {
   notifications.show({
