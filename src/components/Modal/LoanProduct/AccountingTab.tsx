@@ -89,7 +89,7 @@ export function AccountingTab({
             </div>
           ))}
         </div>
-        <div className="mt-3.5 pt-3.5 border-t border-slate-100">
+        {/* <div className="mt-3.5 pt-3.5 border-t border-slate-100">
           <AsyncAccountSelect
             fetchFn={getAllIPAccounts} // Or getAllIncomeAccounts if preferred
             queryKeyPrefix="ipAccs"
@@ -104,7 +104,7 @@ export function AccountingTab({
             classNames={fieldLabelProps}
             className="max-w-md"
           />
-        </div>
+        </div> */}
       </SubSection>
 
       <SubSection title="General Accounts" icon={IconFileText} last>

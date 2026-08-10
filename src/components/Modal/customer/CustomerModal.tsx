@@ -38,7 +38,8 @@ import { KycStep } from "./steps/KycStep";
 import { DocumentsStep } from "./steps/DocumentsStep";
 import { KinStep } from "./steps/KinStep";
 import { TagsStep } from "./steps/TagsStep";
-
+import { ModalFooter } from "../../shared/ModalFooter";
+import { showApiError, showSuccess, showValidationError } from "../../../utils/alert";
 interface CustomerModalProps {
   opened: boolean;
   onClose: () => void;
@@ -151,6 +152,20 @@ export function CustomerModal({
   const runCheck = (key: string) =>
     setKycStatus((prev) => ({ ...prev, [key]: "Clear" }));
 
+
+  const handleCreateCustomer = () => {
+  if (!fullLegalName.trim() || !mobileNumber.trim()) {
+    showValidationError("Please fill in all required fields before submitting.");
+    return;
+  }
+
+  try {
+    showSuccess("Customer created successfully.");
+    handleModalClose();
+  } catch (err) {
+    showApiError("Something went wrong while creating the customer.");
+  }
+};
   // --- Documents ---
   const [uploadedDocs, setUploadedDocs] = useState<Record<string, UploadedDoc>>({});
 
@@ -588,55 +603,33 @@ export function CustomerModal({
         </ScrollArea>
 
         {/* Footer */}
-        <Group
-          justify="space-between"
-          px="xl"
-          py="md"
-          style={{
-            borderTop: "1px solid var(--mantine-color-slate-2)",
-            flexShrink: 0,
-          }}
-        >
-          <Group gap="md">
-            <Button variant="subtle" color="slate" onClick={handleModalClose}>
-              {isViewMode ? "Close" : "Cancel"}
-            </Button>
-            {!isViewMode && (
-              <>
-                <Divider orientation="vertical" color="slate.2" />
-                <Button variant="subtle" color="danger" onClick={handleReset}>
-                  Reset Form
-                </Button>
-              </>
-            )}
-          </Group>
-
-          <Group gap="sm">
-            {currentStep > 0 && (
-              <Button variant="default" onClick={handleBack} px="lg">
-                Back
-              </Button>
-            )}
-            {currentStep < STEPS.length - 1 ? (
-              <GradientButton
-                px="xl"
-                onClick={handleNext}
-                rightSection={<IconArrowRight size={14} />}
-              >
-                {isViewMode ? "Next" : "Save & Continue"}
-              </GradientButton>
-            ) : (
-              !isViewMode && (
-                <GradientButton
-                  px="xl"
-                  rightSection={<IconCheck size={14} />}
-                >
-                  Create Customer
-                </GradientButton>
-              )
-            )}
-          </Group>
-        </Group>
+   <ModalFooter
+  variant="theme"
+  isViewMode={isViewMode}
+  onClose={handleModalClose}
+  leftSlot={
+    currentStep > 0 ? (
+      <Button variant="default" onClick={handleBack} px="lg">
+        Back
+      </Button>
+    ) : undefined
+  }
+  submitLabel={
+    currentStep < STEPS.length - 1
+      ? isViewMode
+        ? "Next"
+        : "Save & Continue"
+      : "Save"
+  }
+  onSubmit={
+    currentStep < STEPS.length - 1
+      ? handleNext
+      : isViewMode
+      ? undefined
+      : handleCreateCustomer
+  }
+  submitDisabled={isViewMode && currentStep === STEPS.length - 1}
+/>
       </Box>
     </Modal>
   );
