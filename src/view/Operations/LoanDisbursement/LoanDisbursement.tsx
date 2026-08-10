@@ -40,20 +40,17 @@ import {
 } from '@tanstack/react-table';
 import { LoanDisbursementModal } from '../../../components/Modal/LoanDisbursementModal';
 import { getAllLoansDisbursement, deleteLoanDisbursement, changeLoanDsbrStatus } from '../../../api/loanDisbursementAPi';  
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { modals } from '@mantine/modals';
 interface DisbursementRow {
-  id: string;
+  id: string; // Maps to 'name'
   againstLoan: string;
   applicant: string;
-  applicantType: string;
-  company: string;
-  disbursementDate: string;
+  loanProduct: string;
+  postingDate: string;
   disbursedAmount: number;
-  modeOfPayment: string;
   status: string;
 }
-
 const columnHelper = createColumnHelper<DisbursementRow>();
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
@@ -66,7 +63,7 @@ const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
 
 export function LoanDisbursement() {
   const [opened, { open, close }] = useDisclosure(false);
-
+const queryClient = useQueryClient();
  const [editId, setEditId] = useState<string | null>(null);
  const [isView, setIsView] = useState(false);
   const [editData, setEditData] = useState<any>(null);
@@ -78,56 +75,32 @@ export function LoanDisbursement() {
   // Table state
   const [sorting, setSorting] = useState([{ id: 'disbursementDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const { 
+    data: res, 
+    isLoading, 
+    error: queryError, 
+    refetch: fetchDisbursements  
+  } = useQuery({
+    queryKey: ['loanDisbursements'],
+    queryFn: getAllLoansDisbursement,
+  });
 
-  // Data state
-  const [rowsData, setRowsData] = useState<DisbursementRow[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const error = queryError ? (queryError as any)?.message || 'Failed to fetch loan disbursements.' : null;
 
-  const fetchDisbursements = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await getAllLoansDisbursement();
-      const list = Array.isArray(res?.data) ? res.data : [];
-      
-      const mappedData: DisbursementRow[] = list.map((item: any) => ({
-        id: item.name || '',
-        againstLoan: item.against_loan || '—',
-        applicant: item.applicant || '—',
-        applicantType: '—', // Not provided by current API response
-        company: item.company || '—',
-        disbursementDate: item.posting_date || '—',
-        disbursedAmount: Number(item.disbursed_amount) || 0,
-        modeOfPayment: '—', // Not provided by current API response
-        status: item.status || 'Pending',
-      }));
-      
-      setRowsData(mappedData);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to fetch loan disbursements.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+ const rowsData: DisbursementRow[] = useMemo(() => {
+    const list = Array.isArray(res?.data) ? res.data : [];
+    
+    return list.map((item: any) => ({
+      id: item.name || '',
+      againstLoan: item.against_loan || '—',
+      applicant: item.applicant || '—',
+      loanProduct: item.loan_product || '—',
+      postingDate: item.posting_date || '—',
+      disbursedAmount: Number(item.disbursed_amount) || 0,
+      status: item.status || 'Pending',
+    }));
+  }, [res]);
 
-  useEffect(() => {
-    fetchDisbursements();
-  }, [fetchDisbursements]);
-
-  // const deleteMutation = useMutation({
-  //   mutationFn: deleteLoanDisbursement,
-  //   onSuccess: () => {
-  //     fetchDisbursements();
-  //   },
-  // });
-
-  // const statusMutation = useMutation({
-  //   mutationFn: ({ id, action }: { id: string; action: string }) => changeLoanDsbrStatus(id, action),
-  //   onSuccess: () => {
-  //     fetchDisbursements();
-  //   },
-  // });
   const deleteMutation = useMutation({
     mutationFn: deleteLoanDisbursement,
     onSuccess: () => {
@@ -191,31 +164,24 @@ export function LoanDisbursement() {
     },
   });
 
-  const filteredData = useMemo(() => {
+const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rowsData.filter((r) => {
       const matchesSearch =
         !q ||
         r.applicant.toLowerCase().includes(q) ||
-        r.againstLoan.toLowerCase().includes(q);
-      const matchesType = !applicantType || r.applicantType === applicantType;
-      const matchesCompany = !company || r.company === company;
-      
-      // Adapted to match 'Submitted' API status as the default active state for filters
+        r.againstLoan.toLowerCase().includes(q) ||
+        r.id.toLowerCase().includes(q); // Added search by ID (name)
+        
       const matchesStatus = 
         status === 'all' || 
         (status === 'SUBMITTED' && r.status.toUpperCase() === 'SUBMITTED') ||
         (status === 'PENDING' && r.status.toUpperCase() !== 'SUBMITTED');
         
-      return matchesSearch && matchesType && matchesCompany && matchesStatus;
+      return matchesSearch && matchesStatus;
     });
-  }, [rowsData, search, applicantType, company, status]);
-
-  const handleDelete = (id: string) => {
-    // Note: Local state filter only. Wire this up to your delete API when ready.
-    setRowsData((prev) => prev.filter((r) => r.id !== id));
-  };
-
+  }, [rowsData, search, status]);
+ 
   const handleAdd = () => {
     setEditId(null);
     setEditData(null);
@@ -224,12 +190,14 @@ export function LoanDisbursement() {
   };
 
   const handleEdit = (row: DisbursementRow) => {
+    queryClient.invalidateQueries({ queryKey: ["loanDisbursement", row.id] });
     setEditId(row.id);
     setEditData(row); 
     setIsView(false);
     open();
   };
   const handleView = (row: DisbursementRow) => {
+    queryClient.invalidateQueries({ queryKey: ["loanDisbursement", row.id] });
     setEditId(row.id);
     setIsView(true);
     open();
@@ -242,8 +210,16 @@ export function LoanDisbursement() {
     close();
   };
 
-  const columns = useMemo(
+ const columns = useMemo(
     () => [
+      columnHelper.accessor('id', {
+        header: 'Disbursement Ref.',
+        cell: (info) => (
+          <Text fz="xs" fw={600} c="gray.9" className="font-mono">
+            {info.getValue()}
+          </Text>
+        ),
+      }),
       columnHelper.accessor('againstLoan', {
         header: 'Loan Ref.',
         cell: (info) => (
@@ -260,29 +236,21 @@ export function LoanDisbursement() {
           </Text>
         ),
       }),
-      columnHelper.accessor('applicantType', {
-        header: 'Type',
+      columnHelper.accessor('loanProduct', {
+        header: 'Loan Product',
         cell: (info) => (
           <Badge
             variant="light"
             size="sm"
-            color={info.getValue() === 'Employee' ? 'indigo' : info.getValue() === 'Vendor' ? 'orange' : 'gray'}
+            color="indigo"
             styles={{ root: { fontSize: 10, padding: '0 8px' } }}
           >
             {info.getValue()}
           </Badge>
         ),
       }),
-      columnHelper.accessor('company', {
-        header: 'Company',
-        cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            {info.getValue()}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor('disbursementDate', {
-        header: 'Disbursement Date',
+      columnHelper.accessor('postingDate', {
+        header: 'Posting Date',
         cell: (info) => (
           <Text fz="xs" c="gray.6">
             {info.getValue()}
@@ -294,14 +262,6 @@ export function LoanDisbursement() {
         cell: (info) => (
           <Text fz="xs" fw={600} c="gray.9" className="font-mono">
             ₹{info.getValue().toLocaleString('en-IN')}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor('modeOfPayment', {
-        header: 'Mode Of Payment',
-        cell: (info) => (
-          <Text fz="xs" c="gray.6">
-            {info.getValue()}
           </Text>
         ),
       }),
@@ -330,32 +290,34 @@ export function LoanDisbursement() {
             Actions
           </Text>
         ),
-        cell: (info) => {
+       cell: (info) => {
           const row = info.row.original;
-          
-          // Determine if the record is in a draft state (adjust 'Draft' based on your exact API status string)
-          const isDraft = row.status === 'Draft'; 
+          const isDraft = row.status === 'Draft';
+          const isCancelled = row.status === 'Cancelled';
           const isDeleting = deleteMutation.isPending && deleteMutation.variables === row.id;
+
+          // Allow deletion if it's Draft OR Cancelled
+          const canDelete = isDraft || isCancelled; 
 
           return (
             <Group justify="flex-end" gap={6} wrap="nowrap">
-             <Tooltip label="View" withArrow>
-                <ActionIcon 
-                  size="sm" 
-                  variant="subtle" 
+              <Tooltip label="View" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
                   color="gray"
-                  onClick={() => handleView(row)} 
+                  onClick={() => handleView(row)}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon 
-                  size="sm" 
-                  variant="subtle" 
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
                   color="blue"
                   onClick={() => handleEdit(row)}
-                  disabled={!isDraft} // Optional: Prevent editing if already submitted
+                  disabled={!isDraft}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -364,8 +326,8 @@ export function LoanDisbursement() {
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color={isDraft ? "red" : "gray"}
-                  disabled={!isDraft || isDeleting}
+                  color={canDelete ? "red" : "gray"}
+                  disabled={!canDelete || isDeleting}
                   loading={isDeleting}
                   onClick={() => {
                     modals.openConfirmModal({
@@ -387,33 +349,63 @@ export function LoanDisbursement() {
 
               <Menu shadow="md" width={140} position="bottom-end">
                 <Menu.Target>
-                  <ActionIcon size="sm" variant="subtle" color="gray" loading={statusMutation.isPending && statusMutation.variables?.id === row.id}>
+                  <ActionIcon 
+                    size="sm" 
+                    variant="subtle" 
+                    color="gray" 
+                    disabled={isCancelled} // <-- Disable menu button when cancelled
+                    loading={statusMutation.isPending && statusMutation.variables?.id === row.id}
+                  >
                     <IconDotsVertical size={14} />
                   </ActionIcon>
                 </Menu.Target>
                 <Menu.Dropdown>
                   {isDraft ? (
-                    <Menu.Item 
-                      onClick={() => statusMutation.mutate({ id: row.id, action: 'approved' })}
+                    <Menu.Item
+                      onClick={() => {
+                        modals.openConfirmModal({
+                          title: 'Submit loan disbursement',
+                          children: (
+                            <Text size="sm">
+                              Are you sure you want to submit loan disbursement <b>{row.id}</b> for approval?
+                            </Text>
+                          ),
+                          labels: { confirm: 'Submit', cancel: 'Cancel' },
+                          confirmProps: { color: 'green' },
+                          onConfirm: () => statusMutation.mutate({ id: row.id, action: 'approved' }),
+                        });
+                      }}
                     >
                       Submit
                     </Menu.Item>
-                  ) : (
-                    <Menu.Item 
-                      color="red" 
-                      onClick={() => statusMutation.mutate({ id: row.id, action: 'cancelled' })}
+                  ) : !isCancelled ? (
+                    <Menu.Item
+                      color="red"
+                      onClick={() => {
+                        modals.openConfirmModal({
+                          title: 'Cancel loan disbursement',
+                          children: (
+                            <Text size="sm">
+                              Are you sure you want to cancel loan disbursement <b>{row.id}</b>? This cannot be undone.
+                            </Text>
+                          ),
+                          labels: { confirm: 'Cancel', cancel: 'Back' },
+                          confirmProps: { color: 'red' },
+                          onConfirm: () => statusMutation.mutate({ id: row.id, action: 'cancelled' }),
+                        });
+                      }}
                     >
                       Cancel
                     </Menu.Item>
-                  )}
+                  ) : null}
                 </Menu.Dropdown>
               </Menu>
             </Group>
           );
-        },
+        }
       }),
     ],
-    []
+    [deleteMutation, statusMutation] // Added dependencies to prevent stale state issues
   );
 
   const table = useReactTable({
@@ -440,7 +432,7 @@ export function LoanDisbursement() {
     setStatus('all');
   };
 
-  const companyOptions = Array.from(new Set(rowsData.map((r) => r.company).filter(c => c !== '—')));
+  // const companyOptions = Array.from(new Set(rowsData.map((r) => r.company).filter(c => c !== '—')));
 
   return (
     <Box className="flex flex-col gap-4 p-8 mt-10">
@@ -462,11 +454,11 @@ export function LoanDisbursement() {
         </Button>
       </div>
 
-      {error && (
+      {/* {error && (
         <Alert color="red" icon={<IconAlertCircle size={16} />} withCloseButton onClose={() => setError(null)}>
           {error}
         </Alert>
-      )}
+      )} */}
 
       {/* Filters Box */}
       <Paper withBorder radius="md" p="xs" className="shadow-sm">
@@ -496,21 +488,6 @@ export function LoanDisbursement() {
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
-          <Select
-            size="xs"
-            placeholder="All Companies"
-            data={companyOptions}
-            className="w-40"
-            searchable
-            clearable
-            rightSection={chevronDown}
-            value={company}
-            onChange={(v) => {
-              setCompany(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          />
-
           <Radio.Group
             name="status"
             value={status}
