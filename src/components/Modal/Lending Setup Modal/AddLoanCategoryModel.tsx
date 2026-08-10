@@ -2,16 +2,15 @@ import { useEffect, useState } from "react";
 import {
   Box,
   Text,
-  Button,
   Modal,
   ActionIcon,
   ThemeIcon,
   Group,
   TextInput,
-  Stack,
 } from "@mantine/core";
 import { IconX, IconCategory, IconCheck } from "@tabler/icons-react";
-import { GradientButton } from "../../shared/customer/Shared";
+import { ModalFooter } from "../../shared/ModalFooter";
+import { showApiError, showSuccess } from "../../../utils/alert";
 
 export interface LoanCategoryFormData {
   code: string;
@@ -40,11 +39,13 @@ export function AddLoanCategoryModal({
 }: AddLoanCategoryModalProps) {
   const [form, setForm] = useState<LoanCategoryFormData>(initialState);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [errorMessage, setErrorMessage] = useState<string | undefined>();
 
   useEffect(() => {
     if (opened) {
       setForm(initialState);
       setErrors({});
+      setErrorMessage(undefined);
     }
   }, [opened]);
 
@@ -66,19 +67,30 @@ export function AddLoanCategoryModal({
   const handleClose = () => {
     setForm(initialState);
     setErrors({});
+    setErrorMessage(undefined);
     onClose();
   };
 
   const handleSubmit = async () => {
+    setErrorMessage(undefined);
     if (!validate()) return;
-    await onSave({ code: form.code.trim(), name: form.name.trim() });
+
+    try {
+      await onSave({ code: form.code.trim(), name: form.name.trim() });
+      showSuccess("Loan category created successfully.");
+      handleClose();
+    } catch (err: any) {
+      const msg = err?.message || "Failed to save the loan category. Please try again.";
+      setErrorMessage(msg);
+      showApiError(msg);
+    }
   };
 
   return (
     <Modal
       opened={opened}
       onClose={handleClose}
-      size={520}
+      size={600}
       padding={0}
       lockScroll
       styles={{
@@ -123,7 +135,7 @@ export function AddLoanCategoryModal({
 
         {/* Body */}
         <Box px="xl" py="lg" bg="slate.0">
-          <Stack gap="md">
+          <Group grow align="flex-start" gap="md">
             <TextInput
               label="Loan Category Code"
               withAsterisk
@@ -145,29 +157,18 @@ export function AddLoanCategoryModal({
               error={errors.name}
               styles={{ input: { border: "1px solid var(--mantine-color-slate-2)" } }}
             />
-          </Stack>
+          </Group>
         </Box>
 
         {/* Footer */}
-        <Group
-          justify="flex-end"
-          px="xl"
-          py="md"
-          gap="sm"
-          style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}
-        >
-          <Button variant="subtle" color="slate" onClick={handleClose}>
-            Cancel
-          </Button>
-          <GradientButton
-            px="xl"
-            onClick={handleSubmit}
-            loading={loading}
-            rightSection={!loading ? <IconCheck size={14} /> : undefined}
-          >
-            Save Category
-          </GradientButton>
-        </Group>
+        <ModalFooter
+          variant="theme"
+          onClose={handleClose}
+          onSubmit={handleSubmit}
+          submitLabel="Save"
+          submitLoading={loading}
+          errorMessage={errorMessage}
+        />
       </Box>
     </Modal>
   );

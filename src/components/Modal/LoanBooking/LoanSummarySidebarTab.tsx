@@ -1,22 +1,42 @@
-import { Text } from "@mantine/core";
-import { ANNUAL_RATE } from "./Constants";
+import { Text, Badge, Stack, Group, useMantineTheme } from "@mantine/core";
+
 
 function SummaryRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
-    <div className="flex justify-between items-center border-b border-dashed border-indigo-200/70 py-2">
-      <Text size="xs" className="text-indigo-700">
+    <Group
+      justify="space-between"
+      wrap="nowrap"
+      py={7}
+      style={{ borderBottom: "1px dashed var(--mantine-color-slate-2)" }}
+    >
+      <Text size="xs" c="slate.5">
         {label}
       </Text>
-      <Text size="xs" fw={bold ? 700 : 600} className="text-slate-900 font-mono">
+      <Text size="xs" fw={bold ? 700 : 600} c="slate.8" ff="monospace" ta="right">
         {value}
       </Text>
+    </Group>
+  );
+}
+
+function SummaryCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        background: "var(--mantine-color-white)",
+        border: "1px solid var(--mantine-color-slate-2)",
+        borderRadius: "var(--mantine-radius-lg)",
+        padding: "12px 14px",
+      }}
+    >
+      {children}
     </div>
   );
 }
 
 interface LoanSummarySidebarProps {
   productCode: string | null;
-  rateOfInterest: number,
+  rateOfInterest: number;
   summaryPrincipal: number;
   currency: string | null;
   tenureMonths: number;
@@ -43,58 +63,93 @@ export function LoanSummarySidebar({
   totalInterest,
   totalRepayment,
 }: LoanSummarySidebarProps) {
+  const theme = useMantineTheme();
+
   return (
-    <div className="w-full lg:w-[280px] border-t lg:border-t-0 lg:border-l border-slate-200 bg-gradient-to-b from-indigo-50/60 to-violet-50/60 p-5 shrink-0 overflow-y-auto">
-      <Text size="xs" fw={700} className="text-indigo-600 uppercase tracking-wide" style={{ fontSize: 10 }}>
-        Live Preview
-      </Text>
-      <div className="flex flex-col">
-        <SummaryRow label="Product" value={productCode || "—"} />
-        <SummaryRow
-          label="Principal"
-          value={summaryPrincipal ? `${summaryPrincipal.toLocaleString("en-US")} ${currency}` : "—"}
-          bold
-        />
-        <SummaryRow label="Interest Rate" value={`${rateOfInterest}% p.a.`} />
-        <SummaryRow label="Tenure" value={tenureMonths ? `${tenureMonths} months` : "—"} />
-        <SummaryRow label="Frequency" value={frequency || "—"} bold />
-        <SummaryRow label="Repayment Start" value={repaymentStartDate || "—"} />
-        <SummaryRow label="Maturity Date" value={maturityDate || "—"} />
-        <SummaryRow label="Moratorium" value={moratoriumType || "None"} bold />
-      </div>
+    <div
+      className="w-full lg:w-[300px] shrink-0"
+      style={{
+        borderTop: "1px solid var(--mantine-color-slate-2)",
+        background: theme.other.summaryPanelBg as string,
+      }}
+    >
 
-      <div className="bg-white rounded-md border border-slate-200 p-4 mt-4">
-        <Text size="xs" fw={700} className="text-slate-500 uppercase tracking-wide" style={{ fontSize: 10 }}>
-          Estimated EMI
-        </Text>
-        <Text size="xl" fw={800} className="text-slate-900 font-mono" style={{ fontSize: 26 }}>
-          {estimatedEmi ? estimatedEmi.toLocaleString("en-US", { minimumFractionDigits: 2 }) : "—"}
-        </Text>
-      </div>
+      <div className="lg:border-l h-full" style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+        <div className="p-5 flex flex-col gap-4">
+          
 
-      <div className="flex flex-col mt-3">
-        <SummaryRow
-          label="Total Interest"
-          value={
-            totalInterest
-              ? `${totalInterest.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${currency}`
-              : "—"
-          }
-        />
-        <SummaryRow
-          label="Total Repayment"
-          value={
-            totalRepayment
-              ? `${totalRepayment.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${currency}`
-              : "—"
-          }
-          bold
-        />
-      </div>
+          <SummaryCard>
+            <Stack gap={0}>
+              <SummaryRow label="Product" value={productCode || "—"} />
+              <SummaryRow
+                label="Principal"
+                value={summaryPrincipal ? `${summaryPrincipal.toLocaleString("en-US")} ${currency}` : "—"}
+                bold
+              />
+              <SummaryRow label="Interest Rate" value={`${rateOfInterest || 0}% p.a.`} />
+              <SummaryRow label="Tenure" value={tenureMonths ? `${tenureMonths} months` : "—"} />
+              <SummaryRow label="Frequency" value={frequency || "—"} bold />
+              <SummaryRow label="Repayment Start" value={repaymentStartDate || "—"} />
+              <SummaryRow label="Maturity Date" value={maturityDate || "—"} />
+              <div style={{ paddingBottom: 0 }}>
+                <Group justify="space-between" wrap="nowrap" py={7}>
+                  <Text size="xs" c="slate.5">
+                    Moratorium
+                  </Text>
+                  <Text size="xs" fw={700} c="slate.8" ta="right">
+                    {moratoriumType || "None"}
+                  </Text>
+                </Group>
+              </div>
+            </Stack>
+          </SummaryCard>
 
-      <Text size="xs" c="dimmed" className="mt-3 italic">
-        Figures are indicative and recalculate automatically. Final schedule is generated on save.
-      </Text>
+          <div
+            style={{
+              background: theme.other.brandGradient as string,
+              boxShadow: theme.other.brandGlowShadowSm as string,
+              borderRadius: "var(--mantine-radius-lg)",
+              padding: "16px 18px",
+            }}
+          >
+            <Text size="xxs" fw={700} c="brand.1" tt="uppercase" style={{ letterSpacing: "0.05em" }}>
+              Estimated EMI
+            </Text>
+            <Text fw={800} c="white" ff="monospace" style={{ fontSize: 28, lineHeight: 1.25, marginTop: 4 }}>
+              {estimatedEmi ? estimatedEmi.toLocaleString("en-US", { minimumFractionDigits: 2 }) : "—"}
+            </Text>
+          </div>
+
+          <SummaryCard>
+            <Stack gap={0}>
+              <SummaryRow
+                label="Total Interest"
+                value={
+                  totalInterest
+                    ? `${totalInterest.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${currency}`
+                    : "—"
+                }
+              />
+              <div style={{ paddingBottom: 0 }}>
+                <Group justify="space-between" wrap="nowrap" py={7}>
+                  <Text size="xs" c="slate.5">
+                    Total Repayment
+                  </Text>
+                  <Text size="xs" fw={700} c="slate.8" ff="monospace" ta="right">
+                    {totalRepayment
+                      ? `${totalRepayment.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${currency}`
+                      : "—"}
+                  </Text>
+                </Group>
+              </div>
+            </Stack>
+          </SummaryCard>
+
+          <Text size="xxs" c="slate.4" fs="italic">
+            Figures are indicative and recalculate automatically. Final schedule is generated on save.
+          </Text>
+        </div>
+      </div>
     </div>
   );
 }

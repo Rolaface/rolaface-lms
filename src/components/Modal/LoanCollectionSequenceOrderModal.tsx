@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import {
   ActionIcon,
   Box,
-  Button,
   Group,
   Modal,
   Paper,
@@ -11,8 +10,9 @@ import {
   TextInput,
   ThemeIcon,
 } from "@mantine/core";
-import { IconCheck, IconGripVertical, IconListNumbers, IconX } from "@tabler/icons-react";
-import { GradientButton } from "../shared/customer/Shared";
+import { IconGripVertical, IconListNumbers, IconX } from "@tabler/icons-react";
+import { showSuccess } from "../../utils/alert"
+import { ModalFooter } from "../shared/ModalFooter"; 
 
 export interface ComponentItem {
   id: string;
@@ -58,6 +58,7 @@ export function LoanCollectionSequenceOrderModal({
   const [sequenceName, setSequenceName] = useState("");
   const [components, setComponents] = useState<ComponentItem[]>(DEFAULT_COMPONENTS);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Drag and Drop Refs
   const dragItem = useRef<number | null>(null);
@@ -87,6 +88,16 @@ export function LoanCollectionSequenceOrderModal({
     setTimeout(() => {
       setDraggedIndex(null);
     }, 200);
+  };
+
+  const handleSave = () => {
+    setIsSaving(true);
+    // TODO: replace with actual save call
+    setTimeout(() => {
+      setIsSaving(false);
+      showSuccess("Collection sequence saved successfully.");
+      handleClose();
+    }, 600);
   };
 
   // Drag and Drop Handlers
@@ -129,7 +140,7 @@ export function LoanCollectionSequenceOrderModal({
       }}
     >
       <Box bg="white">
-        {/* Header — same brand.6 bar + ThemeIcon + close pattern as CustomerModal */}
+        {/* Header */}
         <Group
           justify="space-between"
           align="center"
@@ -274,26 +285,14 @@ export function LoanCollectionSequenceOrderModal({
         </Box>
 
         {/* Footer */}
-        <Group
-          justify="flex-end"
-          px="xl"
-          py="md"
-          gap="sm"
-          style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}
-        >
-          <Button variant="subtle" color="slate" onClick={handleClose}>
-            {isView ? "Close" : "Cancel"}
-          </Button>
-          {!isView && (
-            <GradientButton
-              px="xl"
-              onClick={handleClose}
-              rightSection={<IconCheck size={14} />}
-            >
-              Save Sequence
-            </GradientButton>
-          )}
-        </Group>
+        <ModalFooter
+          variant="theme"
+          isViewMode={isView}
+          onClose={handleClose}
+          onSubmit={handleSave}
+          submitLabel="Save "
+          submitLoading={isSaving}
+        />
       </Box>
     </Modal>
   );
