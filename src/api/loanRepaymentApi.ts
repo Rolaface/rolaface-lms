@@ -35,7 +35,7 @@ export async function deleteLoanRepayment(id: string) {
 }
 
 export async function changeLoanRepaymentStatus(id: string, action: string) {
-  const { data } = await apiClient.put(API.loanRepayment.updateStatus, {}, { params: { id, action } });
+  const { data } = await apiClient.post(API.loanRepayment.updateStatus, { id, action });
   return data;
 }
 
