@@ -25,7 +25,7 @@ import {
   IconPencil,
   IconPlus,
   IconChevronUp,
-  IconChevronDown,
+  IconChevronDown,IconFileInvoice,
   IconSelector,
   IconSearch,
   IconFileText,
@@ -417,7 +417,7 @@ export function LoanAccount() {
               justifyContent: 'center',
             }}
           >
-            <IconFileText size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconFileInvoice size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>

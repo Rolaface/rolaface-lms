@@ -1,11 +1,10 @@
-// LoanRepayment.tsx
 import { useMemo, useState } from 'react';
 import {
   Box,
   Button,
   TextInput,
   Select,
-  Radio,
+  SegmentedControl,
   Group,
   Paper,
   Table,
@@ -15,8 +14,10 @@ import {
   Pagination,
   Tooltip,
   Title,
+  Stack,
   Loader,
   Menu,
+  useMantineTheme,
 } from '@mantine/core';
 import {
   IconEye,
@@ -26,6 +27,7 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
+  IconCash,
   IconFileText,
   IconTrash,
   IconDotsVertical,
@@ -57,26 +59,63 @@ interface RepaymentRow {
   valueDate: string;
 }
 
+// Docstatus -> status badge meta, driven by theme semantic colors
+// (slate/info/danger) instead of raw Mantine color names, same tokens
+// LoanProduct.tsx uses for Active/Inactive.
 const STATUS_META: Record<number, { label: string; color: string }> = {
-  0: { label: 'DRAFT', color: 'gray' },
-  1: { label: 'SUBMITTED', color: 'blue' },
-  2: { label: 'CANCELLED', color: 'red' },
+  0: { label: 'DRAFT', color: 'slate' },
+  1: { label: 'SUBMITTED', color: 'info' },
+  2: { label: 'CANCELLED', color: 'danger' },
 };
 
 const columnHelper = createColumnHelper<RepaymentRow>();
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
-  if (sorted === 'asc') return <IconChevronUp size={12} />;
-  if (sorted === 'desc') return <IconChevronDown size={12} />;
-  return <IconSelector size={12} className="opacity-40" />;
+  const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
+  if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
+  if (sorted === 'desc') return <IconChevronDown size={12} color={color} />;
+  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-const chevronDown = <IconChevronDown size={14} className="opacity-60" />;
+// Same dot+badge pattern as LoanProduct's StatusBadge.
+function StatusBadge({ label, color }: { label: string; color: string }) {
+  return (
+    <Badge
+      variant="light"
+      color={color}
+      radius="xl"
+      size="sm"
+      styles={{
+        root: {
+          textTransform: 'none',
+          fontWeight: 700,
+          letterSpacing: 0.2,
+          paddingLeft: 8,
+          paddingRight: 10,
+          border: `1px solid var(--mantine-color-${color}-2)`,
+        },
+      }}
+      leftSection={
+        <Box
+          w={6}
+          h={6}
+          style={{ borderRadius: '50%', background: `var(--mantine-color-${color}-6)` }}
+        />
+      }
+    >
+      {label}
+    </Badge>
+  );
+}
 
+const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
+
+// Nature-of-payment -> badge color, mapped to theme semantic tokens
+// (info/warning/success) instead of raw blue/yellow/green.
 function natureColor(nature: RepaymentRow['natureOfPayment']) {
-  if (nature === 'PAY_DUES') return 'blue';
-  if (nature === 'PARTIAL') return 'yellow';
-  return 'green';
+  if (nature === 'PAY_DUES') return 'info';
+  if (nature === 'PARTIAL') return 'warning';
+  return 'success';
 }
 
 function natureLabel(nature: RepaymentRow['natureOfPayment']) {
@@ -92,6 +131,7 @@ const fmtDate = (iso: string) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
 export function LoanRepayment() {
+  const theme = useMantineTheme();
   const [opened, { open, close }] = useDisclosure(false);
 
   const [search, setSearch] = useState('');
@@ -116,72 +156,58 @@ export function LoanRepayment() {
 
   const queryClient = useQueryClient();
 
-  // const { mutate: removeRepayment, isPending: isDeleting } = useMutation({
-  //   mutationFn: (id: string) => deleteLoanRepayment(id),
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-  //   },
-  // });
-
-  // const { mutate: updateStatus } = useMutation({
-  //   mutationFn: ({ id, action }: { id: string; action: string }) =>
-  //     changeLoanRepaymentStatus(id, action),
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-  //   },
-  // });
   const { mutate: removeRepayment, isPending: isDeleting } = useMutation({
-  mutationFn: (id: string) => deleteLoanRepayment(id),
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-  },
-  onError: (error: any) => {
-  const errorMessage = parseFrappeError(error);
+    mutationFn: (id: string) => deleteLoanRepayment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+    },
+    onError: (error: any) => {
+      const errorMessage = parseFrappeError(error);
 
-  modals.open({
-    title: <Text fw={600} c="red">Action Failed</Text>,
-    children: (
-      <div>
-        <Text size="sm" mb="lg">
-          {errorMessage}
-        </Text>
-        <Group justify="flex-end">
-          <Button onClick={() => modals.closeAll()} variant="default">
-            Close
-          </Button>
-        </Group>
-      </div>
-    ),
+      modals.open({
+        title: <Text fw={600} c="danger">Action Failed</Text>,
+        children: (
+          <div>
+            <Text size="sm" mb="lg">
+              {errorMessage}
+            </Text>
+            <Group justify="flex-end">
+              <Button onClick={() => modals.closeAll()} variant="default">
+                Close
+              </Button>
+            </Group>
+          </div>
+        ),
+      });
+    },
   });
-},
-});
 
-const { mutate: updateStatus } = useMutation({
-  mutationFn: ({ id, action }: { id: string; action: string }) =>
-    changeLoanRepaymentStatus(id, action),
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-  },
- onError: (error: any) => {
-  const errorMessage = parseFrappeError(error);
+  const { mutate: updateStatus } = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: string }) =>
+      changeLoanRepaymentStatus(id, action),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+    },
+    onError: (error: any) => {
+      const errorMessage = parseFrappeError(error);
 
-  modals.open({
-    title: <Text fw={600} c="red">Action Failed</Text>,
-    children: (
-      <div>
-        <Text size="sm" mb="lg">
-          {errorMessage}
-        </Text>
-        <Group justify="flex-end">
-          <Button onClick={() => modals.closeAll()} variant="default">
-            Close
-          </Button>
-        </Group>
-      </div>
-    ),
+      modals.open({
+        title: <Text fw={600} c="danger">Action Failed</Text>,
+        children: (
+          <div>
+            <Text size="sm" mb="lg">
+              {errorMessage}
+            </Text>
+            <Group justify="flex-end">
+              <Button onClick={() => modals.closeAll()} variant="default">
+                Close
+              </Button>
+            </Group>
+          </div>
+        ),
+      });
+    },
   });
-},
-});
 
   const rowsData = useMemo(() => {
     const list = repaymentsResponse?.message?.data?.repayments ?? [];
@@ -220,7 +246,7 @@ const { mutate: updateStatus } = useMutation({
         </Text>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
-      confirmProps: { color: 'red' },
+      confirmProps: { color: 'danger' },
       onConfirm: () => removeRepayment(id),
     });
   };
@@ -230,7 +256,12 @@ const { mutate: updateStatus } = useMutation({
       columnHelper.accessor('loanAc', {
         header: 'Loan A/c',
         cell: (info) => (
-          <Text fz="xs" fw={600} c="gray.9" className="font-mono">
+          <Text
+            fz="sm"
+            fw={700}
+            c="slate.8"
+            style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}
+          >
             {info.getValue()}
           </Text>
         ),
@@ -238,7 +269,7 @@ const { mutate: updateStatus } = useMutation({
       columnHelper.accessor('customer', {
         header: 'Customer',
         cell: (info) => (
-          <Text fz="xs" fw={500} c="gray.9">
+          <Text fz="sm" fw={600} c="slate.8">
             {info.getValue()}
           </Text>
         ),
@@ -246,9 +277,15 @@ const { mutate: updateStatus } = useMutation({
       columnHelper.accessor('loanType', {
         header: 'Loan Type',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
+          <Badge
+            variant="light"
+            size="sm"
+            radius="sm"
+            color="brand"
+            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
+          >
             {info.getValue()}
-          </Text>
+          </Badge>
         ),
       }),
       columnHelper.accessor('natureOfPayment', {
@@ -257,6 +294,7 @@ const { mutate: updateStatus } = useMutation({
           <Badge
             variant="light"
             size="sm"
+            radius="sm"
             color={natureColor(info.getValue())}
             styles={{ root: { fontSize: 10, padding: '0 8px' } }}
           >
@@ -267,7 +305,7 @@ const { mutate: updateStatus } = useMutation({
       columnHelper.accessor('amountPaid', {
         header: 'Amount Paid',
         cell: (info) => (
-          <Text fz="xs" c="gray.6" className="font-mono">
+          <Text fz="xs" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
             ZMW {fmtAmount(info.getValue())}
           </Text>
         ),
@@ -276,7 +314,7 @@ const { mutate: updateStatus } = useMutation({
       columnHelper.accessor('paymentMode', {
         header: 'Payment Mode',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
+          <Text fz="xs" c="slate.6">
             {info.getValue()}
           </Text>
         ),
@@ -284,7 +322,7 @@ const { mutate: updateStatus } = useMutation({
       columnHelper.accessor('valueDate', {
         header: 'Value Date',
         cell: (info) => (
-          <Text fz="xs" c="gray.6">
+          <Text fz="xs" c="slate.6">
             {fmtDate(info.getValue())}
           </Text>
         ),
@@ -293,18 +331,8 @@ const { mutate: updateStatus } = useMutation({
       columnHelper.accessor('docstatus', {
         header: 'Status',
         cell: (info) => {
-          const meta = STATUS_META[info.getValue()] || { label: info.getValue(), color: 'gray' };
-          return (
-            <Badge
-              variant="light"
-              size="sm"
-              color={meta.color}
-              className="font-semibold tracking-wider"
-              styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-            >
-              {meta.label}
-            </Badge>
-          );
+          const meta = STATUS_META[info.getValue()] || { label: String(info.getValue()), color: 'slate' };
+          return <StatusBadge label={meta.label} color={meta.color} />;
         },
       }),
       columnHelper.display({
@@ -321,12 +349,13 @@ const { mutate: updateStatus } = useMutation({
           const canDelete = isDraft || isCancelled;
 
           return (
-            <Group justify="flex-end" gap={6} wrap="nowrap">
+            <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="gray"
+                  color="slate"
+                  radius="md"
                   onClick={() => {
                     setSelectedRepaymentId(row.id);
                     setIsViewMode(true);
@@ -340,7 +369,8 @@ const { mutate: updateStatus } = useMutation({
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color={isDraft ? 'blue' : 'gray'}
+                  color={isDraft ? 'brand' : 'slate'}
+                  radius="md"
                   disabled={!isDraft}
                   onClick={() => {
                     setSelectedRepaymentId(row.id);
@@ -355,7 +385,8 @@ const { mutate: updateStatus } = useMutation({
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color={canDelete ? 'red' : 'gray'}
+                  color={canDelete ? 'danger' : 'slate'}
+                  radius="md"
                   disabled={!canDelete || isDeleting}
                   onClick={() => handleDelete(row.id)}
                 >
@@ -363,51 +394,51 @@ const { mutate: updateStatus } = useMutation({
                 </ActionIcon>
               </Tooltip>
               {!isCancelled && (
-                <Menu shadow="md" width={140} position="bottom-end">
+                <Menu shadow="md" width={140} position="bottom-end" radius="md">
                   <Menu.Target>
-                    <ActionIcon size="sm" variant="subtle" color="gray">
+                    <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
                       <IconDotsVertical size={14} />
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                   {isDraft ? (
-  <Menu.Item
-    onClick={() => {
-      modals.openConfirmModal({
-        title: 'Submit loan',
-        children: (
-          <Text size="sm">
-            Are you sure you want to submit loan <b>{row.id}</b> for approval?
-          </Text>
-        ),
-        labels: { confirm: 'Submit', cancel: 'Cancel' },
-        confirmProps: { color: 'green' },
-        onConfirm: () => updateStatus({ id: row.id, action: 'approved' }),
-      });
-    }}
-  >
-    Submit
-  </Menu.Item>
-) : (
-  <Menu.Item
-    color="red"
-    onClick={() => {
-      modals.openConfirmModal({
-        title: 'Cancel loan',
-        children: (
-          <Text size="sm">
-            Are you sure you want to cancel loan <b>{row.id}</b>? This cannot be undone.
-          </Text>
-        ),
-        labels: { confirm: 'Cancel Loan', cancel: 'Back' },
-        confirmProps: { color: 'red' },
-        onConfirm: () => updateStatus({ id: row.id, action: 'cancelled' }),
-      });
-    }}
-  >
-    Cancel
-  </Menu.Item>
-)}
+                    {isDraft ? (
+                      <Menu.Item
+                        onClick={() => {
+                          modals.openConfirmModal({
+                            title: 'Submit loan',
+                            children: (
+                              <Text size="sm">
+                                Are you sure you want to submit loan <b>{row.id}</b> for approval?
+                              </Text>
+                            ),
+                            labels: { confirm: 'Submit', cancel: 'Cancel' },
+                            confirmProps: { color: 'success' },
+                            onConfirm: () => updateStatus({ id: row.id, action: 'approved' }),
+                          });
+                        }}
+                      >
+                        Submit
+                      </Menu.Item>
+                    ) : (
+                      <Menu.Item
+                        color="danger"
+                        onClick={() => {
+                          modals.openConfirmModal({
+                            title: 'Cancel loan',
+                            children: (
+                              <Text size="sm">
+                                Are you sure you want to cancel loan <b>{row.id}</b>? This cannot be undone.
+                              </Text>
+                            ),
+                            labels: { confirm: 'Cancel Loan', cancel: 'Back' },
+                            confirmProps: { color: 'danger' },
+                            onConfirm: () => updateStatus({ id: row.id, action: 'cancelled' }),
+                          });
+                        }}
+                      >
+                        Cancel
+                      </Menu.Item>
+                    )}
                   </Menu.Dropdown>
                 </Menu>
               )}
@@ -416,7 +447,7 @@ const { mutate: updateStatus } = useMutation({
         },
       }),
     ],
-    []
+    [isDeleting]
   );
 
   const table = useReactTable({
@@ -446,37 +477,65 @@ const { mutate: updateStatus } = useMutation({
   const loanTypeOptions = Array.from(new Set(rowsData.map((r) => r.loanType).filter(Boolean)));
 
   return (
-    <Box className="flex flex-col gap-4 p-8 mt-10">
+    <Stack gap="lg" p="lg">
       <LoanRepaymentModal opened={opened} onClose={handleModalClose} editId={selectedRepaymentId} isView={isViewMode} />
 
-      {/* Header & Add Button */}
-      <div className="flex justify-between items-center">
-        <Title order={2} className="text-gray-900 font-semibold">
-          Loan Repayments
-        </Title>
-        <Button
-          size="xs"
-          bg="indigoAlt.4"
-          onClick={() => {
-            setSelectedRepaymentId(null);
-            setIsViewMode(false);
-            open();
-          }}
-          className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-          leftSection={<IconPlus size={14} />}
-        >
-          Process Repayment
-        </Button>
-      </div>
+      {/* Scoped, purely visual — mirrors LoanProduct's row/hover treatment */}
+      <style>{`
+        .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
+        .lms-row-actions { opacity: 1; }
+        .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+        .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
+        .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+        .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+      `}</style>
 
-      {/* Filters Box */}
-      <Paper withBorder radius="md" p="xs" className="shadow-sm">
-        <div className="flex items-center gap-3 flex-wrap">
+      {/* Header — icon tile + title, same pattern as Loan Products */}
+      <Group justify="space-between" align="center" wrap="wrap" gap="md">
+        <Group gap="sm" align="center">
+          <Box
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 'var(--mantine-radius-md)',
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadow,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <IconCash size={20} color="var(--mantine-color-white)" stroke={1.8} />
+          </Box>
+          <Stack gap={2}>
+            <Title order={2} c="slate.8" fw={700}>
+              Loan Repayments
+            </Title>
+            <Text fz="sm" c="slate.5">
+              Track and process loan repayments
+            </Text>
+          </Stack>
+        </Group>
+      </Group>
+
+      {/* Toolbar — pill search + pill filter + segmented status control */}
+      <Paper
+        radius="xl"
+        p="xs"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        <Group gap="sm" wrap="wrap" align="center">
           <TextInput
-            size="xs"
+            className="lms-search"
+            size="sm"
+            radius="xl"
             placeholder="Loan A/c / Customer"
-            leftSection={<IconSearch size={13} />}
-            className="flex-1 min-w-[200px]"
+            leftSection={<IconSearch size={14} />}
+            style={{ flex: 1, minWidth: 220 }}
+            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
@@ -484,10 +543,11 @@ const { mutate: updateStatus } = useMutation({
             }}
           />
           <Select
-            size="xs"
+            size="sm"
+            radius="xl"
             placeholder="All Loan Types"
             data={loanTypeOptions as string[]}
-            className="w-44"
+            w={166}
             searchable
             clearable
             rightSection={chevronDown}
@@ -498,128 +558,190 @@ const { mutate: updateStatus } = useMutation({
             }}
           />
 
-          <Radio.Group
-            name="status"
+          <SegmentedControl
+            size="xs"
+            radius="xl"
+            color="brand"
             value={status}
             onChange={(v) => {
               setStatus(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
-          >
-            <Group gap="sm">
-              <Radio size="xs" value="all" label="All" color="indigoAlt.4" />
-              <Radio size="xs" value="0" label="Draft" color="indigoAlt.4" />
-              <Radio size="xs" value="1" label="Submitted" color="indigoAlt.4" />
-              <Radio size="xs" value="2" label="Cancelled" color="indigoAlt.4" />
-            </Group>
-          </Radio.Group>
+            data={[
+              { label: 'All', value: 'all' },
+              { label: 'Draft', value: '0' },
+              { label: 'Submitted', value: '1' },
+              { label: 'Cancelled', value: '2' },
+            ]}
+          />
 
-          <Button size="xs" variant="default" className="ml-auto px-4" onClick={resetFilters}>
+          <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
             Reset
           </Button>
-        </div>
+          <Button
+            size="sm"
+            radius="xl"
+            color="brand"
+            onClick={() => {
+              setSelectedRepaymentId(null);
+              setIsViewMode(false);
+              open();
+            }}
+            leftSection={<IconPlus size={14} />}
+            style={{
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadowSm,
+            }}
+          >
+            Process Repayment
+          </Button>
+        </Group>
       </Paper>
 
-      {/* Data Table */}
-      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
-        <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full">
-          <Table.Thead className="bg-gray-50 border-b border-gray-200">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <Table.Tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  const canSort = header.column.getCanSort();
-                  return (
-                    <Table.Th
-                      key={header.id}
-                      className={`text-gray-600 font-semibold select-none ${
-                        canSort ? 'cursor-pointer' : ''
-                      }`}
-                      style={{ fontSize: 11, padding: '6px 10px' }}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      <Group
-                        gap={4}
-                        wrap="nowrap"
-                        justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
-                      </Group>
-                    </Table.Th>
-                  );
-                })}
-              </Table.Tr>
-            ))}
-          </Table.Thead>
-          <Table.Tbody>
-            {isLoading ? (
-              <Table.Tr>
-                <Table.Td colSpan={columns.length}>
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <Loader size="sm" color="gray" />
-                    <Text ta="center" c="dimmed" fz="xs" mt="sm">
-                      Loading loan repayments...
-                    </Text>
-                  </div>
-                </Table.Td>
-              </Table.Tr>
-            ) : rows.length === 0 ? (
-              <Table.Tr>
-                <Table.Td colSpan={columns.length}>
-                  <div className="flex flex-col items-center py-8 text-gray-400">
-                    <IconFileText size={32} className="mb-2 opacity-50" />
-                    <Text ta="center" c="dimmed" fz="xs">
-                      No repayments match your filters.
-                    </Text>
-                  </div>
-                </Table.Td>
-              </Table.Tr>
-            ) : (
-              rows.map((row) => (
-                <Table.Tr
-                  key={row.id}
-                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <Table.Td key={cell.id} style={{ padding: '5px 10px' }}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+      {/* Data Table — floating rounded row-cards on a soft canvas */}
+      <Paper
+        radius="lg"
+        p="sm"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        {isLoading ? (
+          <Group justify="center" py="xl">
+            <Loader size="sm" color="brand" />
+          </Group>
+        ) : (
+          <>
+            <Table
+              verticalSpacing="sm"
+              horizontalSpacing="sm"
+              fz="xs"
+              w="100%"
+              style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+            >
+              <Table.Thead>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <Table.Tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      const canSort = header.column.getCanSort();
+                      return (
+                        <Table.Th
+                          key={header.id}
+                          c="slate.5"
+                          fw={700}
+                          style={{
+                            fontSize: 'var(--mantine-font-size-xs)',
+                            padding: '0 10px 6px',
+                            userSelect: 'none',
+                            cursor: canSort ? 'pointer' : 'default',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                            border: 'none',
+                          }}
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          <Group
+                            gap="xs"
+                            wrap="nowrap"
+                            justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
+                          </Group>
+                        </Table.Th>
+                      );
+                    })}
+                  </Table.Tr>
+                ))}
+              </Table.Thead>
+              <Table.Tbody>
+                {rows.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                      <Stack align="center" gap="xs" py="xl">
+                        <Box
+                          style={{
+                            width: 52,
+                            height: 52,
+                            borderRadius: '50%',
+                            background: 'var(--mantine-color-white)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid var(--mantine-color-slate-2)',
+                          }}
+                        >
+                          <IconFileText size={24} color="var(--mantine-color-slate-4)" />
+                        </Box>
+                        <Text ta="center" c="slate.5" fz="xs">
+                          No repayments match your filters.
+                        </Text>
+                      </Stack>
                     </Table.Td>
-                  ))}
-                </Table.Tr>
-              ))
-            )}
-          </Table.Tbody>
-        </Table>
+                  </Table.Tr>
+                ) : (
+                  rows.map((row) => {
+                    const rowMeta =
+                      STATUS_META[row.original.docstatus] || { label: String(row.original.docstatus), color: 'slate' };
+                    const cells = row.getVisibleCells();
+                    return (
+                      <Table.Tr key={row.id} className="lms-row">
+                        {cells.map((cell, idx) => (
+                          <Table.Td
+                            key={cell.id}
+                            style={{
+                              padding: '10px 10px',
+                              border: 'none',
+                              boxShadow: 'var(--mantine-shadow-xs)',
+                              borderLeft:
+                                idx === 0
+                                  ? `3px solid var(--mantine-color-${rowMeta.color}-4)`
+                                  : undefined,
+                            }}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </Table.Td>
+                        ))}
+                      </Table.Tr>
+                    );
+                  })
+                )}
+              </Table.Tbody>
+            </Table>
 
-        {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span>
-              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span>Rows:</span>
-              <Select
-                data={['10', '20', '50']}
-                value={String(pageSize)}
-                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
-                rightSection={chevronDown}
+            {/* Pagination Footer */}
+            <Group justify="space-between" px="sm" pt="xs">
+              <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
+                <span>
+                  {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+                </span>
+                <Group gap="xs">
+                  <span>Rows:</span>
+                  <Select
+                    data={['10', '20', '50']}
+                    value={String(pageSize)}
+                    onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                    rightSection={chevronDown}
+                    size="xs"
+                    radius="xl"
+                    w={60}
+                  />
+                </Group>
+              </Group>
+              <Pagination
+                total={table.getPageCount() || 1}
+                value={pageIndex + 1}
+                onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+                color="brand"
                 size="xs"
-                className="w-14"
+                radius="xl"
+                disabled={totalRows === 0}
               />
-            </div>
-          </div>
-          <Pagination
-            total={table.getPageCount() || 1}
-            value={pageIndex + 1}
-            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-            color="indigoAlt.4"
-            size="xs"
-            radius="sm"
-            disabled={totalRows === 0}
-          />
-        </div>
+            </Group>
+          </>
+        )}
       </Paper>
-    </Box>
+    </Stack>
   );
 }
