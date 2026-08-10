@@ -74,7 +74,15 @@ export function LoanSummarySidebar({
       }}
     >
 
-      <div className="lg:border-l h-full" style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+      {/*
+        CHANGED: previously had `lg:border-l` (a hard divider line) separating
+        this sidebar from the form section. Replaced with a soft elevation
+        shadow (Mantine shadow token, only at the `lg` breakpoint, matching
+        where the border used to appear in the side-by-side layout) so the
+        sidebar reads as a distinct, elevated panel instead of being cut off
+        by a line. No hardcoded colors — uses the theme's shadow CSS var.
+      */}
+      <div className="lg:shadow-[var(--mantine-shadow-lg)] h-full">
         <div className="p-5 flex flex-col gap-4">
           
 
@@ -135,7 +143,7 @@ export function LoanSummarySidebar({
                   <Text size="xs" c="slate.5">
                     Total Repayment
                   </Text>
-                  <Text size="xs" fw={700} c="slate.8" ff="monospace" ta="right">
+                  <Text size="xs" fw={700} c="slate.8" ta="right">
                     {totalRepayment
                       ? `${totalRepayment.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${currency}`
                       : "—"}
