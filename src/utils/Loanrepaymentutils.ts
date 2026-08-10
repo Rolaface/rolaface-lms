@@ -1,9 +1,6 @@
 import { IconCircleCheck, IconClipboardText, IconCoins } from "@tabler/icons-react";
-import type { LoanAccount, LoanRepaymentFormValues, PaymentEffectResult } from "./loanRepaymentTypes";
+import type { LoanAccount, LoanRepaymentFormValues, PaymentEffectResult } from "../types/loanRepayment";
 
-// NOTE: business logic below is copied verbatim from the original
-// LoanRepaymentModal.tsx. Nothing here changes payload shape, API calls,
-// or calculation behaviour — only the file location changed.
 
 export const PAYMENT_MODES = ["Bank Draft", "Cash", "Cheque", "Credit Card", "Wire Transfer"];
 
