@@ -9,7 +9,7 @@ import {
   TextInput,
   ThemeIcon,
 } from '@mantine/core';
-import { IconCheck, IconReceipt2, IconX } from '@tabler/icons-react';
+import { IconCheck, IconReceipt, IconReceipt2, IconX } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useForm } from '@mantine/form';
 import {
@@ -41,8 +41,8 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
   const isView = mode === 'view';
 
   const title =
-    mode === 'add' ? 'New Fee and Charge' :
-    mode === 'edit' ? 'Edit Fee and Charge' :
+    mode === 'add' ? 'New Fee & Charge' :
+    mode === 'edit' ? 'Edit Fee & Charge' :
     'View Fee and Charge';
 
   const description =
@@ -133,7 +133,7 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
         >
           <Group gap="sm">
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
-              <IconReceipt2 size={16} />
+              <IconReceipt size={16} />
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white" style={{ letterSpacing: '-0.01em' }}>

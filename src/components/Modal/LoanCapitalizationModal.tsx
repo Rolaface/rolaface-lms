@@ -10,6 +10,11 @@ import {
   ActionIcon,
   Tooltip,
   Table,
+  Group,
+  Stack,
+  ThemeIcon,
+  Divider,
+  useMantineTheme,
 } from '@mantine/core';
 import {
   IconX,
@@ -17,7 +22,6 @@ import {
   IconChevronRight,
   IconChevronLeft,
   IconArrowRight,
-  IconRefresh,
   IconWallet,
   IconCalendarDue,
   IconChecklist,
@@ -33,6 +37,8 @@ import {
   getLoanRepaymentById,
   updateLoanRepayment,
 } from '../../api/loanRepaymentApi';
+import { ModalFooter } from '../shared/ModalFooter';
+import { showApiError, showSuccess, showValidationError } from '../../utils/alert';
 
 interface LoanCapitalizationModalProps {
   opened: boolean;
@@ -71,8 +77,6 @@ interface Borrower {
   loans: LoanAccount[];
 }
 
-const labelClass = { label: 'text-sm font-medium text-gray-700 mb-1' };
-
 function formatCurrency(amount: number) {
   return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 }
@@ -98,65 +102,80 @@ interface PaymentEffectModalProps {
 }
 
 function PaymentEffectModal({ opened, onClose, loanId, customerName, rows }: PaymentEffectModalProps) {
+  const theme = useMantineTheme();
   return (
-    <Modal opened={opened} onClose={onClose} size="640px" withCloseButton={false} padding={0} radius="md">
-      <Box className="flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#3730A3] flex items-center justify-center">
-              <IconReportMoney size={20} className="text-white" />
-            </div>
-            <div>
-              <Text size="md" fw={700} className="text-gray-900 leading-tight">
+    <Modal opened={opened} onClose={onClose} size={640} withCloseButton={false} padding={0} radius="lg">
+      <Box bg="white">
+        <Group justify="space-between" align="center" px="xl" py="md">
+          <Group gap="sm">
+            <Box
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 'var(--mantine-radius-md)',
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadow,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <IconReportMoney size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            </Box>
+            <Box>
+              <Text size="md" fw={700} c="slate.8">
                 Payment Effect
               </Text>
-              <Text size="xs" c="dimmed">
-                Projected impact of this capitalization on{' '}
-                <span className="font-semibold text-gray-700">
-                  {loanId} / {customerName}
-                </span>
+              <Text size="xs" c="slate.5">
+                Projected impact on <Text span fw={600} c="slate.7">{loanId} / {customerName}</Text>
               </Text>
-            </div>
-          </div>
-          <Button variant="subtle" color="gray" onClick={onClose} className="px-2" size="xs">
-            <IconX size={18} />
-          </Button>
-        </div>
+            </Box>
+          </Group>
+          <ActionIcon variant="subtle" color="slate" radius="xl" size="md" onClick={onClose} aria-label="Close">
+            <IconX size={16} />
+          </ActionIcon>
+        </Group>
 
-        <div className="border-b border-gray-200" />
+        <Divider color="slate.2" />
 
-        <div className="p-6">
-          <Table withTableBorder withColumnBorders striped verticalSpacing="sm">
+        <Box p="xl">
+          <Table withTableBorder withColumnBorders striped verticalSpacing="sm" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Component</Table.Th>
-                <Table.Th className="text-right">Before</Table.Th>
-                <Table.Th className="text-right">After</Table.Th>
+                <Table.Th c="slate.5" fz="xs" tt="uppercase">Component</Table.Th>
+                <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">Before</Table.Th>
+                <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">After</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {rows.map((row) => (
                 <Table.Tr key={row.component}>
-                  <Table.Td className="font-medium text-gray-700">{row.component}</Table.Td>
-                  <Table.Td className="font-mono text-right">{formatCurrency(row.before)}</Table.Td>
-                  <Table.Td className="font-mono text-right text-emerald-700">{formatCurrency(row.after)}</Table.Td>
+                  <Table.Td fz="sm" fw={600} c="slate.7">{row.component}</Table.Td>
+                  <Table.Td ta="right" fz="sm" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+                    {formatCurrency(row.before)}
+                  </Table.Td>
+                  <Table.Td ta="right" fz="sm" fw={700} c="success.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+                    {formatCurrency(row.after)}
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
           </Table>
-        </div>
+        </Box>
 
-        <div className="border-t border-gray-200 p-4 px-6 flex justify-end shrink-0">
-          <Button size="sm" variant="default" onClick={onClose} className="font-semibold px-5">
+        <Divider color="slate.2" />
+        <Group justify="flex-end" px="xl" py="md">
+          <Button size="sm" radius="xl" variant="default" onClick={onClose} px="lg">
             Close
           </Button>
-        </div>
+        </Group>
       </Box>
     </Modal>
   );
 }
 
 export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isView }: LoanCapitalizationModalProps) {
+  const theme = useMantineTheme();
   const [search, setSearch] = useState('');
   const [selectedBorrower, setSelectedBorrower] = useState<Borrower | null>(null);
   const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
@@ -266,21 +285,9 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
     // Capitalization folds waived-as-added amounts into principal — principal
     // goes up by the capitalized total, arrears/interest go down by the same.
     return [
-      {
-        component: 'Total Outstanding',
-        before: totalDue,
-        after: totalDue, // capitalization moves amounts between components, doesn't change total outstanding
-      },
-      {
-        component: 'Principal Outstanding',
-        before: principalDue,
-        after: clamp(principalDue + totalCapitalized),
-      },
-      {
-        component: 'Arrears',
-        before: totalDue,
-        after: clamp(totalDue - totalCapitalized),
-      },
+      { component: 'Total Outstanding', before: totalDue, after: totalDue },
+      { component: 'Principal Outstanding', before: principalDue, after: clamp(principalDue + totalCapitalized) },
+      { component: 'Arrears', before: totalDue, after: clamp(totalDue - totalCapitalized) },
       {
         component: 'Interest Payable',
         before: interestDue,
@@ -339,8 +346,16 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
     },
   });
 
+  const hasAnyCapitalizedAmount =
+    (Number(capitalizedInterest) || 0) > 0 || (Number(capitalizedPenalty) || 0) > 0 || (Number(capitalizedFee) || 0) > 0;
+
   const handleSubmit = async () => {
     if (!selectedLoan || !selectedBorrower) return;
+
+    if (!hasAnyCapitalizedAmount) {
+      showValidationError('Please enter at least one capitalized amount before submitting.');
+      return;
+    }
 
     const basePayload = {
       applicant_type: 'Customer' as const,
@@ -364,7 +379,13 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
         repayment_type: editRecordType as string,
         amount_paid: amount,
       };
-      updateCapitalizationMutation.mutate({ id: editId, payload });
+      updateCapitalizationMutation.mutate(
+        { id: editId, payload },
+        {
+          onSuccess: () => showSuccess('Loan capitalization updated successfully.'),
+          onError: () => showApiError('Something went wrong while updating the capitalization.'),
+        }
+      );
       return;
     }
 
@@ -373,7 +394,10 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
     if (Number(capitalizedPenalty) > 0) entries.push({ repayment_type: toCapitalizationType('penalty'), amount: Number(capitalizedPenalty) });
     if (Number(capitalizedFee) > 0) entries.push({ repayment_type: toCapitalizationType('fee'), amount: Number(capitalizedFee) });
 
-    if (entries.length === 0) return;
+    if (entries.length === 0) {
+      showValidationError('Please enter at least one capitalized amount before submitting.');
+      return;
+    }
 
     setIsSubmittingAll(true);
     try {
@@ -386,6 +410,7 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
         await createCapitalizationMutation.mutateAsync(payload);
       }
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+      showSuccess('Loan capitalization processed successfully.');
       onSubmit?.({
         loanAc: selectedLoan.id,
         customerName: selectedBorrower.name,
@@ -403,215 +428,319 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
       });
       handleReset();
       onClose();
+    } catch (err) {
+      showApiError('Something went wrong while processing the capitalization.');
     } finally {
       setIsSubmittingAll(false);
     }
   };
 
   const isPending = isSubmittingAll || updateCapitalizationMutation.isPending;
-  const hasAnyCapitalizedAmount =
-    (Number(capitalizedInterest) || 0) > 0 || (Number(capitalizedPenalty) || 0) > 0 || (Number(capitalizedFee) || 0) > 0;
 
   return (
-    <Modal opened={opened} onClose={onClose} size="1300px" withCloseButton={false} padding={0} radius="md" closeOnClickOutside={false}
-      closeOnEscape={false}>
-      <Box className="flex flex-col h-[700px] max-h-[90vh] overflow-hidden">
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#3730A3] flex items-center justify-center">
-              <IconWallet size={20} className="text-white" />
-            </div>
-            <div>
-              <Text size="md" fw={700} className="text-gray-900 leading-tight">
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      size={1300}
+      withCloseButton={false}
+      padding={0}
+      radius="lg"
+      closeOnClickOutside={false}
+      closeOnEscape={false}
+      styles={{
+        content: {
+          height: '88vh',
+          maxHeight: '88vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        },
+        body: { flex: 1, display: 'flex', flexDirection: 'column', padding: 0, minHeight: 0, overflow: 'hidden' },
+      }}
+    >
+      <Box style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }} bg="white">
+        {/* Header — same brand.6 header bar as CustomerModal */}
+        <Group
+          justify="space-between"
+          align="center"
+          px="xl"
+          py="sm"
+          bg="brand.6"
+          style={{ borderBottom: '1px solid var(--mantine-color-brand-7)', flexShrink: 0 }}
+        >
+          <Group gap="sm">
+            <ThemeIcon radius="md" size={34} variant="white" color="brand">
+              <IconWallet size={16} />
+            </ThemeIcon>
+            <Box>
+              <Text size="md" fw={700} c="white">
                 Loan Capitalization
               </Text>
-              <Text size="xs" c="dimmed">
-                Search a borrower and process a capitalization against their loan account.
+              <Text size="xs" fw={500} c="brand.1">
+                Search a borrower and process a capitalization against their loan account
               </Text>
-            </div>
-          </div>
-          <Button variant="subtle" color="gray" onClick={onClose} className="px-2" size="xs">
-            <IconX size={18} />
-          </Button>
-        </div>
+            </Box>
+          </Group>
+          <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={onClose} aria-label="Close">
+            <IconX size={16} color="white" />
+          </ActionIcon>
+        </Group>
 
-        <div className="border-b border-gray-200" />
-
-        <div className="flex flex-1 overflow-hidden">
-          <div className={`border-r border-gray-200 shrink-0 overflow-y-auto transition-all duration-200 ${borrowerPanelCollapsed ? 'w-14 p-3' : 'w-[300px] p-5'}`}>
+        <Group style={{ flex: 1, minHeight: 0 }} gap={0} wrap="nowrap" align="stretch">
+          {/* Borrower panel */}
+          <Box
+            style={{
+              borderRight: '1px solid var(--mantine-color-slate-2)',
+              flexShrink: 0,
+              overflowY: 'auto',
+              transition: 'width 200ms ease, padding 200ms ease',
+              width: borrowerPanelCollapsed ? 56 : 300,
+              padding: borrowerPanelCollapsed ? 12 : 20,
+            }}
+            bg="slate.0"
+          >
             {borrowerPanelCollapsed ? (
-              <div className="flex flex-col items-center gap-4">
+              <Stack align="center" gap="md">
                 <Tooltip label="Expand borrower selection" withArrow position="right">
-                  <ActionIcon variant="light" color="brand" size="md" onClick={() => setBorrowerPanelCollapsed(false)}>
+                  <ActionIcon variant="light" color="brand" radius="xl" size="md" onClick={() => setBorrowerPanelCollapsed(false)}>
                     <IconChevronRight size={16} />
                   </ActionIcon>
                 </Tooltip>
                 {selectedBorrower && (
                   <Tooltip label={selectedBorrower.name} withArrow position="right">
-                    <div className="w-8 h-8 rounded-full bg-[#eef2ff] border border-[#c7d2fe] flex items-center justify-center">
-                      <Text size="xs" fw={700} className="text-[#4F46E5]">
+                    <Box
+                      w={34}
+                      h={34}
+                      style={{
+                        borderRadius: 'var(--mantine-radius-md)',
+                        background: 'var(--mantine-color-brand-1)',
+                        border: '1px solid var(--mantine-color-brand-2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text size="xs" fw={700} c="brand.7">
                         {selectedBorrower.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
                       </Text>
-                    </div>
+                    </Box>
                   </Tooltip>
                 )}
-              </div>
+              </Stack>
             ) : (
               <>
-                <div className="flex items-center justify-between mb-0.5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1 h-4 rounded bg-gradient-to-b from-[#4338CA] to-[#4F46E5]" />
-                    <Text size="sm" fw={700} className="text-gray-900">
+                <Group justify="space-between" align="center" mb={2}>
+                  <Group gap={8}>
+                    <Box w={4} h={16} style={{ borderRadius: 4, background: theme.other.brandGradient }} />
+                    <Text size="sm" fw={700} c="slate.8">
                       Borrower Selection
                     </Text>
-                  </div>
+                  </Group>
                   {selectedBorrower && (
                     <Tooltip label="Collapse" withArrow position="left">
-                      <ActionIcon variant="subtle" color="gray" size="sm" onClick={() => setBorrowerPanelCollapsed(true)}>
+                      <ActionIcon variant="subtle" color="slate" radius="xl" size="sm" onClick={() => setBorrowerPanelCollapsed(true)}>
                         <IconChevronLeft size={14} />
                       </ActionIcon>
                     </Tooltip>
                   )}
-                </div>
-                <Text size="xs" c="dimmed" className="ml-3 mb-4">
+                </Group>
+                <Text size="xs" c="slate.5" ml={12} mb="md">
                   Search by A/C no, phone or name
                 </Text>
 
                 <TextInput
                   size="sm"
+                  radius="xl"
                   placeholder="Search by loan A/C, applicant or phone"
                   value={search}
                   disabled={isView}
                   onChange={(e) => setSearch(e.currentTarget.value)}
-                  leftSection={<IconSearch size={14} className="text-gray-400" />}
-                  classNames={labelClass}
+                  leftSection={<IconSearch size={14} color="var(--mantine-color-slate-4)" />}
+                  styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
                 />
 
                 {selectedBorrower ? (
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
+                  <Box mt="md">
+                    <Group justify="space-between" align="center" mb={8}>
+                      <Text size="xs" fw={600} c="slate.5" tt="uppercase">
                         Selected Borrower
                       </Text>
                       {!isView && (
-                        <button type="button" onClick={handleClearBorrower} className="text-xs font-semibold text-[#4F46E5] hover:text-[#3730A3]">
+                        <Text
+                          size="xs"
+                          fw={700}
+                          c="brand.6"
+                          onClick={handleClearBorrower}
+                          style={{ cursor: 'pointer' }}
+                        >
                           Change
-                        </button>
+                        </Text>
                       )}
-                    </div>
-                    <div className="text-left rounded-md border border-[#a5b4fc] bg-[#eef2ff] p-3">
-                      <div className="flex items-center justify-between">
-                        <Text size="sm" fw={700} className="text-gray-900">
+                    </Group>
+                    <Box
+                      p="sm"
+                      style={{
+                        borderRadius: 'var(--mantine-radius-md)',
+                        border: '1px solid var(--mantine-color-brand-3)',
+                        background: 'var(--mantine-color-brand-0)',
+                      }}
+                    >
+                      <Group justify="space-between" wrap="nowrap">
+                        <Text size="sm" fw={700} c="slate.8">
                           {selectedBorrower.name}
                         </Text>
-                        <Badge size="sm" variant="light" color={selectedBorrower.status === 'Overdue' ? 'danger' : 'green'} styles={{ root: { fontSize: 10 } }}>
+                        <Badge size="sm" variant="light" color={selectedBorrower.status === 'Overdue' ? 'danger' : 'success'} styles={{ root: { fontSize: 10 } }}>
                           {selectedBorrower.status}
                         </Badge>
-                      </div>
-                      <Text size="xs" c="dimmed" className="mt-0.5">
+                      </Group>
+                      <Text size="xs" c="slate.5" mt={2}>
                         CIF: {selectedBorrower.cif} | {selectedBorrower.phone}
                       </Text>
-                    </div>
-                  </div>
+                    </Box>
+                  </Box>
                 ) : (
                   search.trim() && (
-                    <div className="flex flex-col gap-2 mt-4">
+                    <Stack gap={8} mt="md">
                       {isSearching ? (
-                        <Text size="xs" c="dimmed" className="py-2">Searching...</Text>
+                        <Text size="xs" c="slate.5" py={8}>Searching...</Text>
                       ) : matches.length === 0 ? (
-                        <Text size="xs" c="dimmed" className="py-2">No borrowers found.</Text>
+                        <Text size="xs" c="slate.5" py={8}>No borrowers found.</Text>
                       ) : (
                         matches.map((borrower) => (
-                          <button key={borrower.cif} type="button" onClick={() => handleSelectBorrower(borrower)} className="text-left rounded-md border border-gray-200 p-3 transition-colors hover:bg-gray-50">
-                            <div className="flex items-center justify-between">
-                              <Text size="sm" fw={700} className="text-gray-900">
+                          <Box
+                            key={borrower.cif}
+                            component="button"
+                            type="button"
+                            onClick={() => handleSelectBorrower(borrower)}
+                            p="sm"
+                            className="lms-cap-borrower-btn"
+                            style={{
+                              textAlign: 'left',
+                              borderRadius: 'var(--mantine-radius-md)',
+                              border: '1px solid var(--mantine-color-slate-2)',
+                              background: 'var(--mantine-color-white)',
+                              cursor: 'pointer',
+                              transition: 'background-color 120ms ease',
+                            }}
+                          >
+                            <Group justify="space-between" wrap="nowrap">
+                              <Text size="sm" fw={700} c="slate.8">
                                 {borrower.name}
                               </Text>
-                              <Badge size="sm" variant="light" color={borrower.status === 'Overdue' ? 'danger' : 'green'} styles={{ root: { fontSize: 10 } }}>
+                              <Badge size="sm" variant="light" color={borrower.status === 'Overdue' ? 'danger' : 'success'} styles={{ root: { fontSize: 10 } }}>
                                 {borrower.status}
                               </Badge>
-                            </div>
-                            <Text size="xs" c="dimmed" className="mt-0.5">
+                            </Group>
+                            <Text size="xs" c="slate.5" mt={2}>
                               CIF: {borrower.cif} | {borrower.phone}
                             </Text>
-                          </button>
+                          </Box>
                         ))
                       )}
-                    </div>
+                    </Stack>
                   )
                 )}
 
                 {selectedBorrower && (
-                  <div className="mt-5">
-                    <Text size="xs" fw={600} c="dimmed" className="mb-2 uppercase tracking-wide">
+                  <Box mt="lg">
+                    <Text size="xs" fw={600} c="slate.5" tt="uppercase" mb={8}>
                       Select Active Loan Account
                     </Text>
-                    <div className="flex flex-col gap-2">
-                      {selectedBorrower.loans.map((loan) => (
-                        <button
-                          key={loan.id}
-                          type="button"
-                          disabled={isView}
-                          onClick={() => handleSelectLoan(loan)}
-                          className={`text-left rounded-md border p-3 transition-colors ${
-                            selectedLoanId === loan.id ? 'border-[#818cf8] bg-[#eef2ff] ring-1 ring-[#c7d2fe]' : 'border-gray-200 hover:bg-gray-50'
-                          } ${isView ? 'cursor-default opacity-80' : ''}`}
-                        >
-                          <Text size="sm" fw={700} className="text-gray-900">
-                            {loan.type} - {loan.id}
-                          </Text>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                    <Stack gap={8}>
+                      {selectedBorrower.loans.map((loan) => {
+                        const isActive = selectedLoanId === loan.id;
+                        return (
+                          <Box
+                            key={loan.id}
+                            component="button"
+                            type="button"
+                            disabled={isView}
+                            onClick={() => handleSelectLoan(loan)}
+                            p="sm"
+                            style={{
+                              textAlign: 'left',
+                              borderRadius: 'var(--mantine-radius-md)',
+                              border: `1px solid var(--mantine-color-${isActive ? 'brand-4' : 'slate-2'})`,
+                              background: isActive ? 'var(--mantine-color-brand-0)' : 'var(--mantine-color-white)',
+                              boxShadow: isActive ? `0 0 0 1px var(--mantine-color-brand-2)` : 'none',
+                              cursor: isView ? 'default' : 'pointer',
+                              opacity: isView ? 0.8 : 1,
+                            }}
+                          >
+                            <Text size="sm" fw={700} c="slate.8">
+                              {loan.type} - {loan.id}
+                            </Text>
+                          </Box>
+                        );
+                      })}
+                    </Stack>
+                  </Box>
                 )}
               </>
             )}
-          </div>
+          </Box>
 
-          <div className="relative flex-1 overflow-y-auto p-6">
-            <div className={`flex h-full flex-col rounded-lg border border-gray-200 p-4 transition-all duration-300 ${!selectedLoan ? 'pointer-events-none select-none opacity-50 blur-[2px]' : ''}`}>
-              <div className="flex items-center gap-2 mb-5">
-                <IconChecklist size={16} className="text-[#4F46E5]" />
-                <Text size="sm" fw={700} className="text-gray-900 flex items-center gap-2">
-                  Executing Capitalization for
-                  <span className="rounded bg-indigo-100 px-2 py-0.5 text-[#4338CA] font-semibold">{selectedLoan?.id ?? '—'}</span>
-                  <span className="text-gray-400">/</span>
-                  <span className="rounded bg-orange-100 px-2 py-0.5 text-[#EA580C] font-semibold">{selectedBorrower?.name ?? '—'}</span>
-                </Text>
-              </div>
+          {/* Main form */}
+          <Box style={{ flex: 1, position: 'relative', overflowY: 'auto' }} bg="white">
+            <Box
+              style={{
+                borderRadius: 'var(--mantine-radius-lg)',
+                border: '1px solid var(--mantine-color-slate-2)',
+                minHeight: '100%',
+                transition: 'opacity 300ms ease, filter 300ms ease',
+                pointerEvents: !selectedLoan ? 'none' : undefined,
+                userSelect: !selectedLoan ? 'none' : undefined,
+                opacity: !selectedLoan ? 0.5 : 1,
+                filter: !selectedLoan ? 'blur(2px)' : 'none',
+              }}
+              p="lg"
+            >
+              <Group gap={8} mb="lg">
+                <IconChecklist size={16} color="var(--mantine-color-brand-6)" />
+                <Group gap={6}>
+                  <Text size="sm" fw={700} c="slate.8">
+                    Executing Capitalization for
+                  </Text>
+                  <Badge variant="light" color="brand" radius="sm" size="sm">
+                    {selectedLoan?.id ?? '—'}
+                  </Badge>
+                  <Text size="sm" c="slate.4">/</Text>
+                  <Badge variant="light" color="gold" radius="sm" size="sm">
+                    {selectedBorrower?.name ?? '—'}
+                  </Badge>
+                </Group>
+              </Group>
 
-              <div className="grid grid-cols-3 gap-x-8 gap-y-3">
-                <TextInput
-                  size="sm"
-                  withAsterisk
-                  type="date"
-                  label="Value Date"
-                  disabled={isView}
-                  value={valueDate}
-                  onChange={(e) => setValueDate(e.currentTarget.value)}
-                  leftSection={<IconCalendarDue size={14} className="text-emerald-600" />}
-                  classNames={labelClass}
-                />
-              </div>
+              <TextInput
+                size="sm"
+                withAsterisk
+                type="date"
+                label="Value Date"
+                disabled={isView}
+                value={valueDate}
+                onChange={(e) => setValueDate(e.currentTarget.value)}
+                leftSection={<IconCalendarDue size={14} color="var(--mantine-color-success-6)" />}
+                w={260}
+                styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)', marginBottom: 4 } }}
+              />
 
-              <div className="mt-6">
-                <Text size="sm" fw={600} className="text-gray-900 mb-3">
+              <Box mt="xl">
+                <Text size="sm" fw={700} c="slate.8" mb="sm">
                   Capitalization Breakdown
                 </Text>
 
-                <Table withTableBorder withColumnBorders striped highlightOnHover verticalSpacing="sm">
+                <Table withTableBorder withColumnBorders striped highlightOnHover verticalSpacing="sm" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th className="w-[180px]">Component</Table.Th>
-                      <Table.Th className="text-right w-[180px]">Arrears</Table.Th>
-                      <Table.Th className="text-right w-[180px]">Capitalized Amount</Table.Th>
+                      <Table.Th c="slate.5" fz="xs" tt="uppercase" w={180}>Component</Table.Th>
+                      <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right" w={180}>Arrears</Table.Th>
+                      <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right" w={180}>Capitalized Amount</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
                     <Table.Tr>
-                      <Table.Td>Interest</Table.Td>
-                      <Table.Td className="font-mono text-right">
+                      <Table.Td fw={600} c="slate.7">Interest</Table.Td>
+                      <Table.Td ta="right" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
                         {isDuesLoading ? '...' : formatCurrency(dues?.interest_amount ?? 0)}
                       </Table.Td>
                       <Table.Td>
@@ -629,8 +758,8 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
                       </Table.Td>
                     </Table.Tr>
                     <Table.Tr>
-                      <Table.Td>Penalty</Table.Td>
-                      <Table.Td className="font-mono text-right">
+                      <Table.Td fw={600} c="slate.7">Penalty</Table.Td>
+                      <Table.Td ta="right" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
                         {isDuesLoading ? '...' : formatCurrency(dues?.penalty_amount ?? 0)}
                       </Table.Td>
                       <Table.Td>
@@ -648,8 +777,8 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
                       </Table.Td>
                     </Table.Tr>
                     <Table.Tr>
-                      <Table.Td>Charge / Fee</Table.Td>
-                      <Table.Td className="font-mono text-right">
+                      <Table.Td fw={600} c="slate.7">Charge / Fee</Table.Td>
+                      <Table.Td ta="right" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
                         {isDuesLoading ? '...' : formatCurrency(dues?.total_charges_payable ?? 0)}
                       </Table.Td>
                       <Table.Td>
@@ -668,7 +797,7 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
                     </Table.Tr>
                   </Table.Tbody>
                 </Table>
-              </div>
+              </Box>
 
               <TextInput
                 size="sm"
@@ -677,136 +806,154 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
                 disabled={isView}
                 value={remark}
                 onChange={(e) => setRemark(e.currentTarget.value)}
-                leftSection={<IconNotes size={14} className="text-gray-400" />}
-                classNames={labelClass}
+                leftSection={<IconNotes size={14} color="var(--mantine-color-slate-4)" />}
+                mt="lg"
+                styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)', marginBottom: 4 } }}
               />
-            </div>
+            </Box>
 
             {!selectedLoan && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-white/55 backdrop-blur-[3px]">
-                <div className="w-[440px] rounded-2xl border border-[#dbe4ff] bg-white shadow-2xl">
-                  <div className="flex justify-center pt-8">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#EEF2FF] to-[#E0E7FF] ring-1 ring-[#C7D2FE]">
-                      <IconChecklist size={30} className="text-[#4338CA]" />
-                    </div>
-                  </div>
-                  <div className="px-8 py-6 text-center">
-                    <Text size="xl" fw={700} className="text-gray-900">
+              <Box
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  zIndex: 20,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(255,255,255,0.55)',
+                  backdropFilter: 'blur(3px)',
+                }}
+              >
+                <Box
+                  w={440}
+                  style={{
+                    borderRadius: 'var(--mantine-radius-lg)',
+                    border: '1px solid var(--mantine-color-brand-2)',
+                    background: 'var(--mantine-color-white)',
+                    boxShadow: 'var(--mantine-shadow-xl)',
+                  }}
+                >
+                  <Group justify="center" pt="xl">
+                    <Box
+                      w={64}
+                      h={64}
+                      style={{
+                        borderRadius: 'var(--mantine-radius-lg)',
+                        background: 'var(--mantine-color-brand-1)',
+                        border: '1px solid var(--mantine-color-brand-2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <IconChecklist size={30} color="var(--mantine-color-brand-7)" />
+                    </Box>
+                  </Group>
+                  <Box px="xl" py="lg" ta="center">
+                    <Text size="xl" fw={700} c="slate.8">
                       No Loan Account Selected
                     </Text>
-                    <Text size="sm" c="dimmed" className="mt-3 leading-6">
+                    <Text size="sm" c="slate.5" mt="sm" style={{ lineHeight: 1.6 }}>
                       To proceed with a capitalization transaction, first search for a borrower and select one of their active loan accounts from the panel on the left.
                     </Text>
-                    <div className="mt-6 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
-                      <Text size="xs" fw={600} className="uppercase tracking-wide text-[#4F46E5]">
+                    <Box mt="lg" p="sm" style={{ borderRadius: 'var(--mantine-radius-md)', border: '1px solid var(--mantine-color-slate-2)', background: 'var(--mantine-color-slate-0)' }}>
+                      <Text size="xs" fw={700} c="brand.6" tt="uppercase">
                         Next Step
                       </Text>
-                      <Text size="sm" className="mt-1 text-gray-700">
+                      <Text size="sm" c="slate.7" mt={4}>
                         Select a borrower → Choose a loan account → Process capitalization
                       </Text>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
             )}
-          </div>
+          </Box>
 
-          <div className="w-[300px] border-l border-gray-200 p-5 shrink-0 overflow-y-auto">
-            <div className="flex items-center gap-2 mb-0.5">
-              <div className="w-1 h-4 rounded bg-gradient-to-b from-[#4338CA] to-[#4F46E5]" />
-              <Text size="sm" fw={700} className="text-gray-900">
+          {/* Dues summary */}
+          <Box style={{ width: 300, borderLeft: '1px solid var(--mantine-color-slate-2)', flexShrink: 0, overflowY: 'auto' }} p="lg" bg="slate.0">
+            <Group gap={8} mb={2}>
+              <Box w={4} h={16} style={{ borderRadius: 4, background: theme.other.brandGradient }} />
+              <Text size="sm" fw={700} c="slate.8">
                 Dues Summary
               </Text>
-            </div>
+            </Group>
 
             {selectedLoan ? (
-              <div className="flex flex-col gap-3">
-                <div className="bg-gray-50/60 border border-gray-100 rounded-md p-2.5">
-                  <Text size="xs" c="dimmed">EMI Date</Text>
-                  <Text size="sm" fw={600} className="text-gray-900">
+              <Stack gap="sm" mt="md">
+                <Box p={10} style={{ borderRadius: 'var(--mantine-radius-md)', border: '1px solid var(--mantine-color-slate-2)', background: 'var(--mantine-color-white)' }}>
+                  <Text size="xs" c="slate.5">EMI Date</Text>
+                  <Text size="sm" fw={700} c="slate.8">
                     {isDuesLoading ? 'Loading...' : dues?.due_date || '—'}
                   </Text>
-                </div>
+                </Box>
 
-                <div className="bg-gray-50/60 border border-gray-100 rounded-md p-3 flex flex-col gap-1.5">
-                  <div className="flex justify-between">
-                    <Text size="xs" c="dimmed">Principal Due</Text>
-                    <Text size="xs" className="font-mono text-gray-700">
+                <Stack gap={6} p="sm" style={{ borderRadius: 'var(--mantine-radius-md)', border: '1px solid var(--mantine-color-slate-2)', background: 'var(--mantine-color-white)' }}>
+                  <Group justify="space-between">
+                    <Text size="xs" c="slate.5">Principal Due</Text>
+                    <Text size="xs" c="slate.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
                       {formatCurrency(dues?.payable_principal_amount ?? 0)}
                     </Text>
-                  </div>
-                  <div className="flex justify-between">
-                    <Text size="xs" c="dimmed">Interest Due</Text>
-                    <Text size="xs" className="font-mono text-gray-700">
+                  </Group>
+                  <Group justify="space-between">
+                    <Text size="xs" c="slate.5">Interest Due</Text>
+                    <Text size="xs" c="slate.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
                       {formatCurrency(dues?.interest_amount ?? 0)}
                     </Text>
-                  </div>
-                  <div className="flex justify-between">
-                    <Text size="xs" c="dimmed">Penalty</Text>
-                    <Text size="xs" className="font-mono text-gray-700">
+                  </Group>
+                  <Group justify="space-between">
+                    <Text size="xs" c="slate.5">Penalty</Text>
+                    <Text size="xs" c="slate.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
                       {formatCurrency(dues?.penalty_amount ?? 0)}
                     </Text>
-                  </div>
-                  <div className="flex justify-between">
-                    <Text size="xs" c="dimmed">Fees/Charges</Text>
-                    <Text size="xs" className="font-mono text-gray-700">
+                  </Group>
+                  <Group justify="space-between">
+                    <Text size="xs" c="slate.5">Fees/Charges</Text>
+                    <Text size="xs" c="slate.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
                       {formatCurrency(dues?.total_charges_payable ?? 0)}
                     </Text>
-                  </div>
-                  <div className="border-t border-gray-100 my-1" />
-                  <div className="flex justify-between items-center">
-                    <Text size="sm" fw={700} className="text-gray-900">Total Amount Due</Text>
-                    <Text size="sm" fw={700} className="text-gray-900 font-mono">
+                  </Group>
+                  <Divider color="slate.2" my={2} />
+                  <Group justify="space-between">
+                    <Text size="sm" fw={700} c="slate.8">Total Amount Due</Text>
+                    <Text size="sm" fw={700} c="slate.8" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
                       {formatCurrency(dues?.payable_amount ?? 0)}
                     </Text>
-                  </div>
-                </div>
-              </div>
+                  </Group>
+                </Stack>
+              </Stack>
             ) : (
-              <Text size="xs" c="dimmed" className="py-8 text-center">
+              <Text size="xs" c="slate.5" ta="center" py="xl">
                 Select a loan account on the left to view dues.
               </Text>
             )}
-          </div>
-        </div>
+          </Box>
+        </Group>
 
-        <div className="border-t border-gray-200 p-4 px-6 flex justify-between items-center shrink-0">
-          <Button
-            size="sm"
-            variant="light"
-            color="brand"
-            disabled={!selectedLoan}
-            leftSection={<IconReportMoney size={14} />}
-            onClick={() => setPaymentEffectOpened(true)}
-            className="font-semibold px-4"
-          >
-            Payment Effect
-          </Button>
-          <div className="flex gap-2">
-            {!isView && (
-              <>
-                <Button size="sm" variant="subtle" color="danger" leftSection={<IconRefresh size={14} />} onClick={handleReset} className="font-semibold px-4">
-                  Reset
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={!selectedLoan || !hasAnyCapitalizedAmount || isPending}
-                  loading={isPending}
-                  onClick={handleSubmit}
-                  rightSection={<IconArrowRight size={16} />}
-                  className="bg-gradient-to-r from-[#4F46E5] to-[#3730A3] hover:opacity-90 font-semibold px-6"
-                >
-                  {editId ? 'Update' : 'Process Capitalization'}
-                </Button>
-              </>
-            )}
-            {isView && (
-              <Button variant="default" size="sm" onClick={onClose} className="font-semibold">
-                Close
-              </Button>
-            )}
-          </div>
-        </div>
+        <ModalFooter
+          variant="theme"
+          isViewMode={isView}
+          onClose={onClose}
+          leftSlot={
+            <Button
+              size="sm"
+              radius="xl"
+              variant="light"
+              color="brand"
+              disabled={!selectedLoan}
+              leftSection={<IconReportMoney size={14} />}
+              onClick={() => setPaymentEffectOpened(true)}
+              px="md"
+            >
+              Payment Effect
+            </Button>
+          }
+          submitLabel={editId ? 'Update' : 'Save'}
+          submitDisabled={!selectedLoan || !hasAnyCapitalizedAmount || isPending}
+          submitLoading={isPending}
+          onSubmit={handleSubmit}
+        />
       </Box>
 
       <PaymentEffectModal
