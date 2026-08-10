@@ -452,11 +452,12 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
     setNewMaturityDate("");
   };
 
-  const handleClearBorrower = () => {
+ const handleClearBorrower = () => {
     setSelectedBorrower(null);
     setSelectedLoanId(null);
     setSearch("");
     resetRequestFields();
+    setActiveTab("details");
   };
 
   const handleReset = () => {
@@ -606,29 +607,30 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
         </Group>
 
         {/* Inner tabs */}
-        <Group justify="space-between" align="center" px="md" py="sm" bg="slate.0">
-          <div className="inline-flex bg-white border border-gray-200 rounded-md p-1 gap-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab("details")}
-              className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-                activeTab === "details" ? "bg-brand-1 text-[#4F46E5] shadow-sm" : "text-gray-600 hover:text-gray-800"
-              }`}
-            >
-              Restructure Details
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("charges")}
-              className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-                activeTab === "charges" ? "bg-brand-1 text-[#4F46E5] shadow-sm" : "text-gray-600 hover:text-gray-800"
-              }`}
-            >
-              Restructure Charges
-            </button>
-          </div>
-        </Group>
-
+        {selectedBorrower && (
+          <Group justify="space-between" align="center" bg="slate.0">
+            <div className="inline-flex bg-white border border-gray-200 rounded-md p-1 gap-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("details")}
+                className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+                  activeTab === "details" ? "bg-brand-1 text-[#4F46E5] shadow-sm" : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                Restructure Details
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("charges")}
+                className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+                  activeTab === "charges" ? "bg-brand-1 text-[#4F46E5] shadow-sm" : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                Restructure Charges
+              </button>
+            </div>
+          </Group>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -744,8 +746,8 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
               </div>
 
               {/* Restructure Request form */}
-              <div className="flex-1 p-6 overflow-y-auto">
-                {!selectedLoan ? (
+              <div className="flex-1 px-6 pb-6 pt-3 overflow-y-auto">
+                                {!selectedLoan ? (
                   <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2">
                     <IconClipboardList size={40} className="opacity-50" />
                     <Text c="dimmed" size="sm" ta="center" maw={280}>
@@ -753,7 +755,7 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                     </Text>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-2 ">
                     <div className="flex items-center gap-2">
                       <div className="w-1 h-4 rounded bg-gradient-to-b from-[#4338CA] to-[#4F46E5]" />
                       <Text fw={700} size="sm" className="text-gray-900">
@@ -803,14 +805,15 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                     <div className="border-t border-gray-100" />
 
                     <div>
-                      <div className="flex items-center gap-2 mb-3">
+                      <div className="flex items-center gap-2 pt-1">
                         <div className="w-1 h-4 rounded bg-gradient-to-b from-[#4338CA] to-[#4F46E5]" />
                         <Text fw={700} size="sm" className="text-gray-900">
                           Restructure Type
                         </Text>
                       </div>
-                      <SegmentedControl
+                     <SegmentedControl
                         fullWidth
+                        size="xs"
                         color="brand"
                         value={restructureType}
                         onChange={(v) => setRestructureType(v as RestructureType)}
@@ -819,13 +822,16 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                           { label: "Topup", value: "TOPUP" },
                           { label: "Modify Maturity", value: "MODIFY_MATURITY" },
                         ]}
+                        styles={{
+                          label: { padding: "4px 8px" },
+                        }}
                       />
                     </div>
 
-                    <div className="rounded-lg border border-gray-200 p-4">
+                    <div className="rounded-lg border border-gray-200 p-2">
                       {restructureType === "RATE_CHANGE" && (
                         <>
-                          <div className="flex items-center gap-2 mb-3">
+                          <div className="flex items-center gap-2">
                             <IconCurrencyDollar size={16} className="text-[#4F46E5]" />
                             <Text fw={700} size="sm" className="text-gray-900">
                               Rate Change Details
