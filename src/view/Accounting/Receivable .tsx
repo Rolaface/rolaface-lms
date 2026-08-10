@@ -20,6 +20,7 @@ import {
   Text,
   Divider,
   Box,
+  Pagination,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import {
@@ -28,8 +29,6 @@ import {
   IconClock,
   IconAlertTriangle,
   IconRefresh,
-  IconChevronLeft,
-  IconChevronRight,
   IconUsers,
   IconReceipt2,
   IconAdjustmentsHorizontal,
@@ -44,6 +43,7 @@ import {
   VOUCHER_TYPE_OPTIONS,
 } from "../../api/Accounting/Receivable.api";
 import { useReceivable } from "../../hooks/Accounting/Receivablelogic";
+import { useCurrencyReady } from "../../store/currencyStore";
 
 /* ───────────────── KPI strip ───────────────── */
 
@@ -51,20 +51,32 @@ function KpiStrip({
   kpis,
   loading,
   displayAmount,
+  baseCurrency,
 }: {
   kpis: NonNullable<ReturnType<typeof useReceivable>["kpis"]>;
   loading: boolean;
   displayAmount: (currency: string | undefined, amount: number) => string;
+  baseCurrency: string;
 }) {
-  const fmt = (n: number) => displayAmount(undefined, n);
+  const fmt = (n: number) => displayAmount(baseCurrency, n);
 
   const sections = [
     {
       icon: <IconReceipt2 size={14} color="var(--mantine-color-success-6)" />,
       label: "Outstanding",
       items: [
-        { label: "Total", value: fmt(kpis.total_outstanding), color: "success.6", bold: true },
-        { label: "Overdue", value: fmt(kpis.overdue_amount), color: "danger.5", bold: true },
+        {
+          label: "Total",
+          value: fmt(kpis.total_outstanding),
+          color: "success.6",
+          bold: true,
+        },
+        {
+          label: "Overdue",
+          value: fmt(kpis.overdue_amount),
+          color: "danger.5",
+          bold: true,
+        },
         { label: "Invoiced", value: fmt(kpis.total_invoiced), color: "info.5" },
       ],
     },
@@ -72,16 +84,26 @@ function KpiStrip({
       icon: <IconUsers size={14} color="var(--mantine-color-brand-6)" />,
       label: "Customers",
       items: [
-        { label: "Count", value: String(kpis.total_customers), color: "brand.6", bold: true },
+        {
+          label: "Count",
+          value: String(kpis.total_customers),
+          color: "brand.6",
+          bold: true,
+        },
         { label: "Paid", value: fmt(kpis.total_paid), color: "success.6" },
-        { label: "Avg Days", value: String(kpis.average_collection_days || "—"), color: "brand.6" },
+        {
+          label: "Avg Days",
+          value: String(kpis.average_collection_days || "—"),
+          color: "brand.6",
+        },
       ],
     },
     {
       icon: <IconReceipt2 size={14} color="var(--mantine-color-warning-4)" />,
       label: "Aging",
       items: Object.entries(kpis.ageing_summary).map(([key, val]) => {
-        const label = key === "121_above" ? "121d+" : `${key.replace("_", "–")}d`;
+        const label =
+          key === "121_above" ? "121d+" : `${key.replace("_", "–")}d`;
         const bucket =
           key === "0_30"
             ? "success.6"
@@ -96,7 +118,13 @@ function KpiStrip({
   ];
 
   return (
-    <Box style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "var(--mantine-spacing-sm)" }}>
+    <Box
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+        gap: "var(--mantine-spacing-sm)",
+      }}
+    >
       {sections.map((sec) => (
         <Paper
           key={sec.label}
@@ -107,7 +135,13 @@ function KpiStrip({
         >
           <Group gap={6} mb="xs">
             {sec.icon}
-            <Text fz="10px" fw={700} tt="uppercase" c="slate.4" style={{ letterSpacing: "0.08em" }}>
+            <Text
+              fz="10px"
+              fw={700}
+              tt="uppercase"
+              c="slate.4"
+              style={{ letterSpacing: "0.08em" }}
+            >
               {sec.label}
             </Text>
           </Group>
@@ -124,7 +158,16 @@ function KpiStrip({
                   {item.label}
                 </Text>
                 {loading ? (
-                  <Box h={14} w={48} mt={2} style={{ background: "var(--mantine-color-slate-1)", borderRadius: 4 }} className="animate-pulse" />
+                  <Box
+                    h={14}
+                    w={48}
+                    mt={2}
+                    style={{
+                      background: "var(--mantine-color-slate-1)",
+                      borderRadius: 4,
+                    }}
+                    className="animate-pulse"
+                  />
                 ) : (
                   <Text
                     fz="12px"
@@ -149,7 +192,8 @@ function KpiStrip({
 
 function StatusBadge({ status }: { status: string }) {
   if (!status) return null;
-  const scale = status === "Paid" ? "success" : status === "Overdue" ? "danger" : "warning";
+  const scale =
+    status === "Paid" ? "success" : status === "Overdue" ? "danger" : "warning";
   return (
     <Badge color={scale} variant="light" size="sm" radius="sm">
       {status}
@@ -160,6 +204,8 @@ function StatusBadge({ status }: { status: string }) {
 /* ───────────────── Page ───────────────── */
 
 export function Receivable() {
+  useCurrencyReady();
+
   const {
     searchTerm,
     setSearchTerm,
@@ -195,6 +241,7 @@ export function Receivable() {
     customerOptions,
     costCenterOptions,
     receivableAccountOptions,
+    baseCurrency,
 
     viewRowId,
     setViewRowId,
@@ -208,7 +255,12 @@ export function Receivable() {
         accessorKey: "id",
         header: "Voucher No",
         cell: ({ row }) => (
-          <Text fz="xs" fw={600} c="brand.6" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
+          <Text
+            fz="xs"
+            fw={600}
+            c="brand.6"
+            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+          >
             {row.original.id}
           </Text>
         ),
@@ -239,7 +291,12 @@ export function Receivable() {
         header: "Total",
         meta: { align: "right" },
         cell: ({ row }) => (
-          <Text fz="xs" fw={500} c="info.5" style={{ fontVariantNumeric: "tabular-nums" }}>
+          <Text
+            fz="xs"
+            fw={500}
+            c="info.5"
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
             {displayAmount(row.original.currency, row.original.invoicedAmount)}
           </Text>
         ),
@@ -250,7 +307,12 @@ export function Receivable() {
         header: "Paid",
         meta: { align: "right" },
         cell: ({ row }) => (
-          <Text fz="xs" fw={500} c="success.6" style={{ fontVariantNumeric: "tabular-nums" }}>
+          <Text
+            fz="xs"
+            fw={500}
+            c="success.6"
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
             {displayAmount(row.original.currency, row.original.paidAmount)}
           </Text>
         ),
@@ -267,7 +329,10 @@ export function Receivable() {
             c={row.original.outstandingAmount > 0 ? "danger.5" : "success.6"}
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
-            {displayAmount(row.original.currency, row.original.outstandingAmount)}
+            {displayAmount(
+              row.original.currency,
+              row.original.outstandingAmount,
+            )}
           </Text>
         ),
       },
@@ -275,7 +340,11 @@ export function Receivable() {
         id: "due",
         header: "Due / Posting Date",
         cell: ({ row }) => (
-          <Text fz="11px" c="slate.5" style={{ fontVariantNumeric: "tabular-nums" }}>
+          <Text
+            fz="11px"
+            c="slate.5"
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
             {row.original.dueDate ?? row.original.postingDate ?? "—"}
           </Text>
         ),
@@ -284,15 +353,26 @@ export function Receivable() {
         id: "age",
         header: "Aging",
         cell: ({ row }) => {
-          if (!row.original.voucherType || row.original.voucherType !== "Sales Invoice") return null;
+          if (
+            !row.original.voucherType ||
+            row.original.voucherType !== "Sales Invoice"
+          )
+            return null;
           return (
             <Group gap={4} wrap="nowrap">
               {row.original.overdue ? (
-                <IconAlertTriangle size={11} color="var(--mantine-color-danger-5)" />
+                <IconAlertTriangle
+                  size={11}
+                  color="var(--mantine-color-danger-5)"
+                />
               ) : (
                 <IconClock size={11} color="var(--mantine-color-slate-4)" />
               )}
-              <Text fz="11px" fw={500} c={row.original.overdue ? "danger.5" : "slate.5"}>
+              <Text
+                fz="11px"
+                fw={500}
+                c={row.original.overdue ? "danger.5" : "slate.5"}
+              >
                 {row.original.age}d {row.original.overdue ? "overdue" : "left"}
               </Text>
             </Group>
@@ -310,7 +390,13 @@ export function Receivable() {
         meta: { align: "center" },
         cell: ({ row }) => (
           <Group justify="center">
-            <ActionIcon variant="subtle" color="brand" size="sm" radius="md" onClick={() => setViewRowId(row.original.id)}>
+            <ActionIcon
+              variant="subtle"
+              color="brand"
+              size="sm"
+              radius="md"
+              onClick={() => setViewRowId(row.original.id)}
+            >
               <IconEye size={14} />
             </ActionIcon>
           </Group>
@@ -346,7 +432,11 @@ export function Receivable() {
       Status: r.status,
     }));
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheetData), "Receivables");
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(sheetData),
+      "Receivables",
+    );
     saveAs(
       new Blob([XLSX.write(wb, { bookType: "xlsx", type: "array" })], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -359,9 +449,20 @@ export function Receivable() {
     <Stack gap="sm" p="lg">
       {/* KPI strip */}
       {kpis ? (
-        <KpiStrip kpis={kpis} loading={isLoading} displayAmount={displayAmount} />
+        <KpiStrip
+          kpis={kpis}
+          loading={isLoading}
+          displayAmount={displayAmount}
+          baseCurrency={baseCurrency}
+        />
       ) : (
-        <Box style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "var(--mantine-spacing-sm)" }}>
+        <Box
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gap: "var(--mantine-spacing-sm)",
+          }}
+        >
           {Array.from({ length: 3 }).map((_, i) => (
             <Box
               key={i}
@@ -378,10 +479,24 @@ export function Receivable() {
       )}
 
       {/* Filter bar */}
-      <Paper withBorder radius="md" p="md" style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+      <Paper
+        withBorder
+        radius="md"
+        p="md"
+        style={{ borderColor: "var(--mantine-color-slate-2)" }}
+      >
         <Group gap={6} mb="sm">
-          <IconAdjustmentsHorizontal size={13} color="var(--mantine-color-slate-4)" />
-          <Text fz="10px" fw={700} tt="uppercase" c="slate.4" style={{ letterSpacing: "0.08em" }}>
+          <IconAdjustmentsHorizontal
+            size={13}
+            color="var(--mantine-color-slate-4)"
+          />
+          <Text
+            fz="10px"
+            fw={700}
+            tt="uppercase"
+            c="slate.4"
+            style={{ letterSpacing: "0.08em" }}
+          >
             Filters
           </Text>
         </Group>
@@ -390,7 +505,9 @@ export function Receivable() {
           <DatePickerInput
             label="Posting Date"
             value={postingDate ? new Date(postingDate) : null}
-            onChange={(d) => setPostingDate(d ? new Date(d).toISOString().split("T")[0] : "")}
+            onChange={(d) =>
+              setPostingDate(d ? new Date(d).toISOString().split("T")[0] : "")
+            }
             size="xs"
             w={150}
             clearable
@@ -405,7 +522,9 @@ export function Receivable() {
               { value: "Paid", label: "Paid" },
             ]}
             value={filterStatus}
-            onChange={(v) => setFilterStatus((v as typeof filterStatus) ?? "all")}
+            onChange={(v) =>
+              setFilterStatus((v as typeof filterStatus) ?? "all")
+            }
             size="xs"
             w={130}
           />
@@ -415,7 +534,9 @@ export function Receivable() {
             placeholder="All Types"
             data={VOUCHER_TYPE_OPTIONS.map((v) => ({ value: v, label: v }))}
             value={selectedVoucherType || null}
-            onChange={(v) => setSelectedVoucherType((v as typeof selectedVoucherType) ?? "")}
+            onChange={(v) =>
+              setSelectedVoucherType((v as typeof selectedVoucherType) ?? "")
+            }
             size="xs"
             w={150}
             clearable
@@ -472,7 +593,13 @@ export function Receivable() {
           />
 
           {hasActiveFilters && (
-            <Button variant="subtle" color="danger" size="xs" leftSection={<IconX size={12} />} onClick={clearAll}>
+            <Button
+              variant="subtle"
+              color="danger"
+              size="xs"
+              leftSection={<IconX size={12} />}
+              onClick={clearAll}
+            >
               Clear
             </Button>
           )}
@@ -522,15 +649,39 @@ export function Receivable() {
       )}
 
       {/* Table */}
-      <Paper withBorder radius="md" style={{ borderColor: "var(--mantine-color-slate-2)", overflow: "hidden" }}>
-        <Box style={{ overflowX: "auto", overflowY: "auto", maxHeight: 520, position: "relative" }}>
-          <Table striped highlightOnHover verticalSpacing="xs" horizontalSpacing="sm" stickyHeader style={{ minWidth: "100%" }}>
+      <Paper
+        withBorder
+        radius="md"
+        style={{
+          borderColor: "var(--mantine-color-slate-2)",
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          style={{
+            overflowX: "auto",
+            overflowY: "auto",
+            maxHeight: 520,
+            position: "relative",
+          }}
+        >
+          <Table
+            striped
+            highlightOnHover
+            verticalSpacing="xs"
+            horizontalSpacing="sm"
+            stickyHeader
+            style={{ minWidth: "100%" }}
+          >
             <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
               {table.getHeaderGroups().map((hg) => (
                 <Table.Tr key={hg.id}>
                   {hg.headers.map((header) => {
                     const align =
-                      (header.column.columnDef.meta as { align?: string } | undefined)?.align === "right"
+                      (
+                        header.column.columnDef.meta as
+                          { align?: string } | undefined
+                      )?.align === "right"
                         ? "right"
                         : "left";
                     return (
@@ -546,7 +697,10 @@ export function Receivable() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                       </Table.Th>
                     );
                   })}
@@ -575,12 +729,21 @@ export function Receivable() {
                   <Table.Tr key={row.id}>
                     {row.getVisibleCells().map((cell) => {
                       const align =
-                        (cell.column.columnDef.meta as { align?: string } | undefined)?.align === "right"
+                        (
+                          cell.column.columnDef.meta as
+                            { align?: string } | undefined
+                        )?.align === "right"
                           ? "right"
                           : "left";
                       return (
-                        <Table.Td key={cell.id} style={{ textAlign: align, whiteSpace: "nowrap" }}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        <Table.Td
+                          key={cell.id}
+                          style={{ textAlign: align, whiteSpace: "nowrap" }}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
                         </Table.Td>
                       );
                     })}
@@ -595,7 +758,8 @@ export function Receivable() {
               style={{
                 position: "absolute",
                 inset: 0,
-                background: "color-mix(in srgb, var(--mantine-color-white) 60%, transparent)",
+                background:
+                  "color-mix(in srgb, var(--mantine-color-white) 60%, transparent)",
                 backdropFilter: "blur(1px)",
                 display: "flex",
                 alignItems: "center",
@@ -607,68 +771,62 @@ export function Receivable() {
           )}
         </Box>
 
-        {/* Pagination footer */}
-        <Group
-          justify="space-between"
-          px="sm"
-          py={8}
-          wrap="wrap"
-          style={{ borderTop: "1px solid var(--mantine-color-slate-2)", background: "var(--mantine-color-slate-0)" }}
-        >
-          <Text fz="11px" c="slate.5">
-            {pagination && pagination.total_entries > 0 ? (
-              <>
-                Showing{" "}
-                <Text component="span" fz="11px" fw={600} c="slate.8">
-                  {(pagination.page - 1) * pagination.page_size + 1}–
-                  {Math.min(pagination.page * pagination.page_size, pagination.total_entries)}
-                </Text>{" "}
-                of{" "}
-                <Text component="span" fz="11px" fw={600} c="slate.8">
-                  {pagination.total_entries}
-                </Text>
-              </>
-            ) : (
-              "No entries"
-            )}
-          </Text>
-          {pagination && pagination.total_pages > 1 && (
-            <Group gap={4}>
-              <ActionIcon variant="default" size="sm" disabled={!pagination.has_prev || isLoading} onClick={() => handlePageChange(page - 1)}>
-                <IconChevronLeft size={13} />
-              </ActionIcon>
-              {Array.from({ length: pagination.total_pages }, (_, i) => i + 1)
-                .filter((p) => Math.abs(p - page) <= 2)
-                .map((p) => (
-                  <Button
-                    key={p}
-                    size="xs"
-                    variant={p === page ? "filled" : "default"}
-                    color={p === page ? "brand" : undefined}
-                    disabled={isLoading}
-                    onClick={() => handlePageChange(p)}
-                    px={8}
-                  >
-                    {p}
-                  </Button>
-                ))}
-              <ActionIcon variant="default" size="sm" disabled={!pagination.has_next || isLoading} onClick={() => handlePageChange(page + 1)}>
-                <IconChevronRight size={13} />
-              </ActionIcon>
+        {/* Pagination footer — matches JournalEntries.tsx: "Showing X-Y of Z"
+            text on the left, Mantine Pagination (dots/numbers, radius="xl")
+            on the right, instead of manual ActionIcon+Button page numbers. */}
+        {pagination && pagination.total_entries > 0 && (
+          <Group
+            justify="space-between"
+            px="sm"
+            py={8}
+            wrap="wrap"
+            style={{
+              borderTop: "1px solid var(--mantine-color-slate-2)",
+              background: "var(--mantine-color-slate-0)",
+            }}
+          >
+            <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
+              <span>
+                {`Showing ${(pagination.page - 1) * pagination.page_size + 1}-${Math.min(
+                  pagination.page * pagination.page_size,
+                  pagination.total_entries,
+                )} of ${pagination.total_entries}`}
+              </span>
             </Group>
-          )}
-        </Group>
+
+            <Pagination
+              total={pagination.total_pages}
+              value={page}
+              onChange={(p) => handlePageChange(p)}
+              color="brand"
+              size="xs"
+              radius="xl"
+              disabled={isLoading}
+            />
+          </Group>
+        )}
       </Paper>
 
       {/* View details modal */}
-      <Modal opened={!!viewRowId} onClose={() => setViewRowId(null)} title="Voucher Details" size="md" radius="md">
+      <Modal
+        opened={!!viewRowId}
+        onClose={() => setViewRowId(null)}
+        title="Voucher Details"
+        size="md"
+        radius="md"
+      >
         {viewRow && (
           <Stack gap="xs">
             <Group justify="space-between">
               <Text size="xs" c="slate.5">
                 Voucher No
               </Text>
-              <Text size="sm" fw={600} c="brand.6" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
+              <Text
+                size="sm"
+                fw={600}
+                c="brand.6"
+                style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+              >
                 {viewRow.id}
               </Text>
             </Group>
@@ -705,7 +863,11 @@ export function Receivable() {
               <Text size="xs" c="slate.5">
                 Outstanding Amount
               </Text>
-              <Text size="sm" fw={700} c={viewRow.outstandingAmount > 0 ? "danger.5" : "success.6"}>
+              <Text
+                size="sm"
+                fw={700}
+                c={viewRow.outstandingAmount > 0 ? "danger.5" : "success.6"}
+              >
                 {displayAmount(viewRow.currency, viewRow.outstandingAmount)}
               </Text>
             </Group>

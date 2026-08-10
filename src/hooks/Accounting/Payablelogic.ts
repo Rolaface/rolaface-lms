@@ -9,9 +9,14 @@ import {
   fetchSupplierOptions,
   fetchCostCenterOptions,
   fetchPayableAccountOptions,
-  formatAmount,
 } from '../../api/Accounting/Payable.api';
 import { showApiError } from '../../utils/alert';
+import { useCompanyStore } from '../../store/companyStore';
+import {
+  formatAmount as storeFormatAmount,
+  ensureCurrencies,
+  useCurrencyReady,
+} from '../../store/currencyStore';
 
 const getTodayDate = () => new Date().toISOString().split('T')[0];
 
@@ -44,6 +49,13 @@ export function usePayable() {
 
   // ── Export (one-off fetch, not cached — no useQuery needed) ──
   const [isExporting, setIsExporting] = useState(false);
+
+  // ── Currency store ──────────────────────────────────────────
+  // Subscribes this hook (and any component consuming it) to the
+  // currency cache so amounts re-render once real symbols/number
+  // formats arrive, instead of staying stuck on defaults.
+  useCurrencyReady();
+  const baseCurrency = useCompanyStore((state) => state.baseCurrency);
 
   const filters: PayableFilters = useMemo(
     () => ({
@@ -115,6 +127,19 @@ export function usePayable() {
     if (isError) showApiError('Failed to fetch payables.');
   }, [isError]);
 
+  // Make sure the currency store actually has every currency we're about
+  // to display — the company's base currency (used for KPI totals, which
+  // aren't tied to a single row) plus every distinct row.currency on the
+  // current page. ensureCurrencies() no-ops for codes already cached.
+  useEffect(() => {
+    const codes = new Set<string>();
+    if (baseCurrency) codes.add(baseCurrency);
+    (data?.rows ?? []).forEach((r) => {
+      if (r.currency) codes.add(r.currency);
+    });
+    if (codes.size > 0) ensureCurrencies([...codes]);
+  }, [data, baseCurrency]);
+
   const handlePageChange = useCallback((pg: number) => {
     setPage(pg);
   }, []);
@@ -156,9 +181,14 @@ export function usePayable() {
     }
   }, [filters]);
 
-  const displayAmount = useMemo(
-    () => (currency: string | undefined, amount: number) => formatAmount(currency, amount),
-    [],
+  // Row-level amounts pass their own currency (r.currency). KPI amounts
+  // don't carry a currency (they're aggregates), so when no currency is
+  // given we fall back to the company's base currency instead of a
+  // hardcoded default.
+  const displayAmount = useCallback(
+    (currency: string | undefined, amount: number) =>
+      storeFormatAmount(currency ?? baseCurrency, amount, { withSymbol: true }),
+    [baseCurrency],
   );
 
   const viewRow = useMemo(

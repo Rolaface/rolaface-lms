@@ -79,22 +79,6 @@ interface PLApiResponse {
   message: PLEnvelope;
 }
 
-/* ───────────────── Currency helpers ───────────────── */
-
-export const BASE_CURRENCY = 'INR';
-const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', USD: '$', EUR: '€' };
-
-export function formatAmount(currency: string | undefined, amount: number) {
-  if (!amount) return '—';
-  const symbol = CURRENCY_SYMBOLS[currency ?? BASE_CURRENCY] ?? currency ?? '';
-  return `${symbol} ${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-}
-
-export function nf(amount: number) {
-  if (!amount) return '—';
-  return amount.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-}
-
 /* ───────────────── Node normalization ───────────────── */
 
 // Mirrors the old project's `mapNode` — normalizes is_group (0/1 -> boolean),

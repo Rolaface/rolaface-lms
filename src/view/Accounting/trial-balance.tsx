@@ -35,6 +35,7 @@ import {
 } from "../../api/Accounting/Trialbalance.api";
 import { useTrialBalance } from "../../hooks/Accounting/Trialbalance.logic";
 import { DateInput } from "@mantine/dates";
+import { useCurrencyReady } from "../../store/currencyStore";
 
 /* ───────────────── Filter bar ───────────────── */
 
@@ -153,7 +154,7 @@ function FilterBar({
 
 /* ───────────────── Columns ───────────────── */
 
-function useColumns(): ColumnDef<TBAccount>[] {
+function useColumns(baseCurrency: string): ColumnDef<TBAccount>[] {
   return useMemo<ColumnDef<TBAccount>[]>(
     () => [
       {
@@ -199,7 +200,7 @@ function useColumns(): ColumnDef<TBAccount>[] {
         meta: { align: "right" },
         cell: ({ row }) => (
           <Text fz="xs" ta="right" c="slate.7" style={{ fontFamily: "var(--mantine-font-family-monospace)", fontVariantNumeric: "tabular-nums" }}>
-            {nf(row.original.opening_debit)}
+            {nf(baseCurrency, row.original.opening_debit)}
           </Text>
         ),
       },
@@ -214,7 +215,7 @@ function useColumns(): ColumnDef<TBAccount>[] {
         meta: { align: "right" },
         cell: ({ row }) => (
           <Text fz="xs" ta="right" c="slate.7" style={{ fontFamily: "var(--mantine-font-family-monospace)", fontVariantNumeric: "tabular-nums" }}>
-            {nf(row.original.opening_credit)}
+            {nf(baseCurrency, row.original.opening_credit)}
           </Text>
         ),
       },
@@ -229,7 +230,7 @@ function useColumns(): ColumnDef<TBAccount>[] {
         meta: { align: "right" },
         cell: ({ row }) => (
           <Text fz="xs" ta="right" fw={500} c="info.6" style={{ fontFamily: "var(--mantine-font-family-monospace)", fontVariantNumeric: "tabular-nums" }}>
-            {nf(row.original.debit)}
+            {nf(baseCurrency, row.original.debit)}
           </Text>
         ),
       },
@@ -244,7 +245,7 @@ function useColumns(): ColumnDef<TBAccount>[] {
         meta: { align: "right" },
         cell: ({ row }) => (
           <Text fz="xs" ta="right" fw={500} c="accent.6" style={{ fontFamily: "var(--mantine-font-family-monospace)", fontVariantNumeric: "tabular-nums" }}>
-            {nf(row.original.credit)}
+            {nf(baseCurrency, row.original.credit)}
           </Text>
         ),
       },
@@ -259,7 +260,7 @@ function useColumns(): ColumnDef<TBAccount>[] {
         meta: { align: "right" },
         cell: ({ row }) => (
           <Text fz="xs" ta="right" fw={700} c="slate.9" style={{ fontFamily: "var(--mantine-font-family-monospace)", fontVariantNumeric: "tabular-nums" }}>
-            {nf(row.original.closing_debit)}
+            {nf(baseCurrency, row.original.closing_debit)}
           </Text>
         ),
       },
@@ -274,22 +275,23 @@ function useColumns(): ColumnDef<TBAccount>[] {
         meta: { align: "right" },
         cell: ({ row }) => (
           <Text fz="xs" ta="right" fw={700} c="slate.9" style={{ fontFamily: "var(--mantine-font-family-monospace)", fontVariantNumeric: "tabular-nums" }}>
-            {nf(row.original.closing_credit)}
+            {nf(baseCurrency, row.original.closing_credit)}
           </Text>
         ),
       },
     ],
-    [],
+    [baseCurrency],
   );
 }
 
 /* ───────────────── Page ───────────────── */
 
 export function TrialBalance() {
-  const { data, loading, error, handleRefresh, filters, setFilters, tableData, expanded, setExpanded } =
+  useCurrencyReady();
+  const { data, loading, error, handleRefresh, filters, setFilters, tableData, expanded, setExpanded, baseCurrency } =
     useTrialBalance();
 
-  const columns = useColumns();
+  const columns = useColumns(baseCurrency);
 
   const table = useReactTable({
     data: tableData,
@@ -381,32 +383,32 @@ export function TrialBalance() {
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
                     <Text fz="xs" fw={700} c="slate.8" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
-                      {nf(data.totals.opening_debit)}
+                      {nf(baseCurrency, data.totals.opening_debit)}
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
                     <Text fz="xs" fw={700} c="slate.8" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
-                      {nf(data.totals.opening_credit)}
+                      {nf(baseCurrency, data.totals.opening_credit)}
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
                     <Text fz="xs" fw={700} c="info.6" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
-                      {nf(data.totals.debit)}
+                      {nf(baseCurrency, data.totals.debit)}
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
                     <Text fz="xs" fw={700} c="accent.6" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
-                      {nf(data.totals.credit)}
+                      {nf(baseCurrency, data.totals.credit)}
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
                     <Text fz="xs" fw={700} c="slate.9" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
-                      {nf(data.totals.closing_debit)}
+                      {nf(baseCurrency, data.totals.closing_debit)}
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
                     <Text fz="xs" fw={700} c="slate.9" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
-                      {nf(data.totals.closing_credit)}
+                      {nf(baseCurrency, data.totals.closing_credit)}
                     </Text>
                   </Table.Td>
                 </Table.Tr>

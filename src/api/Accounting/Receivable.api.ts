@@ -1,6 +1,8 @@
 import type { AxiosResponse } from "axios";
 import apiClient from "../../config/axios";
 import { API } from "../../config/api";
+import { formatAmount as formatAmountShared } from "../../store/currencyStore";
+
 
 const api = apiClient;
 
@@ -107,11 +109,9 @@ export const VOUCHER_TYPE_OPTIONS: ReceivableVoucherType[] = [
    FORMATTING HELPERS
 =========================================================== */
 
-const CURRENCY_SYMBOLS: Record<string, string> = { INR: "₹", USD: "$", EUR: "€" };
-export const symbolFor = (ccy: string) => CURRENCY_SYMBOLS[ccy] ?? ccy;
 
 export function formatAmount(currency: string | undefined, amount: number) {
-  return `${symbolFor(currency ?? "INR")} ${amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  return formatAmountShared(currency, amount, { withSymbol: true });
 }
 
 /* ===========================================================

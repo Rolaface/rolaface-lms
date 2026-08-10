@@ -3,9 +3,14 @@ import {
   type PLData,
   type ProfitLossFilters,
   fetchProfitAndLoss,
-  formatAmount,
 } from '../../api/Accounting/Profitloss.api';
 import { getCompanyCurrentFiscalYear } from '../../api/utils/frappeUtilsApi';
+import { useCompanyStore } from '../../store/companyStore';
+import {
+  formatAmount as storeFormatAmount,
+  ensureCurrencies,
+  useCurrencyReady,
+} from '../../store/currencyStore';
 
 const currentMonthStart = (): string => {
   const d = new Date();
@@ -36,6 +41,18 @@ export function useProfitLoss() {
   const [data, setData] = useState<PLData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Currency store ──────────────────────────────────────────
+  // P&L totals aren't per-row currency like Payables — the whole report
+  // is in the reporting company's base currency. Subscribe to the store
+  // so amounts re-render once the real symbol/number-format load, and
+  // prefetch that currency as soon as we know it.
+  useCurrencyReady();
+  const baseCurrency = useCompanyStore((state) => state.baseCurrency);
+
+  useEffect(() => {
+    if (baseCurrency) ensureCurrencies([baseCurrency]);
+  }, [baseCurrency]);
 
   // Resolve the company's real current Fiscal Year once, then patch filters.
   useEffect(() => {
@@ -89,7 +106,16 @@ export function useProfitLoss() {
     return [...data.income, ...data.expense];
   }, [data]);
 
-  const displayAmount = useMemo(() => (amount: number) => formatAmount(undefined, amount), []);
+  // Preserves the old "—" placeholder for zero/empty cells; everything
+  // else now goes through the real dynamic currency store instead of a
+  // hardcoded INR/₹ default.
+  const displayAmount = useCallback(
+    (amount: number) => {
+      if (!amount) return '—';
+      return storeFormatAmount(baseCurrency, amount, { withSymbol: true });
+    },
+    [baseCurrency],
+  );
 
   const handleRefresh = useCallback(() => fetchData(filters), [fetchData, filters]);
 

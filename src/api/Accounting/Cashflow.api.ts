@@ -138,29 +138,3 @@ export async function fetchCashFlow(filters: CFFilters): Promise<CFData> {
     tree: buildTree(envelope.data.data),
   };
 }
-
-/* ===========================================================
-   CURRENCY FORMAT
-   Same call-site contract as Balancesheet.api.ts's formatAmount:
-   formatAmount(currencyCode, value) -> display string
-=========================================================== */
-
-export function formatAmount(currency: string, value?: number | null): string {
-  if (value === undefined || value === null) return '—';
-
-  try {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: currency || 'INR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  } catch {
-    // Unknown/invalid currency code — fall back to plain number formatting
-    const formatted = new Intl.NumberFormat('en-IN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(Math.abs(value));
-    return value < 0 ? `-${formatted}` : formatted;
-  }
-}

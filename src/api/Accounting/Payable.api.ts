@@ -106,17 +106,6 @@ export const VOUCHER_TYPE_OPTIONS: PayableVoucherType[] = [
 ];
 
 /* ===========================================================
-   FORMATTING HELPERS
-=========================================================== */
-
-const CURRENCY_SYMBOLS: Record<string, string> = { INR: "₹", USD: "$", EUR: "€" };
-export const symbolFor = (ccy: string) => CURRENCY_SYMBOLS[ccy] ?? ccy;
-
-export function formatAmount(currency: string | undefined, amount: number) {
-  return `${symbolFor(currency ?? "INR")} ${amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
-}
-
-/* ===========================================================
    ROW MAPPING — backend record -> UI row
 =========================================================== */
 

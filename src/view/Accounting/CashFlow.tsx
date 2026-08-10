@@ -33,9 +33,9 @@ import {
   IconArrowsLeftRight,
 } from '@tabler/icons-react';
 
-import { type CFNode, type CFSummaryItem, formatAmount, isNetRow } from '../../api/Accounting/Cashflow.api';
+import { type CFNode, type CFSummaryItem, isNetRow } from '../../api/Accounting/Cashflow.api';
 import { useCashFlow } from '../../hooks/Accounting/cash-flow/Cashflow.logic';
-import { useCompanyStore } from '../../store/companyStore';
+import { formatAmount } from '../../store/currencyStore';
 
 /* ───────────────── Summary color / icon (label-based, theme tokens) ───────────────── */
 
@@ -61,7 +61,15 @@ function SummaryIcon({ label }: { label: string }) {
 
 /* ───────────────── KPI strip ───────────────── */
 
-function KpiStrip({ summary, loading }: { summary: CFSummaryItem[]; loading: boolean }) {
+function KpiStrip({
+  summary,
+  loading,
+  baseCurrency,
+}: {
+  summary: CFSummaryItem[];
+  loading: boolean;
+  baseCurrency: string;
+}) {
   const items = loading || summary.length === 0 ? Array.from({ length: 4 }) : summary;
 
   return (
@@ -78,7 +86,7 @@ function KpiStrip({ summary, loading }: { summary: CFSummaryItem[]; loading: boo
             <Box h={16} w={96} style={{ background: 'var(--mantine-color-slate-1)', borderRadius: 4 }} className="animate-pulse" />
           ) : (
             <Text fz="sm" fw={700} c={summaryColor(item)} style={{ fontVariantNumeric: 'tabular-nums' }}>
-              {formatAmount(item.currency ?? 'INR', item.value)}
+              {formatAmount(item.currency ?? baseCurrency, item.value, { withSymbol: true })}
             </Text>
           )}
         </Paper>
@@ -181,8 +189,7 @@ function FilterBar({ cf }: { cf: ReturnType<typeof useCashFlow> }) {
 
 export function CashFlow() {
   const cf = useCashFlow();
-  const { data, loading, error } = cf;
-  const { baseCurrency } = useCompanyStore();
+  const { data, loading, error, baseCurrency } = cf;
 
   const columns = useMemo<ColumnDef<CFNode>[]>(() => {
     if (!data?.columns) return [];
@@ -254,7 +261,7 @@ export function CashFlow() {
             const color = val > 0 ? 'success.6' : val < 0 ? 'danger.5' : 'slate.6';
             return (
               <Text fz="xs" c={color} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {formatAmount(row.original.currency ?? baseCurrency, val)}
+                {formatAmount(row.original.currency ?? baseCurrency, val, { withSymbol: true })}
               </Text>
             );
           },
@@ -290,7 +297,7 @@ export function CashFlow() {
 
   return (
     <Stack gap="sm" p="lg">
-      <KpiStrip summary={data?.summary ?? []} loading={loading && !data} />
+      <KpiStrip summary={data?.summary ?? []} loading={loading && !data} baseCurrency={baseCurrency} />
 
       <FilterBar cf={cf} />
 

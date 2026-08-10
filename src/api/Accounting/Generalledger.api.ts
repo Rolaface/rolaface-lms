@@ -4,6 +4,7 @@ import type { AxiosResponse } from 'axios';
 import apiClient from '../../config/axios';
 import { API } from '../../config/api';
 import { useCompanyStore } from '../../store/companyStore';
+import { formatAmount as formatAmountShared } from '../../store/currencyStore';
 
 const api = apiClient;
 
@@ -135,18 +136,13 @@ function resolveCompany(): string {
 
 /* ───────────────── Currency helpers ───────────────── */
 
+
+
 export const BASE_CURRENCY = 'INR';
-const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', USD: '$', EUR: '€' };
 
 export function formatAmount(currency: string, amount: number) {
-  const symbol = CURRENCY_SYMBOLS[currency] ?? currency;
-  const sign = amount < 0 ? '-' : '';
-  return `${sign}${symbol} ${Math.abs(amount).toLocaleString('en-IN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return formatAmountShared(currency, amount, { withSymbol: true });
 }
-
 export function stripAccountAbbreviation(accountName: string): string {
   return accountName.replace(/\s-\s[^-]+$/, '');
 }

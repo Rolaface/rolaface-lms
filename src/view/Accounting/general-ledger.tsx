@@ -17,7 +17,7 @@ import {
   Group,
   Stack,
   SimpleGrid,
-  ActionIcon,
+  Pagination,
   useMantineTheme,
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
@@ -25,7 +25,6 @@ import {
   IconRefresh,
   IconBook,
   IconChevronLeft,
-  IconChevronRight,
 } from "@tabler/icons-react";
 
 import {
@@ -33,6 +32,7 @@ import {
   type Summary,
 } from "../../api/Accounting/Generalledger.api";
 import { useGeneralLedger } from "../../hooks/Accounting/Generalledger.logic";
+import { useCurrencyReady } from "../../store/currencyStore";
 
 export interface GeneralLedgerProps {
   account?: string;
@@ -163,7 +163,6 @@ function FilterBar({
 }) {
   return (
     <Group gap="sm" wrap="wrap" align="flex-end">
-      
       <TextInput
         size="xs"
         label="Account"
@@ -229,6 +228,8 @@ export function GeneralLedger({
   account: accountProp,
   onBack,
 }: GeneralLedgerProps) {
+  useCurrencyReady();
+
   const navigate = useNavigate();
   const theme = useMantineTheme();
 
@@ -365,11 +366,16 @@ export function GeneralLedger({
   const pagination = glData?.pagination;
   const summary = glData?.summary;
 
+  // First load = actively loading and no data yet at all. Show a
+  // skeleton/loader inside the table shell instead of nothing, so the
+  // page never looks "half rendered" (toolbar visible, table blank).
+  const isInitialLoad = loading && !glData;
+
   return (
-    // Same shell pattern as JournalEntries.tsx: h="100%" + flex column so
-    // the toolbar/KPI section stays fixed and only the table Paper scrolls.
-    // Requires a parent with a bounded height (layout shell / route container).
-    <Stack gap="sm" p="lg" h="100%" style={{ minHeight: 0 }}>
+    // Self-contained scroll pattern (same as ChartOfAccounts / JournalEntries):
+    // fixed maxHeight instead of h="100%"/flex, so it doesn't depend on the
+    // parent route having a bounded height.
+    <Stack gap="sm" p="lg">
       <style>{`
         @keyframes gl-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .gl-spin { animation: gl-spin 900ms linear infinite; }
@@ -385,8 +391,8 @@ export function GeneralLedger({
         .gl-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
       `}</style>
 
-      {/* Compact toolbar — filters + KPI together, fixed height, never shrinks */}
-      <Paper withBorder radius="md" p="sm" style={{ flexShrink: 0 }}>
+      {/* Toolbar — filters + KPI together */}
+      <Paper withBorder radius="md" p="sm">
         <Stack gap="sm">
           <FilterBar
             account={account}
@@ -417,30 +423,29 @@ export function GeneralLedger({
         </Stack>
       </Paper>
 
-      {/* Table Paper — flex:1 + minHeight:0 is what lets this claim the
-          remaining height and own the scroll, exactly as in JournalEntries.tsx. */}
-      {columns.length > 0 && (
-        <Paper
-          withBorder
-          radius="md"
-          shadow="sm"
+      {/* Table Paper — always rendered, so the page never shows
+          "toolbar only, blank below" while waiting for the first response. */}
+      <Paper withBorder radius="md" shadow="sm" style={{ overflow: "hidden" }}>
+        <Box
           style={{
-            flex: 1,
-            minHeight: 0,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
+            maxHeight: "calc(100vh - 400px)",
+            minHeight: 280,
+            overflowY: "auto",
+            overflowX: "auto",
+            position: "relative",
           }}
         >
-          <Box
-            style={{
-              flex: 1,
-              minHeight: 0,
-              overflowY: "auto",
-              overflowX: "auto",
-              position: "relative",
-            }}
-          >
+          {isInitialLoad ? (
+            <Group justify="center" py={80}>
+              <Loader size="sm" color="indigoAlt.4" />
+            </Group>
+          ) : columns.length === 0 ? (
+            <Group justify="center" py={80}>
+              <Text fz="xs" c="slate.4">
+                No ledger data available.
+              </Text>
+            </Group>
+          ) : (
             <Table
               stickyHeader
               horizontalSpacing="sm"
@@ -540,98 +545,62 @@ export function GeneralLedger({
                 )}
               </Table.Tbody>
             </Table>
+          )}
 
-            {loading && (glData?.ledger?.length ?? 0) > 0 && (
-              <Box
-                style={{
-                  position: "sticky",
-                  inset: 0,
-                  background:
-                    "color-mix(in srgb, var(--mantine-color-white) 60%, transparent)",
-                  backdropFilter: "blur(1px)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: 10,
-                }}
-              >
-                <Loader size="sm" color="indigoAlt.4" />
-              </Box>
-            )}
-          </Box>
+          {loading && !isInitialLoad && (glData?.ledger?.length ?? 0) > 0 && (
+            <Box
+              style={{
+                position: "sticky",
+                inset: 0,
+                background:
+                  "color-mix(in srgb, var(--mantine-color-white) 60%, transparent)",
+                backdropFilter: "blur(1px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 10,
+              }}
+            >
+              <Loader size="sm" color="indigoAlt.4" />
+            </Box>
+          )}
+        </Box>
 
-          {/* Pagination footer — fixed height, stays outside the scroll Box */}
+        {/* Pagination footer — matches JournalEntries.tsx exactly:
+            "Showing X-Y of Z" text on the left, Mantine Pagination
+            (dots/numbers, radius="xl") on the right. */}
+        {pagination && pagination.total_entries > 0 && (
           <Group
             justify="space-between"
-            wrap="wrap"
-            gap="xs"
             px="sm"
-            py={8}
+            pt="xs"
+            pb="xs"
             style={{
-              flexShrink: 0,
               borderTop: "1px solid var(--mantine-color-slate-2)",
               background: "var(--mantine-color-slate-0)",
             }}
           >
-            <Text fz="11px" c="slate.5">
-              {pagination && pagination.total_entries > 0 ? (
-                <>
-                  Showing{" "}
-                  <Text component="span" fw={600} c="slate.8">
-                    {(pagination.page - 1) * pagination.page_size + 1}–
-                    {Math.min(
-                      pagination.page * pagination.page_size,
-                      pagination.total_entries,
-                    )}
-                  </Text>{" "}
-                  of{" "}
-                  <Text component="span" fw={600} c="slate.8">
-                    {pagination.total_entries}
-                  </Text>
-                </>
-              ) : (
-                "No entries"
-              )}
-            </Text>
+            <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
+              <span>
+                {`Showing ${(pagination.page - 1) * pagination.page_size + 1}-${Math.min(
+                  pagination.page * pagination.page_size,
+                  pagination.total_entries,
+                )} of ${pagination.total_entries}`}
+              </span>
+            </Group>
 
-            {pagination && pagination.total_pages > 1 && (
-              <Group gap={4}>
-                <ActionIcon
-                  size="sm"
-                  variant="default"
-                  disabled={!pagination.has_prev || loading}
-                  onClick={() => handlePageChange(page - 1)}
-                >
-                  <IconChevronLeft size={13} />
-                </ActionIcon>
-                {Array.from({ length: pagination.total_pages }, (_, i) => i + 1)
-                  .filter((p) => Math.abs(p - page) <= 2)
-                  .map((p) => (
-                    <Button
-                      key={p}
-                      size="xs"
-                      variant={p === page ? "filled" : "default"}
-                      color={p === page ? "brand" : undefined}
-                      onClick={() => handlePageChange(p)}
-                      disabled={loading}
-                      px={8}
-                    >
-                      {p}
-                    </Button>
-                  ))}
-                <ActionIcon
-                  size="sm"
-                  variant="default"
-                  disabled={!pagination.has_next || loading}
-                  onClick={() => handlePageChange(page + 1)}
-                >
-                  <IconChevronRight size={13} />
-                </ActionIcon>
-              </Group>
-            )}
+            <Pagination
+              total={pagination.total_pages}
+              value={page}
+              onChange={(p) => handlePageChange(p)}
+              color="brand"
+              size="xs"
+              radius="xl"
+              disabled={loading}
+            />
           </Group>
-        </Paper>
-      )}
+        )}
+      </Paper>
     </Stack>
   );
 }

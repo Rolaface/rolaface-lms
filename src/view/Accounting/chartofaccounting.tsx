@@ -20,6 +20,8 @@ import {
   Modal,
   Loader,
   Table,
+  Stack,
+  useMantineTheme,
 } from '@mantine/core';
 import {
   IconSearch,
@@ -42,14 +44,16 @@ import {
 import { type COAAccount, formatAmount } from '../../api/Accounting/Chartofaccounts.api';
 import { useChartOfAccounts } from '../../hooks/Accounting/Usechartofaccounts';
 
-// NOTE: excel export needs `xlsx` — install with: npm install xlsx
+import { useCurrencyReady } from '../../store/currencyStore';
 
+/* Theme tokens, not raw Mantine colors — keep this the single mapping
+   from root_type -> theme color so it stays in sync with mantineTheme.ts */
 const ROOT_TYPE_COLOR: Record<COAAccount['root_type'], string> = {
   Asset: 'indigoAlt',
-  Liability: 'red',
-  Equity: 'yellow',
-  Income: 'green',
-  Expense: 'gray',
+  Liability: 'danger',
+  Equity: 'accent',
+  Income: 'success',
+  Expense: 'slate',
 };
 
 /* ───────────────── Filter bar ───────────────── */
@@ -57,6 +61,7 @@ const ROOT_TYPE_COLOR: Record<COAAccount['root_type'], string> = {
 function FilterBar({
   searchTerm, setSearchTerm, hideZero, setHideZero,
   onRefresh, loading, allExpanded, onToggleExpand, onExport,
+  theme,
 }: {
   searchTerm: string;
   setSearchTerm: (v: string) => void;
@@ -67,15 +72,28 @@ function FilterBar({
   allExpanded: boolean;
   onToggleExpand: () => void;
   onExport: () => void;
+  theme: ReturnType<typeof useMantineTheme>;
 }) {
   return (
-    <Paper withBorder radius="md" p="xs" className="shadow-sm">
-      <div className="flex items-center gap-3 flex-wrap">
+    <Paper
+      radius="xl"
+      p="xs"
+      style={{
+        flexShrink: 0,
+        background: 'var(--mantine-color-slate-0)',
+        border: '1px solid var(--mantine-color-slate-2)',
+      }}
+    >
+      <Group gap="sm" wrap="wrap" align="center">
         <TextInput
-          size="xs"
+          className="coa-search"
+          radius="xl"
           placeholder="Search accounts..."
           leftSection={<IconSearch size={13} />}
-          className="flex-1 min-w-[220px]"
+          style={{ flex: 1, minWidth: 220 }}
+          styles={{
+            input: { border: '1px solid var(--mantine-color-slate-2)' },
+          }}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.currentTarget.value)}
         />
@@ -87,25 +105,36 @@ function FilterBar({
           onChange={(e) => setHideZero(e.currentTarget.checked)}
         />
 
-        <Group gap={6} className="ml-auto" wrap="nowrap">
-          <Button size="xs" variant="default" leftSection={
+        <Group gap={6} ml="auto" wrap="nowrap">
+          <Button size="xs" radius="xl" variant="default" leftSection={
             allExpanded ? <IconChevronRight size={13} /> : <IconLayoutList size={13} />
           } onClick={onToggleExpand}>
             {allExpanded ? 'Collapse' : 'Expand All'}
           </Button>
           <Button
             size="xs"
+            radius="xl"
             variant="default"
             leftSection={<IconRefresh size={13} className={loading ? 'animate-spin' : ''} />}
             onClick={onRefresh}
           >
             Refresh
           </Button>
-          <Button size="xs" variant="default" leftSection={<IconDownload size={13} />} onClick={onExport}>
+          <Button
+            size="xs"
+            radius="xl"
+            color="brand"
+            leftSection={<IconDownload size={13} />}
+            onClick={onExport}
+            style={{
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadowSm,
+            }}
+          >
             Export
           </Button>
         </Group>
-      </div>
+      </Group>
     </Paper>
   );
 }
@@ -116,32 +145,32 @@ function ViewAccountModal({ account, onClose }: { account: COAAccount | null; on
   return (
     <Modal opened={account !== null} onClose={onClose} title="Account Details" size="sm">
       {account && (
-        <div className="flex flex-col gap-2">
+        <Box style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Group justify="space-between">
-            <Text fz="xs" c="gray.6">Account Name</Text>
-            <Text fz="xs" fw={600}>{account.account_name}</Text>
+            <Text fz="xs" c="slate.5">Account Name</Text>
+            <Text fz="xs" fw={600} c="slate.8">{account.account_name}</Text>
           </Group>
           <Group justify="space-between">
-            <Text fz="xs" c="gray.6">Account Type</Text>
-            <Text fz="xs">{account.account_type || '—'}</Text>
+            <Text fz="xs" c="slate.5">Account Type</Text>
+            <Text fz="xs" c="slate.7">{account.account_type || '—'}</Text>
           </Group>
           <Group justify="space-between">
-            <Text fz="xs" c="gray.6">Root Type</Text>
+            <Text fz="xs" c="slate.5">Root Type</Text>
             <Badge size="sm" variant="light" color={ROOT_TYPE_COLOR[account.root_type]}>
               {account.root_type}
             </Badge>
           </Group>
           <Group justify="space-between">
-            <Text fz="xs" c="gray.6">Currency</Text>
-            <Text fz="xs">{account.account_currency}</Text>
+            <Text fz="xs" c="slate.5">Currency</Text>
+            <Text fz="xs" c="slate.7">{account.account_currency}</Text>
           </Group>
           <Group justify="space-between">
-            <Text fz="xs" c="gray.6">Balance</Text>
-            <Text fz="xs" fw={600}>
-              {formatAmount(account.account_currency, account.balance_in_account_currency ?? account.balance)}
+            <Text fz="xs" c="slate.5">Balance</Text>
+            <Text fz="xs" fw={600} c="slate.8">
+             {formatAmount(account.account_currency, account.balance_in_account_currency ?? account.balance, { withSymbol: true })}
             </Text>
           </Group>
-        </div>
+        </Box>
       )}
     </Modal>
   );
@@ -164,23 +193,23 @@ function useColumns(
           const node = row.original;
           const canExpand = row.getCanExpand();
           return (
-            <div className="flex items-center gap-1.5" style={{ paddingLeft: row.depth * 18 }}>
+            <Group gap={6} wrap="nowrap" style={{ paddingLeft: row.depth * 18 }}>
               {canExpand ? (
-                <ActionIcon size="xs" variant="subtle" color="gray" tabIndex={-1} style={{ pointerEvents: 'none' }}>
+                <ActionIcon size="xs" variant="subtle" color="slate" tabIndex={-1} style={{ pointerEvents: 'none' }}>
                   {row.getIsExpanded() ? <IconFolderOpen size={14} /> : <IconFolder size={14} />}
                 </ActionIcon>
               ) : (
-                <IconBook size={13} className="text-gray-400 shrink-0 ml-1" />
+                <IconBook size={13} color="var(--mantine-color-slate-4)" style={{ flexShrink: 0, marginLeft: 4 }} />
               )}
-              <Text fz="xs" fw={node.is_group ? 600 : 500} c={node.is_group ? 'gray.9' : 'gray.7'} truncate>
+              <Text fz="xs" fw={node.is_group ? 700 : 500} c={node.is_group ? 'slate.8' : 'slate.7'} truncate>
                 {node.account_name}
               </Text>
               {node.disabled === 1 && (
-                <Badge size="xs" variant="light" color="gray" className="shrink-0">
+                <Badge size="xs" variant="light" color="slate" style={{ flexShrink: 0 }}>
                   Disabled
                 </Badge>
               )}
-            </div>
+            </Group>
           );
         },
       },
@@ -189,7 +218,7 @@ function useColumns(
         header: 'Account Type',
         size: 150,
         cell: ({ row }) => (
-          <Text fz="xs" c="gray.6">{row.original.account_type || '—'}</Text>
+          <Text fz="xs" c="slate.5">{row.original.account_type || '—'}</Text>
         ),
       },
       {
@@ -204,43 +233,69 @@ function useColumns(
       },
       {
         id: 'balance',
-        header: () => <Text fz="xs" fw={600} ta="right" w="100%">Balance</Text>,
+        header: () => <Text fz="xs" fw={700} ta="right" w="100%">Balance</Text>,
         size: 150,
         cell: ({ row }) => {
           const node = row.original;
-          if (node.is_group === 1) return <Text fz="xs" c="gray.4" ta="right">—</Text>;
+          if (node.is_group === 1) return <Text fz="xs" c="slate.4" ta="right">—</Text>;
           return (
-            <Text fz="xs" ta="right" fw={500} c="green.7" className="font-mono tabular-nums">
-              {formatAmount(node.account_currency, node.balance_in_account_currency ?? node.balance)}
+            <Text
+              fz="xs"
+              ta="right"
+              fw={600}
+              c="success.6"
+              style={{
+                fontFamily: 'var(--mantine-font-family-monospace)',
+                fontVariantNumeric: 'tabular-nums',
+                background: 'var(--mantine-color-slate-0)',
+                borderRadius: 'var(--mantine-radius-sm)',
+                padding: '4px 8px',
+                display: 'inline-block',
+              }}
+            >
+              {formatAmount(node.account_currency, node.balance_in_account_currency ?? node.balance, { withSymbol: true })}
             </Text>
           );
         },
       },
       {
         id: 'balance_base',
-        header: () => <Text fz="xs" fw={600} ta="right" w="100%">Balance ({baseCurrency})</Text>,
+        header: () => <Text fz="xs" fw={700} ta="right" w="100%">Balance ({baseCurrency})</Text>,
         size: 160,
         cell: ({ row }) => {
           const node = row.original;
-          if (node.is_group === 1) return <Text fz="xs" c="gray.4" ta="right">—</Text>;
+          if (node.is_group === 1) return <Text fz="xs" c="slate.4" ta="right">—</Text>;
           return (
-            <Text fz="xs" ta="right" fw={500} c="gray.8" className="font-mono tabular-nums">
-              {formatAmount(baseCurrency, node.balance)}
+            <Text
+              fz="xs"
+              ta="right"
+              fw={600}
+              c="slate.7"
+              style={{
+                fontFamily: 'var(--mantine-font-family-monospace)',
+                fontVariantNumeric: 'tabular-nums',
+                background: 'var(--mantine-color-slate-0)',
+                borderRadius: 'var(--mantine-radius-sm)',
+                padding: '4px 8px',
+                display: 'inline-block',
+              }}
+            >
+             {formatAmount(baseCurrency, node.balance, { withSymbol: true })}
             </Text>
           );
         },
       },
       {
         id: 'actions',
-        header: '',
+        header: () => <Text fz="xs" fw={700} ta="right" w="100%">Actions</Text>,
         size: 50,
         cell: ({ row }) => {
           const node = row.original;
           return (
-            <Group justify="flex-end">
-              <Menu shadow="md" width={170} position="bottom-end">
+            <Group justify="flex-end" onClick={(e) => e.stopPropagation()}>
+              <Menu shadow="md" width={170} position="bottom-end" radius="md">
                 <Menu.Target>
-                  <ActionIcon size="sm" variant="subtle" color="gray">
+                  <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
                     <IconDots size={15} />
                   </ActionIcon>
                 </Menu.Target>
@@ -256,7 +311,7 @@ function useColumns(
                   )}
                   <Menu.Divider />
                   <Menu.Item
-                    color="red"
+                    color="danger"
                     leftSection={<IconTrash size={13} />}
                     onClick={() => onDelete(node)}
                   >
@@ -276,6 +331,9 @@ function useColumns(
 /* ───────────────── Page ───────────────── */
 
 export function ChartOfAccounts() {
+  useCurrencyReady();
+  const theme = useMantineTheme();
+
   const {
     searchTerm, setSearchTerm,
     hideZero, setHideZero,
@@ -302,7 +360,20 @@ export function ChartOfAccounts() {
   const rows = table.getRowModel().rows;
 
   return (
-    <Box className="flex flex-col gap-4 p-6">
+    // No h="100%" / flex-fill here — that needs a bounded-height parent
+    // which this route doesn't have, so the whole page was scrolling
+    // instead of the table. Fixed maxHeight below is self-contained:
+    // works regardless of what the parent layout does.
+    <Stack gap="lg" p="lg">
+      <style>{`
+        .coa-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
+        .coa-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+        .coa-row:hover td { background: ${theme.other.rowHoverBg} !important; }
+        .coa-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+        .coa-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+        .coa-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
+      `}</style>
+
       <ViewAccountModal account={viewAccount} onClose={() => setViewAccount(null)} />
 
       <FilterBar
@@ -315,19 +386,47 @@ export function ChartOfAccounts() {
         allExpanded={allExpanded}
         onToggleExpand={handleToggleExpand}
         onExport={handleExport}
+        theme={theme}
       />
 
-      <Paper withBorder radius="md" className="shadow-sm overflow-hidden">
-        <div className="overflow-x-auto overflow-y-auto max-h-[520px] relative">
-          <Table verticalSpacing={4} horizontalSpacing="sm" fz="xs" className="w-full" style={{ tableLayout: 'fixed' }}>
-            <Table.Thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+      <Paper
+        radius="lg"
+        p="sm"
+        pos="relative"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        {/* This Box is the ONLY thing that scrolls — fixed maxHeight
+            means the table stays contained and the page around it
+            (filters, header, sidebar) never moves. */}
+        <Box style={{ maxHeight: 'calc(100vh - 250px)', minHeight: 280, overflowY: 'auto', overflowX: 'auto' }}>
+          <Table
+            verticalSpacing="sm"
+            horizontalSpacing="sm"
+            fz="xs"
+            w="100%"
+            style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+          >
+            <Table.Thead>
               {table.getHeaderGroups().map((hg) => (
                 <Table.Tr key={hg.id}>
                   {hg.headers.map((header) => (
                     <Table.Th
                       key={header.id}
-                      className="text-gray-600 font-semibold select-none bg-gray-50"
-                      style={{ fontSize: 11, padding: '6px 10px', width: header.getSize() }}
+                      className="coa-thead-cell"
+                      c="slate.5"
+                      fw={700}
+                      style={{
+                        fontSize: 'var(--mantine-font-size-xs)',
+                        padding: '0 10px 6px',
+                        userSelect: 'none',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        border: 'none',
+                        minWidth: header.getSize(),
+                      }}
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
                     </Table.Th>
@@ -338,35 +437,50 @@ export function ChartOfAccounts() {
             <Table.Tbody>
               {loading ? (
                 <Table.Tr>
-                  <Table.Td colSpan={columns.length}>
-                    <div className="flex justify-center items-center py-16">
+                  <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                    <Group justify="center" py={64}>
                       <Loader size="sm" color="indigoAlt.4" />
-                    </div>
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               ) : rows.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={columns.length}>
-                    <div className="flex flex-col items-center py-8 text-gray-400">
-                      <IconAlertCircle size={28} className="mb-2 opacity-50" />
-                      <Text ta="center" c="dimmed" fz="xs">No accounts found.</Text>
-                    </div>
+                  <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                    <Stack align="center" gap="xs" py="xl">
+                      <Box
+                        style={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: '50%',
+                          background: 'var(--mantine-color-white)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '1px solid var(--mantine-color-slate-2)',
+                        }}
+                      >
+                        <IconAlertCircle size={26} color="var(--mantine-color-slate-4)" />
+                      </Box>
+                      <Text ta="center" c="slate.5" fz="xs">No accounts found.</Text>
+                    </Stack>
                   </Table.Td>
                 </Table.Tr>
               ) : (
                 rows.map((row) => (
                   <Table.Tr
                     key={row.id}
-                    className={`border-b border-gray-100 last:border-0 hover:bg-gray-50/50 ${
-                      row.getCanExpand() ? 'cursor-pointer select-none' : ''
-                    }`}
+                    className="coa-row"
+                    style={row.getCanExpand() ? { cursor: 'pointer' } : undefined}
                     onClick={row.getCanExpand() ? row.getToggleExpandedHandler() : undefined}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <Table.Td
                         key={cell.id}
-                        style={{ padding: '5px 10px' }}
-                        onClick={cell.column.id === 'actions' ? (e) => e.stopPropagation() : undefined}
+                        style={{
+                          padding: '10px 10px',
+                          border: 'none',
+                          boxShadow: 'var(--mantine-shadow-xs)',
+                        }}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </Table.Td>
@@ -376,8 +490,8 @@ export function ChartOfAccounts() {
               )}
             </Table.Tbody>
           </Table>
-        </div>
+        </Box>
       </Paper>
-    </Box>
+    </Stack>
   );
 }

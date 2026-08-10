@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ExpandedState } from '@tanstack/react-table';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Text } from '@mantine/core';
 import { showConfirm, showApiError, showSuccess } from '../../utils/alert';
+import { usePrefetchCurrencies } from '../../store/currencyStore';
 import {
   type COAAccount,
   fetchChartOfAccounts,
@@ -40,6 +40,18 @@ function stripZero(nodes: COAAccount[]): COAAccount[] {
       return acc;
     }, []);
   return walk(nodes);
+}
+
+function collectCurrencies(nodes: COAAccount[]): string[] {
+  const set = new Set<string>();
+  const walk = (list: COAAccount[]) => {
+    list.forEach((n) => {
+      if (n.account_currency) set.add(n.account_currency);
+      if (n.children?.length) walk(n.children);
+    });
+  };
+  walk(nodes);
+  return [...set];
 }
 
 function buildExpandedToDepth(nodes: COAAccount[], depth: number, path = ''): Record<string, boolean> {
@@ -96,7 +108,13 @@ export function useChartOfAccounts() {
   });
 
   const accounts = data?.accounts ?? [];
-  const baseCurrency = data?.baseCurrency ?? 'INR';
+  const baseCurrency = data?.baseCurrency ?? '';
+
+  const extractCurrencyCodes = useCallback(
+    () => [baseCurrency, ...collectCurrencies(accounts)],
+    [baseCurrency, accounts],
+  );
+  usePrefetchCurrencies(data, extractCurrencyCodes);
 
   /* ── Delete mutation ── */
   const deleteMutation = useMutation({

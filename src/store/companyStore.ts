@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { getCompanyInfo } from "../api/erpDataApi";
-
+import { ensureCurrencies } from "./currencyStore";
 
 interface CompanyState {
   baseCurrency: string;
@@ -44,7 +44,7 @@ export const useCompanyStore = create<CompanyState>()(
       fetchCompany: async () => {
         set({ loading: true });
         try {
-          const companyData = await getCompanyInfo();   
+          const companyData = await getCompanyInfo();
           if (companyData) {
             set({
               baseCurrency: companyData.baseCurrency,
@@ -54,6 +54,10 @@ export const useCompanyStore = create<CompanyState>()(
               primaryBusinessDomain: companyData.primaryBusinessDomain,
               loading: false,
             });
+
+            if (companyData.baseCurrency) {
+              ensureCurrencies([companyData.baseCurrency]);
+            }
           } else {
             set({ loading: false });
           }

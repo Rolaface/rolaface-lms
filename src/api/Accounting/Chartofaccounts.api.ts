@@ -1,6 +1,7 @@
 import type { AxiosResponse } from "axios";
 import apiClient from "../../config/axios";
 import { API } from "../../config/api";
+import { formatAmount, getSymbol } from "../../store/currencyStore";
 
 const api = apiClient;
 export const ChartOfAccountsAPI = API.Accounting.chartOfAccounts;
@@ -19,8 +20,8 @@ export interface COAAccount {
   is_group: 0 | 1;
   account_currency: string;
   disabled: 0 | 1;
-  balance: number; 
-  balance_in_account_currency?: number; 
+  balance: number;
+  balance_in_account_currency?: number;
   children?: COAAccount[];
 }
 
@@ -48,16 +49,7 @@ export interface ChartOfAccountsResult {
   company: string;
 }
 
-/* ===========================================================
-   FORMATTING HELPERS
-=========================================================== */
-
-const CURRENCY_SYMBOLS: Record<string, string> = { INR: "₹", USD: "$", EUR: "€" };
-export const symbolFor = (ccy: string) => CURRENCY_SYMBOLS[ccy] ?? ccy;
-
-export function formatAmount(currency: string, amount: number) {
-  return `${symbolFor(currency)} ${amount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-}
+export { formatAmount, getSymbol as symbolFor };
 
 /* ===========================================================
    GET CHART OF ACCOUNTS
@@ -74,8 +66,6 @@ export async function fetchChartOfAccounts(): Promise<ChartOfAccountsResult> {
     company: payload.company,
   };
 }
-
-
 
 export async function deleteAccount(accountName: string): Promise<void> {
   await api.post(`${ChartOfAccountsAPI.deleteCOA}?id=${accountName}`);

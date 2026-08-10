@@ -9,6 +9,8 @@ import {
   fetchCashFlow,
 } from '../../../api/Accounting/Cashflow.api';
 import { getCompanyCurrentFiscalYear } from '../../../api/utils/frappeUtilsApi';
+import { useCompanyStore } from '../../../store/companyStore';
+import { ensureCurrencies, useCurrencyReady } from '../../../store/currencyStore';
 
 const currentMonthStart = () => {
   const d = new Date();
@@ -36,6 +38,24 @@ const buildExpandedToDepth = (nodes: CFNode[], depth: number, path = ''): Record
   return state;
 };
 
+// Walk summary rows + the whole tree and collect every distinct currency
+// code the response actually uses, so the store can be pre-warmed in one shot.
+const collectCurrencyCodes = (data: CFData | null): string[] => {
+  if (!data) return [];
+  const codes = new Set<string>();
+  data.summary.forEach((s) => {
+    if (s.currency) codes.add(s.currency);
+  });
+  const walk = (nodes: CFNode[]) => {
+    nodes.forEach((n) => {
+      if (n.currency) codes.add(n.currency);
+      if (n.children?.length) walk(n.children);
+    });
+  };
+  walk(data.tree);
+  return [...codes];
+};
+
 export function useCashFlow() {
   const [filters, setFilters] = useState<CFFilters>({
     mode: 'Fiscal Year',
@@ -53,6 +73,11 @@ export function useCashFlow() {
 
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [allExpanded, setAllExpanded] = useState(false);
+
+  // Currency store — subscribes this hook (and CashFlow, since it calls
+  // this hook) to re-render once real symbols/number formats arrive.
+  useCurrencyReady();
+  const baseCurrency = useCompanyStore((state) => state.baseCurrency);
 
   // Resolve the company's real current Fiscal Year once, then patch filters.
   useEffect(() => {
@@ -117,6 +142,12 @@ export function useCashFlow() {
     return () => clearTimeout(timer);
   }, [filters, fyResolved, fetchCF]);
 
+  useEffect(() => {
+    const codes = new Set<string>(collectCurrencyCodes(data));
+    if (baseCurrency) codes.add(baseCurrency);
+    if (codes.size > 0) ensureCurrencies([...codes]);
+  }, [data, baseCurrency]);
+
   const handleRefresh = useCallback(() => fetchCF(filters), [fetchCF, filters]);
 
   const handleToggleExpand = useCallback(() => {
@@ -141,6 +172,8 @@ export function useCashFlow() {
     loading,
     error,
     handleRefresh,
+
+    baseCurrency,
 
     expanded,
     setExpanded,

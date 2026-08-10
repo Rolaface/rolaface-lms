@@ -24,6 +24,7 @@ import JournalEntryLinesTable from "./JournalEntryLinesTable";
 import { useJournalEntryForm } from "../../../hooks/Accounting/journal-entry/useJournalEntryForm";
 
 import type { JournalEntryModalProps as BaseModalProps } from "../../../types/Accounting/Journalentry.types";
+import { formatAmount } from "../../../store/currencyStore";
 
 interface JournalEntryModalProps extends BaseModalProps {
   baseCurrency: string;
@@ -42,10 +43,19 @@ function SummaryRow({
 }) {
   return (
     <Group justify="space-between" gap="xs" wrap="nowrap">
-      <Text fz="xs" c={accent ? `${accent}.6` : "slate.5"} fw={accent ? 600 : 400}>
+      <Text
+        fz="xs"
+        c={accent ? `${accent}.6` : "slate.5"}
+        fw={accent ? 600 : 400}
+      >
         {label}
       </Text>
-      <Text fz="xs" fw={strong ? 700 : 700} c="slate.8" style={{ whiteSpace: "nowrap" }}>
+      <Text
+        fz="xs"
+        fw={strong ? 700 : 700}
+        c="slate.8"
+        style={{ whiteSpace: "nowrap" }}
+      >
         {value}
       </Text>
     </Group>
@@ -160,7 +170,12 @@ export default function JournalEntryModal({
               <IconFileText size={16} />
             </ThemeIcon>
             <Box>
-              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
+              <Text
+                size="md"
+                fw={700}
+                c="white"
+                style={{ letterSpacing: "-0.01em" }}
+              >
                 {headerTitle}
               </Text>
               <Text size="xs" fw={500} c="brand.1">
@@ -181,9 +196,16 @@ export default function JournalEntryModal({
         </Group>
 
         {/* Body: main + right sidebar */}
-        <Box style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
+        <Box
+          style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}
+        >
           {/* Main scrollable content */}
-          <ScrollArea type="auto" scrollbarSize={8} style={{ flex: 1, minHeight: 0 }} bg="slate.0">
+          <ScrollArea
+            type="auto"
+            scrollbarSize={8}
+            style={{ flex: 1, minHeight: 0 }}
+            bg="slate.0"
+          >
             <Box p="lg">
               <Fieldset disabled={isReadOnly} variant="unstyled" p={0} m={0}>
                 <Paper
@@ -191,7 +213,10 @@ export default function JournalEntryModal({
                   p="md"
                   mb="md"
                   withBorder
-                  style={{ borderColor: "var(--mantine-color-slate-2)", background: "var(--mantine-color-white)" }}
+                  style={{
+                    borderColor: "var(--mantine-color-slate-2)",
+                    background: "var(--mantine-color-white)",
+                  }}
                 >
                   <JournalEntryBasicInfo
                     form={form}
@@ -230,8 +255,21 @@ export default function JournalEntryModal({
             p="md"
           >
             <Group gap={6} mb="sm">
-              <Box w={6} h={6} style={{ borderRadius: "50%", background: "var(--mantine-color-brand-5)" }} />
-              <Text fz="10px" fw={700} tt="uppercase" c="brand.6" style={{ letterSpacing: 0.5 }}>
+              <Box
+                w={6}
+                h={6}
+                style={{
+                  borderRadius: "50%",
+                  background: "var(--mantine-color-brand-5)",
+                }}
+              />
+              <Text
+                fz="10px"
+                fw={700}
+                tt="uppercase"
+                c="brand.6"
+                style={{ letterSpacing: 0.5 }}
+              >
                 Entry Summary
               </Text>
             </Group>
@@ -240,7 +278,10 @@ export default function JournalEntryModal({
               radius="md"
               p="sm"
               withBorder
-              style={{ borderColor: "var(--mantine-color-slate-2)", background: "var(--mantine-color-white)" }}
+              style={{
+                borderColor: "var(--mantine-color-slate-2)",
+                background: "var(--mantine-color-white)",
+              }}
             >
               <Box mb="xs">
                 <SummaryRow label="Voucher Type" value={form.voucher_type} />
@@ -260,19 +301,36 @@ export default function JournalEntryModal({
                 />
               </Box>
               <Box mb="sm">
-                <SummaryRow label="Opening Entry" value={form.isOpening ? "Yes" : "No"} />
+                <SummaryRow
+                  label="Opening Entry"
+                  value={form.isOpening ? "Yes" : "No"}
+                />
               </Box>
 
               <Divider color="slate.1" mb="sm" />
 
               <Box mb="xs">
-                <SummaryRow label="Total Line Entries" value={entries.length} accent="brand" />
+                <SummaryRow
+                  label="Total Line Entries"
+                  value={entries.length}
+                  accent="brand"
+                />
               </Box>
               <Box mb="xs">
-                <SummaryRow label="Debit" value={totals.debit.toFixed(2)} />
+                <SummaryRow
+                  label="Debit"
+                  value={formatAmount(baseCurrency, totals.debit, {
+                    withSymbol: true,
+                  })}
+                />
               </Box>
               <Box mb="sm">
-                <SummaryRow label="Credit" value={totals.credit.toFixed(2)} />
+                <SummaryRow
+                  label="Credit"
+                  value={formatAmount(baseCurrency, totals.credit, {
+                    withSymbol: true,
+                  })}
+                />
               </Box>
 
               <Divider color="slate.1" mb="sm" />
@@ -290,7 +348,11 @@ export default function JournalEntryModal({
                   >
                     {balanced ? <IconCheck size={10} /> : <IconX size={10} />}
                   </ThemeIcon>
-                  <Text fz="xs" fw={700} c={balanced ? "success.7" : "danger.7"}>
+                  <Text
+                    fz="xs"
+                    fw={700}
+                    c={balanced ? "success.7" : "danger.7"}
+                  >
                     {balanced ? "Balanced" : "Unbalanced"}
                   </Text>
                 </Group>
@@ -308,13 +370,17 @@ export default function JournalEntryModal({
                 }}
               >
                 <Group gap={6} mb={4} wrap="nowrap">
-                  <IconInfoCircle size={12} color="var(--mantine-color-brand-5)" />
+                  <IconInfoCircle
+                    size={12}
+                    color="var(--mantine-color-brand-5)"
+                  />
                   <Text fz="xs" fw={700} c="brand.6">
                     Draft Status
                   </Text>
                 </Group>
                 <Text fz="xs" c="brand.6" style={{ lineHeight: 1.4 }}>
-                  This entry will be saved as a draft and won't affect the ledger until submitted.
+                  This entry will be saved as a draft and won't affect the
+                  ledger until submitted.
                 </Text>
               </Paper>
             )}
@@ -331,13 +397,23 @@ export default function JournalEntryModal({
             flexShrink: 0,
           }}
         >
-          <Button variant="subtle" color="slate" radius="md" onClick={handleModalClose}>
+          <Button
+            variant="subtle"
+            color="slate"
+            radius="md"
+            onClick={handleModalClose}
+          >
             {isReadOnly ? "Close" : "Cancel"}
           </Button>
 
           {!isReadOnly && (
             <>
-              <Button variant="subtle" color="danger" radius="md" onClick={reset}>
+              <Button
+                variant="subtle"
+                color="danger"
+                radius="md"
+                onClick={reset}
+              >
                 Reset
               </Button>
               <Button

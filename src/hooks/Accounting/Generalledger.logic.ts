@@ -4,8 +4,10 @@ import {
   type GLResponse,
   fetchGeneralLedger,
   formatAmount,
-  BASE_CURRENCY,
 } from '../../api/Accounting/Generalledger.api';
+
+import { usePrefetchCurrencies } from '../../store/currencyStore';
+import { useCompanyStore } from '../../store/companyStore';
 
 const today = () => new Date().toISOString().split('T')[0];
 const startOfYear = () => `${new Date().getFullYear()}-01-01`;
@@ -13,6 +15,8 @@ const startOfYear = () => `${new Date().getFullYear()}-01-01`;
 const PAGE_SIZE = 15;
 
 export function useGeneralLedger(initialAccount: string = '') {
+  const companyBaseCurrency = useCompanyStore((s) => s.baseCurrency);
+
   const [account, setAccount] = useState(initialAccount);
   const [voucherNo, setVoucherNo] = useState('');
   const [fromDate, setFromDate] = useState(startOfYear());
@@ -79,10 +83,12 @@ export function useGeneralLedger(initialAccount: string = '') {
     [appliedFilters, fetchGL],
   );
 
+  usePrefetchCurrencies(glData, (d) => [d.presentation_currency, d.account_currency]);
+
   const displayAmount = useMemo(() => {
-    const currency = glData?.presentation_currency || glData?.account_currency || BASE_CURRENCY;
+    const currency = glData?.presentation_currency || glData?.account_currency || companyBaseCurrency;
     return (amount: number) => formatAmount(currency, amount);
-  }, [glData?.presentation_currency, glData?.account_currency]);
+  }, [glData?.presentation_currency, glData?.account_currency, companyBaseCurrency]);
 
   return {
     account,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -20,7 +20,6 @@ import {
   Menu,
   LoadingOverlay,
   Button,
-  Title,
   Stack,
   useMantineTheme,
 } from "@mantine/core";
@@ -42,6 +41,11 @@ import { type JournalEntry } from "../../api/Accounting/Journalentries.api";
 import { useJournalEntries } from "../../hooks/Accounting/journal-entry/useJournalEntries";
 import JournalEntryModal from "../../components/Modal/Accounting/JournalEntryModal";
 import { useCompanyStore } from "../../store/companyStore";
+import {
+  formatAmount,
+  useCurrencyReady,
+  ensureCurrencies,
+} from "../../store/currencyStore";
 
 function formatDate(date: string) {
   const months = [
@@ -110,6 +114,7 @@ function useColumns(
   onDelete: (name: string) => void,
   onView: (name: string) => void,
   onEdit: (name: string) => void,
+  baseCurrency: string,
 ) {
   return useMemo(
     () => [
@@ -159,7 +164,7 @@ function useColumns(
               padding: "4px 8px",
             }}
           >
-            {info.getValue().toFixed(2)}
+            {formatAmount(baseCurrency, info.getValue(), { withSymbol: true })}
           </Text>
         ),
       }),
@@ -182,7 +187,7 @@ function useColumns(
               padding: "4px 8px",
             }}
           >
-            {info.getValue().toFixed(2)}
+            {formatAmount(baseCurrency, info.getValue(), { withSymbol: true })}
           </Text>
         ),
       }),
@@ -282,17 +287,22 @@ function useColumns(
         },
       }),
     ],
-    [onSubmit, onCancel, onDelete, onView, onEdit],
+    [onSubmit, onCancel, onDelete, onView, onEdit, baseCurrency],
   );
 }
 
 export function JournalEntries() {
+  useCurrencyReady();
   const theme = useMantineTheme();
   const [opened, setOpened] = useState(false);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   const [modalReadOnly, setModalReadOnly] = useState(false);
 
   const baseCurrency = useCompanyStore((state) => state.baseCurrency);
+
+  useEffect(() => {
+    if (baseCurrency) ensureCurrencies([baseCurrency]);
+  }, [baseCurrency]);
 
   const {
     loading,
@@ -340,6 +350,7 @@ export function JournalEntries() {
     handleDelete,
     openView,
     openEdit,
+    baseCurrency,
   );
 
   const { pageIndex, pageSize } = pagination;
@@ -361,11 +372,11 @@ export function JournalEntries() {
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   return (
-    // h="100%" + flex column: this Stack must sit inside a parent that
-    // actually has a bounded height (layout shell / route container).
-    // That's what lets the middle Paper claim remaining space instead
-    // of the page growing — no hardcoded vh/px anywhere.
-    <Stack gap="lg" p="lg" h="100%" style={{ minHeight: 0 }}>
+    // No h="100%" / flex-fill here — that needs a bounded-height parent
+    // which this route doesn't reliably have, so the whole page was
+    // scrolling instead of just the table. Fixed maxHeight below is
+    // self-contained: works regardless of what the parent layout does.
+    <Stack gap="lg" p="lg">
       <style>{`
         .je-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
         .je-row-actions { opacity: 1; }
@@ -376,12 +387,11 @@ export function JournalEntries() {
         .je-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
       `}</style>
 
-      {/* Toolbar — fixed height, does not shrink */}
+      {/* Toolbar */}
       <Paper
         radius="xl"
         p="xs"
         style={{
-          flexShrink: 0,
           background: "var(--mantine-color-slate-0)",
           border: "1px solid var(--mantine-color-slate-2)",
         }}
@@ -469,20 +479,14 @@ export function JournalEntries() {
         </Group>
       </Paper>
 
-      {/* Data Table Paper — this is the flex child that fills remaining
-          height and owns the scroll. flex:1 + minHeight:0 is the part
-          that actually makes overflow:auto work inside a flex column
-          (without minHeight:0 the child refuses to shrink and the page
-          scrolls instead of the table). */}
+      {/* Data Table Paper — no longer a flex child claiming remaining
+          height; the scroll now lives entirely inside the fixed-height
+          Box below, so this Paper (and the page) never grows/scrolls. */}
       <Paper
         radius="lg"
         p="sm"
         pos="relative"
         style={{
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
           background: "var(--mantine-color-slate-0)",
           border: "1px solid var(--mantine-color-slate-2)",
         }}
@@ -493,7 +497,16 @@ export function JournalEntries() {
           overlayProps={{ blur: 1 }}
         />
 
-        <Box style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        {/* This Box is the ONLY thing that scrolls — fixed maxHeight
+            means the table stays contained and everything else on the
+            page (toolbar, pagination, sidebar) stays put. */}
+        <Box
+  style={{
+    maxHeight: 'calc(100vh - 300px)',
+    minHeight: 280,
+    overflowY: 'auto',
+  }}
+>
           <Table
             verticalSpacing="sm"
             horizontalSpacing="sm"
@@ -597,14 +610,9 @@ export function JournalEntries() {
           </Table>
         </Box>
 
-        {/* Pagination Footer — fixed height, does not shrink, stays
-            outside the scroll Box */}
-        <Group
-          justify="space-between"
-          px="sm"
-          pt="xs"
-          style={{ flexShrink: 0 }}
-        >
+        {/* Pagination Footer — sits below the scrolling Box, outside it,
+            so it stays visible without needing flexShrink:0 tricks. */}
+        <Group justify="space-between" px="sm" pt="xs">
           <Group
             gap="sm"
             c="slate.6"

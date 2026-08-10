@@ -9,6 +9,8 @@ import {
 } from '../../api/Accounting/Trialbalance.api';
 import { getCompanyCurrentFiscalYear } from '../../api/utils/frappeUtilsApi';
 import { showApiError } from '../../utils/alert';
+import { usePrefetchCurrencies } from '../../store/currencyStore';
+import { useCompanyStore } from '../../store/companyStore';
 
 function buildExpandedToDepth(nodes: TBAccount[], depth: number, path = ''): Record<string, boolean> {
   let state: Record<string, boolean> = {};
@@ -28,6 +30,8 @@ export const trialBalanceKeys = {
 };
 
 export function useTrialBalance() {
+  const baseCurrency = useCompanyStore((s) => s.baseCurrency);
+
   const [filters, setFilters] = useState<TBFilters>(DEFAULT_TB_FILTERS);
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [fyResolved, setFyResolved] = useState(false);
@@ -87,6 +91,8 @@ export function useTrialBalance() {
     setExpanded(buildExpandedToDepth(tableData, 0));
   }, [tableData]);
 
+  usePrefetchCurrencies(data, () => [baseCurrency]);
+
   const handleRefresh = () => refetch();
 
   return {
@@ -102,5 +108,6 @@ export function useTrialBalance() {
     tableData,
     expanded,
     setExpanded,
+    baseCurrency,
   };
 }

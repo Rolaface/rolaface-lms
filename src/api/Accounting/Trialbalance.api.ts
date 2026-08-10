@@ -1,6 +1,7 @@
 import type { AxiosResponse } from "axios";
 import apiClient from "../../config/axios";
 import { API } from "../../config/api";
+import { formatAmount as formatAmountShared } from "../../store/currencyStore";
 
 const api = apiClient;
 
@@ -74,11 +75,11 @@ export const DEFAULT_TB_FILTERS: TBFilters = {
   show_closing_entries: false,
 };
 
-export function nf(value: number) {
-  if (!value) return "—";
-  return value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
+export function nf(currency: string, value: number) {
+  if (!value) return "—";
+  return formatAmountShared(currency, value, { withSymbol: true });
+}
 /* ===========================================================
    GET TRIAL BALANCE
 =========================================================== */

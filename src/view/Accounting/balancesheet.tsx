@@ -34,7 +34,6 @@ import {
   type BSData,
   type BSNode,
   type BSSummaryItem,
-  formatAmount,
 } from "../../api/Accounting/Balancesheet.api";
 import { useBalanceSheet } from "../../hooks/Accounting/Balancesheet.logic";
 
@@ -43,9 +42,11 @@ import { useBalanceSheet } from "../../hooks/Accounting/Balancesheet.logic";
 function KpiStrip({
   summary,
   loading,
+  displayAmount,
 }: {
   summary: BSSummaryItem[];
   loading: boolean;
+  displayAmount: (currency: string | undefined, amount: number) => string;
 }) {
   const colorFor = (item: BSSummaryItem) => {
     if (item.indicator === "green") return "success.6";
@@ -66,7 +67,7 @@ function KpiStrip({
             <Box h={16} w={96} style={{ background: "var(--mantine-color-slate-1)", borderRadius: 4 }} className="animate-pulse" />
           ) : (
             <Text fz="sm" fw={700} c={colorFor(item)} style={{ fontVariantNumeric: "tabular-nums" }}>
-              {formatAmount(item.currency ?? "INR", item.value)}
+              {displayAmount(item.currency, item.value)}
             </Text>
           )}
         </Paper>
@@ -271,7 +272,7 @@ function BSTreeTable({
 
 export function BalanceSheet() {
   const bs = useBalanceSheet();
-  const { data, loading, error } = bs;
+  const { data, loading, error, displayAmount } = bs;
 
   const columns = useMemo<ColumnDef<BSNode>[]>(() => {
     if (!data?.columns) return [];
@@ -334,12 +335,12 @@ export function BalanceSheet() {
             c={row.original.is_group ? "slate.9" : "slate.7"}
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
-            {formatAmount(row.original.currency ?? "INR", row.original.periods?.[col.fieldname] ?? 0)}
+            {displayAmount(row.original.currency, row.original.periods?.[col.fieldname] ?? 0)}
           </Text>
         ),
       };
     });
-  }, [data]);
+  }, [data, displayAmount]);
 
   if (error && !data) {
     return (
@@ -362,7 +363,7 @@ export function BalanceSheet() {
 
   return (
     <Stack gap="sm" p="lg">
-      <KpiStrip summary={data?.summary ?? []} loading={loading && !data} />
+      <KpiStrip summary={data?.summary ?? []} loading={loading && !data} displayAmount={displayAmount} />
 
       <FilterBar bs={bs} />
 

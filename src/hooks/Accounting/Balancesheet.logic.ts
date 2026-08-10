@@ -9,6 +9,12 @@ import {
   fetchBalanceSheet,
 } from '../../api/Accounting/Balancesheet.api';
 import { getCompanyCurrentFiscalYear } from '../../api/utils/frappeUtilsApi';
+import { useCompanyStore } from '../../store/companyStore';
+import {
+  formatAmount as storeFormatAmount,
+  ensureCurrencies,
+  useCurrencyReady,
+} from '../../store/currencyStore';
 
 const currentMonthStart = () => {
   const d = new Date();
@@ -36,6 +42,14 @@ const buildExpandedToDepth = (nodes: BSNode[], depth: number, path = ''): Record
   return state;
 };
 
+
+function collectNodeCurrencies(nodes: BSNode[], out: Set<string>) {
+  nodes.forEach((node) => {
+    if (node.currency) out.add(node.currency);
+    if (node.children?.length) collectNodeCurrencies(node.children, out);
+  });
+}
+
 export function useBalanceSheet() {
   const [filters, setFilters] = useState<BSFilters>({
     mode: 'Fiscal Year',
@@ -55,6 +69,31 @@ export function useBalanceSheet() {
   const [expandedLiabilities, setExpandedLiabilities] = useState<ExpandedState>({});
   const [expandedEquity, setExpandedEquity] = useState<ExpandedState>({});
   const [allExpanded, setAllExpanded] = useState(false);
+
+  // ── Currency store ──────────────────────────────────────────
+  useCurrencyReady();
+  const baseCurrency = useCompanyStore((state) => state.baseCurrency);
+
+
+  useEffect(() => {
+    const codes = new Set<string>();
+    if (baseCurrency) codes.add(baseCurrency);
+    if (data) {
+      collectNodeCurrencies(data.assets, codes);
+      collectNodeCurrencies(data.liabilities, codes);
+      collectNodeCurrencies(data.equity, codes);
+      data.summary.forEach((s) => {
+        if (s.currency) codes.add(s.currency);
+      });
+    }
+    if (codes.size > 0) ensureCurrencies([...codes]);
+  }, [data, baseCurrency]);
+
+  const displayAmount = useCallback(
+    (currency: string | undefined, amount: number) =>
+      storeFormatAmount(currency ?? baseCurrency, amount, { withSymbol: true }),
+    [baseCurrency],
+  );
 
   // Resolve the company's real current Fiscal Year once, then patch filters.
   useEffect(() => {
@@ -85,8 +124,7 @@ export function useBalanceSheet() {
 
   const setPeriodicity = (periodicity: BSPeriodicity) => setFilters((f) => ({ ...f, periodicity }));
 
-  // Single fiscal year field — sets both fromFiscalYear and toFiscalYear together,
-  // since the UI now shows one "Fiscal Year" input instead of a From/To pair.
+
   const setFiscalYear = (v: string) => setFilters((f) => ({ ...f, fromFiscalYear: v, toFiscalYear: v }));
 
   const setFromDate = (v: string) => setFilters((f) => ({ ...f, fromDate: v }));
@@ -114,7 +152,7 @@ export function useBalanceSheet() {
   }, []);
 
   useEffect(() => {
-    // Wait for the real fiscal year before firing the first Fiscal-Year-mode request.
+
     if (filters.mode === 'Fiscal Year' && !fyResolved) return;
     if (filters.mode === 'Date Range' && (!filters.fromDate || !filters.toDate)) return;
     if (filters.mode === 'Fiscal Year' && (!filters.fromFiscalYear || !filters.toFiscalYear)) return;
@@ -151,6 +189,7 @@ export function useBalanceSheet() {
     loading,
     error,
     handleRefresh,
+    displayAmount,
 
     expandedAssets,
     setExpandedAssets,

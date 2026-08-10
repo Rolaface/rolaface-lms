@@ -12,6 +12,8 @@ import {
   formatAmount,
 } from '../../api/Accounting/Receivable.api';
 import { showApiError } from '../../utils/alert';
+import { usePrefetchCurrencies } from '../../store/currencyStore';
+import { useCompanyStore } from '../../store/companyStore';
 
 const getTodayDate = () => new Date().toISOString().split('T')[0];
 
@@ -80,6 +82,13 @@ export function useReceivable() {
     placeholderData: keepPreviousData,
     staleTime: 30_000,
   });
+
+  const baseCurrency = useCompanyStore((s) => s.baseCurrency);
+
+usePrefetchCurrencies(data, (d) => [
+  baseCurrency,
+  ...d.rows.map((r) => r.currency),
+]);
 
   /* ── Dropdown master data — fetched once, cached 5 min ── */
   const { data: customerOptions = [] } = useQuery<SelectOption[]>({
@@ -203,7 +212,8 @@ export function useReceivable() {
     // dropdown options
     customerOptions,
     costCenterOptions,
-    receivableAccountOptions,
+    receivableAccountOptions,    baseCurrency,
+
 
     // view modal
     viewRowId,

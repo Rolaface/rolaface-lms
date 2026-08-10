@@ -12,7 +12,7 @@ export type BSPeriodicity = 'Monthly' | 'Quarterly' | 'Yearly' | 'Half-Yearly';
 export interface BSFilters {
   mode: BSFilterMode;
   periodicity: BSPeriodicity;
-  fromFiscalYear: string; // e.g. "2026-2027" — real FY records are ranges
+  fromFiscalYear: string; 
   toFiscalYear: string;
   fromDate: string;
   toDate: string;
@@ -54,7 +54,7 @@ export interface BSData {
   equity: BSNode[];
 }
 
-/* Raw shapes as they come off the wire, before normalization */
+
 interface RawBSNode {
   account: string;
   account_name: string;
@@ -85,20 +85,6 @@ interface BSEnvelope {
 
 interface BSApiResponse {
   message: BSEnvelope;
-}
-
-/* ───────────────── Currency helpers ───────────────── */
-
-export const BASE_CURRENCY = 'INR';
-const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', USD: '$', EUR: '€' };
-
-export function formatAmount(currency: string, amount: number) {
-  const symbol = CURRENCY_SYMBOLS[currency] ?? currency;
-  const sign = amount < 0 ? '-' : '';
-  return `${sign}${symbol} ${Math.abs(amount).toLocaleString('en-IN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
 }
 
 /* ───────────────── Node normalization ───────────────── */

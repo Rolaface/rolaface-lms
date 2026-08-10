@@ -20,6 +20,7 @@ import {
   Text,
   Divider,
   Box,
+  Pagination,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import {
@@ -28,8 +29,6 @@ import {
   IconClock,
   IconAlertTriangle,
   IconRefresh,
-  IconChevronLeft,
-  IconChevronRight,
   IconUsers,
   IconReceipt2,
   IconAdjustmentsHorizontal,
@@ -618,57 +617,37 @@ export function Payable() {
           )}
         </Box>
 
-        {/* Pagination footer */}
-        <Group
-          justify="space-between"
-          px="sm"
-          py={8}
-          wrap="wrap"
-          style={{ borderTop: "1px solid var(--mantine-color-slate-2)", background: "var(--mantine-color-slate-0)" }}
-        >
-          <Text fz="11px" c="slate.5">
-            {pagination && pagination.total_entries > 0 ? (
-              <>
-                Showing{" "}
-                <Text component="span" fz="11px" fw={600} c="slate.8">
-                  {(pagination.page - 1) * pagination.page_size + 1}–
-                  {Math.min(pagination.page * pagination.page_size, pagination.total_entries)}
-                </Text>{" "}
-                of{" "}
-                <Text component="span" fz="11px" fw={600} c="slate.8">
-                  {pagination.total_entries}
-                </Text>
-              </>
-            ) : (
-              "No entries"
-            )}
-          </Text>
-          {pagination && pagination.total_pages > 1 && (
-            <Group gap={4}>
-              <ActionIcon variant="default" size="sm" disabled={!pagination.has_prev || isLoading} onClick={() => handlePageChange(page - 1)}>
-                <IconChevronLeft size={13} />
-              </ActionIcon>
-              {Array.from({ length: pagination.total_pages }, (_, i) => i + 1)
-                .filter((p) => Math.abs(p - page) <= 2)
-                .map((p) => (
-                  <Button
-                    key={p}
-                    size="xs"
-                    variant={p === page ? "filled" : "default"}
-                    color={p === page ? "brand" : undefined}
-                    disabled={isLoading}
-                    onClick={() => handlePageChange(p)}
-                    px={8}
-                  >
-                    {p}
-                  </Button>
-                ))}
-              <ActionIcon variant="default" size="sm" disabled={!pagination.has_next || isLoading} onClick={() => handlePageChange(page + 1)}>
-                <IconChevronRight size={13} />
-              </ActionIcon>
+        {/* Pagination footer — matches JournalEntries.tsx: "Showing X-Y of Z"
+            text on the left, Mantine Pagination (dots/numbers, radius="xl")
+            on the right, instead of manual ActionIcon+Button page numbers. */}
+        {pagination && pagination.total_entries > 0 && (
+          <Group
+            justify="space-between"
+            px="sm"
+            py={8}
+            wrap="wrap"
+            style={{ borderTop: "1px solid var(--mantine-color-slate-2)", background: "var(--mantine-color-slate-0)" }}
+          >
+            <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
+              <span>
+                {`Showing ${(pagination.page - 1) * pagination.page_size + 1}-${Math.min(
+                  pagination.page * pagination.page_size,
+                  pagination.total_entries,
+                )} of ${pagination.total_entries}`}
+              </span>
             </Group>
-          )}
-        </Group>
+
+            <Pagination
+              total={pagination.total_pages}
+              value={page}
+              onChange={(p) => handlePageChange(p)}
+              color="brand"
+              size="xs"
+              radius="xl"
+              disabled={isLoading}
+            />
+          </Group>
+        )}
       </Paper>
 
       {/* View details modal */}

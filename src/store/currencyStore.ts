@@ -1,10 +1,11 @@
-import { getCurrencyList } from "../api/erpDataApi";   
+import { useEffect, useSyncExternalStore } from "react";
+import { getCurrencyList } from "../api/erpDataApi";
 import {
   DEFAULT_NUMBER_FORMAT_PATTERN,
   formatAmountByPattern,
   formatAmountWithSymbol,
   type FormatAmountOptions,
-} from "../utils/currencyFormat";   
+} from "../utils/currencyFormat";
 
 interface CurrencyRecord {
   name: string;
@@ -166,4 +167,25 @@ export function formatAmount(
   }
 
   return formatAmountWithSymbol(value, pattern, meta?.symbol ?? code ?? "", options);
+}
+
+/* ───────────────── React hooks ───────────────── */
+
+export function useCurrencyReady(): boolean {
+  return useSyncExternalStore(subscribe, isReady);
+}
+
+/**
+ * Prefetch all unique currency codes found in `data` using `extractCodes`.
+ * Call once per data-hook — works for flat or tree data, any shape.
+ */
+export function usePrefetchCurrencies<T>(
+  data: T | undefined,
+  extractCodes: (data: T) => (string | null | undefined)[],
+) {
+  useEffect(() => {
+    if (!data) return;
+    const codes = extractCodes(data).filter(Boolean) as string[];
+    if (codes.length) ensureCurrencies(codes);
+  }, [data, extractCodes]);
 }
