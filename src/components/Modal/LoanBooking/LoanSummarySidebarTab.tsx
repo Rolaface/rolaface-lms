@@ -7,7 +7,6 @@ function SummaryRow({ label, value, bold }: { label: string; value: string; bold
       justify="space-between"
       wrap="nowrap"
       py={7}
-      style={{ borderBottom: "1px dashed var(--mantine-color-slate-2)" }}
     >
       <Text size="xs" c="slate.5">
         {label}
@@ -23,7 +22,7 @@ function SummaryCard({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        background: "var(--mantine-color-white)",
+        background: "var(--mantine-color-slate-1)",
         border: "1px solid var(--mantine-color-slate-2)",
         borderRadius: "var(--mantine-radius-lg)",
         padding: "12px 14px",
@@ -74,20 +73,15 @@ export function LoanSummarySidebar({
       }}
     >
 
-      {/*
-        CHANGED: previously had `lg:border-l` (a hard divider line) separating
-        this sidebar from the form section. Replaced with a soft elevation
-        shadow (Mantine shadow token, only at the `lg` breakpoint, matching
-        where the border used to appear in the side-by-side layout) so the
-        sidebar reads as a distinct, elevated panel instead of being cut off
-        by a line. No hardcoded colors — uses the theme's shadow CSS var.
-      */}
+
       <div className="lg:shadow-[var(--mantine-shadow-lg)] h-full">
         <div className="p-5 flex flex-col gap-4">
-          
+          <Text size="sm" fw={700} c="slate.7" tt="uppercase" style={{ letterSpacing: "0.05em" }}>
+            Summary
+          </Text>
 
           <SummaryCard>
-            <Stack gap={0}>
+            <Stack gap={4}>
               <SummaryRow label="Product" value={productCode || "—"} />
               <SummaryRow
                 label="Principal"
@@ -129,7 +123,7 @@ export function LoanSummarySidebar({
           </div>
 
           <SummaryCard>
-            <Stack gap={0}>
+            <Stack gap={4}>
               <SummaryRow
                 label="Total Interest"
                 value={

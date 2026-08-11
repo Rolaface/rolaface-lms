@@ -253,7 +253,7 @@ function NavNode({
   depth: number;
   pathname: string;
   openMenus: Record<string, boolean>;
-  toggleMenu: (key: string) => void;
+  toggleMenu: (key: string, depth: number) => void;
 }) {
   const hasSubItems = !!item.subItems?.length;
   const menuKey = `${depth}-${item.label}`;
@@ -285,8 +285,8 @@ const isActive = item.path
   if (hasSubItems) {
     return (
       <Box className="w-full">
-        <UnstyledButton
-          onClick={() => toggleMenu(menuKey)}
+      <UnstyledButton
+  onClick={() => toggleMenu(menuKey, depth)}
           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = tk.surfaceHover)}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
           className="flex w-full items-center justify-between"
@@ -378,9 +378,23 @@ export function Sidebar({
   getInitialOpenMenus(pathname)
 );
 
-  const toggleMenu = (key: string) => {
-    setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
+const toggleMenu = (key: string, depth: number) => {
+  setOpenMenus((prev) => {
+    const willOpen = !prev[key];
+    const next: Record<string, boolean> = { ...prev };
+
+    // Close every other menu at the SAME depth (accordion behavior).
+    // Menus at other depths (parent/child chains) are left untouched.
+    Object.keys(next).forEach((k) => {
+      if (k.startsWith(`${depth}-`)) {
+        next[k] = false;
+      }
+    });
+
+    next[key] = willOpen;
+    return next;
+  });
+};
 
   return (
     <Box
@@ -484,11 +498,11 @@ export function Sidebar({
                 ? { component: "button" as any }
                 : { component: Link, to: item.path })}
               onClick={(e: React.MouseEvent) => {
-                if (hasSubItems && !isCollapsed) {
-                  e.preventDefault();
-                  toggleMenu(menuKey);
-                }
-              }}
+  if (hasSubItems && !isCollapsed) {
+    e.preventDefault();
+    toggleMenu(menuKey, 0);
+  }
+}}
               className={`lms-focusable relative flex w-full items-center justify-between overflow-hidden ${isCollapsed ? "justify-center" : ""}`}
               style={{
                 fontSize: SIZES.rootText,
