@@ -3,7 +3,7 @@
 // restructure type selector + type-specific fields + "View New Schedule" button.
 
 import { Text, Button, NumberInput, TextInput, SegmentedControl } from "@mantine/core";
-import { IconCalendarStats, IconCurrencyDollar, IconPlus, IconCalendar } from "@tabler/icons-react";
+import { IconCalendarStats, IconPlus, IconCalendar } from "@tabler/icons-react";
 
 import { labelClass } from "./RestructureTypes";
 import type { RestructureType } from "./RestructureTypes";
@@ -70,7 +70,6 @@ export function RestructureDetailsTab({
         {restructureType === "RATE_CHANGE" && (
           <>
             <div className="flex items-center gap-2 mb-3">
-              <IconCurrencyDollar size={16} className="text-[#4F46E5]" />
               <Text fw={700} size="sm" className="text-gray-900">
                 Rate Change Details
               </Text>
@@ -117,7 +116,6 @@ export function RestructureDetailsTab({
                 placeholder="e.g. 2000"
                 value={topupAmount}
                 onChange={(v) => onTopupAmountChange(v as number | "")}
-                leftSection={<IconCurrencyDollar size={14} className="text-[#F26522]" />}
                 thousandSeparator=","
                 classNames={labelClass}
               />
@@ -128,7 +126,6 @@ export function RestructureDetailsTab({
                 value={newPrincipalOutstanding}
                 hideControls
                 onChange={(v) => onNewPrincipalChange(v as number | "")}
-                leftSection={<IconCurrencyDollar size={14} className="text-[#F26522]" />}
                 thousandSeparator=","
                 classNames={labelClass}
               />
