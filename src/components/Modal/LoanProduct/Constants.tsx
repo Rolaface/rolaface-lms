@@ -40,7 +40,7 @@ export const cellInputClasses = {
   input: "h-8 min-h-[32px] w-full text-xs rounded-md border border-slate-200 bg-white hover:border-slate-300 focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)] disabled:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 px-2",
 };
 
-export const demandTypeSequence = ["Charges", "Penalty", "Additional Interest", "Interest", "Principal"];
+export const demandTypeSequence = ["Charges", "Penalty", "Interest", "Principal"];
 
 export const frequencyOptions = ["Monthly", "Quarterly", "Yearly"];
 

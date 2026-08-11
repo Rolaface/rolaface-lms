@@ -29,9 +29,8 @@ interface LoanCollectionSequenceOrderModalProps {
 const DEFAULT_COMPONENTS: ComponentItem[] = [
   { id: "1", name: "Principal" },
   { id: "2", name: "Interest" },
-  { id: "3", name: "Additional Interest" },
-  { id: "4", name: "Penalty" },
-  { id: "5", name: "Charges" },
+  { id: "3", name: "Penalty" },
+  { id: "4", name: "Charges" },
 ];
 
 export function LoanCollectionSequenceOrderModal({

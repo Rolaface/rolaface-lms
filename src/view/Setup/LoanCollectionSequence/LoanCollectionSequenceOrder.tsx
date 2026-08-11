@@ -48,17 +48,17 @@ const DUMMY_SEQUENCES: SequenceRow[] = [
   {
     id: 1,
     sequenceName: 'Standard Settlement Order',
-    order: ['Principal', 'Interest', 'Additional Interest', 'Penalty', 'Charges'],
+    order: ['Principal', 'Interest', 'Penalty', 'Charges'],
   },
   {
     id: 2,
     sequenceName: 'Penalty First Order',
-    order: ['Penalty', 'Charges', 'Interest', 'Additional Interest', 'Principal'],
+    order: ['Penalty', 'Charges', 'Interest', 'Principal'],
   },
   {
     id: 3,
     sequenceName: 'Interest Heavy Offset',
-    order: ['Interest', 'Principal', 'Additional Interest', 'Penalty', 'Charges'],
+    order: ['Interest', 'Principal', 'Penalty', 'Charges'],
   },
 ];
 
