@@ -7,11 +7,8 @@ import {
   Group,
   Button,
   TextInput,
-  NumberInput,
   Select,
-  SegmentedControl,
   Badge,
-  Checkbox,
   Modal,
   Table,
   ThemeIcon,
@@ -21,60 +18,38 @@ import {
   IconRestore,
   IconSearch,
   IconCalendarDue,
-  IconCalendar,
-  IconCalendarStats,
   IconCar,
-  IconChevronDown,
-  IconCurrencyDollar,
-  IconPlus,
   IconClipboardList,
   IconCopy,
+  IconChevronDown,
 } from "@tabler/icons-react";
 
-import { parseFrappeError } from "../../../utils/parseFrappeError"; 
-import { showSuccess, showApiError } from "../../../utils/alert"
-import { ModalFooter } from "../../shared/ModalFooter"
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+import { showSuccess, showApiError } from "../../../utils/alert";
+import { ModalFooter } from "../../shared/ModalFooter";
+import type {
+  RestructureType,
+  RestructureLoan,
+  RestructureBorrower,
+  RestructureFormData,
+  ChargeRow,
+} from "./RestructureTypes";
+import { formatCurrency } from "./RestructureTypes";
+import {
 
-/* =========================
- * Types
- * ========================= */
-type NpaStatus = "Standard" | "Sub-Standard" | "Doubtful" | "Loss";
-type RestructureType = "RATE_CHANGE" | "TOPUP" | "MODIFY_MATURITY";
+  BORROWERS,
+  RESTRUCTURE_REASONS,
+  CHARGE_DEFS,
+  CONTENT_HEIGHT,
+  npaBadgeColor,
+  todayISO,
+  buildSchedule,
+  restructureTypeLabel,
+} from "./RestructureTypes"
+import { RestructureDetailsTab } from "./RestructureDetailsTab";
+import { RestructureChargesTab } from "./RestructureChargesTab";
 
-interface RestructureLoan {
-  id: string;
-  type: string;
-  principalOutstanding: number;
-  interestRate: number;
-  penaltyRate: number;
-  maturityDate: string;
-  npaStatus: NpaStatus;
-  dpd: number;
-}
-
-interface RestructureBorrower {
-  name: string;
-  cif: string;
-  phone: string;
-  status: string;
-  loans: RestructureLoan[];
-}
-
-export interface RestructureFormData {
-  loanAc: string;
-  customerName: string;
-  loanType: string;
-  valueDate: string;
-  reason: string | null;
-  restructureType: RestructureType;
-  newInterestRate?: number;
-  newPenaltyRate?: number;
-  topupAmount?: number;
-  newPrincipalOutstanding?: number;
-  newMaturityDate?: string;
-  charges: { id: string; label: string; amount: number }[];
-  totalCharges: number;
-}
+export type { RestructureFormData };
 
 interface LoanRestructureModalProps {
   opened: boolean;
@@ -82,270 +57,7 @@ interface LoanRestructureModalProps {
   onSubmit?: (data: RestructureFormData) => void | Promise<void>;
 }
 
-/* =========================
- * Dummy data
- * ========================= */
-const BORROWERS: RestructureBorrower[] = [
-  {
-    name: "Yash Joshi",
-    cif: "1009842",
-    phone: "+91 98765 43210",
-    status: "Standard",
-    loans: [
-      {
-        id: "LNA-2025-001",
-        type: "Vehicle Loan",
-        principalOutstanding: 12450,
-        interestRate: 9.5,
-        penaltyRate: 2,
-        maturityDate: "2029-03-15",
-        npaStatus: "Standard",
-        dpd: 0,
-      },
-      {
-        id: "LNA-2025-089",
-        type: "Personal Loan",
-        principalOutstanding: 4200,
-        interestRate: 11.25,
-        penaltyRate: 2.5,
-        maturityDate: "2027-11-01",
-        npaStatus: "Standard",
-        dpd: 0,
-      },
-    ],
-  },
-  {
-    name: "Meera Nair",
-    cif: "1010223",
-    phone: "+91 91234 56780",
-    status: "Standard",
-    loans: [
-      {
-        id: "LNA-2025-014",
-        type: "Home Loan",
-        principalOutstanding: 284300,
-        interestRate: 8.75,
-        penaltyRate: 1.5,
-        maturityDate: "2041-06-01",
-        npaStatus: "Standard",
-        dpd: 0,
-      },
-    ],
-  },
-  {
-    name: "Arjun Kapoor",
-    cif: "1011567",
-    phone: "+91 99887 66554",
-    status: "Overdue",
-    loans: [
-      {
-        id: "LNA-2025-032",
-        type: "Vehicle Loan",
-        principalOutstanding: 8600,
-        interestRate: 10.5,
-        penaltyRate: 3,
-        maturityDate: "2028-02-18",
-        npaStatus: "Sub-Standard",
-        dpd: 98,
-      },
-      {
-        id: "LNA-2025-047",
-        type: "Personal Loan",
-        principalOutstanding: 2150,
-        interestRate: 12,
-        penaltyRate: 3.5,
-        maturityDate: "2026-12-25",
-        npaStatus: "Sub-Standard",
-        dpd: 45,
-      },
-    ],
-  },
-  {
-    name: "Sanya Iyer",
-    cif: "1012890",
-    phone: "+91 90000 12345",
-    status: "Standard",
-    loans: [
-      {
-        id: "LNA-2025-058",
-        type: "Education Loan",
-        principalOutstanding: 156000,
-        interestRate: 7.8,
-        penaltyRate: 1,
-        maturityDate: "2033-08-10",
-        npaStatus: "Standard",
-        dpd: 0,
-      },
-    ],
-  },
-  {
-    name: "Rohan Mehta",
-    cif: "1013456",
-    phone: "+91 98123 45678",
-    status: "Overdue",
-    loans: [
-      {
-        id: "LNA-2025-071",
-        type: "Vehicle Loan",
-        principalOutstanding: 5400,
-        interestRate: 11,
-        penaltyRate: 3,
-        maturityDate: "2027-03-03",
-        npaStatus: "Doubtful",
-        dpd: 210,
-      },
-    ],
-  },
-];
-
-const RESTRUCTURE_REASONS = [
-  "Financial Hardship",
-  "Rate Renegotiation",
-  "Loan Consolidation",
-  "Collateral Revaluation",
-  "Regulatory Requirement",
-  "Other",
-];
-
-interface ChargeRow {
-  id: string;
-  label: string;
-  description: string;
-  amount: number;
-  checked: boolean;
-}
-
-const CHARGE_DEFS: ChargeRow[] = [
-  {
-    id: "processing",
-    label: "Restructuring Processing Fee",
-    description: "One-time fee for processing the restructure request",
-    amount: 1500,
-    checked: true,
-  },
-  {
-    id: "documentation",
-    label: "Documentation Charges",
-    description: "Cost of preparing revised loan agreement documents",
-    amount: 500,
-    checked: true,
-  },
-  {
-    id: "legal",
-    label: "Legal / Valuation Fee",
-    description: "Applicable when collateral re-valuation is required",
-    amount: 2000,
-    checked: true,
-  },
-  {
-    id: "cersai",
-    label: "CERSAI / Registration Fee",
-    description: "Statutory charge for updating security registration",
-    amount: 250,
-    checked: true,
-  },
-  {
-    id: "stamp",
-    label: "Stamp Duty",
-    description: "As applicable per state regulations on revised agreement",
-    amount: 0,
-    checked: false,
-  },
-];
-
-/* =========================
- * Helpers
- * ========================= */
-const labelClass = { label: "text-sm font-medium text-gray-700 mb-1" };
 const chevronDown = <IconChevronDown size={14} className="text-gray-500" />;
-
-// Fixed content-area height so BOTH tabs (Restructure Details & Restructure
-// Charges) render the modal at the exact same size, regardless of how much
-// content each tab has. Inner sections scroll internally instead of growing
-// the modal. Viewport-relative (not a fixed px) so header + tabs + footer
-// always stay visible instead of being clipped on shorter screens.
-const CONTENT_HEIGHT = "min(560px, calc(90vh - 190px))";
-
-function formatCurrency(amount: number) {
-  return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-}
-
-function npaBadgeColor(status: NpaStatus) {
-  if (status === "Standard") return "green";
-  if (status === "Sub-Standard") return "gold";
-  if (status === "Doubtful") return "accent";
-  return "danger";
-}
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-interface ScheduleRow {
-  emiNo: number;
-  dueDate: string;
-  principal: number;
-  interest: number;
-  totalEmi: number;
-  balance: number;
-}
-
-function monthsBetween(startISO: string, endISO: string) {
-  const start = new Date(startISO);
-  const end = new Date(endISO);
-  let months =
-    (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-  if (end.getDate() < start.getDate()) months -= 1;
-  return Math.max(months, 1);
-}
-
-function buildSchedule(
-  loan: RestructureLoan | null,
-  type: RestructureType,
-  newInterestRate: number | "",
-  newPrincipalOutstanding: number | "",
-  newMaturityDate: string,
-  valueDate: string
-): ScheduleRow[] {
-  if (!loan) return [];
-  const principal =
-    type === "TOPUP" && newPrincipalOutstanding !== ""
-      ? Number(newPrincipalOutstanding)
-      : loan.principalOutstanding;
-  const annualRate =
-    type === "RATE_CHANGE" && newInterestRate !== "" ? Number(newInterestRate) : loan.interestRate;
-  const maturity = type === "MODIFY_MATURITY" && newMaturityDate ? newMaturityDate : loan.maturityDate;
-  const start = valueDate || todayISO();
-  const months = monthsBetween(start, maturity);
-  const monthlyRate = annualRate / 12 / 100;
-
-  const emi =
-    monthlyRate === 0
-      ? principal / months
-      : (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) /
-        (Math.pow(1 + monthlyRate, months) - 1);
-
-  let balance = principal;
-  const startDate = new Date(start);
-  const rows: ScheduleRow[] = [];
-  for (let i = 1; i <= months; i++) {
-    const interest = balance * monthlyRate;
-    let principalComponent = emi - interest;
-    if (i === months) principalComponent = balance;
-    balance = Math.max(balance - principalComponent, 0);
-    const due = new Date(startDate);
-    due.setMonth(due.getMonth() + i);
-    rows.push({
-      emiNo: i,
-      dueDate: due.toISOString().slice(0, 10),
-      principal: Math.round(principalComponent * 100) / 100,
-      interest: Math.round(interest * 100) / 100,
-      totalEmi: Math.round((principalComponent + interest) * 100) / 100,
-      balance: Math.round(balance * 100) / 100,
-    });
-  }
-  return rows;
-}
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
@@ -358,12 +70,6 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       </Text>
     </div>
   );
-}
-
-function restructureTypeLabel(type: RestructureType) {
-  if (type === "RATE_CHANGE") return "Rate Change";
-  if (type === "TOPUP") return "Topup";
-  return "Modify Maturity";
 }
 
 /* =========================
@@ -452,7 +158,7 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
     setNewMaturityDate("");
   };
 
- const handleClearBorrower = () => {
+  const handleClearBorrower = () => {
     setSelectedBorrower(null);
     setSelectedLoanId(null);
     setSearch("");
@@ -499,8 +205,8 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
     (restructureType === "RATE_CHANGE"
       ? newInterestRate !== "" && newPenaltyRate !== ""
       : restructureType === "TOPUP"
-      ? topupAmount !== "" && newPrincipalOutstanding !== ""
-      : newMaturityDate !== "");
+        ? topupAmount !== "" && newPrincipalOutstanding !== ""
+        : newMaturityDate !== "");
 
   const handleModalClose = () => {
     handleReset();
@@ -572,7 +278,7 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
       }}
     >
       <Box bg="white" className="flex flex-col max-h-[90vh]">
-        {/* Header - matches FeeAndChargesModal */}
+        {/* Header */}
         <Group
           justify="space-between"
           align="center"
@@ -606,31 +312,6 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
           </ActionIcon>
         </Group>
 
-        {/* Inner tabs */}
-        {selectedBorrower && (
-          <Group justify="space-between" align="center" bg="slate.0">
-            <div className="inline-flex bg-white border border-gray-200 rounded-md p-1 gap-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab("details")}
-                className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-                  activeTab === "details" ? "bg-brand-1 text-[#4F46E5] shadow-sm" : "text-gray-600 hover:text-gray-800"
-                }`}
-              >
-                Restructure Details
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("charges")}
-                className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-                  activeTab === "charges" ? "bg-brand-1 text-[#4F46E5] shadow-sm" : "text-gray-600 hover:text-gray-800"
-                }`}
-              >
-                Restructure Charges
-              </button>
-            </div>
-          </Group>
-        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -641,10 +322,9 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
           {/* Fixed-height body: BOTH tabs use this exact height so the modal
               never resizes when switching tabs. Each tab scrolls internally. */}
           <Box style={{ height: CONTENT_HEIGHT, overflow: "hidden" }} className="border-t border-gray-100">
-          {activeTab === "details" ? (
             <div className="flex h-full overflow-hidden">
-              {/* Borrower Selection */}
-              <div className="w-[280px] border-r border-gray-200 p-5 shrink-0 overflow-y-auto">
+              {/* Borrower Selection — always visible, independent of tab */}
+              <div className="w-[260px] border-r border-gray-200 p-3 shrink-0 overflow-y-auto">
                 {!selectedBorrower ? (
                   <>
                     <Text size="sm" fw={500} className="text-gray-700 mb-1">
@@ -656,7 +336,6 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                       value={search}
                       onChange={(e) => setSearch(e.currentTarget.value)}
                       leftSection={<IconSearch size={14} className="text-gray-400" />}
-                      classNames={labelClass}
                     />
                     <Text size="xs" c="dimmed" className="mt-1.5 mb-4">
                       Search matches customer name, loan A/C number, or phone number.
@@ -726,11 +405,10 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                           key={loan.id}
                           type="button"
                           onClick={() => handleSelectLoan(loan)}
-                          className={`text-left rounded-md border p-3 transition-colors ${
-                            selectedLoanId === loan.id
-                              ? "border-[#818cf8] bg-[#eef2ff] ring-1 ring-[#c7d2fe]"
-                              : "border-gray-200 hover:bg-gray-50"
-                          }`}
+                          className={`text-left rounded-md border p-3 transition-colors ${selectedLoanId === loan.id
+                            ? "border-[#818cf8] bg-[#eef2ff] ring-1 ring-[#c7d2fe]"
+                            : "border-gray-200 hover:bg-gray-50"
+                            }`}
                         >
                           <Text size="sm" fw={700} className="text-gray-900">
                             {loan.type} - {loan.id}
@@ -745,193 +423,123 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                 )}
               </div>
 
-              {/* Restructure Request form */}
-              <div className="flex-1 px-6 pb-6 pt-3 overflow-y-auto">
-                                {!selectedLoan ? (
-                  <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2">
+              {/* Center: Restructure Request + Tabs + tab-specific content */}
+              <div className="flex-1 overflow-y-auto">
+                {!selectedLoan ? (
+                  <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2 p-6">
                     <IconClipboardList size={40} className="opacity-50" />
                     <Text c="dimmed" size="sm" ta="center" maw={280}>
                       Select a borrower and loan account on the left to begin the restructure.
                     </Text>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2 ">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col">
+                    {/* Restructure Request — top fields, always visible */}
+                    <div className="p-4 pb-3 flex flex-col gap-3">                      <div className="flex items-center gap-2">
                       <div className="w-1 h-4 rounded bg-gradient-to-b from-[#4338CA] to-[#4F46E5]" />
                       <Text fw={700} size="sm" className="text-gray-900">
                         Restructure Request
                       </Text>
                     </div>
 
-                    <div>
-                      <Text size="sm" fw={500} className="text-gray-700 mb-1">
-                        Selected Loan A/C Number
-                      </Text>
-                      <div className="flex items-center gap-2 rounded-md border border-[#a5b4fc] bg-[#eef2ff] px-3 py-2.5">
-                        <IconCar size={14} className="text-[#4F46E5]" />
-                        <Text size="sm" fw={700} className="text-gray-900 font-mono">
-                          {selectedLoan.id}
+                      <div>
+                        <Text size="sm" fw={500} className="text-gray-700 mb-1">
+                          Selected Loan A/C Number
                         </Text>
-                        <Text size="xs" c="dimmed">
-                          ({selectedLoan.type})
-                        </Text>
+                        <div className="flex items-center gap-2 rounded-md border border-[#a5b4fc] bg-[#eef2ff] px-4 py-1">
+                          <IconCar size={12} className="text-[#4F46E5]" />
+                          <Text size="sm" fw={700} className="text-gray-900 font-mono">
+                            {selectedLoan.id}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            ({selectedLoan.type})
+                          </Text>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                        <TextInput
+                          size="sm"
+                          withAsterisk
+                          type="date"
+                          label="Value Date"
+                          value={valueDate}
+                          onChange={(e) => setValueDate(e.currentTarget.value)}
+                          leftSection={<IconCalendarDue size={14} className="text-emerald-600" />}
+                        />
+                        <Select
+                          size="sm"
+                          withAsterisk
+                          label="Reason for Restructure"
+                          placeholder="Select a reason"
+                          data={RESTRUCTURE_REASONS}
+                          value={reason}
+                          onChange={setReason}
+                          rightSection={chevronDown}
+                        />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                      <TextInput
-                        size="sm"
-                        withAsterisk
-                        type="date"
-                        label="Value Date"
-                        value={valueDate}
-                        onChange={(e) => setValueDate(e.currentTarget.value)}
-                        leftSection={<IconCalendarDue size={14} className="text-emerald-600" />}
-                        classNames={labelClass}
-                      />
-                      <Select
-                        size="sm"
-                        withAsterisk
-                        label="Reason for Restructure"
-                        placeholder="Select a reason"
-                        data={RESTRUCTURE_REASONS}
-                        value={reason}
-                        onChange={setReason}
-                        rightSection={chevronDown}
-                        classNames={labelClass}
-                      />
-                    </div>
-
-                    <div className="border-t border-gray-100" />
-
-                    <div>
-                      <div className="flex items-center gap-2 pt-1">
-                        <div className="w-1 h-4 rounded bg-gradient-to-b from-[#4338CA] to-[#4F46E5]" />
-                        <Text fw={700} size="sm" className="text-gray-900">
-                          Restructure Type
-                        </Text>
+                    {/* Tabs */}
+                    <div className="px-4  border-b border-gray-200">
+                      <div className="inline-flex gap-6">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("details")}
+                          className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === "details"
+                              ? "border-[#4F46E5] text-gray-900"
+                              : "border-transparent text-gray-500 hover:text-gray-700"
+                            }`}
+                        >
+                          Restructure Details
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("charges")}
+                          className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === "charges"
+                              ? "border-[#4F46E5] text-gray-900"
+                              : "border-transparent text-gray-500 hover:text-gray-700"
+                            }`}
+                        >
+                          Restructure Charges
+                        </button>
                       </div>
-                     <SegmentedControl
-                        fullWidth
-                        size="xs"
-                        color="brand"
-                        value={restructureType}
-                        onChange={(v) => setRestructureType(v as RestructureType)}
-                        data={[
-                          { label: "Rate Change", value: "RATE_CHANGE" },
-                          { label: "Topup", value: "TOPUP" },
-                          { label: "Modify Maturity", value: "MODIFY_MATURITY" },
-                        ]}
-                        styles={{
-                          label: { padding: "4px 8px" },
-                        }}
-                      />
                     </div>
 
-                    <div className="rounded-lg border border-gray-200 p-2">
-                      {restructureType === "RATE_CHANGE" && (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <IconCurrencyDollar size={16} className="text-[#4F46E5]" />
-                            <Text fw={700} size="sm" className="text-gray-900">
-                              Rate Change Details
-                            </Text>
-                          </div>
-                          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                            <NumberInput
-                              size="sm"
-                              withAsterisk
-                              label="New Interest Rate (%)"
-                              value={newInterestRate}
-                              onChange={(v) => setNewInterestRate(v as number | "")}
-                              decimalScale={2}
-                              classNames={labelClass}
-                            />
-                            <NumberInput
-                              size="sm"
-                              withAsterisk
-                              label="Penalty Rate (%)"
-                              value={newPenaltyRate}
-                              onChange={(v) => setNewPenaltyRate(v as number | "")}
-                              decimalScale={2}
-                              classNames={labelClass}
-                            />
-                          </div>
-                        </>
-                      )}
+                    <div className="border-t border-gray-100 mt-1" />
 
-                      {restructureType === "TOPUP" && (
-                        <>
-                          <div className="flex items-center gap-2 mb-3">
-                            <IconPlus size={16} className="text-[#4F46E5]" />
-                            <Text fw={700} size="sm" className="text-gray-900">
-                              Topup Details
-                            </Text>
-                          </div>
-                          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                            <NumberInput
-                              size="sm"
-                              withAsterisk
-                              label="Topup Amount"
-                              placeholder="e.g. 2000"
-                              value={topupAmount}
-                              onChange={(v) => handleTopupAmountChange(v as number | "")}
-                              leftSection={<IconCurrencyDollar size={14} className="text-[#F26522]" />}
-                              thousandSeparator=","
-                              classNames={labelClass}
-                            />
-                            <NumberInput
-                              size="sm"
-                              withAsterisk
-                              label="New Principal Outstanding"
-                              value={newPrincipalOutstanding}
-                              onChange={(v) => handleNewPrincipalChange(v as number | "")}
-                              leftSection={<IconCurrencyDollar size={14} className="text-[#F26522]" />}
-                              thousandSeparator=","
-                              classNames={labelClass}
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {restructureType === "MODIFY_MATURITY" && (
-                        <>
-                          <div className="flex items-center gap-2 mb-3">
-                            <IconCalendar size={16} className="text-[#4F46E5]" />
-                            <Text fw={700} size="sm" className="text-gray-900">
-                              Maturity Details
-                            </Text>
-                          </div>
-                          <TextInput
-                            size="sm"
-                            withAsterisk
-                            type="date"
-                            label="New Maturity Date"
-                            value={newMaturityDate}
-                            onChange={(e) => setNewMaturityDate(e.currentTarget.value)}
-                            classNames={labelClass}
-                            className="max-w-[260px]"
-                          />
-                        </>
+                    {/* Tab content — delegated to standalone tab components */}
+                    <div className="px-1 py-1">
+                      {activeTab === "details" ? (
+                        <RestructureDetailsTab
+                          restructureType={restructureType}
+                          setRestructureType={setRestructureType}
+                          newInterestRate={newInterestRate}
+                          setNewInterestRate={setNewInterestRate}
+                          newPenaltyRate={newPenaltyRate}
+                          setNewPenaltyRate={setNewPenaltyRate}
+                          topupAmount={topupAmount}
+                          onTopupAmountChange={handleTopupAmountChange}
+                          newPrincipalOutstanding={newPrincipalOutstanding}
+                          onNewPrincipalChange={handleNewPrincipalChange}
+                          newMaturityDate={newMaturityDate}
+                          setNewMaturityDate={setNewMaturityDate}
+                          onViewSchedule={() => setScheduleOpened(true)}
+                        />
+                      ) : (
+                        <RestructureChargesTab
+                          charges={charges}
+                          totalCharges={totalCharges}
+                          onToggleCharge={toggleCharge}
+                          onUpdateChargeAmount={updateChargeAmount}
+                        />
                       )}
                     </div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      color="brand"
-                      size="sm"
-                      leftSection={<IconCalendarStats size={14} />}
-                      onClick={() => setScheduleOpened(true)}
-                      className="self-start font-semibold"
-                    >
-                      View New Schedule
-                    </Button>
                   </div>
                 )}
               </div>
 
-              {/* Before Restructure summary */}
+              {/* Before Restructure summary — always visible, independent of tab */}
               <div className="w-[280px] border-l border-gray-200 p-5 shrink-0 overflow-y-auto">
                 <Text size="xs" fw={700} c="dimmed" className="uppercase tracking-wide mb-3">
                   Before Restructure
@@ -993,83 +601,18 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                 )}
               </div>
             </div>
-          ) : (
-            <div className="p-6 h-full overflow-y-auto">
-              <Table verticalSpacing="sm" horizontalSpacing="md" fz="sm">
-                <Table.Thead>
-                  <Table.Tr className="border-b border-gray-200">
-                    <Table.Th style={{ width: 36 }} />
-                    <Table.Th className="text-gray-500 font-semibold" style={{ fontSize: 11 }}>
-                      CHARGE TYPE
-                    </Table.Th>
-                    <Table.Th className="text-gray-500 font-semibold" style={{ fontSize: 11 }}>
-                      DESCRIPTION
-                    </Table.Th>
-                    <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>
-                      AMOUNT ($)
-                    </Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {charges.map((c) => (
-                    <Table.Tr key={c.id} className="border-b border-gray-100 last:border-0">
-                      <Table.Td>
-                        <Checkbox
-                          size="sm"
-                          color="brand"
-                          checked={c.checked}
-                          onChange={(e) => toggleCharge(c.id, e.currentTarget.checked)}
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm" fw={600} className="text-gray-900">
-                          {c.label}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="xs" c="dimmed">
-                          {c.description}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <NumberInput
-                          size="xs"
-                          value={c.amount}
-                          onChange={(v) => updateChargeAmount(c.id, v as number | "")}
-                          disabled={!c.checked}
-                          thousandSeparator=","
-                          decimalScale={2}
-                          className="w-32 ml-auto"
-                          styles={{ input: { textAlign: "right" } }}
-                        />
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
+          </Box>
 
-              <div className="flex justify-end items-center gap-4 mt-4 pt-4 border-t border-gray-200">
-                <Text size="sm" c="dimmed">
-                  Total Restructure Charges
-                </Text>
-                <Text size="lg" fw={700} className="text-[#4F46E5]">
-                  {formatCurrency(totalCharges)}
-                </Text>
-              </div>
-            </div>
-          )}
-        </Box>
-
-        {/* Footer - same ModalFooter component/pattern as FeeAndChargesModal */}
-        <ModalFooter
-          variant="theme"
-          isViewMode={false}
-          onClose={handleModalClose}
-          onSubmit={handleProcess}
-          submitLabel="Save"
-          submitLoading={isProcessing}
-          submitDisabled={!canSubmit}
-        />
+          {/* Footer */}
+          <ModalFooter
+            variant="theme"
+            isViewMode={false}
+            onClose={handleModalClose}
+            onSubmit={handleProcess}
+            submitLabel="Save"
+            submitLoading={isProcessing}
+            submitDisabled={!canSubmit}
+          />
         </form>
       </Box>
 
