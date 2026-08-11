@@ -550,12 +550,10 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                 ) : (
                   <div className="flex flex-col">
                     {/* Restructure Request — top fields, always visible */}
-                    <div className="p-4 pb-3 flex flex-col gap-3">                      <div className="flex items-center gap-2">
-                      <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
-                      <Text fw={700} size="sm" c="slate.8">
-                        Restructure Request
-                      </Text>
-                    </div>
+                    <div className="p-4 pb-3 flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+
+                      </div>
 
                       <div>
                         <Text size="sm" fw={500} className="text-gray-700 mb-1">
@@ -602,27 +600,27 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                     </div>
 
                     {/* Tabs */}
-                    <div className="px-4" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
-                      <div className="inline-flex gap-6">
+                    <div className="px-6 py-2" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
+                      <div className="inline-flex gap-12">
                         <button
                           type="button"
                           onClick={() => setActiveTab("details")}
                           className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === "details"
-                              ? "border-[color:var(--mantine-color-brand-6)] text-gray-900"
-                              : "border-transparent text-gray-500 hover:text-gray-700"
+                            ? "border-[color:var(--mantine-color-brand-6)] text-gray-900"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
                             }`}
                         >
-                          Restructure Details
+                          Details
                         </button>
                         <button
                           type="button"
                           onClick={() => setActiveTab("charges")}
                           className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === "charges"
-                              ? "border-[color:var(--mantine-color-brand-6)] text-gray-900"
-                              : "border-transparent text-gray-500 hover:text-gray-700"
+                            ? "border-[color:var(--mantine-color-brand-6)] text-gray-900"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
                             }`}
                         >
-                          Restructure Charges
+                          Charges
                         </button>
                       </div>
                     </div>
@@ -703,18 +701,26 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                       </div>
 
                       <div
-                        className="rounded-md p-2.5"
+                        className="flex items-center gap-2 rounded-md p-2.5"
                         style={{
                           background: "var(--mantine-color-slate-1)",
                           border: "1px solid var(--mantine-color-slate-2)",
                         }}
                       >
-                        <Text size="xs" c="dimmed">
-                          Customer
-                        </Text>
-                        <Text size="sm" fw={600} c="slate.8">
-                          {selectedBorrower?.name}
-                        </Text>
+                        <div
+                          className="p-1.5 rounded-md flex items-center justify-center shrink-0"
+                          style={{ background: "var(--mantine-color-brand-0)" }}
+                        >
+                          <IconUserSearch size={14} style={{ color: "var(--mantine-color-brand-6)" }} />
+                        </div>
+                        <div>
+                          <Text size="xs" c="dimmed">
+                            Customer
+                          </Text>
+                          <Text size="sm" fw={600} c="slate.8">
+                            {selectedBorrower?.name}
+                          </Text>
+                        </div>
                       </div>
 
                       <div

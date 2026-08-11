@@ -49,11 +49,7 @@ export function RestructureDetailsTab({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-1 h-4 rounded bg-gradient-to-b from-[#4338CA] to-[#4F46E5]" />
-          <Text fw={700} size="sm" className="text-gray-900">
-            Restructure Type
-          </Text>
+        <div className="flex items-center gap-2 mb-3">         
         </div>
         <SegmentedControl
           fullWidth
@@ -87,6 +83,7 @@ export function RestructureDetailsTab({
                 value={newInterestRate}
                 onChange={(v) => setNewInterestRate(v as number | "")}
                 decimalScale={2}
+                hideControls
                 classNames={labelClass}
               />
               <NumberInput
@@ -94,6 +91,7 @@ export function RestructureDetailsTab({
                 withAsterisk
                 label="Penalty Rate (%)"
                 value={newPenaltyRate}
+                hideControls
                 onChange={(v) => setNewPenaltyRate(v as number | "")}
                 decimalScale={2}
                 classNames={labelClass}
@@ -115,6 +113,7 @@ export function RestructureDetailsTab({
                 size="sm"
                 withAsterisk
                 label="Topup Amount"
+                hideControls
                 placeholder="e.g. 2000"
                 value={topupAmount}
                 onChange={(v) => onTopupAmountChange(v as number | "")}
@@ -127,6 +126,7 @@ export function RestructureDetailsTab({
                 withAsterisk
                 label="New Principal Outstanding"
                 value={newPrincipalOutstanding}
+                hideControls
                 onChange={(v) => onNewPrincipalChange(v as number | "")}
                 leftSection={<IconCurrencyDollar size={14} className="text-[#F26522]" />}
                 thousandSeparator=","
