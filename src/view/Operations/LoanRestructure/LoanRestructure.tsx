@@ -472,7 +472,7 @@ export function LoanRestructure() {
                 setPagination((p) => ({ ...p, pageIndex: 0 }));
               }}
             />
-               <Group justify="space-between" wrap="wrap" gap="sm">
+               <Group justify="space-evenly" wrap="wrap" gap="sm">
             <Radio.Group
               name="status"
               value={status}
