@@ -24,16 +24,19 @@ import {
   IconHome,
   IconLock,
   IconUser,
-  IconCurrencyDollar,
+  IconNote,
   IconClock,
   IconArrowRight,
   IconRefresh,
+  IconNotes,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createLoanDisbursement, getAllDsbrAccount, updateLoanDisbursement, getLoanDisbursementById} from "../../api/loanDisbursementAPi"; 
 import {getAllApplicationDsbr} from "../../api/loanApi";
 import type { LoanDisbursementPayload, } from "../../types/loanDisbursementForm";
 import { parseFrappeError } from "../../utils/parseFrappeError";
+import {getSymbol} from "../../store/currencyStore";
+import { useCompanyStore } from "../../store/companyStore";
 
 interface LoanDisbursementModalProps {
   opened: boolean;
@@ -74,9 +77,9 @@ const PAYMENT_MODES = ["Bank Draft", "Cash", "Cheque", "Credit Card", "Wire Tran
 const labelClass = { label: "text-sm font-medium text-gray-700 mb-1" };
 const chevronDown = <IconChevronDown size={14} className="text-gray-500" />;
 
-function formatCurrency(amount: number) {
-  return `₹${amount.toLocaleString("en-IN")}`;
-}
+// function formatCurrency(amount: number) {
+//   return `₹${amount.toLocaleString("en-IN")}`;
+// }
 
 export function LoanDisbursementModal({
   opened,
@@ -86,6 +89,10 @@ export function LoanDisbursementModal({
   initialData,
   isView = false,
 }: LoanDisbursementModalProps) {
+
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencySymbol = getSymbol(companyCurrency);
+  // console.log("Currency Symbol", currencySymbol);
   const [activeTab, setActiveTab] = useState<string | null>("settlement");
 
    const [dsbrAcSearch, setDsbrAcSearch] = useState("");
@@ -337,7 +344,7 @@ useEffect(() => {
         <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#7C3AED] flex items-center justify-center">
-              <IconCurrencyDollar size={20} className="text-white" />
+              <IconNote size={20} className="text-white" />
             </div>
             <div>
               <Text size="md" fw={700} className="text-gray-900 leading-tight">
@@ -364,7 +371,7 @@ useEffect(() => {
   withAsterisk
   searchable
   clearable={!!form.values.acNo}  
-  label="Application Number"
+  label="Loan Number"
   placeholder={isLoanAppsLoading ? "Loading..." : "Search loan account"}
   data={loanAppOptions}
   disabled={isLoanAppsLoading}
@@ -389,7 +396,7 @@ useEffect(() => {
                  min={0}
                 placeholder="Enter amount"
                  {...form.getInputProps("disburseAmount")}
-                leftSection={<IconCurrencyRupee size={14} className="text-orange-500" />}
+                leftSection={<IconNotes size={14} className="text-orange-500" />}
                 thousandSeparator=","
                 classNames={labelClass}
               />
@@ -517,8 +524,8 @@ useEffect(() => {
   size="sm"
   // withAsterisk
   label="A/c No"
-  placeholder="Loan account number"
-  disabled 
+  placeholder="Account number"
+  disabled ={isView}
   {...form.getInputProps("beneficiaryAcNo")}
   leftSection={<IconHome size={14} className="text-indigo-500" />}
   classNames={labelClass}
@@ -581,16 +588,20 @@ useEffect(() => {
                 value={selectedLoanApp ? (selectedLoanApp.applicant_name || selectedLoanApp.applicant) : "—"}
               />
               <SummaryItem
-                icon={<IconCurrencyDollar size={14} className="text-indigo-500" />}
+                icon={<IconNote size={14} className="text-indigo-500" />}
                 iconBg="#EEF2FF"
                 label="Currency"
-                value="INR" // Hardcoded as it's not returned in the provided API snippet
+                value={companyCurrency}
               />
               <SummaryItem
-                icon={<IconCurrencyDollar size={14} className="text-emerald-600" />}
+                icon={<IconNote size={14} className="text-emerald-600" />}
                 iconBg="#ECFDF5"
                 label="Sanctioned Amount"
-                value={selectedLoanApp ? formatCurrency(selectedLoanApp.loan_amount) : "₹0"}
+                value={
+  selectedLoanApp
+    ? `${currencySymbol}${selectedLoanApp.loan_amount}`
+    : `${currencySymbol}0`
+}
                 bold
               />
             <SummaryItem
@@ -599,8 +610,8 @@ useEffect(() => {
   label="Disbursement till Date"
   value={
     selectedLoanApp
-      ? formatCurrency(selectedLoanApp.current_disbursed_amount || 0)
-      : "₹0"
+      ? `${currencySymbol}${selectedLoanApp.current_disbursed_amount || 0}`
+      : `${currencySymbol}0`
   }
   bold
 />
