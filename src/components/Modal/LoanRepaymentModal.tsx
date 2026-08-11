@@ -311,7 +311,7 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }
           variant="theme"
           isViewMode={isView}
           onClose={onClose}
-          submitLabel={editId ? "Update" : "Process Repayment"}
+          submitLabel={editId ? "Update" : "Save"}
           submitLoading={isProcessing}
           submitDisabled={!selectedLoan || isProcessing}
           submitIcon={<IconArrowRight size={16} />}

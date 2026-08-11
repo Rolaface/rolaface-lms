@@ -329,10 +329,14 @@ export function LoanWaiverModal({ opened, onClose, onSubmit, editId, isView }: L
               onWaivedFeeChange={setWaivedFee}
               remark={remark}
               onRemarkChange={setRemark}
-              onOpenWaiverEffect={() => setWaiverEffectOpened(true)}
             />
 
-            <DuesSummaryPanel selectedLoan={selectedLoan} dues={dues} isDuesLoading={isDuesLoading} />
+            <DuesSummaryPanel
+              selectedLoan={selectedLoan}
+              dues={dues}
+              isDuesLoading={isDuesLoading}
+              onOpenPaymentEffect={() => setWaiverEffectOpened(true)}
+            />
           </div>
 
           {/* Footer */}
@@ -340,7 +344,7 @@ export function LoanWaiverModal({ opened, onClose, onSubmit, editId, isView }: L
             variant="theme"
             isViewMode={isView}
             onClose={onClose}
-            submitLabel={editId ? "Update" : "Process Waiver"}
+            submitLabel={editId ? "Update" : "Save"}
             submitLoading={isPending}
             submitDisabled={!selectedLoan || !hasAnyWaivedAmount || isPending}
             submitIcon={<IconArrowRight size={16} />}
