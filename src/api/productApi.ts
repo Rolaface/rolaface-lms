@@ -3,6 +3,12 @@ import { API } from "../config/api";
 import type { CreateLoanProductPayload } from "./LoanProduct/LoanProductAPi";
 import type { CreateLoanProductResponse } from "../types/loanProductForm";
 
+export interface OffsetOrderComponent {
+  idx: number;
+  demand_type: string;
+  [key: string]: any;
+}
+
 export async function getAllLoanProducts() {
   const { data } = await apiClient.get(API.loanProduct.getAllLoanProducts);
   return data;
@@ -102,4 +108,11 @@ export async function getLoanProductById(id: string) {
   return data;
 }
 
- 
+
+
+ export async function getLoanDemandOffsetOrderDetail(name: string) {
+  const { data } = await apiClient.get(
+    `${API.search.getLoanDemandOffsetOrderDetail}/${encodeURIComponent(name)}`
+  );
+  return data;
+}

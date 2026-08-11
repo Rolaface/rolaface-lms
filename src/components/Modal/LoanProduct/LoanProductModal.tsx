@@ -33,11 +33,11 @@ import {
 import { STEPS, toAccountOptions } from "./Constants";
 import { ProductDetailsTab } from "./ProductDetailsTab";
 import { AccountingTab, type AccountFieldsState, type InterestPenaltyAccountsState } from "./AccountingTab";
-import { CollectionTab } from "./CollectionsTab";
 import { ChargesTab, type ChargeRow } from "./ChargesTab";
 import { ChargeAccountsModal } from "./ChargesaccountModal";
 import { ModalFooter } from "../../shared/ModalFooter";
 import { showApiError, showConfirm, showSuccess } from "../../../utils/alert";
+import { CollectionTab } from "./CollectionsTab";
 
 interface LoanProductProps {
   opened: boolean;

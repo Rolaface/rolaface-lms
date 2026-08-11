@@ -157,6 +157,8 @@ loan: {
     getItems: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_items`,
     getLoanDemandOffsetOrders: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_demand_offset_orders`,
     getLoanCategory: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_category`,
+    getLoanDemandOffsetOrderDetail: `${ERP_BASE}/api/resource/Loan Demand Offset Order`,
+
   },
 
 
