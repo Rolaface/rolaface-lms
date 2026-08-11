@@ -1,4 +1,4 @@
-import { Badge, Button, NumberInput, Table, Text, TextInput, useMantineTheme } from "@mantine/core";
+import { Badge, NumberInput, Table, Text, TextInput, useMantineTheme } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconCalendarDue,
@@ -6,7 +6,6 @@ import {
   IconMessage,
   IconPercentage,
   IconNotes,
-  IconCreditCard,
 } from "@tabler/icons-react";
 import type { LoanWaiverBorrower, LoanWaiverLoanAccount } from "../../../types/loanwaiver";
 import { formatCurrency } from "../../../utils/loanwaiverutils";
@@ -29,7 +28,6 @@ interface WaiverExecutionPanelProps {
   onWaivedFeeChange: (value: number | "") => void;
   remark: string;
   onRemarkChange: (value: string) => void;
-  onOpenWaiverEffect: () => void;
 }
 
 export function WaiverExecutionPanel({
@@ -50,12 +48,11 @@ export function WaiverExecutionPanel({
   onWaivedFeeChange,
   remark,
   onRemarkChange,
-  onOpenWaiverEffect,
 }: WaiverExecutionPanelProps) {
   const theme = useMantineTheme();
 
   return (
-    <div className="relative flex-1 overflow-y-auto p-6" style={{ maxWidth: 720 }}>
+    <div className="relative flex-1 overflow-y-auto p-6">
       <div
         className={`flex h-full flex-col rounded-lg p-4 transition-all duration-300 ${!selectedLoan ? "pointer-events-none select-none opacity-50 blur-[2px]" : ""
           }`}
@@ -95,15 +92,6 @@ export function WaiverExecutionPanel({
             <Text size="sm" fw={600} c="slate.8">
               Waiver Breakdown
             </Text>
-            <Button
-              size="xs"
-              variant="light"
-              color="brand"
-              leftSection={<IconCreditCard size={14} />}
-              onClick={onOpenWaiverEffect}
-            >
-              Payment Effect
-            </Button>
           </div>
 
           <Table

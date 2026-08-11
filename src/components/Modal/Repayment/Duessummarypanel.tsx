@@ -14,11 +14,13 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
   const theme = useMantineTheme();
 
   return (
-    <div className="w-[300px] p-5 shrink-0 flex flex-col" style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}>
+    <div
+      className="w-[300px] p-5 shrink-0 flex flex-col shadow-[var(--mantine-shadow-lg)]"
+      style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
+    >
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
-        <IconReportMoney size={15} style={{ color: "var(--mantine-color-brand-6)" }} />
-        <Text size="sm" fw={700} c="slate.8">
+        <Text size="sm" fw={700} c="slate.8" tt="uppercase" style={{ letterSpacing: "0.05em" }}>
           Dues Summary
         </Text>
       </div>
@@ -29,8 +31,8 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
             <div
               className="rounded-md p-2.5"
               style={{
-                background: theme.other.surfaceMutedTranslucent,
-                border: "1px solid var(--mantine-color-slate-1)",
+                background: "var(--mantine-color-slate-1)",
+                border: "1px solid var(--mantine-color-slate-2)",
               }}
             >
               <Text size="xs" c="dimmed">
@@ -42,10 +44,10 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
             </div>
 
             <div
-              className="rounded-md p-3 flex flex-col gap-1.5"
+              className="rounded-md p-3 flex flex-col gap-2"
               style={{
-                background: theme.other.surfaceMutedTranslucent,
-                border: "1px solid var(--mantine-color-slate-1)",
+                background: "var(--mantine-color-slate-1)",
+                border: "1px solid var(--mantine-color-slate-2)",
               }}
             >
               <div className="flex justify-between">
@@ -80,8 +82,7 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
                   {formatCurrency(dues?.total_charges_payable ?? 0)}
                 </Text>
               </div>
-              <div style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }} className="my-1" />
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center pt-1">
                 <Text size="sm" fw={700} c="slate.8">
                   Total Amount Due
                 </Text>
