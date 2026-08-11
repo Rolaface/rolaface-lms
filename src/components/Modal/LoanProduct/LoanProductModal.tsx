@@ -508,7 +508,7 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
       styles={{
         content: {
           height: "88vh",
-          maxHeight: "88vh",
+          maxHeight: "100vh",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
