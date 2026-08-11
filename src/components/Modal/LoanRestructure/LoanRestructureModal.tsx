@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import {
   ActionIcon,
+  Anchor,
   Box,
   Text,
   Group,
@@ -11,7 +12,11 @@ import {
   Badge,
   Modal,
   Table,
+  ScrollArea,
   ThemeIcon,
+  Tooltip,
+  UnstyledButton,
+  useMantineTheme,
 } from "@mantine/core";
 import {
   IconX,
@@ -22,6 +27,8 @@ import {
   IconClipboardList,
   IconCopy,
   IconChevronDown,
+  IconUserSearch,
+  IconBuildingBank,
 } from "@tabler/icons-react";
 
 import { parseFrappeError } from "../../../utils/parseFrappeError";
@@ -65,7 +72,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <Text size="xs" c="dimmed">
         {label}
       </Text>
-      <Text size="xs" className="font-mono text-gray-700">
+      <Text size="xs" ff="monospace" c="slate.6">
         {value}
       </Text>
     </div>
@@ -76,6 +83,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
  * Component
  * ========================= */
 export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestructureModalProps) {
+  const theme = useMantineTheme();
   const [activeTab, setActiveTab] = useState<"details" | "charges">("details");
 
   // Borrower / loan selection
@@ -321,27 +329,87 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
         >
           {/* Fixed-height body: BOTH tabs use this exact height so the modal
               never resizes when switching tabs. Each tab scrolls internally. */}
-          <Box style={{ height: CONTENT_HEIGHT, overflow: "hidden" }} className="border-t border-gray-100">
+          <Box style={{ height: CONTENT_HEIGHT, overflow: "hidden" }}>
             <div className="flex h-full overflow-hidden">
               {/* Borrower Selection — always visible, independent of tab */}
-              <div className="w-[260px] border-r border-gray-200 p-3 shrink-0 overflow-y-auto">
-                {!selectedBorrower ? (
-                  <>
-                    <Text size="sm" fw={500} className="text-gray-700 mb-1">
-                      Search by Customer Name, A/C No. or Phone
+              <div
+                className="w-[300px] shrink-0 flex flex-col"
+                style={{ borderRight: "1px solid var(--mantine-color-slate-2)" }}
+              >
+                <div className="p-5 pb-4">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
+                    <IconUserSearch size={15} style={{ color: "var(--mantine-color-brand-6)" }} />
+                    <Text size="sm" fw={700} c="slate.8">
+                      Borrower Selection
                     </Text>
+                  </div>
+                  <Text size="xs" c="dimmed" className="ml-5 mb-4">
+                    Search by A/C no, phone or name
+                  </Text>
+
+                  {!selectedBorrower && (
                     <TextInput
                       size="sm"
                       placeholder="e.g. Yash Joshi, 9876543210..."
                       value={search}
                       onChange={(e) => setSearch(e.currentTarget.value)}
-                      leftSection={<IconSearch size={14} className="text-gray-400" />}
+                      leftSection={<IconSearch size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
                     />
-                    <Text size="xs" c="dimmed" className="mt-1.5 mb-4">
-                      Search matches customer name, loan A/C number, or phone number.
-                    </Text>
+                  )}
+                </div>
 
-                    {search.trim() && (
+                <ScrollArea className="flex-1 px-5 pb-5" scrollbarSize={6} type="hover">
+                  {selectedBorrower ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
+                          Selected Borrower
+                        </Text>
+                        <Anchor
+                          component="button"
+                          type="button"
+                          onClick={handleClearBorrower}
+                          size="xs"
+                          fw={700}
+                          c="brand.6"
+                          underline="never"
+                          styles={{ root: { "&:hover": { color: "var(--mantine-color-brand-7)" } } }}
+                        >
+                          Change
+                        </Anchor>
+                      </div>
+                      <div
+                        className="text-left rounded-md"
+                        style={{
+                          border: "1px solid var(--mantine-color-brand-3)",
+                          background: "var(--mantine-color-brand-0)",
+                          paddingTop: "1rem",
+                          paddingBottom: "1rem",
+                          paddingLeft: "1.25rem",
+                          paddingRight: "1rem",
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <Text size="sm" fw={700} c="slate.8">
+                            {selectedBorrower.name}
+                          </Text>
+                          <Badge
+                            size="sm"
+                            variant="light"
+                            color={selectedBorrower.status === "Overdue" ? "danger" : "success"}
+                            styles={{ root: { fontSize: 10 } }}
+                          >
+                            {selectedBorrower.status}
+                          </Badge>
+                        </div>
+                        <Text size="xs" c="dimmed" className="mt-0.5">
+                          CIF: {selectedBorrower.cif} | {selectedBorrower.phone}
+                        </Text>
+                      </div>
+                    </div>
+                  ) : (
+                    search.trim() && (
                       <div className="flex flex-col gap-2">
                         {matches.length === 0 ? (
                           <Text size="xs" c="dimmed" className="py-2">
@@ -349,95 +417,142 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                           </Text>
                         ) : (
                           matches.map((borrower) => (
-                            <button
+                            <UnstyledButton
                               key={borrower.cif}
                               type="button"
                               onClick={() => handleSelectBorrower(borrower)}
-                              className="text-left rounded-md border border-gray-200 p-3 transition-colors hover:bg-gray-50"
+                              className="text-left rounded-md transition-colors w-full"
+                              style={{
+                                border: "1px solid var(--mantine-color-slate-2)",
+                                paddingTop: "1rem",
+                                paddingBottom: "1rem",
+                                paddingLeft: "1.25rem",
+                                paddingRight: "1rem",
+                              }}
+                              styles={{ root: { "&:hover": { backgroundColor: "var(--mantine-color-slate-1)" } } }}
                             >
-                              <Text size="sm" fw={700} className="text-gray-900">
-                                {borrower.name}
-                              </Text>
+                              <div className="flex items-center justify-between">
+                                <Text size="sm" fw={700} c="slate.8">
+                                  {borrower.name}
+                                </Text>
+                                <Badge
+                                  size="sm"
+                                  variant="light"
+                                  color={borrower.status === "Overdue" ? "danger" : "success"}
+                                  styles={{ root: { fontSize: 10 } }}
+                                >
+                                  {borrower.status}
+                                </Badge>
+                              </div>
                               <Text size="xs" c="dimmed" className="mt-0.5">
                                 CIF: {borrower.cif} · {borrower.phone}
                               </Text>
-                            </button>
+                            </UnstyledButton>
                           ))
                         )}
                       </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div className="rounded-md border border-[#a5b4fc] bg-[#eef2ff] p-3 mb-4">
-                      <div className="flex items-center justify-between">
-                        <Text size="sm" fw={700} className="text-gray-900">
-                          {selectedBorrower.name}
-                        </Text>
-                        <button
-                          type="button"
-                          onClick={handleClearBorrower}
-                          className="text-xs font-semibold text-[#4F46E5] hover:text-[#3730A3] shrink-0"
-                        >
-                          Change
-                        </button>
-                      </div>
-                      <Text size="xs" c="dimmed" className="mt-0.5">
-                        CIF: {selectedBorrower.cif} | {selectedBorrower.phone}
-                      </Text>
-                      <Badge
-                        size="sm"
-                        variant="light"
-                        color={selectedBorrower.status === "Overdue" ? "danger" : "green"}
-                        className="mt-2 font-semibold tracking-wider"
-                        styles={{ root: { fontSize: 10 } }}
-                      >
-                        {selectedBorrower.status.toUpperCase()}
-                      </Badge>
-                    </div>
+                    )
+                  )}
 
-                    <Text size="xs" fw={600} c="dimmed" className="mb-2 uppercase tracking-wide">
-                      Select Active Loan Account
-                    </Text>
-                    <div className="flex flex-col gap-2">
-                      {selectedBorrower.loans.map((loan) => (
-                        <button
-                          key={loan.id}
-                          type="button"
-                          onClick={() => handleSelectLoan(loan)}
-                          className={`text-left rounded-md border p-3 transition-colors ${selectedLoanId === loan.id
-                            ? "border-[#818cf8] bg-[#eef2ff] ring-1 ring-[#c7d2fe]"
-                            : "border-gray-200 hover:bg-gray-50"
-                            }`}
-                        >
-                          <Text size="sm" fw={700} className="text-gray-900">
-                            {loan.type} - {loan.id}
-                          </Text>
-                          <Text size="xs" c="dimmed" className="mt-0.5">
-                            Balance: {formatCurrency(loan.principalOutstanding)} | Maturity: {loan.maturityDate}
-                          </Text>
-                        </button>
-                      ))}
+                  {selectedBorrower && (
+                    <div className="mt-5">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <IconBuildingBank size={13} style={{ color: "var(--mantine-color-slate-4)" }} />
+                        <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
+                          Select Active Loan Account
+                        </Text>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {selectedBorrower.loans.map((loan) => {
+                          const isSelected = selectedLoanId === loan.id;
+                          return (
+                            <UnstyledButton
+                              key={loan.id}
+                              type="button"
+                              onClick={() => handleSelectLoan(loan)}
+                              className="text-left rounded-md transition-colors w-full"
+                              style={{
+                                border: isSelected
+                                  ? "1px solid var(--mantine-color-brand-4)"
+                                  : "1px solid var(--mantine-color-slate-2)",
+                                background: isSelected ? "var(--mantine-color-brand-0)" : "var(--mantine-color-white)",
+                                boxShadow: isSelected ? "0 0 0 1px var(--mantine-color-brand-2)" : "none",
+                                paddingTop: "1rem",
+                                paddingBottom: "1rem",
+                                paddingLeft: "1.25rem",
+                                paddingRight: "1rem",
+                              }}
+                              styles={{
+                                root: {
+                                  "&:hover": !isSelected ? { backgroundColor: "var(--mantine-color-slate-1)" } : undefined,
+                                },
+                              }}
+                            >
+                              <Text size="sm" fw={700} c="slate.8">
+                                {loan.type} - {loan.id}
+                              </Text>
+                              <Text size="xs" c="dimmed" className="mt-0.5">
+                                Balance: {formatCurrency(loan.principalOutstanding)} | Maturity: {loan.maturityDate}
+                              </Text>
+                            </UnstyledButton>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </>
-                )}
+                  )}
+                </ScrollArea>
               </div>
 
               {/* Center: Restructure Request + Tabs + tab-specific content */}
               <div className="flex-1 overflow-y-auto">
                 {!selectedLoan ? (
-                  <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2 p-6">
-                    <IconClipboardList size={40} className="opacity-50" />
-                    <Text c="dimmed" size="sm" ta="center" maw={280}>
-                      Select a borrower and loan account on the left to begin the restructure.
-                    </Text>
+                  <div className="h-full flex items-center justify-center p-6">
+                    <div
+                      className="w-full max-w-[440px] rounded-lg p-8 flex flex-col items-center text-center"
+                      style={{
+                        background: "var(--mantine-color-white)",
+                        border: "1px solid var(--mantine-color-slate-2)",
+                        boxShadow: "var(--mantine-shadow-md)",
+                      }}
+                    >
+                      <div
+                        className="w-14 h-14 rounded-xl flex items-center justify-center mb-4"
+                        style={{
+                          background: "var(--mantine-color-brand-0)",
+                          border: "1px solid var(--mantine-color-brand-2)",
+                        }}
+                      >
+                        <IconClipboardList size={26} style={{ color: "var(--mantine-color-brand-6)" }} />
+                      </div>
+                      <Text size="lg" fw={700} c="slate.8">
+                        No Loan Account Selected
+                      </Text>
+                      <Text size="sm" c="dimmed" className="mt-2" maw={340}>
+                        To proceed with the restructure, first search for a borrower and select one
+                        of their active loan accounts from the panel on the left.
+                      </Text>
+                      <div
+                        className="w-full rounded-md mt-5 py-3 px-4"
+                        style={{
+                          background: "var(--mantine-color-slate-1)",
+                          border: "1px solid var(--mantine-color-slate-2)",
+                        }}
+                      >
+                        <Text size="xs" fw={700} c="brand.6" tt="uppercase" style={{ letterSpacing: "0.05em" }}>
+                          Next Step
+                        </Text>
+                        <Text size="sm" c="slate.7" className="mt-1">
+                          Select a borrower → Choose a loan account → Restructure terms
+                        </Text>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col">
                     {/* Restructure Request — top fields, always visible */}
                     <div className="p-4 pb-3 flex flex-col gap-3">                      <div className="flex items-center gap-2">
-                      <div className="w-1 h-4 rounded bg-gradient-to-b from-[#4338CA] to-[#4F46E5]" />
-                      <Text fw={700} size="sm" className="text-gray-900">
+                      <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
+                      <Text fw={700} size="sm" c="slate.8">
                         Restructure Request
                       </Text>
                     </div>
@@ -446,9 +561,15 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                         <Text size="sm" fw={500} className="text-gray-700 mb-1">
                           Selected Loan A/C Number
                         </Text>
-                        <div className="flex items-center gap-2 rounded-md border border-[#a5b4fc] bg-[#eef2ff] px-4 py-1">
-                          <IconCar size={12} className="text-[#4F46E5]" />
-                          <Text size="sm" fw={700} className="text-gray-900 font-mono">
+                        <div
+                          className="flex items-center gap-2 rounded-md px-4 py-1"
+                          style={{
+                            border: "1px solid var(--mantine-color-brand-3)",
+                            background: "var(--mantine-color-brand-0)",
+                          }}
+                        >
+                          <IconCar size={12} style={{ color: "var(--mantine-color-brand-6)" }} />
+                          <Text size="sm" fw={700} c="slate.8" className="font-mono">
                             {selectedLoan.id}
                           </Text>
                           <Text size="xs" c="dimmed">
@@ -481,13 +602,13 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                     </div>
 
                     {/* Tabs */}
-                    <div className="px-4  border-b border-gray-200">
+                    <div className="px-4" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
                       <div className="inline-flex gap-6">
                         <button
                           type="button"
                           onClick={() => setActiveTab("details")}
                           className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === "details"
-                              ? "border-[#4F46E5] text-gray-900"
+                              ? "border-[color:var(--mantine-color-brand-6)] text-gray-900"
                               : "border-transparent text-gray-500 hover:text-gray-700"
                             }`}
                         >
@@ -497,7 +618,7 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                           type="button"
                           onClick={() => setActiveTab("charges")}
                           className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === "charges"
-                              ? "border-[#4F46E5] text-gray-900"
+                              ? "border-[color:var(--mantine-color-brand-6)] text-gray-900"
                               : "border-transparent text-gray-500 hover:text-gray-700"
                             }`}
                         >
@@ -540,64 +661,90 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
               </div>
 
               {/* Before Restructure summary — always visible, independent of tab */}
-              <div className="w-[280px] border-l border-gray-200 p-5 shrink-0 overflow-y-auto">
-                <Text size="xs" fw={700} c="dimmed" className="uppercase tracking-wide mb-3">
-                  Before Restructure
-                </Text>
+              <div
+                className="w-[300px] p-5 shrink-0 flex flex-col shadow-[var(--mantine-shadow-lg)]"
+                style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
+                  <Text size="sm" fw={700} c="slate.8" tt="uppercase" style={{ letterSpacing: "0.05em" }}>
+                    Before Restructure
+                  </Text>
+                </div>
 
                 {!selectedLoan ? (
-                  <div className="flex flex-col items-center justify-center text-gray-400 gap-2 py-16">
-                    <IconCopy size={36} className="opacity-50" />
-                    <Text c="dimmed" size="xs" ta="center" maw={200}>
-                      Loan summary will appear here once an account is selected.
-                    </Text>
-                  </div>
+                  <Text size="xs" c="dimmed" className="py-8 text-center">
+                    Loan summary will appear here once an account is selected.
+                  </Text>
                 ) : (
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2 bg-gray-50/60 border border-gray-100 rounded-md p-2.5">
-                      <div className="p-1.5 rounded-md bg-[#eef2ff] flex items-center justify-center shrink-0">
-                        <IconCar size={14} className="text-[#4F46E5]" />
-                      </div>
-                      <div>
-                        <Text size="xs" c="dimmed">
-                          {selectedLoan.type}
-                        </Text>
-                        <Text size="sm" fw={700} className="text-gray-900 font-mono">
-                          {selectedLoan.id}
-                        </Text>
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-50/60 border border-gray-100 rounded-md p-2.5">
-                      <Text size="xs" c="dimmed">
-                        Customer
-                      </Text>
-                      <Text size="sm" fw={600} className="text-gray-900">
-                        {selectedBorrower?.name}
-                      </Text>
-                    </div>
-
-                    <div className="bg-gray-50/60 border border-gray-100 rounded-md p-3 flex flex-col gap-1.5">
-                      <SummaryRow label="Principal Outstanding" value={formatCurrency(selectedLoan.principalOutstanding)} />
-                      <SummaryRow label="Interest Rate" value={`${selectedLoan.interestRate}%`} />
-                      <SummaryRow label="Penalty Rate" value={`${selectedLoan.penaltyRate}%`} />
-                      <SummaryRow label="Maturity Date" value={selectedLoan.maturityDate} />
-                      <div className="flex justify-between items-center">
-                        <Text size="xs" c="dimmed">
-                          NPA Status
-                        </Text>
-                        <Badge
-                          size="sm"
-                          variant="light"
-                          color={npaBadgeColor(selectedLoan.npaStatus)}
-                          styles={{ root: { fontSize: 10 } }}
+                  <ScrollArea className="flex-1" scrollbarSize={6} type="hover">
+                    <div className="flex flex-col gap-3">
+                      <div
+                        className="flex items-center gap-2 rounded-md p-2.5"
+                        style={{
+                          background: "var(--mantine-color-slate-1)",
+                          border: "1px solid var(--mantine-color-slate-2)",
+                        }}
+                      >
+                        <div
+                          className="p-1.5 rounded-md flex items-center justify-center shrink-0"
+                          style={{ background: "var(--mantine-color-brand-0)" }}
                         >
-                          {selectedLoan.npaStatus}
-                        </Badge>
+                          <IconCar size={14} style={{ color: "var(--mantine-color-brand-6)" }} />
+                        </div>
+                        <div>
+                          <Text size="xs" c="dimmed">
+                            {selectedLoan.type}
+                          </Text>
+                          <Text size="sm" fw={700} c="slate.8" className="font-mono">
+                            {selectedLoan.id}
+                          </Text>
+                        </div>
                       </div>
-                      <SummaryRow label="DPD (Days Past Due)" value={`${selectedLoan.dpd} days`} />
+
+                      <div
+                        className="rounded-md p-2.5"
+                        style={{
+                          background: "var(--mantine-color-slate-1)",
+                          border: "1px solid var(--mantine-color-slate-2)",
+                        }}
+                      >
+                        <Text size="xs" c="dimmed">
+                          Customer
+                        </Text>
+                        <Text size="sm" fw={600} c="slate.8">
+                          {selectedBorrower?.name}
+                        </Text>
+                      </div>
+
+                      <div
+                        className="rounded-md p-3 flex flex-col gap-2"
+                        style={{
+                          background: "var(--mantine-color-slate-1)",
+                          border: "1px solid var(--mantine-color-slate-2)",
+                        }}
+                      >
+                        <SummaryRow label="Principal Outstanding" value={formatCurrency(selectedLoan.principalOutstanding)} />
+                        <SummaryRow label="Interest Rate" value={`${selectedLoan.interestRate}%`} />
+                        <SummaryRow label="Penalty Rate" value={`${selectedLoan.penaltyRate}%`} />
+                        <SummaryRow label="Maturity Date" value={selectedLoan.maturityDate} />
+                        <div className="flex justify-between items-center">
+                          <Text size="xs" c="dimmed">
+                            NPA Status
+                          </Text>
+                          <Badge
+                            size="sm"
+                            variant="light"
+                            color={npaBadgeColor(selectedLoan.npaStatus)}
+                            styles={{ root: { fontSize: 10 } }}
+                          >
+                            {selectedLoan.npaStatus}
+                          </Badge>
+                        </div>
+                        <SummaryRow label="DPD (Days Past Due)" value={`${selectedLoan.dpd} days`} />
+                      </div>
                     </div>
-                  </div>
+                  </ScrollArea>
                 )}
               </div>
             </div>
