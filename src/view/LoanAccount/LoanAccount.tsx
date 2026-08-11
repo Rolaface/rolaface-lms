@@ -25,7 +25,7 @@ import {
   IconPencil,
   IconPlus,
   IconChevronUp,
-  IconChevronDown,IconFileInvoice,
+  IconChevronDown, IconFileInvoice,
   IconSelector,
   IconSearch,
   IconFileText,
@@ -430,7 +430,6 @@ export function LoanAccount() {
         </Group>
       </Group>
 
-      {/* Toolbar — pill search + pill filters + segmented status control */}
       <Paper
         radius="xl"
         p="xs"
@@ -439,27 +438,28 @@ export function LoanAccount() {
           border: '1px solid var(--mantine-color-slate-2)',
         }}
       >
-        <Group gap="sm" wrap="wrap" align="center">
+        <Group gap="xs" wrap="nowrap" align="center">
           <TextInput
-            className="lms-search"
-            size="sm"
-            radius="xl"
-            placeholder="Application No. / Customer"
-            leftSection={<IconSearch size={14} />}
-            style={{ flex: 1, minWidth: 220 }}
-            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          />
+  className="lms-search"
+  size="sm"
+  radius="xl"
+  placeholder="Application No. / Customer"
+  leftSection={<IconSearch size={14} />}
+  style={{ width: 280, flexShrink: 1, minWidth: 160 }}  
+  styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+  value={search}
+  onChange={(e) => {
+    setSearch(e.currentTarget.value);
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }}
+/>
           <Select
             size="sm"
             radius="xl"
             placeholder="All Products"
             data={productOptions as string[]}
-            w={166}
+            w={128}
+            style={{ flexShrink: 1, minWidth: 90 }}
             searchable
             clearable
             rightSection={chevronDown}
@@ -474,7 +474,8 @@ export function LoanAccount() {
             radius="xl"
             placeholder="All Branches"
             data={branchOptions as string[]}
-            w={166}
+            w={128}
+            style={{ flexShrink: 1, minWidth: 90 }}
             searchable
             clearable
             rightSection={chevronDown}
@@ -494,6 +495,11 @@ export function LoanAccount() {
               setStatus(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
+            style={{ flexShrink: 1 }}
+            styles={{
+              root: { padding: 3 },
+              label: { padding: '5px 8px', fontSize: 11 },
+            }}
             data={[
               { label: 'All', value: 'all' },
               { label: 'Draft', value: 'DRAFT' },
@@ -504,30 +510,32 @@ export function LoanAccount() {
             ]}
           />
 
-          <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
+          <Button size="sm" radius="xl" variant="default" px="sm" style={{ flexShrink: 0 }} onClick={resetFilters}>
             Reset
           </Button>
           <Button
             size="sm"
             radius="xl"
             color="brand"
+            px="sm"
+            style={{
+              flexShrink: 0,
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadowSm,
+            }}
             onClick={() => {
               setSelectedLoanId(null);
               setIsViewMode(false);
               open();
             }}
             leftSection={<IconPlus size={14} />}
-            style={{
-              background: theme.other.brandGradient,
-              boxShadow: theme.other.brandGlowShadowSm,
-            }}
           >
             Add Booking
           </Button>
         </Group>
       </Paper>
 
-      {/* Data Table — floating rounded row-cards on a soft canvas */}
+
       <Paper
         radius="lg"
         p="sm"

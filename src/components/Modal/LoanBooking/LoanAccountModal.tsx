@@ -266,7 +266,7 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
       radius="lg"
       closeOnClickOutside={false}
       closeOnEscape={false}
-       styles={{
+      styles={{
         content: {
           maxHeight: "95vh",
           display: "flex",
@@ -289,30 +289,31 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
       >
         <Box className="flex flex-col flex-1 min-h-0">
           {/* Header */}
+
           <Box
-            className="px-6 py-4 flex justify-between items-center rounded-t-md shrink-0"
+            className="px-6 py-3 flex justify-between items-center rounded-t-md shrink-0"
             style={{
               background: theme.other.brandGradient,
               borderBottom: "1px solid var(--mantine-color-brand-7)",
             }}
           >
-            <Group gap="md" className="min-w-0" wrap="nowrap">
+            <Group gap="sm" className="min-w-0" wrap="nowrap">  
               <ThemeIcon
-                size={48}
+                size={38}        
                 radius="xl"
                 style={{
                   background: theme.other.headerIconOverlayBg,
                   color: "var(--mantine-color-white)",
                 }}
               >
-                <IconFileInvoice size={24} />
+                <IconFileInvoice size={19} />  {/* was 24 */}
               </ThemeIcon>
               <div className="min-w-0">
-                <Text size="lg" fw={700} c="white" className="leading-tight truncate">
+                <Text size="md" fw={700} c="white" className="leading-tight truncate">  {/* size="lg" -> "md" */}
                   {loanId ? (isViewMode ? "View Loan Booking" : "Update Loan Booking") : "New Loan Booking"}
                 </Text>
                 <Text size="xs" c="brand.1" className="leading-tight truncate">
-                 {loanId ? ` · Account ${loanId}` : ""}
+                  {loanId ? ` · Account ${loanId}` : ""}
                 </Text>
               </div>
             </Group>
@@ -346,7 +347,7 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
 
           <Box
             px="md"
-            py={8}
+            py={6}   
             style={{
               borderBottom: "1px solid var(--mantine-color-slate-2)",
               flexShrink: 0,
@@ -432,7 +433,7 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
             bg="white"
             className="flex-1 flex flex-col lg:flex-row overflow-y-auto border-0 p-0 m-0 min-w-0 min-h-0"
           >
-            <div className="flex-1 p-6 min-w-0">
+            <div className="flex-1 pt-3 px-5 pb-5 min-w-0"> 
               {activeTab === "basic" && (
                 <BasicDetailsTab form={form} loanAcNumber={loanAcNumber} maturityDate={finalMaturityDate} />
               )}
@@ -491,26 +492,29 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
           </Box>
 
           {/* Footer — shared ModalFooter, no Reset action exposed. */}
-          <ModalFooter
-            variant="theme"
-            isViewMode={isViewMode}
-            onClose={handleModalClose}
-            onSaveDraft={!isViewMode ? () => { } : undefined}
-            submitLabel={loanId ? "Update " : "Save"}
-            submitLoading={createLoanMutation.isPending || updateLoanMutation.isPending || isFetchingLoan}
-            errorMessage={createLoanMutation.isError ? parseFrappeError(createLoanMutation.error) : undefined}
-            leftSlot={
-              <button
-                type="button"
-                onClick={() => setSimulatorModalOpened(true)}
-                className="text-xs font-semibold flex items-center gap-1 transition-colors"
-                style={{ color: "var(--mantine-color-brand-6)" }}
-              >
-                <IconCalculator size={14} />
-                Loan Simulator
-              </button>
-            }
-          />
+          {/* Footer — shared ModalFooter, no Reset action exposed. */}
+          <Box style={{ flexShrink: 0 }}>
+            <ModalFooter
+              variant="theme"
+              isViewMode={isViewMode}
+              onClose={handleModalClose}
+              onSaveDraft={!isViewMode ? () => { } : undefined}
+              submitLabel={loanId ? "Update " : "Save"}
+              submitLoading={createLoanMutation.isPending || updateLoanMutation.isPending || isFetchingLoan}
+              errorMessage={createLoanMutation.isError ? parseFrappeError(createLoanMutation.error) : undefined}
+              leftSlot={
+                <button
+                  type="button"
+                  onClick={() => setSimulatorModalOpened(true)}
+                  className="text-xs font-semibold flex items-center gap-1 transition-colors"
+                  style={{ color: "var(--mantine-color-brand-6)" }}
+                >
+                  <IconCalculator size={14} />
+                  Loan Simulator
+                </button>
+              }
+            />
+          </Box>
         </Box>
       </form>
 

@@ -6,7 +6,7 @@ function SummaryRow({ label, value, bold }: { label: string; value: string; bold
     <Group
       justify="space-between"
       wrap="nowrap"
-      py={7}
+      py={5} 
     >
       <Text size="xs" c="slate.5">
         {label}
@@ -25,7 +25,7 @@ function SummaryCard({ children }: { children: React.ReactNode }) {
         background: "var(--mantine-color-slate-1)",
         border: "1px solid var(--mantine-color-slate-2)",
         borderRadius: "var(--mantine-radius-lg)",
-        padding: "12px 14px",
+        padding: "10px 12px", // was 12px 14px
       }}
     >
       {children}
@@ -72,16 +72,16 @@ export function LoanSummarySidebar({
         background: theme.other.summaryPanelBg as string,
       }}
     >
-
-
       <div className="lg:shadow-[var(--mantine-shadow-lg)] h-full">
-        <div className="p-5 flex flex-col gap-4">
+        {/* p-5 -> p-4, gap-4 -> gap-3, and pb-6 added as a safety buffer
+            so the last card never sits behind the footer */}
+        <div className="p-4 pb-6 flex flex-col gap-3">
           <Text size="sm" fw={700} c="slate.7" tt="uppercase" style={{ letterSpacing: "0.05em" }}>
             Summary
           </Text>
 
           <SummaryCard>
-            <Stack gap={4}>
+            <Stack gap={2}> {/* was 4 */}
               <SummaryRow label="Product" value={productCode || "—"} />
               <SummaryRow
                 label="Principal"
@@ -94,7 +94,7 @@ export function LoanSummarySidebar({
               <SummaryRow label="Repayment Start" value={repaymentStartDate || "—"} />
               <SummaryRow label="Maturity Date" value={maturityDate || "—"} />
               <div style={{ paddingBottom: 0 }}>
-                <Group justify="space-between" wrap="nowrap" py={7}>
+                <Group justify="space-between" wrap="nowrap" py={5}>
                   <Text size="xs" c="slate.5">
                     Moratorium
                   </Text>
@@ -111,19 +111,20 @@ export function LoanSummarySidebar({
               background: theme.other.brandGradient as string,
               boxShadow: theme.other.brandGlowShadowSm as string,
               borderRadius: "var(--mantine-radius-lg)",
-              padding: "16px 18px",
+              padding: "12px 16px", // was 16px 18px
             }}
           >
             <Text size="xxs" fw={700} c="brand.1" tt="uppercase" style={{ letterSpacing: "0.05em" }}>
               Estimated EMI
             </Text>
-            <Text fw={800} c="white" ff="monospace" style={{ fontSize: 28, lineHeight: 1.25, marginTop: 4 }}>
+            <Text fw={800} c="white" ff="monospace" style={{ fontSize: 24, lineHeight: 1.25, marginTop: 4 }}>
+              {/* fontSize 28 -> 24 */}
               {estimatedEmi ? estimatedEmi.toLocaleString("en-US", { minimumFractionDigits: 2 }) : "—"}
             </Text>
           </div>
 
           <SummaryCard>
-            <Stack gap={4}>
+            <Stack gap={2}> {/* was 4 */}
               <SummaryRow
                 label="Total Interest"
                 value={
@@ -133,7 +134,7 @@ export function LoanSummarySidebar({
                 }
               />
               <div style={{ paddingBottom: 0 }}>
-                <Group justify="space-between" wrap="nowrap" py={7}>
+                <Group justify="space-between" wrap="nowrap" py={5}>
                   <Text size="xs" c="slate.5">
                     Total Repayment
                   </Text>
@@ -146,7 +147,6 @@ export function LoanSummarySidebar({
               </div>
             </Stack>
           </SummaryCard>
-
         </div>
       </div>
     </div>
