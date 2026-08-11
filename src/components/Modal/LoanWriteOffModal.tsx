@@ -14,7 +14,6 @@ import { ModalFooter } from '../shared/ModalFooter';
 import {
   Box,
   Text,
-  Button,
   TextInput,
   NumberInput,
   Select,
@@ -24,23 +23,9 @@ import {
   Stack,
   ActionIcon,
   ThemeIcon,
+  useMantineTheme,
 } from '@mantine/core';
-import {
-  IconX,
-  IconSearch,
-  IconCalendar,
-  IconCurrencyRupee,
-  IconChevronDown,
-  IconPercentage,
-  IconBuildingBank,
-  IconUser,
-  IconAlertTriangle,
-  IconTag,
-  IconClock,
-  IconFileInvoice,
-  IconRefresh,
-  IconFileOff,
-} from '@tabler/icons-react';
+import { IconX, IconFileOff } from '@tabler/icons-react';
 
 interface LoanWriteOffModalProps {
   opened: boolean;
@@ -66,14 +51,12 @@ const ACCOUNT_SUMMARY = {
   outstanding: 486250,
 };
 
-const labelClass = { label: 'text-sm font-medium text-gray-700 mb-1' };
-const chevronDown = <IconChevronDown size={14} className="text-gray-500" />;
-
 function formatCurrency(amount: number) {
   return `₹${amount.toLocaleString('en-IN')}`;
 }
 
 export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanWriteOffModalProps) {
+  const theme = useMantineTheme();
   const isEdit = !!editData;
 
   const title = isEdit ? 'Update Write Off' : 'Write Off Loan';
@@ -315,32 +298,33 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
           {/* Main form column */}
           <Box className="flex-1 overflow-y-auto" px="xl" py="lg" bg="slate.0">
             <Stack gap="md">
-              <Select
-                size="sm"
-                withAsterisk
-                label="Loan A/c"
-                placeholder="Search loan account"
-                data={
-                  loanAc && !loanAccountOptions.some((acc) => acc.name === loanAc)
-                    ? [
-                        { value: loanAc, label: loanAc },
-                        ...loanAccountOptions.map((acc) => ({ value: acc.name, label: acc.name })),
-                      ]
-                    : loanAccountOptions.map((acc) => ({ value: acc.name, label: acc.name }))
-                }
-                value={loanAc || null}
-                onChange={handleLoanAcChange}
-                searchable
-                searchValue={loanAcSearch}
-                onSearchChange={setLoanAcSearch}
-                nothingFoundMessage={loanAccountsLoading ? 'Loading...' : 'No accounts found'}
-                leftSection={<IconSearch size={14} className="text-gray-400" />}
-                error={errors.loanAc}
-                classNames={labelClass}
-                styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
-              />
+              {/* Row 1: Loan A/c (wide), Value Date (narrow), Principal Outstanding (narrow) */}
+              <div
+                className="grid gap-x-6 gap-y-4"
+                style={{ gridTemplateColumns: '1.7fr 1fr 1fr' }}
+              >
+                <Select
+                  size="sm"
+                  withAsterisk
+                  label="Loan A/c"
+                  placeholder="Search loan account"
+                  data={
+                    loanAc && !loanAccountOptions.some((acc) => acc.name === loanAc)
+                      ? [
+                          { value: loanAc, label: loanAc },
+                          ...loanAccountOptions.map((acc) => ({ value: acc.name, label: acc.name })),
+                        ]
+                      : loanAccountOptions.map((acc) => ({ value: acc.name, label: acc.name }))
+                  }
+                  value={loanAc || null}
+                  onChange={handleLoanAcChange}
+                  searchable
+                  searchValue={loanAcSearch}
+                  onSearchChange={setLoanAcSearch}
+                  nothingFoundMessage={loanAccountsLoading ? 'Loading...' : 'No accounts found'}
+                  error={errors.loanAc}
+                />
 
-              <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                 <TextInput
                   size="sm"
                   withAsterisk
@@ -351,11 +335,9 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
                     setValueDate(e.currentTarget.value);
                     if (e.currentTarget.value) setErrors((er) => ({ ...er, valueDate: '' }));
                   }}
-                  leftSection={<IconCalendar size={14} className="text-emerald-600" />}
                   error={errors.valueDate}
-                  classNames={labelClass}
-                  styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
                 />
+
                 <NumberInput
                   size="sm"
                   withAsterisk
@@ -363,31 +345,41 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
                   placeholder="Auto-filled on account selection"
                   value={principalOutstanding}
                   onChange={(v) => setPrincipalOutstanding(v as number | '')}
-                  leftSection={<IconCurrencyRupee size={14} className="text-orange-500" />}
                   thousandSeparator=","
                   readOnly
-                  classNames={labelClass}
-                  styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+                  hideControls
                 />
+              </div>
 
-                <div>
-                  <NumberInput
-                    size="sm"
-                    withAsterisk
-                    label="Write-off Percentage"
-                    placeholder="Enter percentage"
-                    value={writeOffPercentage}
-                    onChange={(v) => handlePercentageChange(v as number | '')}
-                    leftSection={<IconPercentage size={14} className="text-indigo-500" />}
-                    max={100}
-                    min={0}
-                    classNames={labelClass}
-                    styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
-                  />
-                  <Text size="xs" c="dimmed" className="mt-1">
-                    Linked to amount
-                  </Text>
-                </div>
+              {/* Row 2: Write-off Account (same width as Loan A/c), Write-off Amount, Write-off Percentage (fill remaining space) */}
+              <div
+                className="grid gap-x-6 gap-y-4"
+                style={{ gridTemplateColumns: '1.7fr 1fr 1fr' }}
+              >
+                <Select
+                  size="sm"
+                  withAsterisk
+                  label="Write-off Account"
+                  placeholder="Select write-off account"
+                  data={
+                    writeOffAccount && !accountOptions.some((a) => a.value === writeOffAccount)
+                      ? [
+                          { value: writeOffAccount, label: writeOffAccount },
+                          ...accountOptions.map((a) => ({ value: a.value, label: a.label })),
+                        ]
+                      : accountOptions.map((a) => ({ value: a.value, label: a.label }))
+                  }
+                  value={writeOffAccount}
+                  onChange={(value) => {
+                    setWriteOffAccount(value);
+                    if (value) setErrors((e) => ({ ...e, writeOffAccount: '' }));
+                  }}
+                  searchable
+                  searchValue={accountSearch}
+                  onSearchChange={setAccountSearch}
+                  nothingFoundMessage={accountsLoading ? 'Loading...' : 'No accounts found'}
+                  error={errors.writeOffAccount}
+                />
 
                 <div>
                   <NumberInput
@@ -397,155 +389,112 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
                     placeholder="Enter amount"
                     value={writeOffAmount}
                     onChange={(v) => handleAmountChange(v as number | '')}
-                    leftSection={<IconCurrencyRupee size={14} className="text-orange-500" />}
                     thousandSeparator=","
                     error={errors.writeOffAmount}
-                    classNames={labelClass}
-                    styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+                    hideControls
                   />
-                  <Text size="xs" c="dimmed" className="mt-1">
+                  <Text size="xs" c="dimmed" mt={4}>
                     Linked to percentage
                   </Text>
                 </div>
-              </div>
 
-              <Select
-                size="sm"
-                withAsterisk
-                label="Write-off Account"
-                placeholder="Select write-off account"
-                data={
-                  writeOffAccount && !accountOptions.some((a) => a.value === writeOffAccount)
-                    ? [
-                        { value: writeOffAccount, label: writeOffAccount },
-                        ...accountOptions.map((a) => ({ value: a.value, label: a.label })),
-                      ]
-                    : accountOptions.map((a) => ({ value: a.value, label: a.label }))
-                }
-                value={writeOffAccount}
-                onChange={(value) => {
-                  setWriteOffAccount(value);
-                  if (value) setErrors((e) => ({ ...e, writeOffAccount: '' }));
-                }}
-                searchable
-                searchValue={accountSearch}
-                onSearchChange={setAccountSearch}
-                nothingFoundMessage={accountsLoading ? 'Loading...' : 'No accounts found'}
-                leftSection={<IconBuildingBank size={14} className="text-indigo-500" />}
-                rightSection={chevronDown}
-                error={errors.writeOffAccount}
-                classNames={labelClass}
-                styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
-              />
+                <div>
+                  <NumberInput
+                    size="sm"
+                    withAsterisk
+                    label="Write-off Percentage"
+                    placeholder="Enter percentage"
+                    value={writeOffPercentage}
+                    onChange={(v) => handlePercentageChange(v as number | '')}
+                    max={100}
+                    min={0}
+                    hideControls
+                  />
+                  <Text size="xs" c="dimmed" mt={4}>
+                    Linked to amount
+                  </Text>
+                </div>
+              </div>
             </Stack>
           </Box>
 
           {/* Summary sidebar */}
-          <Box className="w-[280px] shrink-0 overflow-y-auto" style={{ borderLeft: '1px solid var(--mantine-color-slate-2)' }} p="sm">
-            <Group gap="xs" mb={2}>
-              <div className="w-1 h-4 rounded bg-gradient-to-b from-[#7C3AED] to-[#4F46E5]" />
-              <Text size="sm" fw={700} c="slate.8">
-                Summary
-              </Text>
-            </Group>
+          <Box
+            className="w-[280px] shrink-0 overflow-y-auto"
+            style={{ borderLeft: '1px solid var(--mantine-color-slate-2)' }}
+            p="md"
+          >
+            <Text size="sm" fw={700} c="slate.7" tt="uppercase" mb="sm" style={{ letterSpacing: '0.05em' }}>
+              Summary
+            </Text>
             <Stack gap="sm">
-              <SummaryItem
-                icon={<IconUser size={14} className="text-gray-500" />}
-                iconBg="#F3F4F6"
-                label="Customer Name"
-                value={ACCOUNT_SUMMARY.customerName}
-              />
-              <SummaryItem
-                icon={<IconAlertTriangle size={14} className="text-red-500" />}
-                iconBg="#FEF2F2"
-                label="NPA"
-                value={
-                  <Badge size="sm" variant="light" color="red" className="font-semibold" styles={{ root: { fontSize: 10 } }}>
-                    {ACCOUNT_SUMMARY.npa ? 'Yes' : 'No'}
-                  </Badge>
-                }
-              />
-              <SummaryItem
-                icon={<IconTag size={14} className="text-orange-500" />}
-                iconBg="#FFF7ED"
-                label="Classification"
-                value={
-                  <Badge size="sm" variant="light" color="yellow" className="font-semibold" styles={{ root: { fontSize: 10 } }}>
-                    {ACCOUNT_SUMMARY.classification}
-                  </Badge>
-                }
-              />
-              <SummaryItem
-                icon={<IconClock size={14} className="text-red-500" />}
-                iconBg="#FEF2F2"
-                label="DPD"
-                value={`${ACCOUNT_SUMMARY.dpd} days`}
-              />
-              <SummaryItem
-                icon={<IconCurrencyRupee size={14} className="text-indigo-500" />}
-                iconBg="#EEF2FF"
-                label="Outstanding"
-                value={formatCurrency(ACCOUNT_SUMMARY.outstanding)}
-                bold
-              />
-              <SummaryItem
-                icon={<IconFileInvoice size={14} className="text-emerald-600" />}
-                iconBg="#ECFDF5"
-                label="Write-off Amt"
-                value={writeOffAmount !== '' ? formatCurrency(Number(writeOffAmount)) : '—'}
-                bold
-              />
+              <SummaryCard>
+                <Stack gap={2}>
+                  <SummaryRow label="Customer Name" value={ACCOUNT_SUMMARY.customerName} bold />
+                  <SummaryRow label="NPA" value={ACCOUNT_SUMMARY.npa ? 'Yes' : 'No'} />
+                  <SummaryRow label="Classification" value={ACCOUNT_SUMMARY.classification} />
+                  <SummaryRow label="DPD" value={`${ACCOUNT_SUMMARY.dpd} days`} />
+                  <SummaryRow label="Outstanding" value={formatCurrency(ACCOUNT_SUMMARY.outstanding)} bold />
+                </Stack>
+              </SummaryCard>
+
+              <div
+                style={{
+                  background: theme.other.brandGradient as string,
+                  boxShadow: theme.other.brandGlowShadowSm as string,
+                  borderRadius: 'var(--mantine-radius-lg)',
+                  padding: '12px 16px',
+                }}
+              >
+                <Text size="xxs" fw={700} c="brand.1" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
+                  Write-off Amount
+                </Text>
+                <Text fw={800} c="white" ff="monospace" style={{ fontSize: 22, lineHeight: 1.25, marginTop: 4 }}>
+                  {writeOffAmount !== '' ? formatCurrency(Number(writeOffAmount)) : '—'}
+                </Text>
+              </div>
             </Stack>
           </Box>
         </div>
 
         {/* Footer */}
-<ModalFooter
-  variant="theme"
-  isViewMode={false}
-  onClose={onClose}
-  onSubmit={handleSubmit}
-  submitLabel={isEdit ? 'Update' : 'Save'}
-  submitLoading={saveWriteOffMutation.isPending}
-/>
+        <ModalFooter
+          variant="theme"
+          isViewMode={false}
+          onClose={onClose}
+          onSubmit={handleSubmit}
+          submitLabel={isEdit ? 'Update' : 'Save'}
+          submitLoading={saveWriteOffMutation.isPending}
+        />
       </Box>
     </Modal>
   );
 }
 
-function SummaryItem({
-  icon,
-  iconBg,
-  label,
-  value,
-  bold,
-}: {
-  icon: React.ReactNode;
-  iconBg: string;
-  label: string;
-  value: React.ReactNode;
-  bold?: boolean;
-}) {
+function SummaryRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
-    <div className="flex items-start gap-3 bg-gray-50/60 border border-gray-100 rounded-md p-3">
-      <div
-        className="p-1.5 rounded-md flex items-center justify-center shrink-0 mt-0.5"
-        style={{ backgroundColor: iconBg }}
-      >
-        {icon}
-      </div>
-      <div className="flex flex-col">
-        <Text size="xs" c="dimmed">
-          {label}
-        </Text>
-        {typeof value === 'string' ? (
-          <Text size="sm" fw={bold ? 700 : 600} className="text-gray-900">
-            {value}
-          </Text>
-        ) : (
-          value
-        )}
-      </div>
+    <Group justify="space-between" wrap="nowrap" py={5}>
+      <Text size="xs" c="slate.5">
+        {label}
+      </Text>
+      <Text size="xs" fw={bold ? 700 : 600} c="slate.8" ff="monospace" ta="right">
+        {value}
+      </Text>
+    </Group>
+  );
+}
+
+function SummaryCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        background: 'var(--mantine-color-slate-1)',
+        border: '1px solid var(--mantine-color-slate-2)',
+        borderRadius: 'var(--mantine-radius-lg)',
+        padding: '10px 12px',
+      }}
+    >
+      {children}
     </div>
   );
 }
