@@ -40,7 +40,6 @@ export const cellInputClasses = {
   input: "h-8 min-h-[32px] w-full text-xs rounded-md border border-slate-200 bg-white hover:border-slate-300 focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)] disabled:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 px-2",
 };
 
-export const demandTypeSequence = ["Charges", "Penalty", "Interest", "Principal"];
 
 export const frequencyOptions = ["Monthly", "Quarterly", "Yearly"];
 
@@ -51,11 +50,6 @@ export const collectionAssetColumns = [
   { key: "settlement", label: "Settlement Collection" },
 ];
 
-// Turn an AccountOption[] into the plain string[] Mantine's Select expects.
-// The lookup endpoint may return either plain strings (account IDs) or
-// { name, account_name, ... } objects depending on the backend — handle
-// both, and drop anything falsy so Select never sees an `undefined` entry
-// (that's what throws "Cannot use 'in' operator to search for 'group' in undefined").
 export const toAccountOptions = (accounts: unknown): string[] => {
   if (!Array.isArray(accounts)) return [];
   return accounts
