@@ -472,6 +472,27 @@ export function LoanRestructure() {
                 setPagination((p) => ({ ...p, pageIndex: 0 }));
               }}
             />
+               <Group justify="space-between" wrap="wrap" gap="sm">
+            <Radio.Group
+              name="status"
+              value={status}
+              onChange={(v) => {
+                setStatus(v);
+                setPagination((p) => ({ ...p, pageIndex: 0 }));
+              }}
+            >
+              <Group gap="md">
+                <Radio size="xs" value="all" label="All" color="brand" />
+                <Radio size="xs" value="PENDING" label="Pending" color="brand" />
+                <Radio size="xs" value="APPROVED" label="Approved" color="brand" />
+                <Radio size="xs" value="REJECTED" label="Rejected" color="brand" />
+              </Group>
+            </Radio.Group>
+
+            <Button size="xs" variant="subtle" color="slate" radius="xl" onClick={resetFilters}>
+              Reset Filters
+            </Button>
+          </Group>
             <Select
               size="sm"
               radius="xl"
@@ -506,27 +527,7 @@ export function LoanRestructure() {
             </Group>
           </Group>
 
-          <Group justify="space-between" wrap="wrap" gap="sm">
-            <Radio.Group
-              name="status"
-              value={status}
-              onChange={(v) => {
-                setStatus(v);
-                setPagination((p) => ({ ...p, pageIndex: 0 }));
-              }}
-            >
-              <Group gap="md">
-                <Radio size="xs" value="all" label="All" color="brand" />
-                <Radio size="xs" value="PENDING" label="Pending" color="brand" />
-                <Radio size="xs" value="APPROVED" label="Approved" color="brand" />
-                <Radio size="xs" value="REJECTED" label="Rejected" color="brand" />
-              </Group>
-            </Radio.Group>
-
-            <Button size="xs" variant="subtle" color="slate" radius="xl" onClick={resetFilters}>
-              Reset Filters
-            </Button>
-          </Group>
+       
         </Stack>
       </Paper>
 
