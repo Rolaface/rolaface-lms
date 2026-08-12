@@ -279,6 +279,18 @@ loan: {
   },
 
   // =========================
+  // LOAN CATEGORY
+  // =========================
+  loanCategory: {
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.category.api.get_all`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.category.api.get`,
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.category.api.create`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.category.api.update`,
+    enableDisable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.category.api.enable_disable`,
+    delete: `${ERP_BASE}/api/method/frappe.client.delete`,
+  },
+
+  // =========================
   // REPORTS
   // =========================
   reports: {},

@@ -11,7 +11,7 @@ import {
   showSuccess,
   showApiError,
   showConfirm,
-} from '../../../utils/alert'; // <-- adjust path to wherever you keep showSuccess/showApiError/showConfirm
+} from '../../../utils/alert';
 
 import {
   Box,
@@ -164,25 +164,10 @@ export function LoanWriteOff() {
       columnHelper.accessor('name', {
         header: 'Write-off ID',
         cell: (info) => (
-          <Group gap={10} wrap="nowrap">
-            <Box
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 'var(--mantine-radius-md)',
-                background: 'var(--mantine-color-brand-0)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <IconFileOff size={15} color="var(--mantine-color-brand-6)" />
-            </Box>
             <Text fz="sm" fw={700} c="slate.8">
               {info.getValue()}
             </Text>
-          </Group>
+
         ),
       }),
       columnHelper.accessor('loan', {

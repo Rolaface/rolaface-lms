@@ -576,9 +576,10 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                      <div className="grid grid-cols-2 gap-y-3">
                         <TextInput
                           size="sm"
+                         className="max-w-[220px]"
                           withAsterisk
                           type="date"
                           label="Value Date"
@@ -590,6 +591,7 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                           size="sm"
                           withAsterisk
                           label="Reason for Restructure"
+                           className="max-w-[220px]"
                           placeholder="Select a reason"
                           data={RESTRUCTURE_REASONS}
                           value={reason}
@@ -600,7 +602,7 @@ export function LoanRestructureModal({ opened, onClose, onSubmit }: LoanRestruct
                     </div>
 
                     {/* Tabs */}
-                    <div className="px-6 py-2" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
+                    <div className="px-6 pt-2" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
                       <div className="inline-flex gap-12">
                         <button
                           type="button"

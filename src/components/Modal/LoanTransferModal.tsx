@@ -7,9 +7,7 @@ import {
   Select,
   Modal,
   Table,
-  Checkbox,
   ActionIcon,
-  Pagination,
   Group,
   ThemeIcon,
 } from '@mantine/core';
@@ -18,9 +16,10 @@ import {
   IconCalendar,
   IconBuildingBank,
   IconTrash,
-  IconSettings,
   IconArrowsExchange,
   IconPlus,
+  IconChevronLeft,
+  IconChevronRight,
 } from '@tabler/icons-react';
 import {
   useReactTable,
@@ -76,15 +75,13 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
   ]);
   const [rowSeq, setRowSeq] = useState(2);
 
-  const [rowSelection, setRowSelection] = useState({});
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE });
+  // ChargesTab-style pagination (simple page state, 1-indexed)
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
 
   useEffect(() => {
-    const maxPage = Math.max(0, Math.ceil(rows.length / PAGE_SIZE) - 1);
-    if (pagination.pageIndex > maxPage) {
-      setPagination((p) => ({ ...p, pageIndex: maxPage }));
-    }
-  }, [rows.length, pagination.pageIndex]);
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const excludeIds = rows.map((r) => r.loanId).filter(Boolean);
 
@@ -93,8 +90,8 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
     setRowSeq((prev) => prev + 1);
     const nextRows = [...rows, newRow];
     setRows(nextRows);
-    const newPage = Math.floor((nextRows.length - 1) / PAGE_SIZE);
-    setPagination({ pageIndex: newPage, pageSize: PAGE_SIZE });
+    const nextTotalPages = Math.max(1, Math.ceil(nextRows.length / PAGE_SIZE));
+    setPage(nextTotalPages);
   };
 
   const pickLoan = (rowId: number, loanId: string | null) => {
@@ -109,16 +106,6 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
 
   const removeRow = (rowId: number) => {
     setRows((prev) => prev.filter((r) => r.rowId !== rowId));
-    setRowSelection((prev: any) => {
-      const next = { ...prev };
-      delete next[rowId];
-      return next;
-    });
-  };
-
-  const removeSelected = () => {
-    setRows((prev) => prev.filter((r) => !(rowSelection as any)[r.rowId]));
-    setRowSelection({});
   };
 
   const handleSubmit = () => {
@@ -129,7 +116,6 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
 
   const filledRows = rows.filter((r) => r.loanId);
   const canSave = transferDate && fromBranch && toBranch && filledRows.length > 0;
-  const hasSelection = Object.keys(rowSelection).length > 0;
 
   const getLoanOptions = (currentRowLoanId: string) =>
     LOAN_BOOK.filter((l) => !excludeIds.includes(l.id) || l.id === currentRowLoanId).map((l) => ({
@@ -137,33 +123,19 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
       label: `${l.id} — ${l.applicant}`,
     }));
 
+  // Only the rows for the current page are given to the table
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return rows.slice(start, start + PAGE_SIZE);
+  }, [rows, page]);
+
   const columns = useMemo(
     () => [
-      columnHelper.display({
-        id: 'select',
-        header: ({ table }) => (
-          <Checkbox
-            size="xs"
-            color="brand"
-            checked={table.getIsAllPageRowsSelected()}
-            indeterminate={table.getIsSomePageRowsSelected()}
-            onChange={table.getToggleAllPageRowsSelectedHandler()}
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            size="xs"
-            color="brand"
-            checked={row.getIsSelected()}
-            onChange={row.getToggleSelectedHandler()}
-          />
-        ),
-      }),
       columnHelper.accessor('rowId', {
         header: 'No.',
         cell: (info) => (
           <Text fz="xs" c="dimmed">
-            {info.row.index + 1 + pagination.pageIndex * PAGE_SIZE}
+            {info.row.index + 1 + (page - 1) * PAGE_SIZE}
           </Text>
         ),
       }),
@@ -190,24 +162,14 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
       columnHelper.accessor('applicant', {
         header: 'Applicant',
         cell: (info) => (
-          <Text fz="xs" c={info.getValue() ? 'gray.7' : 'gray.4'} className="truncate w-40">
+          <Text fz="xs" c={info.getValue() ? 'gray.7' : 'gray.4'} className="truncate w-28">
             {info.getValue() || '—'}
           </Text>
         ),
       }),
       columnHelper.display({
         id: 'actions',
-        header: () => (
-          <Group justify="flex-end" w="100%">
-            {hasSelection ? (
-              <ActionIcon size="sm" color="danger" variant="subtle" onClick={removeSelected}>
-                <IconTrash size={14} />
-              </ActionIcon>
-            ) : (
-              <IconSettings size={14} className="text-gray-400" />
-            )}
-          </Group>
-        ),
+        header: () => null,
         cell: ({ row }) => (
           <Group justify="flex-end">
             <ActionIcon
@@ -223,18 +185,14 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
         ),
       }),
     ],
-    [excludeIds, hasSelection, pagination.pageIndex]
+    [excludeIds, page]
   );
 
   const table = useReactTable({
-    data: rows,
+    data: paginatedRows,
     columns,
-    state: { rowSelection, pagination },
-    onRowSelectionChange: setRowSelection,
-    onPaginationChange: setPagination,
     getRowId: (row) => row.rowId.toString(),
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   return (
@@ -288,8 +246,8 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
         {/* Body */}
         <Box className="flex-1 overflow-y-auto" px="xl" py="lg" bg="slate.0">
           <div className="space-y-5">
-            {/* Top Form Grid */}
-            <div className="grid grid-cols-3 gap-5">
+            {/* Top Form Grid — Transfer Date narrower, branches take remaining space */}
+            <div className="grid grid-cols-[200px_1fr_1fr] gap-10">
               <TextInput
                 size="xs"
                 withAsterisk
@@ -309,7 +267,6 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
                 data={BRANCH_OPTIONS}
                 value={fromBranch}
                 onChange={(v) => setFromBranch(v || '')}
-                leftSection={<IconBuildingBank size={13} className="text-orange-500" />}
                 classNames={labelClass}
                 styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
               />
@@ -321,7 +278,6 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
                 data={BRANCH_OPTIONS}
                 value={toBranch}
                 onChange={(v) => setToBranch(v || '')}
-                leftSection={<IconBuildingBank size={13} className="text-emerald-500" />}
                 classNames={labelClass}
                 styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
               />
@@ -343,11 +299,18 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
                           {headerGroup.headers.map((header) => (
                             <Table.Th
                               key={header.id}
-                              className="text-gray-500 font-medium"
+                              className="text-gray-500 font-medium "
                               style={{
                                 fontSize: 11,
                                 padding: '6px 10px',
-                                width: header.id === 'select' ? 40 : header.id === 'rowId' ? 50 : 'auto',
+                                width:
+                                  header.id === 'rowId'
+                                    ? 36
+                                    : header.id === 'actions'
+                                    ? 32
+                                    : header.id === 'loanId'
+                                    ? '38%'
+                                    : 'auto',
                               }}
                             >
                               {flexRender(header.column.columnDef.header, header.getContext())}
@@ -359,7 +322,7 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
                     <Table.Tbody>
                       {table.getRowModel().rows.length === 0 ? (
                         <Table.Tr>
-                          <Table.Td colSpan={5}>
+                          <Table.Td colSpan={4}>
                             <div className="flex items-center justify-center py-10 text-gray-400 text-xs">
                               No loans added.
                             </div>
@@ -380,20 +343,36 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
                   </Table>
                 </div>
 
-                {/* Table Footer / Pagination */}
+                {/* Table Footer / Pagination — same style as ChargesTab */}
                 <div className="flex items-center justify-between px-3 py-2 border-t border-gray-200 bg-gray-50/50">
                   <Text size="xs" c="dimmed">
                     Total {rows.length} row{rows.length !== 1 ? 's' : ''}
                   </Text>
-                  {table.getPageCount() > 1 && (
-                    <Pagination
-                      total={table.getPageCount()}
-                      value={pagination.pageIndex + 1}
-                      onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-                      color="brand"
-                      size="xs"
-                      radius="sm"
-                    />
+
+                  {rows.length > PAGE_SIZE && (
+                    <Group gap="xs">
+                      <Text size="xs" c="slate.5">
+                        Page {page} of {totalPages}
+                      </Text>
+                      <ActionIcon
+                        variant="default"
+                        size="sm"
+                        radius="md"
+                        disabled={page === 1}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      >
+                        <IconChevronLeft size={14} />
+                      </ActionIcon>
+                      <ActionIcon
+                        variant="default"
+                        size="sm"
+                        radius="md"
+                        disabled={page === totalPages}
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      >
+                        <IconChevronRight size={14} />
+                      </ActionIcon>
+                    </Group>
                   )}
                 </div>
               </div>

@@ -4,7 +4,7 @@ import {
   Button,
   TextInput,
   Select,
-  Radio,
+  SegmentedControl,
   Group,
   Paper,
   Table,
@@ -39,6 +39,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { LoanTransferModal, type LoanTransferFormData } from '../../../components/Modal/LoanTransferModal';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
 
 interface TransferRow {
   id: number;
@@ -76,6 +77,12 @@ const DUMMY_TRANSFERS: TransferRow[] = [
   },
 ];
 
+// Same status meta pattern as LoanRestructure
+const STATUS_META: Record<string, { label: string; color: string }> = {
+  PENDING: { label: 'PENDING', color: 'gold' },
+  COMPLETED: { label: 'COMPLETED', color: 'brand' },
+};
+
 const columnHelper = createColumnHelper<TransferRow>();
 
 function SortIcon({ sorted }: { sorted: string | boolean }) {
@@ -110,22 +117,77 @@ export function LoanTransfer() {
     });
   }, [rowsData, search, branch, status]);
 
-  const handleDelete = (id: number) => {
-    setRowsData((prev) => prev.filter((r) => r.id !== id));
+  const showError = (heading: string, message: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: message,
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
+  const handleDelete = (id: number, transferDate: string) => {
+    try {
+      setRowsData((prev) => prev.filter((r) => r.id !== id));
+      showSuccess('Transfer Deleted', `Transfer dated ${transferDate} deleted successfully.`);
+    } catch (err) {
+      showError('Delete Failed', 'Failed to delete transfer. Please try again.');
+    }
+  };
+
+  const confirmDelete = (row: TransferRow) => {
+    openCommonModal({
+      heading: 'Delete Loan Transfer',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete this transfer (
+          <Text span fw={600}>
+            {row.fromBranch} → {row.toBranch}
+          </Text>
+          )?
+        </>
+      ),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => handleDelete(row.id, row.transferDate),
+        },
+      ],
+    });
   };
 
   const handleAddTransfer = (formData: LoanTransferFormData) => {
-    setRowsData((prev) => [
-      ...prev,
-      {
-        id: prev.length ? Math.max(...prev.map((r) => r.id)) + 1 : 1,
-        transferDate: formData.transferDate,
-        fromBranch: formData.fromBranch,
-        toBranch: formData.toBranch,
-        loansCount: formData.loans.length,
-        status: 'PENDING',
-      },
-    ]);
+    try {
+      setRowsData((prev) => [
+        ...prev,
+        {
+          id: prev.length ? Math.max(...prev.map((r) => r.id)) + 1 : 1,
+          transferDate: formData.transferDate,
+          fromBranch: formData.fromBranch,
+          toBranch: formData.toBranch,
+          loansCount: formData.loans.length,
+          status: 'PENDING',
+        },
+      ]);
+      showSuccess('Transfer Created', 'Loan transfer created successfully.');
+    } catch (err) {
+      showError('Create Failed', 'Failed to create loan transfer. Please try again.');
+    }
   };
 
   const columns = useMemo(
@@ -133,25 +195,10 @@ export function LoanTransfer() {
       columnHelper.accessor('transferDate', {
         header: 'Transfer Date',
         cell: (info) => (
-          <Group gap={10} wrap="nowrap">
-            <Box
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 'var(--mantine-radius-md)',
-                background: 'var(--mantine-color-brand-0)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <IconArrowsExchange2 size={15} color="var(--mantine-color-brand-6)" />
-            </Box>
-            <Text fz="sm" fw={700} c="slate.8">
-              {info.getValue()}
-            </Text>
-          </Group>
+
+          <Text fz="sm" fw={700} c="slate.8">
+            {info.getValue()}
+          </Text>
         ),
       }),
       columnHelper.accessor('fromBranch', {
@@ -180,18 +227,21 @@ export function LoanTransfer() {
       }),
       columnHelper.accessor('status', {
         header: 'Status',
-        cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            radius="sm"
-            color={info.getValue() === 'COMPLETED' ? 'success' : 'warning'}
-            className="font-semibold tracking-wider"
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
-            {info.getValue()}
-          </Badge>
-        ),
+        cell: (info) => {
+          const meta = STATUS_META[info.getValue()] || { label: info.getValue(), color: 'slate' };
+          return (
+            <Badge
+              variant="light"
+              size="sm"
+              radius="sm"
+              color={meta.color}
+              className="font-semibold tracking-wider"
+              styles={{ root: { fontSize: 10, padding: '0 8px' } }}
+            >
+              {meta.label}
+            </Badge>
+          );
+        },
       }),
       columnHelper.display({
         id: 'actions',
@@ -220,7 +270,7 @@ export function LoanTransfer() {
                   variant="subtle"
                   color="danger"
                   radius="md"
-                  onClick={() => handleDelete(row.id)}
+                  onClick={() => confirmDelete(row)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
@@ -345,20 +395,21 @@ export function LoanTransfer() {
             }}
           />
 
-          <Radio.Group
-            name="status"
+          <SegmentedControl
+            size="xs"
+            radius="xl"
+            color="brand"
             value={status}
             onChange={(v) => {
               setStatus(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
-          >
-            <Group gap="sm">
-              <Radio size="xs" value="all" label="All" color="brand" />
-              <Radio size="xs" value="COMPLETED" label="Completed" color="brand" />
-              <Radio size="xs" value="PENDING" label="Pending" color="brand" />
-            </Group>
-          </Radio.Group>
+            data={[
+              { label: 'All', value: 'all' },
+              { label: 'Completed', value: 'COMPLETED' },
+              { label: 'Pending', value: 'PENDING' },
+            ]}
+          />
 
           <Group gap="xs" ml="auto">
             <Button size="sm" radius="xl" variant="default" onClick={resetFilters}>

@@ -16,6 +16,7 @@ import {
   Select,
   Title,
   Stack,
+  Loader,
   useMantineTheme,
 } from '@mantine/core';
 import {
@@ -28,6 +29,7 @@ import {
   IconSearch,
   IconCategory,
   IconTag,
+  IconTrash,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -39,23 +41,25 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import type { SortDirection, SortingState, PaginationState } from '@tanstack/react-table';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AddLoanCategoryModal } from '../../../components/Modal/Lending Setup Modal/AddLoanCategoryModel';
 import type { LoanCategoryFormData } from '../../../components/Modal/Lending Setup Modal/AddLoanCategoryModel';
+import {
+  getAllLoanCategories,
+  deleteLoanCategory,
+  enableDisableLoanCategory,
+} from '../../../api/loanCategoryApi';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
+import { parseFrappeError } from '../../../utils/parseFrappeError';
 
 type LoanStatus = 'ACTIVE' | 'INACTIVE';
 
 interface LoanCategoryRow {
-  id: number;
-  name: string;
-  code: string;
+  id: string; // maps to 'name' (docname)
+  name: string; // loan_category_name
+  code: string; // loan_category_code
   status: LoanStatus;
 }
-
-const DUMMY_CATEGORIES: LoanCategoryRow[] = [
-  { id: 1, name: 'Retail Banking', code: 'CAT_RET', status: 'ACTIVE' },
-  { id: 2, name: 'Corporate Finance', code: 'CAT_CORP', status: 'ACTIVE' },
-  { id: 3, name: 'Agricultural', code: 'CAT_AGR', status: 'INACTIVE' },
-];
 
 const columnHelper = createColumnHelper<LoanCategoryRow>();
 
@@ -118,6 +122,11 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function LoanCategory() {
   const theme = useMantineTheme();
   const [opened, { open, close }] = useDisclosure(false);
+  const queryClient = useQueryClient();
+
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<LoanCategoryFormData | null>(null);
+  const [isView, setIsView] = useState(false);
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
@@ -125,32 +134,157 @@ export function LoanCategory() {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
-  const [statusOverrides, setStatusOverrides] = useState<Record<number, LoanStatus>>({});
-  const [categories, setCategories] = useState(DUMMY_CATEGORIES);
+  const {
+    data: res,
+    isLoading,
+    refetch: fetchCategories,
+  } = useQuery({
+    queryKey: ['loanCategories'],
+    queryFn: () => getAllLoanCategories(),
+  });
 
-  const data = useMemo(
-    () =>
-      categories.map((c) => ({
-        ...c,
-        status: statusOverrides[c.id] ?? c.status,
-      })),
-    [categories, statusOverrides]
-  );
+  const rowsData: LoanCategoryRow[] = useMemo(() => {
+    const list = Array.isArray(res?.data?.categories) ? res.data.categories : [];
+
+    return list.map((item: any) => ({
+      id: item.name || '',
+      name: item.loan_category_name || '—',
+      code: item.loan_category_code || '—',
+      status: Number(item.disabled) === 1 ? 'INACTIVE' : 'ACTIVE',
+    }));
+  }, [res]);
+
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteLoanCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loanCategories'] });
+      showSuccess('Category Deleted', 'Loan category deleted successfully.');
+    },
+    onError: (error: any) => showError('Delete Failed', error),
+  });
+
+  const enableDisableMutation = useMutation({
+    mutationFn: enableDisableLoanCategory,
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['loanCategories'] });
+      showSuccess(
+        variables.disabled === 1 ? 'Category Deactivated' : 'Category Activated',
+        `Loan category has been ${variables.disabled === 1 ? 'deactivated' : 'activated'} successfully.`
+      );
+    },
+    onError: (error: any) => showError('Status Update Failed', error),
+  });
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return data.filter((c) => {
+    return rowsData.filter((c) => {
       const matchesSearch = !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q);
       const matchesStatus = status === 'all' || c.status === status;
       return matchesSearch && matchesStatus;
     });
-  }, [data, search, status]);
+  }, [rowsData, search, status]);
 
-  const toggleStatus = (id: number, currentStatus: LoanStatus) => {
-    setStatusOverrides((prev) => ({
-      ...prev,
-      [id]: currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
-    }));
+  const handleAdd = () => {
+    setEditId(null);
+    setEditData(null);
+    setIsView(false);
+    open();
+  };
+
+  const handleEdit = (row: LoanCategoryRow) => {
+    setEditId(row.id);
+    setEditData({ code: row.code, name: row.name });
+    setIsView(false);
+    open();
+  };
+
+  const handleView = (row: LoanCategoryRow) => {
+    setEditId(row.id);
+    setEditData({ code: row.code, name: row.name });
+    setIsView(true);
+    open();
+  };
+
+  const handleModalClose = () => {
+    setEditId(null);
+    setEditData(null);
+    setIsView(false);
+    close();
+  };
+
+  const toggleStatus = (row: LoanCategoryRow) => {
+    const nextDisabled = row.status === 'ACTIVE' ? 1 : 0;
+    openCommonModal({
+      heading: nextDisabled === 1 ? 'Deactivate Loan Category' : 'Activate Loan Category',
+      subtitle: 'Please confirm this action before continuing.',
+      body: (
+        <>
+          Are you sure you want to {nextDisabled === 1 ? 'deactivate' : 'activate'} loan category{' '}
+          <Text span fw={600}>
+            {row.name}
+          </Text>
+          ?
+        </>
+      ),
+      color: nextDisabled === 1 ? 'red' : 'green',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: nextDisabled === 1 ? 'Deactivate' : 'Activate',
+          color: nextDisabled === 1 ? 'red' : 'green',
+          onClick: () => {
+            enableDisableMutation.mutate({ name: row.id, disabled: nextDisabled });
+          },
+        },
+      ],
+    });
+  };
+
+  const handleDelete = (row: LoanCategoryRow) => {
+    openCommonModal({
+      heading: 'Delete Loan Category',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete loan category{' '}
+          <Text span fw={600}>
+            {row.name}
+          </Text>
+          ?
+        </>
+      ),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => {
+            deleteMutation.mutate(row.id);
+          },
+        },
+      ],
+    });
   };
 
   const columns = useMemo(
@@ -158,25 +292,9 @@ export function LoanCategory() {
       columnHelper.accessor('name', {
         header: 'Category Name',
         cell: (info) => (
-          <Group gap={10} wrap="nowrap">
-            <Box
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 'var(--mantine-radius-md)',
-                background: 'var(--mantine-color-brand-0)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <IconCategory size={15} color="var(--mantine-color-brand-6)" />
-            </Box>
-            <Text fz="sm" fw={700} c="slate.8">
-              {info.getValue()}
-            </Text>
-          </Group>
+          <Text fz="sm" fw={700} c="slate.8">
+            {info.getValue()}
+          </Text>
         ),
       }),
       columnHelper.accessor('code', {
@@ -196,16 +314,32 @@ export function LoanCategory() {
         ),
         cell: (info) => {
           const row = info.row.original;
+          const isDeleting = deleteMutation.isPending && deleteMutation.variables === row.id;
+          const isTogglingStatus =
+            enableDisableMutation.isPending && enableDisableMutation.variables?.name === row.id;
+
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
+                <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => handleView(row)}>
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="brand" radius="md">
+                <ActionIcon size="sm" variant="subtle" color="brand" radius="md" onClick={() => handleEdit(row)}>
                   <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Delete" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="danger"
+                  radius="md"
+                  loading={isDeleting}
+                  onClick={() => handleDelete(row)}
+                >
+                  <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label={row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} withArrow>
@@ -213,7 +347,8 @@ export function LoanCategory() {
                   size="xs"
                   color="success"
                   checked={row.status === 'ACTIVE'}
-                  onChange={() => toggleStatus(row.id, row.status)}
+                  disabled={isTogglingStatus}
+                  onChange={() => toggleStatus(row)}
                 />
               </Tooltip>
             </Group>
@@ -221,7 +356,7 @@ export function LoanCategory() {
         },
       }),
     ],
-    []
+    [deleteMutation, enableDisableMutation]
   );
 
   const table = useReactTable<LoanCategoryRow>({
@@ -246,25 +381,16 @@ export function LoanCategory() {
     setStatus('all');
   };
 
-  const handleSave = async (formData: LoanCategoryFormData) => {
-    setCategories((prev) => [
-      ...prev,
-      {
-        id: prev.length ? Math.max(...prev.map((c) => c.id)) + 1 : 1,
-        name: formData.name,
-        code: formData.code,
-        status: 'ACTIVE',
-      },
-    ]);
-    close();
-  };
-
   return (
     <Stack gap="lg" p="lg">
-      <AddLoanCategoryModal opened={opened} onClose={close} onSave={handleSave} />
+      <AddLoanCategoryModal
+        opened={opened}
+        onClose={handleModalClose}
+        editId={editId}
+        initialData={editData}
+        isView={isView}
+      />
 
-      {/* Scoped, purely visual — pulls from theme.other to stay in sync
-          with the brand color everywhere else (mirrors Customer.tsx). */}
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
         .lms-row-actions { opacity: 1; }
@@ -274,7 +400,6 @@ export function LoanCategory() {
         .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
       `}</style>
 
-      {/* Header — icon tile + title on the left */}
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
         <Group gap="sm" align="center">
           <Box
@@ -350,7 +475,7 @@ export function LoanCategory() {
               size="sm"
               radius="xl"
               color="brand"
-              onClick={open}
+              onClick={handleAdd}
               leftSection={<IconPlus size={14} />}
               style={{
                 background: theme.other.brandGradient,
@@ -363,7 +488,6 @@ export function LoanCategory() {
         </Group>
       </Paper>
 
-      {/* Data Table — floating rounded row-cards on a soft canvas */}
       <Paper
         radius="lg"
         p="sm"
@@ -372,130 +496,137 @@ export function LoanCategory() {
           border: '1px solid var(--mantine-color-slate-2)',
         }}
       >
-        <Table
-          verticalSpacing="sm"
-          horizontalSpacing="sm"
-          fz="xs"
-          w="100%"
-          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
-        >
-          <Table.Thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <Table.Tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  const canSort = header.column.getCanSort();
-                  return (
-                    <Table.Th
-                      key={header.id}
-                      c="slate.5"
-                      fw={700}
-                      style={{
-                        fontSize: 'var(--mantine-font-size-xs)',
-                        padding: '0 10px 6px',
-                        userSelect: 'none',
-                        cursor: canSort ? 'pointer' : 'default',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        border: 'none',
-                      }}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      <Group
-                        gap="xs"
-                        wrap="nowrap"
-                        justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
-                      </Group>
-                    </Table.Th>
-                  );
-                })}
-              </Table.Tr>
-            ))}
-          </Table.Thead>
-          <Table.Tbody>
-            {rows.length === 0 ? (
-              <Table.Tr>
-                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
-                  <Stack align="center" gap="xs" py="xl">
-                    <Box
-                      style={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: '50%',
-                        background: 'var(--mantine-color-white)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '1px solid var(--mantine-color-slate-2)',
-                      }}
-                    >
-                      <IconCategory size={26} color="var(--mantine-color-slate-4)" />
-                    </Box>
-                    <Text ta="center" c="slate.5" fz="xs">
-                      No categories match your filters.
-                    </Text>
-                  </Stack>
-                </Table.Td>
-              </Table.Tr>
-            ) : (
-              rows.map((row) => {
-                const isActive = row.original.status === 'ACTIVE';
-                const cells = row.getVisibleCells();
-                return (
-                  <Table.Tr key={row.id} className="lms-row">
-                    {cells.map((cell, idx) => (
-                      <Table.Td
-                        key={cell.id}
-                        style={{
-                          padding: '10px 10px',
-                          border: 'none',
-                          boxShadow: 'var(--mantine-shadow-xs)',
-                          borderLeft:
-                            idx === 0
-                              ? `3px solid var(--mantine-color-${isActive ? 'success' : 'danger'}-4)`
-                              : undefined,
-                        }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </Table.Td>
-                    ))}
+        {isLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+            <Loader size="sm" color="brand" />
+          </div>
+        ) : (
+          <>
+            <Table
+              verticalSpacing="sm"
+              horizontalSpacing="sm"
+              fz="xs"
+              w="100%"
+              style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+            >
+              <Table.Thead>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <Table.Tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      const canSort = header.column.getCanSort();
+                      return (
+                        <Table.Th
+                          key={header.id}
+                          c="slate.5"
+                          fw={700}
+                          style={{
+                            fontSize: 'var(--mantine-font-size-xs)',
+                            padding: '0 10px 6px',
+                            userSelect: 'none',
+                            cursor: canSort ? 'pointer' : 'default',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                            border: 'none',
+                          }}
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          <Group
+                            gap="xs"
+                            wrap="nowrap"
+                            justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
+                          </Group>
+                        </Table.Th>
+                      );
+                    })}
                   </Table.Tr>
-                );
-              })
-            )}
-          </Table.Tbody>
-        </Table>
+                ))}
+              </Table.Thead>
+              <Table.Tbody>
+                {rows.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                      <Stack align="center" gap="xs" py="xl">
+                        <Box
+                          style={{
+                            width: 52,
+                            height: 52,
+                            borderRadius: '50%',
+                            background: 'var(--mantine-color-white)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid var(--mantine-color-slate-2)',
+                          }}
+                        >
+                          <IconCategory size={26} color="var(--mantine-color-slate-4)" />
+                        </Box>
+                        <Text ta="center" c="slate.5" fz="xs">
+                          No categories match your filters.
+                        </Text>
+                      </Stack>
+                    </Table.Td>
+                  </Table.Tr>
+                ) : (
+                  rows.map((row) => {
+                    const isActive = row.original.status === 'ACTIVE';
+                    const cells = row.getVisibleCells();
+                    return (
+                      <Table.Tr key={row.id} className="lms-row">
+                        {cells.map((cell, idx) => (
+                          <Table.Td
+                            key={cell.id}
+                            style={{
+                              padding: '10px 10px',
+                              border: 'none',
+                              boxShadow: 'var(--mantine-shadow-xs)',
+                              borderLeft:
+                                idx === 0
+                                  ? `3px solid var(--mantine-color-${isActive ? 'success' : 'danger'}-4)`
+                                  : undefined,
+                            }}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </Table.Td>
+                        ))}
+                      </Table.Tr>
+                    );
+                  })
+                )}
+              </Table.Tbody>
+            </Table>
 
-        {/* Pagination Footer */}
-        <Group justify="space-between" px="sm" pt="xs">
-          <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
-            <span>
-              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-            </span>
-            <Group gap="xs">
-              <span>Rows:</span>
-              <Select
-                data={['10', '20', '50']}
-                value={String(pageSize)}
-                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
-                rightSection={chevronDown}
+            <Group justify="space-between" px="sm" pt="xs">
+              <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
+                <span>
+                  {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+                </span>
+                <Group gap="xs">
+                  <span>Rows:</span>
+                  <Select
+                    data={['10', '20', '50']}
+                    value={String(pageSize)}
+                    onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                    rightSection={chevronDown}
+                    size="xs"
+                    radius="xl"
+                    w={60}
+                  />
+                </Group>
+              </Group>
+              <Pagination
+                total={table.getPageCount() || 1}
+                value={pageIndex + 1}
+                onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+                color="brand"
                 size="xs"
                 radius="xl"
-                w={60}
               />
             </Group>
-          </Group>
-          <Pagination
-            total={table.getPageCount() || 1}
-            value={pageIndex + 1}
-            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-            color="brand"
-            size="xs"
-            radius="xl"
-          />
-        </Group>
+          </>
+        )}
       </Paper>
     </Stack>
   );
