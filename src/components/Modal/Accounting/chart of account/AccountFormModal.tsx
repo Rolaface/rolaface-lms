@@ -1,3 +1,6 @@
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useDebouncedValue } from '@mantine/hooks';
 import {
   Modal,
   TextInput,
@@ -14,6 +17,8 @@ import {
 import { IconX, IconMinus, IconBuildingBank } from '@tabler/icons-react';
 import { useAccountForm, ROOT_TYPE_OPTIONS, ACCOUNT_TYPE_OPTIONS } from '../../../../hooks/Accounting/chart of account/UseAccountForm';
 import type { COAAccount } from '../../../../api/Accounting/Chartofaccounts.api';
+
+import { getCurrencyList } from '../../../../api/lookup api/currencylistapi';
 import { ModalFooter } from '../../../shared/ModalFooter';
 
 interface AccountFormModalProps {
@@ -24,6 +29,8 @@ interface AccountFormModalProps {
   baseCurrency: string;
   parentAccount?: COAAccount | null;
   editAccount?: COAAccount | null;
+  readOnly?: boolean;
+  onExited?: () => void;
 }
 
 export function AccountFormModal({
@@ -34,6 +41,8 @@ export function AccountFormModal({
   baseCurrency,
   parentAccount,
   editAccount,
+  readOnly = false,
+  onExited,
 }: AccountFormModalProps) {
   const theme = useMantineTheme();
   const { form, setField, errors, loading, isEditMode, handleSubmit, reset } = useAccountForm({
@@ -47,12 +56,42 @@ export function AccountFormModal({
     },
   });
 
-  const title = isEditMode ? 'Edit Account' : parentAccount ? 'New Child Account' : 'Create Account';
-  const subtitle = isEditMode
+  const title = readOnly
+    ? 'Account Details'
+    : isEditMode
+    ? 'Edit Account'
+    : parentAccount
+    ? 'New Child Account'
+    : 'Create Account';
+  const subtitle = readOnly
+    ? `Viewing: ${editAccount?.account_name}`
+    : isEditMode
     ? `Editing: ${editAccount?.account_name}`
     : parentAccount
     ? `Creating under: ${parentAccount.account_name}`
     : 'Add a new account to the chart of accounts';
+
+  
+  const [currencySearch, setCurrencySearch] = useState('');
+  const [debouncedCurrencySearch] = useDebouncedValue(currencySearch, 300);
+
+  const { data: currencyList = [], isFetching: isFetchingCurrencies } = useQuery({
+    queryKey: ['currency-list', debouncedCurrencySearch],
+    queryFn: () => getCurrencyList({ search: debouncedCurrencySearch, page_size: 20 }),
+    enabled: opened && !readOnly,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const currencyOptions = useMemo(() => {
+    const opts = currencyList.map((c: any) => ({
+      value: c.name,
+      label: c.name,
+    }));
+    if (baseCurrency && !opts.some((o) => o.value === baseCurrency)) {
+      opts.unshift({ value: baseCurrency, label: baseCurrency });
+    }
+    return opts;
+  }, [currencyList, baseCurrency]);
 
   const handleClose = () => {
     reset();
@@ -84,6 +123,11 @@ export function AccountFormModal({
           padding: 0,
           minHeight: 0,
           overflow: 'hidden',
+        },
+      }}
+      transitionProps={{
+        onExited: () => {
+          onExited?.();
         },
       }}
     >
@@ -142,15 +186,15 @@ export function AccountFormModal({
         {/* Body */}
         <ScrollArea type="auto" scrollbarSize={8} style={{ flex: 1, minHeight: 0 }} bg="slate.0">
           <Box px="lg" pt="sm" pb="lg">
- 
+
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="md:col-span-5">
                 <TextInput
                   label="Account Name"
                   value={isEditMode ? editAccount?.account_name ?? '' : form.accountName}
                   onChange={(e) => setField('accountName', e.currentTarget.value)}
-                  required={!isEditMode}
-                  disabled={isEditMode}
+                  required={!isEditMode && !readOnly}
+                  disabled={isEditMode || readOnly}
                   error={errors.accountName}
                 />
               </div>
@@ -164,6 +208,7 @@ export function AccountFormModal({
                   onChange={(v) => setField('accountType', v ?? '')}
                   searchable
                   clearable
+                  disabled={readOnly}
                 />
               </div>
 
@@ -175,6 +220,7 @@ export function AccountFormModal({
                   onChange={(e) => setField('isGroup', e.currentTarget.checked)}
                   description="Group accounts can hold child accounts; entries only post against non-group accounts"
                   mt="md"
+                  disabled={readOnly}
                 />
               </div>
 
@@ -184,16 +230,22 @@ export function AccountFormModal({
                   label="Account Number"
                   value={form.accountNumber}
                   onChange={(e) => setField('accountNumber', e.currentTarget.value)}
+                  disabled={readOnly}
                 />
               </div>
 
               {/* Row 2, cols 6-7 */}
               <div className="md:col-span-2">
-                <TextInput
+                <Select
                   label="Currency"
-                  value={form.currency}
-                  onChange={(e) => setField('currency', e.currentTarget.value)}
-                  placeholder={baseCurrency}
+                  placeholder={baseCurrency || 'Select currency'}
+                  data={currencyOptions}
+                  value={form.currency || null}
+                  onChange={(v) => setField('currency', v ?? '')}
+                  onSearchChange={setCurrencySearch}
+                  searchable
+                  nothingFoundMessage={isFetchingCurrencies ? 'Searching…' : 'No currencies found'}
+                  disabled={readOnly}
                 />
               </div>
 
@@ -206,8 +258,9 @@ export function AccountFormModal({
                     data={ROOT_TYPE_OPTIONS}
                     value={form.rootType}
                     onChange={(v) => setField('rootType', v ?? '')}
-                    required
+                    required={!readOnly}
                     error={errors.rootType}
+                    disabled={readOnly}
                   />
                 )}
               </div>
@@ -219,7 +272,7 @@ export function AccountFormModal({
         <Box style={{ flexShrink: 0 }}>
           <ModalFooter
             variant="theme"
-            isViewMode={false}
+            isViewMode={readOnly}
             onClose={handleClose}
             submitLabel={isEditMode ? 'Update Account' : 'Save Account'}
             submitLoading={loading}

@@ -113,8 +113,15 @@ export async function updateAccount(
   payload: CreateCOAPayload & { name: string },
 ): Promise<any> {
   const response = await api.put(
-    `${ChartOfAccountsAPI.updateCOA}/${encodeURIComponent(accountName)}`,
+    `${ChartOfAccountsAPI.getCOAbyId}/${encodeURIComponent(accountName)}`,
     payload,
   );
   return response.data;
+}
+
+export async function getCOAById(accountName: string): Promise<COAAccount | null> {
+  const resp: AxiosResponse = await api.get(
+    `${ChartOfAccountsAPI.getCOAbyId}/${encodeURIComponent(accountName)}`,
+  );
+  return resp.data?.data ?? resp.data?.message?.data ?? null;
 }
