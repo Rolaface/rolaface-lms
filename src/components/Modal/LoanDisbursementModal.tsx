@@ -13,12 +13,13 @@ import {
   Tabs,
   Badge,
   Group,
+  Table,
+  Loader,
 } from "@mantine/core";
 import {
   IconX,
   IconSearch,
   IconCalendar,
-  IconCurrencyRupee,
   IconChevronDown,
   IconCreditCard,
   IconHome,
@@ -32,7 +33,7 @@ import {
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createLoanDisbursement, getAllDsbrAccount, updateLoanDisbursement, getLoanDisbursementById} from "../../api/loanDisbursementAPi"; 
-import {getAllApplicationDsbr} from "../../api/loanApi";
+import {getAllApplicationDsbr, getLoanById} from "../../api/loanApi";
 import type { LoanDisbursementPayload, } from "../../types/loanDisbursementForm";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 import {getSymbol} from "../../store/currencyStore";
@@ -48,6 +49,14 @@ interface LoanDisbursementModalProps {
   isView?: boolean;
 }
 
+export interface LoanDisbursementChargeRow {
+  id: string;
+  name: string;
+  amount: string;
+  account: string;
+  treatment_of_charge: string;
+}
+
 export interface LoanDisbursementFormData {
   acNo: string;
   valueDate: string;
@@ -57,23 +66,30 @@ export interface LoanDisbursementFormData {
   refDate: string;
   refNo: string;
   beneficiaryAcNo: string;
+  charges: LoanDisbursementChargeRow[];
 }
-
-interface ChargeRow {
-  label: string;
-  amount: number;
-}
-
-const CHARGES: ChargeRow[] = [
-  { label: "Processing Fee", amount: 5000 },
-  { label: "Documentation Charges", amount: 750 },
-  { label: "Insurance Premium", amount: 2500 },
-  { label: "GST (18%)", amount: 1485 },
-];
-
-const TOTAL_CHARGES = CHARGES.reduce((sum, c) => sum + c.amount, 0);
 
 const PAYMENT_MODES = ["Bank Draft", "Cash", "Cheque", "Credit Card", "Wire Transfer"];
+const CHARGE_TREATMENT_OPTIONS = ["Billed Separately", "Add to first repayment"] as const;
+
+const getTodayDate = (): string => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeDateValue = (value?: string | null): string => {
+  if (!value) return "";
+
+  if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+    const [day, month, year] = value.split("-");
+    return `${year}-${month}-${day}`;
+  }
+
+  return value;
+};
 
 const labelClass = { label: "text-sm font-medium text-gray-700 mb-1" };
 const chevronDown = <IconChevronDown size={14} className="text-gray-500" />;
@@ -85,7 +101,7 @@ const chevronDown = <IconChevronDown size={14} className="text-gray-500" />;
 export function LoanDisbursementModal({
   opened,
   onClose,
-  onSubmit,
+  onSubmit: _onSubmit,
   editId,     
   initialData,
   isView = false,
@@ -132,16 +148,17 @@ export function LoanDisbursementModal({
     return [];
   }, [beneficiaryAccountsResponse]);
 
-  const form = useForm({
+  const form = useForm<LoanDisbursementFormData>({
     initialValues: {
       acNo: "",
-      valueDate: "",
+      valueDate: getTodayDate(),
       disburseAmount: "" as number | "",
       modeOfPayment: null as string | null,
       disbursementAc: null as string | null,
-      refDate: "",
+      refDate: getTodayDate(),
       refNo: "",
       beneficiaryAcNo: "",
+      charges: [],
     },
     validate: {
       acNo: (v) => (!v ? "Account Number is required" : null),
@@ -230,11 +247,15 @@ export function LoanDisbursementModal({
 
  const handleReset = () => {
     form.reset();
+    form.setValues({
+      valueDate: getTodayDate(),
+      refDate: getTodayDate(),
+    });
     setActiveTab("settlement");
   };
 
 const handleSubmit = (values: typeof form.values) => {
-    const payload: Partial<LoanDisbursementPayload> = {
+    const payload: Partial<LoanDisbursementPayload> & { loan_disbursement_charges?: Array<{ charge: string; amount: number; account: string; treatment_of_charge: string }> } = {
       against_loan: values.acNo,
       posting_date: values.valueDate,
       disbursement_date: values.valueDate,
@@ -244,7 +265,13 @@ const handleSubmit = (values: typeof form.values) => {
       reference_date: values.refDate,
       repayment_start_date: selectedLoanApp?.repayment_start_date || undefined, 
       disbursement_account: values.disbursementAc || undefined,
-      loan_account: selectedLoanApp?.loan_account || undefined,   
+      loan_account: selectedLoanApp?.loan_account || undefined,
+      loan_disbursement_charges: values.charges.map((charge) => ({
+        charge: charge.name,
+        amount: Number(charge.amount || 0),
+        account: charge.account,
+        treatment_of_charge: charge.treatment_of_charge || "Billed Separately",
+      })),
     };
 
     if (editId) {
@@ -253,22 +280,25 @@ const handleSubmit = (values: typeof form.values) => {
       createDisbursementMutation.mutate(payload as LoanDisbursementPayload);
     }
   };
-
+  const [hasUserChangedLoanAccount, setHasUserChangedLoanAccount] = useState(false);
   useEffect(() => {
     if (opened && editId && initialData) {
       form.setValues({
         acNo: initialData.againstLoan || "",
-        valueDate: initialData.disbursementDate || "",
+        valueDate: normalizeDateValue(initialData.disbursementDate || getTodayDate()),
         disburseAmount: initialData.disbursedAmount || "",
         modeOfPayment: initialData.modeOfPayment || null,
         disbursementAc: initialData.disbursementAccount || null, 
-        refDate: initialData.referenceDate || "",
+        refDate: normalizeDateValue(initialData.referenceDate || getTodayDate()),
         refNo: initialData.referenceNumber || "",
         beneficiaryAcNo: initialData.loanAccount || "",   
       });
+      setHasUserChangedLoanAccount(false);
     } else if (opened && !editId) {
       form.reset();
+      form.setValues({valueDate: getTodayDate(), refDate: getTodayDate()});
       setActiveTab("settlement");
+      setHasUserChangedLoanAccount(false);
     }
   }, [opened, editId, initialData]);
 
@@ -291,17 +321,26 @@ const handleSubmit = (values: typeof form.values) => {
       
       form.setValues({
         acNo: item.against_loan || "",
-        valueDate: item.disbursement_date || item.posting_date || "",
+        valueDate: normalizeDateValue(item.disbursement_date || item.posting_date || getTodayDate()),
         disburseAmount: item.disbursed_amount || "",
         modeOfPayment: item.mode_of_payment || null,
         disbursementAc: item.disbursement_account || null, 
-        refDate: item.reference_date || "",
+        refDate: normalizeDateValue(item.reference_date || getTodayDate()),
         refNo: item.reference_number || "",
         beneficiaryAcNo: item.loan_account || "",
       });
+      const existingCharges = normalizeLoanCharges({ loan_charges: item.loan_disbursement_charges });
+      form.setFieldValue("charges", existingCharges);
+      setHasUserChangedLoanAccount(false);
     } else if (opened && !editId) {
       form.reset();
+      form.setValues({
+        valueDate: getTodayDate(),
+        refDate: getTodayDate(),
+      });
       setActiveTab("settlement");
+      setHasUserChangedLoanAccount(false);
+
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, editId, editDetailsResponse]);
@@ -317,6 +356,61 @@ const handleSubmit = (values: typeof form.values) => {
     if (!loanAppsResponse?.data || !form.values.acNo) return null;
     return loanAppsResponse.data.find((app: any) => app.name === form.values.acNo);
   }, [loanAppsResponse, form.values.acNo]);
+
+  const normalizeLoanCharges = (payload: any): LoanDisbursementChargeRow[] => {
+    const list =
+      payload?.message?.data?.loan_charges ??
+      payload?.data?.loan_charges ??
+      payload?.loan_charges ??
+      payload?.message?.loan_charges ??
+      [];
+
+    if (!Array.isArray(list)) return [];
+
+    return list
+      .map((item: any) => {
+        if (!item) return null;
+        const name = item.charge || item.name || item.charge_name || item.item || "";
+        if (!name) return null;
+
+        return {
+          id: String(item.name || item.charge || item.charge_name || `${Date.now()}-${Math.random()}`),
+          name,
+          amount: item.amount != null ? String(item.amount) : "",
+          account: item.account || item.income_account || item.default_account || "",
+          treatment_of_charge: item.treatment_of_charge || item.treatment || "Billed Separately",
+        };
+      })
+      .filter((item): item is LoanDisbursementChargeRow => Boolean(item));
+  };
+
+  const { data: loanAccountDetailsData, isLoading: isLoanAccountChargesLoading, error: loanAccountDetailsError } = useQuery({
+          queryKey: ["loanAccountDetails", form.values.acNo],
+          queryFn: () => getLoanById(form.values.acNo),
+          enabled: opened && !!form.values.acNo && (!editId || hasUserChangedLoanAccount),
+        });
+
+  useEffect(() => {
+    if (!opened || !form.values.acNo) {
+      form.setFieldValue("charges", []);
+      return;
+    }
+    if (editId && !hasUserChangedLoanAccount) return;
+    if (isLoanAccountChargesLoading) return;
+
+    const chargeDefaults = normalizeLoanCharges(loanAccountDetailsData);
+    form.setFieldValue("charges", chargeDefaults);
+  }, [opened, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
+
+  const handleChargeUpdate = (index: number, field: "amount" | "treatment_of_charge", value: string) => {
+    form.setFieldValue(
+      "charges",
+      form.values.charges.map((charge, chargeIndex) => {
+        if (chargeIndex !== index) return charge;
+        return { ...charge, [field]: value };
+      })
+    );
+  };
 
 useEffect(() => {
     if (!editId) {
@@ -375,6 +469,10 @@ useEffect(() => {
   leftSection={<IconSearch size={14} className="text-gray-400" />}
   onClick={() => refetchLoanApps()}
   {...form.getInputProps("acNo")}
+  onChange={(value) => {
+    form.setFieldValue("acNo", value ?? "");
+    setHasUserChangedLoanAccount(true);
+  }}
 />
              <TextInput
                 size="sm"
@@ -408,11 +506,6 @@ useEffect(() => {
                 <Tabs.Tab
                   value="charges"
                   className="font-medium text-sm"
-                  rightSection={
-                    <span className="flex items-center gap-1 text-[10px] text-gray-400 font-normal">
-                      <IconLock size={10} /> Auto
-                    </span>
-                  }
                 >
                   Charges
                 </Tabs.Tab>
@@ -533,37 +626,78 @@ useEffect(() => {
               </Tabs.Panel>
 
               <Tabs.Panel value="charges" pt="lg">
-                <div className="flex items-center gap-2 bg-indigo-50 text-indigo-700 text-xs px-3 py-2 rounded-md mb-4">
-                  <IconLock size={13} />
-                  These charges are fetched automatically from the loan account and can't be
-                  edited here.
-                </div>
-
-                <div className="border border-gray-200 rounded-md overflow-hidden max-w-md">
-                  {CHARGES.map((c, idx) => (
-                    <div
-                      key={c.label}
-                      className={`flex justify-between px-4 py-3 text-sm text-gray-700 ${
-                        idx % 2 === 0 ? "bg-white" : "bg-gray-50/60"
-                      } border-b border-gray-100`}
-                    >
-                      <span>{c.label}</span>
-                      <span className="font-mono">
-                        {c.amount.toLocaleString("en-IN", {
-                          minimumFractionDigits: 2,
-                        })}
-                      </span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between px-4 py-3 text-sm font-bold text-gray-900 bg-indigo-50/60">
-                    <span>Total Charges</span>
-                    <span className="font-mono text-indigo-700">
-                      ₹
-                      {TOTAL_CHARGES.toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                      })}
-                    </span>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 bg-indigo-50 text-indigo-700 text-xs px-3 py-2 rounded-md">
+                    <IconLock size={13} />
+                    Charges are loaded from the selected loan account and can be reviewed or adjusted here.
                   </div>
+
+                  {loanAccountDetailsError && (
+                    <Text size="sm" c="red" fw={500}>
+                      Unable to load loan charges for the selected account. Please try again.
+                    </Text>
+                  )}
+
+                  {isLoanAccountChargesLoading ? (
+                    <div className="flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-md py-8 text-sm text-gray-500">
+                      <Loader size="sm" />
+                      Loading loan charges...
+                    </div>
+                  ) : form.values.charges.length === 0 ? (
+                    <div className="border border-dashed border-gray-300 rounded-md py-10 text-center text-sm text-gray-500 bg-gray-50/60">
+                      No charges added yet.
+                    </div>
+                  ) : (
+                    <div className="border border-gray-200 rounded-md overflow-hidden">
+                      <Table size="sm" verticalSpacing="sm" horizontalSpacing="sm" className="w-full">
+                        <Table.Thead className="bg-gray-50">
+                          <Table.Tr>
+                            <Table.Th className="w-1/3">Charge</Table.Th>
+                            <Table.Th className="w-1/4">Amount</Table.Th>
+                            <Table.Th className="w-1/3">Treatment of Charge</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {form.values.charges.map((charge, index) => (
+                            <Table.Tr key={charge.id} className="align-top">
+                              <Table.Td>
+                                <TextInput
+                                  size="xs"
+                                  value={charge.name}
+                                  disabled
+                                  readOnly
+                                  placeholder="Charge"
+                                />
+                              </Table.Td>
+                              <Table.Td>
+                                <TextInput
+                                  size="xs"
+                                  placeholder="Amount"
+                                  type="number"
+                                  min={0}
+                                  value={charge.amount}
+                                  disabled={isView}
+                                  onChange={(event) => handleChargeUpdate(index, "amount", event.currentTarget.value)}
+                                />
+                              </Table.Td>
+                              <Table.Td>
+                                <Select
+                                  size="xs"
+                                  data={CHARGE_TREATMENT_OPTIONS}
+                                  value={charge.treatment_of_charge || "Billed Separately"}
+                                  disabled={isView}
+                                  onChange={(value) =>
+                                    handleChargeUpdate(index, "treatment_of_charge", value || "Billed Separately")
+                                  }
+                                  styles={{ input: { minWidth: 170 } }}
+                                />
+                              </Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    </div>
+                  )}
                 </div>
               </Tabs.Panel>
             </Tabs>
