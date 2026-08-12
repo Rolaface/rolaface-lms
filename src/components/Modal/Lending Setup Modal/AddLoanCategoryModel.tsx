@@ -8,9 +8,15 @@ import {
   Group,
   TextInput,
 } from "@mantine/core";
-import { IconX, IconCategory, IconCheck } from "@tabler/icons-react";
+import { IconX, IconCategory } from "@tabler/icons-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ModalFooter } from "../../shared/ModalFooter";
-import { showApiError, showSuccess } from "../../../utils/alert";
+import { openCommonModal } from "../AlertModal";
+import {
+  createLoanCategory,
+  updateLoanCategory,
+} from "../../../api/loanCategoryApi";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
 
 export interface LoanCategoryFormData {
   code: string;
@@ -20,8 +26,9 @@ export interface LoanCategoryFormData {
 interface AddLoanCategoryModalProps {
   opened: boolean;
   onClose: () => void;
-  onSave: (data: LoanCategoryFormData) => void | Promise<void>;
-  loading?: boolean;
+  editId?: string | null;
+  initialData?: LoanCategoryFormData | null;
+  isView?: boolean;
 }
 
 interface FormErrors {
@@ -34,20 +41,24 @@ const initialState: LoanCategoryFormData = { code: "", name: "" };
 export function AddLoanCategoryModal({
   opened,
   onClose,
-  onSave,
-  loading = false,
+  editId,
+  initialData,
+  isView = false,
 }: AddLoanCategoryModalProps) {
   const [form, setForm] = useState<LoanCategoryFormData>(initialState);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (opened) {
-      setForm(initialState);
+      if (editId && initialData) {
+        setForm(initialData);
+      } else {
+        setForm(initialState);
+      }
       setErrors({});
-      setErrorMessage(undefined);
     }
-  }, [opened]);
+  }, [opened, editId, initialData]);
 
   const handleChange = (field: keyof LoanCategoryFormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -67,22 +78,65 @@ export function AddLoanCategoryModal({
   const handleClose = () => {
     setForm(initialState);
     setErrors({});
-    setErrorMessage(undefined);
     onClose();
   };
 
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
+
+  const createMutation = useMutation({
+    mutationFn: createLoanCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanCategories"] });
+      showSuccess("Category Created", "Loan category created successfully.");
+      handleClose();
+    },
+    onError: (error: any) => showError("Create Failed", error),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: updateLoanCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanCategories"] });
+      showSuccess("Category Updated", "Loan category updated successfully.");
+      handleClose();
+    },
+    onError: (error: any) => showError("Update Failed", error),
+  });
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
   const handleSubmit = async () => {
-    setErrorMessage(undefined);
+    if (isView) return; // safety guard — never call API in view mode
     if (!validate()) return;
 
-    try {
-      await onSave({ code: form.code.trim(), name: form.name.trim() });
-      showSuccess("Loan category created successfully.");
-      handleClose();
-    } catch (err: any) {
-      const msg = err?.message || "Failed to save the loan category. Please try again.";
-      setErrorMessage(msg);
-      showApiError(msg);
+    if (editId) {
+      updateMutation.mutate({
+        name: editId,
+        loan_category_name: form.name.trim(),
+      });
+    } else {
+      createMutation.mutate({
+        loan_category_code: form.code.trim(),
+        loan_category_name: form.name.trim(),
+      });
     }
   };
 
@@ -114,10 +168,14 @@ export function AddLoanCategoryModal({
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
-                Add Loan Category
+                {isView ? "View Loan Category" : editId ? "Edit Loan Category" : "Add Loan Category"}
               </Text>
               <Text size="xs" fw={500} c="brand.1">
-                Create a new loan category for your organization
+                {isView
+                  ? "Loan category details"
+                  : editId
+                  ? "Update the loan category name"
+                  : "Create a new loan category for your organization"}
               </Text>
             </Box>
           </Group>
@@ -135,13 +193,14 @@ export function AddLoanCategoryModal({
 
         {/* Body */}
         <Box px="xl" py="lg" bg="slate.0">
-         <Group align="flex-start" gap="md" wrap="nowrap">
+          <Group align="flex-start" gap="md" wrap="nowrap">
             <TextInput
               label="Loan Category Code"
               withAsterisk
               radius="md"
               placeholder="e.g. HOME"
               value={form.code}
+              disabled={!!editId || isView}
               onChange={(e) => handleChange("code", e.currentTarget.value.toUpperCase())}
               error={errors.code}
               styles={{ input: { border: "1px solid var(--mantine-color-slate-2)" } }}
@@ -154,6 +213,7 @@ export function AddLoanCategoryModal({
               radius="md"
               placeholder="Enter category name"
               value={form.name}
+              disabled={isView}
               onChange={(e) => handleChange("name", e.currentTarget.value)}
               error={errors.name}
               styles={{ input: { border: "1px solid var(--mantine-color-slate-2)" } }}
@@ -165,11 +225,11 @@ export function AddLoanCategoryModal({
         {/* Footer */}
         <ModalFooter
           variant="theme"
+          isViewMode={isView}
           onClose={handleClose}
           onSubmit={handleSubmit}
-          submitLabel="Save"
-          submitLoading={loading}
-          errorMessage={errorMessage}
+          submitLabel={editId ? "Update" : "Save"}
+          submitLoading={isPending}
         />
       </Box>
     </Modal>
