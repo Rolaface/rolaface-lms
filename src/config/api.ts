@@ -132,7 +132,13 @@ loan: {
   getLoanScheduleById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_repayment_schedule_by_id`,
 },
 
-
+  collectionSequence: {
+    create:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collection_order.api.create`,
+    getSequence:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collection_order.api.get_all`,
+    getById:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collection_order.api.get`,
+    updateSequence:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collection_order.api.update`,
+    deleteSequence:`${ERP_BASE}/api/method/frappe.client.delete`
+  },
   // =========================
   // LOAN PRODUCT
   // =========================

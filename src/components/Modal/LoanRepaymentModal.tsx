@@ -12,12 +12,13 @@ import {
   updateLoanRepayment,
 } from "../../api/loanRepaymentApi";
 import type { Borrower, LoanAccount, LoanRepaymentFormData, LoanRepaymentFormValues } from "../../types/loanRepayment";
-import { computePaymentEffect, toRepaymentType } from "../../utils/Loanrepaymentutils";
+import { computePaymentEffect, toRepaymentType,fromRepaymentType  } from "../../utils/Loanrepaymentutils";
 import { BorrowerSelectionPanel } from "./Repayment/Borrowerselectionpanel";
 import { PaymentExecutionPanel } from "./Repayment/Paymentexecutionpanel";
 import { DuesSummaryPanel } from "./Repayment/Duessummarypanel";
 import { PaymentEffectModal } from "./Repayment/Paymenteffectmodal";
 import { ModalFooter } from "../../components/shared/ModalFooter"
+
 
 export type { LoanRepaymentFormData };
 
@@ -71,6 +72,7 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }
       ],
     }));
   }, [searchResponse]);
+  const todayIso = () => new Date().toISOString().slice(0, 10);
 
   const form = useForm({
     initialValues: {
@@ -79,7 +81,7 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }
       amountToPay: "" as number | "",
       paymentMode: "Direct Debit from A/C" as string | null,
       referenceNumber: "",
-      referenceDate: "",
+      referenceDate: todayIso(),
       accountNumber: "",
       remark: "",
     },
@@ -134,13 +136,13 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }
 
       form.setValues({
         valueDate: item.value_date ? item.value_date.slice(0, 10) : new Date().toISOString().slice(0, 10),
-        natureOfPayment: item.repayment_type === "Full Settlement" ? "FULL_SETTLEMENT" : "PAY_DUES",
+        natureOfPayment: fromRepaymentType(item.repayment_type),
         amountToPay: item.amount_paid ?? "",
         paymentMode: item.mode_of_payment || null,
         referenceNumber: item.reference_number || "",
         referenceDate: item.reference_date || "",
-        accountNumber: "",
-        remark: "",
+        accountNumber: item.account_number || "",
+        remark: item.manual_remarks || "", 
       });
     } else if (opened && !editId) {
       handleReset();
@@ -219,6 +221,8 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }
       mode_of_payment: values.paymentMode as string,
       reference_number: values.referenceNumber,
       reference_date: values.referenceDate,
+      account_number: values.accountNumber || undefined,
+      manual_remarks: values.remark || undefined,
     };
 
     if (editId) {
