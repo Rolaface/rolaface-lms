@@ -37,6 +37,7 @@ import type { LoanDisbursementPayload, } from "../../types/loanDisbursementForm"
 import { parseFrappeError } from "../../utils/parseFrappeError";
 import {getSymbol} from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
+import { openCommonModal } from "./AlertModal";
 
 interface LoanDisbursementModalProps {
   opened: boolean;
@@ -181,24 +182,20 @@ export function LoanDisbursementModal({
       onClose();
     },
     onError: (error: any) => {
-      const errorMessage = parseFrappeError(error);
+  openCommonModal({
+    heading: "Action Failed",
+    subtitle: "We couldn't complete your request.",
+    body: parseFrappeError(error),
+    color: "red",
 
-      modals.open({
-        title: <Text fw={600} c="red">Action Failed</Text>,
-        children: (
-          <div>
-            <Text size="sm" mb="lg">
-              {errorMessage}
-            </Text>
-            <Group justify="flex-end">
-              <Button onClick={() => modals.closeAll()} variant="default">
-                Close
-              </Button>
-            </Group>
-          </div>
-        ),
-      });
-    },
+    buttons: [
+      {
+        label: "Close",
+        color: "red",
+      },
+    ],
+  });
+},
   });
 
  const updateDisbursementMutation = useMutation({
