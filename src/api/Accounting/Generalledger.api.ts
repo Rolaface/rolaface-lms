@@ -128,7 +128,7 @@ interface RawReportResponse {
    real /company API and companyName is never empty on load.
    ─────────────────────────────────────────────────────────── */
 
-const FALLBACK_COMPANY = 'NovaTech Solutions Pvt. Ltd.';
+const FALLBACK_COMPANY = '--';
 
 function resolveCompany(): string {
   return useCompanyStore.getState().companyName || FALLBACK_COMPANY;

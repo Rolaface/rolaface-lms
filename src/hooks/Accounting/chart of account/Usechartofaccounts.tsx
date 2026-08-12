@@ -1,21 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ExpandedState } from '@tanstack/react-table';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { showConfirm, showApiError, showSuccess } from '../../utils/alert';
-import { usePrefetchCurrencies } from '../../store/currencyStore';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ExpandedState } from "@tanstack/react-table";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { showConfirm, showApiError, showSuccess } from "../../../utils/alert";
+import { usePrefetchCurrencies } from "../../../store/currencyStore";
 import {
   type COAAccount,
   fetchChartOfAccounts,
   deleteAccount,
-} from '../../api/Accounting/Chartofaccounts.api';
-
-/* ───────────────── Tree helpers (unchanged) ───────────────── */
+  getCOAById,
+} from "../../../api/Accounting/Chartofaccounts.api";
 
 function matchNode(node: COAAccount, term: string) {
   const t = term.toLowerCase();
   return (
     node.account_name.toLowerCase().includes(t) ||
-    (node.account_type || '').toLowerCase().includes(t) ||
+    (node.account_type || "").toLowerCase().includes(t) ||
     node.root_type.toLowerCase().includes(t)
   );
 }
@@ -25,7 +24,8 @@ function filterTree(nodes: COAAccount[], term: string): COAAccount[] {
   const walk = (list: COAAccount[]): COAAccount[] =>
     list.reduce<COAAccount[]>((acc, node) => {
       const children = node.children?.length ? walk(node.children) : [];
-      if (matchNode(node, term) || children.length) acc.push({ ...node, children });
+      if (matchNode(node, term) || children.length)
+        acc.push({ ...node, children });
       return acc;
     }, []);
   return walk(nodes);
@@ -54,7 +54,11 @@ function collectCurrencies(nodes: COAAccount[]): string[] {
   return [...set];
 }
 
-function buildExpandedToDepth(nodes: COAAccount[], depth: number, path = ''): Record<string, boolean> {
+function buildExpandedToDepth(
+  nodes: COAAccount[],
+  depth: number,
+  path = "",
+): Record<string, boolean> {
   let state: Record<string, boolean> = {};
   nodes.forEach((node, i) => {
     const id = path ? `${path}.${i}` : `${i}`;
@@ -66,7 +70,10 @@ function buildExpandedToDepth(nodes: COAAccount[], depth: number, path = ''): Re
   return state;
 }
 
-function buildExpandedForSearch(nodes: COAAccount[], path = ''): Record<string, boolean> {
+function buildExpandedForSearch(
+  nodes: COAAccount[],
+  path = "",
+): Record<string, boolean> {
   let state: Record<string, boolean> = {};
   nodes.forEach((node, i) => {
     const id = path ? `${path}.${i}` : `${i}`;
@@ -78,37 +85,27 @@ function buildExpandedForSearch(nodes: COAAccount[], path = ''): Record<string, 
   return state;
 }
 
-/* ───────────────── Query key (co-locate for reuse in invalidation) ───────────────── */
-
 export const coaKeys = {
-  all: ['chartOfAccounts'] as const,
+  all: ["chartOfAccounts"] as const,
 };
-
-/* ───────────────── Hook ───────────────── */
 
 export function useChartOfAccounts() {
   const queryClient = useQueryClient();
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [hideZero, setHideZero] = useState(false);
-  const [viewAccount, setViewAccount] = useState<COAAccount | null>(null);
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [allExpanded, setAllExpanded] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
 
-  /* ── Fetch (replaces manual fetchChartOfAccounts + useEffect) ── */
-  const {
-    data,
-    isLoading,
-    isFetching,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: coaKeys.all,
     queryFn: fetchChartOfAccounts,
-    staleTime: 60_000, // tune per how often COA changes
+    staleTime: 60_000,
   });
 
   const accounts = data?.accounts ?? [];
-  const baseCurrency = data?.baseCurrency ?? '';
+  const baseCurrency = data?.baseCurrency ?? "";
 
   const extractCurrencyCodes = useCallback(
     () => [baseCurrency, ...collectCurrencies(accounts)],
@@ -116,38 +113,59 @@ export function useChartOfAccounts() {
   );
   usePrefetchCurrencies(data, extractCurrencyCodes);
 
-  /* ── Delete mutation ── */
   const deleteMutation = useMutation({
     mutationFn: (accountName: string) => deleteAccount(accountName),
     onSuccess: (_data, accountName) => {
-      showSuccess('Account deleted successfully');
-      // Optimistic-ish: patch the cache instead of a full refetch
+      showSuccess("Account deleted successfully");
       queryClient.setQueryData<typeof data>(coaKeys.all, (old) => {
         if (!old) return old;
         const removeNode = (list: COAAccount[]): COAAccount[] =>
           list
             .filter((n) => n.name !== accountName)
-            .map((n) => ({ ...n, children: n.children ? removeNode(n.children) : n.children }));
+            .map((n) => ({
+              ...n,
+              children: n.children ? removeNode(n.children) : n.children,
+            }));
         return { ...old, accounts: removeNode(old.accounts) };
       });
     },
     onError: (err: any) => {
-      showApiError(err?.response?.data?.message?.message ?? 'Failed to delete account');
+      showApiError(
+        err?.response?.data?.message?.message ?? "Failed to delete account",
+      );
     },
   });
+
+  const handleView = useCallback(async (row: COAAccount) => {
+    setViewLoading(true);
+    try {
+      const data = await getCOAById(row.name);
+      if (!data) {
+        showApiError("Failed to load account details.");
+        return null;
+      }
+      return { ...row, ...data };
+    } catch (err: any) {
+      showApiError(
+        err?.response?.data?.message?.message ??
+          "Failed to load account details.",
+      );
+      return null;
+    } finally {
+      setViewLoading(false);
+    }
+  }, []);
 
   const handleDelete = useCallback(
     async (row: COAAccount) => {
       const confirmed = await showConfirm(
         `Are you sure you want to delete account "${row.account_name}"?`,
-        { title: 'Delete Account', confirmButtonText: 'Delete' },
+        { title: "Delete Account", confirmButtonText: "Delete" },
       );
       if (confirmed) deleteMutation.mutate(row.name);
     },
     [deleteMutation],
   );
-
-  /* ── UI-only handlers ── */
 
   const handleToggleExpand = useCallback(() => {
     if (allExpanded) {
@@ -190,21 +208,23 @@ export function useChartOfAccounts() {
   }, [searchTerm, tableData]);
 
   const handleExport = useCallback(async () => {
-    const XLSX = await import('xlsx');
+    const XLSX = await import("xlsx");
     const rows: Record<string, string | number>[] = [];
 
     const flatten = (list: COAAccount[], depth = 0) => {
       list.forEach((acc) => {
-        const indent = '    '.repeat(depth);
-        const prefix = acc.is_group ? (depth === 0 ? '▶ ' : '▸ ') : '• ';
+        const indent = "    ".repeat(depth);
+        const prefix = acc.is_group ? (depth === 0 ? "▶ " : "▸ ") : "• ";
         rows.push({
-          'Account Name': indent + prefix + acc.account_name,
-          'Account Type': acc.account_type || '—',
-          'Root Type': acc.root_type,
-          Category: acc.is_group ? '── GROUP ──' : 'Account',
+          "Account Name": indent + prefix + acc.account_name,
+          "Account Type": acc.account_type || "—",
+          "Root Type": acc.root_type,
+          Category: acc.is_group ? "── GROUP ──" : "Account",
           Currency: acc.account_currency,
-          'Balance (Account CCY)': acc.is_group ? '—' : (acc.balance_in_account_currency ?? acc.balance),
-          [`Balance (${baseCurrency})`]: acc.is_group ? '—' : acc.balance,
+          "Balance (Account CCY)": acc.is_group
+            ? "—"
+            : (acc.balance_in_account_currency ?? acc.balance),
+          [`Balance (${baseCurrency})`]: acc.is_group ? "—" : acc.balance,
         });
         if (acc.children?.length) flatten(acc.children, depth + 1);
       });
@@ -212,10 +232,18 @@ export function useChartOfAccounts() {
     flatten(tableData);
 
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 50 }, { wch: 18 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 20 }, { wch: 20 }];
+    ws["!cols"] = [
+      { wch: 50 },
+      { wch: 18 },
+      { wch: 12 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 20 },
+    ];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Chart of Accounts');
-    XLSX.writeFile(wb, 'chart_of_accounts.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, "Chart of Accounts");
+    XLSX.writeFile(wb, "chart_of_accounts.xlsx");
   }, [tableData, baseCurrency]);
 
   return {
@@ -235,9 +263,9 @@ export function useChartOfAccounts() {
     handleExpandedChange,
     baseCurrency,
 
-    viewAccount,
-    setViewAccount,
     handleDelete,
     deleting: deleteMutation.isPending,
+    handleView,
+    viewLoading,
   };
 }

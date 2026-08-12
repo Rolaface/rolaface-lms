@@ -501,12 +501,12 @@ export function JournalEntries() {
             means the table stays contained and everything else on the
             page (toolbar, pagination, sidebar) stays put. */}
         <Box
-  style={{
-    maxHeight: 'calc(100vh - 300px)',
-    minHeight: 280,
-    overflowY: 'auto',
-  }}
->
+          style={{
+            maxHeight: "calc(100vh - 300px)",
+            minHeight: 280,
+            overflowY: "auto",
+          }}
+        >
           <Table
             verticalSpacing="sm"
             horizontalSpacing="sm"

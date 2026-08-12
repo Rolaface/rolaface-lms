@@ -11,13 +11,15 @@ export const journalEntryKeys = {
   detail: (id: string) => ["journalEntries", "detail", id] as const,
 };
 
-/** Fetches a single journal entry for edit/view mode. Disabled until an id is present. */
+
 export function useJournalEntryDetail(entryId?: string | null) {
   return useQuery({
     queryKey: journalEntryKeys.detail(entryId ?? ""),
     queryFn: () => getJournalEntryById(entryId as string),
     enabled: !!entryId,
-    staleTime: 0, // always fresh when the modal opens for edit/view
+    staleTime: 0, 
+    select: (res: any) =>
+      res?.data?.data || res?.data?.message || res?.data || res?.message || res,
   });
 }
 
