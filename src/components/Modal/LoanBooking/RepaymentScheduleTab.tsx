@@ -1,6 +1,5 @@
 import { Text, Table, Paper, Loader } from "@mantine/core";
 import { IconCalendarStats } from "@tabler/icons-react";
-import type { AmortizationRow } from "../../../utils/loanCalculations";
 
 interface FetchedScheduleRow {
   no: number;
@@ -12,10 +11,8 @@ interface FetchedScheduleRow {
 }
 
 interface RepaymentScheduleTabProps {
-  amortization: AmortizationRow[];
   repaymentSchedule?: FetchedScheduleRow[];
   isFetchingSchedule?: boolean;
-  isEditMode?: boolean;
 }
 
 function EmptyState({ children }: { children: React.ReactNode }) {
@@ -34,10 +31,8 @@ function EmptyState({ children }: { children: React.ReactNode }) {
 }
 
 export function RepaymentScheduleTab({
-  amortization,
   repaymentSchedule = [],
   isFetchingSchedule,
-  isEditMode,
 }: RepaymentScheduleTabProps) {
   const useFetched = repaymentSchedule.length > 0;
 
@@ -84,33 +79,14 @@ export function RepaymentScheduleTab({
                     <Table.Td ff="monospace">{row.balance_loan_amount.toFixed(2)}</Table.Td>
                   </Table.Tr>
                 ))
-              ) : isEditMode ? (
-                <EmptyState>No schedules are being generated for this loan yet.</EmptyState>
-              ) : amortization.length === 0 ? (
-                <EmptyState>Schedule regenerates automatically once Basic Details are complete.</EmptyState>
               ) : (
-                amortization.map((row) => (
-                  <Table.Tr key={row.inst}>
-                    <Table.Td>{row.inst}</Table.Td>
-                    <Table.Td>{row.date}</Table.Td>
-                    <Table.Td ff="monospace">{row.beginning.toFixed(2)}</Table.Td>
-                    <Table.Td ff="monospace">{row.principal.toFixed(2)}</Table.Td>
-                    <Table.Td ff="monospace">{row.interest.toFixed(2)}</Table.Td>
-                    <Table.Td ff="monospace">{row.emi.toFixed(2)}</Table.Td>
-                    <Table.Td ff="monospace">{row.ending.toFixed(2)}</Table.Td>
-                  </Table.Tr>
-                ))
+                <EmptyState>No schedule available for this loan yet.</EmptyState>
               )}
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
         </div>
       </Paper>
-      {!useFetched && amortization.length > 0 && (
-        <Text size="xs" c="slate.4">
-          Schedule regenerates automatically once Basic Details are complete.
-        </Text>
-      )}
     </div>
   );
 }

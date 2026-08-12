@@ -12,7 +12,7 @@ import {
   ThemeIcon,
 } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
-import type { ComponentType } from "react";
+import { DateInput } from "@mantine/dates";
 import {
   IconChevronDown,
   IconUserSquareRounded,
@@ -24,6 +24,8 @@ import { useQuery } from "@tanstack/react-query";
 import { getAllCustomers } from "../../../api/customerApi";
 import { useMemo } from "react";
 import { getAllLoanProducts } from "../../../api/productApi";
+import { getSymbol } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
 const chevronDown = (
   <IconChevronDown size={14} style={{ color: "var(--mantine-color-slate-4)" }} />
@@ -35,39 +37,21 @@ interface BasicDetailsTabProps {
   loanAcNumber: string;
 }
 
-function SectionHeading({
-  icon: Icon,
-  title,
-}: {
-  icon: ComponentType<{ size?: number }>;
-  title: string;
-}) {
-  return (
-    <Group gap={8} mb="sm" wrap="nowrap">
-      <ThemeIcon variant="light" color="brand" radius="xl" size={26}>
-        <Icon size={13} />
-      </ThemeIcon>
-      <Text
-        size="xs"
-        fw={700}
-        c="slate.5"
-        tt="uppercase"
-        style={{ letterSpacing: "0.04em", whiteSpace: "nowrap" }}
-      >
-        {title}
-      </Text>
-      <div style={{ flex: 1, height: 1, background: "var(--mantine-color-slate-2)" }} />
-    </Group>
-  );
-}
-
 export function BasicDetailsTab({
   form,
   maturityDate,
   loanAcNumber,
 }: BasicDetailsTabProps) {
+    const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+    const currencySymbol = getSymbol(companyCurrency);
   const moratoriumEnabled = !!form.values.moratoriumType;
-
+const toDateObj = (value: string | null | undefined) => (value ? new Date(value) : null);
+// const toDateString = (date: Date | null) => (date ? date.toISOString().slice(0, 10) : "");
+const toDateString = (date: Date | string | null) => {
+  if (!date) return "";
+  const d = date instanceof Date ? date : new Date(date);
+  return d.toISOString().slice(0, 10);
+};
   const { data: customerResponse, isLoading: isCustomersLoading } = useQuery({
     queryKey: ["customers"],
     queryFn: getAllCustomers,
@@ -87,7 +71,7 @@ export function BasicDetailsTab({
     return found ? found.label : "";
   }, [customerResponse, form.values.customerNumber]);
 
-  const { data: productResponse, isLoading: isProductsLoading } = useQuery({
+  const { data: productResponse, isLoading: isProductsLoading, refetch: refetchProducts } = useQuery({
     queryKey: ["loanProducts"],
     queryFn: getAllLoanProducts,
   });
@@ -132,10 +116,11 @@ export function BasicDetailsTab({
             data={productOptions}
             disabled={isProductsLoading}
             searchable
-            clearable
+             clearable={!!form.values.productCode}  
             rightSection={chevronDown}
             value={form.values.productCode}
             error={form.errors.productCode}
+            onClick={() => refetchProducts()}
             onChange={(value) => {
               form.setFieldValue("productCode", value);
               const products = productResponse?.data || [];
@@ -189,22 +174,37 @@ export function BasicDetailsTab({
       <Paper withBorder radius="lg" shadow="md" p="lg">
         <div className="flex flex-col gap-3">
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
-            <TextInput
+            {/* <TextInput
               type="date"
               label="Transaction Date"
               disabled
               {...form.getInputProps("trnDate")}
-            />
-            <TextInput
+            /> */}
+            <DateInput
+  label="Transaction Date"
+  valueFormat="DD-MMM-YYYY"
+  placeholder="DD-MMM-YYYY"
+  disabled
+  value={toDateObj(form.values.trnDate)}
+  onChange={(date) => form.setFieldValue("trnDate", toDateString(date))}
+/>
+            {/* <TextInput
               type="date"
               label="Value Date"
               {...form.getInputProps("valueDate")}
-            />
-            <Select
+            /> */}
+            <DateInput
+  label="Value Date"
+  withAsterisk
+  valueFormat="DD-MMM-YYYY"
+  placeholder="DD-MMM-YYYY"
+  value={toDateObj(form.values.valueDate)}
+  onChange={(date) => form.setFieldValue("valueDate", toDateString(date))}
+/>
+            <TextInput
               label="Currency"
-              data={CURRENCIES}
-              rightSection={chevronDown}
-              {...form.getInputProps("currency")}
+              value={companyCurrency}
+              disabled
             />
             <NumberInput
               label="Loan Amount"
@@ -253,18 +253,47 @@ export function BasicDetailsTab({
 
          
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
-            <TextInput
+            {/* <TextInput
               type="date"
               label="Maturity Date"
               placeholder="Auto-calculated"
               value={maturityDate}
               disabled
-            />
-            <TextInput
+            /> */}
+            <DateInput
+  label="Maturity Date"
+  valueFormat="DD-MMM-YYYY"
+  placeholder="DD-MMM-YYYY"
+  value={toDateObj(maturityDate)}
+  disabled
+  onChange={() => {}}
+/>
+            {/* <TextInput
               type="date"
               label="Repayment Start Date"
               {...form.getInputProps("repaymentStartDate")}
-            />
+            /> */}
+            <DateInput
+  label="Repayment Start Date"
+  withAsterisk
+   valueFormat="DD-MMM-YYYY"
+  placeholder="DD-MMM-YYYY"
+  value={toDateObj(form.values.repaymentStartDate)}
+  onChange={(date) => form.setFieldValue("repaymentStartDate", toDateString(date))}
+/>
+  <div className="flex items-center h-full">
+    <Checkbox
+      size="xs"
+      label="Auto Disbursement on Loan Booking"
+      checked={form.values.auto_create_disbursement_on_loan_booking}
+      onChange={(e) =>
+        form.setFieldValue(
+          "auto_create_disbursement_on_loan_booking",
+          e.currentTarget.checked
+        )
+      }
+    />
+  </div>
           </SimpleGrid>
         </div>
       </Paper>

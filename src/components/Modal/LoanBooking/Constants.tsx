@@ -19,7 +19,7 @@ export interface DocumentRow {
 
 export const FEE_TYPES = ["Processing Fee", "Documentation Charges", "Insurance Premium", "Legal Fee"];
 export const CURRENCIES = ["USD", "INR", "EUR", "GBP"];
-export const FREQUENCIES = ["Monthly", "Quarterly", "Half-Yearly", "Yearly"];
+export const FREQUENCIES = ["Monthly", "Daily", "Weekly", "Bi-Weekly", "Quarterly", "One Time"];
 
 // "None" added so the SegmentedControl has a matching option for the
 // default state — previously the control's value/onChange were commented

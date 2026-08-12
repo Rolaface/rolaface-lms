@@ -9,6 +9,8 @@ import {
   Text,
   Button,
   Group,
+  Box,
+  SimpleGrid
 } from "@mantine/core";
 import {
   IconPencil,
@@ -17,15 +19,19 @@ import {
   IconReceipt2,
   IconChevronLeft,
   IconChevronRight,
+  IconPercentage, 
+  IconRepeat,     
+  IconCalendarEvent 
 } from "@tabler/icons-react";
-import { FEE_TYPES } from "./Constants";
+import { getAllIPAccounts } from "../../../api/productApi";
+import { useQuery } from "@tanstack/react-query";
 
 export interface ChargeRow {
   id: string;
-  feeType: string;
-  percentage: number | "";
+  feeName: string;
   amount: number | "";
-  appliedOn: string;
+  account: string;
+  treatment: string;
 }
 
 interface ChargesTabProps {
@@ -33,15 +39,54 @@ interface ChargesTabProps {
   onAdd: () => void;
   onUpdate: (id: string, field: keyof ChargeRow, value: string | number) => void;
   onRemove: (id: string) => void;
+  interestRate?: number | "";
+  penaltyRate?: number | "";
+  gracePeriodDays?: number | "";
+  onInterestRateChange?: (value: number | "") => void;
+  onPenaltyRateChange?: (value: number | "") => void;
+  onGracePeriodChange?: (value: number | "") => void;
 }
 
-const ROWS_PER_PAGE = 6;
+const ROWS_PER_PAGE = 3;
 
-export function ChargesTab({ charges, onAdd, onUpdate, onRemove }: ChargesTabProps) {
+const TREATMENT_OPTIONS = [
+  { value: "Billed Separately", label: "Billed Separately" },
+  { value: "Add to first repayment", label: "Add to first repayment" },
+];
+
+export function ChargesTab({
+  charges,
+  onAdd,
+  onUpdate,
+  onRemove,
+  interestRate,
+  penaltyRate,
+  gracePeriodDays,
+  onInterestRateChange,
+  onPenaltyRateChange,
+  onGracePeriodChange,
+}: ChargesTabProps) {
   const [page, setPage] = useState(1);
 
   const totalPages = Math.max(1, Math.ceil(charges.length / ROWS_PER_PAGE));
 
+  const [accountSearch, setAccountSearch] = useState("");
+
+const { data: accountsResponse, isLoading: isAccountsLoading } = useQuery({
+  queryKey: ["ipAccounts", accountSearch],
+  queryFn: () => getAllIPAccounts(accountSearch),
+});
+
+const accountOptions = useMemo(() => {
+   const accounts = accountsResponse?.data || [];
+
+   if (!Array.isArray(accounts)) return [];
+
+  return accounts.map((a: any) => ({
+    value: String(a.value),
+    label: String(a.label),
+  }));
+}, [accountsResponse]);
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
@@ -60,15 +105,72 @@ export function ChargesTab({ charges, onAdd, onUpdate, onRemove }: ChargesTabPro
 
   return (
     <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
+      {/* Interest & Penalty Section */}
+      <Box p="md" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
+        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+          <Paper withBorder p="md" radius="md">
+            {/* <Text size="xs" fw={700} c="dimmed" mb="md">
+              INTEREST
+            </Text> */}
+            <Group align="flex-start" grow>
+              <NumberInput
+  label="Interest Rate (%)"
+  withAsterisk
+  placeholder="Enter rate"
+  leftSection={<IconPercentage size={16} />}
+  hideControls
+  value={interestRate}
+  onChange={(val) => onInterestRateChange?.(val as number | "")}
+/>
+              <Select
+                label="Interest Frequency"
+                // withAsterisk
+                placeholder="Select frequency"
+                leftSection={<IconRepeat size={16} />}
+                data={["Daily", "Weekly", "Monthly", "Yearly"]} // Replace with your actual constants
+              />
+            </Group>
+          </Paper>
+
+          <Paper withBorder p="md" radius="md">
+            <SimpleGrid cols={3} spacing="md">
+            <NumberInput
+  label="Penalty Rate (%)"
+  withAsterisk
+  placeholder="Enter rate"
+  leftSection={<IconPercentage size={16} />}
+  hideControls
+  value={penaltyRate}
+  onChange={(val) => onPenaltyRateChange?.(val as number | "")}
+/>
+              <Select
+                label="Penalty Frequency"
+                // withAsterisk
+                placeholder="Select frequency"
+                leftSection={<IconRepeat size={16} />}
+                data={["Daily", "Weekly", "Monthly", "Yearly"]}
+              />
+              <NumberInput
+  label="Grace Period (Days)"
+  placeholder="Enter days"
+  leftSection={<IconCalendarEvent size={16} />}
+  hideControls
+  value={gracePeriodDays}
+  onChange={(val) => onGracePeriodChange?.(val as number | "")}
+/>
+            </SimpleGrid>
+          </Paper>
+        </SimpleGrid>
+      </Box>
       <Table.ScrollContainer minWidth={650}>
         <Table verticalSpacing="sm" horizontalSpacing="md" className="w-full">
           <Table.Thead>
             <Table.Tr>
               <Table.Th className="w-16">No.</Table.Th>
-              <Table.Th>Fee Type</Table.Th>
-              <Table.Th>Percentage</Table.Th>
+              <Table.Th>Name</Table.Th>
               <Table.Th>Amount</Table.Th>
-              <Table.Th>Applied On</Table.Th>
+              <Table.Th>Account</Table.Th>
+              <Table.Th>Treatment</Table.Th>
               <Table.Th className="w-24" />
             </Table.Tr>
           </Table.Thead>
@@ -92,23 +194,20 @@ export function ChargesTab({ charges, onAdd, onUpdate, onRemove }: ChargesTabPro
                       {(page - 1) * ROWS_PER_PAGE + index + 1}
                     </Text>
                   </Table.Td>
-                  <Table.Td>
+                  {/* <Table.Td>
                     <Select
                       size="sm"
-                      data={FEE_TYPES}
-                      value={c.feeType}
-                      onChange={(val) => onUpdate(c.id, "feeType", val || "")}
+                      value={c.feeName}
+                      onChange={(val) => onUpdate(c.id, "feeName", val || "")}
                       placeholder="Select type"
                     />
-                  </Table.Td>
-                  <Table.Td>
-                    <NumberInput
+                  </Table.Td> */}
+                    <Table.Td>
+                    <TextInput
                       size="sm"
-                      value={c.percentage}
-                      hideControls
-                      min={0}
-                      onChange={(val) => onUpdate(c.id, "percentage", val as number)}
-                      placeholder="0.00"
+                      value={c.feeName}
+                      onChange={(val) => onUpdate(c.id, "feeName", val.currentTarget.value)}
+                      placeholder="Select type"
                     />
                   </Table.Td>
                   <Table.Td>
@@ -122,11 +221,26 @@ export function ChargesTab({ charges, onAdd, onUpdate, onRemove }: ChargesTabPro
                     />
                   </Table.Td>
                   <Table.Td>
-                    <TextInput
+                 <Select
+  size="sm"
+  data={accountOptions}
+  value={c.account}
+  searchable
+ clearable={!!c.account} 
+  disabled={isAccountsLoading}
+  placeholder="Search account..."
+  onSearchChange={setAccountSearch}
+  // filter={() => true} 
+  onChange={(val) => onUpdate(c.id, "account", val || "")}
+/>
+                  </Table.Td>
+                  <Table.Td>
+                    <Select
                       size="sm"
-                      type="date"
-                      value={c.appliedOn}
-                      onChange={(e) => onUpdate(c.id, "appliedOn", e.currentTarget.value)}
+                       data={TREATMENT_OPTIONS}
+                      value={c.treatment}
+                      onChange={(val) => onUpdate(c.id, "treatment", val || "")}
+                      placeholder="Select type"
                     />
                   </Table.Td>
                   <Table.Td>

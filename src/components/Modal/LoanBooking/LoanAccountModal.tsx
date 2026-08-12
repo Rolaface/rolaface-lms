@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Box, Text, Button, Modal, Group, ThemeIcon, Badge, useMantineTheme, ScrollArea, UnstyledButton } from "@mantine/core";
 import { useForm } from "@mantine/form";
@@ -12,12 +12,14 @@ import { ANNUAL_RATE, DEFAULT_DOCUMENTS, TAB_ITEMS } from "./Constants";
 import { BasicDetailsTab } from "./BasicDetailsTab";
 import { RepaymentScheduleTab } from "./RepaymentScheduleTab";
 import { ChargesTab, type ChargeRow } from "./ChargesTab";
-import { CollateralTab, type CollateralItem } from "./CollateralTab";
+import { CollateralTab, type CollateralItem, type Collateral } from "./CollateralTab";
 import { CoApplicantTab, type CoApplicant } from "./CoapplicationTab";
 import { DocumentsTab } from "./DocumentTab";
 import { LoanSummarySidebar } from "./LoanSummarySidebarTab";
 import { LoanSimulatorModal } from "../LoanSimulatorModal";
 import { ModalFooter } from "../../shared/ModalFooter";
+import { getLoanProductById } from "../../../api/productApi";
+import { openCommonModal } from "../AlertModal";
 
 interface LoanAccountModalProps {
   opened: boolean;
@@ -30,23 +32,30 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
   const queryClient = useQueryClient();
   const theme = useMantineTheme();
   const [activeTab, setActiveTab] = useState<string | null>("basic");
-
-  // UI Only States (Modals, Sub-tabs, etc)
+const loadedLoanProductCode = useRef<string | null>(null);
   const [loanAcNumber] = useState("");
-  const [collateralModalOpened, setCollateralModalOpened] = useState(false);
-  const [collateralSearch, setCollateralSearch] = useState("");
   const [simulatorModalOpened, setSimulatorModalOpened] = useState(false);
   const [coApplicantSearch, setCoApplicantSearch] = useState("");
 
 
   const [charges, setCharges] = useState<ChargeRow[]>([
-    { id: Date.now().toString(), feeType: "", percentage: "", amount: "", appliedOn: getTodayDate() },
+    { id: Date.now().toString(), feeName: "", amount: "", account: "", treatment: "" },
   ]);
-  const [collaterals, setCollaterals] = useState<CollateralItem[]>([]);
   const [coApplicants, setCoApplicants] = useState<CoApplicant[]>([
     { id: Date.now().toString(), name: "", email: "", mobile: "" },
   ]);
   const [documents, setDocuments] = useState(DEFAULT_DOCUMENTS);
+
+  const [chargeSectionDefaults, setChargeSectionDefaults] = useState({
+  interestRate: "" as number | "",
+  penaltyRate: "" as number | "",
+  gracePeriodDays: "" as number | "",
+});
+
+const handleUpdateChargeSectionDefaults = (
+  field: keyof typeof chargeSectionDefaults,
+  value: number | ""
+ ) => setChargeSectionDefaults((prev) => ({ ...prev, [field]: value }));
 
   // Initialize Mantine Form
   const form = useForm({
@@ -69,13 +78,16 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
       repaymentStartDate: "",
       moratoriumType: "None",
       moratoriumPeriod: "" as number | "",
+      auto_create_disbursement_on_loan_booking: 0,
     },
     validate: {
       customerNumber: (v) => (!v ? "Customer is required" : null),
       productCode: (v) => (!v ? "Product is required" : null),
       loanAmount: (v) => (!v ? "Loan Amount is required" : null),
+     valueDate: (v) => (!v ? "Value Date is required" : null),
+      repaymentStartDate: (v) => (!v ? "Repayment Start Date is required" : null),
       tenureValue: (v, values) =>
-        values.fixedRepaymentsIn === "TENOR" && !v ? "Tenure is required" : null,
+      values.fixedRepaymentsIn === "TENOR" && !v ? "Tenure is required" : null,
       repaymentAmount: (v, values) =>
         values.fixedRepaymentsIn === "EMI" && !v ? "Repayment Amount is required" : null,
     },
@@ -114,14 +126,47 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
   const handleAddCharge = () =>
     setCharges((prev) => [
       ...prev,
-      { id: Date.now().toString(), feeType: "", percentage: "", amount: "", appliedOn: getTodayDate() },
+      { id: Date.now().toString(), feeName: "", amount: "", account: "", treatment: "", appliedOn: getTodayDate() },
     ]);
   const handleUpdateCharge = (id: string, field: keyof ChargeRow, value: string | number) =>
     setCharges((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
   const handleRemoveCharge = (id: string) => setCharges((prev) => prev.filter((c) => c.id !== id));
 
-  const handleRemoveCollateral = (id: number) => setCollaterals((prev) => prev.filter((c) => c.id !== id));
+// Replace your current collateral state with this:
+const [collateral, setCollateral] = useState<Collateral>({
+  status: "Pledged",
+  reference_no: "",
+  description: "",
+  items: [],
+});
 
+const handleUpdateCollateral = (field: keyof Collateral, value: string | number) => {
+  setCollateral((prev) => ({ ...prev, [field]: value as string }));
+};
+
+const handleAddCollateralItem = () => {
+  setCollateral((prev) => ({
+    ...prev,
+    items: [
+      ...prev.items,
+      { id: Date.now().toString(), loan_security: "", qty: "", loan_security_price: "", amount: "" },
+    ],
+  }));
+};
+
+const handleUpdateCollateralItem = (id: string, field: keyof CollateralItem, value: string | number) => {
+  setCollateral((prev) => ({
+    ...prev,
+    items: prev.items.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+  }));
+};
+
+const handleRemoveCollateralItem = (id: string) => {
+  setCollateral((prev) => ({
+    ...prev,
+    items: prev.items.filter((item) => item.id !== id),
+  }));
+};
   const handleAddCoApplicant = () =>
     setCoApplicants((prev) => [...prev, { id: Date.now().toString(), name: "", email: "", mobile: "" }]);
   const handleUpdateCoApplicant = (id: string, field: keyof Omit<CoApplicant, "id">, value: string) =>
@@ -135,23 +180,59 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
       queryClient.invalidateQueries({ queryKey: ["loans"] });
       handleModalClose();
     },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+    
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
   });
 
-  const handleSubmit = (values: typeof form.values) => {
-    // Map form data directly to API payload schema
-    const payload: any = {
-      applicant_type: "Customer", // Adjust if you add UI for this
+const handleSubmit = (values: typeof form.values) => {
+     const payload: any = {
+      applicant_type: "Customer",
       applicant: values.customerNumber,
       loan_product: values.productCode,
       loan_amount: Number(values.loanAmount),
-      rate_of_interest: effectiveRate,
-      penalty_charges_rate: 0,
+      auto_create_disbursement_on_loan_booking: values.auto_create_disbursement_on_loan_booking,
       is_term_loan: 1,
       posting_date: values.valueDate,
       repayment_method:
         values.fixedRepaymentsIn === "TENOR"
           ? "Repay Over Number of Periods"
           : "Repay Fixed Amount per Period",
+    };
+    
+    payload.rate_of_interest = chargeSectionDefaults.interestRate === "" ? 0 : Number(chargeSectionDefaults.interestRate);
+    payload.penalty_charges_rate = chargeSectionDefaults.penaltyRate === "" ? 0 : Number(chargeSectionDefaults.penaltyRate);
+
+    payload.loan_charges = charges.map((c) => ({
+      charge: c.feeName || "",
+      amount: Number(c.amount) || 0,
+      account: c.account || "",
+      treatment_of_charge: c.treatment || "",
+    }));
+
+    // ADDED: Collateral Mapping
+    payload.collaterals = {
+      status: collateral.status || "",
+      reference_no: collateral.reference_no || "",
+      description: collateral.description || "",
+      items: collateral.items.map((item) => ({
+        loan_security: item.loan_security || "",
+        qty: Number(item.qty) || 0,
+        loan_security_price: Number(item.loan_security_price) || 0,
+        amount: Number(item.amount) || 0,
+      })),
     };
 
     if (values.fixedRepaymentsIn === "TENOR") {
@@ -184,6 +265,39 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
     }
   };
 
+  const { data: loanProductDetails } = useQuery({
+  queryKey: ["loanProductDetails", form.values.productCode],
+  queryFn: () => getLoanProductById(form.values.productCode as string),
+  enabled: !!form.values.productCode,
+});
+
+useEffect(() => {
+  const product = loanProductDetails?.message?.data;
+  if (!product) return;
+
+  if (loanId && form.values.productCode === loadedLoanProductCode.current) {
+    return;
+  }
+
+  const mappedCharges: ChargeRow[] = (product.loan_charges || []).map((lc: any) => ({
+    id: lc.name ?? Date.now().toString(),
+    feeName: lc.charge_type ?? "",
+    amount: lc.amount ?? "",
+    account: "",
+    treatment: "",
+  }));
+
+  if (mappedCharges.length > 0) {
+    setCharges(mappedCharges);
+  }
+
+  setChargeSectionDefaults({
+    interestRate: product.rate_of_interest ?? "",
+    penaltyRate: product.penalty_interest_rate ?? "",
+    gracePeriodDays: product.grace_period_in_days ?? "",
+  });
+}, [loanProductDetails]);
+
   const { data: existingLoanData, isLoading: isFetchingLoan } = useQuery({
     queryKey: ["loan", loanId],
     queryFn: async () => await getLoanById(loanId as string),
@@ -203,7 +317,7 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
   const fetchedMaturityDate = scheduleData?.message?.data?.maturity_date;
   const finalMaturityDate = fetchedMaturityDate;
 
-  useEffect(() => {
+useEffect(() => {
     const loan = existingLoanData?.message?.data;
 
     if (loan) {
@@ -211,20 +325,62 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
         customerNumber: loan.applicant || "",
         productCode: loan.loan_product || "",
         loanAmount: loan.loan_amount || "",
-        rateOfInterest: loan.rate_of_interest,
         trnDate: loan.posting_date || getTodayDate(),
         fixedRepaymentsIn: loan.repayment_method === "Repay Over Number of Periods" ? "TENOR" : "EMI",
         tenureValue: loan.repayment_periods || "",
+        auto_create_disbursement_on_loan_booking: loan.auto_create_disbursement_on_loan_booking || 0,
         repaymentAmount: loan.monthly_repayment_amount || "",
         valueDate: loan.posting_date,
         repaymentStartDate: loan.repayment_start_date || "",
-        moratoriumType: loan.moratorium_type || "Principal",
+        // moratoriumType: loan.moratorium_type || "Principal",
+        moratoriumType: loan.moratorium_type || "None",
         moratoriumPeriod: loan.moratorium_tenure || "",
       });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existingLoanData]);
 
+      loadedLoanProductCode.current = loan.loan_product || "";
+
+      setChargeSectionDefaults({
+        interestRate: loan.rate_of_interest ?? "",
+        penaltyRate: loan.penalty_charges_rate ?? "",
+        gracePeriodDays: "",
+      });
+
+      const mappedCharges: ChargeRow[] = (loan.loan_charges || []).map((lc: any) => ({
+        id: lc.name ?? Date.now().toString() + Math.random(),
+        feeName: lc.charge ?? "",
+        amount: lc.amount ?? "",
+        account: lc.account ?? "",
+        treatment: lc.treatment_of_charge ?? "",
+      }));
+
+      if (mappedCharges.length > 0) {
+        setCharges(mappedCharges);
+      }
+
+      // ADDED: Safely hydrate collateral data, falling back to default structure
+      if (loan.collaterals) {
+        setCollateral({
+          status: loan.collaterals.status || "Pledged",
+          reference_no: loan.collaterals.reference_no || "",
+          description: loan.collaterals.description || "",
+          items: (loan.collaterals.items || []).map((item: any) => ({
+            id: item.name ?? Date.now().toString() + Math.random(),
+            loan_security: item.loan_security || "",
+            qty: item.qty ?? "",
+            loan_security_price: item.loan_security_price ?? "",
+            amount: item.amount ?? "",
+          })),
+        });
+      } else {
+        setCollateral({
+          status: "Pledged",
+          reference_no: "",
+          description: "",
+          items: [],
+        });
+      }
+    }
+  }, [existingLoanData]);
   const updateLoanMutation = useMutation({
     mutationFn: updateLoan,
     onSuccess: (data, variables) => {
@@ -232,19 +388,34 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
       queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
       handleModalClose();
     },
+    onError: (error: any) => {
+  openCommonModal({
+    heading: "Action Failed",
+    subtitle: "We couldn't complete your request.",
+    body: parseFrappeError(error),
+    color: "red",
+
+    buttons: [
+      {
+        label: "Close",
+        color: "red",
+      },
+    ],
+  });
+},
   });
 
-  const handleReset = () => {
-    form.reset();
-    setCharges([{ id: Date.now().toString(), feeType: "", percentage: "", amount: "", appliedOn: getTodayDate() }]);
-    setCollaterals([]);
-    setCoApplicants([{ id: Date.now().toString(), name: "", email: "", mobile: "" }]);
-    setCoApplicantSearch("");
-    setDocuments(DEFAULT_DOCUMENTS);
-    setActiveTab("basic");
-    createLoanMutation.reset();
-  };
-
+const handleReset = () => {
+  form.reset();
+  setCharges([{ id: Date.now().toString(), feeName: "", amount: "", account: "", treatment: "" }]);
+  setCollateral([]);
+  setCoApplicants([{ id: Date.now().toString(), name: "", email: "", mobile: "" }]);
+  setCoApplicantSearch("");
+  setDocuments(DEFAULT_DOCUMENTS);
+  setChargeSectionDefaults({ interestRate: "", penaltyRate: "", gracePeriodDays: "" });
+  setActiveTab("basic");
+  createLoanMutation.reset();
+};
   const handleModalClose = () => {
     if (loanId) {
       queryClient.removeQueries({ queryKey: ["loan", loanId] });
@@ -437,32 +608,35 @@ export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAc
               {activeTab === "basic" && (
                 <BasicDetailsTab form={form} loanAcNumber={loanAcNumber} maturityDate={finalMaturityDate} />
               )}
-              {activeTab === "schedule" && (
-                <RepaymentScheduleTab
-                  amortization={amortization}
-                  repaymentSchedule={fetchedRepaymentSchedule}
-                  isFetchingSchedule={isFetchingSchedule}
-                  isEditMode={!!loanId}
-                />
-              )}
-              {activeTab === "charges" && (
-                <ChargesTab
-                  charges={charges}
-                  onAdd={handleAddCharge}
-                  onUpdate={handleUpdateCharge}
-                  onRemove={handleRemoveCharge}
-                />
-              )}
-              {activeTab === "collateral" && (
-                <CollateralTab
-                  search={collateralSearch}
-                  onSearchChange={setCollateralSearch}
-                  collaterals={collaterals}
-                  onRemove={handleRemoveCollateral}
-                  onOpenAddModal={() => setCollateralModalOpened(true)}
-                />
-              )}
-              {activeTab === "coapplicant" && (
+             {activeTab === "schedule" && (
+  <RepaymentScheduleTab
+    repaymentSchedule={fetchedRepaymentSchedule}
+    isFetchingSchedule={isFetchingSchedule}
+  />
+)}
+            {activeTab === "charges" && (
+  <ChargesTab
+    charges={charges}
+    onAdd={handleAddCharge}
+    onUpdate={handleUpdateCharge}
+    onRemove={handleRemoveCharge}
+    interestRate={chargeSectionDefaults.interestRate}
+    penaltyRate={chargeSectionDefaults.penaltyRate}
+    gracePeriodDays={chargeSectionDefaults.gracePeriodDays}
+    onInterestRateChange={(v) => handleUpdateChargeSectionDefaults("interestRate", v)}
+onPenaltyRateChange={(v) => handleUpdateChargeSectionDefaults("penaltyRate", v)}
+onGracePeriodChange={(v) => handleUpdateChargeSectionDefaults("gracePeriodDays", v)}
+  />
+)}
+{activeTab === "collateral" && (
+              <CollateralTab
+                collateral={collateral}
+                onUpdate={handleUpdateCollateral}
+                onAddItem={handleAddCollateralItem}
+                onUpdateItem={handleUpdateCollateralItem}
+                onRemoveItem={handleRemoveCollateralItem}
+              />
+            )}           {activeTab === "coapplicant" && (
                 <CoApplicantTab
                   search={coApplicantSearch}
                   onSearchChange={setCoApplicantSearch}
