@@ -1,12 +1,10 @@
 // LoanRestructure.tsx
 import { useMemo, useState } from 'react';
-import { modals } from '@mantine/modals';
 import {
   Box,
   Button,
   TextInput,
   Select,
-  Radio,
   Group,
   Paper,
   Table,
@@ -44,6 +42,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { LoanRestructureModal, type RestructureFormData } from "../../../components/Modal/LoanRestructure/LoanRestructureModal"
+import { openCommonModal } from '../../../components/Modal/AlertModal';
 
 interface RestructureRow {
   id: number;
@@ -168,31 +167,108 @@ export function LoanRestructure() {
     });
   }, [rowsData, search, restructureType, status]);
 
-  const handleDelete = (id: number) => {
-    setRowsData((prev) => prev.filter((r) => r.id !== id));
+  const showError = (heading: string, message: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: message,
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
   };
 
-  const handleStatusChange = (id: number, newStatus: RestructureRow['status']) => {
-    setRowsData((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
-    );
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
+  const showWarning = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'orange',
+      buttons: [{ label: 'Close', color: 'orange' }],
+    });
+  };
+
+  const handleDelete = (id: number, loanAc: string) => {
+    try {
+      setRowsData((prev) => prev.filter((r) => r.id !== id));
+      showSuccess('Restructure Deleted', `Restructure request ${loanAc} deleted successfully.`);
+    } catch (err) {
+      showError('Delete Failed', 'Failed to delete restructure request. Please try again.');
+    }
+  };
+
+  const confirmDelete = (row: RestructureRow) => {
+    openCommonModal({
+      heading: 'Delete Restructure Request',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete restructure request{' '}
+          <Text span fw={600}>
+            {row.loanAc}
+          </Text>
+          ?
+        </>
+      ),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => handleDelete(row.id, row.loanAc),
+        },
+      ],
+    });
+  };
+
+  const handleStatusChange = (id: number, newStatus: RestructureRow['status'], loanAc: string) => {
+    try {
+      setRowsData((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
+      );
+
+      if (newStatus === 'APPROVED') {
+        showSuccess('Restructure Approved', `Restructure request ${loanAc} approved.`);
+      } else if (newStatus === 'REJECTED') {
+        showWarning('Restructure Rejected', `Restructure request ${loanAc} rejected.`);
+      } else {
+        showSuccess('Restructure Reverted', `Restructure request ${loanAc} reverted to pending.`);
+      }
+    } catch (err) {
+      showError('Update Failed', 'Failed to update status. Please try again.');
+    }
   };
 
   const handleAddRestructure = (formData: RestructureFormData) => {
-    setRowsData((prev) => [
-      ...prev,
-      {
-        id: prev.length ? Math.max(...prev.map((r) => r.id)) + 1 : 1,
-        loanAc: formData.loanAc || '—',
-        customer: formData.customerName || '—',
-        loanType: formData.loanType || '—',
-        restructureType: formData.restructureType,
-        reason: formData.reason || '—',
-        valueDate: formData.valueDate || '—',
-        totalCharges: formData.totalCharges || 0,
-        status: 'PENDING',
-      },
-    ]);
+    try {
+      setRowsData((prev) => [
+        ...prev,
+        {
+          id: prev.length ? Math.max(...prev.map((r) => r.id)) + 1 : 1,
+          loanAc: formData.loanAc || '—',
+          customer: formData.customerName || '—',
+          loanType: formData.loanType || '—',
+          restructureType: formData.restructureType,
+          reason: formData.reason || '—',
+          valueDate: formData.valueDate || '—',
+          totalCharges: formData.totalCharges || 0,
+          status: 'PENDING',
+        },
+      ]);
+      showSuccess('Restructure Created', 'Restructure request created successfully.');
+    } catch (err) {
+      showError('Create Failed', 'Failed to create restructure request. Please try again.');
+    }
   };
 
   const resetFilters = () => {
@@ -213,30 +289,14 @@ export function LoanRestructure() {
       columnHelper.accessor('loanAc', {
         header: 'Loan A/c',
         cell: (info) => (
-          <Group gap={10} wrap="nowrap">
-            <Box
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 'var(--mantine-radius-md)',
-                background: 'var(--mantine-color-brand-0)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <IconRefresh size={15} color="var(--mantine-color-brand-6)" />
-            </Box>
-            <Stack gap={0}>
-              <Text fz="sm" fw={700} c="slate.8" className="font-mono">
-                {info.getValue()}
-              </Text>
-              <Text fz="xs" c="slate.5">
-                {info.row.original.customer}
-              </Text>
-            </Stack>
-          </Group>
+          <Stack gap={0}>
+            <Text fz="sm" fw={700} c="slate.8" className="font-mono">
+              {info.getValue()}
+            </Text>
+            <Text fz="xs" c="slate.5">
+              {info.row.original.customer}
+            </Text>
+          </Stack>
         ),
       }),
       columnHelper.accessor('loanType', {
@@ -341,19 +401,7 @@ export function LoanRestructure() {
                   color={isPending ? 'danger' : 'slate'}
                   radius="md"
                   disabled={!isPending}
-                  onClick={() => {
-                    modals.openConfirmModal({
-                      title: 'Delete restructure request',
-                      children: (
-                        <Text size="sm">
-                          Are you sure you want to delete restructure request <b>{row.loanAc}</b>? This cannot be undone.
-                        </Text>
-                      ),
-                      labels: { confirm: 'Delete', cancel: 'Cancel' },
-                      confirmProps: { color: 'danger' },
-                      onConfirm: () => handleDelete(row.id),
-                    });
-                  }}
+                  onClick={() => confirmDelete(row)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
@@ -367,15 +415,15 @@ export function LoanRestructure() {
                 <Menu.Dropdown>
                   {isPending ? (
                     <>
-                      <Menu.Item onClick={() => handleStatusChange(row.id, 'APPROVED')}>
+                      <Menu.Item onClick={() => handleStatusChange(row.id, 'APPROVED', row.loanAc)}>
                         Approve
                       </Menu.Item>
-                      <Menu.Item color="danger" onClick={() => handleStatusChange(row.id, 'REJECTED')}>
+                      <Menu.Item color="danger" onClick={() => handleStatusChange(row.id, 'REJECTED', row.loanAc)}>
                         Reject
                       </Menu.Item>
                     </>
                   ) : (
-                    <Menu.Item color="danger" onClick={() => handleStatusChange(row.id, 'PENDING')}>
+                    <Menu.Item color="danger" onClick={() => handleStatusChange(row.id, 'PENDING', row.loanAc)}>
                       Revert to Pending
                     </Menu.Item>
                   )}
@@ -473,7 +521,7 @@ export function LoanRestructure() {
                 setPagination((p) => ({ ...p, pageIndex: 0 }));
               }}
             />
-              
+
             <Select
               size="sm"
               radius="xl"
@@ -490,7 +538,7 @@ export function LoanRestructure() {
                 setPagination((p) => ({ ...p, pageIndex: 0 }));
               }}
             />
-            
+
             <SegmentedControl
               size="xs"
               radius="xl"
@@ -507,7 +555,6 @@ export function LoanRestructure() {
                 { label: 'Rejected', value: 'REJECTED' },
               ]}
             />
-            
 
             <Group gap="xs" ml="auto">
               <Button
@@ -525,8 +572,6 @@ export function LoanRestructure() {
               </Button>
             </Group>
           </Group>
-
-       
         </Stack>
       </Paper>
 

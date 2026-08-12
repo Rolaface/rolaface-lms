@@ -695,7 +695,7 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
               }}
               p="lg"
             >
-              <Group gap={8} mb="lg">
+              <Group gap={8} mb="sm">
                 <IconChecklist size={16} color="var(--mantine-color-brand-6)" />
                 <Group gap={6}>
                   <Text size="sm" fw={700} c="slate.8">
@@ -724,7 +724,7 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
                 styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)', marginBottom: 4 } }}
               />
 
-              <Box mt="xl">
+              <Box mt="20">
                 <Text size="sm" fw={700} c="slate.8" mb="sm">
                   Capitalization Breakdown
                 </Text>
@@ -872,63 +872,74 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
           </Box>
 
           {/* Dues summary */}
-          <Box style={{ width: 300, borderLeft: '1px solid var(--mantine-color-slate-2)', flexShrink: 0, overflowY: 'auto' }} p="lg" bg="slate.0">
-            <Group gap={8} mb={2}>
-              <Box w={4} h={16} style={{ borderRadius: 4, background: theme.other.brandGradient }} />
-              <Text size="sm" fw={700} c="slate.8">
+          <div className="w-[300px] p-5 shrink-0 overflow-y-auto" style={{ borderLeft: '1px solid var(--mantine-color-slate-2)' }}>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1 h-4 rounded" style={{ background: theme.other.brandGradient }} />
+              <Text size="xs" fw={700} c="slate.8" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
                 Dues Summary
               </Text>
-            </Group>
+            </div>
 
-            {selectedLoan ? (
-              <Stack gap="sm" mt="md">
-                <Box p={10} style={{ borderRadius: 'var(--mantine-radius-md)', border: '1px solid var(--mantine-color-slate-2)', background: 'var(--mantine-color-white)' }}>
-                  <Text size="xs" c="slate.5">EMI Date</Text>
-                  <Text size="sm" fw={700} c="slate.8">
-                    {isDuesLoading ? 'Loading...' : dues?.due_date || '—'}
-                  </Text>
-                </Box>
-
-                <Stack gap={6} p="sm" style={{ borderRadius: 'var(--mantine-radius-md)', border: '1px solid var(--mantine-color-slate-2)', background: 'var(--mantine-color-white)' }}>
-                  <Group justify="space-between">
-                    <Text size="xs" c="slate.5">Principal Due</Text>
-                    <Text size="xs" c="slate.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-                      {formatCurrency(dues?.payable_principal_amount ?? 0)}
-                    </Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="xs" c="slate.5">Interest Due</Text>
-                    <Text size="xs" c="slate.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-                      {formatCurrency(dues?.interest_amount ?? 0)}
-                    </Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="xs" c="slate.5">Penalty</Text>
-                    <Text size="xs" c="slate.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-                      {formatCurrency(dues?.penalty_amount ?? 0)}
-                    </Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="xs" c="slate.5">Fees/Charges</Text>
-                    <Text size="xs" c="slate.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-                      {formatCurrency(dues?.total_charges_payable ?? 0)}
-                    </Text>
-                  </Group>
-                  <Divider color="slate.2" my={2} />
-                  <Group justify="space-between">
-                    <Text size="sm" fw={700} c="slate.8">Total Amount Due</Text>
-                    <Text size="sm" fw={700} c="slate.8" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-                      {formatCurrency(dues?.payable_amount ?? 0)}
-                    </Text>
-                  </Group>
-                </Stack>
-              </Stack>
-            ) : (
-              <Text size="xs" c="slate.5" ta="center" py="xl">
+            {!selectedLoan ? (
+              <Text size="xs" c="dimmed" className="py-8 text-center">
                 Select a loan account on the left to view dues.
               </Text>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div
+                  className="flex items-center gap-2 rounded-md p-2.5"
+                  style={{ background: 'var(--mantine-color-slate-1)', border: '1px solid var(--mantine-color-slate-2)' }}
+                >
+                  <div className="p-1.5 rounded-md flex items-center justify-center shrink-0" style={{ background: '#EEF2FF' }}>
+                    <IconCalendarDue size={14} style={{ color: 'var(--mantine-color-brand-6)' }} />
+                  </div>
+                  <div>
+                    <Text size="xs" c="dimmed">EMI Date</Text>
+                    <Text size="sm" fw={700} c="slate.8">
+                      {isDuesLoading ? 'Loading...' : dues?.due_date || '—'}
+                    </Text>
+                  </div>
+                </div>
+
+                <div
+                  className="rounded-md p-3 flex flex-col gap-2"
+                  style={{ background: 'var(--mantine-color-slate-1)', border: '1px solid var(--mantine-color-slate-2)' }}
+                >
+                  <div className="flex justify-between">
+                    <Text size="xs" c="dimmed">Principal Due</Text>
+                    <Text size="xs" c="slate.7" className="font-mono">
+                      {formatCurrency(dues?.payable_principal_amount ?? 0)}
+                    </Text>
+                  </div>
+                  <div className="flex justify-between">
+                    <Text size="xs" c="dimmed">Interest Due</Text>
+                    <Text size="xs" c="slate.7" className="font-mono">
+                      {formatCurrency(dues?.interest_amount ?? 0)}
+                    </Text>
+                  </div>
+                  <div className="flex justify-between">
+                    <Text size="xs" c="dimmed">Penalty</Text>
+                    <Text size="xs" c="slate.7" className="font-mono">
+                      {formatCurrency(dues?.penalty_amount ?? 0)}
+                    </Text>
+                  </div>
+                  <div className="flex justify-between">
+                    <Text size="xs" c="dimmed">Fees/Charges</Text>
+                    <Text size="xs" c="slate.7" className="font-mono">
+                      {formatCurrency(dues?.total_charges_payable ?? 0)}
+                    </Text>
+                  </div>
+                  <div className="border-t border-gray-100 my-0.5" />
+                  <div className="flex justify-between items-center">
+                    <Text size="sm" fw={700} c="slate.8">Total Amount Due</Text>
+                    <Text size="sm" fw={700} c="slate.8" className="font-mono">
+                      {formatCurrency(dues?.payable_amount ?? 0)}
+                    </Text>
+                  </div>
+                </div>
+              </div>
             )}
-          </Box>
+          </div>
         </Group>
 
         <ModalFooter

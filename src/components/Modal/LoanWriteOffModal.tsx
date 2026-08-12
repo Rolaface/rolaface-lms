@@ -341,6 +341,7 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
                 <NumberInput
                   size="sm"
                   withAsterisk
+                  hideControls
                   label="Principal Outstanding"
                   placeholder="Auto-filled on account selection"
                   value={principalOutstanding}
@@ -385,6 +386,7 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
                   <NumberInput
                     size="sm"
                     withAsterisk
+                    hideControls
                     label="Write-off Amount"
                     placeholder="Enter amount"
                     value={writeOffAmount}
