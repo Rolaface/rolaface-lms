@@ -14,7 +14,6 @@ import {
   Badge,
   Select,
   Stack,
-  Popover,
   Loader,
   useMantineTheme,
 } from '@mantine/core';
@@ -33,6 +32,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { useReactTable, getCoreRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
 import { LoanCollectionSequenceOrderModal } from '../../../components/Modal/LoanCollectionSequenceOrderModal';
 import { useCollectionOrders } from '../../../hooks/CollectionOrder/useCollectionOrders';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
 import type { CollectionOrderListItem, CollectionOrderSort } from '../../../types/collectionOrder';
 
 const columnHelper = createColumnHelper<CollectionOrderListItem>();
@@ -44,56 +44,6 @@ function SortIcon({ active, direction }: { active: boolean; direction: Collectio
 }
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
-
-function DeleteRowAction({
-  row,
-  onConfirm,
-  deleting,
-}: {
-  row: CollectionOrderListItem;
-  onConfirm: (name: string) => void;
-  deleting: boolean;
-}) {
-  const [opened, { close, toggle }] = useDisclosure(false);
-
-  return (
-    <Popover opened={opened} onClose={close} position="top-end" withArrow shadow="md" radius="md">
-      <Popover.Target>
-        <Tooltip label="Delete" withArrow>
-          <ActionIcon size="sm" variant="subtle" color="danger" radius="md" onClick={toggle} loading={deleting}>
-            <IconTrash size={14} />
-          </ActionIcon>
-        </Tooltip>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <Stack gap="xs" maw={220}>
-          <Text fz="xs" c="slate.7" fw={600}>
-            Delete "{row.title}"?
-          </Text>
-          <Text fz="xs" c="slate.5">
-            This action cannot be undone.
-          </Text>
-          <Group justify="flex-end" gap="xs">
-            <Button size="xs" variant="default" radius="md" onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              size="xs"
-              color="danger"
-              radius="md"
-              onClick={() => {
-                close();
-                onConfirm(row.name);
-              }}
-            >
-              Delete
-            </Button>
-          </Group>
-        </Stack>
-      </Popover.Dropdown>
-    </Popover>
-  );
-}
 
 export function LoanCollectionSequenceOrder() {
   const theme = useMantineTheme();
@@ -124,6 +74,33 @@ export function LoanCollectionSequenceOrder() {
     setModalMode(mode);
     setSelectedData(data);
     open();
+  };
+
+  const handleDelete = (row: CollectionOrderListItem) => {
+    openCommonModal({
+      heading: 'Delete Collection Sequence',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete sequence{' '}
+          <Text span fw={600}>
+            {row.title}
+          </Text>
+          ?
+        </>
+      ),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => {
+            removeCollectionOrder(row.name);
+          },
+        },
+      ],
+    });
   };
 
   const columns = useMemo(
@@ -172,40 +149,51 @@ export function LoanCollectionSequenceOrder() {
             Actions
           </Text>
         ),
-        cell: (info) => (
-          <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-            <Tooltip label="View" withArrow>
-              <ActionIcon
-                size="sm"
-                variant="subtle"
-                color="slate"
-                radius="md"
-                onClick={() => handleOpenModal('view', info.row.original)}
-              >
-                <IconEye size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Edit" withArrow>
-              <ActionIcon
-                size="sm"
-                variant="subtle"
-                color="brand"
-                radius="md"
-                onClick={() => handleOpenModal('edit', info.row.original)}
-              >
-                <IconPencil size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <DeleteRowAction
-              row={info.row.original}
-              onConfirm={removeCollectionOrder}
-              deleting={deletingName === info.row.original.name}
-            />
-          </Group>
-        ),
+        cell: (info) => {
+          const row = info.row.original;
+          return (
+            <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
+              <Tooltip label="View" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="slate"
+                  radius="md"
+                  onClick={() => handleOpenModal('view', row)}
+                >
+                  <IconEye size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Edit" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="brand"
+                  radius="md"
+                  onClick={() => handleOpenModal('edit', row)}
+                >
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Delete" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="danger"
+                  radius="md"
+                  loading={deletingName === row.name}
+                  onClick={() => handleDelete(row)}
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
+          );
+        },
       }),
     ],
-    [removeCollectionOrder, deletingName]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [deletingName]
   );
 
   const table = useReactTable({
