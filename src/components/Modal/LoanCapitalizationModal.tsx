@@ -27,6 +27,7 @@ import {
   IconChecklist,
   IconNotes,
   IconReportMoney,
+  IconUserSearch,
 } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { LoanRepaymentPayload } from '../../types/loanRepaymentForm';
@@ -530,13 +531,13 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
             ) : (
               <>
                 <Group justify="space-between" align="center" mb={2}>
-                  <Group gap={8}>
-                    <Box w={4} h={16} style={{ borderRadius: 4, background: theme.other.brandGradient }} />
+    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
+                    <IconUserSearch size={15} style={{ color: "var(--mantine-color-brand-6)" }} />
                     <Text size="sm" fw={700} c="slate.8">
                       Borrower Selection
                     </Text>
-                  </Group>
-                  {selectedBorrower && (
+                  </div>                  {selectedBorrower && (
                     <Tooltip label="Collapse" withArrow position="left">
                       <ActionIcon variant="subtle" color="slate" radius="xl" size="sm" onClick={() => setBorrowerPanelCollapsed(true)}>
                         <IconChevronLeft size={14} />
@@ -872,10 +873,13 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
           </Box>
 
           {/* Dues summary */}
-          <div className="w-[300px] p-5 shrink-0 overflow-y-auto" style={{ borderLeft: '1px solid var(--mantine-color-slate-2)' }}>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1 h-4 rounded" style={{ background: theme.other.brandGradient }} />
-              <Text size="xs" fw={700} c="slate.8" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
+              <div
+                className="w-[300px] p-5 shrink-0 flex flex-col shadow-[var(--mantine-shadow-lg)]"
+                style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
+                  <Text size="sm" fw={700} c="slate.8" tt="uppercase" style={{ letterSpacing: "0.05em" }}>
                 Dues Summary
               </Text>
             </div>

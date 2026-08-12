@@ -168,7 +168,7 @@ export function AddLoanCategoryModal({
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
-                {isView ? "View Loan Category" : editId ? "Edit Loan Category" : "Add Loan Category"}
+                {isView ? "View Loan Category" : editId ? "Edit Loan Category" : "New Loan Category"}
               </Text>
               <Text size="xs" fw={500} c="brand.1">
                 {isView
