@@ -1,4 +1,6 @@
 import { Text, Badge, Stack, Group, useMantineTheme } from "@mantine/core";
+import { getSymbol } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
 
 function SummaryRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
@@ -63,6 +65,8 @@ export function LoanSummarySidebar({
   totalRepayment,
 }: LoanSummarySidebarProps) {
   const theme = useMantineTheme();
+     const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+      const currencySymbol = getSymbol(companyCurrency);
 
   return (
     <div
@@ -85,7 +89,7 @@ export function LoanSummarySidebar({
               <SummaryRow label="Product" value={productCode || "—"} />
               <SummaryRow
                 label="Principal"
-                value={summaryPrincipal ? `${summaryPrincipal.toLocaleString("en-US")} ${currency}` : "—"}
+                value={summaryPrincipal ? `${currencySymbol} ${summaryPrincipal} ` : "—"}
                 bold
               />
               <SummaryRow label="Interest Rate" value={`${rateOfInterest || 0}% p.a.`} />
@@ -129,7 +133,7 @@ export function LoanSummarySidebar({
                 label="Total Interest"
                 value={
                   totalInterest
-                    ? `${totalInterest.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${currency}`
+                    ? ` ${currencySymbol} ${totalInterest}`
                     : "—"
                 }
               />
@@ -140,7 +144,7 @@ export function LoanSummarySidebar({
                   </Text>
                   <Text size="xs" fw={700} c="slate.8" ta="right">
                     {totalRepayment
-                      ? `${totalRepayment.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${currency}`
+                      ? `${currencySymbol} ${totalRepayment}`
                       : "—"}
                   </Text>
                 </Group>

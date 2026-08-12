@@ -20,6 +20,24 @@ export interface CreateLoanPayload {
   moratorium_tenure?: number;
   moratorium_type?: "EMI" | "Principal" | string;
   treatment_of_interest?: "Capitalize" | string;
+
+ loan_charges?: {
+  charge: string;
+  amount: number;
+  account?: string;
+  treatment_of_charge?: string;
+ }[];
+ collaterals?: {
+    status: "Pledged" |string;
+    reference_no: string;
+    description: string;
+    items: {
+      loan_security: string;
+      qty: number;
+      loan_security_price: number;
+      amount: number;
+    }[];
+  };
 }
 
 // Frappe whitelisted methods wrap the return value in `message`.

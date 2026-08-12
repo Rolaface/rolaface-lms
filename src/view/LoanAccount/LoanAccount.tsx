@@ -44,6 +44,10 @@ import {
 import { LoanAccountModal } from '../../components/Modal/LoanBooking/LoanAccountModal';
 import { getAllLoans, deleteLoan, changeLoanStatus } from '../../api/loanApi';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { openCommonModal } from '../../components/Modal/AlertModal';
+import { getSymbol } from '../../store/currencyStore';
+import { useCompanyStore } from '../../store/companyStore';
+import { parseFrappeError } from '../../utils/parseFrappeError';
 
 // Unchanged — same status meta / colors your data already relies on.
 const STATUS_META: Record<string, { label: string; color: string }> = {
@@ -128,6 +132,21 @@ export function LoanAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loans'] });
     },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+    
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
   });
 
   const { mutate: updateStatus } = useMutation({
@@ -136,6 +155,21 @@ export function LoanAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loans'] });
     },
+  onError: (error: any) => {
+  openCommonModal({
+    heading: "Action Failed",
+    subtitle: "We couldn't complete your request.",
+    body: parseFrappeError(error),
+    color: "red",
+
+    buttons: [
+      {
+        label: "Close",
+        color: "red",
+      },
+    ],
+  });
+},
   });
 
   // filter state
@@ -178,6 +212,9 @@ export function LoanAccount() {
       return matchesSearch && matchesProduct && matchesBranch && matchesStatus;
     });
   }, [data, search, product, branch, status]);
+
+   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+              const currencySymbol = getSymbol(companyCurrency);
 
   const columns = useMemo(
     () => [
@@ -228,7 +265,7 @@ export function LoanAccount() {
         header: 'Amount',
         cell: (info) => (
           <Text fz="xs" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-            ZMW {fmtAmount(info.getValue())}
+            {currencySymbol} {fmtAmount(info.getValue())}
           </Text>
         ),
         sortingFn: 'basic',
@@ -272,6 +309,7 @@ export function LoanAccount() {
           const loanIdentifier = rowData.name || rowData.appNo || rowData.id;
 
           const isDraft = rowData.status === 'DRAFT';
+          const isCancelled = rowData.status === 'SUBMIT';
 
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
@@ -337,20 +375,84 @@ export function LoanAccount() {
                     <IconDotsVertical size={14} />
                   </ActionIcon>
                 </Menu.Target>
-                <Menu.Dropdown>
-                  {isDraft ? (
-                    <Menu.Item onClick={() => updateStatus({ id: loanIdentifier, action: 'approved' })}>
-                      Submit
-                    </Menu.Item>
-                  ) : (
-                    <Menu.Item
-                      color="danger"
-                      onClick={() => updateStatus({ id: loanIdentifier, action: 'cancelled' })}
-                    >
-                      Cancel
-                    </Menu.Item>
-                  )}
-                </Menu.Dropdown>
+               <Menu.Dropdown>
+  {isDraft ? (
+    <Menu.Item
+      onClick={() => {
+        openCommonModal({
+          heading: "Submit Loan Booking",
+          subtitle: "Please confirm this action before continuing.",
+          body: (
+            <>
+              Are you sure you want to submit loan booking{" "}
+              <Text span fw={600}>
+                {loanIdentifier}
+              </Text>{" "}
+              for approval?
+            </>
+          ),
+          color: "green",
+          buttons: [
+            {
+              label: "Cancel",
+              variant: "default",
+            },
+            {
+              label: "Submit",
+              color: "green",
+              onClick: () => {
+                updateStatus({
+                  id: loanIdentifier,
+                  action: "approved",
+                });
+              },
+            },
+          ],
+        });
+      }}
+    >
+      Submit
+    </Menu.Item>
+  ) : !isCancelled ? (
+    <Menu.Item
+      color="danger"
+      onClick={() => {
+        openCommonModal({
+          heading: "Cancel Loan Booking",
+          subtitle: "This action cannot be undone.",
+          body: (
+            <>
+              Are you sure you want to cancel loan booking{" "}
+              <Text span fw={600}>
+                {loanIdentifier}
+              </Text>
+              ?
+            </>
+          ),
+          color: "red",
+          buttons: [
+            {
+              label: "Back",
+              variant: "default",
+            },
+            {
+              label: "Cancel Booking",
+              color: "red",
+              onClick: () => {
+                updateStatus({
+                  id: loanIdentifier,
+                  action: "cancelled",
+                });
+              },
+            },
+          ],
+        });
+      }}
+    >
+      Cancel
+    </Menu.Item>
+  ) : null}
+</Menu.Dropdown>
               </Menu>
             </Group>
           );
@@ -438,14 +540,15 @@ export function LoanAccount() {
           border: '1px solid var(--mantine-color-slate-2)',
         }}
       >
+        {/* <Group gap="xs" wrap="nowrap" align="center" justify="space-between"> */}
         <Group gap="xs" wrap="nowrap" align="center">
           <TextInput
   className="lms-search"
   size="sm"
   radius="xl"
   placeholder="Application No. / Customer"
-  leftSection={<IconSearch size={14} />}
-  style={{ width: 280, flexShrink: 1, minWidth: 160 }}  
+   leftSection={<IconSearch size={14} />}
+  style={{ flex: 1, minWidth: 220 }}
   styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
   value={search}
   onChange={(e) => {
@@ -513,6 +616,7 @@ export function LoanAccount() {
           <Button size="sm" radius="xl" variant="default" px="sm" style={{ flexShrink: 0 }} onClick={resetFilters}>
             Reset
           </Button>
+           
           <Button
             size="sm"
             radius="xl"
@@ -532,7 +636,8 @@ export function LoanAccount() {
           >
             Add Booking
           </Button>
-        </Group>
+          </Group>
+       {/* </Group> */}
       </Paper>
 
 
