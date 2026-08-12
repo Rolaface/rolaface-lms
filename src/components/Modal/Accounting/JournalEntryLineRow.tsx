@@ -63,6 +63,12 @@ const JournalEntryLineRow: React.FC<JournalEntryLineRowProps> = ({
       </Table.Td>
       <Table.Td>
         <Select
+          // Remounts the input whenever the selected account changes, so
+          // Mantine's internal search-input scroll position resets to the
+          // start. Without this, the closed field kept the scroll offset
+          // from the last search/select and showed a mid-string slice
+          // (e.g. "FPL - R -> (ZMW)") instead of the name's beginning.
+          key={`account-${index}-${entry.account}`}
           size="xs"
           placeholder="Select account"
           searchable
@@ -77,6 +83,27 @@ const JournalEntryLineRow: React.FC<JournalEntryLineRowProps> = ({
           }}
           disabled={isReadOnly}
           error={rowError?.account}
+          comboboxProps={{
+            width: "max-content",
+            position: "bottom-start",
+            withinPortal: true,
+          }}
+          styles={{
+            dropdown: { maxWidth: 480 },
+            option: {
+              whiteSpace: "nowrap",
+              overflow: "visible",
+              textOverflow: "unset",
+            },
+            // Closed-state field: if the name is too long for the column,
+            // truncate cleanly from the end with "..." instead of the
+            // scroll-offset artifact described above.
+            input: {
+              textOverflow: "ellipsis",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+            },
+          }}
         />
       </Table.Td>
 
@@ -138,7 +165,10 @@ const JournalEntryLineRow: React.FC<JournalEntryLineRowProps> = ({
                   },
                 }}
                 rightSection={
-                  <IconAlertTriangle size={13} color="var(--mantine-color-danger-5)" />
+                  <IconAlertTriangle
+                    size={13}
+                    color="var(--mantine-color-danger-5)"
+                  />
                 }
               />
             </Box>
@@ -174,12 +204,31 @@ const JournalEntryLineRow: React.FC<JournalEntryLineRowProps> = ({
       <Table.Td>
         {isPartyDropdown ? (
           <Select
+            key={`party-${index}-${entry.party}`}
             size="xs"
             searchable
             data={toSelectData(partyOptions)}
             value={entry.party || null}
             onChange={(value) => onChange(index, "party", value || "")}
             disabled={isReadOnly}
+            comboboxProps={{
+              width: "max-content",
+              position: "bottom-start",
+              withinPortal: true,
+            }}
+            styles={{
+              dropdown: { maxWidth: 400 },
+              option: {
+                whiteSpace: "nowrap",
+                overflow: "visible",
+                textOverflow: "unset",
+              },
+              input: {
+                textOverflow: "ellipsis",
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+              },
+            }}
           />
         ) : (
           <TextInput
