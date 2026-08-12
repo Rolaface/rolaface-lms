@@ -27,7 +27,9 @@ import {
   IconSearch,
   IconCashBanknote,
   IconTrash,
-  IconAlertCircle, IconDotsVertical
+  IconAlertCircle, IconDotsVertical,
+  IconAlertTriangle,
+  IconCheck
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -42,6 +44,7 @@ import { LoanDisbursementModal } from '../../../components/Modal/LoanDisbursemen
 import { getAllLoansDisbursement, deleteLoanDisbursement, changeLoanDsbrStatus } from '../../../api/loanDisbursementAPi';  
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { modals } from '@mantine/modals';
+import {  openCommonModal } from '../../../components/Modal/AlertModal';
 interface DisbursementRow {
   id: string; // Maps to 'name'
   againstLoan: string;
@@ -359,7 +362,7 @@ const filteredData = useMemo(() => {
                     <IconDotsVertical size={14} />
                   </ActionIcon>
                 </Menu.Target>
-                <Menu.Dropdown>
+                {/* <Menu.Dropdown>
                   {isDraft ? (
                     <Menu.Item
                       onClick={() => {
@@ -398,7 +401,91 @@ const filteredData = useMemo(() => {
                       Cancel
                     </Menu.Item>
                   ) : null}
-                </Menu.Dropdown>
+                </Menu.Dropdown> */}
+                <Menu.Dropdown>
+  {isDraft ? (
+    <Menu.Item
+      onClick={() => {
+        openCommonModal({
+  heading: "Submit Loan Disbursement",
+  subtitle: "Please confirm this action before continuing.",
+
+  body: (
+    <>
+      Are you sure you want to submit loan disbursement{" "}
+      <Text span fw={600}>
+        {row.id}
+      </Text>{" "}
+      for approval?
+    </>
+  ),
+
+  color: "green",
+
+  buttons: [
+    {
+      label: "Cancel",
+      variant: "default",
+    },
+    {
+      label: "Submit",
+      color: "green",
+      onClick: () => {
+        statusMutation.mutate({
+          id: row.id,
+          action: "approved",
+        });
+      },
+    },
+  ],
+});
+      }}
+    >
+      Submit
+    </Menu.Item>
+  ) : !isCancelled ? (
+    <Menu.Item
+      color="red"
+      onClick={() => {
+      openCommonModal({
+  heading: "Cancel Loan Disbursement",
+  subtitle: "This action cannot be undone.",
+
+  body: (
+    <>
+      Are you sure you want to cancel loan disbursement{" "}
+      <Text span fw={600}>
+        {row.id}
+      </Text>
+      ?
+    </>
+  ),
+
+  color: "red",
+
+  buttons: [
+    {
+      label: "Back",
+      variant: "default",
+    },
+    {
+      label: "Cancel Disbursement",
+      color: "red",
+      onClick: () => {
+        statusMutation.mutate({
+          id: row.id,
+          action: "cancelled",
+        });
+      },
+    },
+  ],
+});
+      }}
+    >
+      Cancel
+    </Menu.Item>
+  ) : null}
+</Menu.Dropdown>
               </Menu>
             </Group>
           );
