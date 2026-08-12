@@ -4,8 +4,20 @@ import type { LoanAccount, LoanRepaymentFormValues, PaymentEffectResult } from "
 
 export const PAYMENT_MODES = ["Bank Draft", "Cash", "Cheque", "Credit Card", "Wire Transfer"];
 
+
+const NATURE_VALUES = ["PAY_DUES", "PARTIAL", "FULL_SETTLEMENT"] as const;
+type NatureOfPayment = (typeof NATURE_VALUES)[number];
+
+export function fromRepaymentType(
+  repaymentType: string | null | undefined
+): NatureOfPayment | undefined {
+  return NATURE_VALUES.find((n) => toRepaymentType(n) === repaymentType);
+}
+
 export function toRepaymentType(nature: LoanRepaymentFormValues["natureOfPayment"]) {
-  return nature === "FULL_SETTLEMENT" ? "Full Settlement" : "Normal Repayment";
+  if (nature === "FULL_SETTLEMENT") return "Full Settlement";
+  if (nature === "PARTIAL") return "Pre Payment"; 
+  return "Normal Repayment";
 }
 
 export const PAYMENT_NATURE_OPTIONS = [

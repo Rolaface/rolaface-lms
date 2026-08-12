@@ -96,20 +96,14 @@ export const openCommonModal = ({
           >
             {heading}
           </Text>
-<Text
-  size="sm"
-  c="dimmed"
-  ta="center"
->
-  {subtitle}
-</Text>
           <Text
             size="sm"
             c="dimmed"
             ta="center"
           >
-            Please review the information below.
+            {subtitle}
           </Text>
+
         </Stack>
 
         {/* Body */}

@@ -17,6 +17,7 @@ import { PAYMENT_MODES, PAYMENT_NATURE_OPTIONS } from "../../../utils/Loanrepaym
 
 const chevronDown = <IconChevronDown size={14} style={{ color: "var(--mantine-color-slate-4)" }} />;
 
+
 interface PaymentExecutionPanelProps {
   form: UseFormReturnType<LoanRepaymentFormValues>;
   selectedLoan: LoanAccount | null;
@@ -120,8 +121,7 @@ export function PaymentExecutionPanel({
             </div>
           </div>
 
-          {/* Amount to Pay / Payment Mode / Account Number — all three now use the
-              same size + no NumberInput stepper, so the row lines up cleanly. */}
+       
          <SimpleGrid cols={4} spacing="xl">
             <NumberInput
               size="sm"
@@ -149,7 +149,7 @@ export function PaymentExecutionPanel({
             <TextInput
               size="sm"
               label="Account Number"
-              placeholder="Debit account number"
+              placeholder="Enter account no"
               disabled={isView}
               leftSection={<IconBuildingBank size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
               {...form.getInputProps("accountNumber")}
@@ -159,7 +159,7 @@ export function PaymentExecutionPanel({
               withAsterisk
               label="Reference Number"
               disabled={isView}
-              placeholder="e.g. UTR / cheque no."
+              placeholder="Enter reference no"
               leftSection={<IconHash size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
               {...form.getInputProps("referenceNumber")}
             />

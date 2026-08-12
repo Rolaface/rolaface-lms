@@ -1,5 +1,4 @@
-// Shared types used across the LoanRepayment component split.
-// Extracted from the original LoanRepaymentModal.tsx without any logic changes.
+
 
 export interface LoanAccount {
   id: string;
@@ -35,12 +34,10 @@ export interface LoanRepaymentFormData {
   remark: string;
 }
 
-// The actual shape returned by useForm()'s initialValues in LoanRepaymentModal.tsx.
+
 export type LoanRepaymentFormValues = Omit<LoanRepaymentFormData, "loanAc" | "customerName" | "loanType">;
 
-// Shape of `duesResponse?.message` returned by getLoanDues.
-// Kept optional/loose on purpose since the fields come from the API layer
-// (api/loanRepaymentApi.ts) which this refactor does not touch.
+
 export interface LoanDuesSummary {
   due_date?: string;
   payable_principal_amount?: number;
