@@ -223,17 +223,19 @@ const handleSubmit = (values: typeof form.values) => {
     }));
 
     // ADDED: Collateral Mapping
-    payload.collaterals = {
-      status: collateral.status || "",
-      reference_no: collateral.reference_no || "",
-      description: collateral.description || "",
-      items: collateral.items.map((item) => ({
-        loan_security: item.loan_security || "",
-        qty: Number(item.qty) || 0,
-        loan_security_price: Number(item.loan_security_price) || 0,
-        amount: Number(item.amount) || 0,
-      })),
-    };
+    if (collateral.items.length > 0) {
+      payload.collaterals = {
+        status: collateral.status || "",
+        reference_no: collateral.reference_no || "",
+        description: collateral.description || "",
+        items: collateral.items.map((item) => ({
+          loan_security: item.loan_security || "",
+          qty: Number(item.qty) || 0,
+          loan_security_price: Number(item.loan_security_price) || 0,
+          amount: Number(item.amount) || 0,
+        })),
+      };
+    }
 
     if (values.fixedRepaymentsIn === "TENOR") {
       payload.repayment_periods = tenureMonths;
@@ -408,7 +410,12 @@ useEffect(() => {
 const handleReset = () => {
   form.reset();
   setCharges([{ id: Date.now().toString(), feeName: "", amount: "", account: "", treatment: "" }]);
-  setCollateral([]);
+  setCollateral({
+  status: "Pledged",
+  reference_no: "",
+  description: "",
+  items: [],
+});
   setCoApplicants([{ id: Date.now().toString(), name: "", email: "", mobile: "" }]);
   setCoApplicantSearch("");
   setDocuments(DEFAULT_DOCUMENTS);
