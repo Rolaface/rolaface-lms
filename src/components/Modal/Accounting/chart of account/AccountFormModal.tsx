@@ -7,8 +7,6 @@ import {
   Button,
   Text,
   Box,
-  Grid,
-  Stack,
   ThemeIcon,
   ScrollArea,
   useMantineTheme,
@@ -16,9 +14,6 @@ import {
 import { IconX, IconMinus, IconBuildingBank } from '@tabler/icons-react';
 import { useAccountForm, ROOT_TYPE_OPTIONS, ACCOUNT_TYPE_OPTIONS } from '../../../../hooks/Accounting/chart of account/UseAccountForm';
 import type { COAAccount } from '../../../../api/Accounting/Chartofaccounts.api';
-// NOTE: path inferred by matching LoanAccountModal's "../../shared/ModalFooter" depth
-// against this file's own relative-import depth. Adjust if your ModalFooter actually
-// lives somewhere else.
 import { ModalFooter } from '../../../shared/ModalFooter';
 
 interface AccountFormModalProps {
@@ -147,75 +142,76 @@ export function AccountFormModal({
         {/* Body */}
         <ScrollArea type="auto" scrollbarSize={8} style={{ flex: 1, minHeight: 0 }} bg="slate.0">
           <Box px="lg" pt="sm" pb="lg">
-            <Grid gap="md" align="start">
-              <Grid.Col span={{ base: 12, md: 8 }}>
-                <Stack gap="md">
-                  <TextInput
-                    label="Account Name"
-                    value={isEditMode ? editAccount?.account_name ?? '' : form.accountName}
-                    onChange={(e) => setField('accountName', e.currentTarget.value)}
-                    required={!isEditMode}
-                    disabled={isEditMode}
-                    error={errors.accountName}
-                    description="Note: please don't create accounts for Customers and Suppliers"
-                  />
+ 
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <div className="md:col-span-5">
+                <TextInput
+                  label="Account Name"
+                  value={isEditMode ? editAccount?.account_name ?? '' : form.accountName}
+                  onChange={(e) => setField('accountName', e.currentTarget.value)}
+                  required={!isEditMode}
+                  disabled={isEditMode}
+                  error={errors.accountName}
+                />
+              </div>
 
-                  <Grid gap="md">
-                    <Grid.Col span={6}>
-                      <TextInput
-                        label="Account Number"
-                        value={form.accountNumber}
-                        onChange={(e) => setField('accountNumber', e.currentTarget.value)}
-                        description="Included as a prefix in the account name"
-                      />
-                    </Grid.Col>
-                    <Grid.Col span={6}>
-                      <TextInput
-                        label="Currency"
-                        value={form.currency}
-                        onChange={(e) => setField('currency', e.currentTarget.value)}
-                        placeholder={baseCurrency}
-                        description="Defaults to the company's base currency if left blank"
-                      />
-                    </Grid.Col>
-                  </Grid>
-                </Stack>
-              </Grid.Col>
+              <div className="md:col-span-4">
+                <Select
+                  label="Account Type"
+                  placeholder="Select account type"
+                  data={ACCOUNT_TYPE_OPTIONS}
+                  value={form.accountType}
+                  onChange={(v) => setField('accountType', v ?? '')}
+                  searchable
+                  clearable
+                />
+              </div>
 
-              <Grid.Col span={{ base: 12, md: 4 }}>
-                <Stack gap="md">
+
+              <div className="md:col-span-3 md:row-span-2">
+                <Checkbox
+                  label="Is Group"
+                  checked={form.isGroup}
+                  onChange={(e) => setField('isGroup', e.currentTarget.checked)}
+                  description="Group accounts can hold child accounts; entries only post against non-group accounts"
+                  mt="md"
+                />
+              </div>
+
+
+              <div className="md:col-span-5">
+                <TextInput
+                  label="Account Number"
+                  value={form.accountNumber}
+                  onChange={(e) => setField('accountNumber', e.currentTarget.value)}
+                />
+              </div>
+
+              {/* Row 2, cols 6-7 */}
+              <div className="md:col-span-2">
+                <TextInput
+                  label="Currency"
+                  value={form.currency}
+                  onChange={(e) => setField('currency', e.currentTarget.value)}
+                  placeholder={baseCurrency}
+                />
+              </div>
+
+
+              <div className="md:col-span-2">
+                {form.isGroup && (
                   <Select
-                    label="Account Type"
-                    placeholder="Select account type"
-                    data={ACCOUNT_TYPE_OPTIONS}
-                    value={form.accountType}
-                    onChange={(v) => setField('accountType', v ?? '')}
-                    searchable
-                    clearable
-                    description="Optional. Used to filter in various transactions."
+                    label="Root Type"
+                    placeholder="Select root type"
+                    data={ROOT_TYPE_OPTIONS}
+                    value={form.rootType}
+                    onChange={(v) => setField('rootType', v ?? '')}
+                    required
+                    error={errors.rootType}
                   />
-
-                  <Checkbox
-                    label="Is Group"
-                    checked={form.isGroup}
-                    onChange={(e) => setField('isGroup', e.currentTarget.checked)}
-                    description="Group accounts can hold child accounts; entries only post against non-group accounts"
-                  />
-
-                  {form.isGroup && (
-                    <Select
-                      label="Root Type"
-                      placeholder="Select root type"
-                      data={ROOT_TYPE_OPTIONS}
-                      value={form.rootType}
-                      onChange={(v) => setField('rootType', v ?? '')}
-                      required
-                      error={errors.rootType}
-                    />
-                  )}
-                </Stack>
-              </Grid.Col>
-            </Grid>
+                )}
+              </div>
+            </div>
           </Box>
         </ScrollArea>
 
@@ -228,7 +224,6 @@ export function AccountFormModal({
             submitLabel={isEditMode ? 'Update Account' : 'Save Account'}
             submitLoading={loading}
             onSubmit={handleSubmit}
-           
           />
         </Box>
       </Box>
