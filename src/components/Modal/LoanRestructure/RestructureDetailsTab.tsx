@@ -49,7 +49,7 @@ export function RestructureDetailsTab({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <div className="flex items-center gap-2 mb-3">         
+        <div className="flex items-center gap-2 mb-3">
         </div>
         <SegmentedControl
           fullWidth
@@ -107,7 +107,7 @@ export function RestructureDetailsTab({
                 Topup Details
               </Text>
             </div>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            <div className="grid grid-cols-2 gap-y-4">
               <NumberInput
                 size="sm"
                 withAsterisk
@@ -118,6 +118,7 @@ export function RestructureDetailsTab({
                 onChange={(v) => onTopupAmountChange(v as number | "")}
                 thousandSeparator=","
                 classNames={labelClass}
+                className="max-w-[220px]"
               />
               <NumberInput
                 size="sm"
@@ -128,6 +129,7 @@ export function RestructureDetailsTab({
                 onChange={(v) => onNewPrincipalChange(v as number | "")}
                 thousandSeparator=","
                 classNames={labelClass}
+                className="max-w-[220px]"
               />
             </div>
           </>
