@@ -18,6 +18,47 @@ interface CollectionTabProps {
   form: UseFormReturnType<any>;
 }
 
+interface CollectionColumnProps {
+  col: { key: string; label: string };
+  selectedName: string | null;
+  collectionSequenceOptions: ReturnType<typeof toOffsetOrderOptions>;
+  form: UseFormReturnType<any>;
+}
+
+function CollectionColumn({ col, selectedName, collectionSequenceOptions, form }: CollectionColumnProps) {
+  const { data: detailResponse, isFetching } = useQuery({
+    queryKey: ["loanDemandOffsetOrderDetail", selectedName],
+    queryFn: () => getLoanDemandOffsetOrderDetail(selectedName as string),
+    enabled: !!selectedName,
+  });
+
+  const components: OffsetOrderComponent[] =
+    (detailResponse as any)?.data?.components ??
+    (detailResponse as any)?.message?.data?.components ??
+    [];
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Select
+        size="xs"
+        searchable
+        rightSection={<IconChevronDown size={14} className="text-slate-400" />}
+        label={col.label}
+        placeholder="Select sequence"
+        data={collectionSequenceOptions}
+        withAsterisk
+        leftSection={<IconChip icon={IconClipboardList} color="indigoAlt" />}
+        leftSectionWidth={50}
+        classNames={labelProps}
+        {...form.getInputProps(`collectionSeq.${col.key}`)}
+      />
+
+      {/* Table stays hidden until a sequence is selected for this column */}
+      {selectedName && <DemandTypeTable components={components} isLoading={isFetching} />}
+    </div>
+  );
+}
+
 export function CollectionTab({ form }: CollectionTabProps) {
   // List of available offset-order sequences (Standard, Sub Standard, etc.)
   // used to populate all 4 dropdowns.
@@ -37,40 +78,14 @@ export function CollectionTab({ form }: CollectionTabProps) {
         {collectionAssetColumns.map((col) => {
           const selectedName: string | null = form.values.collectionSeq?.[col.key] || null;
 
-          // One detail query per column, keyed by that column's own
-          // selected value — each column fetches and shows independently.
-          const { data: detailResponse, isFetching } = useQuery({
-            queryKey: ["loanDemandOffsetOrderDetail", selectedName],
-            queryFn: () => getLoanDemandOffsetOrderDetail(selectedName as string),
-            enabled: !!selectedName,
-          });
-
-          const components: OffsetOrderComponent[] =
-            (detailResponse as any)?.data?.components ??
-            (detailResponse as any)?.message?.data?.components ??
-            [];
-
           return (
-            <div key={col.key} className="flex flex-col gap-3">
-              <Select
-                size="xs"
-                searchable
-                rightSection={<IconChevronDown size={14} className="text-slate-400" />}
-                label={col.label}
-                placeholder="Select sequence"
-                data={collectionSequenceOptions}
-                withAsterisk
-                leftSection={<IconChip icon={IconClipboardList} color="indigoAlt" />}
-                leftSectionWidth={50}
-                classNames={labelProps}
-                {...form.getInputProps(`collectionSeq.${col.key}`)}
-              />
-
-              {/* Table stays hidden until a sequence is selected for this column */}
-              {selectedName && (
-                <DemandTypeTable components={components} isLoading={isFetching} />
-              )}
-            </div>
+            <CollectionColumn
+              key={col.key}
+              col={col}
+              selectedName={selectedName}
+              collectionSequenceOptions={collectionSequenceOptions}
+              form={form}
+            />
           );
         })}
       </div>

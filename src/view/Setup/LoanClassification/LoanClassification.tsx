@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { modals } from '@mantine/modals';
 import {
   ActionIcon,
   Badge,
@@ -48,6 +47,8 @@ import {
   getAllLoanClassifications,
   deleteLoanClassification,
 } from '../../../api/LoanClassificationApi';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
+import { parseFrappeError } from '../../../utils/parseFrappeError';
 
 const EMPTY_CLASSIFICATIONS: LoanClassificationData[] = [];
 const DEFAULT_SORTING = [{ id: 'code', desc: false }];
@@ -105,12 +106,61 @@ export function LoanClassification() {
     retry: false,
   });
 
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
   const { mutate: removeClassification, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteLoanClassification(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loanClassifications'] });
+      showSuccess('Classification Deleted', 'Loan classification deleted successfully.');
     },
+    onError: (error: any) => showError('Delete Failed', error),
   });
+
+  const handleDelete = (row: LoanClassificationData) => {
+    openCommonModal({
+      heading: 'Delete Loan Classification',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete classification{' '}
+          <Text span fw={600}>
+            {row.code}
+          </Text>
+          ?
+        </>
+      ),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => {
+            removeClassification(row.code);
+          },
+        },
+      ],
+    });
+  };
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -132,8 +182,11 @@ export function LoanClassification() {
       }),
       columnHelper.accessor('code', {
         header: 'Code',
-        cell: (info) => <IconText icon={<IconLayersLinked size={13} />} mono>{info.getValue()}</IconText>,
-      }),
+  cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {info.getValue()}
+          </Text>
+        )      }),
       columnHelper.accessor('name', {
         header: 'Name',
         cell: (info) => (
@@ -208,20 +261,8 @@ export function LoanClassification() {
                   variant="subtle"
                   color="danger"
                   radius="md"
-                  disabled={isDeleting}
-                  onClick={() => {
-                    modals.openConfirmModal({
-                      title: 'Delete loan classification',
-                      children: (
-                        <Text size="sm">
-                          Are you sure you want to delete classification <b>{row.code}</b>? This cannot be undone.
-                        </Text>
-                      ),
-                      labels: { confirm: 'Delete', cancel: 'Cancel' },
-                      confirmProps: { color: 'danger' },
-                      onConfirm: () => removeClassification(row.code),
-                    });
-                  }}
+                  loading={isDeleting}
+                  onClick={() => handleDelete(row)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>

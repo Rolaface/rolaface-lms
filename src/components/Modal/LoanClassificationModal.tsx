@@ -13,7 +13,7 @@ import {
   TextInput,
   ThemeIcon,
 } from "@mantine/core";
-import { IconCheck, IconFileText, IconLayersLinked, IconX } from "@tabler/icons-react";
+import { IconLayersLinked, IconX } from "@tabler/icons-react";
 
 import type { LoanClassificationData } from "../../types/loanClassification";
 import {
@@ -21,7 +21,7 @@ import {
   updateLoanClassification,
 } from "../../api/LoanClassificationApi";
 import { parseFrappeError } from "../../utils/parseFrappeError";
-import { showSuccess, showApiError } from "../../utils/alert"
+import { openCommonModal } from "./AlertModal";
 import { ModalFooter } from "../shared/ModalFooter";
 
 export type { LoanClassificationData } from "../../types/loanClassification";
@@ -94,17 +94,45 @@ export function LoanClassificationModal({
     setFormData((previous) => ({ ...previous, [field]: value }));
   };
 
+  // ---------- ALERT HELPERS (same pattern as AddLoanCategoryModal) ----------
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const showErrorMessage = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body,
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
+
   const createMutation = useMutation({
     mutationFn: (payload: LoanClassificationData) => createLoanClassification(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanClassifications"] });
-      showSuccess("Loan classification created successfully.");
+      showSuccess("Classification Created", "Loan classification created successfully.");
       onClose();
     },
-    onError: (err) => {
-      console.error("Create loan classification failed:", err);
-      showApiError(parseFrappeError(err));
-    },
+    onError: (err) => showError("Create Failed", err),
   });
 
   const updateMutation = useMutation({
@@ -112,36 +140,33 @@ export function LoanClassificationModal({
       updateLoanClassification(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanClassifications"] });
-      showSuccess("Loan classification updated successfully.");
+      showSuccess("Classification Updated", "Loan classification updated successfully.");
       onClose();
     },
-    onError: (err) => {
-      console.error("Update loan classification failed:", err);
-      showApiError(parseFrappeError(err));
-    },
+    onError: (err) => showError("Update Failed", err),
   });
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   const handleSave = () => {
     if (formData.level === "") {
-      showApiError("Level is required.", "Validation Error");
+      showErrorMessage("Validation Error", "Level is required.");
       return;
     }
     if (!formData.code.trim() || !formData.name.trim()) {
-      showApiError("Code and Name are required.", "Validation Error");
+      showErrorMessage("Validation Error", "Code and Name are required.");
       return;
     }
     if (formData.min_dpd_range === "" || formData.max_dpd_range === "") {
-      showApiError("Min and Max DPD are required.", "Validation Error");
+      showErrorMessage("Validation Error", "Min and Max DPD are required.");
       return;
     }
     if (Number(formData.max_dpd_range) < Number(formData.min_dpd_range)) {
-      showApiError("Max DPD must be greater than or equal to Min DPD.", "Validation Error");
+      showErrorMessage("Validation Error", "Max DPD must be greater than or equal to Min DPD.");
       return;
     }
     if (formData.provision_rate === "") {
-      showApiError("Provision rate is required.", "Validation Error");
+      showErrorMessage("Validation Error", "Provision rate is required.");
       return;
     }
 
