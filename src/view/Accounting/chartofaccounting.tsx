@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+
 import {
   useReactTable,
   getCoreRowModel,
@@ -42,9 +43,10 @@ import {
 } from '@tabler/icons-react';
 
 import { type COAAccount, formatAmount } from '../../api/Accounting/Chartofaccounts.api';
-import { useChartOfAccounts } from '../../hooks/Accounting/Usechartofaccounts';
+import { useChartOfAccounts } from '../../hooks/Accounting/chart of account/Usechartofaccounts';
 
 import { useCurrencyReady } from '../../store/currencyStore';
+import { AccountFormModal } from '../../components/Modal/Accounting/chart of account/AccountFormModal';
 
 /* Theme tokens, not raw Mantine colors — keep this the single mapping
    from root_type -> theme color so it stays in sync with mantineTheme.ts */
@@ -181,6 +183,7 @@ function ViewAccountModal({ account, onClose }: { account: COAAccount | null; on
 function useColumns(
   onView: (a: COAAccount) => void,
   onDelete: (a: COAAccount) => void,
+  onAddChild: (a: COAAccount) => void,   // 👈 CHANGED: naya param
   baseCurrency: string,
 ): ColumnDef<COAAccount>[] {
   return useMemo<ColumnDef<COAAccount>[]>(
@@ -305,7 +308,12 @@ function useColumns(
                     View
                   </Menu.Item>
                   {node.is_group === 1 ? (
-                    <Menu.Item leftSection={<IconGitBranch size={13} />}>Add Child</Menu.Item>
+                    <Menu.Item
+                      leftSection={<IconGitBranch size={13} />}
+                      onClick={() => onAddChild(node)}   // 👈 CHANGED: wired up
+                    >
+                      Add Child
+                    </Menu.Item>
                   ) : (
                     <Menu.Item leftSection={<IconBookmark size={13} />}>View Ledger</Menu.Item>
                   )}
@@ -324,7 +332,7 @@ function useColumns(
         },
       },
     ],
-    [onView, onDelete, baseCurrency],
+    [onView, onDelete, onAddChild, baseCurrency],   // 👈 CHANGED: dep added
   );
 }
 
@@ -345,7 +353,19 @@ export function ChartOfAccounts() {
     baseCurrency,
   } = useChartOfAccounts();
 
-  const columns = useColumns(setViewAccount, handleDelete, baseCurrency);
+  // 👈 CHANGED: state ab columns se PEHLE define hui hai, kyunki
+  // useColumns() ko setFormModal chahiye onAddChild ke liye
+  const [formModal, setFormModal] = useState<{
+    parent?: COAAccount | null;
+    edit?: COAAccount | null;
+  } | null>(null);
+
+  const columns = useColumns(
+    setViewAccount,
+    handleDelete,
+    (node) => setFormModal({ parent: node }),   // 👈 CHANGED: Add Child handler
+    baseCurrency,
+  );
 
   const table = useReactTable({
     data: tableData,
@@ -375,6 +395,20 @@ export function ChartOfAccounts() {
       `}</style>
 
       <ViewAccountModal account={viewAccount} onClose={() => setViewAccount(null)} />
+
+      {/* 👈 CHANGED: naya modal render ho raha hai */}
+      <AccountFormModal
+        opened={formModal !== null}
+        onClose={() => setFormModal(null)}
+        onSuccess={handleRefresh}
+        company={import.meta.env.VITE_COMPANY_NAME}
+        // ⚠️ TEMP: abhi env var se company le raha hoon (old project jaisa).
+        // Agar useChartOfAccounts() company return karta hai to yahan
+        // `company={company}` kar dena — bas upar destructure me add karna.
+        baseCurrency={baseCurrency}
+        parentAccount={formModal?.parent}
+        editAccount={formModal?.edit}
+      />
 
       <FilterBar
         searchTerm={searchTerm}

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ExpandedState } from '@tanstack/react-table';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { showConfirm, showApiError, showSuccess } from '../../utils/alert';
-import { usePrefetchCurrencies } from '../../store/currencyStore';
+import { showConfirm, showApiError, showSuccess } from '../../../utils/alert';
+import { usePrefetchCurrencies } from '../../../store/currencyStore';
 import {
   type COAAccount,
   fetchChartOfAccounts,
   deleteAccount,
-} from '../../api/Accounting/Chartofaccounts.api';
+} from '../../../api/Accounting/Chartofaccounts.api';
 
 /* ───────────────── Tree helpers (unchanged) ───────────────── */
 
