@@ -43,7 +43,7 @@ import {
 } from '@tanstack/react-table';
 import { LoanRepaymentModal, type LoanRepaymentFormData } from '../../../components/Modal/LoanRepaymentModal';
 import { getAllLoanRepayment, deleteLoanRepayment, changeLoanRepaymentStatus } from '../../../api/loanRepaymentApi';
-import { modals } from '@mantine/modals';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 
@@ -155,57 +155,47 @@ export function LoanRepayment() {
 
   const queryClient = useQueryClient();
 
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
   const { mutate: removeRepayment, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteLoanRepayment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+      showSuccess('Repayment Deleted', 'Loan repayment deleted successfully.');
     },
-    onError: (error: any) => {
-      const errorMessage = parseFrappeError(error);
-
-      modals.open({
-        title: <Text fw={600} c="danger">Action Failed</Text>,
-        children: (
-          <div>
-            <Text size="sm" mb="lg">
-              {errorMessage}
-            </Text>
-            <Group justify="flex-end">
-              <Button onClick={() => modals.closeAll()} variant="default">
-                Close
-              </Button>
-            </Group>
-          </div>
-        ),
-      });
-    },
+    onError: (error: any) => showError('Delete Failed', error),
   });
 
   const { mutate: updateStatus } = useMutation({
     mutationFn: ({ id, action }: { id: string; action: string }) =>
       changeLoanRepaymentStatus(id, action),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+      const message =
+        variables.action === 'approved'
+          ? 'Loan repayment submitted successfully.'
+          : 'Loan repayment cancelled successfully.';
+      showSuccess(variables.action === 'approved' ? 'Repayment Submitted' : 'Repayment Cancelled', message);
     },
-    onError: (error: any) => {
-      const errorMessage = parseFrappeError(error);
-
-      modals.open({
-        title: <Text fw={600} c="danger">Action Failed</Text>,
-        children: (
-          <div>
-            <Text size="sm" mb="lg">
-              {errorMessage}
-            </Text>
-            <Group justify="flex-end">
-              <Button onClick={() => modals.closeAll()} variant="default">
-                Close
-              </Button>
-            </Group>
-          </div>
-        ),
-      });
-    },
+    onError: (error: any) => showError('Action Failed', error),
   });
 
   const rowsData = useMemo(() => {
@@ -237,16 +227,29 @@ export function LoanRepayment() {
   }, [rowsData, search, loanType, status]);
 
   const handleDelete = (id: string) => {
-    modals.openConfirmModal({
-      title: 'Delete loan repayment',
-      children: (
-        <Text size="sm">
-          Are you sure you want to delete repayment <b>{id}</b>? This cannot be undone.
-        </Text>
+    openCommonModal({
+      heading: 'Delete Loan Repayment',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete repayment{' '}
+          <Text span fw={600}>
+            {id}
+          </Text>
+          ?
+        </>
       ),
-      labels: { confirm: 'Delete', cancel: 'Cancel' },
-      confirmProps: { color: 'danger' },
-      onConfirm: () => removeRepayment(id),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => {
+            removeRepayment(id);
+          },
+        },
+      ],
     });
   };
 
@@ -403,16 +406,27 @@ export function LoanRepayment() {
                     {isDraft ? (
                       <Menu.Item
                         onClick={() => {
-                          modals.openConfirmModal({
-                            title: 'Submit loan',
-                            children: (
-                              <Text size="sm">
-                                Are you sure you want to submit loan <b>{row.id}</b> for approval?
-                              </Text>
+                          openCommonModal({
+                            heading: 'Submit Loan',
+                            subtitle: '',
+                            body: (
+                              <>
+                                Are you sure you want to submit loan{' '}
+                                <Text span fw={600}>
+                                  {row.id}
+                                </Text>{' '}
+                                for approval?
+                              </>
                             ),
-                            labels: { confirm: 'Submit', cancel: 'Cancel' },
-                            confirmProps: { color: 'success' },
-                            onConfirm: () => updateStatus({ id: row.id, action: 'approved' }),
+                            color: 'green',
+                            buttons: [
+                              { label: 'Cancel', variant: 'default' },
+                              {
+                                label: 'Submit',
+                                color: 'green',
+                                onClick: () => updateStatus({ id: row.id, action: 'approved' }),
+                              },
+                            ],
                           });
                         }}
                       >
@@ -422,16 +436,27 @@ export function LoanRepayment() {
                       <Menu.Item
                         color="danger"
                         onClick={() => {
-                          modals.openConfirmModal({
-                            title: 'Cancel loan',
-                            children: (
-                              <Text size="sm">
-                                Are you sure you want to cancel loan <b>{row.id}</b>? This cannot be undone.
-                              </Text>
+                          openCommonModal({
+                            heading: 'Cancel Loan',
+                            subtitle: 'This action cannot be undone.',
+                            body: (
+                              <>
+                                Are you sure you want to cancel loan{' '}
+                                <Text span fw={600}>
+                                  {row.id}
+                                </Text>
+                                ?
+                              </>
                             ),
-                            labels: { confirm: 'Cancel Loan', cancel: 'Back' },
-                            confirmProps: { color: 'danger' },
-                            onConfirm: () => updateStatus({ id: row.id, action: 'cancelled' }),
+                            color: 'red',
+                            buttons: [
+                              { label: 'Back', variant: 'default' },
+                              {
+                                label: 'Cancel Loan',
+                                color: 'red',
+                                onClick: () => updateStatus({ id: row.id, action: 'cancelled' }),
+                              },
+                            ],
                           });
                         }}
                       >
