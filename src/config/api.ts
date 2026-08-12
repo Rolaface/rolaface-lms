@@ -317,7 +317,7 @@ loan: {
      getCustomers:`${ERP_BASE}/api/method/custom_api.api.search.get_customers`,
     getReceivableAccounts: `${ERP_BASE}/api/method/custom_api.api.search.get_receivable_accounts`,
     getCurrency: `${ERP_BASE}/api/method/erpnext.setup.utils.get_exchange_rate`,
-
+    currencylistsearch:`${ERP_BASE}/api/method/custom_api.api.search.get_currencies`,
   },
   frappeUtilsAPI:{
  getCompanyCurrentFiscalYear: `${ERP_BASE}/api/method/custom_api.utils.frappe_utils.get_current_fiscal_year`,

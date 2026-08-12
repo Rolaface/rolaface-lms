@@ -24,11 +24,17 @@ export function useAccountOptions() {
         res?.data?.message?.data || res?.data?.message || res?.data?.data || res?.data || [];
 
       const options: SelectOption[] = Array.isArray(rawAccounts)
-        ? rawAccounts.map((item: any) => ({
-            label: `${item.name} -> (${item.account_currency})`,
-            value: item.name,
-            currency: item.account_currency || "",
-          }))
+        ? rawAccounts.map((item: any) => {
+          
+            const currency = item.account_currency || "";
+           const label = currency ? `${item.name} (${currency})` : item.name;
+
+            return {
+              label,
+              value: item.name,
+              currency,
+            };
+          })
         : [];
       return options;
     },

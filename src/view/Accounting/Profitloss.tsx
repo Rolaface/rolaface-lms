@@ -18,7 +18,7 @@ import {
   Text,
   Group,
   Stack,
-  SimpleGrid,
+  useMantineTheme,
 } from '@mantine/core';
 import {
   IconRefresh,
@@ -28,6 +28,7 @@ import {
   IconFileText,
   IconLayoutList,
   IconAlertCircle,
+  IconReceipt2,
 } from '@tabler/icons-react';
 
 import { type PLNode } from '../../api/Accounting/Profitloss.api';
@@ -61,12 +62,28 @@ function KpiStrip({
   const items = data?.summary ?? [];
 
   return (
-    <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+    <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--mantine-spacing-sm)' }}>
       {(loading || !data ? Array.from({ length: 3 }) : items).map((item: any, i) => (
-        <Paper key={item?.label ?? i} withBorder radius="md" p="sm">
-          <Text fz="10px" fw={700} tt="uppercase" c="slate.4" style={{ letterSpacing: '0.08em' }} mb={4}>
-            {item?.label ?? '—'}
-          </Text>
+        <Paper
+          key={item?.label ?? i}
+          withBorder
+          radius="lg"
+          p="md"
+          style={{ borderColor: 'var(--mantine-color-slate-2)' }}
+        >
+          <Group gap={6} mb="xs">
+            <IconReceipt2
+              size={14}
+              color={
+                !loading && item?.indicator === 'red'
+                  ? 'var(--mantine-color-danger-5)'
+                  : 'var(--mantine-color-success-6)'
+              }
+            />
+            <Text fz="10px" fw={700} tt="uppercase" c="slate.4" style={{ letterSpacing: '0.08em' }} truncate>
+              {item?.label ?? '—'}
+            </Text>
+          </Group>
           {loading || !data ? (
             <Box h={16} w={96} style={{ background: 'var(--mantine-color-slate-1)', borderRadius: 4 }} className="animate-pulse" />
           ) : (
@@ -81,110 +98,14 @@ function KpiStrip({
           )}
         </Paper>
       ))}
-    </SimpleGrid>
-  );
-}
-
-/* ───────────────── Filter bar ───────────────── */
-
-function FilterBar({
-  filters, setFilters, onRefresh, loading, allExpanded, onToggleExpand,
-}: {
-  filters: ReturnType<typeof useProfitLoss>['filters'];
-  setFilters: ReturnType<typeof useProfitLoss>['setFilters'];
-  onRefresh: () => void;
-  loading: boolean;
-  allExpanded: boolean;
-  onToggleExpand: () => void;
-}) {
-  return (
-    <Paper withBorder radius="md" p="xs" shadow="sm">
-      <Group gap="sm" wrap="wrap" align="flex-end">
-        <Select
-          size="xs"
-          label="Mode"
-          data={['Fiscal Year', 'Date Range']}
-          value={filters.mode}
-          onChange={(v) => {
-            const mode = (v || 'Fiscal Year') as typeof filters.mode;
-            setFilters((f) => ({ ...f, mode }));
-          }}
-          w={144}
-        />
-
-        <Select
-          size="xs"
-          label="Period"
-          data={['Monthly', 'Quarterly', 'Half-Yearly', 'Yearly']}
-          value={filters.periodicity}
-          onChange={(v) => setFilters((f) => ({ ...f, periodicity: (v || 'Monthly') as typeof filters.periodicity }))}
-          w={128}
-        />
-
-        {filters.mode === 'Fiscal Year' ? (
-          <TextInput
-            size="xs"
-            label="Fiscal Year"
-            type="text"
-            value={filters.from_fiscal_year}
-            onChange={(e) =>
-              setFilters((f) => ({
-                ...f,
-                from_fiscal_year: e.currentTarget.value,
-                to_fiscal_year: e.currentTarget.value,
-              }))
-            }
-            placeholder="2026-2027"
-            w={112}
-          />
-        ) : (
-          <>
-            <TextInput
-              size="xs"
-              label="From"
-              type="date"
-              value={filters.from_date}
-              onChange={(e) => setFilters((f) => ({ ...f, from_date: e.currentTarget.value }))}
-              w={150}
-            />
-            <TextInput
-              size="xs"
-              label="To"
-              type="date"
-              value={filters.to_date}
-              onChange={(e) => setFilters((f) => ({ ...f, to_date: e.currentTarget.value }))}
-              w={150}
-            />
-          </>
-        )}
-
-        <Box w={1} h={24} style={{ background: 'var(--mantine-color-slate-2)', alignSelf: 'stretch' }} />
-
-        <Button
-          size="xs"
-          variant="default"
-          ml="auto"
-          leftSection={allExpanded ? <IconChevronRight size={13} /> : <IconLayoutList size={13} />}
-          onClick={onToggleExpand}
-        >
-          {allExpanded ? 'Collapse' : 'Expand All'}
-        </Button>
-        <Button
-          size="xs"
-          variant="default"
-          leftSection={<IconRefresh size={13} className={loading ? 'animate-spin' : ''} />}
-          onClick={onRefresh}
-        >
-          Refresh
-        </Button>
-      </Group>
-    </Paper>
+    </Box>
   );
 }
 
 /* ───────────────── Page ───────────────── */
 
 export function ProfitLoss() {
+  const theme = useMantineTheme();
   const { filters, setFilters, data, tableData, isLoading, error, displayAmount, handleRefresh } = useProfitLoss();
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [allExpanded, setAllExpanded] = useState(false);
@@ -257,15 +178,14 @@ export function ProfitLoss() {
       const isTotal = col.fieldname === 'total';
       return {
         id: col.fieldname,
-        header: () => <Text fz="xs" fw={600} ta="right" w="100%">{col.label}</Text>,
+        header: col.label,
         size: isTotal ? 130 : 110,
         meta: { align: 'right' },
         cell: ({ row }) => (
           <Text
             fz="xs"
-            ta="right"
-            fw={isTotal ? 600 : 400}
-            c={isTotal ? 'slate.9' : 'slate.7'}
+            fw={isTotal ? 600 : 500}
+            c={isTotal ? 'slate.9' : 'info.5'}
             style={{ fontFamily: 'var(--mantine-font-family-monospace)', fontVariantNumeric: 'tabular-nums' }}
           >
             {isTotal ? displayAmount(row.original.total) : displayAmount(row.original.periods?.[col.fieldname] ?? 0)}
@@ -295,7 +215,7 @@ export function ProfitLoss() {
       <Stack align="center" py={80} gap="sm">
         <IconAlertCircle size={26} color="var(--mantine-color-danger-5)" />
         <Text fz="sm" c="danger.6">{error}</Text>
-        <Button size="xs" leftSection={<IconRefresh size={13} />} onClick={handleRefresh}>
+        <Button size="xs" variant="default" radius="xl" leftSection={<IconRefresh size={13} />} onClick={handleRefresh}>
           Retry
         </Button>
       </Stack>
@@ -304,20 +224,142 @@ export function ProfitLoss() {
 
   return (
     <Stack gap="sm" p="lg">
+      <style>{`
+        .pl-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
+        .pl-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+        .pl-row:hover td { background: ${theme.other?.rowHoverBg ?? 'var(--mantine-color-slate-0)'} !important; }
+      `}</style>
+
       <KpiStrip data={data} loading={isLoading && !data} displayAmount={displayAmount} />
 
-      <FilterBar
-        filters={filters}
-        setFilters={setFilters}
-        onRefresh={handleRefresh}
-        loading={isLoading}
-        allExpanded={allExpanded}
-        onToggleExpand={handleToggleExpand}
-      />
+      {/* Compact single-row toolbar — same pill pattern as JournalEntries,
+          instead of a tall boxed filter panel with its own header row. */}
+      <Paper
+        radius="xl"
+        p="xs"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        <Group gap="sm" wrap="wrap" align="center">
+          <Select
+            radius="xl"
+            size="xs"
+            data={['Fiscal Year', 'Date Range']}
+            value={filters.mode}
+            onChange={(v) => {
+              const mode = (v || 'Fiscal Year') as typeof filters.mode;
+              setFilters((f) => ({ ...f, mode }));
+            }}
+            w={128}
+          />
 
-      <Paper withBorder radius="md" shadow="sm" style={{ overflow: 'hidden' }}>
-        <Box style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 520, position: 'relative' }}>
-          <Table stickyHeader horizontalSpacing="sm" verticalSpacing={6} style={{ tableLayout: 'fixed', width: 'max-content', minWidth: '100%' }}>
+          <Select
+            radius="xl"
+            size="xs"
+            data={['Monthly', 'Quarterly', 'Half-Yearly', 'Yearly']}
+            value={filters.periodicity}
+            onChange={(v) => setFilters((f) => ({ ...f, periodicity: (v || 'Monthly') as typeof filters.periodicity }))}
+            w={120}
+          />
+
+          {filters.mode === 'Fiscal Year' ? (
+            <TextInput
+              radius="xl"
+              size="xs"
+              type="text"
+              value={filters.from_fiscal_year}
+              onChange={(e) =>
+                setFilters((f) => ({
+                  ...f,
+                  from_fiscal_year: e.currentTarget.value,
+                  to_fiscal_year: e.currentTarget.value,
+                }))
+              }
+              placeholder="2026-2027"
+              w={104}
+            />
+          ) : (
+            <>
+              <Group gap={4} wrap="nowrap">
+                <Text fz="xs" fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: 0.4 }}>
+                  From
+                </Text>
+                <TextInput
+                  radius="xl"
+                  size="xs"
+                  type="date"
+                  value={filters.from_date}
+                  onChange={(e) => setFilters((f) => ({ ...f, from_date: e.currentTarget.value }))}
+                  w={132}
+                />
+              </Group>
+              <Group gap={4} wrap="nowrap">
+                <Text fz="xs" fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: 0.4 }}>
+                  To
+                </Text>
+                <TextInput
+                  radius="xl"
+                  size="xs"
+                  type="date"
+                  value={filters.to_date}
+                  onChange={(e) => setFilters((f) => ({ ...f, to_date: e.currentTarget.value }))}
+                  w={132}
+                />
+              </Group>
+            </>
+          )}
+
+          <Group gap="xs" ml="auto" wrap="nowrap">
+            <Button
+              size="xs"
+              radius="xl"
+              variant="default"
+              leftSection={allExpanded ? <IconChevronRight size={13} /> : <IconLayoutList size={13} />}
+              onClick={handleToggleExpand}
+            >
+              {allExpanded ? 'Collapse' : 'Expand All'}
+            </Button>
+            <Button
+              size="xs"
+              radius="xl"
+              color="brand"
+              leftSection={<IconRefresh size={13} className={isLoading ? 'animate-spin' : ''} />}
+              onClick={handleRefresh}
+              style={{
+                background: theme.other?.brandGradient,
+                boxShadow: theme.other?.brandGlowShadowSm,
+              }}
+            >
+              Refresh
+            </Button>
+          </Group>
+        </Group>
+      </Paper>
+
+      {/* Data table — rounded-row / sticky-header language matching JournalEntries */}
+      <Paper
+        radius="lg"
+        p="sm"
+        style={{
+          background: 'var(--mantine-color-slate-0)',
+          border: '1px solid var(--mantine-color-slate-2)',
+        }}
+      >
+        <Box style={{ maxHeight: 'calc(100vh - 320px)', minHeight: 280, overflowY: 'auto', overflowX: 'auto' }}>
+          <Table
+            verticalSpacing="xs"
+            horizontalSpacing="sm"
+            fz="xs"
+            w="100%"
+            style={{
+              borderCollapse: 'separate',
+              borderSpacing: '0 6px',
+              tableLayout: 'fixed',
+              minWidth: '100%',
+            }}
+          >
             <Table.Thead>
               {table.getHeaderGroups().map((hg) => (
                 <Table.Tr key={hg.id}>
@@ -327,7 +369,22 @@ export function ProfitLoss() {
                         ? 'right'
                         : 'left';
                     return (
-                      <Table.Th key={header.id} style={{ width: header.getSize(), textAlign: align, whiteSpace: 'nowrap' }}>
+                      <Table.Th
+                        key={header.id}
+                        className="pl-thead-cell"
+                        style={{
+                          width: header.getSize(),
+                          textAlign: align,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.06em',
+                          color: 'var(--mantine-color-slate-5)',
+                          whiteSpace: 'nowrap',
+                          padding: '0 10px 6px',
+                          border: 'none',
+                        }}
+                      >
                         {flexRender(header.column.columnDef.header, header.getContext())}
                       </Table.Th>
                     );
@@ -338,15 +395,15 @@ export function ProfitLoss() {
             <Table.Tbody>
               {isLoading && !data ? (
                 <Table.Tr>
-                  <Table.Td colSpan={columns.length} h={260}>
+                  <Table.Td colSpan={columns.length} style={{ border: 'none' }} py={64}>
                     <Group justify="center">
-                      <Loader size="sm" color="indigoAlt.4" />
+                      <Loader size="sm" color="brand" />
                     </Group>
                   </Table.Td>
                 </Table.Tr>
               ) : rows.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={columns.length} py={64} ta="center">
+                  <Table.Td colSpan={columns.length} style={{ border: 'none' }} py={64} ta="center">
                     <Text fz="xs" c="slate.4">
                       No Profit &amp; Loss data.
                     </Text>
@@ -354,34 +411,36 @@ export function ProfitLoss() {
                 </Table.Tr>
               ) : (
                 rows.map((row) => (
-                  <Table.Tr key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <Table.Td key={cell.id} style={{ whiteSpace: 'nowrap' }}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </Table.Td>
-                    ))}
+                  <Table.Tr key={row.id} className="pl-row">
+                    {row.getVisibleCells().map((cell, idx) => {
+                      const align =
+                        (cell.column.columnDef.meta as { align?: string } | undefined)?.align === 'right'
+                          ? 'right'
+                          : 'left';
+                      return (
+                        <Table.Td
+                          key={cell.id}
+                          style={{
+                            textAlign: align,
+                            whiteSpace: 'nowrap',
+                            padding: '8px 10px',
+                            border: 'none',
+                            boxShadow: 'var(--mantine-shadow-xs)',
+                            borderTopLeftRadius: idx === 0 ? 'var(--mantine-radius-md)' : undefined,
+                            borderBottomLeftRadius: idx === 0 ? 'var(--mantine-radius-md)' : undefined,
+                            borderTopRightRadius: idx === row.getVisibleCells().length - 1 ? 'var(--mantine-radius-md)' : undefined,
+                            borderBottomRightRadius: idx === row.getVisibleCells().length - 1 ? 'var(--mantine-radius-md)' : undefined,
+                          }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </Table.Td>
+                      );
+                    })}
                   </Table.Tr>
                 ))
               )}
             </Table.Tbody>
           </Table>
-
-          {isLoading && data && (
-            <Box
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'color-mix(in srgb, var(--mantine-color-white) 60%, transparent)',
-                backdropFilter: 'blur(1px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 20,
-              }}
-            >
-              <Loader size="sm" color="indigoAlt.4" />
-            </Box>
-          )}
         </Box>
       </Paper>
     </Stack>
