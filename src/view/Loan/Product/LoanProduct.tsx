@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { modals } from '@mantine/modals';
 import {
   Box,
   Button,
@@ -18,7 +17,6 @@ import {
   Title,
   Stack,
   Loader,
-  Alert,
   useMantineTheme,
 } from '@mantine/core';
 import {
@@ -29,7 +27,6 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
-  IconAlertCircle,
   IconTrash,
   IconBriefcase,
 } from '@tabler/icons-react';
@@ -49,6 +46,7 @@ import {
 } from '../../../api/LoanProduct/LoanProductAPi';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { deleteLoanProduct, enableLoanProduct, disableLoanProduct } from '../../../api/productApi';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
 
 interface NormalizedProduct {
   id: string;
@@ -129,11 +127,31 @@ export function LoanProduct() {
   // server data state
   const [products, setProducts] = useState<NormalizedProduct[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const res = await getLoanProducts();
       const list: LoanProductRaw[] = Array.isArray(res?.data) ? res.data : [];
@@ -149,7 +167,7 @@ export function LoanProduct() {
       }));
       setProducts(normalized);
     } catch (err: any) {
-      setError(parseFrappeError(err));
+      showError('Failed to Load Products', err);
     } finally {
       setLoading(false);
     }
@@ -177,28 +195,84 @@ export function LoanProduct() {
     });
   }, [products, search, category, status]);
 
-  const handleToggleStatus = async (id: string, currentStatus: 'ACTIVE' | 'INACTIVE') => {
-    setError(null);
-    try {
-      if (currentStatus === 'ACTIVE') {
-        await disableLoanProduct(id);
-      } else {
-        await enableLoanProduct(id);
-      }
-      await fetchProducts();
-    } catch (err: any) {
-      setError(parseFrappeError(err));
-    }
+  const toggleStatus = (row: NormalizedProduct) => {
+    const willDeactivate = row.status === 'ACTIVE';
+    openCommonModal({
+      heading: willDeactivate ? 'Deactivate Loan Product' : 'Activate Loan Product',
+      subtitle: 'Please confirm this action before continuing.',
+      body: (
+        <>
+          Are you sure you want to {willDeactivate ? 'deactivate' : 'activate'} loan product{' '}
+          <Text span fw={600}>
+            {row.name}
+          </Text>
+          ?
+        </>
+      ),
+      color: willDeactivate ? 'red' : 'green',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: willDeactivate ? 'Deactivate' : 'Activate',
+          color: willDeactivate ? 'red' : 'green',
+          onClick: async () => {
+            setTogglingId(row.id);
+            try {
+              if (willDeactivate) {
+                await disableLoanProduct(row.id);
+              } else {
+                await enableLoanProduct(row.id);
+              }
+              await fetchProducts();
+              showSuccess(
+                willDeactivate ? 'Product Deactivated' : 'Product Activated',
+                `Loan product has been ${willDeactivate ? 'deactivated' : 'activated'} successfully.`
+              );
+            } catch (err: any) {
+              showError('Status Update Failed', err);
+            } finally {
+              setTogglingId(null);
+            }
+          },
+        },
+      ],
+    });
   };
 
-  const handleDelete = async (id: string) => {
-    setError(null);
-    try {
-      await deleteLoanProduct(id);
-      await fetchProducts();
-    } catch (err: any) {
-      setError(parseFrappeError(err));
-    }
+  const handleDelete = (row: NormalizedProduct) => {
+    openCommonModal({
+      heading: 'Delete Loan Product',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete loan product{' '}
+          <Text span fw={600}>
+            {row.name}
+          </Text>
+          ?
+        </>
+      ),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: async () => {
+            setDeletingId(row.id);
+            try {
+              await deleteLoanProduct(row.id);
+              await fetchProducts();
+              showSuccess('Product Deleted', 'Loan product deleted successfully.');
+            } catch (err: any) {
+              showError('Delete Failed', err);
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ],
+    });
   };
 
   const columns = useMemo(
@@ -255,6 +329,9 @@ export function LoanProduct() {
         ),
         cell: (info) => {
           const row = info.row.original;
+          const isDeleting = deletingId === row.id;
+          const isToggling = togglingId === row.id;
+
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
@@ -293,20 +370,8 @@ export function LoanProduct() {
                   variant="subtle"
                   color="danger"
                   radius="md"
-                  onClick={() => {
-                    modals.openConfirmModal({
-                      title: 'Delete Loan Product',
-                      children: (
-                        <Text size="sm">
-                          Are you sure you want to delete loan product <b>{row.name}</b>? This cannot be
-                          undone.
-                        </Text>
-                      ),
-                      labels: { confirm: 'Delete', cancel: 'Cancel' },
-                      confirmProps: { color: 'danger' },
-                      onConfirm: () => handleDelete(row.id),
-                    });
-                  }}
+                  loading={isDeleting}
+                  onClick={() => handleDelete(row)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
@@ -316,7 +381,8 @@ export function LoanProduct() {
                   size="xs"
                   color="success"
                   checked={row.status === 'ACTIVE'}
-                  onChange={() => handleToggleStatus(row.id, row.status)}
+                  disabled={isToggling}
+                  onChange={() => toggleStatus(row)}
                 />
               </Tooltip>
             </Group>
@@ -324,7 +390,7 @@ export function LoanProduct() {
         },
       }),
     ],
-    []
+    [deletingId, togglingId]
   );
 
   const table = useReactTable({
@@ -397,21 +463,7 @@ export function LoanProduct() {
             </Text>
           </Stack>
         </Group>
-
-      
       </Group>
-
-      {error && (
-        <Alert
-          color="danger"
-          radius="lg"
-          icon={<IconAlertCircle size={16} />}
-          withCloseButton
-          onClose={() => setError(null)}
-        >
-          {error}
-        </Alert>
-      )}
 
       {/* Toolbar — pill search + pill filter + segmented status control */}
       <Paper
@@ -472,23 +524,23 @@ export function LoanProduct() {
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
             Reset
           </Button>
-            <Button
-          size="sm"
-          radius="xl"
-          color="brand"
-          onClick={() => {
-            setSelectedProductId(null);
-            setIsViewMode(false);
-            open();
-          }}
-          leftSection={<IconPlus size={14} />}
-          style={{
-            background: theme.other.brandGradient,
-            boxShadow: theme.other.brandGlowShadowSm,
-          }}
-        >
-          Add Product
-        </Button>
+          <Button
+            size="sm"
+            radius="xl"
+            color="brand"
+            onClick={() => {
+              setSelectedProductId(null);
+              setIsViewMode(false);
+              open();
+            }}
+            leftSection={<IconPlus size={14} />}
+            style={{
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadowSm,
+            }}
+          >
+            Add Product
+          </Button>
         </Group>
       </Paper>
 

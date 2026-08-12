@@ -4,7 +4,6 @@ import { useForm } from "@mantine/form";
 import {
   Box,
   Text,
-  Button,
   ActionIcon,
   Modal,
   ThemeIcon,
@@ -16,8 +15,6 @@ import {
 import {
   IconX,
   IconBriefcase,
-  IconArrowRight,
-  IconArrowLeft,
   IconCheck,
   IconChevronRight,
 } from "@tabler/icons-react";
@@ -36,7 +33,7 @@ import { AccountingTab, type AccountFieldsState, type InterestPenaltyAccountsSta
 import { ChargesTab, type ChargeRow } from "./ChargesTab";
 import { ChargeAccountsModal } from "./ChargesaccountModal";
 import { ModalFooter } from "../../shared/ModalFooter";
-import { showApiError, showConfirm, showSuccess } from "../../../utils/alert";
+import { openCommonModal } from "../AlertModal";
 import { CollectionTab } from "./CollectionsTab";
 
 interface LoanProductProps {
@@ -104,6 +101,37 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
 
   const [charges, setCharges] = useState<ChargeRow[]>([]);
   const [accountsModalIndex, setAccountsModalIndex] = useState<number | null>(null);
+
+  // ---------- ALERT HELPERS (same pattern as AddLoanCategoryModal) ----------
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const showErrorMessage = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body,
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
 
   const { data: incomeAccountsData } = useQuery({
     queryKey: ["accounts", "Income"],
@@ -311,14 +339,13 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     mutationFn: createLoanProduct,
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["loanProducts"] });
-      showSuccess("Loan product created successfully");
+      showSuccess("Product Created", "Loan product created successfully.");
       await onSaved?.();
       handleModalClose();
     },
     onError: (err: any) => {
-      const message = parseFrappeError(err);
-      setSubmitError(message);
-      showApiError(message);
+      setSubmitError(parseFrappeError(err));
+      showError("Create Failed", err);
     },
   });
 
@@ -327,14 +354,13 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     onSuccess: async (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["loanProducts"] });
       queryClient.invalidateQueries({ queryKey: ["loanProduct", variables.id] });
-      showSuccess("Loan product updated successfully");
+      showSuccess("Product Updated", "Loan product updated successfully.");
       await onSaved?.();
       handleModalClose();
     },
     onError: (err: any) => {
-      const message = parseFrappeError(err);
-      setSubmitError(message);
-      showApiError(message);
+      setSubmitError(parseFrappeError(err));
+      showError("Update Failed", err);
     },
   });
 
@@ -353,7 +379,7 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     if (missingAccounts.length > 0) {
       const message = `Missing required accounts: ${missingAccounts.join(", ")}`;
       setSubmitError(message);
-      showApiError(message, "Validation Error");
+      showErrorMessage("Validation Error", message);
       setActiveTab("1");
       return;
     }
@@ -453,13 +479,19 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
 
   const handleReset = doReset;
 
-  // Confirm before wiping out everything the user has entered.
-  const handleResetClick = async () => {
-    const confirmed = await showConfirm(
-      "This will clear everything you've entered on this form. This action cannot be undone.",
-      { title: "Reset this form?", confirmButtonText: "Reset", confirmButtonColor: "red" }
-    );
-    if (confirmed) doReset();
+  // Confirm before wiping out everything the user has entered — same
+  // heading/subtitle/buttons pattern as LoanCategory's confirm modals.
+  const handleResetClick = () => {
+    openCommonModal({
+      heading: "Reset this form?",
+      subtitle: "This action cannot be undone.",
+      body: "This will clear everything you've entered on this form.",
+      color: "red",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        { label: "Reset", color: "red", onClick: () => doReset() },
+      ],
+    });
   };
 
   const handleModalClose = () => {
@@ -542,8 +574,7 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
           }}
           bg="white"
         >
-          {/* Header — same solid brand.6 bar as CustomerModal, driven by
-              theme.other.* tokens so both modules share one source of truth. */}
+          {/* Header — same solid brand.6 bar as CustomerModal / AddLoanCategoryModal */}
           <Group
             justify="space-between"
             align="center"
@@ -594,8 +625,7 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
             </ActionIcon>
           </Group>
 
-          {/* Tab bar — same compact pill-style tabs as CustomerModal, so both
-              modules share one navigation pattern. */}
+          {/* Tab bar */}
           <Box
             px="md"
             py={8}
@@ -722,8 +752,7 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
             writeOffAccounts={writeOffAccounts}
           />
 
-          {/* Footer — shared ModalFooter component (same one CustomerModal can use),
-              with the wizard's Back button slotted in on the right via rightSlot. */}
+          {/* Footer — shared ModalFooter component */}
           <ModalFooter
             variant="theme"
             isViewMode={isViewMode}
@@ -733,7 +762,6 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
             hideSubmit={hideSubmit}
             onSubmit={handleFooterSubmit}
             errorMessage={submitError ?? undefined}
-            
           />
         </Box>
       </form>

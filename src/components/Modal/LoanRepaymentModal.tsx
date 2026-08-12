@@ -18,6 +18,8 @@ import { PaymentExecutionPanel } from "./Repayment/Paymentexecutionpanel";
 import { DuesSummaryPanel } from "./Repayment/Duessummarypanel";
 import { PaymentEffectModal } from "./Repayment/Paymenteffectmodal";
 import { ModalFooter } from "../../components/shared/ModalFooter"
+import { openCommonModal } from "./AlertModal";
+import { parseFrappeError } from "../../utils/parseFrappeError";
 
 
 export type { LoanRepaymentFormData };
@@ -100,13 +102,36 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }
     enabled: opened && !!editId,
   });
 
+  // ---------- ALERT HELPERS ----------
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
+
   const updateRepaymentMutation = useMutation({
     mutationFn: updateLoanRepayment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
+      showSuccess("Repayment Updated", "Loan repayment updated successfully.");
       handleReset();
       onClose();
     },
+    onError: (err) => showError("Update Failed", err),
   });
 
   useEffect(() => {
@@ -202,9 +227,11 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }
     mutationFn: createLoanRepayment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
+      showSuccess("Repayment Processed", "Loan repayment processed successfully.");
       handleReset();
       onClose();
     },
+    onError: (err) => showError("Create Failed", err),
   });
 
   const handleSubmit = (values: typeof form.values) => {

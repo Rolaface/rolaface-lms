@@ -14,6 +14,7 @@ import { IconGripVertical, IconListNumbers, IconX } from "@tabler/icons-react";
 import { useRef, useState } from "react";
 import { ModalFooter } from "../shared/ModalFooter";
 import { useCollectionOrderForm } from "../../hooks/CollectionOrder/useCollectionOrderForm";
+import { openCommonModal } from "./AlertModal";
 import type { CollectionOrderListItem } from "../../types/collectionOrder";
 
 interface LoanCollectionSequenceOrderModalProps {
@@ -77,6 +78,30 @@ export function LoanCollectionSequenceOrderModal({
     dragItem.current = null;
     dragOverItem.current = null;
     setDraggedIndex(null);
+  };
+
+  // ---------- ALERT HELPERS (same pattern as LoanClassificationModal) ----------
+  const showErrorMessage = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body,
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const handleSubmit = () => {
+    if (!sequenceName.trim()) {
+      showErrorMessage("Validation Error", "Collection Sequence Name is required.");
+      return;
+    }
+    if (!components || components.length === 0) {
+      showErrorMessage("Validation Error", "At least one component is required in the sequence.");
+      return;
+    }
+
+    handleSave();
   };
 
   return (
@@ -220,7 +245,7 @@ export function LoanCollectionSequenceOrderModal({
           variant="theme"
           isViewMode={isView}
           onClose={handleClose}
-          onSubmit={handleSave}
+          onSubmit={handleSubmit}
           submitLabel="Save "
           submitLoading={isSaving}
         />
