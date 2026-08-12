@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
 import {
   ActionIcon,
   Box,
   Group,
+  Loader,
   Modal,
   Paper,
   Stack,
@@ -11,114 +11,68 @@ import {
   ThemeIcon,
 } from "@mantine/core";
 import { IconGripVertical, IconListNumbers, IconX } from "@tabler/icons-react";
-import { showSuccess } from "../../utils/alert"
-import { ModalFooter } from "../shared/ModalFooter"; 
-
-export interface ComponentItem {
-  id: string;
-  name: string;
-}
+import { useRef, useState } from "react";
+import { ModalFooter } from "../shared/ModalFooter";
+import { useCollectionOrderForm } from "../../hooks/CollectionOrder/useCollectionOrderForm";
+import type { CollectionOrderListItem } from "../../types/collectionOrder";
 
 interface LoanCollectionSequenceOrderModalProps {
   opened: boolean;
   onClose: () => void;
   mode?: "add" | "edit" | "view";
-  data?: { sequenceName?: string; order?: string[] } | null;
+  data?: CollectionOrderListItem | null;
+  onSaved: () => void;
 }
-
-const DEFAULT_COMPONENTS: ComponentItem[] = [
-  { id: "1", name: "Principal" },
-  { id: "2", name: "Interest" },
-  { id: "3", name: "Penalty" },
-  { id: "4", name: "Charges" },
-];
 
 export function LoanCollectionSequenceOrderModal({
   opened,
   onClose,
   mode = "add",
   data = null,
+  onSaved,
 }: LoanCollectionSequenceOrderModalProps) {
   const isView = mode === "view";
 
   const title =
-    mode === "add"
-      ? "New Collection Order"
-      : mode === "edit"
-        ? "Edit Collection Order"
-        : "View Collection Order";
+    mode === "add" ? "New Collection Sequence" : mode === "edit" ? "Edit Collection Sequence" : "View Collection Sequence";
 
   const description =
     mode === "view"
       ? "Viewing the defined sequence for component liquidation."
       : "Define and order the collection sequence for loan components.";
 
-  // State
-  const [sequenceName, setSequenceName] = useState("");
-  const [components, setComponents] = useState<ComponentItem[]>(DEFAULT_COMPONENTS);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const {
+    sequenceName,
+    setSequenceName,
+    components,
+    reorder,
+    loadingDetail,
+    isSaving,
+    handleSave,
+    isNameEditable,
+  } = useCollectionOrderForm({ opened, mode, data, onSaved, onClose });
 
-  // Drag and Drop Refs
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
 
-  // Populate form on open
-  useEffect(() => {
-    if (opened && data) {
-      setSequenceName(data.sequenceName || "");
-      if (data.order && data.order.length > 0) {
-        const orderedComponents = data.order.map((name, index) => ({
-          id: String(index + 1),
-          name: name,
-        }));
-        setComponents(orderedComponents);
-      } else {
-        setComponents(DEFAULT_COMPONENTS);
-      }
-    } else if (opened && mode === "add") {
-      setSequenceName("");
-      setComponents(DEFAULT_COMPONENTS);
-    }
-  }, [opened, data, mode]);
-
   const handleClose = () => {
     onClose();
-    setTimeout(() => {
-      setDraggedIndex(null);
-    }, 200);
+    setTimeout(() => setDraggedIndex(null), 200);
   };
 
-  const handleSave = () => {
-    setIsSaving(true);
-    // TODO: replace with actual save call
-    setTimeout(() => {
-      setIsSaving(false);
-      showSuccess("Collection sequence saved successfully.");
-      handleClose();
-    }, 600);
-  };
-
-  // Drag and Drop Handlers
-  const dragStart = (e: React.DragEvent<HTMLDivElement>, position: number) => {
+  const dragStart = (_e: React.DragEvent<HTMLDivElement>, position: number) => {
     dragItem.current = position;
-    // Small timeout ensures the drag ghost image generates before we apply the opacity style
-    setTimeout(() => {
-      setDraggedIndex(position);
-    }, 0);
+    setTimeout(() => setDraggedIndex(position), 0);
   };
 
-  const dragEnter = (e: React.DragEvent<HTMLDivElement>, position: number) => {
+  const dragEnter = (_e: React.DragEvent<HTMLDivElement>, position: number) => {
     dragOverItem.current = position;
   };
 
   const drop = () => {
     if (dragItem.current !== null && dragOverItem.current !== null) {
-      const copyListItems = [...components];
-      const dragItemContent = copyListItems[dragItem.current];
-      copyListItems.splice(dragItem.current, 1);
-      copyListItems.splice(dragOverItem.current, 0, dragItemContent);
-      setComponents(copyListItems);
+      reorder(dragItem.current, dragOverItem.current);
     }
     dragItem.current = null;
     dragOverItem.current = null;
@@ -139,7 +93,6 @@ export function LoanCollectionSequenceOrderModal({
       }}
     >
       <Box bg="white">
-        {/* Header */}
         <Group
           justify="space-between"
           align="center"
@@ -161,38 +114,35 @@ export function LoanCollectionSequenceOrderModal({
               </Text>
             </Box>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={handleClose}
-            aria-label="Close"
-          >
+          <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={handleClose} aria-label="Close">
             <IconX size={16} color="white" />
           </ActionIcon>
         </Group>
 
-        {/* Body */}
         <Box px="xl" py="lg" bg="slate.0">
           <Stack gap="md">
             <TextInput
               size="sm"
               radius="md"
-              label="Collection Order Name"
-              placeholder="e.g. Standard Write-Off Liquidation Order"
+              label="Collection Sequence Name"
+              placeholder="e.g. Standard Write-Off Liquidation Sequence"
               value={sequenceName}
               onChange={(e) => setSequenceName(e.currentTarget.value)}
-              readOnly={isView}
-              variant={isView ? "filled" : "default"}
-              withAsterisk={!isView}
+              readOnly={!isNameEditable}
+              variant={isNameEditable ? "default" : "filled"}
+              withAsterisk={isNameEditable}
+              disabled={loadingDetail}
+              description={mode === "edit" ? "Name cannot be changed after creation." : undefined}
               styles={{ input: { border: "1px solid var(--mantine-color-slate-2)" } }}
             />
 
             <Box>
-              <Text size="sm" fw={600} c="slate.7">
-                Component Offset Order
-              </Text>
+              <Group justify="space-between" align="center">
+                <Text size="sm" fw={600} c="slate.7">
+                  Component Offset Sequence
+                </Text>
+                {loadingDetail && <Loader size="xs" color="brand" />}
+              </Group>
               {!isView && (
                 <Text size="xs" c="slate.5" mb="xs">
                   Drag and drop the rows to change the collection sequence.
@@ -202,22 +152,14 @@ export function LoanCollectionSequenceOrderModal({
               <Paper
                 radius="md"
                 mt={isView ? 8 : 0}
-                style={{
-                  overflow: "hidden",
-                  border: "1px solid var(--mantine-color-slate-2)",
-                  boxShadow: "var(--mantine-shadow-xs)",
-                }}
+                style={{ overflow: "hidden", border: "1px solid var(--mantine-color-slate-2)", boxShadow: "var(--mantine-shadow-xs)" }}
               >
-                {/* Header row */}
                 <Group
                   gap="sm"
                   wrap="nowrap"
                   px="md"
                   py={8}
-                  style={{
-                    borderBottom: "1px solid var(--mantine-color-slate-2)",
-                    background: "var(--mantine-color-slate-0)",
-                  }}
+                  style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", background: "var(--mantine-color-slate-0)" }}
                 >
                   <Box w={20} />
                   <Text size="xs" fw={700} w={30} ta="center" c="slate.5">
@@ -228,14 +170,12 @@ export function LoanCollectionSequenceOrderModal({
                   </Text>
                 </Group>
 
-                {/* Draggable items */}
                 <Stack gap={0}>
                   {components.map((comp, index) => {
                     const isDragging = draggedIndex === index;
-
                     return (
                       <Group
-                        key={comp.name}
+                        key={comp.id}
                         gap="sm"
                         wrap="nowrap"
                         px="md"
@@ -246,13 +186,8 @@ export function LoanCollectionSequenceOrderModal({
                         onDragEnd={drop}
                         onDragOver={(e) => e.preventDefault()}
                         style={{
-                          borderBottom:
-                            index < components.length - 1
-                              ? "1px solid var(--mantine-color-slate-1)"
-                              : "none",
-                          background: isDragging
-                            ? "var(--mantine-color-slate-0)"
-                            : "var(--mantine-color-white)",
+                          borderBottom: index < components.length - 1 ? "1px solid var(--mantine-color-slate-1)" : "none",
+                          background: isDragging ? "var(--mantine-color-slate-0)" : "var(--mantine-color-white)",
                           opacity: isDragging ? 0.35 : 1,
                           cursor: isView ? "default" : "grab",
                           transition: "background-color 120ms ease, opacity 120ms ease",
@@ -266,11 +201,9 @@ export function LoanCollectionSequenceOrderModal({
                         >
                           <IconGripVertical size={16} />
                         </ThemeIcon>
-
                         <Text size="sm" fw={600} w={30} ta="center" c="slate.4">
                           {index + 1}
                         </Text>
-
                         <Text size="sm" fw={500} c="slate.7" style={{ flex: 1 }}>
                           {comp.name}
                         </Text>
@@ -283,7 +216,6 @@ export function LoanCollectionSequenceOrderModal({
           </Stack>
         </Box>
 
-        {/* Footer */}
         <ModalFooter
           variant="theme"
           isViewMode={isView}

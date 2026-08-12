@@ -1,4 +1,3 @@
-// loanRepaymentForm.ts
 
 export interface LoanRepaymentPayload {
   // repayment_type: "Normal Repayment" | "Full Settlement";
@@ -15,6 +14,8 @@ export interface LoanRepaymentPayload {
   mode_of_payment: string;
   reference_number: string;
   reference_date: string;
+   account_number?: string;  
+  manual_remarks?: string;
 }
 
 export interface LoanRepaymentResponse {
@@ -60,7 +61,7 @@ export interface LoanDuesResponse {
 }
 
 export interface LoanDuesPayload {
-  payment_type: "Normal Repayment" | "Full Settlement";
+  payment_type: "Full Settlement" | "Normal Repayment" | "Pre Payment";  
   posting_date: string;
   against_loan: string;
 }

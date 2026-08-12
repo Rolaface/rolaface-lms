@@ -14,6 +14,8 @@ import {
   Badge,
   Select,
   Stack,
+  Popover,
+  Loader,
   useMantineTheme,
 } from '@mantine/core';
 import {
@@ -25,79 +27,108 @@ import {
   IconSelector,
   IconSearch,
   IconListNumbers,
+  IconTrash,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
-  flexRender,
-  createColumnHelper,
-} from '@tanstack/react-table';
-import type { SortDirection } from '@tanstack/react-table';
+import { useReactTable, getCoreRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
 import { LoanCollectionSequenceOrderModal } from '../../../components/Modal/LoanCollectionSequenceOrderModal';
+import { useCollectionOrders } from '../../../hooks/CollectionOrder/useCollectionOrders';
+import type { CollectionOrderListItem, CollectionOrderSort } from '../../../types/collectionOrder';
 
-interface SequenceRow {
-  id: number;
-  sequenceName: string;
-  order: string[];
-}
+const columnHelper = createColumnHelper<CollectionOrderListItem>();
 
-const DUMMY_SEQUENCES: SequenceRow[] = [
-  {
-    id: 1,
-    sequenceName: 'Standard Settlement Order',
-    order: ['Principal', 'Interest', 'Penalty', 'Charges'],
-  },
-  {
-    id: 2,
-    sequenceName: 'Penalty First Order',
-    order: ['Penalty', 'Charges', 'Interest', 'Principal'],
-  },
-  {
-    id: 3,
-    sequenceName: 'Interest Heavy Offset',
-    order: ['Interest', 'Principal', 'Penalty', 'Charges'],
-  },
-];
-
-const columnHelper = createColumnHelper<SequenceRow>();
-
-function SortIcon({ sorted }: { sorted: false | SortDirection }) {
-  const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
-  if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
-  if (sorted === 'desc') return <IconChevronDown size={12} color={color} />;
-  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
+function SortIcon({ active, direction }: { active: boolean; direction: CollectionOrderSort['direction'] }) {
+  const color = active ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
+  if (!active) return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
+  return direction === 'asc' ? <IconChevronUp size={12} color={color} /> : <IconChevronDown size={12} color={color} />;
 }
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
+function DeleteRowAction({
+  row,
+  onConfirm,
+  deleting,
+}: {
+  row: CollectionOrderListItem;
+  onConfirm: (name: string) => void;
+  deleting: boolean;
+}) {
+  const [opened, { close, toggle }] = useDisclosure(false);
+
+  return (
+    <Popover opened={opened} onClose={close} position="top-end" withArrow shadow="md" radius="md">
+      <Popover.Target>
+        <Tooltip label="Delete" withArrow>
+          <ActionIcon size="sm" variant="subtle" color="danger" radius="md" onClick={toggle} loading={deleting}>
+            <IconTrash size={14} />
+          </ActionIcon>
+        </Tooltip>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Stack gap="xs" maw={220}>
+          <Text fz="xs" c="slate.7" fw={600}>
+            Delete "{row.title}"?
+          </Text>
+          <Text fz="xs" c="slate.5">
+            This action cannot be undone.
+          </Text>
+          <Group justify="flex-end" gap="xs">
+            <Button size="xs" variant="default" radius="md" onClick={close}>
+              Cancel
+            </Button>
+            <Button
+              size="xs"
+              color="danger"
+              radius="md"
+              onClick={() => {
+                close();
+                onConfirm(row.name);
+              }}
+            >
+              Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
 export function LoanCollectionSequenceOrder() {
   const theme = useMantineTheme();
   const [opened, { open, close }] = useDisclosure(false);
-
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
-  const [selectedData, setSelectedData] = useState<SequenceRow | null>(null);
+  const [selectedData, setSelectedData] = useState<CollectionOrderListItem | null>(null);
 
-  const handleOpenModal = (mode: 'add' | 'edit' | 'view', data: SequenceRow | null = null) => {
+  const {
+    rows,
+    pagination,
+    loading,
+    error,
+    search,
+    setSearch,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    sort,
+    toggleSort,
+    resetFilters,
+    refetch,
+    removeCollectionOrder,
+    deletingName,
+  } = useCollectionOrders();
+
+  const handleOpenModal = (mode: 'add' | 'edit' | 'view', data: CollectionOrderListItem | null = null) => {
     setModalMode(mode);
     setSelectedData(data);
     open();
   };
 
-  const [search, setSearch] = useState('');
-  const [sorting, setSorting] = useState([{ id: 'sequenceName', desc: false }]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return DUMMY_SEQUENCES.filter((p) => !q || p.sequenceName.toLowerCase().includes(q));
-  }, [search]);
-
   const columns = useMemo(
     () => [
-      columnHelper.accessor('sequenceName', {
+      columnHelper.accessor('title', {
         header: 'Sequence Name',
         cell: (info) => (
             <Text fz="sm" fw={700} c="slate.8">
@@ -105,14 +136,15 @@ export function LoanCollectionSequenceOrder() {
             </Text>
         ),
       }),
-      columnHelper.accessor('order', {
-        header: 'Component Order',
+      columnHelper.accessor('components', {
+        header: 'Component Sequence',
+        enableSorting: false,
         cell: (info) => {
           const items = info.getValue();
           return (
             <Group gap={4} wrap="wrap">
               {items.map((item, index) => (
-                <Group gap={4} key={index} wrap="nowrap">
+                <Group gap={4} key={item.idx} wrap="nowrap">
                   <Badge
                     variant="light"
                     color="brand"
@@ -120,7 +152,7 @@ export function LoanCollectionSequenceOrder() {
                     size="sm"
                     styles={{ root: { fontSize: 10, padding: '0 8px', fontWeight: 600 } }}
                   >
-                    {item}
+                    {item.demand_type}
                   </Badge>
                   {index < items.length - 1 && (
                     <Text size="xs" c="slate.4">
@@ -164,34 +196,31 @@ export function LoanCollectionSequenceOrder() {
                 <IconPencil size={14} />
               </ActionIcon>
             </Tooltip>
+            <DeleteRowAction
+              row={info.row.original}
+              onConfirm={removeCollectionOrder}
+              deleting={deletingName === info.row.original.name}
+            />
           </Group>
         ),
       }),
     ],
-    []
+    [removeCollectionOrder, deletingName]
   );
 
   const table = useReactTable({
-    data: filteredData,
+    data: rows,
     columns,
-    state: { sorting, pagination },
-    onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getRowId: (row) => row.name,
+    manualSorting: true,
+    manualPagination: true,
   });
 
-  const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
-
-  const resetFilters = () => {
-    setSearch('');
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
-  };
+  const totalRows = pagination?.total ?? 0;
+  const totalPages = pagination?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
 
   return (
     <Stack gap="lg" p="lg">
@@ -200,10 +229,9 @@ export function LoanCollectionSequenceOrder() {
         onClose={close}
         mode={modalMode}
         data={selectedData}
+        onSaved={refetch}
       />
 
-      {/* Scoped, purely visual — pulls from theme.other to stay in sync
-          with the brand color everywhere else (mirrors Customer.tsx). */}
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
         .lms-row-actions { opacity: 1; }
@@ -213,7 +241,6 @@ export function LoanCollectionSequenceOrder() {
         .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
       `}</style>
 
-      {/* Header — icon tile + title on the left */}
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
         <Group gap="sm" align="center">
           <Box
@@ -232,23 +259,19 @@ export function LoanCollectionSequenceOrder() {
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
-              Collection Sequence Order
+              Collection Sequence
             </Title>
             <Text fz="sm" c="slate.5">
-              Define component liquidation order
+              Define component liquidation sequence
             </Text>
           </Stack>
         </Group>
       </Group>
 
-      {/* Toolbar — pill search */}
       <Paper
         radius="xl"
         p="xs"
-        style={{
-          background: 'var(--mantine-color-slate-0)',
-          border: '1px solid var(--mantine-color-slate-2)',
-        }}
+        style={{ background: 'var(--mantine-color-slate-0)', border: '1px solid var(--mantine-color-slate-2)' }}
       >
         <Group gap="sm" wrap="wrap" align="center">
           <TextInput
@@ -260,10 +283,7 @@ export function LoanCollectionSequenceOrder() {
             style={{ flex: 1, minWidth: 220 }}
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
-            onChange={(e) => {
-              setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            onChange={(e) => setSearch(e.currentTarget.value)}
           />
 
           <Group gap="xs" ml="auto">
@@ -276,10 +296,7 @@ export function LoanCollectionSequenceOrder() {
               color="brand"
               onClick={() => handleOpenModal('add')}
               leftSection={<IconPlus size={14} />}
-              style={{
-                background: theme.other.brandGradient,
-                boxShadow: theme.other.brandGlowShadowSm,
-              }}
+              style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
             >
               Add Sequence
             </Button>
@@ -287,14 +304,10 @@ export function LoanCollectionSequenceOrder() {
         </Group>
       </Paper>
 
-      {/* Data Table — floating rounded row-cards on a soft canvas */}
       <Paper
         radius="lg"
         p="sm"
-        style={{
-          background: 'var(--mantine-color-slate-0)',
-          border: '1px solid var(--mantine-color-slate-2)',
-        }}
+        style={{ background: 'var(--mantine-color-slate-0)', border: '1px solid var(--mantine-color-slate-2)' }}
       >
         <Table
           verticalSpacing="sm"
@@ -307,7 +320,8 @@ export function LoanCollectionSequenceOrder() {
             {table.getHeaderGroups().map((headerGroup) => (
               <Table.Tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
-                  const canSort = header.column.getCanSort();
+                  const canSort = header.column.id === 'title';
+                  const isActive = sort.field === 'title' && canSort;
                   return (
                     <Table.Th
                       key={header.id}
@@ -322,15 +336,11 @@ export function LoanCollectionSequenceOrder() {
                         letterSpacing: '0.04em',
                         border: 'none',
                       }}
-                      onClick={header.column.getToggleSortingHandler()}
+                      onClick={canSort ? () => toggleSort('title') : undefined}
                     >
-                      <Group
-                        gap="xs"
-                        wrap="nowrap"
-                        justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
-                      >
+                      <Group gap="xs" wrap="nowrap" justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}>
                         {flexRender(header.column.columnDef.header, header.getContext())}
-                        {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
+                        {canSort && <SortIcon active={isActive} direction={sort.direction} />}
                       </Group>
                     </Table.Th>
                   );
@@ -339,7 +349,31 @@ export function LoanCollectionSequenceOrder() {
             ))}
           </Table.Thead>
           <Table.Tbody>
-            {rows.length === 0 ? (
+            {loading ? (
+              <Table.Tr>
+                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                  <Stack align="center" gap="xs" py="xl">
+                    <Loader size="sm" color="brand" />
+                    <Text ta="center" c="slate.5" fz="xs">
+                      Loading collection sequences...
+                    </Text>
+                  </Stack>
+                </Table.Td>
+              </Table.Tr>
+            ) : error ? (
+              <Table.Tr>
+                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                  <Stack align="center" gap="xs" py="xl">
+                    <Text ta="center" c="danger.6" fz="xs">
+                      {error}
+                    </Text>
+                    <Button size="xs" variant="light" radius="xl" onClick={refetch}>
+                      Retry
+                    </Button>
+                  </Stack>
+                </Table.Td>
+              </Table.Tr>
+            ) : rows.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
                   <Stack align="center" gap="xs" py="xl">
@@ -364,42 +398,36 @@ export function LoanCollectionSequenceOrder() {
                 </Table.Td>
               </Table.Tr>
             ) : (
-              rows.map((row) => {
-                const cells = row.getVisibleCells();
-                return (
-                  <Table.Tr key={row.id} className="lms-row">
-                    {cells.map((cell, idx) => (
-                      <Table.Td
-                        key={cell.id}
-                        style={{
-                          padding: '10px 10px',
-                          border: 'none',
-                          boxShadow: 'var(--mantine-shadow-xs)',
-                          borderLeft: idx === 0 ? '3px solid var(--mantine-color-brand-4)' : undefined,
-                        }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </Table.Td>
-                    ))}
-                  </Table.Tr>
-                );
-              })
+              table.getRowModel().rows.map((row) => (
+                <Table.Tr key={row.id} className="lms-row">
+                  {row.getVisibleCells().map((cell, idx) => (
+                    <Table.Td
+                      key={cell.id}
+                      style={{
+                        padding: '10px 10px',
+                        border: 'none',
+                        boxShadow: 'var(--mantine-shadow-xs)',
+                        borderLeft: idx === 0 ? '3px solid var(--mantine-color-brand-4)' : undefined,
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </Table.Td>
+                  ))}
+                </Table.Tr>
+              ))
             )}
           </Table.Tbody>
         </Table>
 
-        {/* Pagination Footer */}
         <Group justify="space-between" px="sm" pt="xs">
           <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
-            <span>
-              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-            </span>
+            <span>{totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}</span>
             <Group gap="xs">
               <span>Rows:</span>
               <Select
                 data={['10', '20', '50']}
                 value={String(pageSize)}
-                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                onChange={(v) => setPageSize(Number(v) || 10)}
                 rightSection={chevronDown}
                 size="xs"
                 radius="xl"
@@ -407,14 +435,7 @@ export function LoanCollectionSequenceOrder() {
               />
             </Group>
           </Group>
-          <Pagination
-            total={table.getPageCount() || 1}
-            value={pageIndex + 1}
-            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-            color="brand"
-            size="xs"
-            radius="xl"
-          />
+          <Pagination total={totalPages || 1} value={page} onChange={setPage} color="brand" size="xs" radius="xl" />
         </Group>
       </Paper>
     </Stack>

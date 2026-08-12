@@ -47,13 +47,14 @@ import { modals } from '@mantine/modals';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 
+
 interface RepaymentRow {
   id: string;
   loanAc: string;
   customer: string;
   loanType: string;
   docstatus: number;
-  natureOfPayment: 'PAY_DUES' | 'PARTIAL' | 'FULL_SETTLEMENT';
+  natureOfPayment: string;
   amountPaid: number;
   paymentMode: string;
   valueDate: string;
@@ -110,18 +111,16 @@ function StatusBadge({ label, color }: { label: string; color: string }) {
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-// Nature-of-payment -> badge color, mapped to theme semantic tokens
-// (info/warning/success) instead of raw blue/yellow/green.
-function natureColor(nature: RepaymentRow['natureOfPayment']) {
-  if (nature === 'PAY_DUES') return 'info';
-  if (nature === 'PARTIAL') return 'warning';
-  return 'success';
+
+function natureColor(nature: string) {
+  if (nature === 'Normal Repayment') return 'info';
+  if (nature === 'Pre Payment') return 'warning';
+  if (nature === 'Full Settlement') return 'success';
+  return 'slate';
 }
 
-function natureLabel(nature: RepaymentRow['natureOfPayment']) {
-  if (nature === 'PAY_DUES') return 'Pay Dues';
-  if (nature === 'PARTIAL') return 'Partially Pay Off';
-  return 'Full Settlement';
+function natureLabel(nature: string) {
+  return nature || '—';
 }
 
 const fmtAmount = (n: number) =>
@@ -217,7 +216,7 @@ export function LoanRepayment() {
       customer: item.applicant || '—',
       docstatus: item.docstatus,
       loanType: item.loan_product || '—',
-      natureOfPayment: item.repayment_type,
+      natureOfPayment: item.repayment_type || '—',
       amountPaid: item.amount_paid || 0,
       paymentMode: item.mode_of_payment || '—',
       valueDate: item.value_date || '—',
