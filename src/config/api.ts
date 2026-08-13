@@ -123,7 +123,9 @@ Accounting: {
   // LOAN
   // =========================
 loan: {
+  uploadFile: `${ERP_BASE}/api/method/upload_file`,
   create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.create_loan`,
+  loanDocument: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.attach_loan_documents`,
   getLoans:  `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_loans`,
   getLoanById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_loan_by_id`,
   updateLoan:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.update_loan`,
