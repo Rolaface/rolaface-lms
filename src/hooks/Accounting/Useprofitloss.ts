@@ -1,43 +1,42 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   type PLData,
   type ProfitLossFilters,
   fetchProfitAndLoss,
-} from '../../api/Accounting/Profitloss.api';
-import { getCompanyCurrentFiscalYear } from '../../api/utils/frappeUtilsApi';
-import { useCompanyStore } from '../../store/companyStore';
+} from "../../api/Accounting/Profitloss.api";
+import { getCompanyCurrentFiscalYear } from "../../api/utils/frappeUtilsApi";
+import { useCompanyStore } from "../../store/companyStore";
 import {
   formatAmount as storeFormatAmount,
   ensureCurrencies,
   useCurrencyReady,
-} from '../../store/currencyStore';
+} from "../../store/currencyStore";
 
 const currentMonthStart = (): string => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 };
 
 const currentMonthEnd = (): string => {
   const d = new Date();
   const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
 };
-
 
 const FALLBACK_FY = `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
 
 export function useProfitLoss() {
   const [filters, setFilters] = useState<ProfitLossFilters>({
-    mode: 'Fiscal Year',
-    periodicity: 'Monthly',
+    mode: "Fiscal Year",
+    periodicity: "Monthly",
     from_fiscal_year: FALLBACK_FY,
     to_fiscal_year: FALLBACK_FY,
     from_date: currentMonthStart(),
     to_date: currentMonthEnd(),
   });
   const [fyResolved, setFyResolved] = useState(false);
-    const [lastAppliedFilters, setLastAppliedFilters] = useState<ProfitLossFilters | null>(null);
-
+  const [lastAppliedFilters, setLastAppliedFilters] =
+    useState<ProfitLossFilters | null>(null);
 
   const [data, setData] = useState<PLData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,9 +65,7 @@ export function useProfitLoss() {
           to_fiscal_year: fy.fiscal_year,
         }));
       })
-      .catch(() => {
-
-      })
+      .catch(() => {})
       .finally(() => {
         if (!cancelled) setFyResolved(true);
       });
@@ -81,51 +78,66 @@ export function useProfitLoss() {
     setIsLoading(true);
     setError(null);
     try {
-      if (currentFilters.mode === 'Date Range' && (!currentFilters.from_date || !currentFilters.to_date)) {
-        setError('Please select a valid date range.');
+      if (
+        currentFilters.mode === "Date Range" &&
+        (!currentFilters.from_date || !currentFilters.to_date)
+      ) {
+        setError("Please select a valid date range.");
         return;
       }
       const res = await fetchProfitAndLoss(currentFilters);
       setData(res);
       setLastAppliedFilters(currentFilters);
     } catch (err: any) {
-      setError(err?.message ?? 'Failed to load Profit & Loss.');
+      setError(err?.message ?? "Failed to load Profit & Loss.");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  // NEW
   useEffect(() => {
+    if (filters.mode === "Fiscal Year" && !fyResolved) return;
 
-    if (filters.mode === 'Fiscal Year' && !fyResolved) return;
-
-  
     let resolved = filters;
     if (lastAppliedFilters) {
-      const needsFallback =
-        (filters.mode === 'Date Range' && (!filters.from_date || !filters.to_date)) ||
-        (filters.mode === 'Fiscal Year' && (!filters.from_fiscal_year || !filters.to_fiscal_year));
-
-      if (needsFallback) {
-        resolved = {
-          ...filters,
-          from_date: filters.from_date || lastAppliedFilters.from_date,
-          to_date: filters.to_date || lastAppliedFilters.to_date,
-          from_fiscal_year: filters.from_fiscal_year || lastAppliedFilters.from_fiscal_year,
-          to_fiscal_year: filters.to_fiscal_year || lastAppliedFilters.to_fiscal_year,
-        };
-    
-        setFilters(resolved);
-     
-      }
+      resolved = {
+        ...filters,
+        from_date: filters.from_date || lastAppliedFilters.from_date,
+        to_date: filters.to_date || lastAppliedFilters.to_date,
+        from_fiscal_year:
+          filters.from_fiscal_year || lastAppliedFilters.from_fiscal_year,
+        to_fiscal_year:
+          filters.to_fiscal_year || lastAppliedFilters.to_fiscal_year,
+      };
     }
 
-    if (filters.mode === 'Date Range' && (!filters.from_date || !filters.to_date)) return;
-    if (filters.mode === 'Fiscal Year' && (!filters.from_fiscal_year || !filters.to_fiscal_year)) return;
+    if (
+      resolved.mode === "Date Range" &&
+      (!resolved.from_date || !resolved.to_date)
+    )
+      return;
+    if (
+      resolved.mode === "Fiscal Year" &&
+      (!resolved.from_fiscal_year || !resolved.to_fiscal_year)
+    )
+      return;
 
     const timer = setTimeout(() => fetchData(resolved), 300);
     return () => clearTimeout(timer);
   }, [filters, fyResolved, lastAppliedFilters, fetchData]);
+
+  const handleFieldBlur = useCallback(
+    (
+      field: "from_date" | "to_date" | "from_fiscal_year" | "to_fiscal_year",
+    ) => {
+      if (!lastAppliedFilters) return;
+      setFilters((f) =>
+        f[field] ? f : { ...f, [field]: lastAppliedFilters[field] },
+      );
+    },
+    [lastAppliedFilters],
+  );
 
   const tableData = useMemo(() => {
     if (!data) return [];
@@ -137,13 +149,16 @@ export function useProfitLoss() {
   // hardcoded INR/₹ default.
   const displayAmount = useCallback(
     (amount: number) => {
-      if (!amount) return '—';
+      if (!amount) return "—";
       return storeFormatAmount(baseCurrency, amount, { withSymbol: true });
     },
     [baseCurrency],
   );
 
-  const handleRefresh = useCallback(() => fetchData(filters), [fetchData, filters]);
+  const handleRefresh = useCallback(
+    () => fetchData(filters),
+    [fetchData, filters],
+  );
 
   return {
     filters,
@@ -154,5 +169,6 @@ export function useProfitLoss() {
     error,
     displayAmount,
     handleRefresh,
+    handleFieldBlur,
   };
 }

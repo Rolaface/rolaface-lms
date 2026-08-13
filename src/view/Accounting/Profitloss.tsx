@@ -142,7 +142,7 @@ export function ProfitLoss() {
     isLoading,
     error,
     displayAmount,
-    handleRefresh,
+    handleRefresh,handleFieldBlur
   } = useProfitLoss();
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [allExpanded, setAllExpanded] = useState(false);
@@ -343,18 +343,16 @@ export function ProfitLoss() {
           />
 
           {filters.mode === "Fiscal Year" ? (
-            <TextInput
+           <TextInput
               radius="xl"
               size="xs"
               type="text"
               value={filters.from_fiscal_year}
-              onChange={(e) =>
-                setFilters((f) => ({
-                  ...f,
-                  from_fiscal_year: e.currentTarget.value,
-                  to_fiscal_year: e.currentTarget.value,
-                }))
-              }
+              onChange={(e) => {
+                const v = e.currentTarget.value;
+                setFilters((f) => ({ ...f, from_fiscal_year: v, to_fiscal_year: v }));
+              }}
+              onBlur={() => handleFieldBlur('from_fiscal_year')}
               placeholder="2026-2027"
               w={104}
             />
@@ -384,6 +382,7 @@ export function ProfitLoss() {
                         : "",
                     }))
                   }
+                  onBlur={() => handleFieldBlur('from_date')}
                   valueFormat="DD/MM/YYYY"
                   w={132}
                   clearable
@@ -400,7 +399,7 @@ export function ProfitLoss() {
                   To
                 </Text>
 
-                <DateInput
+                 <DateInput
                   radius="xl"
                   size="xs"
                   placeholder="To Date"
@@ -413,6 +412,7 @@ export function ProfitLoss() {
                         : "",
                     }))
                   }
+                  onBlur={() => handleFieldBlur('to_date')}
                   valueFormat="DD/MM/YYYY"
                   w={132}
                   clearable
