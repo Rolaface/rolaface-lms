@@ -40,7 +40,7 @@ import { DateInput } from "@mantine/dates";
 
 import { type JournalEntry } from "../../api/Accounting/Journalentries.api";
 import { useJournalEntries } from "../../hooks/Accounting/journal-entry/useJournalEntries";
-import JournalEntryModal from "../../components/Modal/Accounting/JournalEntryModal";
+import { journalEntryModal } from "../../components/Modal/Accounting/journal-entry/journalEntryModalStore";
 import { useCompanyStore } from "../../store/companyStore";
 import {
   formatAmount,
@@ -277,9 +277,6 @@ function useColumns(
 export function JournalEntries() {
   useCurrencyReady();
   const theme = useMantineTheme();
-  const [opened, setOpened] = useState(false);
-  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
-  const [modalReadOnly, setModalReadOnly] = useState(false);
 
   const baseCurrency = useCompanyStore((state) => state.baseCurrency);
 
@@ -307,26 +304,15 @@ export function JournalEntries() {
     handleRefresh,
   } = useJournalEntries();
 
-  const openNew = () => {
-    setActiveEntryId(null);
-    setModalReadOnly(false);
-    setOpened(true);
-  };
-  const openView = (name: string) => {
-    setActiveEntryId(name);
-    setModalReadOnly(true);
-    setOpened(true);
-  };
-  const openEdit = (name: string) => {
-    setActiveEntryId(name);
-    setModalReadOnly(false);
-    setOpened(true);
-  };
-  const closeModal = () => {
-    setOpened(false);
-    setActiveEntryId(null);
-  };
-
+const openNew = () => {
+  journalEntryModal.open({ baseCurrency, onSuccess: handleRefresh });
+};
+const openView = (name: string) => {
+  journalEntryModal.open({ entryId: name, isReadOnly: true, baseCurrency, onSuccess: handleRefresh });
+};
+const openEdit = (name: string) => {
+  journalEntryModal.open({ entryId: name, isReadOnly: false, baseCurrency, onSuccess: handleRefresh });
+};
   const columns = useColumns(
     handleSubmit,
     handleCancel,
@@ -633,14 +619,7 @@ export function JournalEntries() {
         </Group>
       </Paper>
 
-      <JournalEntryModal
-        opened={opened}
-        onClose={closeModal}
-        onSuccess={handleRefresh}
-        entryId={activeEntryId}
-        isReadOnly={modalReadOnly}
-        baseCurrency={baseCurrency}
-      />
+     
     </Stack>
   );
 }
