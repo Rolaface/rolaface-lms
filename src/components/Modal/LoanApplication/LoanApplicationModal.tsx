@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import {
   Modal,
   Box,
@@ -33,6 +34,12 @@ import { PersonalBusinessInfoStep } from "./PersonalBusinessInfoStep";
 import { ResidenceEmploymentStep } from "./ResidenceEmploymentStep";
 import { DocumentsStep } from "./DocumentsStep";
 import { LoanTermsStep } from "./LoanTermsStep";
+import { createLoanApplication } from "../../../api/loanApplicationApi";
+import type {
+  LoanApplicationPayload,
+  PersonalLoanApplication,
+  BusinessLoanApplication,
+} from "../../../types/loanApplicationForm";
 
 export type LoanType = "Personal" | "Business";
 
@@ -203,6 +210,208 @@ const STEP_ICONS: Record<LoanType, React.FC<any>[]> = {
   Personal: [IconUser, IconBriefcase, IconFileText, IconFileInvoice],
   Business: [IconBuilding, IconUsers, IconFileText, IconFileInvoice],
 };
+
+// --------------------------------------------------------
+// Payload builders
+// --------------------------------------------------------
+// NOTE: "file" in the documents/business_documents arrays is expected by the
+// backend to be a server-side file path (e.g. "/private/files/xyz.xlsx").
+// There is no upload endpoint provided anywhere in the codebase shown, so the
+// raw File objects cannot actually be turned into that path here. Until an
+// upload API is wired up, the browser file name is sent as a placeholder so
+// the shape of the payload matches exactly - this is called out explicitly
+// rather than silently assumed.
+
+function buildPersonalPayload(
+  values: LoanApplicationValues,
+  totalRepayable: number
+): PersonalLoanApplication {
+  const documents: PersonalLoanApplication["documents"] = [];
+
+  if (values.payslips) {
+    documents.push({
+      document_for: "Personal",
+      document_name: "Latest three payslips",
+      file: values.payslips.name,
+    });
+  }
+  if (values.bankStatementsPersonal) {
+    documents.push({
+      document_for: "Personal",
+      document_name: "Bank statements (3 months)",
+      file: values.bankStatementsPersonal.name,
+    });
+  }
+  if (values.nrcCopy) {
+    documents.push({
+      document_for: "Personal",
+      document_name: "NRC copy",
+      file: values.nrcCopy.name,
+    });
+  }
+  if (values.passportPhotoPersonal) {
+    documents.push({
+      document_for: "Personal",
+      document_name: "Passport-sized photo",
+      file: values.passportPhotoPersonal.name,
+    });
+  }
+  if (values.tpinCertificate) {
+    documents.push({
+      document_for: "Personal",
+      document_name: "TPIN certificate",
+      file: values.tpinCertificate.name,
+    });
+  }
+
+  return {
+    application_type: "Personal Loan",
+    application_date: new Date().toISOString().slice(0, 10),
+    gender: values.gender ?? "",
+    marital_status: values.maritalStatus ?? "",
+    nationality: values.nationality ?? "",
+    amount: String(values.loanAmount),
+    tenure: String(values.tenureMonths),
+    total_amount: String(totalRepayable),
+    first_name: values.firstName,
+    last_name: values.surname,
+    phone: values.phone,
+    email: values.email,
+    national_registration_card: values.nrc,
+    birth_date: values.birthDate,
+    residential_address: values.residentialAddress,
+    occupation: values.occupation,
+    employer_name: values.employerName,
+    loan_purpose: values.principalObjective,
+    next_of_kin_relationship: values.kinRelationship,
+    next_of_kin_name: values.kinName,
+    next_of_kin_phone: values.kinPhone,
+    next_of_kin_email: values.kinEmail,
+    documents,
+  };
+}
+
+function buildBusinessPayload(
+  values: LoanApplicationValues,
+  totalRepayable: number
+): BusinessLoanApplication {
+  const business_documents: BusinessLoanApplication["business_documents"] = [];
+
+  if (values.pacraCertificate) {
+    business_documents.push({
+      document_for: "Applicant",
+      document_name: "PACRA certificate",
+      file: values.pacraCertificate.name,
+    });
+  }
+  if (values.form2) {
+    business_documents.push({
+      document_for: "Applicant",
+      document_name: "Form 2",
+      file: values.form2.name,
+    });
+  }
+  if (values.taxClearanceCertificate) {
+    business_documents.push({
+      document_for: "Applicant",
+      document_name: "Tax clearance certificate / TPIN",
+      file: values.taxClearanceCertificate.name,
+    });
+  }
+  if (values.taxComplianceReturn) {
+    business_documents.push({
+      document_for: "Applicant",
+      document_name: "Latest tax compliance return",
+      file: values.taxComplianceReturn.name,
+    });
+  }
+  if (values.orderInvoice) {
+    business_documents.push({
+      document_for: "Applicant",
+      document_name: "Order / Invoice",
+      file: values.orderInvoice.name,
+    });
+  }
+  if (values.bankStatementsBusiness) {
+    business_documents.push({
+      document_for: "Applicant",
+      document_name: "Bank statements (6 months)",
+      file: values.bankStatementsBusiness.name,
+    });
+  }
+  if (values.applicantPassportPhoto) {
+    business_documents.push({
+      document_for: "Applicant",
+      document_name: "Applicant Passport-sized photo",
+      file: values.applicantPassportPhoto.name,
+    });
+  }
+  if (values.boardResolution) {
+    business_documents.push({
+      document_for: "Applicant",
+      document_name: "Board resolution",
+      file: values.boardResolution.name,
+    });
+  }
+
+  values.directorDocuments.forEach((doc, index) => {
+    if (doc.nrcFile) {
+      business_documents.push({
+        document_for: "Director",
+        document_name: `Director ${index + 1} NRC`,
+        file: doc.nrcFile.name,
+      });
+    }
+    if (doc.photoFile) {
+      business_documents.push({
+        document_for: "Director",
+        document_name: `Director ${index + 1} passport photo`,
+        file: doc.photoFile.name,
+      });
+    }
+  });
+
+  return {
+    application_type: "Business Loan",
+    application_date: new Date().toISOString().slice(0, 10),
+    gender: values.applicantGender ?? "",
+    marital_status: values.applicantMaritalStatus ?? "",
+    nationality: values.applicantNationality ?? "",
+    amount: String(values.loanAmount),
+    tenure: String(values.tenureMonths),
+    total_amount: String(totalRepayable),
+    // The Business flow's form steps have no next-of-kin field, so there is
+    // no source value for this - left empty rather than invented.
+    next_of_kin_relationship: "",
+    directors: values.directors.map((director) => ({
+      director_name: director.name,
+      director_phone: director.phone,
+      director_email: director.email,
+      national_registration_card: director.nrc,
+    })),
+    applicant_first_name: values.applicantFirstName,
+    applicant_middle_name: values.applicantMiddleName,
+    applicant_last_name: values.applicantLastName,
+    applicant_phone: values.applicantPhone,
+    applicant_email: values.applicantEmail,
+    applicant_birth_date: values.applicantBirthDate,
+    applicant_national_registration_card: values.applicantNrc,
+    applicant_gender: values.applicantGender ?? "",
+    applicant_marital_status: values.applicantMaritalStatus ?? "",
+    applicant_nationality: values.applicantNationality ?? "",
+    applicant_address: values.applicantAddress,
+    applicant_position: values.applicantPosition,
+    company_name: values.companyName,
+    type_of_business: values.typeOfBusiness ?? "",
+    established_date: values.establishedDate,
+    nature_of_business: values.natureOfBusiness,
+    registered_office: values.registeredOffice,
+    purpose_of_loan: values.purposeOfLoan,
+    collateral_pledged: values.collateralPledged,
+    business_documents,
+  };
+}
+
 interface LoanApplicationModalProps {
   opened: boolean;
   onClose: () => void;
@@ -255,9 +464,31 @@ const [loanTypeSelected, setLoanTypeSelected] = useState(false);
     openTerms();
   };
 
+  const tenure = Number(form.values.tenureMonths) || 0;
+  // TODO: replace with real EMI/fee calculation once the API is wired up.
+  const facilityFee = Math.round(form.values.loanAmount * 0.02 * 100) / 100;
+  const totalInterest = Math.round(form.values.loanAmount * 0.24 * (tenure / 12) * 100) / 100;
+  const totalRepayable = form.values.loanAmount + totalInterest + facilityFee;
+  const monthlyRepayment = tenure ? Math.round((totalRepayable / tenure) * 100) / 100 : 0;
+
+  const { mutate: submitLoanApplication, isPending: isSubmitting } = useMutation({
+    mutationFn: (payload: LoanApplicationPayload) => createLoanApplication(payload),
+    onSuccess: () => {
+      closeTerms();
+      openSuccess();
+    },
+    onError: (error) => {
+      console.error("Failed to submit loan application:", error);
+    },
+  });
+
   const handleAcceptTerms = () => {
-    closeTerms();
-    openSuccess();
+    const payload: LoanApplicationPayload =
+      loanType === "Personal"
+        ? buildPersonalPayload(form.values, totalRepayable)
+        : buildBusinessPayload(form.values, totalRepayable);
+
+    submitLoanApplication(payload);
   };
 
   const handleFinish = () => {
@@ -278,13 +509,6 @@ const [loanTypeSelected, setLoanTypeSelected] = useState(false);
         return null;
     }
   };
-
-  const tenure = Number(form.values.tenureMonths) || 0;
-  // TODO: replace with real EMI/fee calculation once the API is wired up.
-  const facilityFee = Math.round(form.values.loanAmount * 0.02 * 100) / 100;
-  const totalInterest = Math.round(form.values.loanAmount * 0.24 * (tenure / 12) * 100) / 100;
-  const totalRepayable = form.values.loanAmount + totalInterest + facilityFee;
-  const monthlyRepayment = tenure ? Math.round((totalRepayable / tenure) * 100) / 100 : 0;
 
   return (
     <>
@@ -595,7 +819,15 @@ const [loanTypeSelected, setLoanTypeSelected] = useState(false);
           />
         </Box>
 
-        <Button fullWidth color="brand" radius="md" mt="md" disabled={!acceptedTerms} onClick={handleAcceptTerms}>
+        <Button
+          fullWidth
+          color="brand"
+          radius="md"
+          mt="md"
+          disabled={!acceptedTerms || isSubmitting}
+          loading={isSubmitting}
+          onClick={handleAcceptTerms}
+        >
           Accept & continue
         </Button>
       </Modal>
