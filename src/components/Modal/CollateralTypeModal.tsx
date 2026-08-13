@@ -1,17 +1,14 @@
 import { useEffect } from "react";
 import {
-  Modal,
   Box,
   Text,
   TextInput,
   NumberInput,
   Checkbox,
-  ActionIcon,
-  ThemeIcon,
   Group,
   Fieldset,
 } from "@mantine/core";
-import { IconShieldCheck, IconX, IconPercentage } from "@tabler/icons-react";
+import { IconShieldCheck, IconPercentage } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateCollateralTypePayload } from "../../types/collateralTypeForm";
 import {
@@ -21,17 +18,20 @@ import {
 } from "../../api/collateralTypeApi";
 import { useForm } from "@mantine/form";
 import { ModalFooter } from "../shared/ModalFooter";
+import { MinimizableModal } from "../shared/MinimizableModal";
 import { openCommonModal } from "./AlertModal";
 import { parseFrappeError } from "../../utils/parseFrappeError";
+import { useModalStore } from "../../store/ModalStore";
 
 interface CollateralTypeModalProps {
+  modalId: string;
   opened: boolean;
   onClose: () => void;
   editId?: string | null;
   isView?: boolean;
 }
 
-export function CollateralTypeModal({ opened, onClose, editId, isView }: CollateralTypeModalProps) {
+export function CollateralTypeModal({ modalId, opened, onClose, editId, isView }: CollateralTypeModalProps) {
   const form = useForm({
     initialValues: {
       type: "",
@@ -94,10 +94,15 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
     });
   };
 
+  const notifyContextSuccess = () => {
+    useModalStore.getState().getModalContext(modalId)?.onSuccess?.();
+  };
+
   const createMutation = useMutation({
     mutationFn: createCollateralType,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["collateralTypes"] });
+      notifyContextSuccess();
       showSuccess("Collateral Type Created", "Collateral type created successfully.");
       handleReset();
       onClose();
@@ -110,6 +115,7 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["collateralTypes"] });
       queryClient.invalidateQueries({ queryKey: ["collateralType", editId] });
+      notifyContextSuccess();
       showSuccess("Collateral Type Updated", "Collateral type updated successfully.");
       handleReset();
       onClose();
@@ -151,110 +157,17 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
   const headerTitle = editId ? (isView ? "View Collateral Type" : "Edit Collateral Type") : "New Collateral Type";
 
   return (
-    <Modal
-      opened={opened}
+    <MinimizableModal
+      modalId={modalId}
+      isOpen={opened}
       onClose={handleClose}
-      size={720}
-      padding={0}
-      radius="lg"
-      withCloseButton={false}
-      closeOnClickOutside={false}
-      closeOnEscape={false}
-      styles={{
-        body: { padding: 0 },
-      }}
-    >
-      <Box bg="white">
-        {/* Header — same solid brand.6 bar as Customer / Loan Product modals */}
-        <Group
-          justify="space-between"
-          align="center"
-          px="xl"
-          py="sm"
-          bg="brand.6"
-          style={{ borderBottom: "1px solid var(--mantine-color-brand-7)" }}
-        >
-          <Group gap="sm">
-            <ThemeIcon radius="md" size={34} variant="white" color="brand">
-              <IconShieldCheck size={16} />
-            </ThemeIcon>
-            <Box>
-              <Text
-                size="md"
-                fw={700}
-                c="white"
-                style={{ color: "var(--mantine-color-white)", letterSpacing: "-0.01em" }}
-              >
-                {headerTitle}
-              </Text>
-              <Text size="xs" fw={500} c="brand.1" style={{ color: "var(--mantine-color-brand-1)" }}>
-                Define collateral category parameters and limits
-              </Text>
-            </Box>
-          </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={handleClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
-        </Group>
-
-        {/* Body */}
-        <Box p="xl" bg="slate.0">
-          <Fieldset disabled={isView} variant="unstyled" p={0} m={0}>
-            <Group align="flex-end" gap="md" grow wrap="wrap">
-              <TextInput
-                size="sm"
-                radius="md"
-                label="Collateral Type"
-                placeholder="e.g. Real Estate"
-                withAsterisk
-                styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)', marginBottom: 4 } }}
-                {...form.getInputProps("type")}
-              />
-
-              <NumberInput
-                size="sm"
-                radius="md"
-                label="Haircut %"
-                placeholder="0.000"
-                decimalScale={3}
-                fixedDecimalScale
-                hideControls
-                rightSection={<IconPercentage size={13} color="var(--mantine-color-slate-4)" />}
-                styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)', marginBottom: 4 } }}
-                {...form.getInputProps("haircut")}
-              />
-
-              <NumberInput
-                size="sm"
-                radius="md"
-                label="Loan To Value Ratio"
-                placeholder="0.00"
-                withAsterisk
-                hideControls
-                rightSection={<IconPercentage size={13} color="var(--mantine-color-slate-4)" />}
-                styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)', marginBottom: 4 } }}
-                {...form.getInputProps("ltv")}
-              />
-            </Group>
-
-            <Checkbox
-              mt="lg"
-              size="sm"
-              label="Disabled"
-              color="brand"
-              styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)' } }}
-              {...form.getInputProps("disabled", { type: "checkbox" })}
-            />
-          </Fieldset>
-        </Box>
- <ModalFooter
+      title={headerTitle}
+      subtitle="Define collateral category parameters and limits"
+      icon={IconShieldCheck}
+      maxWidth="lg"
+      height="420px"
+      footer={
+        <ModalFooter
           variant="theme"
           isViewMode={isView}
           onClose={handleClose}
@@ -263,7 +176,55 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
           submitLoading={isPending}
           submitDisabled={isPending}
         />
-      </Box>
-    </Modal>
+      }
+    >
+      <Fieldset disabled={isView} variant="unstyled" p={0} m={0}>
+        <Group align="flex-end" gap="md" grow wrap="wrap">
+          <TextInput
+            size="sm"
+            radius="md"
+            label="Collateral Type"
+            placeholder="e.g. Real Estate"
+            withAsterisk
+            styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)', marginBottom: 4 } }}
+            {...form.getInputProps("type")}
+          />
+
+          <NumberInput
+            size="sm"
+            radius="md"
+            label="Haircut %"
+            placeholder="0.000"
+            decimalScale={3}
+            fixedDecimalScale
+            hideControls
+            rightSection={<IconPercentage size={13} color="var(--mantine-color-slate-4)" />}
+            styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)', marginBottom: 4 } }}
+            {...form.getInputProps("haircut")}
+          />
+
+          <NumberInput
+            size="sm"
+            radius="md"
+            label="Loan To Value Ratio"
+            placeholder="0.00"
+            withAsterisk
+            hideControls
+            rightSection={<IconPercentage size={13} color="var(--mantine-color-slate-4)" />}
+            styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)', marginBottom: 4 } }}
+            {...form.getInputProps("ltv")}
+          />
+        </Group>
+
+        <Checkbox
+          mt="lg"
+          size="sm"
+          label="Disabled"
+          color="brand"
+          styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)' } }}
+          {...form.getInputProps("disabled", { type: "checkbox" })}
+        />
+      </Fieldset>
+    </MinimizableModal>
   );
 }

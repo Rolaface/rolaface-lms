@@ -24,6 +24,7 @@
     "axios": "^1.18.1",
     "dayjs": "^1.11.21",
     "file-saver": "^2.0.5",
+    "framer-motion": "^13.1.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "recharts": "^3.10.1",
