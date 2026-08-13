@@ -1,0 +1,146 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useDebouncedValue } from '@mantine/hooks';
+import {
+  getLoanStatementDashboard,
+  getLoanStatement,
+  exportLoanStatementPDF,
+  exportLoanStatementExcel,
+} from '../../../api/Report/loanStatementApi';
+import type { DashboardData, StatementRow, StatementSort, PaginationMeta } from '../../../types/Report/loanStatement';
+import { notifyError } from '../../../utils/notify';
+import { parseFrappeError } from '../../../utils/parseFrappeError';
+
+const DEFAULT_SORT: StatementSort = { field: 'date', direction: 'asc' };
+const DEFAULT_PAGE_SIZE = 20;
+
+export function useLoanStatement() {
+  // Filters
+  const [loanId, setLoanId] = useState('ACC-LOAN-2026-00006');
+  const [fromDate, setFromDate] = useState('2026-04-01');
+  const [toDate, setToDate] = useState('2026-08-01');
+  const [viewType, setViewType] = useState<'summary' | 'detailed'>('summary');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebouncedValue(search, 350);
+
+  // Table State
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [sort, setSort] = useState<StatementSort>(DEFAULT_SORT);
+
+  // Data State
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [rows, setRows] = useState<StatementRow[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+  
+  // Loading & Action States
+  const [loadingDashboard, setLoadingDashboard] = useState(false);
+  const [loadingTable, setLoadingTable] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [exportingType, setExportingType] = useState<'pdf' | 'excel' | null>(null);
+
+  const orderBy = useMemo(() => `${sort.field} ${sort.direction}`, [sort]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, loanId, fromDate, toDate, viewType]);
+
+  const fetchDashboard = useCallback(async () => {
+    if (!loanId) return;
+    setLoadingDashboard(true);
+    try {
+      const res = await getLoanStatementDashboard({
+        loan_id: loanId,
+        from_date: fromDate,
+        to_date: toDate,
+        view_type: viewType,
+      });
+      const payload = res.message || res;
+      if (payload.status_code === 200 && payload.data) {
+        setDashboardData(payload.data);
+      }
+    } catch (err) {
+      notifyError(parseFrappeError(err), 'Failed to fetch dashboard data');
+    } finally {
+      setLoadingDashboard(false);
+    }
+  }, [loanId, fromDate, toDate, viewType]);
+
+  const fetchTable = useCallback(async () => {
+    if (!loanId) return;
+    setLoadingTable(true);
+    setError(null);
+    try {
+      const res = await getLoanStatement({
+        loan_id: loanId,
+        from_date: fromDate,
+        to_date: toDate,
+        view_type: viewType,
+        page,
+        page_size: pageSize,
+        search: debouncedSearch,
+        // order_by: orderBy // Pass to backend if API supports it
+      });
+      const payload = res.message || res;
+      if (payload.status_code === 200 && payload.data) {
+        setRows(payload.data.data || []);
+        setPagination(payload.data.pagination || null);
+      }
+    } catch (err) {
+      setError(parseFrappeError(err));
+      setRows([]);
+      setPagination(null);
+    } finally {
+      setLoadingTable(false);
+    }
+  }, [loanId, fromDate, toDate, viewType, page, pageSize, debouncedSearch, orderBy]);
+
+  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  useEffect(() => { fetchTable(); }, [fetchTable]);
+
+  const toggleSort = useCallback((field: string) => {
+    setSort((prev) => {
+      if (prev.field !== field) return { field, direction: 'asc' };
+      if (prev.direction === 'asc') return { field, direction: 'desc' };
+      return DEFAULT_SORT;
+    });
+    setPage(1);
+  }, []);
+
+  const resetFilters = useCallback(() => {
+    setSearch('');
+    setSort(DEFAULT_SORT);
+    setPage(1);
+    setPageSize(DEFAULT_PAGE_SIZE);
+  }, []);
+
+  const handleExport = async (type: 'pdf' | 'excel') => {
+    setExportingType(type);
+    try {
+      const exportFn = type === 'pdf' ? exportLoanStatementPDF : exportLoanStatementExcel;
+      const blob = await exportFn({ loan_id: loanId, from_date: fromDate, to_date: toDate, view_type: viewType });
+      
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Loan_Statement_${loanId}.${type === 'pdf' ? 'pdf' : 'xlsx'}`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (err) {
+      notifyError(parseFrappeError(err), `Export ${type} failed`);
+    } finally {
+      setExportingType(null);
+    }
+  };
+
+  return {
+    filters: { loanId, setLoanId, fromDate, setFromDate, toDate, setToDate, viewType, setViewType },
+    searchState: { search, setSearch },
+    paginationState: { page, setPage, pageSize, setPageSize },
+    sortState: { sort, toggleSort },
+    data: { dashboardData, rows, pagination },
+    status: { loadingDashboard, loadingTable, error, exportingType },
+    actions: { refetchTable: fetchTable, resetFilters, handleExport },
+  };
+}
