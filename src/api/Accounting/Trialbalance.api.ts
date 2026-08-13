@@ -27,7 +27,7 @@ export interface TBAccount {
 export interface TBFilters {
   from_date: string;
   to_date: string;
-  fiscal_year: string; // e.g. "2026-2027" — real FY record names are ranges
+  fiscal_year: string; 
   show_zero_values: boolean;
   with_period_closing_entry: boolean;
   show_closing_entries: boolean;
@@ -64,8 +64,7 @@ interface TBApiResponse {
 
 const currentYear = new Date().getFullYear();
 
-// Fallback only — overwritten by the real fiscal year once useTrialBalance
-// resolves it via getCompanyCurrentFiscalYear() on mount.
+
 export const DEFAULT_TB_FILTERS: TBFilters = {
   from_date: `${currentYear}-04-01`,
   to_date: `${currentYear + 1}-03-31`,
@@ -80,9 +79,7 @@ export function nf(currency: string, value: number) {
   if (!value) return "—";
   return formatAmountShared(currency, value, { withSymbol: true });
 }
-/* ===========================================================
-   GET TRIAL BALANCE
-=========================================================== */
+
 
 export async function fetchTrialBalance(filters: TBFilters): Promise<TBResponse> {
   const params = {

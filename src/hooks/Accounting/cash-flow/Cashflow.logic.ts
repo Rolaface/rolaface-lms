@@ -66,6 +66,7 @@ export function useCashFlow() {
     toDate: currentMonthEnd(),
   });
   const [fyResolved, setFyResolved] = useState(false);
+  const [lastValidFilters, setLastValidFilters] = useState<CFFilters | null>(null);
 
   const [data, setData] = useState<CFData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,21 +75,24 @@ export function useCashFlow() {
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [allExpanded, setAllExpanded] = useState(false);
 
-  // Currency store — subscribes this hook (and CashFlow, since it calls
-  // this hook) to re-render once real symbols/number formats arrive.
+
   useCurrencyReady();
   const baseCurrency = useCompanyStore((state) => state.baseCurrency);
 
-  // Resolve the company's real current Fiscal Year once, then patch filters.
+
   useEffect(() => {
     let cancelled = false;
     getCompanyCurrentFiscalYear()
       .then((fy) => {
         if (cancelled || !fy) return;
-        setFilters((f) => ({ ...f, fromFiscalYear: fy, toFiscalYear: fy }));
+        setFilters((f) => ({
+          ...f,
+          fromFiscalYear: fy.fiscal_year,
+          toFiscalYear: fy.fiscal_year,
+        }));
       })
       .catch(() => {
-        // fall back silently to the local guess if this lookup fails
+        
       })
       .finally(() => {
         if (!cancelled) setFyResolved(true);
@@ -123,6 +127,7 @@ export function useCashFlow() {
       }
       const resp = await fetchCashFlow(f);
       setData(resp);
+       setLastValidFilters(f);
       setExpanded(buildExpandedToDepth(resp.tree, 2));
       setAllExpanded(false);
     } catch (err: any) {
@@ -133,14 +138,33 @@ export function useCashFlow() {
   }, []);
 
   useEffect(() => {
-    // Wait for the real fiscal year before firing the first Fiscal-Year-mode request.
+
     if (filters.mode === 'Fiscal Year' && !fyResolved) return;
+
+
+    if (lastValidFilters) {
+      const needsFallback =
+        (filters.mode === 'Date Range' && (!filters.fromDate || !filters.toDate)) ||
+        (filters.mode === 'Fiscal Year' && (!filters.fromFiscalYear || !filters.toFiscalYear));
+
+      if (needsFallback) {
+        setFilters((f) => ({
+          ...f,
+          fromDate: f.fromDate || lastValidFilters.fromDate,
+          toDate: f.toDate || lastValidFilters.toDate,
+          fromFiscalYear: f.fromFiscalYear || lastValidFilters.fromFiscalYear,
+          toFiscalYear: f.toFiscalYear || lastValidFilters.toFiscalYear,
+        }));
+        return; 
+      }
+    }
+
     if (filters.mode === 'Date Range' && (!filters.fromDate || !filters.toDate)) return;
     if (filters.mode === 'Fiscal Year' && (!filters.fromFiscalYear || !filters.toFiscalYear)) return;
 
     const timer = setTimeout(() => fetchCF(filters), 300);
     return () => clearTimeout(timer);
-  }, [filters, fyResolved, fetchCF]);
+  }, [filters, fyResolved, lastValidFilters, fetchCF]);
 
   useEffect(() => {
     const codes = new Set<string>(collectCurrencyCodes(data));

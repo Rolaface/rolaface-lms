@@ -38,13 +38,19 @@ export interface CreateLoanPayload {
       amount: number;
     }[];
   };
+  documents?: {
+    file_name: string;
+    file_url: string;
+    attached_to_doctype?: string;
+    attached_to_name?: string;
+  }[];
 }
 
-// Frappe whitelisted methods wrap the return value in `message`.
-// Confirm this shape matches what your endpoint actually returns.
 export interface CreateLoanResponse {
   message: {
     name: string;
     [key: string]: unknown;
   };
 }
+
+export type LoanDocumentPayload = NonNullable<CreateLoanPayload["documents"]>[number];

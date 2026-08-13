@@ -37,6 +37,7 @@ import {
 } from "@tabler/icons-react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import dayjs from "dayjs";
 
 import {
   type ReceivableRow,
@@ -339,15 +340,18 @@ export function Receivable() {
       {
         id: "due",
         header: "Due / Posting Date",
-        cell: ({ row }) => (
-          <Text
-            fz="11px"
-            c="slate.5"
-            style={{ fontVariantNumeric: "tabular-nums" }}
-          >
-            {row.original.dueDate ?? row.original.postingDate ?? "—"}
-          </Text>
-        ),
+        cell: ({ row }) => {
+          const d = row.original.dueDate ?? row.original.postingDate;
+          return (
+            <Text
+              fz="11px"
+              c="slate.5"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {d ? dayjs(d).format("DD-MMM-YYYY") : "—"}
+            </Text>
+          );
+        },
       },
       {
         id: "age",
@@ -505,6 +509,7 @@ export function Receivable() {
           <DatePickerInput
             label="Posting Date"
             value={postingDate ? new Date(postingDate) : null}
+            valueFormat="DD-MMM-YYYY"
             onChange={(d) =>
               setPostingDate(d ? new Date(d).toISOString().split("T")[0] : "")
             }
@@ -785,7 +790,11 @@ export function Receivable() {
               background: "var(--mantine-color-slate-0)",
             }}
           >
-            <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
+            <Group
+              gap="sm"
+              c="slate.6"
+              style={{ fontSize: "var(--mantine-font-size-xs)" }}
+            >
               <span>
                 {`Showing ${(pagination.page - 1) * pagination.page_size + 1}-${Math.min(
                   pagination.page * pagination.page_size,
@@ -876,13 +885,21 @@ export function Receivable() {
               <Text size="xs" c="slate.5">
                 Posting Date
               </Text>
-              <Text size="sm">{viewRow.postingDate ?? "—"}</Text>
+              <Text size="sm">
+                {viewRow.postingDate
+                  ? dayjs(viewRow.postingDate).format("DD-MMM-YYYY")
+                  : "—"}
+              </Text>
             </Group>
             <Group justify="space-between">
               <Text size="xs" c="slate.5">
                 Due Date
               </Text>
-              <Text size="sm">{viewRow.dueDate ?? "—"}</Text>
+              <Text size="sm">
+                {viewRow.dueDate
+                  ? dayjs(viewRow.dueDate).format("DD-MMM-YYYY")
+                  : "—"}
+              </Text>
             </Group>
             {viewRow.status && (
               <Group justify="space-between">

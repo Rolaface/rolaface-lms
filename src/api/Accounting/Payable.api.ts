@@ -4,9 +4,6 @@ import { API } from "../../config/api";
 
 const api = apiClient;
 
-/* ===========================================================
-   TYPES — matches real Accounts Payable response
-=========================================================== */
 
 export type PayableVoucherType = "Purchase Invoice" | "Payment Entry" | "Journal Entry" | "Expense Claim";
 export type PayableStatus = "Pending" | "Overdue" | "Paid";
@@ -105,9 +102,7 @@ export const VOUCHER_TYPE_OPTIONS: PayableVoucherType[] = [
   "Expense Claim",
 ];
 
-/* ===========================================================
-   ROW MAPPING — backend record -> UI row
-=========================================================== */
+
 
 function computeRow(row: any, index: number): PayableRow {
   const isSummary = !row.voucher_no;
@@ -152,9 +147,7 @@ function computeRow(row: any, index: number): PayableRow {
   };
 }
 
-/* ===========================================================
-   GET ALL PAYABLES
-=========================================================== */
+
 
 export async function fetchPayables(
   filters: PayableFilters,
@@ -194,14 +187,12 @@ export async function fetchPayables(
       total_entries: pag.total_items ?? rows.length,
       total_pages: pag.total_pages ?? 1,
       has_next: pag.has_next ?? false,
-      has_prev: pag.has_previous ?? page > 1,   // ← "has_previous" not "has_prev"
+      has_prev: pag.has_previous ?? page > 1,   
     },
   };
 }
 
-/* ===========================================================
-   DROPDOWN OPTIONS — dynamic from backend (flat {value, label} shape)
-=========================================================== */
+
 
 export interface SelectOption {
   value: string;

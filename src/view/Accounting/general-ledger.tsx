@@ -19,13 +19,10 @@ import {
   SimpleGrid,
   Pagination,
   useMantineTheme,
+  Select,
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
-import {
-  IconRefresh,
-  IconBook,
-  IconChevronLeft,
-} from "@tabler/icons-react";
+import { IconRefresh, IconBook, IconChevronLeft } from "@tabler/icons-react";
 
 import {
   type LedgerRow,
@@ -33,6 +30,7 @@ import {
 } from "../../api/Accounting/Generalledger.api";
 import { useGeneralLedger } from "../../hooks/Accounting/Generalledger.logic";
 import { useCurrencyReady } from "../../store/currencyStore";
+import dayjs from "dayjs";
 
 export interface GeneralLedgerProps {
   account?: string;
@@ -141,6 +139,7 @@ function KpiStrip({
 function FilterBar({
   account,
   setAccount,
+  accountOptions,
   fromDate,
   setFromDate,
   toDate,
@@ -152,6 +151,7 @@ function FilterBar({
 }: {
   account: string;
   setAccount: (v: string) => void;
+  accountOptions: { value: string; label: string }[];
   fromDate: string;
   setFromDate: (v: string) => void;
   toDate: string;
@@ -163,13 +163,27 @@ function FilterBar({
 }) {
   return (
     <Group gap="sm" wrap="wrap" align="flex-end">
-      <TextInput
+      {showBack && (
+        <Button
+          size="xs"
+          variant="default"
+          leftSection={<IconChevronLeft size={13} />}
+          onClick={onBack}
+        >
+          Back
+        </Button>
+      )}
+
+      <Select
         size="xs"
         label="Account"
-        value={account}
-        onChange={(e) => setAccount(e.currentTarget.value)}
-        placeholder="All accounts"
-        style={{ flex: 1, minWidth: 200 }}
+        placeholder="Select account"
+        searchable
+        clearable
+        data={accountOptions}
+        value={account || null}
+        onChange={(v) => setAccount(v || "")}
+        style={{ flex: 1, minWidth: 220 }}
       />
 
       <DateInput
@@ -177,7 +191,7 @@ function FilterBar({
         label="From"
         value={fromDate}
         onChange={(value) => setFromDate(value || "")}
-        valueFormat="DD/MM/YYYY"
+        valueFormat="DD-MMM-YYYY"
         w={140}
         clearable
       />
@@ -187,11 +201,10 @@ function FilterBar({
         label="To"
         value={toDate}
         onChange={(value) => setToDate(value || "")}
-        valueFormat="DD/MM/YYYY"
+        valueFormat="DD-MMM-YYYY"
         w={140}
         clearable
       />
-
       <Button
         size="xs"
         color="brand"
@@ -207,17 +220,6 @@ function FilterBar({
       >
         Apply
       </Button>
-
-      {showBack && (
-        <Button
-          size="xs"
-          variant="default"
-          leftSection={<IconChevronLeft size={13} />}
-          onClick={onBack}
-        >
-          Back
-        </Button>
-      )}
     </Group>
   );
 }
@@ -236,6 +238,7 @@ export function GeneralLedger({
   const {
     account,
     setAccount,
+    accountOptions,
     fromDate,
     setFromDate,
     toDate,
@@ -299,6 +302,7 @@ export function GeneralLedger({
                 </Text>
               );
             }
+
             if (col.fieldname === "posting_date" && val) {
               return (
                 <Text
@@ -306,11 +310,7 @@ export function GeneralLedger({
                   c="slate.7"
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
-                  {new Date(String(val)).toLocaleDateString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
+                  {dayjs(String(val)).format("DD-MMM-YYYY")}
                 </Text>
               );
             }
@@ -397,6 +397,10 @@ export function GeneralLedger({
           <FilterBar
             account={account}
             setAccount={setAccount}
+            accountOptions={accountOptions.map((a) => ({
+              value: a.name,
+              label: a.account_name,
+            }))}
             fromDate={fromDate}
             setFromDate={setFromDate}
             toDate={toDate}
@@ -580,7 +584,11 @@ export function GeneralLedger({
               background: "var(--mantine-color-slate-0)",
             }}
           >
-            <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
+            <Group
+              gap="sm"
+              c="slate.6"
+              style={{ fontSize: "var(--mantine-font-size-xs)" }}
+            >
               <span>
                 {`Showing ${(pagination.page - 1) * pagination.page_size + 1}-${Math.min(
                   pagination.page * pagination.page_size,

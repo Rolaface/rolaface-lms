@@ -6,9 +6,7 @@ import { formatAmount as formatAmountShared } from "../../store/currencyStore";
 
 const api = apiClient;
 
-/* ===========================================================
-   TYPES — matches real Accounts Receivable response
-=========================================================== */
+
 
 export type ReceivableVoucherType = "Sales Invoice" | "Payment Entry" | "Journal Entry";
 export type ReceivableStatus = "Pending" | "Overdue" | "Paid";
@@ -105,18 +103,14 @@ export const VOUCHER_TYPE_OPTIONS: ReceivableVoucherType[] = [
   "Journal Entry",
 ];
 
-/* ===========================================================
-   FORMATTING HELPERS
-=========================================================== */
+
 
 
 export function formatAmount(currency: string | undefined, amount: number) {
   return formatAmountShared(currency, amount, { withSymbol: true });
 }
 
-/* ===========================================================
-   ROW MAPPING — backend record -> UI row
-=========================================================== */
+
 
 function computeRow(row: any, index: number): ReceivableRow {
   const isSummary = !row.voucher_no;
@@ -162,9 +156,7 @@ function computeRow(row: any, index: number): ReceivableRow {
 
 
 
-/* ===========================================================
-   GET ALL RECEIVABLES
-=========================================================== */
+
 
 export async function fetchReceivables(
   filters: ReceivableFilters,
@@ -206,9 +198,7 @@ export async function fetchReceivables(
   };
 }
 
-/* ===========================================================
-   DROPDOWN OPTIONS — dynamic from backend (already flat {value, label})
-=========================================================== */
+
 
 export interface SelectOption {
   value: string;

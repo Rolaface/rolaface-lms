@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 
 import {
   useReactTable,
@@ -128,20 +129,24 @@ function FilterBar({
           >
             {allExpanded ? "Collapse" : "Expand All"}
           </Button>
-          <Button
-            size="xs"
-            radius="xl"
-            variant="default"
-            leftSection={
-              <IconRefresh
-                size={13}
-                className={loading ? "animate-spin" : ""}
-              />
-            }
-            onClick={onRefresh}
-          >
-            Refresh
-          </Button>
+            <Button
+              size="xs"
+              radius="xl"
+              color="brand"
+              leftSection={
+                <IconRefresh
+                  size={13}
+                  className={loading ? "animate-spin" : ""}
+                />
+              }
+              onClick={onRefresh}
+              style={{
+                background: theme.other?.brandGradient,
+                boxShadow: theme.other?.brandGlowShadowSm,
+              }}
+            >
+              Refresh
+            </Button>
           <Button
             size="xs"
             radius="xl"
@@ -166,6 +171,7 @@ function useColumns(
   onEdit: (a: COAAccount) => void,
   onDelete: (a: COAAccount) => void,
   onAddChild: (a: COAAccount) => void,
+  onViewLedger: (a: COAAccount) => void,
   baseCurrency: string,
 ): ColumnDef<COAAccount>[] {
   return useMemo<ColumnDef<COAAccount>[]>(
@@ -406,7 +412,10 @@ function useColumns(
                       Add Child
                     </Menu.Item>
                   ) : (
-                    <Menu.Item leftSection={<IconBookmark size={13} />}>
+                    <Menu.Item
+                      leftSection={<IconBookmark size={13} />}
+                      onClick={() => onViewLedger(node)}
+                    >
                       View Ledger
                     </Menu.Item>
                   )}
@@ -425,13 +434,14 @@ function useColumns(
         },
       },
     ],
-    [onView, onEdit, onDelete, onAddChild, baseCurrency],
+    [onView, onEdit, onDelete, onAddChild, onViewLedger, baseCurrency],
   );
 }
 
 export function ChartOfAccounts() {
   useCurrencyReady();
   const theme = useMantineTheme();
+  const navigate = useNavigate();
 
   const {
     searchTerm,
@@ -482,9 +492,14 @@ export function ChartOfAccounts() {
       setFormModal({ parent: node });
       setModalOpened(true);
     },
+    (node) => {
+      navigate({
+        to: "/accounting/general-ledger/report",
+        search: { account: node.name },
+      });
+    },
     baseCurrency,
   );
-
   const table = useReactTable({
     data: tableData,
     columns,

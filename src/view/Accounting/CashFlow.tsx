@@ -32,6 +32,7 @@ import {
   IconWallet,
   IconArrowsLeftRight,
 } from '@tabler/icons-react';
+import { DateInput } from "@mantine/dates";
 
 import { type CFNode, type CFSummaryItem, isNetRow } from '../../api/Accounting/Cashflow.api';
 import { useCashFlow } from '../../hooks/Accounting/cash-flow/Cashflow.logic';
@@ -139,26 +140,34 @@ function FilterBar({ cf }: { cf: ReturnType<typeof useCashFlow> }) {
             value={filters.fromFiscalYear}
             onChange={(e) => setFiscalYear(e.currentTarget.value)}
             placeholder="2026-2027"
+            disabled
             w={112}
           />
         ) : (
           <>
-            <TextInput
-              size="xs"
-              label="From"
-              type="date"
-              value={filters.fromDate}
-              onChange={(e) => setFromDate(e.currentTarget.value)}
-              w={150}
-            />
-            <TextInput
-              size="xs"
-              label="To"
-              type="date"
-              value={filters.toDate}
-              onChange={(e) => setToDate(e.currentTarget.value)}
-              w={150}
-            />
+          <DateInput
+  size="xs"
+  radius="xl"
+  label="From"
+  placeholder="From Date"
+  value={filters.fromDate}
+  onChange={(value) => setFromDate(value || "")}
+  valueFormat="DD/MM/YYYY"
+  w={150}
+  clearable
+/>
+
+<DateInput
+  size="xs"
+  radius="xl"
+  label="To"
+  placeholder="To Date"
+  value={filters.toDate}
+  onChange={(value) => setToDate(value || "")}
+  valueFormat="DD/MM/YYYY"
+  w={150}
+  clearable
+/>
           </>
         )}
 
