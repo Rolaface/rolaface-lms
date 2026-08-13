@@ -19,6 +19,7 @@ import {
   IconX,
   IconPercentage,
   IconChevronDown,
+  IconCoins,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@mantine/form";
@@ -230,7 +231,7 @@ export function CollateralModal({ opened, onClose, editId, isView }: CollateralM
         >
           <Group gap="sm">
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
-              <IconShieldLock size={16} />
+              <IconCoins size={16} />
             </ThemeIcon>
             <Box>
               <Text

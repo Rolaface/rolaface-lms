@@ -33,6 +33,7 @@ import {
   IconCoin,
   IconPercentage,
   IconGauge,
+  IconCoins,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -499,7 +500,7 @@ export function Collateral() {
               justifyContent: 'center',
             }}
           >
-            <IconShieldLock size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconCoins size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>

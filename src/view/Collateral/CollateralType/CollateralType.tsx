@@ -29,6 +29,7 @@ import {
   IconSearch,
   IconTrash,
   IconShieldCheck,
+  IconBox,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -417,7 +418,7 @@ export function CollateralType() {
               justifyContent: 'center',
             }}
           >
-            <IconShieldCheck size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconBox size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
