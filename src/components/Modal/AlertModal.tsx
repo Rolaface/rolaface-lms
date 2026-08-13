@@ -1,12 +1,4 @@
-import {
-  Alert,
-  Button,
-  Group,
-  Stack,
-  Text,
-  Box,
-  ActionIcon,
-} from "@mantine/core";
+import { Alert, Button, Group, Stack, Text, Box, ActionIcon } from "@mantine/core";
 import {
   IconAlertCircle,
   IconAlertTriangle,
@@ -34,54 +26,21 @@ interface CommonModalProps {
   buttons: ModalButton[];
 }
 
-/* ------------------------------------------------------------------ */
-/*  Color -> alert "type" mapping.                                     */
-/*  Same `color` prop as before (e.g. "red", "orange", "blue", "teal") */
-/*  now automatically drives the icon + badge label + hex used for the */
-/*  glow/callout tint — no call-site changes needed.                   */
-/* ------------------------------------------------------------------ */
-
-const TYPE_BY_COLOR: Record<
-  string,
-  { label: string; icon: ReactNode; hex: string }
-> = {
-  red: {
-    label: "Danger",
-    icon: <IconAlertOctagon size={34} stroke={2.2} />,
-    hex: "#E03131",
-  },
-  orange: {
-    label: "Warning",
-    icon: <IconAlertTriangle size={34} stroke={2.2} />,
-    hex: "#F08C00",
-  },
-  yellow: {
-    label: "Warning",
-    icon: <IconAlertTriangle size={34} stroke={2.2} />,
-    hex: "#F5A623",
-  },
-  blue: {
-    label: "Info",
-    icon: <IconInfoCircle size={34} stroke={2.2} />,
-    hex: "#1971C2",
-  },
-  teal: {
-    label: "Success",
-    icon: <IconCircleCheck size={34} stroke={2.2} />,
-    hex: "#0CA678",
-  },
-  green: {
-    label: "Success",
-    icon: <IconCircleCheck size={34} stroke={2.2} />,
-    hex: "#2F9E44",
-  },
+// color prop -> { icon, hex }. Aliases map to the same theme so any
+// existing string ("red"/"danger", "green"/"teal"/"success", etc.) works.
+const THEMES: Record<string, { icon: ReactNode; hex: string }> = {
+  red: { icon: <IconAlertOctagon size={34} />, hex: "#E03131" },
+  danger: { icon: <IconAlertOctagon size={34} />, hex: "#E03131" },
+  orange: { icon: <IconAlertTriangle size={34} />, hex: "#F08C00" },
+  yellow: { icon: <IconAlertTriangle size={34} />, hex: "#F08C00" },
+  warning: { icon: <IconAlertTriangle size={34} />, hex: "#F08C00" },
+  blue: { icon: <IconInfoCircle size={34} />, hex: "#1971C2" },
+  info: { icon: <IconInfoCircle size={34} />, hex: "#1971C2" },
+  teal: { icon: <IconCircleCheck size={34} />, hex: "#2F9E44" },
+  green: { icon: <IconCircleCheck size={34} />, hex: "#2F9E44" },
+  success: { icon: <IconCircleCheck size={34} />, hex: "#2F9E44" },
 };
-
-const DEFAULT_THEME = {
-  label: "Notice",
-  icon: <IconAlertCircle size={34} stroke={2.2} />,
-  hex: "#495057",
-};
+const DEFAULT_THEME = { icon: <IconAlertCircle size={34} />, hex: "#495057" };
 
 export const openCommonModal = ({
   heading,
@@ -91,7 +50,7 @@ export const openCommonModal = ({
   icon,
   buttons,
 }: CommonModalProps) => {
-  const theme = TYPE_BY_COLOR[color] ?? DEFAULT_THEME;
+  const { icon: themeIcon, hex } = THEMES[color?.toLowerCase()] ?? DEFAULT_THEME;
   let modalId: string;
 
   modalId = modals.open({
@@ -100,30 +59,24 @@ export const openCommonModal = ({
     size: "md",
     radius: "lg",
     padding: 0,
-    overlayProps: {
-      backgroundOpacity: 0.55,
-      blur: 3,
-    },
+    overlayProps: { backgroundOpacity: 0.55, blur: 3 },
     styles: {
       body: { padding: 0 },
-      content: { overflow: "hidden" },
+      content: { overflow: "hidden", borderTop: `4px solid ${hex}` },
     },
-
     children: (
-      <Stack gap={0} pos="relative">
-        {/* Top gradient zone with icon */}
+      <Stack gap={0}>
         <Box
           pos="relative"
-          pt={40}
-          pb={20}
+          pt={44}
+          pb={24}
           style={{
-            background: `radial-gradient(ellipse at center, ${theme.hex}22 0%, ${theme.hex}00 70%)`,
+            background: `linear-gradient(to bottom, ${hex}4D 0%, ${hex}26 40%, ${hex}00 100%)`,
           }}
         >
           <ActionIcon
             variant="subtle"
             color="gray"
-            size="md"
             radius="xl"
             onClick={() => modals.close(modalId)}
             style={{ position: "absolute", top: 16, right: 16 }}
@@ -132,86 +85,54 @@ export const openCommonModal = ({
             <IconX size={18} />
           </ActionIcon>
 
-          <Stack align="center" gap={0}>
-            <Box
-              style={{
-                width: 84,
-                height: 84,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                clipPath:
-                  "polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%)",
-                background: `${theme.hex}1F`,
-                boxShadow: `0 0 32px 6px ${theme.hex}33`,
-                color: theme.hex,
-              }}
-            >
-              {icon ?? theme.icon}
-            </Box>
-          </Stack>
-        </Box>
-
-        {/* Body */}
-        <Stack align="center" gap="md" px="xl" pb="xl">
-          {/* Badge */}
           <Box
-            px="sm"
-            py={4}
+            mx="auto"
             style={{
-              borderRadius: 999,
-              background: `${theme.hex}14`,
-              color: theme.hex,
-              fontSize: 13,
-              fontWeight: 600,
+              width: 84,
+              height: 84,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              clipPath: "polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0% 50%)",
+              background: `${hex}33`,
+              boxShadow: `0 0 32px 8px ${hex}40`,
+              color: hex,
             }}
           >
-            {theme.label}
+            {icon ?? themeIcon}
           </Box>
+        </Box>
 
-          {/* Heading + subtitle */}
+        <Stack align="center" gap="md" px="xl" pb="xl">
           <Stack gap={4} align="center">
-            <Text fw={700} size="xl" ta="center">
-              {heading}
-            </Text>
-            {subtitle && (
-              <Text size="sm" c="dimmed" ta="center">
-                {subtitle}
-              </Text>
-            )}
+            <Text fw={700} size="xl" ta="center">{heading}</Text>
+            {subtitle && <Text size="sm" c="dimmed" ta="center">{subtitle}</Text>}
           </Stack>
 
-          {/* Original body content, now inside a tinted callout box */}
           <Alert
             color={color}
             variant="light"
             radius="md"
             w="100%"
             icon={<IconAlertCircle size={20} />}
-            styles={{
-              root: {
-                background: `${theme.hex}0D`,
-                border: `1px solid ${theme.hex}26`,
-              },
-            }}
+            styles={{ root: { background: `${hex}0D`, border: `1px solid ${hex}26` } }}
           >
             <Text size="sm">{body}</Text>
           </Alert>
 
-          {/* Buttons — unchanged behavior/props */}
           <Group justify="flex-end" w="100%" mt="sm">
-            {buttons.map((button, index) => (
+            {buttons.map((btn, i) => (
               <Button
-                key={index}
-                color={button.color ?? color}
-                variant={button.variant ?? "filled"}
+                key={i}
+                color={btn.color ?? color}
+                variant={btn.variant ?? "filled"}
                 radius="md"
                 onClick={() => {
                   modals.close(modalId);
-                  button.onClick?.();
+                  btn.onClick?.();
                 }}
               >
-                {button.label}
+                {btn.label}
               </Button>
             ))}
           </Group>
