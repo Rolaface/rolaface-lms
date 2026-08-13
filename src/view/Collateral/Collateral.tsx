@@ -44,7 +44,6 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { modals } from '@mantine/modals';
 import { CollateralModal } from '../../components/Modal/CollateralModal';
 import {
   getAllCollaterals,
@@ -52,6 +51,8 @@ import {
   disableCollateral,
   deleteCollateral,
 } from '../../api/collateralApi';
+import { openCommonModal } from '../../components/Modal/AlertModal';
+import { parseFrappeError } from '../../utils/parseFrappeError';
 
 interface CollateralRow {
   id: string;
@@ -183,38 +184,77 @@ export function Collateral() {
 
   const queryClient = useQueryClient();
 
-  const { mutate: enableItem } = useMutation({
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
+  const { mutate: enableItem, isPending: isEnabling } = useMutation({
     mutationFn: (id: string) => enableCollateral(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collaterals'] });
+      showSuccess('Collateral Activated', 'Collateral has been activated successfully.');
     },
+    onError: (error: any) => showError('Status Update Failed', error),
   });
 
-  const { mutate: disableItem } = useMutation({
+  const { mutate: disableItem, isPending: isDisabling } = useMutation({
     mutationFn: (id: string) => disableCollateral(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collaterals'] });
+      showSuccess('Collateral Disabled', 'Collateral has been disabled successfully.');
     },
+    onError: (error: any) => showError('Status Update Failed', error),
   });
 
   const { mutate: removeItem, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteCollateral(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collaterals'] });
+      showSuccess('Collateral Deleted', 'Collateral deleted successfully.');
     },
+    onError: (error: any) => showError('Delete Failed', error),
   });
 
-  const handleDelete = (id: string) => {
-    modals.openConfirmModal({
-      title: 'Delete collateral',
-      children: (
-        <Text size="sm">
-          Are you sure you want to delete this collateral? This cannot be undone.
-        </Text>
+  const handleDelete = (row: CollateralRow) => {
+    openCommonModal({
+      heading: 'Delete Collateral',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete collateral{' '}
+          <Text span fw={600}>
+            {row.name}
+          </Text>
+          ?
+        </>
       ),
-      labels: { confirm: 'Delete', cancel: 'Cancel' },
-      confirmProps: { color: 'danger' },
-      onConfirm: () => removeItem(id),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => {
+            removeItem(row.id);
+          },
+        },
+      ],
     });
   };
 
@@ -256,12 +296,36 @@ export function Collateral() {
     });
   }, [data, search, type, status]);
 
-  const handleToggleStatus = (id: string, currentStatus: string) => {
-    if (currentStatus === 'ACTIVE') {
-      disableItem(id);
-    } else {
-      enableItem(id);
-    }
+  const handleToggleStatus = (row: CollateralRow) => {
+    const willDisable = row.status === 'ACTIVE';
+    openCommonModal({
+      heading: willDisable ? 'Disable Collateral' : 'Activate Collateral',
+      subtitle: 'Please confirm this action before continuing.',
+      body: (
+        <>
+          Are you sure you want to {willDisable ? 'disable' : 'activate'} collateral{' '}
+          <Text span fw={600}>
+            {row.name}
+          </Text>
+          ?
+        </>
+      ),
+      color: willDisable ? 'red' : 'green',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: willDisable ? 'Disable' : 'Activate',
+          color: willDisable ? 'red' : 'green',
+          onClick: () => {
+            if (willDisable) {
+              disableItem(row.id);
+            } else {
+              enableItem(row.id);
+            }
+          },
+        },
+      ],
+    });
   };
 
   const columns = useMemo(
@@ -313,6 +377,7 @@ export function Collateral() {
         cell: (info) => {
           const row = info.row.original;
           const isActive = row.status === 'ACTIVE';
+          const isTogglingStatus = isEnabling || isDisabling;
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
@@ -351,8 +416,8 @@ export function Collateral() {
                   variant="subtle"
                   color="danger"
                   radius="md"
-                  disabled={isDeleting}
-                  onClick={() => handleDelete(row.id)}
+                  loading={isDeleting}
+                  onClick={() => handleDelete(row)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
@@ -362,7 +427,8 @@ export function Collateral() {
                   size="xs"
                   color="success"
                   checked={isActive}
-                  onChange={() => handleToggleStatus(row.id, row.status)}
+                  disabled={isTogglingStatus}
+                  onChange={() => handleToggleStatus(row)}
                 />
               </Tooltip>
             </Group>
@@ -370,7 +436,7 @@ export function Collateral() {
         },
       }),
     ],
-    [isDeleting]
+    [isDeleting, isEnabling, isDisabling]
   );
 
   const table = useReactTable({

@@ -43,7 +43,6 @@ import {
 import { LoanDisbursementModal } from '../../../components/Modal/LoanDisbursementModal';
 import { getAllLoansDisbursement, deleteLoanDisbursement, changeLoanDsbrStatus } from '../../../api/loanDisbursementAPi';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { modals } from '@mantine/modals';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 
 interface DisbursementRow {
@@ -137,67 +136,54 @@ export function LoanDisbursement() {
     }));
   }, [res]);
 
+  const showError = (heading: string, error: any) => {
+    const errorData = error?.response?.data;
+    const errorMessage =
+      errorData?._error_message ||
+      errorData?.message?.message ||
+      error?.message ||
+      'An unexpected error occurred.';
+
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: errorMessage,
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
   const deleteMutation = useMutation({
     mutationFn: deleteLoanDisbursement,
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       fetchDisbursements();
+      showSuccess('Disbursement Deleted', `Disbursement ${id} deleted successfully.`);
     },
-    onError: (error: any) => {
-      const errorData = error.response?.data;
-
-      const errorMessage =
-        errorData?._error_message ||
-        errorData?.message?.message ||
-        error.message ||
-        'An unexpected error occurred.';
-
-      modals.open({
-        title: <Text fw={600} c="danger">Action Failed</Text>,
-        children: (
-          <div>
-            <Text size="sm" mb="lg">
-              {errorMessage}
-            </Text>
-            <Group justify="flex-end">
-              <Button onClick={() => modals.closeAll()} variant="default">
-                Close
-              </Button>
-            </Group>
-          </div>
-        ),
-      });
-    },
+    onError: (error: any) => showError('Action Failed', error),
   });
 
   const statusMutation = useMutation({
     mutationFn: ({ id, action }: { id: string; action: string }) => changeLoanDsbrStatus(id, action),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       fetchDisbursements();
+      showSuccess(
+        variables.action === 'approved' ? 'Disbursement Submitted' : 'Disbursement Cancelled',
+        variables.action === 'approved'
+          ? `Disbursement ${variables.id} has been submitted for approval.`
+          : `Disbursement ${variables.id} has been cancelled.`
+      );
     },
-    onError: (error: any) => {
-      const errorData = error.response?.data;
-      const errorMessage =
-        errorData?._error_message ||
-        errorData?.message?.message ||
-        error.message ||
-        'An unexpected error occurred.';
-
-      modals.open({
-        title: <Text fw={600} c="danger">Update Failed</Text>,
-        children: (
-          <div>
-            <Text size="sm" mb="lg">
-              {errorMessage}
-            </Text>
-            <Group justify="flex-end">
-              <Button onClick={() => modals.closeAll()} variant="default">
-                Close
-              </Button>
-            </Group>
-          </div>
-        ),
-      });
-    },
+    onError: (error: any) => showError('Update Failed', error),
   });
 
   const filteredData = useMemo(() => {
@@ -244,6 +230,31 @@ export function LoanDisbursement() {
     setEditData(null);
     setIsView(false);
     close();
+  };
+
+  const confirmDelete = (row: DisbursementRow) => {
+    openCommonModal({
+      heading: 'Delete Loan Disbursement',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete disbursement{' '}
+          <Text span fw={600}>
+            {row.id}
+          </Text>
+          ?
+        </>
+      ),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => deleteMutation.mutate(row.id),
+        },
+      ],
+    });
   };
 
   const columns = useMemo(
@@ -353,19 +364,7 @@ export function LoanDisbursement() {
                   radius="md"
                   disabled={!canDelete || isDeleting}
                   loading={isDeleting}
-                  onClick={() => {
-                    modals.openConfirmModal({
-                      title: 'Delete Loan Disbursement',
-                      children: (
-                        <Text size="sm">
-                          Are you sure you want to delete disbursement <b>{row.id}</b>? This cannot be undone.
-                        </Text>
-                      ),
-                      labels: { confirm: 'Delete', cancel: 'Cancel' },
-                      confirmProps: { color: 'danger' },
-                      onConfirm: () => deleteMutation.mutate(row.id),
-                    });
-                  }}
+                  onClick={() => confirmDelete(row)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>

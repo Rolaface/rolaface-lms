@@ -8,7 +8,7 @@ import {
 } from '../../api/lendingOperation/writeoff';
 import type { WriteOffAccountItem, LoanAccountItem, LoanWriteOffDetail } from '../../types/loanWriteOff';
 import { parseFrappeError } from '../../utils/parseFrappeError';
-import { showSuccess, showApiError } from '../../utils/alert';
+import { openCommonModal } from './AlertModal';
 import { ModalFooter } from '../shared/ModalFooter';
 
 import {
@@ -18,7 +18,6 @@ import {
   NumberInput,
   Select,
   Modal,
-  Badge,
   Group,
   Stack,
   ActionIcon,
@@ -75,6 +74,27 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
   const [loanAccountsLoading, setLoanAccountsLoading] = useState(false);
   const [loanAcSearch, setLoanAcSearch] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // ---------- ALERT HELPERS (same pattern as AddLoanCategoryModal) ----------
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
 
   useEffect(() => {
     if (!opened) return;
@@ -213,7 +233,10 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
         ? updateLoanWriteOff({ name: editData.name, ...payload })
         : createLoanWriteOff(payload),
     onSuccess: () => {
-      showSuccess(isEdit ? 'Write-off updated successfully.' : 'Write-off created successfully.');
+      showSuccess(
+        isEdit ? 'Write-off Updated' : 'Write-off Created',
+        isEdit ? 'Write-off updated successfully.' : 'Write-off created successfully.'
+      );
       onSubmit?.({
         loanAc,
         valueDate,
@@ -224,9 +247,7 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
       });
       onClose();
     },
-    onError: (err) => {
-      showApiError(parseFrappeError(err));
-    },
+    onError: (err) => showError(isEdit ? 'Update Failed' : 'Create Failed', err),
   });
 
   const handleSubmit = () => {

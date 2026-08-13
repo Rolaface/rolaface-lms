@@ -1,7 +1,6 @@
 // LoanDisbursementModal.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "@mantine/form";
-import { modals } from "@mantine/modals";
 import {
   Box,
   Text,
@@ -216,7 +215,7 @@ export function LoanDisbursementModal({
     },
   });
 
-  const updateDisbursementMutation = useMutation({
+const updateDisbursementMutation = useMutation({
     mutationFn: updateLoanDisbursement,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
@@ -226,26 +225,21 @@ export function LoanDisbursementModal({
       onClose();
     },
     onError: (error: any) => {
-      const errorMessage = parseFrappeError(error);
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
 
-      modals.open({
-        title: <Text fw={600} c="red">Action Failed</Text>,
-        children: (
-          <div>
-            <Text size="sm" mb="lg">
-              {errorMessage}
-            </Text>
-            <Group justify="flex-end">
-              <Button onClick={() => modals.closeAll()} variant="default">
-                Close
-              </Button>
-            </Group>
-          </div>
-        ),
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
       });
     },
   });
-
   const handleReset = () => {
     form.reset();
     form.setValues({
