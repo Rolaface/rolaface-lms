@@ -6,14 +6,12 @@ import {
   TextInput,
   NumberInput,
   Checkbox,
-  Button,
   ActionIcon,
   ThemeIcon,
   Group,
   Fieldset,
-  Divider,
 } from "@mantine/core";
-import { IconShieldCheck, IconX, IconPercentage, IconCheck } from "@tabler/icons-react";
+import { IconShieldCheck, IconX, IconPercentage } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateCollateralTypePayload } from "../../types/collateralTypeForm";
 import {
@@ -23,6 +21,8 @@ import {
 } from "../../api/collateralTypeApi";
 import { useForm } from "@mantine/form";
 import { ModalFooter } from "../shared/ModalFooter";
+import { openCommonModal } from "./AlertModal";
+import { parseFrappeError } from "../../utils/parseFrappeError";
 
 interface CollateralTypeModalProps {
   opened: boolean;
@@ -73,13 +73,36 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, editId, editDetailsResponse]);
 
+  // ---------- ALERT HELPERS (same pattern as AddLoanCategoryModal) ----------
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
+
   const createMutation = useMutation({
     mutationFn: createCollateralType,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["collateralTypes"] });
+      showSuccess("Collateral Type Created", "Collateral type created successfully.");
       handleReset();
       onClose();
     },
+    onError: (error: any) => showError("Create Failed", error),
   });
 
   const updateMutation = useMutation({
@@ -87,9 +110,11 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["collateralTypes"] });
       queryClient.invalidateQueries({ queryKey: ["collateralType", editId] });
+      showSuccess("Collateral Type Updated", "Collateral type updated successfully.");
       handleReset();
       onClose();
     },
+    onError: (error: any) => showError("Update Failed", error),
   });
 
   useEffect(() => {
