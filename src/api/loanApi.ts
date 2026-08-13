@@ -1,9 +1,40 @@
 import apiClient from "../config/axios"; 
 import { API } from "../config/api";
-import type { CreateLoanPayload, CreateLoanResponse } from "../types/loanForm";
+import type { CreateLoanPayload, CreateLoanResponse, LoanDocumentPayload } from "../types/loanForm";
 
 export async function createLoan(payload: CreateLoanPayload) {
   const { data } = await apiClient.post<CreateLoanResponse>(API.loan.create, payload);
+  return data;
+}
+
+export async function uploadFile(file: File, isPrivate: 0 | 1 = 1, customFileName?: string) {
+  const formData = new FormData();
+  // formData.append("file", file);
+  // formData.append("is_private", String(isPrivate));
+formData.append("file", file, customFileName || file.name);
+  formData.append("is_private", String(isPrivate));
+
+  const { data } = await apiClient.post(API.loan.uploadFile, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+  return {
+    file_name: data.message.file_name as string,
+    file_url: data.message.file_url as string,
+  };
+}
+
+export async function attachLoanDocuments({
+  id,
+  documents,
+}: {
+  id: string;
+  documents: LoanDocumentPayload[];
+}) {
+  const { data } = await apiClient.post<CreateLoanResponse>(
+    `${API.loan.loanDocument}?id=${id}`,
+    { documents }
+  );
   return data;
 }
 

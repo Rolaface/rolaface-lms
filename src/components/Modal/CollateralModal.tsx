@@ -19,7 +19,6 @@ import {
   IconX,
   IconPercentage,
   IconChevronDown,
-  IconCheck,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@mantine/form";
@@ -31,6 +30,8 @@ import {
 } from "../../api/collateralApi";
 import { getAllCollateralTypes } from "../../api/collateralTypeApi";
 import { ModalFooter } from "../shared/ModalFooter";
+import { openCommonModal } from "./AlertModal";
+import { parseFrappeError } from "../../utils/parseFrappeError";
 
 
 
@@ -90,13 +91,36 @@ export function CollateralModal({ opened, onClose, editId, isView }: CollateralM
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, editId, editDetailsResponse]);
 
+  // ---------- ALERT HELPERS (same pattern as AddLoanCategoryModal) ----------
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
+
   const createMutation = useMutation({
     mutationFn: createCollateral,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["collaterals"] });
+      showSuccess("Collateral Created", "Collateral created successfully.");
       handleReset();
       onClose();
     },
+    onError: (error: any) => showError("Create Failed", error),
   });
 
   const updateMutation = useMutation({
@@ -104,9 +128,11 @@ export function CollateralModal({ opened, onClose, editId, isView }: CollateralM
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["collaterals"] });
       queryClient.invalidateQueries({ queryKey: ["collateral", editId] });
+      showSuccess("Collateral Updated", "Collateral updated successfully.");
       handleReset();
       onClose();
     },
+    onError: (error: any) => showError("Update Failed", error),
   });
 
   useEffect(() => {
@@ -275,6 +301,7 @@ export function CollateralModal({ opened, onClose, editId, isView }: CollateralM
                 <NumberInput
                   size="sm"
                   radius="md"
+                  withAsterisk
                   label="Original Collateral Value"
                   placeholder="0.00"
                   thousandSeparator=","
@@ -286,6 +313,7 @@ export function CollateralModal({ opened, onClose, editId, isView }: CollateralM
                 <NumberInput
                   size="sm"
                   radius="md"
+                  withAsterisk
                   label="Loan To Value Ratio"
                   placeholder="0.00"
                   hideControls

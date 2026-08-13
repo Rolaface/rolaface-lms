@@ -22,6 +22,12 @@ export const parseFrappeError = (err: any): string => {
       console.error("Failed to parse _server_messages", e);
     }
   }
+  if (typeof data.message === "object" && data.message !== null) {
+  const nested = data.message as Record<string, unknown>;
+  if (typeof nested.message === "string") {
+    return cleanMessage(nested.message);  
+  }
+}
   if (data.exception) {
     const parts = String(data.exception).split(":");
     if (parts.length > 1) {

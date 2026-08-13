@@ -7,11 +7,8 @@ import {
   updateLoanWriteOffStatus,
 } from '../../../api/lendingOperation/writeoff';
 import type { LoanWriteOffListItem, LoanWriteOffDetail } from '../../../types/loanWriteOff';
-import {
-  showSuccess,
-  showApiError,
-  showConfirm,
-} from '../../../utils/alert';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
+import { parseFrappeError } from '../../../utils/parseFrappeError';
 
 import {
   Box,
@@ -93,17 +90,37 @@ export function LoanWriteOff() {
   const filteredData: LoanWriteOffListItem[] = writeOffResponse?.data ?? [];
   const serverPagination = writeOffResponse?.pagination;
 
+  /* ---------------- alert helpers ---------------- */
+
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
   /* ---------------- mutations ---------------- */
 
   const deleteMutation = useMutation({
     mutationFn: deleteLoanWriteOff,
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['loan-write-offs'] });
-      showSuccess(`Write-off "${id}" deleted successfully.`);
+      showSuccess('Write-off Deleted', `Write-off "${id}" deleted successfully.`);
     },
-    onError: () => {
-      showApiError('Failed to delete the write-off. Please try again.');
-    },
+    onError: (error: any) => showError('Delete Failed', error),
   });
 
   const statusMutation = useMutation({
@@ -112,11 +129,15 @@ export function LoanWriteOff() {
     onSuccess: (_data, { action }) => {
       queryClient.invalidateQueries({ queryKey: ['loan-write-offs'] });
       showSuccess(
+        action === 'approved' ? 'Write-off Approved' : 'Write-off Submitted',
         action === 'approved' ? 'Write-off approved successfully.' : 'Write-off submitted successfully.'
       );
     },
-    onError: (_err, { action }) => {
-      showApiError(`Failed to ${action === 'approved' ? 'approve' : 'submit'} the write-off.`);
+    onError: (error: any, { action }) => {
+      showError(
+        action === 'approved' ? 'Approval Failed' : 'Submission Failed',
+        error
+      );
     },
   });
 
@@ -133,17 +154,35 @@ export function LoanWriteOff() {
       setEditData(detail);
       open();
     } catch (err) {
-      showApiError('Failed to load write-off details.');
+      showError('Load Failed', err);
     }
   };
 
-  const handleDeleteClick = async (id: string) => {
-    const confirmed = await showConfirm(
-      `Are you sure you want to delete write-off "${id}"? This cannot be undone.`,
-      { title: 'Delete write-off' }
-    );
-    if (!confirmed) return;
-    deleteMutation.mutate(id);
+  const handleDeleteClick = (id: string) => {
+    openCommonModal({
+      heading: 'Delete Write-off',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete write-off{' '}
+          <Text span fw={600}>
+            {id}
+          </Text>
+          ?
+        </>
+      ),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => {
+            deleteMutation.mutate(id);
+          },
+        },
+      ],
+    });
   };
 
   const handleStatusChange = (id: string, action: 'approved' | 'submitted') => {
@@ -152,7 +191,10 @@ export function LoanWriteOff() {
 
   const handleModalSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['loan-write-offs'] });
-    showSuccess(editData ? 'Write-off updated successfully.' : 'Write-off created successfully.');
+    showSuccess(
+      editData ? 'Write-off Updated' : 'Write-off Created',
+      editData ? 'Write-off updated successfully.' : 'Write-off created successfully.'
+    );
     close();
     setEditData(null);
   };
