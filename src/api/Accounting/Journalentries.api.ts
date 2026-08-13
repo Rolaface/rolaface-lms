@@ -5,19 +5,7 @@ import { API } from "../../config/api";
 const api = apiClient;
 export const JournalEntryAPI = API.Accounting.journalEntry;
 
-/**
- * NOTE: this file extends the original Journalentries.api.ts (list / submit /
- * cancel / delete) with the create / edit / view endpoints that the old
- * project's JournalEntryApi.ts had. Nothing in the existing exports below
- * was changed — only new exports were appended.
- *
- * You'll need to add these keys to `API.Accounting.journalEntry` in
- * config/api.ts (same convention as getAll / updateStatus / delete):
- *   - create
- *   - getById
- *   - update
- *   - getByIdOnly   (generic doctype list fetcher, used for Account / Party Type lookups)
- */
+
 
 /* ===========================================================
    TYPES
@@ -60,7 +48,7 @@ export interface FetchJournalEntriesParams {
   fromDate?: string;
   toDate?: string;
   orderBy?: string;
-  pageIndex?: number; // 0-based, used by the UI
+  pageIndex?: number;
   pageSize?: number;
 }
 
@@ -69,7 +57,7 @@ export interface FetchJournalEntriesResult {
   total: number;
 }
 
-/** Child table row shape sent to / received from the backend */
+
 export interface JournalEntryAccountPayload {
   name?: string;
   account: string;
@@ -82,7 +70,7 @@ export interface JournalEntryAccountPayload {
   user_remark?: string;
 }
 
-/** Full create/update payload — matches the old JournalEntryPayload exactly */
+
 export interface JournalEntryPayload {
   posting_date: string;
   voucher_type: string;
@@ -103,9 +91,7 @@ const FIELDS = [
   "user_remark",
 ];
 
-/* ===========================================================
-   GET ALL (list, with search / date-range / sort / pagination)
-=========================================================== */
+
 
 export const fetchJournalEntries = async (
   params: FetchJournalEntriesParams = {}
@@ -156,9 +142,7 @@ export const fetchJournalEntries = async (
   };
 };
 
-/* ===========================================================
-   GET BY ID (single entry, for edit/view)
-=========================================================== */
+
 
 export const getJournalEntryById = async (id: string): Promise<any> => {
   const url = `${JournalEntryAPI.getById}/${encodeURIComponent(id)}`;
@@ -166,9 +150,6 @@ export const getJournalEntryById = async (id: string): Promise<any> => {
   return response.data;
 };
 
-/* ===========================================================
-   CREATE
-=========================================================== */
 
 export const createJournalEntry = async (
   payload: JournalEntryPayload
@@ -177,9 +158,7 @@ export const createJournalEntry = async (
   return response.data;
 };
 
-/* ===========================================================
-   UPDATE
-=========================================================== */
+
 
 export const updateJournalEntryById = async (
   id: string,
@@ -190,9 +169,7 @@ export const updateJournalEntryById = async (
   return response.data;
 };
 
-/* ===========================================================
-   STATUS ACTIONS (submit / cancel)
-=========================================================== */
+
 
 export const submitJournalEntry = async (name: string): Promise<CommonApiResponse> => {
   const response: AxiosResponse<CommonApiResponse> = await api.patch(
@@ -220,10 +197,7 @@ export const deleteJournalEntry = async (name: string): Promise<CommonApiRespons
   return response.data;
 };
 
-/* ===========================================================
-   GENERIC DOCTYPE FETCHER (Account / Party Type lookups)
-   Same signature as the old project's getComponentById.
-=========================================================== */
+
 
 export const getComponentById = async (
   id: string,

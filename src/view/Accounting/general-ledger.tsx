@@ -18,7 +18,7 @@ import {
   Stack,
   SimpleGrid,
   Pagination,
-  useMantineTheme,
+  useMantineTheme,Select
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import {
@@ -141,6 +141,7 @@ function KpiStrip({
 function FilterBar({
   account,
   setAccount,
+  accountOptions,
   fromDate,
   setFromDate,
   toDate,
@@ -152,6 +153,7 @@ function FilterBar({
 }: {
   account: string;
   setAccount: (v: string) => void;
+  accountOptions: { value: string; label: string }[];
   fromDate: string;
   setFromDate: (v: string) => void;
   toDate: string;
@@ -161,15 +163,30 @@ function FilterBar({
   showBack: boolean;
   loading: boolean;
 }) {
+ // NEW
   return (
     <Group gap="sm" wrap="wrap" align="flex-end">
-      <TextInput
+      {showBack && (
+        <Button
+          size="xs"
+          variant="default"
+          leftSection={<IconChevronLeft size={13} />}
+          onClick={onBack}
+        >
+          Back
+        </Button>
+      )}
+
+      <Select
         size="xs"
         label="Account"
-        value={account}
-        onChange={(e) => setAccount(e.currentTarget.value)}
-        placeholder="All accounts"
-        style={{ flex: 1, minWidth: 200 }}
+        placeholder="Select account"
+        searchable
+        clearable
+        data={accountOptions}
+        value={account || null}
+        onChange={(v) => setAccount(v || "")}
+        style={{ flex: 1, minWidth: 220 }}
       />
 
       <DateInput
@@ -207,17 +224,6 @@ function FilterBar({
       >
         Apply
       </Button>
-
-      {showBack && (
-        <Button
-          size="xs"
-          variant="default"
-          leftSection={<IconChevronLeft size={13} />}
-          onClick={onBack}
-        >
-          Back
-        </Button>
-      )}
     </Group>
   );
 }
@@ -233,9 +239,11 @@ export function GeneralLedger({
   const navigate = useNavigate();
   const theme = useMantineTheme();
 
+
   const {
     account,
     setAccount,
+    accountOptions,
     fromDate,
     setFromDate,
     toDate,
@@ -394,9 +402,14 @@ export function GeneralLedger({
       {/* Toolbar — filters + KPI together */}
       <Paper withBorder radius="md" p="sm">
         <Stack gap="sm">
+   
           <FilterBar
             account={account}
             setAccount={setAccount}
+            accountOptions={accountOptions.map((a) => ({
+              value: a.name,
+              label: a.account_name,
+            }))}
             fromDate={fromDate}
             setFromDate={setFromDate}
             toDate={toDate}

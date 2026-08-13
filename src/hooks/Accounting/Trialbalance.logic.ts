@@ -35,17 +35,23 @@ export function useTrialBalance() {
   const [filters, setFilters] = useState<TBFilters>(DEFAULT_TB_FILTERS);
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [fyResolved, setFyResolved] = useState(false);
+  const [lastValidFilters, setLastValidFilters] = useState<TBFilters | null>(null);
 
-  // Resolve the company's real current Fiscal Year once, then patch filters.
   useEffect(() => {
     let cancelled = false;
+ // NEW
     getCompanyCurrentFiscalYear()
       .then((fy) => {
         if (cancelled || !fy) return;
-        setFilters((f) => ({ ...f, fiscal_year: fy }));
+        setFilters((f) => ({
+          ...f,
+          fiscal_year: fy.fiscal_year,
+          from_date: fy.start_date,
+          to_date: fy.end_date,
+        }));
       })
       .catch(() => {
-        // fall back silently to the local guess if this lookup fails
+    
       })
       .finally(() => {
         if (!cancelled) setFyResolved(true);
@@ -54,9 +60,27 @@ export function useTrialBalance() {
       cancelled = true;
     };
   }, []);
-
+// NEW
   const isValidFilters =
     fyResolved && !!filters.fiscal_year && !!filters.from_date && !!filters.to_date;
+
+
+  useEffect(() => {
+    if (isValidFilters) setLastValidFilters(filters);
+  }, [isValidFilters, filters]);
+
+  useEffect(() => {
+    if (!fyResolved || !lastValidFilters) return;
+    const needsFallback = !filters.fiscal_year || !filters.from_date || !filters.to_date;
+    if (!needsFallback) return;
+
+    setFilters((f) => ({
+      ...f,
+      fiscal_year: f.fiscal_year || lastValidFilters.fiscal_year,
+      from_date: f.from_date || lastValidFilters.from_date,
+      to_date: f.to_date || lastValidFilters.to_date,
+    }));
+  }, [filters, fyResolved, lastValidFilters]);
 
   const {
     data,

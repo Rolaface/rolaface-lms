@@ -23,8 +23,7 @@ const currentMonthEnd = (): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
 };
 
-// Local fallback only — overwritten as soon as the real fiscal year loads below.
-// Real FY records are ranges like "2026-2027", not plain years.
+
 const FALLBACK_FY = `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
 
 export function useProfitLoss() {
@@ -37,6 +36,8 @@ export function useProfitLoss() {
     to_date: currentMonthEnd(),
   });
   const [fyResolved, setFyResolved] = useState(false);
+    const [lastAppliedFilters, setLastAppliedFilters] = useState<ProfitLossFilters | null>(null);
+
 
   const [data, setData] = useState<PLData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,16 +55,19 @@ export function useProfitLoss() {
     if (baseCurrency) ensureCurrencies([baseCurrency]);
   }, [baseCurrency]);
 
-  // Resolve the company's real current Fiscal Year once, then patch filters.
   useEffect(() => {
     let cancelled = false;
     getCompanyCurrentFiscalYear()
       .then((fy) => {
         if (cancelled || !fy) return;
-        setFilters((f) => ({ ...f, from_fiscal_year: fy, to_fiscal_year: fy }));
+        setFilters((f) => ({
+          ...f,
+          from_fiscal_year: fy.fiscal_year,
+          to_fiscal_year: fy.fiscal_year,
+        }));
       })
       .catch(() => {
-        // fall back silently to the local guess if this lookup fails
+
       })
       .finally(() => {
         if (!cancelled) setFyResolved(true);
@@ -83,6 +87,7 @@ export function useProfitLoss() {
       }
       const res = await fetchProfitAndLoss(currentFilters);
       setData(res);
+      setLastAppliedFilters(currentFilters);
     } catch (err: any) {
       setError(err?.message ?? 'Failed to load Profit & Loss.');
     } finally {
@@ -91,15 +96,36 @@ export function useProfitLoss() {
   }, []);
 
   useEffect(() => {
-    // Wait for the real fiscal year before firing the first Fiscal-Year-mode request,
-    // so we don't waste a request on the local guess and hit the backend "mandatory" error.
+
     if (filters.mode === 'Fiscal Year' && !fyResolved) return;
+
+  
+    let resolved = filters;
+    if (lastAppliedFilters) {
+      const needsFallback =
+        (filters.mode === 'Date Range' && (!filters.from_date || !filters.to_date)) ||
+        (filters.mode === 'Fiscal Year' && (!filters.from_fiscal_year || !filters.to_fiscal_year));
+
+      if (needsFallback) {
+        resolved = {
+          ...filters,
+          from_date: filters.from_date || lastAppliedFilters.from_date,
+          to_date: filters.to_date || lastAppliedFilters.to_date,
+          from_fiscal_year: filters.from_fiscal_year || lastAppliedFilters.from_fiscal_year,
+          to_fiscal_year: filters.to_fiscal_year || lastAppliedFilters.to_fiscal_year,
+        };
+    
+        setFilters(resolved);
+     
+      }
+    }
+
     if (filters.mode === 'Date Range' && (!filters.from_date || !filters.to_date)) return;
     if (filters.mode === 'Fiscal Year' && (!filters.from_fiscal_year || !filters.to_fiscal_year)) return;
 
-    const timer = setTimeout(() => fetchData(filters), 300);
+    const timer = setTimeout(() => fetchData(resolved), 300);
     return () => clearTimeout(timer);
-  }, [filters, fyResolved, fetchData]);
+  }, [filters, fyResolved, lastAppliedFilters, fetchData]);
 
   const tableData = useMemo(() => {
     if (!data) return [];

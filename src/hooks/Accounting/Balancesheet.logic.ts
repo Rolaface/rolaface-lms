@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { ExpandedState } from '@tanstack/react-table';
+import { useCallback, useEffect, useState } from "react";
+import type { ExpandedState } from "@tanstack/react-table";
 import {
   type BSData,
   type BSFilters,
@@ -7,30 +7,34 @@ import {
   type BSPeriodicity,
   type BSNode,
   fetchBalanceSheet,
-} from '../../api/Accounting/Balancesheet.api';
-import { getCompanyCurrentFiscalYear } from '../../api/utils/frappeUtilsApi';
-import { useCompanyStore } from '../../store/companyStore';
+} from "../../api/Accounting/Balancesheet.api";
+import { getCompanyCurrentFiscalYear } from "../../api/utils/frappeUtilsApi";
+import { useCompanyStore } from "../../store/companyStore";
 import {
   formatAmount as storeFormatAmount,
   ensureCurrencies,
   useCurrencyReady,
-} from '../../store/currencyStore';
+} from "../../store/currencyStore";
 
 const currentMonthStart = () => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 };
 
 const currentMonthEnd = () => {
   const d = new Date();
   const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
 };
 
 // Local fallback only — overwritten as soon as the real fiscal year loads below.
 const FALLBACK_FY = `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
 
-const buildExpandedToDepth = (nodes: BSNode[], depth: number, path = ''): Record<string, boolean> => {
+const buildExpandedToDepth = (
+  nodes: BSNode[],
+  depth: number,
+  path = "",
+): Record<string, boolean> => {
   let state: Record<string, boolean> = {};
   nodes.forEach((node, i) => {
     const id = path ? `${path}.${i}` : `${i}`;
@@ -42,7 +46,6 @@ const buildExpandedToDepth = (nodes: BSNode[], depth: number, path = ''): Record
   return state;
 };
 
-
 function collectNodeCurrencies(nodes: BSNode[], out: Set<string>) {
   nodes.forEach((node) => {
     if (node.currency) out.add(node.currency);
@@ -52,28 +55,32 @@ function collectNodeCurrencies(nodes: BSNode[], out: Set<string>) {
 
 export function useBalanceSheet() {
   const [filters, setFilters] = useState<BSFilters>({
-    mode: 'Fiscal Year',
-    periodicity: 'Monthly',
+    mode: "Fiscal Year",
+    periodicity: "Monthly",
     fromFiscalYear: FALLBACK_FY,
     toFiscalYear: FALLBACK_FY,
     fromDate: currentMonthStart(),
     toDate: currentMonthEnd(),
   });
   const [fyResolved, setFyResolved] = useState(false);
+  const [lastValidFilters, setLastValidFilters] = useState<BSFilters | null>(
+    null,
+  );
 
   const [data, setData] = useState<BSData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [expandedAssets, setExpandedAssets] = useState<ExpandedState>({});
-  const [expandedLiabilities, setExpandedLiabilities] = useState<ExpandedState>({});
+  const [expandedLiabilities, setExpandedLiabilities] = useState<ExpandedState>(
+    {},
+  );
   const [expandedEquity, setExpandedEquity] = useState<ExpandedState>({});
   const [allExpanded, setAllExpanded] = useState(false);
 
   // ── Currency store ──────────────────────────────────────────
   useCurrencyReady();
   const baseCurrency = useCompanyStore((state) => state.baseCurrency);
-
 
   useEffect(() => {
     const codes = new Set<string>();
@@ -101,7 +108,11 @@ export function useBalanceSheet() {
     getCompanyCurrentFiscalYear()
       .then((fy) => {
         if (cancelled || !fy) return;
-        setFilters((f) => ({ ...f, fromFiscalYear: fy, toFiscalYear: fy }));
+        setFilters((f) => ({
+          ...f,
+          fromFiscalYear: fy.fiscal_year,
+          toFiscalYear: fy.fiscal_year,
+        }));
       })
       .catch(() => {
         // fall back silently to the local guess if this lookup fails
@@ -118,14 +129,17 @@ export function useBalanceSheet() {
     setFilters((f) => ({
       ...f,
       mode,
-      ...(mode === 'Date Range' ? { fromDate: currentMonthStart(), toDate: currentMonthEnd() } : {}),
+      ...(mode === "Date Range"
+        ? { fromDate: currentMonthStart(), toDate: currentMonthEnd() }
+        : {}),
     }));
   };
 
-  const setPeriodicity = (periodicity: BSPeriodicity) => setFilters((f) => ({ ...f, periodicity }));
+  const setPeriodicity = (periodicity: BSPeriodicity) =>
+    setFilters((f) => ({ ...f, periodicity }));
 
-
-  const setFiscalYear = (v: string) => setFilters((f) => ({ ...f, fromFiscalYear: v, toFiscalYear: v }));
+  const setFiscalYear = (v: string) =>
+    setFilters((f) => ({ ...f, fromFiscalYear: v, toFiscalYear: v }));
 
   const setFromDate = (v: string) => setFilters((f) => ({ ...f, fromDate: v }));
   const setToDate = (v: string) => setFilters((f) => ({ ...f, toDate: v }));
@@ -134,33 +148,58 @@ export function useBalanceSheet() {
     setLoading(true);
     setError(null);
     try {
-      if (f.mode === 'Date Range' && (!f.fromDate || !f.toDate)) {
-        setError('Please select a valid date range.');
+      if (f.mode === "Date Range" && (!f.fromDate || !f.toDate)) {
+        setError("Please select a valid date range.");
         return;
       }
       const resp = await fetchBalanceSheet(f);
       setData(resp);
+      setLastValidFilters(f);
+
       setExpandedAssets(buildExpandedToDepth(resp.assets, 2));
       setExpandedLiabilities(buildExpandedToDepth(resp.liabilities, 2));
       setExpandedEquity(buildExpandedToDepth(resp.equity, 2));
       setAllExpanded(false);
     } catch (err: any) {
-      setError(err?.message ?? 'Failed to load Balance Sheet.');
+      setError(err?.message ?? "Failed to load Balance Sheet.");
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // NEW
   useEffect(() => {
+    if (filters.mode === "Fiscal Year" && !fyResolved) return;
 
-    if (filters.mode === 'Fiscal Year' && !fyResolved) return;
-    if (filters.mode === 'Date Range' && (!filters.fromDate || !filters.toDate)) return;
-    if (filters.mode === 'Fiscal Year' && (!filters.fromFiscalYear || !filters.toFiscalYear)) return;
+    if (lastValidFilters) {
+      const needsFallback =
+        (filters.mode === "Date Range" &&
+          (!filters.fromDate || !filters.toDate)) ||
+        (filters.mode === "Fiscal Year" &&
+          (!filters.fromFiscalYear || !filters.toFiscalYear));
+
+      if (needsFallback) {
+        setFilters((f) => ({
+          ...f,
+          fromDate: f.fromDate || lastValidFilters.fromDate,
+          toDate: f.toDate || lastValidFilters.toDate,
+          fromFiscalYear: f.fromFiscalYear || lastValidFilters.fromFiscalYear,
+          toFiscalYear: f.toFiscalYear || lastValidFilters.toFiscalYear,
+        }));
+      }
+    }
+
+    if (filters.mode === "Date Range" && (!filters.fromDate || !filters.toDate))
+      return;
+    if (
+      filters.mode === "Fiscal Year" &&
+      (!filters.fromFiscalYear || !filters.toFiscalYear)
+    )
+      return;
 
     const timer = setTimeout(() => fetchBS(filters), 300);
     return () => clearTimeout(timer);
-  }, [filters, fyResolved, fetchBS]);
-
+  }, [filters, fyResolved, lastValidFilters, fetchBS]);
   const handleRefresh = useCallback(() => fetchBS(filters), [fetchBS, filters]);
 
   const handleToggleExpand = useCallback(() => {

@@ -49,7 +49,8 @@ Accounting: {
   },
 
   generalLedger: {
-    get: `${ERP_BASE}/api/method/frappe.desk.query_report.run`,
+    get: `${ERP_BASE}/api/method/custom_api.api.chart_of_account.get_general_ledger_detail`,
+    viewLedger:`${ERP_BASE}/api/method/custom_api.api.chart_of_account.get_general_ledger_detail`,
   },
   payable:{
 
@@ -327,6 +328,7 @@ loan: {
   },
   frappeUtilsAPI:{
  getCompanyCurrentFiscalYear: `${ERP_BASE}/api/method/custom_api.utils.frappe_utils.get_current_fiscal_year`,
+ getaccounts:`${ERP_BASE}/api/resource/Account`
   },
 } as const;
 

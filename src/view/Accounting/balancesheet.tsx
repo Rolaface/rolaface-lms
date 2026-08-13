@@ -29,6 +29,7 @@ import {
   IconLayoutList,
   IconAlertCircle,
 } from "@tabler/icons-react";
+import { DateInput } from "@mantine/dates";
 
 import {
   type BSData,
@@ -54,19 +55,41 @@ function KpiStrip({
     return "slate.8";
   };
 
-  const items = loading || summary.length === 0 ? Array.from({ length: 4 }) : summary;
+  const items =
+    loading || summary.length === 0 ? Array.from({ length: 4 }) : summary;
 
   return (
     <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
       {items.map((item: any, i) => (
         <Paper key={item?.label ?? i} withBorder radius="md" p="sm">
-          <Text fz="10px" fw={700} tt="uppercase" c="slate.4" style={{ letterSpacing: "0.08em" }} mb={4} truncate>
+          <Text
+            fz="10px"
+            fw={700}
+            tt="uppercase"
+            c="slate.4"
+            style={{ letterSpacing: "0.08em" }}
+            mb={4}
+            truncate
+          >
             {item?.label ?? "—"}
           </Text>
           {loading || !item ? (
-            <Box h={16} w={96} style={{ background: "var(--mantine-color-slate-1)", borderRadius: 4 }} className="animate-pulse" />
+            <Box
+              h={16}
+              w={96}
+              style={{
+                background: "var(--mantine-color-slate-1)",
+                borderRadius: 4,
+              }}
+              className="animate-pulse"
+            />
           ) : (
-            <Text fz="sm" fw={700} c={colorFor(item)} style={{ fontVariantNumeric: "tabular-nums" }}>
+            <Text
+              fz="sm"
+              fw={700}
+              c={colorFor(item)}
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
               {displayAmount(item.currency, item.value)}
             </Text>
           )}
@@ -124,21 +147,27 @@ function FilterBar({ bs }: { bs: ReturnType<typeof useBalanceSheet> }) {
           />
         ) : (
           <>
-            <TextInput
+            <DateInput
               size="xs"
+              radius="xl"
               label="From"
-              type="date"
+              placeholder="From Date"
               value={filters.fromDate}
-              onChange={(e) => setFromDate(e.currentTarget.value)}
+              onChange={(value) => setFromDate(value || "")}
+              valueFormat="DD/MM/YYYY"
               w={150}
+              clearable
             />
-            <TextInput
+            <DateInput
               size="xs"
+              radius="xl"
               label="To"
-              type="date"
+              placeholder="To Date"
               value={filters.toDate}
-              onChange={(e) => setToDate(e.currentTarget.value)}
+              onChange={(value) => setToDate(value || "")}
+              valueFormat="DD/MM/YYYY"
               w={150}
+              clearable
             />
           </>
         )}
@@ -147,7 +176,13 @@ function FilterBar({ bs }: { bs: ReturnType<typeof useBalanceSheet> }) {
           <Button
             size="xs"
             variant="default"
-            leftSection={allExpanded ? <IconChevronRight size={13} /> : <IconLayoutList size={13} />}
+            leftSection={
+              allExpanded ? (
+                <IconChevronRight size={13} />
+              ) : (
+                <IconLayoutList size={13} />
+              )
+            }
             onClick={handleToggleExpand}
           >
             {allExpanded ? "Collapse" : "Expand All"}
@@ -155,7 +190,12 @@ function FilterBar({ bs }: { bs: ReturnType<typeof useBalanceSheet> }) {
           <Button
             size="xs"
             variant="default"
-            leftSection={<IconRefresh size={13} className={loading ? "animate-spin" : ""} />}
+            leftSection={
+              <IconRefresh
+                size={13}
+                className={loading ? "animate-spin" : ""}
+              />
+            }
             onClick={handleRefresh}
           >
             Refresh
@@ -168,11 +208,31 @@ function FilterBar({ bs }: { bs: ReturnType<typeof useBalanceSheet> }) {
 
 /* ───────────────── Section header ───────────────── */
 
-function SectionHeader({ label, accentColor }: { label: string; accentColor: string }) {
+function SectionHeader({
+  label,
+  accentColor,
+}: {
+  label: string;
+  accentColor: string;
+}) {
   return (
     <Group gap={8} px={4}>
-      <Box w={4} h={16} style={{ borderRadius: 999, background: `var(--mantine-color-${accentColor})`, flexShrink: 0 }} />
-      <Text fz="xs" fw={700} tt="uppercase" c="slate.8" style={{ letterSpacing: "0.08em" }}>
+      <Box
+        w={4}
+        h={16}
+        style={{
+          borderRadius: 999,
+          background: `var(--mantine-color-${accentColor})`,
+          flexShrink: 0,
+        }}
+      />
+      <Text
+        fz="xs"
+        fw={700}
+        tt="uppercase"
+        c="slate.8"
+        style={{ letterSpacing: "0.08em" }}
+      >
         {label}
       </Text>
     </Group>
@@ -208,19 +268,48 @@ function BSTreeTable({
 
   return (
     <Paper withBorder radius="md" shadow="sm" style={{ overflow: "hidden" }}>
-      <Box style={{ overflowX: "auto", overflowY: "auto", maxHeight: 420, position: "relative" }}>
-        <Table stickyHeader horizontalSpacing="sm" verticalSpacing={6} style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
+      <Box
+        style={{
+          overflowX: "auto",
+          overflowY: "auto",
+          maxHeight: 420,
+          position: "relative",
+        }}
+      >
+        <Table
+          stickyHeader
+          horizontalSpacing="sm"
+          verticalSpacing={6}
+          style={{
+            tableLayout: "fixed",
+            width: "max-content",
+            minWidth: "100%",
+          }}
+        >
           <Table.Thead>
             {table.getHeaderGroups().map((hg) => (
               <Table.Tr key={hg.id}>
                 {hg.headers.map((header) => {
                   const align =
-                    (header.column.columnDef.meta as { align?: string } | undefined)?.align === "right"
+                    (
+                      header.column.columnDef.meta as
+                        { align?: string } | undefined
+                    )?.align === "right"
                       ? "right"
                       : "left";
                   return (
-                    <Table.Th key={header.id} style={{ width: header.getSize(), textAlign: align, whiteSpace: "nowrap" }}>
-                      {flexRender(header.column.columnDef.header, header.getContext())}
+                    <Table.Th
+                      key={header.id}
+                      style={{
+                        width: header.getSize(),
+                        textAlign: align,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
                     </Table.Th>
                   );
                 })}
@@ -249,12 +338,21 @@ function BSTreeTable({
                 <Table.Tr key={row.id}>
                   {row.getVisibleCells().map((cell) => {
                     const align =
-                      (cell.column.columnDef.meta as { align?: string } | undefined)?.align === "right"
+                      (
+                        cell.column.columnDef.meta as
+                          { align?: string } | undefined
+                      )?.align === "right"
                         ? "right"
                         : "left";
                     return (
-                      <Table.Td key={cell.id} style={{ textAlign: align, whiteSpace: "nowrap" }}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      <Table.Td
+                        key={cell.id}
+                        style={{ textAlign: align, whiteSpace: "nowrap" }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
                       </Table.Td>
                     );
                   })}
@@ -286,7 +384,11 @@ export function BalanceSheet() {
             const node = row.original;
             const canExpand = row.getCanExpand();
             return (
-              <Group gap={6} wrap="nowrap" style={{ paddingLeft: row.depth * 18 }}>
+              <Group
+                gap={6}
+                wrap="nowrap"
+                style={{ paddingLeft: row.depth * 18 }}
+              >
                 {canExpand ? (
                   <Box
                     component="button"
@@ -307,15 +409,30 @@ export function BalanceSheet() {
                       size={13}
                       style={{
                         transition: "transform 150ms ease",
-                        transform: row.getIsExpanded() ? "rotate(90deg)" : "none",
+                        transform: row.getIsExpanded()
+                          ? "rotate(90deg)"
+                          : "none",
                       }}
                     />
-                    {row.getIsExpanded() ? <IconFolderOpen size={14} /> : <IconFolder size={14} />}
+                    {row.getIsExpanded() ? (
+                      <IconFolderOpen size={14} />
+                    ) : (
+                      <IconFolder size={14} />
+                    )}
                   </Box>
                 ) : (
-                  <IconFileText size={13} color="var(--mantine-color-slate-3)" style={{ flexShrink: 0 }} />
+                  <IconFileText
+                    size={13}
+                    color="var(--mantine-color-slate-3)"
+                    style={{ flexShrink: 0 }}
+                  />
                 )}
-                <Text fz="xs" fw={node.is_group ? 700 : 400} c={node.is_group ? "slate.9" : "slate.7"} truncate>
+                <Text
+                  fz="xs"
+                  fw={node.is_group ? 700 : 400}
+                  c={node.is_group ? "slate.9" : "slate.7"}
+                  truncate
+                >
                   {node.account_name}
                 </Text>
               </Group>
@@ -335,7 +452,10 @@ export function BalanceSheet() {
             c={row.original.is_group ? "slate.9" : "slate.7"}
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
-            {displayAmount(row.original.currency, row.original.periods?.[col.fieldname] ?? 0)}
+            {displayAmount(
+              row.original.currency,
+              row.original.periods?.[col.fieldname] ?? 0,
+            )}
           </Text>
         ),
       };
@@ -363,12 +483,19 @@ export function BalanceSheet() {
 
   return (
     <Stack gap="sm" p="lg">
-      <KpiStrip summary={data?.summary ?? []} loading={loading && !data} displayAmount={displayAmount} />
+      <KpiStrip
+        summary={data?.summary ?? []}
+        loading={loading && !data}
+        displayAmount={displayAmount}
+      />
 
       <FilterBar bs={bs} />
 
       <Stack gap={8}>
-        <SectionHeader label="Application of Funds (Assets)" accentColor="info-6" />
+        <SectionHeader
+          label="Application of Funds (Assets)"
+          accentColor="info-6"
+        />
         <BSTreeTable
           data={data?.assets ?? []}
           columns={columns}
@@ -382,7 +509,10 @@ export function BalanceSheet() {
       </Stack>
 
       <Stack gap={8}>
-        <SectionHeader label="Source of Funds (Liabilities)" accentColor="danger-5" />
+        <SectionHeader
+          label="Source of Funds (Liabilities)"
+          accentColor="danger-5"
+        />
         <BSTreeTable
           data={data?.liabilities ?? []}
           columns={columns}
