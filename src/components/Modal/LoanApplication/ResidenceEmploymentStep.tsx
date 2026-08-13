@@ -15,6 +15,9 @@ import { useDisclosure } from "@mantine/hooks";
 import { IconPencil, IconTrash } from "@tabler/icons-react";
 import type { UseFormReturnType } from "@mantine/form";
 import type { LoanApplicationValues, LoanType, DirectorEntry } from "./LoanApplicationModal";
+import { getAllCountries } from "../../../api/loanApplicationApi";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
@@ -42,6 +45,16 @@ export function ResidenceEmploymentStep({ form, loanType }: StepProps) {
   const [opened, { open, close }] = useDisclosure(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
+  const { data: countryResponse, isLoading: isCountriesLoading } = useQuery({
+  queryKey: ["countries"],
+  queryFn: getAllCountries,
+});
+
+const countryOptions = useMemo(() => {
+  const countries = countryResponse?.message?.data || [];
+  return countries.map((c: any) => ({ value: c.value, label: c.label }));
+}, [countryResponse]);
+
   if (loanType === "Personal") {
     return (
       <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" verticalSpacing="md">
@@ -57,13 +70,16 @@ export function ResidenceEmploymentStep({ form, loanType }: StepProps) {
           {...form.getInputProps("employerName")}
         />
 
-        <Select
-          radius="md"
-          label={<Label text="Nationality" required />}
-          placeholder="Select nationality"
-          data={NATIONALITIES}
-          {...form.getInputProps("nationality")}
-        />
+     <Select
+  radius="md"
+  label={<Label text="Nationality" required />}
+  placeholder={isCountriesLoading ? "Loading..." : "Select nationality"}
+  searchable
+  clearable
+  data={countryOptions}
+  disabled={isCountriesLoading}
+  {...form.getInputProps("nationality")}
+/>
         <TextInput
           radius="md"
           label={<Label text="Principal objective of loan" required />}
@@ -235,12 +251,15 @@ export function ResidenceEmploymentStep({ form, loanType }: StepProps) {
             {...form.getInputProps("applicantPosition")}
           />
           <Select
-            radius="md"
-            label={<Label text="Applicant nationality" required />}
-            placeholder="Select"
-            data={NATIONALITIES}
-            {...form.getInputProps("applicantNationality")}
-          />
+  radius="md"
+  label={<Label text="Applicant nationality" required />}
+  placeholder={isCountriesLoading ? "Loading..." : "Select"}
+  searchable
+  clearable
+  data={countryOptions}
+  disabled={isCountriesLoading}
+  {...form.getInputProps("applicantNationality")}
+/>
         </SimpleGrid>
       </Stack>
 
