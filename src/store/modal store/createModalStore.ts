@@ -19,14 +19,20 @@ export function createModalStore<TParams>() {
     title: '',
     params: null,
     openId: 0,
-    open: (params, title) =>
-      set((state) => ({
-        isOpen: true,
-        isMinimized: false,
-        params,
-        title,
-        openId: state.openId + 1,
-      })),
+open: (params, title) =>
+  set((state) => {
+
+    if (state.isMinimized) {
+      return { isOpen: true, isMinimized: false };
+    }
+    return {
+      isOpen: true,
+      isMinimized: false,
+      params,
+      title,
+      openId: state.openId + 1,
+    };
+  }),
     close: () => set({ isOpen: false, isMinimized: false, params: null }),
     minimize: () => set({ isMinimized: true }),
     restore: () => set({ isMinimized: false }),

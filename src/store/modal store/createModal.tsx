@@ -68,12 +68,21 @@ export function createModal<TParams, TProps extends BaseModalProps>(
 
   registerModal(id, Host);
 
-  return {
-    open: (params: TParams) => useStore.getState().open(params, config.getTitle(params)),
-    close,
-    minimize,
-    restore,
-    useIsOpen: () => useStore((s) => s.isOpen),
-    useIsMinimized: () => useStore((s) => s.isMinimized),
-  };
+return {
+  open: (params: TParams) => {
+    const state = useStore.getState();
+    if (state.isMinimized) {
+      // Reopening while minimized = restore, not a fresh session.
+      useModalMinimizeStore.getState().remove(id);
+      useStore.getState().restore();
+      return;
+    }
+    useStore.getState().open(params, config.getTitle(params));
+  },
+  close,
+  minimize,
+  restore,
+  useIsOpen: () => useStore((s) => s.isOpen),
+  useIsMinimized: () => useStore((s) => s.isMinimized),
+};
 }
