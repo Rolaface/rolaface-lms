@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type PLData,
   type ProfitLossFilters,
@@ -26,27 +26,28 @@ const currentMonthEnd = (): string => {
 const FALLBACK_FY = `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
 
 export function useProfitLoss() {
-  const [filters, setFilters] = useState<ProfitLossFilters>({
+  const initialFilters: ProfitLossFilters = {
     mode: "Fiscal Year",
     periodicity: "Monthly",
     from_fiscal_year: FALLBACK_FY,
     to_fiscal_year: FALLBACK_FY,
     from_date: currentMonthStart(),
     to_date: currentMonthEnd(),
-  });
+  };
+
+  const [filters, setFilters] = useState<ProfitLossFilters>(initialFilters);
   const [fyResolved, setFyResolved] = useState(false);
-  const [lastAppliedFilters, setLastAppliedFilters] =
-    useState<ProfitLossFilters | null>(null);
+
+  const lastAppliedFiltersRef = useRef<ProfitLossFilters | null>(null);
+
+
+  const initialDefaultsRef = useRef<ProfitLossFilters>(initialFilters);
 
   const [data, setData] = useState<PLData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Currency store ──────────────────────────────────────────
-  // P&L totals aren't per-row currency like Payables — the whole report
-  // is in the reporting company's base currency. Subscribe to the store
-  // so amounts re-render once the real symbol/number-format load, and
-  // prefetch that currency as soon as we know it.
+
   useCurrencyReady();
   const baseCurrency = useCompanyStore((state) => state.baseCurrency);
 
@@ -64,6 +65,12 @@ export function useProfitLoss() {
           from_fiscal_year: fy.fiscal_year,
           to_fiscal_year: fy.fiscal_year,
         }));
+   
+        initialDefaultsRef.current = {
+          ...initialDefaultsRef.current,
+          from_fiscal_year: fy.fiscal_year,
+          to_fiscal_year: fy.fiscal_year,
+        };
       })
       .catch(() => {})
       .finally(() => {
@@ -87,7 +94,8 @@ export function useProfitLoss() {
       }
       const res = await fetchProfitAndLoss(currentFilters);
       setData(res);
-      setLastAppliedFilters(currentFilters);
+  
+      lastAppliedFiltersRef.current = currentFilters;
     } catch (err: any) {
       setError(err?.message ?? "Failed to load Profit & Loss.");
     } finally {
@@ -95,20 +103,20 @@ export function useProfitLoss() {
     }
   }, []);
 
-  // NEW
   useEffect(() => {
     if (filters.mode === "Fiscal Year" && !fyResolved) return;
 
     let resolved = filters;
-    if (lastAppliedFilters) {
+    const lastApplied = lastAppliedFiltersRef.current;
+    if (lastApplied) {
       resolved = {
         ...filters,
-        from_date: filters.from_date || lastAppliedFilters.from_date,
-        to_date: filters.to_date || lastAppliedFilters.to_date,
+        from_date: filters.from_date || lastApplied.from_date,
+        to_date: filters.to_date || lastApplied.to_date,
         from_fiscal_year:
-          filters.from_fiscal_year || lastAppliedFilters.from_fiscal_year,
+          filters.from_fiscal_year || lastApplied.from_fiscal_year,
         to_fiscal_year:
-          filters.to_fiscal_year || lastAppliedFilters.to_fiscal_year,
+          filters.to_fiscal_year || lastApplied.to_fiscal_year,
       };
     }
 
@@ -125,18 +133,21 @@ export function useProfitLoss() {
 
     const timer = setTimeout(() => fetchData(resolved), 300);
     return () => clearTimeout(timer);
-  }, [filters, fyResolved, lastAppliedFilters, fetchData]);
+    // `lastAppliedFiltersRef` intentionally excluded — it's a ref, reading
+    // `.current` doesn't need to be tracked as a dependency.
+  }, [filters, fyResolved, fetchData]);
+
 
   const handleFieldBlur = useCallback(
     (
       field: "from_date" | "to_date" | "from_fiscal_year" | "to_fiscal_year",
     ) => {
-      if (!lastAppliedFilters) return;
-      setFilters((f) =>
-        f[field] ? f : { ...f, [field]: lastAppliedFilters[field] },
-      );
+      const fallback = initialDefaultsRef.current[field];
+      if (!fallback) return;
+      setFilters((f) => (f[field] ? f : { ...f, [field]: fallback }));
     },
-    [lastAppliedFilters],
+
+    [],
   );
 
   const tableData = useMemo(() => {
@@ -144,9 +155,7 @@ export function useProfitLoss() {
     return [...data.income, ...data.expense];
   }, [data]);
 
-  // Preserves the old "—" placeholder for zero/empty cells; everything
-  // else now goes through the real dynamic currency store instead of a
-  // hardcoded INR/₹ default.
+
   const displayAmount = useCallback(
     (amount: number) => {
       if (!amount) return "—";

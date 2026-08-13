@@ -140,6 +140,7 @@ function FilterBar({ cf }: { cf: ReturnType<typeof useCashFlow> }) {
             value={filters.fromFiscalYear}
             onChange={(e) => setFiscalYear(e.currentTarget.value)}
             placeholder="2026-2027"
+            disabled
             w={112}
           />
         ) : (

@@ -18,7 +18,7 @@ import {
   Text,
   Group,
   Stack,
-  SimpleGrid,
+  SimpleGrid,useMantineTheme
 } from "@mantine/core";
 import {
   IconRefresh,
@@ -102,6 +102,7 @@ function KpiStrip({
 /* ───────────────── Filter bar ───────────────── */
 
 function FilterBar({ bs }: { bs: ReturnType<typeof useBalanceSheet> }) {
+   const theme = useMantineTheme();
   const {
     filters,
     setMode,
@@ -143,6 +144,7 @@ function FilterBar({ bs }: { bs: ReturnType<typeof useBalanceSheet> }) {
             value={filters.fromFiscalYear}
             onChange={(e) => setFiscalYear(e.currentTarget.value)}
             placeholder="2026-2027"
+            disabled
             w={112}
           />
         ) : (
@@ -154,7 +156,7 @@ function FilterBar({ bs }: { bs: ReturnType<typeof useBalanceSheet> }) {
               placeholder="From Date"
               value={filters.fromDate}
               onChange={(value) => setFromDate(value || "")}
-              valueFormat="DD/MM/YYYY"
+             valueFormat="DD-MMM-YYYY"
               w={150}
               clearable
             />
@@ -165,7 +167,7 @@ function FilterBar({ bs }: { bs: ReturnType<typeof useBalanceSheet> }) {
               placeholder="To Date"
               value={filters.toDate}
               onChange={(value) => setToDate(value || "")}
-              valueFormat="DD/MM/YYYY"
+              valueFormat="DD-MMM-YYYY"
               w={150}
               clearable
             />
@@ -188,18 +190,23 @@ function FilterBar({ bs }: { bs: ReturnType<typeof useBalanceSheet> }) {
             {allExpanded ? "Collapse" : "Expand All"}
           </Button>
           <Button
-            size="xs"
-            variant="default"
-            leftSection={
-              <IconRefresh
-                size={13}
-                className={loading ? "animate-spin" : ""}
-              />
-            }
-            onClick={handleRefresh}
-          >
-            Refresh
-          </Button>
+              size="xs"
+              radius="xl"
+              color="brand"
+              leftSection={
+                <IconRefresh
+                  size={13}
+                  className={loading ? "animate-spin" : ""}
+                />
+              }
+              onClick={handleRefresh}
+              style={{
+                background: theme.other?.brandGradient,
+                boxShadow: theme.other?.brandGlowShadowSm,
+              }}
+            >
+              Refresh
+            </Button>
         </Group>
       </Group>
     </Paper>

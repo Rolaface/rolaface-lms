@@ -5,6 +5,7 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
+import dayjs from "dayjs";
 import {
   Box,
   TextInput,
@@ -47,24 +48,6 @@ import {
   ensureCurrencies,
 } from "../../store/currencyStore";
 
-function formatDate(date: string) {
-  const months = [
-    "JAN",
-    "FEB",
-    "MAR",
-    "APR",
-    "MAY",
-    "JUN",
-    "JUL",
-    "AUG",
-    "SEP",
-    "OCT",
-    "NOV",
-    "DEC",
-  ];
-  const [y, m, d] = date.split("T")[0].split("-").map(Number);
-  return `${String(d).padStart(2, "0")}-${months[m - 1]}-${y}`;
-}
 
 function statusInfo(docstatus: JournalEntry["docstatus"]) {
   if (docstatus === 1) return { label: "Submitted", scale: "success" as const };
@@ -133,14 +116,14 @@ function useColumns(
           </Group>
         ),
       }),
-      columnHelper.accessor("posting_date", {
-        header: "Posting Date",
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {formatDate(info.getValue())}
-          </Text>
-        ),
-      }),
+     columnHelper.accessor("posting_date", {
+  header: "Posting Date",
+  cell: (info) => (
+    <Text fz="xs" c="slate.6">
+      {dayjs(info.getValue()).format("DD-MMM-YYYY")}
+    </Text>
+  ),
+}),
       columnHelper.accessor("docstatus", {
         header: "Status",
         cell: (info) => <StatusBadge docstatus={info.getValue()} />,
@@ -425,7 +408,7 @@ export function JournalEntries() {
               placeholder="From Date"
               value={fromDate}
               onChange={(value) => setFromDate(value || "")}
-              valueFormat="DD/MM/YYYY"
+                valueFormat="DD-MMM-YYYY" 
               w={150}
               clearable
             />
@@ -445,7 +428,7 @@ export function JournalEntries() {
               placeholder="To Date"
               value={toDate}
               onChange={(value) => setToDate(value || "")}
-              valueFormat="DD/MM/YYYY"
+             valueFormat="DD-MMM-YYYY" 
               w={150}
               clearable
             />

@@ -18,14 +18,11 @@ import {
   Stack,
   SimpleGrid,
   Pagination,
-  useMantineTheme,Select
+  useMantineTheme,
+  Select,
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
-import {
-  IconRefresh,
-  IconBook,
-  IconChevronLeft,
-} from "@tabler/icons-react";
+import { IconRefresh, IconBook, IconChevronLeft } from "@tabler/icons-react";
 
 import {
   type LedgerRow,
@@ -33,6 +30,7 @@ import {
 } from "../../api/Accounting/Generalledger.api";
 import { useGeneralLedger } from "../../hooks/Accounting/Generalledger.logic";
 import { useCurrencyReady } from "../../store/currencyStore";
+import dayjs from "dayjs";
 
 export interface GeneralLedgerProps {
   account?: string;
@@ -163,7 +161,6 @@ function FilterBar({
   showBack: boolean;
   loading: boolean;
 }) {
- // NEW
   return (
     <Group gap="sm" wrap="wrap" align="flex-end">
       {showBack && (
@@ -194,7 +191,7 @@ function FilterBar({
         label="From"
         value={fromDate}
         onChange={(value) => setFromDate(value || "")}
-        valueFormat="DD/MM/YYYY"
+        valueFormat="DD-MMM-YYYY"
         w={140}
         clearable
       />
@@ -204,11 +201,10 @@ function FilterBar({
         label="To"
         value={toDate}
         onChange={(value) => setToDate(value || "")}
-        valueFormat="DD/MM/YYYY"
+        valueFormat="DD-MMM-YYYY"
         w={140}
         clearable
       />
-
       <Button
         size="xs"
         color="brand"
@@ -238,7 +234,6 @@ export function GeneralLedger({
 
   const navigate = useNavigate();
   const theme = useMantineTheme();
-
 
   const {
     account,
@@ -307,6 +302,7 @@ export function GeneralLedger({
                 </Text>
               );
             }
+
             if (col.fieldname === "posting_date" && val) {
               return (
                 <Text
@@ -314,11 +310,7 @@ export function GeneralLedger({
                   c="slate.7"
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
-                  {new Date(String(val)).toLocaleDateString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
+                  {dayjs(String(val)).format("DD-MMM-YYYY")}
                 </Text>
               );
             }
@@ -402,7 +394,6 @@ export function GeneralLedger({
       {/* Toolbar — filters + KPI together */}
       <Paper withBorder radius="md" p="sm">
         <Stack gap="sm">
-   
           <FilterBar
             account={account}
             setAccount={setAccount}
@@ -593,7 +584,11 @@ export function GeneralLedger({
               background: "var(--mantine-color-slate-0)",
             }}
           >
-            <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
+            <Group
+              gap="sm"
+              c="slate.6"
+              style={{ fontSize: "var(--mantine-font-size-xs)" }}
+            >
               <span>
                 {`Showing ${(pagination.page - 1) * pagination.page_size + 1}-${Math.min(
                   pagination.page * pagination.page_size,

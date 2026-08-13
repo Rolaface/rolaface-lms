@@ -17,7 +17,7 @@ import {
   Text,
   ActionIcon,
   Loader,
-  Stack,
+  Stack,useMantineTheme
 } from "@mantine/core";
 import {
   IconRefresh,
@@ -48,6 +48,7 @@ function FilterLabel({ children }: { children: React.ReactNode }) {
 }
 
 function FilterBar({
+  
   filters,
   setFilters,
   onRefresh,
@@ -58,6 +59,7 @@ function FilterBar({
   onRefresh: () => void;
   loading: boolean;
 }) {
+    const theme = useMantineTheme();
   return (
     <Paper withBorder radius="md" p="xs" shadow="sm">
       <Group gap="sm" wrap="wrap" align="flex-end">
@@ -73,7 +75,7 @@ function FilterBar({
                 from_date: value || "",
               }))
             }
-            valueFormat="DD/MM/YYYY"
+           valueFormat="DD-MMM-YYYY"   
             w={150}
             clearable
           />
@@ -91,7 +93,7 @@ function FilterBar({
                 to_date: value || "",
               }))
             }
-            valueFormat="DD/MM/YYYY"
+           valueFormat="DD-MMM-YYYY"   
             w={150}
             clearable
           />
@@ -139,14 +141,23 @@ function FilterBar({
         />
 
         <Button
-          size="xs"
-          variant="default"
-          ml="auto"
-          leftSection={<IconRefresh size={13} className={loading ? "animate-spin" : ""} />}
-          onClick={onRefresh}
-        >
-          Refresh
-        </Button>
+              size="xs"
+              radius="xl"
+              color="brand"
+              leftSection={
+                <IconRefresh
+                  size={13}
+                  className={loading ? "animate-spin" : ""}
+                />
+              }
+              onClick={onRefresh}
+              style={{
+                background: theme.other?.brandGradient,
+                boxShadow: theme.other?.brandGlowShadowSm,
+              }}
+            >
+              Refresh
+            </Button>
       </Group>
     </Paper>
   );
@@ -287,6 +298,7 @@ function useColumns(baseCurrency: string): ColumnDef<TBAccount>[] {
 /* ───────────────── Page ───────────────── */
 
 export function TrialBalance() {
+  
   useCurrencyReady();
   const { data, loading, error, handleRefresh, filters, setFilters, tableData, expanded, setExpanded, baseCurrency } =
     useTrialBalance();

@@ -34,6 +34,7 @@ import {
 
 import { type PLNode } from "../../api/Accounting/Profitloss.api";
 import { useProfitLoss } from "../../hooks/Accounting/Useprofitloss";
+import dayjs from "dayjs";
 
 /* ───────────────── Helpers ───────────────── */
 
@@ -142,7 +143,8 @@ export function ProfitLoss() {
     isLoading,
     error,
     displayAmount,
-    handleRefresh,handleFieldBlur
+    handleRefresh,
+    handleFieldBlur,
   } = useProfitLoss();
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [allExpanded, setAllExpanded] = useState(false);
@@ -343,17 +345,22 @@ export function ProfitLoss() {
           />
 
           {filters.mode === "Fiscal Year" ? (
-           <TextInput
+            <TextInput
               radius="xl"
               size="xs"
               type="text"
               value={filters.from_fiscal_year}
               onChange={(e) => {
                 const v = e.currentTarget.value;
-                setFilters((f) => ({ ...f, from_fiscal_year: v, to_fiscal_year: v }));
+                setFilters((f) => ({
+                  ...f,
+                  from_fiscal_year: v,
+                  to_fiscal_year: v,
+                }));
               }}
-              onBlur={() => handleFieldBlur('from_fiscal_year')}
+              onBlur={() => handleFieldBlur("from_fiscal_year")}
               placeholder="2026-2027"
+              disabled
               w={104}
             />
           ) : (
@@ -373,17 +380,15 @@ export function ProfitLoss() {
                   radius="xl"
                   size="xs"
                   placeholder="From Date"
-                  value={filters.from_date || null}
+               value={filters.from_date ? new Date(filters.from_date) : null}
                   onChange={(value) =>
                     setFilters((f) => ({
                       ...f,
-                      from_date: value
-                        ? value.split("/").reverse().join("-")
-                        : "",
+                      from_date: value ? dayjs(value).format("YYYY-MM-DD") : "",
                     }))
                   }
-                  onBlur={() => handleFieldBlur('from_date')}
-                  valueFormat="DD/MM/YYYY"
+                  onBlur={() => handleFieldBlur("from_date")}
+                  valueFormat="DD-MMM-YYYY"
                   w={132}
                   clearable
                 />
@@ -399,21 +404,19 @@ export function ProfitLoss() {
                   To
                 </Text>
 
-                 <DateInput
+                <DateInput
                   radius="xl"
                   size="xs"
                   placeholder="To Date"
-                  value={filters.to_date || null}
+                value={filters.to_date ? new Date(filters.to_date) : null}
                   onChange={(value) =>
                     setFilters((f) => ({
                       ...f,
-                      to_date: value
-                        ? value.split("/").reverse().join("-")
-                        : "",
+                      to_date: value ? dayjs(value).format("YYYY-MM-DD") : "",
                     }))
                   }
-                  onBlur={() => handleFieldBlur('to_date')}
-                  valueFormat="DD/MM/YYYY"
+                  onBlur={() => handleFieldBlur("to_date")}
+                  valueFormat="DD-MMM-YYYY"
                   w={132}
                   clearable
                 />
