@@ -102,7 +102,7 @@ export function useBalanceSheet() {
     [baseCurrency],
   );
 
-  // Resolve the company's real current Fiscal Year once, then patch filters.
+
   useEffect(() => {
     let cancelled = false;
     getCompanyCurrentFiscalYear()
@@ -115,7 +115,7 @@ export function useBalanceSheet() {
         }));
       })
       .catch(() => {
-        // fall back silently to the local guess if this lookup fails
+      
       })
       .finally(() => {
         if (!cancelled) setFyResolved(true);

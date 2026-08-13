@@ -129,20 +129,24 @@ function FilterBar({
           >
             {allExpanded ? "Collapse" : "Expand All"}
           </Button>
-          <Button
-            size="xs"
-            radius="xl"
-            variant="default"
-            leftSection={
-              <IconRefresh
-                size={13}
-                className={loading ? "animate-spin" : ""}
-              />
-            }
-            onClick={onRefresh}
-          >
-            Refresh
-          </Button>
+            <Button
+              size="xs"
+              radius="xl"
+              color="brand"
+              leftSection={
+                <IconRefresh
+                  size={13}
+                  className={loading ? "animate-spin" : ""}
+                />
+              }
+              onClick={onRefresh}
+              style={{
+                background: theme.other?.brandGradient,
+                boxShadow: theme.other?.brandGlowShadowSm,
+              }}
+            >
+              Refresh
+            </Button>
           <Button
             size="xs"
             radius="xl"
