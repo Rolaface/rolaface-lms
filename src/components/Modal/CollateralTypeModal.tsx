@@ -25,12 +25,11 @@ import { useForm } from "@mantine/form";
 import { ModalFooter } from "../shared/ModalFooter";
 import { openCommonModal } from "./AlertModal";
 import { parseFrappeError } from "../../utils/parseFrappeError";
-import { createModal } from "../../store/modal store/createModal";
 
-interface CollateralTypeModalProps {
+export interface CollateralTypeModalProps {
   opened: boolean;
   onClose: () => void;
-  onMinimize: () => void;
+  onMinimize?: () => void;
   editId?: string | null;
   isView?: boolean;
 }
@@ -140,6 +139,10 @@ export function CollateralTypeModal({
     onClose();
   };
 
+  const handleMinimize = () => {
+    onMinimize?.();
+  };
+
   const handleSubmit = () => {
     const validation = form.validate();
     if (validation.hasErrors) return;
@@ -209,7 +212,7 @@ export function CollateralTypeModal({
               variant="subtle"
               size="xs"
               px={8}
-              onClick={onMinimize}
+              onClick={handleMinimize}
               style={{ color: "var(--mantine-color-white)" }}
               styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
             >
@@ -291,28 +294,3 @@ export function CollateralTypeModal({
     </Modal>
   );
 }
-
-
-export interface CollateralTypeModalParams {
-  editId?: string | null;
-  isView?: boolean;
-}
-
-function getTitle(params: CollateralTypeModalParams) {
-  if (params.isView) return "View Collateral Type";
-  if (params.editId) return "Edit Collateral Type";
-  return "New Collateral Type";
-}
-
-export const collateralTypeModal = createModal(
-  "collateral-type",
-  CollateralTypeModal,
-  {
-    icon: IconBox,
-    getTitle,
-    buildProps: (params) => ({
-      editId: params.editId ?? null,
-      isView: params.isView ?? false,
-    }),
-  },
-);
