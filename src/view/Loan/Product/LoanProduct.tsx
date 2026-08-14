@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Box,
   Button,
@@ -18,7 +18,7 @@ import {
   Stack,
   Loader,
   useMantineTheme,
-} from '@mantine/core';
+} from "@mantine/core";
 import {
   IconEye,
   IconPencil,
@@ -29,8 +29,8 @@ import {
   IconSearch,
   IconTrash,
   IconBriefcase,
-} from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
+} from "@tabler/icons-react";
+import { useDisclosure } from "@mantine/hooks";
 import {
   useReactTable,
   getCoreRowModel,
@@ -38,15 +38,20 @@ import {
   getPaginationRowModel,
   flexRender,
   createColumnHelper,
-} from '@tanstack/react-table';
-import { LoanProductModal } from '../../../components/Modal/LoanProduct/LoanProductModal';
+} from "@tanstack/react-table";
+import { LoanProductModal } from "../../../components/Modal/LoanProduct/LoanProductModal";
 import {
   getLoanProducts,
   type LoanProductRaw,
-} from '../../../api/LoanProduct/LoanProductAPi';
-import { parseFrappeError } from '../../../utils/parseFrappeError';
-import { deleteLoanProduct, enableLoanProduct, disableLoanProduct } from '../../../api/productApi';
-import { openCommonModal } from '../../../components/Modal/AlertModal';
+} from "../../../api/LoanProduct/LoanProductAPi";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+import {
+  deleteLoanProduct,
+  enableLoanProduct,
+  disableLoanProduct,
+} from "../../../api/productApi";
+import { openCommonModal } from "../../../components/Modal/AlertModal";
+import { loanProductModal } from "../../../components/Modal/LoanProduct/loanProductModalstore";
 
 interface NormalizedProduct {
   id: string;
@@ -56,21 +61,23 @@ interface NormalizedProduct {
   rate: number;
   max: number;
   disabled: 0 | 1;
-  status: 'ACTIVE' | 'INACTIVE';
+  status: "ACTIVE" | "INACTIVE";
 }
 
 const columnHelper = createColumnHelper<NormalizedProduct>();
 
-function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
-  const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
-  if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
-  if (sorted === 'desc') return <IconChevronDown size={12} color={color} />;
+function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
+  const color = sorted
+    ? "var(--mantine-color-brand-6)"
+    : "var(--mantine-color-slate-4)";
+  if (sorted === "asc") return <IconChevronUp size={12} color={color} />;
+  if (sorted === "desc") return <IconChevronDown size={12} color={color} />;
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const isActive = status === 'ACTIVE';
-  const scale = isActive ? 'success' : 'danger';
+  const isActive = status === "ACTIVE";
+  const scale = isActive ? "success" : "danger";
   return (
     <Badge
       variant="light"
@@ -79,7 +86,7 @@ function StatusBadge({ status }: { status: string }) {
       size="sm"
       styles={{
         root: {
-          textTransform: 'none',
+          textTransform: "none",
           fontWeight: 700,
           letterSpacing: 0.2,
           paddingLeft: 8,
@@ -91,7 +98,10 @@ function StatusBadge({ status }: { status: string }) {
         <Box
           w={6}
           h={6}
-          style={{ borderRadius: '50%', background: `var(--mantine-color-${scale}-6)` }}
+          style={{
+            borderRadius: "50%",
+            background: `var(--mantine-color-${scale}-6)`,
+          }}
         />
       }
     >
@@ -104,24 +114,14 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function LoanProduct() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
-
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [isViewMode, setIsViewMode] = useState(false);
-
-  const handleModalClose = () => {
-    close();
-    setSelectedProductId(null);
-    setIsViewMode(false);
-  };
 
   // filter state
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string | null>(null);
-  const [status, setStatus] = useState('all');
+  const [status, setStatus] = useState("all");
 
   // table state
-  const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
+  const [sorting, setSorting] = useState([{ id: "name", desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
   // server data state
@@ -135,18 +135,18 @@ export function LoanProduct() {
       heading,
       subtitle: "We couldn't complete your request.",
       body: parseFrappeError(error),
-      color: 'red',
-      buttons: [{ label: 'Close', color: 'red' }],
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
     });
   };
 
   const showSuccess = (heading: string, body: string) => {
     openCommonModal({
       heading,
-      subtitle: '',
+      subtitle: "",
       body,
-      color: 'green',
-      buttons: [{ label: 'Close', color: 'green' }],
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
     });
   };
 
@@ -157,17 +157,17 @@ export function LoanProduct() {
       const list: LoanProductRaw[] = Array.isArray(res?.data) ? res.data : [];
       const normalized: NormalizedProduct[] = list.map((p) => ({
         id: p.name,
-        name: p.product_name || '—',
-        code: p.product_code || '—',
-        category: p.loan_category?.trim() || 'Uncategorized',
+        name: p.product_name || "—",
+        code: p.product_code || "—",
+        category: p.loan_category?.trim() || "Uncategorized",
         rate: Number(p.rate_of_interest) || 0,
         max: Number(p.maximum_loan_amount) || 0,
         disabled: p.disabled === 1 ? 1 : 0,
-        status: p.disabled === 1 ? 'INACTIVE' : 'ACTIVE',
+        status: p.disabled === 1 ? "INACTIVE" : "ACTIVE",
       }));
       setProducts(normalized);
     } catch (err: any) {
-      showError('Failed to Load Products', err);
+      showError("Failed to Load Products", err);
     } finally {
       setLoading(false);
     }
@@ -179,42 +179,48 @@ export function LoanProduct() {
 
   const categoryOptions = useMemo(
     () => Array.from(new Set(products.map((p) => p.category))).sort(),
-    [products]
+    [products],
   );
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
-      const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+      const matchesSearch =
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        p.code.toLowerCase().includes(q);
       const matchesCategory = !category || p.category === category;
       const matchesStatus =
-        status === 'all' ||
-        (status === 'active' && p.status === 'ACTIVE') ||
-        (status === 'inactive' && p.status === 'INACTIVE');
+        status === "all" ||
+        (status === "active" && p.status === "ACTIVE") ||
+        (status === "inactive" && p.status === "INACTIVE");
       return matchesSearch && matchesCategory && matchesStatus;
     });
   }, [products, search, category, status]);
 
   const toggleStatus = (row: NormalizedProduct) => {
-    const willDeactivate = row.status === 'ACTIVE';
+    const willDeactivate = row.status === "ACTIVE";
     openCommonModal({
-      heading: willDeactivate ? 'Deactivate Loan Product' : 'Activate Loan Product',
-      subtitle: 'Please confirm this action before continuing.',
+      heading: willDeactivate
+        ? "Deactivate Loan Product"
+        : "Activate Loan Product",
+      subtitle: "Please confirm this action before continuing.",
       body: (
         <>
-          Are you sure you want to {willDeactivate ? 'deactivate' : 'activate'} loan product{' '}
+          Are you sure you want to {willDeactivate ? "deactivate" : "activate"}{" "}
+          loan product{" "}
           <Text span fw={600}>
             {row.name}
           </Text>
           ?
         </>
       ),
-      color: willDeactivate ? 'red' : 'green',
+      color: willDeactivate ? "red" : "green",
       buttons: [
-        { label: 'Cancel', variant: 'default' },
+        { label: "Cancel", variant: "default" },
         {
-          label: willDeactivate ? 'Deactivate' : 'Activate',
-          color: willDeactivate ? 'red' : 'green',
+          label: willDeactivate ? "Deactivate" : "Activate",
+          color: willDeactivate ? "red" : "green",
           onClick: async () => {
             setTogglingId(row.id);
             try {
@@ -225,11 +231,11 @@ export function LoanProduct() {
               }
               await fetchProducts();
               showSuccess(
-                willDeactivate ? 'Product Deactivated' : 'Product Activated',
-                `Loan product has been ${willDeactivate ? 'deactivated' : 'activated'} successfully.`
+                willDeactivate ? "Product Deactivated" : "Product Activated",
+                `Loan product has been ${willDeactivate ? "deactivated" : "activated"} successfully.`,
               );
             } catch (err: any) {
-              showError('Status Update Failed', err);
+              showError("Status Update Failed", err);
             } finally {
               setTogglingId(null);
             }
@@ -241,31 +247,34 @@ export function LoanProduct() {
 
   const handleDelete = (row: NormalizedProduct) => {
     openCommonModal({
-      heading: 'Delete Loan Product',
-      subtitle: 'This action cannot be undone.',
+      heading: "Delete Loan Product",
+      subtitle: "This action cannot be undone.",
       body: (
         <>
-          Are you sure you want to delete loan product{' '}
+          Are you sure you want to delete loan product{" "}
           <Text span fw={600}>
             {row.name}
           </Text>
           ?
         </>
       ),
-      color: 'red',
+      color: "red",
       buttons: [
-        { label: 'Cancel', variant: 'default' },
+        { label: "Cancel", variant: "default" },
         {
-          label: 'Delete',
-          color: 'red',
+          label: "Delete",
+          color: "red",
           onClick: async () => {
             setDeletingId(row.id);
             try {
               await deleteLoanProduct(row.id);
               await fetchProducts();
-              showSuccess('Product Deleted', 'Loan product deleted successfully.');
+              showSuccess(
+                "Product Deleted",
+                "Loan product deleted successfully.",
+              );
             } catch (err: any) {
-              showError('Delete Failed', err);
+              showError("Delete Failed", err);
             } finally {
               setDeletingId(null);
             }
@@ -277,51 +286,55 @@ export function LoanProduct() {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor('name', {
-        header: 'Product Name',
+      columnHelper.accessor("name", {
+        header: "Product Name",
         cell: (info) => (
           <Text fz="sm" fw={700} c="slate.8">
             {info.getValue()}
           </Text>
         ),
       }),
-      columnHelper.accessor('code', {
-        header: 'Code',
+      columnHelper.accessor("code", {
+        header: "Code",
         cell: (info) => (
-          <Text fz="xs" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+          <Text
+            fz="xs"
+            c="slate.6"
+            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+          >
             {info.getValue()}
           </Text>
         ),
       }),
-      columnHelper.accessor('category', {
-        header: 'Category',
+      columnHelper.accessor("category", {
+        header: "Category",
         cell: (info) => (
           <Badge
             variant="light"
             size="sm"
             radius="sm"
             color="brand"
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
+            styles={{ root: { fontSize: 10, padding: "0 8px" } }}
           >
             {info.getValue()}
           </Badge>
         ),
       }),
-      columnHelper.accessor('rate', {
-        header: 'Base Rate',
+      columnHelper.accessor("rate", {
+        header: "Base Rate",
         cell: (info) => (
           <Text fz="xs" c="slate.6">
             {Number(info.getValue()).toFixed(2)}%
           </Text>
         ),
-        sortingFn: 'basic',
+        sortingFn: "basic",
       }),
-      columnHelper.accessor('status', {
-        header: 'Status',
+      columnHelper.accessor("status", {
+        header: "Status",
         cell: (info) => <StatusBadge status={info.getValue()} />,
       }),
       columnHelper.display({
-        id: 'actions',
+        id: "actions",
         header: () => (
           <Text fz="xs" fw={600} ta="right" w="100%">
             Actions
@@ -333,7 +346,12 @@ export function LoanProduct() {
           const isToggling = togglingId === row.id;
 
           return (
-            <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
+            <Group
+              justify="flex-end"
+              gap={4}
+              wrap="nowrap"
+              className="lms-row-actions"
+            >
               <Tooltip label="View" withArrow>
                 <ActionIcon
                   size="sm"
@@ -341,9 +359,11 @@ export function LoanProduct() {
                   color="slate"
                   radius="md"
                   onClick={() => {
-                    setSelectedProductId(row.id);
-                    setIsViewMode(true);
-                    open();
+                    loanProductModal.open({
+                      loanProductId: row.id,
+                      isViewMode: true,
+                      onSaved: fetchProducts,
+                    });
                   }}
                 >
                   <IconEye size={14} />
@@ -356,9 +376,11 @@ export function LoanProduct() {
                   color="brand"
                   radius="md"
                   onClick={() => {
-                    setSelectedProductId(row.id);
-                    setIsViewMode(false);
-                    open();
+                    loanProductModal.open({
+                      loanProductId: row.id,
+                      isViewMode: false,
+                      onSaved: fetchProducts,
+                    });
                   }}
                 >
                   <IconPencil size={14} />
@@ -376,11 +398,14 @@ export function LoanProduct() {
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} withArrow>
+              <Tooltip
+                label={row.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                withArrow
+              >
                 <Switch
                   size="xs"
                   color="success"
-                  checked={row.status === 'ACTIVE'}
+                  checked={row.status === "ACTIVE"}
                   disabled={isToggling}
                   onChange={() => toggleStatus(row)}
                 />
@@ -390,7 +415,7 @@ export function LoanProduct() {
         },
       }),
     ],
-    [deletingId, togglingId]
+    [deletingId, togglingId],
   );
 
   const table = useReactTable({
@@ -411,21 +436,13 @@ export function LoanProduct() {
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   const resetFilters = () => {
-    setSearch('');
+    setSearch("");
     setCategory(null);
-    setStatus('all');
+    setStatus("all");
   };
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanProductModal
-        opened={opened}
-        onClose={handleModalClose}
-        onSaved={fetchProducts}
-        loanProductId={selectedProductId}
-        isViewMode={isViewMode}
-      />
-
       {/* Scoped, purely visual — pulls from theme.other so it stays in sync
           with the brand color everywhere else, same as Customer module. */}
       <style>{`
@@ -444,15 +461,19 @@ export function LoanProduct() {
             style={{
               width: 40,
               height: 40,
-              borderRadius: 'var(--mantine-radius-md)',
+              borderRadius: "var(--mantine-radius-md)",
               background: theme.other.brandGradient,
               boxShadow: theme.other.brandGlowShadow,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            <IconBriefcase size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconBriefcase
+              size={20}
+              color="var(--mantine-color-white)"
+              stroke={1.8}
+            />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
@@ -470,8 +491,8 @@ export function LoanProduct() {
         radius="xl"
         p="xs"
         style={{
-          background: 'var(--mantine-color-slate-0)',
-          border: '1px solid var(--mantine-color-slate-2)',
+          background: "var(--mantine-color-slate-0)",
+          border: "1px solid var(--mantine-color-slate-2)",
         }}
       >
         <Group gap="sm" wrap="wrap" align="center">
@@ -482,7 +503,9 @@ export function LoanProduct() {
             placeholder="Product Name / Code"
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
-            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+            styles={{
+              input: { border: "1px solid var(--mantine-color-slate-2)" },
+            }}
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
@@ -515,13 +538,20 @@ export function LoanProduct() {
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
             data={[
-              { label: 'All', value: 'all' },
-              { label: 'Active', value: 'active' },
-              { label: 'Inactive', value: 'inactive' },
+              { label: "All", value: "all" },
+              { label: "Active", value: "active" },
+              { label: "Inactive", value: "inactive" },
             ]}
           />
 
-          <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
+          <Button
+            size="sm"
+            radius="xl"
+            variant="default"
+            px="md"
+            ml="auto"
+            onClick={resetFilters}
+          >
             Reset
           </Button>
           <Button
@@ -529,9 +559,7 @@ export function LoanProduct() {
             radius="xl"
             color="brand"
             onClick={() => {
-              setSelectedProductId(null);
-              setIsViewMode(false);
-              open();
+              loanProductModal.open({ onSaved: fetchProducts });
             }}
             leftSection={<IconPlus size={14} />}
             style={{
@@ -549,8 +577,8 @@ export function LoanProduct() {
         radius="lg"
         p="sm"
         style={{
-          background: 'var(--mantine-color-slate-0)',
-          border: '1px solid var(--mantine-color-slate-2)',
+          background: "var(--mantine-color-slate-0)",
+          border: "1px solid var(--mantine-color-slate-2)",
         }}
       >
         {loading ? (
@@ -564,7 +592,7 @@ export function LoanProduct() {
               horizontalSpacing="sm"
               fz="xs"
               w="100%"
-              style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+              style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
             >
               <Table.Thead>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -577,23 +605,32 @@ export function LoanProduct() {
                           c="slate.5"
                           fw={700}
                           style={{
-                            fontSize: 'var(--mantine-font-size-xs)',
-                            padding: '0 10px 6px',
-                            userSelect: 'none',
-                            cursor: canSort ? 'pointer' : 'default',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
-                            border: 'none',
+                            fontSize: "var(--mantine-font-size-xs)",
+                            padding: "0 10px 6px",
+                            userSelect: "none",
+                            cursor: canSort ? "pointer" : "default",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.04em",
+                            border: "none",
                           }}
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           <Group
                             gap="xs"
                             wrap="nowrap"
-                            justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
+                            justify={
+                              header.id === "actions"
+                                ? "flex-end"
+                                : "flex-start"
+                            }
                           >
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                            {canSort && (
+                              <SortIcon sorted={header.column.getIsSorted()} />
+                            )}
                           </Group>
                         </Table.Th>
                       );
@@ -604,21 +641,27 @@ export function LoanProduct() {
               <Table.Tbody>
                 {rows.length === 0 ? (
                   <Table.Tr>
-                    <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                    <Table.Td
+                      colSpan={columns.length}
+                      style={{ border: "none" }}
+                    >
                       <Stack align="center" gap="xs" py="xl">
                         <Box
                           style={{
                             width: 52,
                             height: 52,
-                            borderRadius: '50%',
-                            background: 'var(--mantine-color-white)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: '1px solid var(--mantine-color-slate-2)',
+                            borderRadius: "50%",
+                            background: "var(--mantine-color-white)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "1px solid var(--mantine-color-slate-2)",
                           }}
                         >
-                          <IconBriefcase size={24} color="var(--mantine-color-slate-4)" />
+                          <IconBriefcase
+                            size={24}
+                            color="var(--mantine-color-slate-4)"
+                          />
                         </Box>
                         <Text ta="center" c="slate.5" fz="xs">
                           No products match your filters.
@@ -628,7 +671,7 @@ export function LoanProduct() {
                   </Table.Tr>
                 ) : (
                   rows.map((row) => {
-                    const isActive = row.original.status === 'ACTIVE';
+                    const isActive = row.original.status === "ACTIVE";
                     const cells = row.getVisibleCells();
                     return (
                       <Table.Tr key={row.id} className="lms-row">
@@ -636,16 +679,19 @@ export function LoanProduct() {
                           <Table.Td
                             key={cell.id}
                             style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              boxShadow: 'var(--mantine-shadow-xs)',
+                              padding: "10px 10px",
+                              border: "none",
+                              boxShadow: "var(--mantine-shadow-xs)",
                               borderLeft:
                                 idx === 0
-                                  ? `3px solid var(--mantine-color-${isActive ? 'success' : 'danger'}-4)`
+                                  ? `3px solid var(--mantine-color-${isActive ? "success" : "danger"}-4)`
                                   : undefined,
                             }}
                           >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
                           </Table.Td>
                         ))}
                       </Table.Tr>
@@ -657,16 +703,24 @@ export function LoanProduct() {
 
             {/* Pagination Footer */}
             <Group justify="space-between" px="sm" pt="xs">
-              <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
+              <Group
+                gap="sm"
+                c="slate.6"
+                style={{ fontSize: "var(--mantine-font-size-xs)" }}
+              >
                 <span>
-                  {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+                  {totalRows === 0
+                    ? "Showing 0 of 0"
+                    : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
                 </span>
                 <Group gap="xs">
                   <span>Rows:</span>
                   <Select
-                    data={['10', '20', '50']}
+                    data={["10", "20", "50"]}
                     value={String(pageSize)}
-                    onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                    onChange={(v) =>
+                      setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
+                    }
                     rightSection={chevronDown}
                     size="xs"
                     radius="xl"
@@ -677,7 +731,9 @@ export function LoanProduct() {
               <Pagination
                 total={table.getPageCount() || 1}
                 value={pageIndex + 1}
-                onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+                onChange={(p) =>
+                  setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
+                }
                 color="brand"
                 size="xs"
                 radius="xl"
