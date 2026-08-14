@@ -35,6 +35,8 @@ import type {
   BusinessLoanApplication,
 } from "../../../types/loanApplicationForm";
 import { uploadFile } from "../../../api/loanApi";
+import { openCommonModal } from "../AlertModal";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
 
 export type LoanType = "Personal" | "Business";
 
@@ -396,6 +398,15 @@ const [isUploadingDocs, setIsUploadingDocs] = useState(false);
 // const [loanTypeSelected, setLoanTypeSelected] = useState(false);
 const [loanTypeSelected, setLoanTypeSelected] = useState(!!loanApplicationId);
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;  
+const showSuccess = (heading: string, body: string) => {
+  openCommonModal({
+    heading,
+    subtitle: '',
+    body,
+    color: 'green',
+    buttons: [{ label: 'Close', color: 'green' }],
+  });
+};
 
   const form = useForm<LoanApplicationValues>({ 
   initialValues: INITIAL_VALUES,
@@ -560,6 +571,11 @@ const handleModalClose = () => {
   queryFn: () => getLoanApplicationById(loanApplicationId as string),
   enabled: !!loanApplicationId && opened === true,
 });
+useEffect(() => {
+  if (opened && loanApplicationId) {
+    refetchLoanApplication();
+  }
+}, [opened, loanApplicationId, refetchLoanApplication]);
 
 useEffect(() => {
   const application = existingApplicationData?.message?.data;
@@ -676,10 +692,23 @@ const getDocFile = (docsArray: any[], documentNames: string[], key?: string) => 
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
     handleModalClose();  
+    showSuccess("Application Submitted", "The new loan application has been created successfully.");
   },
-  onError: (error) => {
-    console.error("Failed to submit loan application:", error);
-  },
+  onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+    
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
 });
 
 const { mutate: updateLoanApplicationMutation, isPending: isUpdating } = useMutation({
@@ -687,10 +716,23 @@ const { mutate: updateLoanApplicationMutation, isPending: isUpdating } = useMuta
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
     handleModalClose(); 
+    showSuccess("Application Updated", `Loan Application ${loanApplicationId} has been updated successfully.`);
   },
-  onError: (error) => {
-    console.error("Failed to update loan application:", error);
-  },
+  onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+    
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
 });
 
 const resolveDocumentUrl = async (file: File | null, fieldPath: string): Promise<string | null> => {
