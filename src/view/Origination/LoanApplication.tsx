@@ -30,9 +30,6 @@ import {
   IconSearch,
   IconFileText,
   IconTrash,
-  IconMail,
-  IconPhone,
-  IconCash,
   IconAlertTriangle,
   IconDotsVertical,
   IconEye,
@@ -49,27 +46,37 @@ import {
 
 import { LoanApplicationModal } from '../../components/Modal/LoanApplication/LoanApplicationModal';
 import { LoanApplicationDetailView } from './LoanApplicationDetailView';
-import { getAllLoanApplications, deleteLoanApplication, changeLoanApplicationStatus } from '../../api/loanApplicationApi';
+import {
+  getAllLoanApplications,
+  deleteLoanApplication,
+  changeLoanApplicationStatus,
+  convertCustomLoanApplicationToLoan,
+} from '../../api/loanApplicationApi';
 import { parseFrappeError } from '../../utils/parseFrappeError';
+import { useCompanyStore } from '../../store/companyStore';
 
+// Matches the actual /getAllLoanApplications response shape:
+// { name, application_type, customer, status, application_date, first_name, last_name, company_name }
 export interface LoanApplicationRow {
   name: string;
-  applicant_name: string;
-  applicant_email_address: string;
-  applicant_phone_number: string;
-  loan_product: string;
-  loan_amount: number;
+  application_type: string;
+  customer: string | null;
   status: string;
-  posting_date: string;
+  application_date: string;
+  first_name: string | null;
+  last_name: string | null;
+  company_name: string | null;
 }
 const columnHelper = createColumnHelper<LoanApplicationRow>();
 
 // TODO: replace with your real status picklist if it differs.
-const STATUS_OPTIONS = ['Open', 'Draft', 'Sanctioned', 'Rejected', 'Closed'];
+// Added 'Submitted' since it appears in the real API response's data.
+const STATUS_OPTIONS = ['Open', 'Draft', 'Submitted', 'Sanctioned', 'Rejected', 'Closed'];
 
 export const STATUS_COLOR: Record<string, string> = {
   Open: 'info',
   Draft: 'slate',
+  Submitted: 'info',
   Sanctioned: 'success',
   Rejected: 'danger',
   Closed: 'slate',
@@ -133,23 +140,18 @@ function ApplicationIdCell({ name }: { name: string }) {
   );
 }
 
-function IconText({ icon, children, mono = false }: { icon: React.ReactNode; children: React.ReactNode; mono?: boolean }) {
-  return (
-    <Group gap={6} wrap="nowrap">
-      <Box style={{ color: 'var(--mantine-color-slate-4)', display: 'flex', flexShrink: 0 }}>{icon}</Box>
-      <Text fz="xs" c="slate.6" style={mono ? { fontFamily: 'var(--mantine-font-family-monospace)' } : undefined}>
-        {children}
-      </Text>
-    </Group>
-  );
+// Business Loan rows don't have first_name/last_name, so the applicant column
+// falls back to company_name for those; Personal Loan rows fall back to the
+// concatenated name.
+function getApplicantDisplayName(row: LoanApplicationRow) {
+  if (row.application_type === 'Business Loan') {
+    return row.company_name || '—';
+  }
+  const fullName = [row.first_name, row.last_name].filter(Boolean).join(' ');
+  return fullName || '—';
 }
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
-
-function formatCurrency(amount: number) {
-  if (!amount && amount !== 0) return '—';
-  return amount.toLocaleString('en-US', { minimumFractionDigits: 2 });
-}
 
 function formatDate(date: string) {
   if (!date) return '—';
@@ -162,6 +164,7 @@ export function LoanApplication() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
   const [opened, { open, close }] = useDisclosure(false);
+  const companyName = useCompanyStore((state) => state.companyName);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   // Replaces the old modal-based "view" mode — now swaps the whole page
@@ -170,14 +173,42 @@ export function LoanApplication() {
 
   const [search, setSearch] = useState('');
   const [company, setCompany] = useState<string | null>(null);
-  const [loanProduct, setLoanProduct] = useState<string | null>(null);
+  // Replaces the old loan-product filter: the real API response has no
+  // loan_product field, so this now filters by application_type instead.
+  const [applicationType, setApplicationType] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
 
-  const [sorting, setSorting] = useState([{ id: 'posting_date', desc: true }]);
+  const [sorting, setSorting] = useState([{ id: 'application_date', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
   const statusMutation = useMutation({
     mutationFn: ({ id, action }: { id: string; action: string }) => changeLoanApplicationStatus(id, action),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
+    },
+    onError: (error: any) => {
+      const errorMessage = parseFrappeError(error);
+      modals.open({
+        title: <Text fw={600} c="red">Action Failed</Text>,
+        children: (
+          <div>
+            <Text size="sm" mb="lg">
+              {errorMessage}
+            </Text>
+            <Group justify="flex-end">
+              <Button onClick={() => modals.closeAll()} variant="default">
+                Close
+              </Button>
+            </Group>
+          </div>
+        ),
+      });
+    },
+  });
+
+  const convertToLoanMutation = useMutation({
+    mutationFn: ({ id, company: companyParam }: { id: string; company: string }) =>
+      convertCustomLoanApplicationToLoan({ id, company: companyParam }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
     },
@@ -240,25 +271,26 @@ export function LoanApplication() {
     },
   });
 
-  const productOptions = useMemo(
-    () => Array.from(new Set(data.map((d) => d.loan_product).filter(Boolean))),
+  const applicationTypeOptions = useMemo(
+    () => Array.from(new Set(data.map((d) => d.application_type).filter(Boolean))),
     [data],
   );
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
     return data.filter((a) => {
+      const applicantName = getApplicantDisplayName(a).toLowerCase();
       const matchesSearch =
         !q ||
         a.name.toLowerCase().includes(q) ||
-        a.applicant_name.toLowerCase().includes(q) ||
-        a.applicant_email_address.toLowerCase().includes(q) ||
-        a.applicant_phone_number.toLowerCase().includes(q);
-      const matchesProduct = !loanProduct || a.loan_product === loanProduct;
+        applicantName.includes(q) ||
+        (a.customer ?? '').toLowerCase().includes(q) ||
+        (a.application_type ?? '').toLowerCase().includes(q);
+      const matchesType = !applicationType || a.application_type === applicationType;
       const matchesStatus = status === 'all' || a.status === status;
-      return matchesSearch && matchesProduct && matchesStatus;
+      return matchesSearch && matchesType && matchesStatus;
     });
-  }, [data, search, company, loanProduct, status]);
+  }, [data, search, company, applicationType, status]);
 
   // If the application being viewed disappears (deleted / filtered out of a
   // fresh fetch), fall back to the list instead of showing a stale detail page.
@@ -325,34 +357,37 @@ export function LoanApplication() {
     });
   };
 
+  const confirmCreateLoanBooking = (id: string) => {
+    modals.openConfirmModal({
+      title: 'Create loan booking',
+      children: (
+        <Text size="sm">
+          Are you sure you want to create a loan booking for application <b>{id}</b>?
+        </Text>
+      ),
+      labels: { confirm: 'Create Booking', cancel: 'Cancel' },
+      confirmProps: { color: 'brand' },
+      onConfirm: () => convertToLoanMutation.mutate({ id, company: companyName }),
+    });
+  };
+
   const columns = useMemo(
     () => [
       columnHelper.accessor('name', {
         header: 'Application',
         cell: (info) => <ApplicationIdCell name={info.getValue()} />,
       }),
-      columnHelper.accessor('applicant_name', {
+      columnHelper.display({
+        id: 'applicant',
         header: 'Applicant',
         cell: (info) => (
           <Text fz="xs" fw={600} c="slate.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-            {info.getValue()}
+            {getApplicantDisplayName(info.row.original)}
           </Text>
         ),
       }),
-      columnHelper.accessor('applicant_email_address', {
-        header: 'Email',
-        cell: (info) => <IconText icon={<IconMail size={13} />}>{info.getValue()}</IconText>,
-      }),
-      columnHelper.accessor('applicant_phone_number', {
-        header: 'Phone',
-        cell: (info) => (
-          <IconText icon={<IconPhone size={13} />} mono>
-            {info.getValue()}
-          </IconText>
-        ),
-      }),
-      columnHelper.accessor('loan_product', {
-        header: 'Loan Product',
+      columnHelper.accessor('application_type', {
+        header: 'Type',
         cell: (info) => (
           <Badge
             variant="light"
@@ -365,19 +400,19 @@ export function LoanApplication() {
           </Badge>
         ),
       }),
-      columnHelper.accessor('loan_amount', {
-        header: 'Loan Amount',
+      columnHelper.accessor('customer', {
+        header: 'Customer',
         cell: (info) => (
-          <IconText icon={<IconCash size={13} />} mono>
-            {formatCurrency(info.getValue())}
-          </IconText>
+          <Text fz="xs" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+            {info.getValue() || '—'}
+          </Text>
         ),
       }),
       columnHelper.accessor('status', {
         header: 'Status',
         cell: (info) => <StatusBadge status={info.getValue()} />,
       }),
-      columnHelper.accessor('posting_date', {
+      columnHelper.accessor('application_date', {
         header: 'Application Date',
         cell: (info) => (
           <Text fz="xs" c="slate.6">
@@ -424,21 +459,35 @@ export function LoanApplication() {
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-              {isDraft && (
-                <Menu shadow="md" width={150} position="bottom-end">
-                  <Menu.Target>
-                    <ActionIcon size="sm" variant="subtle" color="gray">
-                      <IconDotsVertical size={14} />
-                    </ActionIcon>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Item onClick={() => confirmApprove(row.name)}>Approve</Menu.Item>
-                    <Menu.Item color="red" onClick={() => confirmReject(row.name)}>
-                      Reject
+              <Menu shadow="md" width={180} position="bottom-end">
+                <Menu.Target>
+                  <ActionIcon size="sm" variant="subtle" color="gray">
+                    <IconDotsVertical size={14} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {isDraft ? (
+                    <>
+                      <Menu.Item onClick={() => confirmApprove(row.name)}>Approve</Menu.Item>
+                      <Menu.Item color="red" onClick={() => confirmReject(row.name)}>
+                        Reject
+                      </Menu.Item>
+                      <Menu.Item onClick={() => confirmCreateLoanBooking(row.name)}>
+                      Create Loan Booking
                     </Menu.Item>
-                  </Menu.Dropdown>
-                </Menu>
-              )}
+                    </>
+                  ) : (
+                    <>
+                     <Menu.Item onClick={() => confirmCreateLoanBooking(row.name)}>
+                      Create Loan Booking
+                    </Menu.Item>
+                    <Menu.Item>
+                      Delete
+                    </Menu.Item>
+                    </>
+                  )}
+                </Menu.Dropdown>
+              </Menu>
             </Group>
           );
         },
@@ -467,7 +516,7 @@ export function LoanApplication() {
   const resetFilters = () => {
     setSearch('');
     setCompany(null);
-    setLoanProduct(null);
+    setApplicationType(null);
     setStatus('all');
   };
 
@@ -546,7 +595,7 @@ export function LoanApplication() {
             className="lms-search"
             size="sm"
             radius="xl"
-            placeholder="Application / Applicant / Email / Phone / Company"
+            placeholder="Application / Applicant / Type / Customer"
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 260 }}
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
@@ -559,15 +608,15 @@ export function LoanApplication() {
           <Select
             size="sm"
             radius="xl"
-            placeholder="All Products"
-            data={productOptions}
+            placeholder="All Types"
+            data={applicationTypeOptions}
             w={166}
             searchable
             clearable
             rightSection={chevronDown}
-            value={loanProduct}
+            value={applicationType}
             onChange={(v) => {
-              setLoanProduct(v);
+              setApplicationType(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
