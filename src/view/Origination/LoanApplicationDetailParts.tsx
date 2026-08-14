@@ -70,6 +70,7 @@ export interface ApplicationDocument {
   status: DocumentStatus;
   size: string;
   icon: DocumentIcon;
+  file?: string;
 }
 
 type ActivityKind = 'note' | 'call' | 'decision';
@@ -82,6 +83,13 @@ export interface ApplicationActivityItem {
   description: string;
   actor: string;
 }
+ export interface DirectorInfo {
+   name: string;
+   fullName: string;
+   phone: string;
+   email: string;
+   nrc: string;
+ }
 
 export interface LoanApplicationDetail {
   applicant: {
@@ -105,6 +113,7 @@ export interface LoanApplicationDetail {
     registeredOffice: string;
     natureOfBusiness: string;
   };
+   directors: DirectorInfo[];
   nextOfKin: {
     name: string;
     relationship: string;
@@ -180,25 +189,36 @@ function buildApplicantFullName(data: any, isBusinessLoan: boolean) {
 function mapDocuments(data: any): ApplicationDocument[] {
   const docs: ApplicationDocument[] = [];
 
+  // 1. Loop for Personal Loan Documents
   (data.documents || []).forEach((d: any) => {
     if (!d.document_name && !d.file) return;
+    
+    const fileName = d.file ? d.file.split('/').pop() : '—';
+
     docs.push({
       id: d.name,
       name: d.document_name || 'Document',
       status: d.file ? 'Uploaded' : 'Missing',
-      size: '—',
+      size: fileName, 
       icon: 'file',
+      file: d.file,
     });
   });
 
+  // 2. Loop for Business Loan Documents
   (data.business_documents || []).forEach((d: any) => {
     if (!d.document_name && !d.file) return;
+
+    // This is the crucial line for the JSON you just shared
+    const fileName = d.file ? d.file.split('/').pop() : '—';
+
     docs.push({
       id: d.name,
       name: d.document_name || 'Document',
       status: d.file ? 'Uploaded' : 'Missing',
-      size: '—',
+      size: fileName, 
       icon: 'certificate',
+      file: d.file,
     });
   });
 
@@ -258,6 +278,13 @@ export function buildDetailFromApi(data: any): LoanApplicationDetail {
       registeredOffice: data.registered_office || '—',
       natureOfBusiness: data.nature_of_business || '—',
     },
+    directors: (data.directors || []).map((d: any) => ({
+       name: d.name,
+       fullName: d.director_name || '—',
+       phone: d.director_phone || '—',
+       email: d.director_email || '—',
+       nrc: d.national_registration_card || '—',
+     })),
     nextOfKin: {
       name: data.next_of_kin_name || '—',
       relationship: data.next_of_kin_relationship || '—',
@@ -300,6 +327,7 @@ export function buildFallbackDetail(row: LoanApplicationRow): LoanApplicationDet
       registeredOffice: '—',
       natureOfBusiness: '—',
     },
+    directors: [],
     nextOfKin: { name: '—', relationship: '—', phone: '—' },
     loanTerms: {
       amountRequested: 0,
@@ -376,13 +404,12 @@ export function DocumentCard({ doc }: { doc: ApplicationDocument }) {
           {doc.name}
         </Text>
         <Text fz={11} fw={600} c={missing ? undefined : 'dimmed'} style={missing ? { color: brand.rose } : undefined}>
-          {doc.status} · {doc.size}
+          {doc.status} · {doc.file ? doc.file.split('/').pop() : doc.size}
         </Text>
       </div>
     </Paper>
   );
 }
-
 const activityKindIcon: Record<ActivityKind, React.ReactNode> = {
   note: <IconNote size={11} />,
   call: <IconPhoneCall size={11} />,
