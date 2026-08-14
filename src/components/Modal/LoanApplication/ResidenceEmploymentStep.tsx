@@ -18,15 +18,22 @@ import type { LoanApplicationValues, LoanType, DirectorEntry } from "./LoanAppli
 import { getAllCountries } from "../../../api/loanApplicationApi";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { DateInput } from "@mantine/dates";
 
 interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
   loanType: LoanType;
 }
 
-const NATIONALITIES = ["Zambian", "Zimbabwean", "Malawian", "South African", "Other"];
+const RELATIONSHIPS = [ "Spouse", "Parent", "Child", "Sibling", "Other",];
 const GENDERS = ["Male", "Female", "Other"];
-const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed"];
+const MARITAL_STATUSES = [
+  "Single",
+  "Married",
+  "Divorced",
+  "Widowed",
+  "Separated",
+];
 
 const nextId = () => Math.random().toString(36).slice(2, 10);
 const MAX_DIRECTORS = 3;
@@ -91,9 +98,24 @@ const countryOptions = useMemo(() => {
           {...form.getInputProps("kinName")}
         />
 
-        <TextInput radius="md" type="tel" label={<Label text="Next of kin phone" required />} {...form.getInputProps("kinPhone")} />
+        {/* <TextInput radius="md" type="tel" label={<Label text="Next of kin phone" required />} {...form.getInputProps("kinPhone")} /> */}
+        <TextInput
+  radius="md"
+  type="tel"
+  label={<Label text="Next of kin phone" required />}
+  value={form.values.kinPhone}
+  onChange={(e) => form.setFieldValue("kinPhone", e.currentTarget.value.replace(/\D/g, ""))}
+  error={form.errors.kinPhone}
+/>
         <TextInput radius="md" type="email" label={<Label text="Next of kin email" required />} {...form.getInputProps("kinEmail")} />
-        <TextInput radius="md" label={<Label text="Relationship" required />} {...form.getInputProps("kinRelationship")} />
+        {/* <TextInput radius="md" label={<Label text="Relationship" required />} {...form.getInputProps("kinRelationship")} /> */}
+        <Select
+  radius="md"
+  label={<Label text="Relationship" required />}
+  placeholder="Select"
+  data={RELATIONSHIPS}
+  {...form.getInputProps("kinRelationship")}
+/>
       </SimpleGrid>
     );
   }
@@ -215,7 +237,15 @@ const countryOptions = useMemo(() => {
             {...form.getInputProps("applicantLastName")}
           />
 
-          <TextInput radius="md" type="tel" label={<Label text="Applicant phone" required />} {...form.getInputProps("applicantPhone")} />
+          {/* <TextInput radius="md" type="tel" label={<Label text="Applicant phone" required />} {...form.getInputProps("applicantPhone")} /> */}
+          <TextInput
+  radius="md"
+  type="tel"
+  label={<Label text="Applicant phone" required />}
+  value={form.values.applicantPhone}
+  onChange={(e) => form.setFieldValue("applicantPhone", e.currentTarget.value.replace(/\D/g, ""))}
+  error={form.errors.applicantPhone}
+/>
           <TextInput radius="md" type="email" label={<Label text="Applicant email" required />} {...form.getInputProps("applicantEmail")} />
           <TextInput radius="md" label={<Label text="Applicant NRC" required />} {...form.getInputProps("applicantNrc")} />
 
@@ -233,12 +263,20 @@ const countryOptions = useMemo(() => {
             data={MARITAL_STATUSES}
             {...form.getInputProps("applicantMaritalStatus")}
           />
-          <TextInput
-            radius="md"
-            type="date"
-            label={<Label text="Birth date" required />}
-            {...form.getInputProps("applicantBirthDate")}
-          />
+          <DateInput
+  radius="md"
+  label={<Label text="Birth date" required />}
+  valueFormat="DD-MMM-YYYY"
+  placeholder="DD-MMM-YYYY"
+  value={form.values.applicantBirthDate ? new Date(form.values.applicantBirthDate) : null}
+  onChange={(date) =>
+    form.setFieldValue(
+      "applicantBirthDate",
+      date ? new Date(date).toISOString().slice(0, 10) : ""
+    )
+  }
+  error={form.errors.applicantBirthDate}
+/>
 
           <TextInput
             radius="md"
@@ -284,12 +322,16 @@ const countryOptions = useMemo(() => {
                 label={<Label text="Director name" required />}
                 {...form.getInputProps(`directors.${editingIndex}.name`)}
               />
-              <TextInput
-                radius="md"
-                type="tel"
-                label={<Label text="Director phone" required />}
-                {...form.getInputProps(`directors.${editingIndex}.phone`)}
-              />
+             <TextInput
+  radius="md"
+  type="tel"
+  label={<Label text="Director phone" required />}
+  value={form.values.directors[editingIndex].phone}
+  onChange={(e) =>
+    form.setFieldValue(`directors.${editingIndex}.phone`, e.currentTarget.value.replace(/\D/g, ""))
+  }
+  error={form.errors[`directors.${editingIndex}.phone`]}
+/>
               <TextInput
                 radius="md"
                 type="email"

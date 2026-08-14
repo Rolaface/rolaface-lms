@@ -22,7 +22,7 @@ import { FieldLabel, PlainCard, SectionHeader } from "../../shared/customer/Shar
 import { readOnlyClassNames } from "../../constants/customer/constants";
 import { getAllCustomers } from "../../../api/customerApi";
 import { getAllLoanProducts } from "../../../api/productApi";
-import type { LoanApplicationFormValues } from "./LoanApplicationModal";
+import type { LoanApplicationValues } from "./LoanApplicationModal";
 import { getAllCountries } from "../../../api/loanApplicationApi";
 
 const COUNTRY_CODES = [
@@ -34,7 +34,7 @@ const COUNTRY_CODES = [
 ];
 
 interface BasicDetailsProps {
-  form: UseFormReturnType<LoanApplicationFormValues>;
+  form: UseFormReturnType<LoanApplicationValues>;
 }
 
 const chevron = <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />;
