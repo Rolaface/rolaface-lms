@@ -20,6 +20,7 @@ import {
 } from "@mantine/core";
 import {
   IconX,
+  IconMinus,
   IconSearch,
   IconCalendar,
   IconChevronDown,
@@ -43,12 +44,12 @@ import { ModalFooter } from "../shared/ModalFooter";
 interface LoanDisbursementModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   onSubmit?: (data: LoanDisbursementFormData) => void;
   editId?: string | null;
   initialData?: any;
   isView?: boolean;
 }
-
 export interface LoanDisbursementChargeRow {
   id: string;
   name: string;
@@ -100,6 +101,7 @@ const chevronDown = <IconChevronDown size={14} color="var(--mantine-color-slate-
 export function LoanDisbursementModal({
   opened,
   onClose,
+  onMinimize,
   onSubmit: _onSubmit,
   editId,
   initialData,
@@ -459,7 +461,7 @@ const updateDisbursementMutation = useMutation({
                 </Text>
               </div>
             </Group>
-            <Group gap="xs" className="shrink-0" wrap="nowrap">
+<Group gap="xs" className="shrink-0" wrap="nowrap">
               {isView && (
                 <Badge variant="light" color="gray" radius="sm" size="sm">
                   View Only
@@ -469,7 +471,19 @@ const updateDisbursementMutation = useMutation({
                 variant="subtle"
                 size="xs"
                 px={8}
+                onClick={() => onMinimize?.()}
+                aria-label="Minimize"
+                style={{ color: "var(--mantine-color-white)" }}
+                styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg as string } } }}
+              >
+                <IconMinus size={18} />
+              </Button>
+              <Button
+                variant="subtle"
+                size="xs"
+                px={8}
                 onClick={onClose}
+                aria-label="Close"
                 style={{ color: "var(--mantine-color-white)" }}
                 styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg as string } } }}
               >
