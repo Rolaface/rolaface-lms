@@ -1,4 +1,4 @@
-import { IconCircleAsterisk } from "@tabler/icons-react";
+import { IconLayersLinked } from "@tabler/icons-react";
 import { createModal } from "../../../store/modal store/createModal";
 import { LoanClassificationModal } from "../../../components/Modal/LoanClassificationModal";
 import type { LoanClassificationData } from "../../../components/Modal/LoanClassificationModal";
@@ -19,7 +19,7 @@ export const loanClassificationModal = createModal(
   "loan-classification",
   LoanClassificationModal,
   {
-    icon: IconCircleAsterisk,
+    icon: IconLayersLinked,
     getTitle,
     buildProps: (params) => ({
       editId: params.editId ?? null,
