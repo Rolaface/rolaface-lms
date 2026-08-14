@@ -407,9 +407,19 @@ const updateDisbursementMutation = useMutation({
     );
   };
 
+  // useEffect(() => {
+  //   if (!editId) {
+  //     form.setFieldValue("beneficiaryAcNo", selectedLoanApp?.loan_account || "");
+  //   }
+  // }, [form.values.acNo, selectedLoanApp]);
   useEffect(() => {
     if (!editId) {
       form.setFieldValue("beneficiaryAcNo", selectedLoanApp?.loan_account || "");
+      
+      // Auto-populate the disburse amount when a loan is selected
+      if (selectedLoanApp?.loan_amount) {
+        form.setFieldValue("disburseAmount", Number(selectedLoanApp.loan_amount));
+      }
     }
   }, [form.values.acNo, selectedLoanApp]);
 
@@ -642,7 +652,7 @@ const updateDisbursementMutation = useMutation({
                           label="A/c No"
                           placeholder="Account number"
                           disabled={isView}
-                          {...form.getInputProps("beneficiaryAcNo")}
+                          // {...form.getInputProps("beneficiaryAcNo")}
                           leftSection={<IconHome size={14} color="var(--mantine-color-brand-5)" />}
                         />
                       </div>
