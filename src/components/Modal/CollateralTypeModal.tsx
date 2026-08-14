@@ -10,8 +10,10 @@ import {
   ThemeIcon,
   Group,
   Fieldset,
+  Button,
+  useMantineTheme,
 } from "@mantine/core";
-import {  IconX, IconPercentage, IconBox } from "@tabler/icons-react";
+import { IconX, IconPercentage, IconBox, IconMinus } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateCollateralTypePayload } from "../../types/collateralTypeForm";
 import {
@@ -23,15 +25,25 @@ import { useForm } from "@mantine/form";
 import { ModalFooter } from "../shared/ModalFooter";
 import { openCommonModal } from "./AlertModal";
 import { parseFrappeError } from "../../utils/parseFrappeError";
+import { createModal } from "../../store/modal store/createModal";
 
 interface CollateralTypeModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize: () => void;
   editId?: string | null;
   isView?: boolean;
 }
 
-export function CollateralTypeModal({ opened, onClose, editId, isView }: CollateralTypeModalProps) {
+export function CollateralTypeModal({
+  opened,
+  onClose,
+  onMinimize,
+  editId,
+  isView,
+}: CollateralTypeModalProps) {
+  const theme = useMantineTheme();
+
   const form = useForm({
     initialValues: {
       type: "",
@@ -192,16 +204,28 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
               </Text>
             </Box>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={handleClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
+          <Group gap="xs" wrap="nowrap">
+            <Button
+              variant="subtle"
+              size="xs"
+              px={8}
+              onClick={onMinimize}
+              style={{ color: "var(--mantine-color-white)" }}
+              styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+            >
+              <IconMinus size={18} />
+            </Button>
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={handleClose}
+              aria-label="Close"
+            >
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
         {/* Body */}
@@ -267,3 +291,33 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
     </Modal>
   );
 }
+
+/* ───────────────── Minimize/registry wiring ─────────────────
+   Same pattern as journalEntryModal.ts, just kept in this file
+   instead of a separate config file. Registers this modal with
+   the global modal registry and exposes .open()/.close() etc.
+*/
+
+export interface CollateralTypeModalParams {
+  editId?: string | null;
+  isView?: boolean;
+}
+
+function getTitle(params: CollateralTypeModalParams) {
+  if (params.isView) return "View Collateral Type";
+  if (params.editId) return "Edit Collateral Type";
+  return "New Collateral Type";
+}
+
+export const collateralTypeModal = createModal(
+  "collateral-type",
+  CollateralTypeModal,
+  {
+    icon: IconBox,
+    getTitle,
+    buildProps: (params) => ({
+      editId: params.editId ?? null,
+      isView: params.isView ?? false,
+    }),
+  },
+);

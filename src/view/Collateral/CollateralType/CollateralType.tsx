@@ -31,7 +31,6 @@ import {
   IconShieldCheck,
   IconBox,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -41,7 +40,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CollateralTypeModal } from '../../../components/Modal/CollateralTypeModal';
+import { collateralTypeModal } from '../../../components/Modal/CollateralTypeModal';
 import {
   getAllCollateralTypes,
   enableCollateralType,
@@ -104,22 +103,12 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function CollateralType() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
 
   const [sorting, setSorting] = useState([{ id: 'type', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-
-  const [selectedCollateralId, setSelectedCollateralId] = useState<string | null>(null);
-  const [isViewMode, setIsViewMode] = useState(false);
-
-  const handleModalClose = () => {
-    close();
-    setSelectedCollateralId(null);
-    setIsViewMode(false);
-  };
 
   const { data: collateralResponse, isLoading } = useQuery({
     queryKey: ['collateralTypes'],
@@ -311,9 +300,7 @@ export function CollateralType() {
                   color="slate"
                   radius="md"
                   onClick={() => {
-                    setSelectedCollateralId(row.id);
-                    setIsViewMode(true);
-                    open();
+                    collateralTypeModal.open({ editId: row.id, isView: true });
                   }}
                 >
                   <IconEye size={14} />
@@ -326,9 +313,7 @@ export function CollateralType() {
                   color="brand"
                   radius="md"
                   onClick={() => {
-                    setSelectedCollateralId(row.id);
-                    setIsViewMode(false);
-                    open();
+                    collateralTypeModal.open({ editId: row.id, isView: false });
                   }}
                 >
                   <IconPencil size={14} />
@@ -387,12 +372,10 @@ export function CollateralType() {
 
   return (
     <Stack gap="lg" p="lg">
-      <CollateralTypeModal
-        opened={opened}
-        onClose={handleModalClose}
-        editId={selectedCollateralId}
-        isView={isViewMode}
-      />
+      {/* No local modal render needed — importing CollateralTypeModal.tsx
+          runs createModal(...) as a side effect, which registers the modal
+          Host with the global registry. It's rendered centrally wherever
+          the app renders getRegisteredModals(). */}
 
       {/* Scoped, purely visual — same theme.other tokens as Customer / LoanProduct */}
       <style>{`
@@ -475,23 +458,22 @@ export function CollateralType() {
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
             Reset
           </Button>
-           <Button
-          size="sm"
-          radius="xl"
-          color="brand"
-          onClick={() => {
-            setSelectedCollateralId(null);
-            setIsViewMode(false);
-            open();
-          }}
-          leftSection={<IconPlus size={14} />}
-          style={{
-            background: theme.other.brandGradient,
-            boxShadow: theme.other.brandGlowShadowSm,
-          }}
-        >
-          Add Collateral Type
-        </Button>
+
+          <Button
+            size="sm"
+            radius="xl"
+            color="brand"
+            onClick={() => {
+              collateralTypeModal.open({ editId: null, isView: false });
+            }}
+            leftSection={<IconPlus size={14} />}
+            style={{
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadowSm,
+            }}
+          >
+            Add Collateral Type
+          </Button>
         </Group>
       </Paper>
 
