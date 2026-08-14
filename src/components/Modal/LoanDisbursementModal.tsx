@@ -16,6 +16,7 @@ import {
   Loader,
   Stack,
   ThemeIcon,
+  Checkbox,
   useMantineTheme,
 } from "@mantine/core";
 import {
@@ -67,6 +68,13 @@ export interface LoanDisbursementFormData {
   refNo: string;
   beneficiaryAcNo: string;
   charges: LoanDisbursementChargeRow[];
+  isTopup: boolean;
+  topupSanctionedCurrent: number | "";
+  topupSanctionedNew: number | "";
+  topupDisbursedCurrent: number | "";
+  topupDisbursedNew: number | "";
+  topupOutstandingCurrent: number | "";
+  topupOutstandingNew: number | "";
 }
 
 const PAYMENT_MODES = ["Bank Draft", "Cash", "Cheque", "Credit Card", "Wire Transfer"];
@@ -158,7 +166,14 @@ export function LoanDisbursementModal({
       refDate: getTodayDate(),
       refNo: "",
       beneficiaryAcNo: "",
-      charges: [],
+  charges: [],
+      isTopup: false,
+      topupSanctionedCurrent: "" as number | "",
+      topupSanctionedNew: "" as number | "",
+      topupDisbursedCurrent: "" as number | "",
+      topupDisbursedNew: "" as number | "",
+      topupOutstandingCurrent: "" as number | "",
+      topupOutstandingNew: "" as number | "",
     },
     validate: {
       acNo: (v) => (!v ? "Account Number is required" : null),
@@ -523,6 +538,19 @@ const updateDisbursementMutation = useMutation({
                     leftSection={<IconNotes size={14} color="var(--mantine-color-warning-5)" />}
                     thousandSeparator=","
                   />
+                  <Checkbox
+                    mt={22}
+                    label="Topup"
+                    disabled={isView}
+                    checked={form.values.isTopup}
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked;
+                      form.setFieldValue("isTopup", checked);
+                      if (!checked && activeTab === "topup") {
+                        setActiveTab("settlement");
+                      }
+                    }}
+                  />
                 </div>
               </fieldset>
 
@@ -534,8 +562,12 @@ const updateDisbursementMutation = useMutation({
                   <Tabs.Tab value="charges">
                     Charges
                   </Tabs.Tab>
+                  {form.values.isTopup && (
+                    <Tabs.Tab value="topup">
+                      Topup
+                    </Tabs.Tab>
+                  )}
                 </Tabs.List>
-
                 <Tabs.Panel value="settlement" pt="md">
                   <div className="flex flex-wrap items-start justify-between">
                     {/* Pay From */}
@@ -744,6 +776,110 @@ const updateDisbursementMutation = useMutation({
                     )}
                   </div>
                 </Tabs.Panel>
+
+                {form.values.isTopup && (
+                  <Tabs.Panel value="topup" pt="md">
+                    <div className="space-y-3">
+                      <div
+                        className="rounded-md overflow-hidden"
+                        style={{ border: "1px solid var(--mantine-color-slate-2)" }}
+                      >
+                        <Table size="sm" verticalSpacing="sm" horizontalSpacing="sm" className="w-full">
+                          <Table.Thead>
+                            <Table.Tr>
+                              <Table.Th className="w-1/3"></Table.Th>
+                              <Table.Th className="w-1/3">Current</Table.Th>
+                              <Table.Th className="w-1/3">New</Table.Th>
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            <Table.Tr>
+                              <Table.Td>
+                                <Text size="xs" fw={600} c="slate.7">
+                                  Sanctioned Amount
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <NumberInput
+                                  size="xs"
+                                  hideControls
+                                  min={0}
+                                  disabled={isView}
+                                  {...form.getInputProps("topupSanctionedCurrent")}
+                                  thousandSeparator=","
+                                />
+                              </Table.Td>
+                              <Table.Td>
+                                <NumberInput
+                                  size="xs"
+                                  hideControls
+                                  min={0}
+                                  disabled={isView}
+                                  {...form.getInputProps("topupSanctionedNew")}
+                                  thousandSeparator=","
+                                />
+                              </Table.Td>
+                            </Table.Tr>
+                            <Table.Tr>
+                              <Table.Td>
+                                <Text size="xs" fw={600} c="slate.7">
+                                  Disbursed Amount
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <NumberInput
+                                  size="xs"
+                                  hideControls
+                                  min={0}
+                                  disabled={isView}
+                                  {...form.getInputProps("topupDisbursedCurrent")}
+                                  thousandSeparator=","
+                                />
+                              </Table.Td>
+                              <Table.Td>
+                                <NumberInput
+                                  size="xs"
+                                  hideControls
+                                  min={0}
+                                  disabled={isView}
+                                  {...form.getInputProps("topupDisbursedNew")}
+                                  thousandSeparator=","
+                                />
+                              </Table.Td>
+                            </Table.Tr>
+                            <Table.Tr>
+                              <Table.Td>
+                                <Text size="xs" fw={600} c="slate.7">
+                                  Outstanding Amount
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <NumberInput
+                                  size="xs"
+                                  hideControls
+                                  min={0}
+                                  disabled={isView}
+                                  {...form.getInputProps("topupOutstandingCurrent")}
+                                  thousandSeparator=","
+                                />
+                              </Table.Td>
+                              <Table.Td>
+                                <NumberInput
+                                  size="xs"
+                                  hideControls
+                                  min={0}
+                                  disabled={isView}
+                                  {...form.getInputProps("topupOutstandingNew")}
+                                  thousandSeparator=","
+                                />
+                              </Table.Td>
+                            </Table.Tr>
+                          </Table.Tbody>
+                        </Table>
+                      </div>
+                    </div>
+                  </Tabs.Panel>
+                )}
               </Tabs>
             </div>
 
