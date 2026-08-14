@@ -44,7 +44,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { collateralModal } from '../../components/Modal/CollateralModal';
+import { collateralModal } from '../../store/modal store/collateralModalStore';
 import {
   getAllCollaterals,
   enableCollateral,
@@ -263,15 +263,6 @@ export function Collateral() {
     }));
   }, [collateralResponse]);
 
-  const stats = useMemo(() => {
-    const activeCount = data.filter((c) => c.status === 'ACTIVE').length;
-    return {
-      total: data.length,
-      active: activeCount,
-      disabled: data.length - activeCount,
-    };
-  }, [data]);
-
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
     return data.filter((c) => {
@@ -376,9 +367,7 @@ export function Collateral() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => {
-                    collateralModal.open({ editId: row.id, isView: true });
-                  }}
+                  onClick={() => collateralModal.open({ editId: row.id, isView: true })}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -389,9 +378,7 @@ export function Collateral() {
                   variant="subtle"
                   color="brand"
                   radius="md"
-                  onClick={() => {
-                    collateralModal.open({ editId: row.id, isView: false });
-                  }}
+                  onClick={() => collateralModal.open({ editId: row.id, isView: false })}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -452,11 +439,6 @@ export function Collateral() {
 
   return (
     <Stack gap="lg" p="lg">
-      {/* No local modal render needed — importing CollateralModal.tsx
-          runs createModal(...) as a side effect, which registers the modal
-          Host with the global registry. It's rendered centrally wherever
-          the app renders getRegisteredModals(). */}
-
       {/* Scoped, purely visual — mirrors the Customers module styling,
           pulling from theme.other instead of one-off literals. */}
       <style>{`
@@ -560,9 +542,7 @@ export function Collateral() {
               size="sm"
               radius="xl"
               color="brand"
-              onClick={() => {
-                collateralModal.open({ editId: null, isView: false });
-              }}
+              onClick={() => collateralModal.open({ editId: null, isView: false })}
               leftSection={<IconPlus size={14} />}
               style={{
                 background: theme.other.brandGradient,
