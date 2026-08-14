@@ -15,13 +15,15 @@ export async function getAllLoanApplications() {
 export async function convertCustomLoanApplicationToLoan({
   id,
   company,
+  loan_product,
 }: {
   id: string;
   company: string;
+  loan_product: string;
 }) {
   const { data } = await apiClient.post(
     `${API.loanApplication.convertToLoan}?id=${id}`,
-    { company }
+    { company, loan_product }
   );
   return data;
 }
@@ -41,11 +43,6 @@ export async function deleteLoanApplication(id: string) {
   return data;
 }
 
-export async function changeLoanApplicationStatus(id: string, action: string) {
-  const { data } = await apiClient.put(API.loanApplication.statusLoanApplication, {}, { params: { id, action } });
-  return data;
-}
-
 
 export async function updateLoanApplication({id, payload,}: {
   id: string;
@@ -54,6 +51,24 @@ export async function updateLoanApplication({id, payload,}: {
   const { data } = await apiClient.put(
     API.loanApplication.updateLoanApplication,
     payload,
+    {
+      params: { id },
+    }
+  );
+
+  return data;
+}
+
+export async function updateLoanApplicationStatus({
+  id,
+  status,
+}: {
+  id: string;
+  status: string;
+}) {
+  const { data } = await apiClient.patch(
+    API.loanApplication.updateLoanApplication,
+    { status },
     {
       params: { id },
     }
