@@ -12,20 +12,20 @@ export interface GetLoanStatementParams extends BaseStatementParams {
   page?: number;
   page_size?: number;
   search?: string;
+  transaction_type?: string;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
 }
-
 
 export async function getLoanStatementDashboard(params: BaseStatementParams) {
   const { data } = await apiClient.get(API.loanStatement.getDashboard, { params });
   return data;
 }
 
-
 export async function getLoanStatement(params: GetLoanStatementParams) {
   const { data } = await apiClient.get(API.loanStatement.getStatement, { params });
   return data;
 }
-
 
 export async function exportLoanStatementPDF(params: BaseStatementParams) {
   const response = await apiClient.get(API.loanStatement.exportPdf, {
@@ -34,7 +34,6 @@ export async function exportLoanStatementPDF(params: BaseStatementParams) {
   });
   return response.data;
 }
-
 
 export async function exportLoanStatementExcel(params: BaseStatementParams) {
   const response = await apiClient.get(API.loanStatement.exportExcel, {
