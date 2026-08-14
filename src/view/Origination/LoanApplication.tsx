@@ -45,6 +45,7 @@ import {
 } from '@tanstack/react-table';
 
 import { LoanApplicationModal } from '../../components/Modal/LoanApplication/LoanApplicationModal';
+import { loanApplicationModal } from '../../components/Modal/LoanApplication/loanApplicationModalStore'; 
 import { LoanApplicationDetailView } from './LoanApplicationDetailView';
 import {
   getAllLoanApplications,
@@ -56,9 +57,11 @@ import { parseFrappeError } from '../../utils/parseFrappeError';
 import { useCompanyStore } from '../../store/companyStore';
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { CreateLoanBookingModal } from '../../components/Modal/CreateLoanBookingModal';
+import { getSymbol } from '../../store/currencyStore';
 export interface LoanApplicationRow {
   name: string;
   application_type: string;
+  amount: number;
   customer: string | null;
   status: string;
   application_date: string;
@@ -167,7 +170,8 @@ const [bookingApplicationId, setBookingApplicationId] = useState<string | null>(
   const queryClient = useQueryClient();
   const [opened, { open, close }] = useDisclosure(false);
   const companyName = useCompanyStore((state) => state.companyName);
-
+ const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+      const currencySymbol = getSymbol(companyCurrency);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [viewingApplicationId, setViewingApplicationId] = useState<string | null>(null);
@@ -196,7 +200,10 @@ const statusMutation = useMutation({
   // onSuccess: () => {
   onSuccess: (_, variables) => {
     queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
-    showSuccess('Status Updated', `Loan Application ${variables.id} was ${status} successfully.`);
+    showSuccess(
+      'Status Updated', 
+      `Loan Application ${variables.id} was ${getDisplayStatus(variables.status)} successfully.`
+    );
   },
    onError: (error: any) => {
      openCommonModal({
@@ -270,24 +277,21 @@ const statusMutation = useMutation({
       queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
       showSuccess('Application Deleted', `Loan Application ${variables} deleted successfully.`);
     },
-    onError: (error: any) => {
-      const errorMessage = parseFrappeError(error);
-      modals.open({
-        title: <Text fw={600} c="red">Action Failed</Text>,
-        children: (
-          <div>
-            <Text size="sm" mb="lg">
-              {errorMessage}
-            </Text>
-            <Group justify="flex-end">
-              <Button onClick={() => modals.closeAll()} variant="default">
-                Close
-              </Button>
-            </Group>
-          </div>
-        ),
-      });
-    },
+     onError: (error: any) => {
+     openCommonModal({
+       heading: "Action Failed",
+       subtitle: "We couldn't complete your request.",
+       body: parseFrappeError(error),
+       color: "red",
+   
+       buttons: [
+         {
+           label: "Close",
+           color: "red",
+         },
+       ],
+     });
+   },
   });
 
   const applicationTypeOptions = useMemo(
@@ -317,19 +321,26 @@ const statusMutation = useMutation({
     }
   }, [viewingApplicationId, data]);
 
-  const handleAdd = () => {
-    setEditingId(null);
-    open();
+  // const handleAdd = () => {
+  //   setEditingId(null);
+  //   open();
+  // };
+const handleAdd = () => {
+    loanApplicationModal.open({ loanApplicationId: null });
+  };
+
+  const handleEdit = (id: string) => {
+    loanApplicationModal.open({ loanApplicationId: id });
   };
 
   const handleView = (id: string) => {
     setViewingApplicationId(id);
   };
 
-  const handleEdit = (id: string) => {
-    setEditingId(id);
-    open();
-  };
+  // const handleEdit = (id: string) => {
+  //   setEditingId(id);
+  //   open();
+  // };
 
   const handleModalClose = () => {
     setEditingId(null);
@@ -426,7 +437,7 @@ const handleConfirmCreateBooking = (loanProduct: string) => {
         header: 'Application',
         cell: (info) => <ApplicationIdCell name={info.getValue()} />,
       }),
-      columnHelper.display({
+       columnHelper.display({
         id: 'applicant',
         header: 'Applicant',
         cell: (info) => (
@@ -435,6 +446,35 @@ const handleConfirmCreateBooking = (loanProduct: string) => {
           </Text>
         ),
       }),
+columnHelper.accessor('amount', {
+  header: 'Amount',
+  cell: (info) => {
+    const value = info.getValue();
+    
+    if (value === null || value === undefined) {
+      return (
+        <Text fz="xs" c="slate.6">
+          —
+        </Text>
+      );
+    }
+
+    const formattedNumber = new Intl.NumberFormat('en-IN', {
+      maximumFractionDigits: 2, 
+    }).format(Number(value));
+
+    return (
+      <Text 
+        fz="xs" 
+        c="slate.8" 
+        fw={600}
+        style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}
+      >
+        {currencySymbol}{formattedNumber}
+      </Text>
+    );
+  },
+}),
       columnHelper.accessor('application_type', {
         header: 'Type',
         cell: (info) => (
@@ -583,13 +623,20 @@ columnHelper.accessor('status', {
     if (application) {
       return (
         <Box p="xl" mt="xl">
-          <LoanApplicationDetailView
+          {/* <LoanApplicationDetailView
             application={application}
             onBack={() => setViewingApplicationId(null)}
             onEdit={() => {
               setViewingApplicationId(null);
               handleEdit(application.name);
-            }}
+            }} */}
+            <LoanApplicationDetailView
+          application={application}
+          onBack={() => setViewingApplicationId(null)}
+          onEdit={() => {
+            setViewingApplicationId(null);
+            loanApplicationModal.open({ loanApplicationId: application.name });
+          }}
             onApprove={() => confirmApprove(application.name)}
             onReject={() => confirmReject(application.name)}
             isActionPending={statusMutation.isPending}
@@ -602,7 +649,7 @@ columnHelper.accessor('status', {
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanApplicationModal opened={opened} onClose={handleModalClose} loanApplicationId={editingId} />
+      {/* <LoanApplicationModal opened={opened} onClose={handleModalClose} loanApplicationId={editingId} /> */}
       <CreateLoanBookingModal
   opened={bookingOpened}
   applicationId={bookingApplicationId}
