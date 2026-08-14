@@ -174,19 +174,29 @@ const [bookingApplicationId, setBookingApplicationId] = useState<string | null>(
 
   const [search, setSearch] = useState('');
   const [company, setCompany] = useState<string | null>(null);
-  // Replaces the old loan-product filter: the real API response has no
-  // loan_product field, so this now filters by application_type instead.
   const [applicationType, setApplicationType] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
 
   const [sorting, setSorting] = useState([{ id: 'application_date', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
+  const showSuccess = (heading: string, body: string) => {
+      openCommonModal({
+        heading,
+        subtitle: '',
+        body,
+        color: 'green',
+        buttons: [{ label: 'Close', color: 'green' }],
+      });
+    };
+
 const statusMutation = useMutation({
   mutationFn: ({ id, status }: { id: string; status: string }) =>
     updateLoanApplicationStatus({ id, status }),
-  onSuccess: () => {
+  // onSuccess: () => {
+  onSuccess: (_, variables) => {
     queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
+    showSuccess('Status Updated', `Loan Application ${variables.id} was ${status} successfully.`);
   },
    onError: (error: any) => {
      openCommonModal({
@@ -215,28 +225,28 @@ const statusMutation = useMutation({
     company: string;
     loan_product: string;
   }) => convertCustomLoanApplicationToLoan({ id, company: companyParam, loan_product }),
-  onSuccess: () => {
+  // onSuccess: () => {
+  onSuccess: (_, variables) => {
     queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
     closeBooking();
+    showSuccess("Loan Created", `Application ${variables.id} was successfully converted to a loan.`
+    );
   },
-    onError: (error: any) => {
-      const errorMessage = parseFrappeError(error);
-      modals.open({
-        title: <Text fw={600} c="red">Action Failed</Text>,
-        children: (
-          <div>
-            <Text size="sm" mb="lg">
-              {errorMessage}
-            </Text>
-            <Group justify="flex-end">
-              <Button onClick={() => modals.closeAll()} variant="default">
-                Close
-              </Button>
-            </Group>
-          </div>
-        ),
-      });
-    },
+     onError: (error: any) => {
+     openCommonModal({
+       heading: "Action Failed",
+       subtitle: "We couldn't complete your request.",
+       body: parseFrappeError(error),
+       color: "red",
+   
+       buttons: [
+         {
+           label: "Close",
+           color: "red",
+         },
+       ],
+     });
+   },
   });
 
   const {
@@ -255,8 +265,10 @@ const statusMutation = useMutation({
 
   const deleteMutation = useMutation({
     mutationFn: deleteLoanApplication,
-    onSuccess: () => {
+    // onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
+      showSuccess('Application Deleted', `Loan Application ${variables} deleted successfully.`);
     },
     onError: (error: any) => {
       const errorMessage = parseFrappeError(error);
@@ -793,7 +805,8 @@ columnHelper.accessor('status', {
                     const scale = STATUS_COLOR[row.original.status] ?? 'slate';
                     const cells = row.getVisibleCells();
                     return (
-                      <Table.Tr key={row.id} className="lms-row">
+                      <Table.Tr key={row.id} className="lms-row" onDoubleClick={() => handleView(row.original.name)}
+           style={{ cursor: 'pointer' }}>
                         {cells.map((cell, idx) => (
                           <Table.Td
                             key={cell.id}

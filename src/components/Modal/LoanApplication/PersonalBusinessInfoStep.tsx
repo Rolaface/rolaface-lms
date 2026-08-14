@@ -1,4 +1,4 @@
-import { SimpleGrid, TextInput, Select } from "@mantine/core";
+import { SimpleGrid, TextInput, Select, NumberInput } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import type { LoanApplicationValues, LoanType } from "./LoanApplicationModal";
 import { DateInput } from "@mantine/dates";
@@ -132,11 +132,14 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
         label={<Label text="Registered office" required />}
         {...form.getInputProps("registeredOffice")}
       />
-      <TextInput
-        radius="md"
-        label={<Label text="Collateral pledged" required />}
-        {...form.getInputProps("collateralPledged")}
-      />
+    <NumberInput
+  min={0}
+  allowNegative={false}
+  hideControls
+  radius="md"
+  label={<Label text="Collateral pledged" required />}
+  {...form.getInputProps("collateralPledged")}
+/>
 
       <TextInput
         radius="md"
