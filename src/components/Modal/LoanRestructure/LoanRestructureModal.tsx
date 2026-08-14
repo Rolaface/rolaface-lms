@@ -6,7 +6,7 @@ import {
 } from "@mantine/core";
 import {
   IconX, IconRestore, IconSearch, IconCalendarDue, IconCar, IconClipboardList,
-  IconChevronDown, IconUserSearch, IconBuildingBank,
+  IconChevronDown, IconUserSearch, IconBuildingBank, IconMinus
 } from "@tabler/icons-react";
 import { DateInput } from "@mantine/dates";
 import dayjs from "dayjs";
@@ -20,9 +20,10 @@ import {
 import { RestructureDetailsTab } from "./RestructureDetailsTab";
 import { RestructureChargesTab } from "./RestructureChargesTab";
 
-interface LoanRestructureModalProps {
+export interface LoanRestructureModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize: () => void;
   editName?: string | null;
   viewName?: string | null;
   onSaved: () => void;
@@ -41,7 +42,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function LoanRestructureModal({ opened, onClose, editName, viewName, onSaved }: LoanRestructureModalProps) {
+export function LoanRestructureModal({ opened, onClose, editName, viewName, onMinimize, onSaved }: LoanRestructureModalProps) {
   const theme = useMantineTheme();
   const baseCurrency = useCompanyStore((s) => s.baseCurrency);
   const currencyReady = useCurrencyReady();
@@ -140,9 +141,14 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onSa
               </Text>
             </Box>
           </Group>
-          <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={handleModalClose} aria-label="Close">
-            <IconX size={16} color="white" />
-          </ActionIcon>
+          <Group gap="xs" wrap="nowrap">
+            <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={onMinimize} aria-label="Minimize">
+              <IconMinus size={16} color="white" />
+            </ActionIcon>
+            <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={handleModalClose} aria-label="Close">
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
         {isLoadingRecord ? (
@@ -552,10 +558,10 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onSa
                 </Badge>
               )}
               {restructureType === "MODIFY_MATURITY" && (
-  <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
-    New Maturity: {formatDate(newMaturityDate || selectedLoan.maturityDate)}
-  </Badge>
-)}
+                <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
+                  New Maturity: {formatDate(newMaturityDate || selectedLoan.maturityDate)}
+                </Badge>
+              )}
               <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
                 Principal: {fmt(selectedLoan.principalOutstanding)}
               </Badge>
