@@ -32,7 +32,6 @@ import {
   IconTrash,
   IconDotsVertical,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -41,14 +40,14 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { LoanAccountModal } from '../../components/Modal/LoanBooking/LoanAccountModal';
+
 import { getAllLoans, deleteLoan, changeLoanStatus } from '../../api/loanApi';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { getSymbol } from '../../store/currencyStore';
 import { useCompanyStore } from '../../store/companyStore';
 import { parseFrappeError } from '../../utils/parseFrappeError';
-
+import { loanAccountModal } from "../../view/LoanAccount/loanAccountModalStore"
 // Unchanged — same status meta / colors your data already relies on.
 const STATUS_META: Record<string, { label: string; color: string }> = {
   DRAFT: { label: 'DRAFT', color: 'gray' },
@@ -109,17 +108,7 @@ const fmtDate = (iso: string) =>
 
 export function LoanAccount() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
-
-  const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
-  const [isViewMode, setIsViewMode] = useState(false);
-
-  const handleModalClose = () => {
-    close();
-    setSelectedLoanId(null);
-    setIsViewMode(false);
-  };
-
+    
   const { data: loansResponse, isLoading } = useQuery({
     queryKey: ['loans'],
     queryFn: getAllLoans,
@@ -127,10 +116,17 @@ export function LoanAccount() {
 
   const queryClient = useQueryClient();
 
-  const { mutate: removeLoan, isPending: isDeleting } = useMutation({
+const { mutate: removeLoan, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteLoan(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loans'] });
+      openCommonModal({
+        heading: "Deleted",
+        subtitle: "",
+        body: "Loan application deleted successfully.",
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
     },
     onError: (error: any) => {
       openCommonModal({
@@ -149,11 +145,21 @@ export function LoanAccount() {
     },
   });
 
-  const { mutate: updateStatus } = useMutation({
+const { mutate: updateStatus } = useMutation({
     mutationFn: ({ id, action }: { id: string; action: string }) =>
       changeLoanStatus(id, action),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['loans'] });
+      openCommonModal({
+        heading: variables.action === "approved" ? "Submitted" : "Cancelled",
+        subtitle: "",
+        body:
+          variables.action === "approved"
+            ? "Loan booking submitted successfully."
+            : "Loan booking cancelled successfully.",
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
     },
   onError: (error: any) => {
   openCommonModal({
@@ -319,11 +325,7 @@ export function LoanAccount() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => {
-                    setSelectedLoanId(loanIdentifier);
-                    setIsViewMode(true);
-                    open();
-                  }}
+                  onClick={() => loanAccountModal.open({ editId: loanIdentifier, isView: true })}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -335,11 +337,7 @@ export function LoanAccount() {
                   color={isDraft ? 'brand' : 'slate'}
                   radius="md"
                   disabled={!isDraft}
-                  onClick={() => {
-                    setSelectedLoanId(loanIdentifier);
-                    setIsViewMode(false);
-                    open();
-                  }}
+                  onClick={() => loanAccountModal.open({ editId: loanIdentifier, isView: false })}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -352,17 +350,32 @@ export function LoanAccount() {
                   radius="md"
                   disabled={!isDraft || isDeleting}
                   onClick={() => {
-                    modals.openConfirmModal({
-                      title: 'Delete loan application',
-                      children: (
-                        <Text size="sm">
-                          Are you sure you want to delete loan application <b>{loanIdentifier}</b>? This
-                          cannot be undone.
-                        </Text>
+                    openCommonModal({
+                      heading: "Delete Loan Application",
+                      subtitle: "This action cannot be undone.",
+                      body: (
+                        <>
+                          Are you sure you want to delete loan application{" "}
+                          <Text span fw={600}>
+                            {loanIdentifier}
+                          </Text>
+                          ?
+                        </>
                       ),
-                      labels: { confirm: 'Delete', cancel: 'Cancel' },
-                      confirmProps: { color: 'danger' },
-                      onConfirm: () => removeLoan(loanIdentifier),
+                      color: "red",
+                      buttons: [
+                        {
+                          label: "Cancel",
+                          variant: "default",
+                        },
+                        {
+                          label: "Delete",
+                          color: "red",
+                          onClick: () => {
+                            removeLoan(loanIdentifier);
+                          },
+                        },
+                      ],
                     });
                   }}
                 >
@@ -492,7 +505,7 @@ export function LoanAccount() {
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanAccountModal opened={opened} onClose={handleModalClose} loanId={selectedLoanId} isViewMode={isViewMode} />
+    
 
       {/* Scoped, purely visual — mirrors LoanProduct's row/hover treatment */}
       <style>{`
@@ -627,11 +640,7 @@ export function LoanAccount() {
               background: theme.other.brandGradient,
               boxShadow: theme.other.brandGlowShadowSm,
             }}
-            onClick={() => {
-              setSelectedLoanId(null);
-              setIsViewMode(false);
-              open();
-            }}
+            onClick={() => loanAccountModal.open({ editId: null, isView: false })}
             leftSection={<IconPlus size={14} />}
           >
             Add Booking

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Box, Text, Button, Modal, Group, ThemeIcon, Badge, useMantineTheme, ScrollArea, UnstyledButton } from "@mantine/core";
+import { Box, Text, Button, Modal, Group, ThemeIcon, Badge, useMantineTheme, ScrollArea, UnstyledButton, ActionIcon } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconX, IconMinus, IconFileInvoice, IconCheck, IconCalculator, IconChevronRight } from "@tabler/icons-react";
 import { createLoan, getLoanById, updateLoan, getReapymentScheduleById, attachLoanDocuments, uploadFile } from "../../../api/loanApi";
@@ -20,21 +20,22 @@ import { ModalFooter } from "../../shared/ModalFooter";
 import { getLoanProductById } from "../../../api/productApi";
 import { openCommonModal } from "../AlertModal";
 
-interface LoanAccountModalProps {
+export interface LoanAccountModalProps {
   opened: boolean;
   loanId?: string | null;
   onClose: () => void;
+  onMinimize?: () => void;
   isViewMode?: boolean;
 }
-
-export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAccountModalProps) {
+export function LoanAccountModal({ opened, onClose, onMinimize, loanId, isViewMode }: LoanAccountModalProps) {
   const queryClient = useQueryClient();
   const theme = useMantineTheme();
   const [activeTab, setActiveTab] = useState<string | null>("basic");
-const loadedLoanProductCode = useRef<string | null>(null);
+  const loadedLoanProductCode = useRef<string | null>(null);
   const [loanAcNumber] = useState("");
   const [simulatorModalOpened, setSimulatorModalOpened] = useState(false);
   const [coApplicantSearch, setCoApplicantSearch] = useState("");
+
 
 
   const [charges, setCharges] = useState<ChargeRow[]>([
@@ -43,18 +44,18 @@ const loadedLoanProductCode = useRef<string | null>(null);
   const [coApplicants, setCoApplicants] = useState<CoApplicant[]>([
     { id: Date.now().toString(), name: "", email: "", mobile: "" },
   ]);
-const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [documents, setDocuments] = useState<DocumentRow[]>([]);
 
   const [chargeSectionDefaults, setChargeSectionDefaults] = useState({
-  interestRate: "" as number | "",
-  penaltyRate: "" as number | "",
-  gracePeriodDays: "" as number | "",
-});
+    interestRate: "" as number | "",
+    penaltyRate: "" as number | "",
+    gracePeriodDays: "" as number | "",
+  });
 
-const handleUpdateChargeSectionDefaults = (
-  field: keyof typeof chargeSectionDefaults,
-  value: number | ""
- ) => setChargeSectionDefaults((prev) => ({ ...prev, [field]: value }));
+  const handleUpdateChargeSectionDefaults = (
+    field: keyof typeof chargeSectionDefaults,
+    value: number | ""
+  ) => setChargeSectionDefaults((prev) => ({ ...prev, [field]: value }));
 
   // Initialize Mantine Form
   const form = useForm({
@@ -83,10 +84,10 @@ const handleUpdateChargeSectionDefaults = (
       customerNumber: (v) => (!v ? "Customer is required" : null),
       productCode: (v) => (!v ? "Product is required" : null),
       loanAmount: (v) => (!v ? "Loan Amount is required" : null),
-     valueDate: (v) => (!v ? "Value Date is required" : null),
+      valueDate: (v) => (!v ? "Value Date is required" : null),
       repaymentStartDate: (v) => (!v ? "Repayment Start Date is required" : null),
       tenureValue: (v, values) =>
-      values.fixedRepaymentsIn === "TENOR" && !v ? "Tenure is required" : null,
+        values.fixedRepaymentsIn === "TENOR" && !v ? "Tenure is required" : null,
       repaymentAmount: (v, values) =>
         values.fixedRepaymentsIn === "EMI" && !v ? "Repayment Amount is required" : null,
     },
@@ -116,7 +117,7 @@ const handleUpdateChargeSectionDefaults = (
 
   const summaryPrincipal = Number(form.values.loanAmount) || 0;
 
- const handleAddDocument = () =>
+  const handleAddDocument = () =>
     setDocuments((prev) => [
       ...prev,
       { id: Date.now().toString(), name: "", file: null },
@@ -125,7 +126,7 @@ const handleUpdateChargeSectionDefaults = (
   const handleUpdateDocument = (id: string, field: keyof DocumentRow, value: any) =>
     setDocuments((prev) => prev.map((d) => (d.id === id ? { ...d, [field]: value } : d)));
 
-  const handleRemoveDocument = (id: string) => 
+  const handleRemoveDocument = (id: string) =>
     setDocuments((prev) => prev.filter((d) => d.id !== id));
 
   const handleAddCharge = () =>
@@ -137,41 +138,41 @@ const handleUpdateChargeSectionDefaults = (
     setCharges((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
   const handleRemoveCharge = (id: string) => setCharges((prev) => prev.filter((c) => c.id !== id));
 
-// Replace your current collateral state with this:
-const [collateral, setCollateral] = useState<Collateral>({
-  status: "Pledged",
-  reference_no: "",
-  description: "",
-  items: [],
-});
+  // Replace your current collateral state with this:
+  const [collateral, setCollateral] = useState<Collateral>({
+    status: "Pledged",
+    reference_no: "",
+    description: "",
+    items: [],
+  });
 
-const handleUpdateCollateral = (field: keyof Collateral, value: string | number) => {
-  setCollateral((prev) => ({ ...prev, [field]: value as string }));
-};
+  const handleUpdateCollateral = (field: keyof Collateral, value: string | number) => {
+    setCollateral((prev) => ({ ...prev, [field]: value as string }));
+  };
 
-const handleAddCollateralItem = () => {
-  setCollateral((prev) => ({
-    ...prev,
-    items: [
-      ...prev.items,
-      { id: Date.now().toString(), loan_security: "", qty: "", loan_security_price: "", amount: "" },
-    ],
-  }));
-};
+  const handleAddCollateralItem = () => {
+    setCollateral((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        { id: Date.now().toString(), loan_security: "", qty: "", loan_security_price: "", amount: "" },
+      ],
+    }));
+  };
 
-const handleUpdateCollateralItem = (id: string, field: keyof CollateralItem, value: string | number) => {
-  setCollateral((prev) => ({
-    ...prev,
-    items: prev.items.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
-  }));
-};
+  const handleUpdateCollateralItem = (id: string, field: keyof CollateralItem, value: string | number) => {
+    setCollateral((prev) => ({
+      ...prev,
+      items: prev.items.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+    }));
+  };
 
-const handleRemoveCollateralItem = (id: string) => {
-  setCollateral((prev) => ({
-    ...prev,
-    items: prev.items.filter((item) => item.id !== id),
-  }));
-};
+  const handleRemoveCollateralItem = (id: string) => {
+    setCollateral((prev) => ({
+      ...prev,
+      items: prev.items.filter((item) => item.id !== id),
+    }));
+  };
   const handleAddCoApplicant = () =>
     setCoApplicants((prev) => [...prev, { id: Date.now().toString(), name: "", email: "", mobile: "" }]);
   const handleUpdateCoApplicant = (id: string, field: keyof Omit<CoApplicant, "id">, value: string) =>
@@ -179,41 +180,41 @@ const handleRemoveCollateralItem = (id: string) => {
   const handleRemoveCoApplicant = (id: string) => setCoApplicants((prev) => prev.filter((a) => a.id !== id));
 
   async function resolveDocumentsPayload(rows: DocumentRow[]): Promise<LoanDocumentPayload[]> {
-  const resolved: LoanDocumentPayload[] = [];
+    const resolved: LoanDocumentPayload[] = [];
 
-  for (const doc of rows) {
-    if (doc.file instanceof File) {
-      const customFileName = doc.name ? `${doc.name}.${doc.file.name.split('.').pop()}` : undefined;
-      const uploaded = await uploadFile(doc.file, 1, customFileName);
-      // const uploaded = await uploadFile(doc.file);
-      resolved.push({
-        file_name: doc.name || uploaded.file_name,
-        file_url: uploaded.file_url,
-      });
-    } else if (typeof doc.file === "string" && doc.file) {
-      resolved.push({
-        file_name: doc.name,
-        file_url: doc.file,
-      });
+    for (const doc of rows) {
+      if (doc.file instanceof File) {
+        const customFileName = doc.name ? `${doc.name}.${doc.file.name.split('.').pop()}` : undefined;
+        const uploaded = await uploadFile(doc.file, 1, customFileName);
+        // const uploaded = await uploadFile(doc.file);
+        resolved.push({
+          file_name: doc.name || uploaded.file_name,
+          file_url: uploaded.file_url,
+        });
+      } else if (typeof doc.file === "string" && doc.file) {
+        resolved.push({
+          file_name: doc.name,
+          file_url: doc.file,
+        });
+      }
     }
+
+    return resolved;
   }
 
-  return resolved;
-}
-
   const attachDocumentsMutation = useMutation({
-  mutationFn: attachLoanDocuments,
-  onError: (error: any) => {
-    openCommonModal({
-      heading: "Action Failed",
-      subtitle: "Loan saved, but attaching documents failed.",
-      body: parseFrappeError(error),
-      color: "red",
-      buttons: [{ label: "Close", color: "red" }],
-    });
-  },
-});
-  
+    mutationFn: attachLoanDocuments,
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "Loan saved, but attaching documents failed.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      });
+    },
+  });
+
   // const createLoanMutation = useMutation({
   //   mutationFn: createLoan,
   //   onSuccess: () => {
@@ -226,7 +227,7 @@ const handleRemoveCollateralItem = (id: string) => {
   //       subtitle: "We couldn't complete your request.",
   //       body: parseFrappeError(error),
   //       color: "red",
-    
+
   //       buttons: [
   //         {
   //           label: "Close",
@@ -237,28 +238,28 @@ const handleRemoveCollateralItem = (id: string) => {
   //   },
   // });
 
-const createLoanMutation = useMutation({
-  mutationFn: createLoan,
-  onSuccess: async (data) => {
-    queryClient.invalidateQueries({ queryKey: ["loans"] });
+  const createLoanMutation = useMutation({
+    mutationFn: createLoan,
+    onSuccess: async (data) => {
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
 
-    const newLoanId = (data as { message?: { data?: { name?: string } } })?.message?.data?.name;
-    if (newLoanId) {
-      const documentsToAttach = await resolveDocumentsPayload(documents);
-      if (documentsToAttach.length > 0) {
-        attachDocumentsMutation.mutate({ id: newLoanId, documents: documentsToAttach });
+      const newLoanId = (data as { message?: { data?: { name?: string } } })?.message?.data?.name;
+      if (newLoanId) {
+        const documentsToAttach = await resolveDocumentsPayload(documents);
+        if (documentsToAttach.length > 0) {
+          attachDocumentsMutation.mutate({ id: newLoanId, documents: documentsToAttach });
+        }
       }
-    }
 
-    handleModalClose();
-  },
-   onError: (error: any) => {
+      handleModalClose();
+    },
+    onError: (error: any) => {
       openCommonModal({
         heading: "Action Failed",
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(error),
         color: "red",
-    
+
         buttons: [
           {
             label: "Close",
@@ -267,10 +268,10 @@ const createLoanMutation = useMutation({
         ],
       });
     },
-});
+  });
 
-const handleSubmit = (values: typeof form.values) => {
-     const payload: any = {
+  const handleSubmit = (values: typeof form.values) => {
+    const payload: any = {
       applicant_type: "Customer",
       applicant: values.customerNumber,
       loan_product: values.productCode,
@@ -283,7 +284,7 @@ const handleSubmit = (values: typeof form.values) => {
           ? "Repay Over Number of Periods"
           : "Repay Fixed Amount per Period",
     };
-    
+
     payload.rate_of_interest = chargeSectionDefaults.interestRate === "" ? 0 : Number(chargeSectionDefaults.interestRate);
     payload.penalty_charges_rate = chargeSectionDefaults.penaltyRate === "" ? 0 : Number(chargeSectionDefaults.penaltyRate);
 
@@ -340,37 +341,37 @@ const handleSubmit = (values: typeof form.values) => {
   };
 
   const { data: loanProductDetails } = useQuery({
-  queryKey: ["loanProductDetails", form.values.productCode],
-  queryFn: () => getLoanProductById(form.values.productCode as string),
-  enabled: !!form.values.productCode,
-});
-
-useEffect(() => {
-  const product = loanProductDetails?.message?.data;
-  if (!product) return;
-
-  if (loanId && form.values.productCode === loadedLoanProductCode.current) {
-    return;
-  }
-
-  const mappedCharges: ChargeRow[] = (product.loan_charges || []).map((lc: any) => ({
-    id: lc.name ?? Date.now().toString(),
-    feeName: lc.charge_type ?? "",
-    amount: lc.amount ?? "",
-    account: "",
-    treatment: "",
-  }));
-
-  if (mappedCharges.length > 0) {
-    setCharges(mappedCharges);
-  }
-
-  setChargeSectionDefaults({
-    interestRate: product.rate_of_interest ?? "",
-    penaltyRate: product.penalty_interest_rate ?? "",
-    gracePeriodDays: product.grace_period_in_days ?? "",
+    queryKey: ["loanProductDetails", form.values.productCode],
+    queryFn: () => getLoanProductById(form.values.productCode as string),
+    enabled: !!form.values.productCode,
   });
-}, [loanProductDetails]);
+
+  useEffect(() => {
+    const product = loanProductDetails?.message?.data;
+    if (!product) return;
+
+    if (loanId && form.values.productCode === loadedLoanProductCode.current) {
+      return;
+    }
+
+    const mappedCharges: ChargeRow[] = (product.loan_charges || []).map((lc: any) => ({
+      id: lc.name ?? Date.now().toString(),
+      feeName: lc.charge_type ?? "",
+      amount: lc.amount ?? "",
+      account: "",
+      treatment: "",
+    }));
+
+    if (mappedCharges.length > 0) {
+      setCharges(mappedCharges);
+    }
+
+    setChargeSectionDefaults({
+      interestRate: product.rate_of_interest ?? "",
+      penaltyRate: product.penalty_interest_rate ?? "",
+      gracePeriodDays: product.grace_period_in_days ?? "",
+    });
+  }, [loanProductDetails]);
 
   const { data: existingLoanData, isLoading: isFetchingLoan } = useQuery({
     queryKey: ["loan", loanId],
@@ -391,7 +392,7 @@ useEffect(() => {
   const fetchedMaturityDate = scheduleData?.message?.data?.maturity_date;
   const finalMaturityDate = fetchedMaturityDate;
 
-useEffect(() => {
+  useEffect(() => {
     const loan = existingLoanData?.message?.data;
 
     if (loan) {
@@ -473,52 +474,52 @@ useEffect(() => {
   //     queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
   //     handleModalClose();
   //   },
-const updateLoanMutation = useMutation({
-  mutationFn: updateLoan,
-  onSuccess: async (data, variables) => {
-    queryClient.invalidateQueries({ queryKey: ["loans"] });
-    queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
+  const updateLoanMutation = useMutation({
+    mutationFn: updateLoan,
+    onSuccess: async (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
 
-    const documentsToAttach = await resolveDocumentsPayload(documents);
-    if (documentsToAttach.length > 0) {
-      attachDocumentsMutation.mutate({ id: variables.id, documents: documentsToAttach });
-    }
+      const documentsToAttach = await resolveDocumentsPayload(documents);
+      if (documentsToAttach.length > 0) {
+        attachDocumentsMutation.mutate({ id: variables.id, documents: documentsToAttach });
+      }
 
-    handleModalClose();
-  },
+      handleModalClose();
+    },
     onError: (error: any) => {
-  openCommonModal({
-    heading: "Action Failed",
-    subtitle: "We couldn't complete your request.",
-    body: parseFrappeError(error),
-    color: "red",
-
-    buttons: [
-      {
-        label: "Close",
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
         color: "red",
-      },
-    ],
-  });
-},
+
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
   });
 
-const handleReset = () => {
-  form.reset();
-  setCharges([{ id: Date.now().toString(), feeName: "", amount: "", account: "", treatment: "" }]);
-  setCollateral({
-  status: "Pledged",
-  reference_no: "",
-  description: "",
-  items: [],
-});
-  setCoApplicants([{ id: Date.now().toString(), name: "", email: "", mobile: "" }]);
-  setCoApplicantSearch("");
-  setDocuments([]);
-  setChargeSectionDefaults({ interestRate: "", penaltyRate: "", gracePeriodDays: "" });
-  setActiveTab("basic");
-  createLoanMutation.reset();
-};
+  const handleReset = () => {
+    form.reset();
+    setCharges([{ id: Date.now().toString(), feeName: "", amount: "", account: "", treatment: "" }]);
+    setCollateral({
+      status: "Pledged",
+      reference_no: "",
+      description: "",
+      items: [],
+    });
+    setCoApplicants([{ id: Date.now().toString(), name: "", email: "", mobile: "" }]);
+    setCoApplicantSearch("");
+    setDocuments([]);
+    setChargeSectionDefaults({ interestRate: "", penaltyRate: "", gracePeriodDays: "" });
+    setActiveTab("basic");
+    createLoanMutation.reset();
+  };
   const handleModalClose = () => {
     if (loanId) {
       queryClient.removeQueries({ queryKey: ["loan", loanId] });
@@ -557,10 +558,7 @@ const handleReset = () => {
         },
       }}
     >
-      <form
-        onSubmit={form.onSubmit(handleSubmit)}
-        style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}
-      >
+      <Box className="flex flex-col flex-1 min-h-0" style={{ minHeight: 0, flex: 1 }}>
         <Box className="flex flex-col flex-1 min-h-0">
           {/* Header */}
 
@@ -571,9 +569,9 @@ const handleReset = () => {
               borderBottom: "1px solid var(--mantine-color-brand-7)",
             }}
           >
-            <Group gap="sm" className="min-w-0" wrap="nowrap">  
+            <Group gap="sm" className="min-w-0" wrap="nowrap">
               <ThemeIcon
-                size={38}        
+                size={38}
                 radius="xl"
                 style={{
                   background: theme.other.headerIconOverlayBg,
@@ -597,31 +595,34 @@ const handleReset = () => {
                   View Only
                 </Badge>
               )}
-              <Button
+              <ActionIcon
                 variant="subtle"
-                size="xs"
-                px={8}
-                style={{ color: "var(--mantine-color-white)" }}
+                color="white"
+                radius="xl"
+                size="md"
+                onClick={() => onMinimize?.()}
+                aria-label="Minimize"
                 styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
               >
                 <IconMinus size={18} />
-              </Button>
-              <Button
+              </ActionIcon>
+              <ActionIcon
                 variant="subtle"
-                size="xs"
-                px={8}
+                color="white"
+                radius="xl"
+                size="md"
                 onClick={handleModalClose}
-                style={{ color: "var(--mantine-color-white)" }}
+                aria-label="Close"
                 styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
               >
                 <IconX size={18} />
-              </Button>
+              </ActionIcon>
             </Group>
           </Box>
 
           <Box
             px="md"
-            py={6}   
+            py={6}
             style={{
               borderBottom: "1px solid var(--mantine-color-slate-2)",
               flexShrink: 0,
@@ -707,39 +708,39 @@ const handleReset = () => {
             bg="white"
             className="flex-1 flex flex-col lg:flex-row overflow-y-auto border-0 p-0 m-0 min-w-0 min-h-0"
           >
-            <div className="flex-1 pt-3 px-5 pb-5 min-w-0"> 
+            <div className="flex-1 pt-3 px-5 pb-5 min-w-0">
               {activeTab === "basic" && (
                 <BasicDetailsTab form={form} loanAcNumber={loanAcNumber} maturityDate={finalMaturityDate} />
               )}
-             {activeTab === "schedule" && (
-  <RepaymentScheduleTab
-    repaymentSchedule={fetchedRepaymentSchedule}
-    isFetchingSchedule={isFetchingSchedule}
-  />
-)}
-            {activeTab === "charges" && (
-  <ChargesTab
-    charges={charges}
-    onAdd={handleAddCharge}
-    onUpdate={handleUpdateCharge}
-    onRemove={handleRemoveCharge}
-    interestRate={chargeSectionDefaults.interestRate}
-    penaltyRate={chargeSectionDefaults.penaltyRate}
-    gracePeriodDays={chargeSectionDefaults.gracePeriodDays}
-    onInterestRateChange={(v) => handleUpdateChargeSectionDefaults("interestRate", v)}
-onPenaltyRateChange={(v) => handleUpdateChargeSectionDefaults("penaltyRate", v)}
-onGracePeriodChange={(v) => handleUpdateChargeSectionDefaults("gracePeriodDays", v)}
-  />
-)}
-{activeTab === "collateral" && (
-              <CollateralTab
-                collateral={collateral}
-                onUpdate={handleUpdateCollateral}
-                onAddItem={handleAddCollateralItem}
-                onUpdateItem={handleUpdateCollateralItem}
-                onRemoveItem={handleRemoveCollateralItem}
-              />
-            )}           {activeTab === "coapplicant" && (
+              {activeTab === "schedule" && (
+                <RepaymentScheduleTab
+                  repaymentSchedule={fetchedRepaymentSchedule}
+                  isFetchingSchedule={isFetchingSchedule}
+                />
+              )}
+              {activeTab === "charges" && (
+                <ChargesTab
+                  charges={charges}
+                  onAdd={handleAddCharge}
+                  onUpdate={handleUpdateCharge}
+                  onRemove={handleRemoveCharge}
+                  interestRate={chargeSectionDefaults.interestRate}
+                  penaltyRate={chargeSectionDefaults.penaltyRate}
+                  gracePeriodDays={chargeSectionDefaults.gracePeriodDays}
+                  onInterestRateChange={(v) => handleUpdateChargeSectionDefaults("interestRate", v)}
+                  onPenaltyRateChange={(v) => handleUpdateChargeSectionDefaults("penaltyRate", v)}
+                  onGracePeriodChange={(v) => handleUpdateChargeSectionDefaults("gracePeriodDays", v)}
+                />
+              )}
+              {activeTab === "collateral" && (
+                <CollateralTab
+                  collateral={collateral}
+                  onUpdate={handleUpdateCollateral}
+                  onAddItem={handleAddCollateralItem}
+                  onUpdateItem={handleUpdateCollateralItem}
+                  onRemoveItem={handleRemoveCollateralItem}
+                />
+              )}           {activeTab === "coapplicant" && (
                 <CoApplicantTab
                   search={coApplicantSearch}
                   onSearchChange={setCoApplicantSearch}
@@ -749,9 +750,9 @@ onGracePeriodChange={(v) => handleUpdateChargeSectionDefaults("gracePeriodDays",
                   onRemove={handleRemoveCoApplicant}
                 />
               )}
-             {activeTab === "documents" && (
-                <DocumentsTab 
-                  documents={documents} 
+              {activeTab === "documents" && (
+                <DocumentsTab
+                  documents={documents}
                   onAdd={handleAddDocument}
                   onUpdate={handleUpdateDocument}
                   onRemove={handleRemoveDocument}
@@ -778,13 +779,13 @@ onGracePeriodChange={(v) => handleUpdateChargeSectionDefaults("gracePeriodDays",
           {/* Footer — shared ModalFooter, no Reset action exposed. */}
           {/* Footer — shared ModalFooter, no Reset action exposed. */}
           <Box style={{ flexShrink: 0 }}>
-            <ModalFooter
+<ModalFooter
               variant="theme"
               isViewMode={isViewMode}
               onClose={handleModalClose}
+              onSubmit={form.onSubmit(handleSubmit)}
               onSaveDraft={!isViewMode ? () => { } : undefined}
               submitLabel={loanId ? "Update " : "Save"}
-              // submitLoading={createLoanMutation.isPending || updateLoanMutation.isPending || isFetchingLoan}
               submitLoading={createLoanMutation.isPending || updateLoanMutation.isPending || attachDocumentsMutation.isPending || isFetchingLoan}
               errorMessage={createLoanMutation.isError ? parseFrappeError(createLoanMutation.error) : undefined}
               leftSlot={
@@ -801,7 +802,7 @@ onGracePeriodChange={(v) => handleUpdateChargeSectionDefaults("gracePeriodDays",
             />
           </Box>
         </Box>
-      </form>
+      </Box>
 
       <LoanSimulatorModal opened={simulatorModalOpened} onClose={() => setSimulatorModalOpened(false)} />
     </Modal>
