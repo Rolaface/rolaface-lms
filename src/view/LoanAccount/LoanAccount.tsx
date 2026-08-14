@@ -41,7 +41,7 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { LoanAccountModal } from '../../components/Modal/LoanBooking/LoanAccountModal';
+import { loanAccountModal } from '../../components/Modal/LoanBooking/loanAccountModalStore';
 import { getAllLoans, deleteLoan, changeLoanStatus } from '../../api/loanApi';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { openCommonModal } from '../../components/Modal/AlertModal';
@@ -109,16 +109,7 @@ const fmtDate = (iso: string) =>
 
 export function LoanAccount() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
-
-  const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
-  const [isViewMode, setIsViewMode] = useState(false);
-
-  const handleModalClose = () => {
-    close();
-    setSelectedLoanId(null);
-    setIsViewMode(false);
-  };
+  
 
   const { data: loansResponse, isLoading } = useQuery({
     queryKey: ['loans'],
@@ -319,11 +310,7 @@ export function LoanAccount() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => {
-                    setSelectedLoanId(loanIdentifier);
-                    setIsViewMode(true);
-                    open();
-                  }}
+                   onClick={() => loanAccountModal.open({ loanId: loanIdentifier, isViewMode: true })}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -335,11 +322,8 @@ export function LoanAccount() {
                   color={isDraft ? 'brand' : 'slate'}
                   radius="md"
                   disabled={!isDraft}
-                  onClick={() => {
-                    setSelectedLoanId(loanIdentifier);
-                    setIsViewMode(false);
-                    open();
-                  }}
+                  onClick={() => loanAccountModal.open({ loanId: loanIdentifier, isViewMode: false })}
+                 
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -492,7 +476,7 @@ export function LoanAccount() {
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanAccountModal opened={opened} onClose={handleModalClose} loanId={selectedLoanId} isViewMode={isViewMode} />
+      
 
       {/* Scoped, purely visual — mirrors LoanProduct's row/hover treatment */}
       <style>{`
@@ -627,11 +611,7 @@ export function LoanAccount() {
               background: theme.other.brandGradient,
               boxShadow: theme.other.brandGlowShadowSm,
             }}
-            onClick={() => {
-              setSelectedLoanId(null);
-              setIsViewMode(false);
-              open();
-            }}
+             onClick={() => loanAccountModal.open({ loanId: null, isViewMode: false })}
             leftSection={<IconPlus size={14} />}
           >
             Add Booking
