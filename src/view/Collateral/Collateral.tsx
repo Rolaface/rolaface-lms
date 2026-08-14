@@ -35,7 +35,6 @@ import {
   IconGauge,
   IconCoins,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -45,7 +44,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CollateralModal } from '../../components/Modal/CollateralModal';
+import { collateralModal } from '../../components/Modal/CollateralModal';
 import {
   getAllCollaterals,
   enableCollateral,
@@ -158,7 +157,6 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function Collateral() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
 
   // filter state
   const [search, setSearch] = useState('');
@@ -168,15 +166,6 @@ export function Collateral() {
   // table state
   const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-
-  const [selectedCollateralId, setSelectedCollateralId] = useState<string | null>(null);
-  const [isViewMode, setIsViewMode] = useState(false);
-
-  const handleModalClose = () => {
-    close();
-    setSelectedCollateralId(null);
-    setIsViewMode(false);
-  };
 
   const { data: collateralResponse, isLoading } = useQuery({
     queryKey: ['collaterals'],
@@ -388,9 +377,7 @@ export function Collateral() {
                   color="slate"
                   radius="md"
                   onClick={() => {
-                    setSelectedCollateralId(row.id);
-                    setIsViewMode(true);
-                    open();
+                    collateralModal.open({ editId: row.id, isView: true });
                   }}
                 >
                   <IconEye size={14} />
@@ -403,9 +390,7 @@ export function Collateral() {
                   color="brand"
                   radius="md"
                   onClick={() => {
-                    setSelectedCollateralId(row.id);
-                    setIsViewMode(false);
-                    open();
+                    collateralModal.open({ editId: row.id, isView: false });
                   }}
                 >
                   <IconPencil size={14} />
@@ -467,12 +452,10 @@ export function Collateral() {
 
   return (
     <Stack gap="lg" p="lg">
-      <CollateralModal
-        opened={opened}
-        onClose={handleModalClose}
-        editId={selectedCollateralId}
-        isView={isViewMode}
-      />
+      {/* No local modal render needed — importing CollateralModal.tsx
+          runs createModal(...) as a side effect, which registers the modal
+          Host with the global registry. It's rendered centrally wherever
+          the app renders getRegisteredModals(). */}
 
       {/* Scoped, purely visual — mirrors the Customers module styling,
           pulling from theme.other instead of one-off literals. */}
@@ -578,9 +561,7 @@ export function Collateral() {
               radius="xl"
               color="brand"
               onClick={() => {
-                setSelectedCollateralId(null);
-                setIsViewMode(false);
-                open();
+                collateralModal.open({ editId: null, isView: false });
               }}
               leftSection={<IconPlus size={14} />}
               style={{
