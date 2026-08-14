@@ -207,10 +207,9 @@ loanStatement: {
     create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.create_custom_loan_application`,
     getLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.get_custom_loan_applications`,
     convertToLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.convert_custom_loan_application_to_loan`,
-    getLoanApplicationById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.get_loan_application_by_id`,
-    updateLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.update_loan_application`,
-    deleteLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.delete_loan_application`,
-    statusLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.update_loan_application_status`,
+    getLoanApplicationById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.get_custom_loan_application_by_id`,
+    updateLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.update_custom_loan_application`,
+    deleteLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.delete_custom_loan_application`,
     getCountries: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.get_countries`,
   },
 
