@@ -25,9 +25,10 @@ interface LoanAccountModalProps {
   loanId?: string | null;
   onClose: () => void;
   isViewMode?: boolean;
+  onMinimize: () => void;
 }
 
-export function LoanAccountModal({ opened, onClose, loanId, isViewMode }: LoanAccountModalProps) {
+export function LoanAccountModal({ opened, onClose, loanId, isViewMode, onMinimize }: LoanAccountModalProps) {
   const queryClient = useQueryClient();
   const theme = useMantineTheme();
   const [activeTab, setActiveTab] = useState<string | null>("basic");
@@ -601,6 +602,7 @@ const handleReset = () => {
                 variant="subtle"
                 size="xs"
                 px={8}
+                 onClick={onMinimize}
                 style={{ color: "var(--mantine-color-white)" }}
                 styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
               >
