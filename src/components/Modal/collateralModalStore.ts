@@ -1,6 +1,6 @@
 import { IconShieldLock } from "@tabler/icons-react";
 import { createModal } from "../../store/modal store/createModal";
-import { CollateralModal } from "../../components/Modal/CollateralModal"
+import { CollateralModal } from "./CollateralModal"
 
 export interface CollateralModalParams {
   editId?: string | null;

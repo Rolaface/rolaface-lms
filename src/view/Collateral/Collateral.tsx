@@ -44,7 +44,6 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { collateralModal } from '../../store/modal store/collateralModalStore';
 import {
   getAllCollaterals,
   enableCollateral,
@@ -53,6 +52,7 @@ import {
 } from '../../api/collateralApi';
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../utils/parseFrappeError';
+import { collateralModal } from '../../components/Modal/collateralModalStore';
 
 interface CollateralRow {
   id: string;

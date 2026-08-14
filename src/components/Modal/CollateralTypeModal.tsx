@@ -292,11 +292,6 @@ export function CollateralTypeModal({
   );
 }
 
-/* ───────────────── Minimize/registry wiring ─────────────────
-   Same pattern as journalEntryModal.ts, just kept in this file
-   instead of a separate config file. Registers this modal with
-   the global modal registry and exposes .open()/.close() etc.
-*/
 
 export interface CollateralTypeModalParams {
   editId?: string | null;
