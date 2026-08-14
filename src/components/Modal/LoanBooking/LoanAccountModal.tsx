@@ -3,18 +3,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Box, Text, Button, Modal, Group, ThemeIcon, Badge, useMantineTheme, ScrollArea, UnstyledButton } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconX, IconMinus, IconFileInvoice, IconCheck, IconCalculator, IconChevronRight } from "@tabler/icons-react";
-
-import { createLoan, getLoanById, updateLoan, getReapymentScheduleById } from "../../../api/loanApi";
+import { createLoan, getLoanById, updateLoan, getReapymentScheduleById, attachLoanDocuments, uploadFile } from "../../../api/loanApi";
 import { calcEmi, buildAmortization, getTodayDate } from "../../../utils/loanCalculations";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { ANNUAL_RATE, DEFAULT_DOCUMENTS, TAB_ITEMS } from "./Constants";
-
+import type { LoanDocumentPayload } from "../../../types/loanForm";
 import { BasicDetailsTab } from "./BasicDetailsTab";
 import { RepaymentScheduleTab } from "./RepaymentScheduleTab";
 import { ChargesTab, type ChargeRow } from "./ChargesTab";
 import { CollateralTab, type CollateralItem, type Collateral } from "./CollateralTab";
 import { CoApplicantTab, type CoApplicant } from "./CoapplicationTab";
-import { DocumentsTab } from "./DocumentTab";
+import { DocumentsTab, type DocumentRow } from "./DocumentTab";
 import { LoanSummarySidebar } from "./LoanSummarySidebarTab";
 import { LoanSimulatorModal } from "../LoanSimulatorModal";
 import { ModalFooter } from "../../shared/ModalFooter";
@@ -45,7 +44,7 @@ const loadedLoanProductCode = useRef<string | null>(null);
   const [coApplicants, setCoApplicants] = useState<CoApplicant[]>([
     { id: Date.now().toString(), name: "", email: "", mobile: "" },
   ]);
-  const [documents, setDocuments] = useState(DEFAULT_DOCUMENTS);
+const [documents, setDocuments] = useState<DocumentRow[]>([]);
 
   const [chargeSectionDefaults, setChargeSectionDefaults] = useState({
   interestRate: "" as number | "",
@@ -106,11 +105,6 @@ const handleUpdateChargeSectionDefaults = (
     [form.values.loanAmount, tenureMonths, effectiveRate]
   );
 
-  const amortization = useMemo(
-    () => buildAmortization(Number(form.values.loanAmount) || 0, effectiveRate, tenureMonths),
-    [form.values.loanAmount, tenureMonths, effectiveRate]
-  );
-
   const totalRepayment = useMemo(
     () => Math.round(estimatedEmi * tenureMonths * 100) / 100,
     [estimatedEmi, tenureMonths]
@@ -123,7 +117,18 @@ const handleUpdateChargeSectionDefaults = (
 
   const summaryPrincipal = Number(form.values.loanAmount) || 0;
 
-  // --- Array Handlers ---
+ const handleAddDocument = () =>
+    setDocuments((prev) => [
+      ...prev,
+      { id: Date.now().toString(), name: "", file: null },
+    ]);
+
+  const handleUpdateDocument = (id: string, field: keyof DocumentRow, value: any) =>
+    setDocuments((prev) => prev.map((d) => (d.id === id ? { ...d, [field]: value } : d)));
+
+  const handleRemoveDocument = (id: string) => 
+    setDocuments((prev) => prev.filter((d) => d.id !== id));
+
   const handleAddCharge = () =>
     setCharges((prev) => [
       ...prev,
@@ -174,14 +179,81 @@ const handleRemoveCollateralItem = (id: string) => {
     setCoApplicants((prev) => prev.map((a) => (a.id === id ? { ...a, [field]: value } : a)));
   const handleRemoveCoApplicant = (id: string) => setCoApplicants((prev) => prev.filter((a) => a.id !== id));
 
-  // --- API Mutation ---
-  const createLoanMutation = useMutation({
-    mutationFn: createLoan,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      handleModalClose();
-    },
-    onError: (error: any) => {
+  async function resolveDocumentsPayload(rows: DocumentRow[]): Promise<LoanDocumentPayload[]> {
+  const resolved: LoanDocumentPayload[] = [];
+
+  for (const doc of rows) {
+    if (doc.file instanceof File) {
+      const customFileName = doc.name ? `${doc.name}.${doc.file.name.split('.').pop()}` : undefined;
+      const uploaded = await uploadFile(doc.file, 1, customFileName);
+      // const uploaded = await uploadFile(doc.file);
+      resolved.push({
+        file_name: doc.name || uploaded.file_name,
+        file_url: uploaded.file_url,
+      });
+    } else if (typeof doc.file === "string" && doc.file) {
+      resolved.push({
+        file_name: doc.name,
+        file_url: doc.file,
+      });
+    }
+  }
+
+  return resolved;
+}
+
+  const attachDocumentsMutation = useMutation({
+  mutationFn: attachLoanDocuments,
+  onError: (error: any) => {
+    openCommonModal({
+      heading: "Action Failed",
+      subtitle: "Loan saved, but attaching documents failed.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  },
+});
+  
+  // const createLoanMutation = useMutation({
+  //   mutationFn: createLoan,
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ["loans"] });
+  //     handleModalClose();
+  //   },
+  //   onError: (error: any) => {
+  //     openCommonModal({
+  //       heading: "Action Failed",
+  //       subtitle: "We couldn't complete your request.",
+  //       body: parseFrappeError(error),
+  //       color: "red",
+    
+  //       buttons: [
+  //         {
+  //           label: "Close",
+  //           color: "red",
+  //         },
+  //       ],
+  //     });
+  //   },
+  // });
+
+const createLoanMutation = useMutation({
+  mutationFn: createLoan,
+  onSuccess: async (data) => {
+    queryClient.invalidateQueries({ queryKey: ["loans"] });
+
+    const newLoanId = (data as { message?: { data?: { name?: string } } })?.message?.data?.name;
+    if (newLoanId) {
+      const documentsToAttach = await resolveDocumentsPayload(documents);
+      if (documentsToAttach.length > 0) {
+        attachDocumentsMutation.mutate({ id: newLoanId, documents: documentsToAttach });
+      }
+    }
+
+    handleModalClose();
+  },
+   onError: (error: any) => {
       openCommonModal({
         heading: "Action Failed",
         subtitle: "We couldn't complete your request.",
@@ -196,7 +268,7 @@ const handleRemoveCollateralItem = (id: string) => {
         ],
       });
     },
-  });
+});
 
 const handleSubmit = (values: typeof form.values) => {
      const payload: any = {
@@ -360,7 +432,6 @@ useEffect(() => {
         setCharges(mappedCharges);
       }
 
-      // ADDED: Safely hydrate collateral data, falling back to default structure
       if (loan.collaterals) {
         setCollateral({
           status: loan.collaterals.status || "Pledged",
@@ -382,15 +453,40 @@ useEffect(() => {
           items: [],
         });
       }
+      if (loan.attachments && loan.attachments.length > 0) {
+        setDocuments(
+          loan.attachments.map((att: any) => ({
+            id: att.name,
+            name: att.file_name || "",
+            file: att.file_url || "",
+          }))
+        );
+      } else {
+        setDocuments([]);
+      }
     }
   }, [existingLoanData]);
-  const updateLoanMutation = useMutation({
-    mutationFn: updateLoan,
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-      queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
-      handleModalClose();
-    },
+
+  // const updateLoanMutation = useMutation({
+  //   mutationFn: updateLoan,
+  //   onSuccess: (data, variables) => {
+  //     queryClient.invalidateQueries({ queryKey: ["loans"] });
+  //     queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
+  //     handleModalClose();
+  //   },
+const updateLoanMutation = useMutation({
+  mutationFn: updateLoan,
+  onSuccess: async (data, variables) => {
+    queryClient.invalidateQueries({ queryKey: ["loans"] });
+    queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
+
+    const documentsToAttach = await resolveDocumentsPayload(documents);
+    if (documentsToAttach.length > 0) {
+      attachDocumentsMutation.mutate({ id: variables.id, documents: documentsToAttach });
+    }
+
+    handleModalClose();
+  },
     onError: (error: any) => {
   openCommonModal({
     heading: "Action Failed",
@@ -419,7 +515,7 @@ const handleReset = () => {
 });
   setCoApplicants([{ id: Date.now().toString(), name: "", email: "", mobile: "" }]);
   setCoApplicantSearch("");
-  setDocuments(DEFAULT_DOCUMENTS);
+  setDocuments([]);
   setChargeSectionDefaults({ interestRate: "", penaltyRate: "", gracePeriodDays: "" });
   setActiveTab("basic");
   createLoanMutation.reset();
@@ -655,7 +751,14 @@ onGracePeriodChange={(v) => handleUpdateChargeSectionDefaults("gracePeriodDays",
                   onRemove={handleRemoveCoApplicant}
                 />
               )}
-              {activeTab === "documents" && <DocumentsTab documents={documents} />}
+             {activeTab === "documents" && (
+                <DocumentsTab 
+                  documents={documents} 
+                  onAdd={handleAddDocument}
+                  onUpdate={handleUpdateDocument}
+                  onRemove={handleRemoveDocument}
+                />
+              )}
             </div>
 
             <LoanSummarySidebar
@@ -683,7 +786,8 @@ onGracePeriodChange={(v) => handleUpdateChargeSectionDefaults("gracePeriodDays",
               onClose={handleModalClose}
               onSaveDraft={!isViewMode ? () => { } : undefined}
               submitLabel={loanId ? "Update " : "Save"}
-              submitLoading={createLoanMutation.isPending || updateLoanMutation.isPending || isFetchingLoan}
+              // submitLoading={createLoanMutation.isPending || updateLoanMutation.isPending || isFetchingLoan}
+              submitLoading={createLoanMutation.isPending || updateLoanMutation.isPending || attachDocumentsMutation.isPending || isFetchingLoan}
               errorMessage={createLoanMutation.isError ? parseFrappeError(createLoanMutation.error) : undefined}
               leftSlot={
                 <button

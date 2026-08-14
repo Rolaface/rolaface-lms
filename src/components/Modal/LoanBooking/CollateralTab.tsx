@@ -95,14 +95,14 @@ export function CollateralTab({
       {/* Top 3 Fields Section */}
       <Box p="md" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
         <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
-          <Select
+          {/* <Select
             label="Status"
             placeholder="Select status"
             data={["Pledged"]}
             disabled
             value={collateral.status}
             onChange={(val) => onUpdate("status", val || "")}
-          />
+          /> */}
           <TextInput
             label="Reference No."
             placeholder="Enter reference no"
@@ -127,7 +127,7 @@ export function CollateralTab({
               <Table.Th>Loan Security</Table.Th>
               <Table.Th>Quantity</Table.Th>
               <Table.Th>Price</Table.Th>
-              <Table.Th>Amount</Table.Th>
+              {/* <Table.Th>Amount</Table.Th> */}
               <Table.Th className="w-24" />
             </Table.Tr>
           </Table.Thead>
@@ -196,7 +196,7 @@ export function CollateralTab({
                       placeholder="0.00"
                     />
                   </Table.Td>
-                  <Table.Td>
+                  {/* <Table.Td>
                     <NumberInput
                       size="sm"
                       value={item.amount}
@@ -205,7 +205,7 @@ export function CollateralTab({
                       onChange={(val) => onUpdateItem(item.id, "amount", val as number)}
                       placeholder="0.00"
                     />
-                  </Table.Td>
+                  </Table.Td> */}
                   <Table.Td>
                     <div className="flex items-center gap-1 justify-end">
                       <ActionIcon variant="subtle" color="slate" size="sm">

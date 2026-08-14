@@ -1,38 +1,93 @@
-export interface CreateLoanApplicationPayload {
-  applicant_type: "Customer" | string;
-  applicant: string;
-  loan_product: string;
-  loan_amount: number;
-  rate_of_interest: number;
-  is_term_loan: 0 | 1;
-  repayment_method: "Repay Over Number of Periods" | "Repay Fixed Amount per Period";
-  posting_date: string;
+export interface BaseLoanApplication {
+  application_type: "Business Loan" | "Personal Loan";
+  application_date: string;
+  gender: string;
+  amount: string;
+  tenure: string;
+  total_amount: string;
+}
+ 
+export interface BusinessLoanApplication extends BaseLoanApplication {
+  application_type: "Business Loan";
+    nationality: string;
+  // Applicant details (Business specific prefix)
+  applicant_first_name: string;
+  applicant_middle_name?: string;
+  applicant_last_name: string;
+  applicant_phone: string;
+  applicant_email: string;
+  applicant_birth_date: string;
+  applicant_national_registration_card: string;
+  applicant_gender: string;
+  applicant_marital_status: string;
+  applicant_nationality: string;
+  applicant_address: string;
+  applicant_position: string;
 
-  // Optional fields
-  country?: string;
-address_line_1?: string;
-address_line_2?: string;
-city?: string;
-state?: string;
-zip_code?: string;
-  applicant_email_address?: string;
-  applicant_phone_number?: string;
-  applicant_name?: string;
-  company?: string;
-  status?: string;
-  loan_purpose?: string;
-  is_secured_loan?: 0 | 1;
-  repayment_periods?: number;
-  monthly_repayment_amount?: number;
-  repayment_start_date?: string;
+  // Company details
+  company_name: string;
+  type_of_business: string;
+  established_date: string;
+  nature_of_business: string;
+  registered_office: string;
+
+  // Loan & Collateral Details
+  purpose_of_loan: string;
+  collateral_pledged: string;
+
+  // Directors
+  directors: {
+    director_name: string;
+    director_phone: string;
+    director_email: string;
+    national_registration_card: string;
+  }[];
+
+  // Business Documents
+  business_documents: {
+    document_for: string;
+    document_name: string;
+    file: string;
+  }[];
 }
 
-// export interface CreateLoanApplicationResponse {
-//   message: {
-//     name: string;
-//     [key: string]: unknown;
-//   };
-// }
+// --------------------------------------------------------
+// 2. Personal Loan Specific Payload
+// --------------------------------------------------------
+export interface PersonalLoanApplication extends BaseLoanApplication {
+  application_type: "Personal Loan";
+  marital_status: string;
+  // Applicant details (Personal specific names)
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email: string;
+  birth_date: string;
+  national_registration_card: string;
+  residential_address: string;
+  
+  // Employment Details
+  occupation: string;
+  employer_name: string;
+
+  // Loan Details
+  loan_purpose: string;
+
+  // Next of Kin details
+  next_of_kin_name: string;
+  next_of_kin_phone: string;
+  next_of_kin_email: string;
+
+  // Personal Documents
+  documents: {
+    document_for: string;
+    document_name: string;
+    file: string;
+  }[];
+}
+
+export type LoanApplicationPayload = BusinessLoanApplication | PersonalLoanApplication;
+
 export interface CreateLoanApplicationResponse {
   message: {
     status_code: number;

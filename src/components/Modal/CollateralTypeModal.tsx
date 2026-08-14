@@ -6,14 +6,14 @@ import {
   TextInput,
   NumberInput,
   Checkbox,
-  Button,
   ActionIcon,
   ThemeIcon,
   Group,
   Fieldset,
-  Divider,
+  Button,
+  useMantineTheme,
 } from "@mantine/core";
-import { IconShieldCheck, IconX, IconPercentage, IconCheck } from "@tabler/icons-react";
+import { IconX, IconPercentage, IconBox, IconMinus } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateCollateralTypePayload } from "../../types/collateralTypeForm";
 import {
@@ -23,15 +23,27 @@ import {
 } from "../../api/collateralTypeApi";
 import { useForm } from "@mantine/form";
 import { ModalFooter } from "../shared/ModalFooter";
+import { openCommonModal } from "./AlertModal";
+import { parseFrappeError } from "../../utils/parseFrappeError";
+import { createModal } from "../../store/modal store/createModal";
 
 interface CollateralTypeModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize: () => void;
   editId?: string | null;
   isView?: boolean;
 }
 
-export function CollateralTypeModal({ opened, onClose, editId, isView }: CollateralTypeModalProps) {
+export function CollateralTypeModal({
+  opened,
+  onClose,
+  onMinimize,
+  editId,
+  isView,
+}: CollateralTypeModalProps) {
+  const theme = useMantineTheme();
+
   const form = useForm({
     initialValues: {
       type: "",
@@ -73,13 +85,36 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, editId, editDetailsResponse]);
 
+  // ---------- ALERT HELPERS (same pattern as AddLoanCategoryModal) ----------
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
+
   const createMutation = useMutation({
     mutationFn: createCollateralType,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["collateralTypes"] });
+      showSuccess("Collateral Type Created", "Collateral type created successfully.");
       handleReset();
       onClose();
     },
+    onError: (error: any) => showError("Create Failed", error),
   });
 
   const updateMutation = useMutation({
@@ -87,9 +122,11 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["collateralTypes"] });
       queryClient.invalidateQueries({ queryKey: ["collateralType", editId] });
+      showSuccess("Collateral Type Updated", "Collateral type updated successfully.");
       handleReset();
       onClose();
     },
+    onError: (error: any) => showError("Update Failed", error),
   });
 
   useEffect(() => {
@@ -151,7 +188,7 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
         >
           <Group gap="sm">
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
-              <IconShieldCheck size={16} />
+              <IconBox size={16} />
             </ThemeIcon>
             <Box>
               <Text
@@ -167,16 +204,28 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
               </Text>
             </Box>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={handleClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
+          <Group gap="xs" wrap="nowrap">
+            <Button
+              variant="subtle"
+              size="xs"
+              px={8}
+              onClick={onMinimize}
+              style={{ color: "var(--mantine-color-white)" }}
+              styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+            >
+              <IconMinus size={18} />
+            </Button>
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={handleClose}
+              aria-label="Close"
+            >
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
         {/* Body */}
@@ -242,3 +291,33 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
     </Modal>
   );
 }
+
+/* ───────────────── Minimize/registry wiring ─────────────────
+   Same pattern as journalEntryModal.ts, just kept in this file
+   instead of a separate config file. Registers this modal with
+   the global modal registry and exposes .open()/.close() etc.
+*/
+
+export interface CollateralTypeModalParams {
+  editId?: string | null;
+  isView?: boolean;
+}
+
+function getTitle(params: CollateralTypeModalParams) {
+  if (params.isView) return "View Collateral Type";
+  if (params.editId) return "Edit Collateral Type";
+  return "New Collateral Type";
+}
+
+export const collateralTypeModal = createModal(
+  "collateral-type",
+  CollateralTypeModal,
+  {
+    icon: IconBox,
+    getTitle,
+    buildProps: (params) => ({
+      editId: params.editId ?? null,
+      isView: params.isView ?? false,
+    }),
+  },
+);

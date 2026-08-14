@@ -1,7 +1,6 @@
 // LoanDisbursementModal.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "@mantine/form";
-import { modals } from "@mantine/modals";
 import {
   Box,
   Text,
@@ -15,6 +14,9 @@ import {
   Group,
   Table,
   Loader,
+  Stack,
+  ThemeIcon,
+  useMantineTheme,
 } from "@mantine/core";
 import {
   IconX,
@@ -24,27 +26,25 @@ import {
   IconCreditCard,
   IconHome,
   IconLock,
-  IconUser,
   IconNote,
-  IconClock,
   IconArrowRight,
-  IconRefresh,
   IconNotes,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createLoanDisbursement, getAllDsbrAccount, updateLoanDisbursement, getLoanDisbursementById} from "../../api/loanDisbursementAPi"; 
-import {getAllApplicationDsbr, getLoanById} from "../../api/loanApi";
+import { createLoanDisbursement, getAllDsbrAccount, updateLoanDisbursement, getLoanDisbursementById } from "../../api/loanDisbursementAPi";
+import { getAllApplicationDsbr, getLoanById } from "../../api/loanApi";
 import type { LoanDisbursementPayload, } from "../../types/loanDisbursementForm";
 import { parseFrappeError } from "../../utils/parseFrappeError";
-import {getSymbol} from "../../store/currencyStore";
+import { getSymbol } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { openCommonModal } from "./AlertModal";
+import { ModalFooter } from "../shared/ModalFooter";
 
 interface LoanDisbursementModalProps {
   opened: boolean;
   onClose: () => void;
   onSubmit?: (data: LoanDisbursementFormData) => void;
-  editId?: string | null; 
+  editId?: string | null;
   initialData?: any;
   isView?: boolean;
 }
@@ -91,8 +91,7 @@ const normalizeDateValue = (value?: string | null): string => {
   return value;
 };
 
-const labelClass = { label: "text-sm font-medium text-gray-700 mb-1" };
-const chevronDown = <IconChevronDown size={14} className="text-gray-500" />;
+const chevronDown = <IconChevronDown size={14} color="var(--mantine-color-slate-4)" />;
 
 // function formatCurrency(amount: number) {
 //   return `₹${amount.toLocaleString("en-IN")}`;
@@ -102,45 +101,46 @@ export function LoanDisbursementModal({
   opened,
   onClose,
   onSubmit: _onSubmit,
-  editId,     
+  editId,
   initialData,
   isView = false,
 }: LoanDisbursementModalProps) {
 
+  const theme = useMantineTheme();
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencySymbol = getSymbol(companyCurrency);
   // console.log("Currency Symbol", currencySymbol);
   const [activeTab, setActiveTab] = useState<string | null>("settlement");
 
-   const [dsbrAcSearch, setDsbrAcSearch] = useState("");
+  const [dsbrAcSearch, setDsbrAcSearch] = useState("");
 
-   const { data: dsbrAccountsResponse, isLoading: isDsbrAccountsLoading } = useQuery({
+  const { data: dsbrAccountsResponse, isLoading: isDsbrAccountsLoading } = useQuery({
     queryKey: ["dsbrAccounts", dsbrAcSearch],
     queryFn: () => getAllDsbrAccount(dsbrAcSearch),
     enabled: opened,
   });
 
-   const dsbrAccountOptions = useMemo(() => {
-     const list = dsbrAccountsResponse?.data || dsbrAccountsResponse?.message || dsbrAccountsResponse || [];
-     if (Array.isArray(list)) {
-    return list.map((item: any) => ({
-      value: item.value,
-      label: item.label,
-    }));
-  }
+  const dsbrAccountOptions = useMemo(() => {
+    const list = dsbrAccountsResponse?.data || dsbrAccountsResponse?.message || dsbrAccountsResponse || [];
+    if (Array.isArray(list)) {
+      return list.map((item: any) => ({
+        value: item.value,
+        label: item.label,
+      }));
+    }
 
 
     return [];
   }, [dsbrAccountsResponse]);
-   const [beneficiaryAcSearch, setBeneficiaryAcSearch] = useState("");
+  const [beneficiaryAcSearch, setBeneficiaryAcSearch] = useState("");
 
-   const { data: beneficiaryAccountsResponse, isLoading: isBeneficiaryAccountsLoading } = useQuery({
+  const { data: beneficiaryAccountsResponse, isLoading: isBeneficiaryAccountsLoading } = useQuery({
     queryKey: ["beneficiaryAccounts", beneficiaryAcSearch],
     queryFn: () => getAllDsbrAccount(beneficiaryAcSearch),
     enabled: opened,
   });
 
-   const beneficiaryAccountOptions = useMemo(() => {
+  const beneficiaryAccountOptions = useMemo(() => {
     const list = beneficiaryAccountsResponse?.data || beneficiaryAccountsResponse?.message || beneficiaryAccountsResponse || [];
     if (Array.isArray(list)) {
       return list.map((item: any) => item.value || item.name || item);
@@ -199,53 +199,48 @@ export function LoanDisbursementModal({
       onClose();
     },
     onError: (error: any) => {
-  openCommonModal({
-    heading: "Action Failed",
-    subtitle: "We couldn't complete your request.",
-    body: parseFrappeError(error),
-    color: "red",
-
-    buttons: [
-      {
-        label: "Close",
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
         color: "red",
-      },
-    ],
-  });
-},
-  });
 
- const updateDisbursementMutation = useMutation({
-    mutationFn: updateLoanDisbursement,
-    onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
-      queryClient.invalidateQueries({ queryKey: ["loanDisbursement", editId] }); 
-      
-      handleReset();
-      onClose();
-    },
-    onError: (error: any) => {
-      const errorMessage = parseFrappeError(error);
-
-      modals.open({
-        title: <Text fw={600} c="red">Action Failed</Text>,
-        children: (
-          <div>
-            <Text size="sm" mb="lg">
-              {errorMessage}
-            </Text>
-            <Group justify="flex-end">
-              <Button onClick={() => modals.closeAll()} variant="default">
-                Close
-              </Button>
-            </Group>
-          </div>
-        ),
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
       });
     },
   });
 
- const handleReset = () => {
+const updateDisbursementMutation = useMutation({
+    mutationFn: updateLoanDisbursement,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
+      queryClient.invalidateQueries({ queryKey: ["loanDisbursement", editId] });
+
+      handleReset();
+      onClose();
+    },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
+  });
+  const handleReset = () => {
     form.reset();
     form.setValues({
       valueDate: getTodayDate(),
@@ -254,7 +249,7 @@ export function LoanDisbursementModal({
     setActiveTab("settlement");
   };
 
-const handleSubmit = (values: typeof form.values) => {
+  const handleSubmit = (values: typeof form.values) => {
     const payload: Partial<LoanDisbursementPayload> & { loan_disbursement_charges?: Array<{ charge: string; amount: number; account: string; treatment_of_charge: string }> } = {
       against_loan: values.acNo,
       posting_date: values.valueDate,
@@ -263,7 +258,7 @@ const handleSubmit = (values: typeof form.values) => {
       mode_of_payment: values.modeOfPayment as string,
       reference_number: values.refNo,
       reference_date: values.refDate,
-      repayment_start_date: selectedLoanApp?.repayment_start_date || undefined, 
+      repayment_start_date: selectedLoanApp?.repayment_start_date || undefined,
       disbursement_account: values.disbursementAc || undefined,
       loan_account: selectedLoanApp?.loan_account || undefined,
       loan_disbursement_charges: values.charges.map((charge) => ({
@@ -288,21 +283,21 @@ const handleSubmit = (values: typeof form.values) => {
         valueDate: normalizeDateValue(initialData.disbursementDate || getTodayDate()),
         disburseAmount: initialData.disbursedAmount || "",
         modeOfPayment: initialData.modeOfPayment || null,
-        disbursementAc: initialData.disbursementAccount || null, 
+        disbursementAc: initialData.disbursementAccount || null,
         refDate: normalizeDateValue(initialData.referenceDate || getTodayDate()),
         refNo: initialData.referenceNumber || "",
-        beneficiaryAcNo: initialData.loanAccount || "",   
+        beneficiaryAcNo: initialData.loanAccount || "",
       });
       setHasUserChangedLoanAccount(false);
     } else if (opened && !editId) {
       form.reset();
-      form.setValues({valueDate: getTodayDate(), refDate: getTodayDate()});
+      form.setValues({ valueDate: getTodayDate(), refDate: getTodayDate() });
       setActiveTab("settlement");
       setHasUserChangedLoanAccount(false);
     }
   }, [opened, editId, initialData]);
 
-  const { data: loanAppsResponse, isLoading: isLoanAppsLoading, refetch: refetchLoanApps} = useQuery({
+  const { data: loanAppsResponse, isLoading: isLoanAppsLoading, refetch: refetchLoanApps } = useQuery({
     queryKey: ["loanApplications"],
     queryFn: getAllApplicationDsbr,
     enabled: opened,
@@ -317,14 +312,14 @@ const handleSubmit = (values: typeof form.values) => {
 
   useEffect(() => {
     if (opened && editId && editDetailsResponse) {
-       const item = editDetailsResponse.message?.data || editDetailsResponse.data || editDetailsResponse.message || editDetailsResponse;
-      
+      const item = editDetailsResponse.message?.data || editDetailsResponse.data || editDetailsResponse.message || editDetailsResponse;
+
       form.setValues({
         acNo: item.against_loan || "",
         valueDate: normalizeDateValue(item.disbursement_date || item.posting_date || getTodayDate()),
         disburseAmount: item.disbursed_amount || "",
         modeOfPayment: item.mode_of_payment || null,
-        disbursementAc: item.disbursement_account || null, 
+        disbursementAc: item.disbursement_account || null,
         refDate: normalizeDateValue(item.reference_date || getTodayDate()),
         refNo: item.reference_number || "",
         beneficiaryAcNo: item.loan_account || "",
@@ -385,10 +380,10 @@ const handleSubmit = (values: typeof form.values) => {
   };
 
   const { data: loanAccountDetailsData, isLoading: isLoanAccountChargesLoading, error: loanAccountDetailsError } = useQuery({
-          queryKey: ["loanAccountDetails", form.values.acNo],
-          queryFn: () => getLoanById(form.values.acNo),
-          enabled: opened && !!form.values.acNo && (!editId || hasUserChangedLoanAccount),
-        });
+    queryKey: ["loanAccountDetails", form.values.acNo],
+    queryFn: () => getLoanById(form.values.acNo),
+    enabled: opened && !!form.values.acNo && (!editId || hasUserChangedLoanAccount),
+  });
 
   useEffect(() => {
     if (!opened || !form.values.acNo) {
@@ -412,17 +407,22 @@ const handleSubmit = (values: typeof form.values) => {
     );
   };
 
-useEffect(() => {
+  useEffect(() => {
     if (!editId) {
       form.setFieldValue("beneficiaryAcNo", selectedLoanApp?.loan_account || "");
     }
-   }, [form.values.acNo, selectedLoanApp]);
+  }, [form.values.acNo, selectedLoanApp]);
+
+  const footerErrorMessage =
+    createDisbursementMutation.isError || updateDisbursementMutation.isError
+      ? `Failed to ${editId ? "update" : "create"} disbursement.`
+      : undefined;
 
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      size="1300px"
+      size="1060px"
       withCloseButton={false}
       padding={0}
       radius="md"
@@ -430,171 +430,196 @@ useEffect(() => {
       closeOnEscape={false}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
-      <Box className="flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#7C3AED] flex items-center justify-center">
-              <IconNote size={20} className="text-white" />
-            </div>
-            <div>
-              <Text size="md" fw={700} className="text-gray-900 leading-tight">
-                Disburse Loan
-              </Text>
-              <Text size="xs" c="dimmed">
-                Process a disbursement payout against a sanctioned loan account.
-              </Text>
-            </div>
-          </div>
-          <ActionCloseButton onClose={onClose} />
-        </div>
+        <Box className="flex flex-col">
+          {/* Header — styled to match the Loan Booking modal header */}
+          <Box
+            className="px-6 py-3 flex justify-between items-center rounded-t-md shrink-0"
+            style={{
+              background: theme.other.brandGradient as string,
+              borderBottom: "1px solid var(--mantine-color-brand-7)",
+            }}
+          >
+            <Group gap="sm" className="min-w-0" wrap="nowrap">
+              <ThemeIcon
+                size={38}
+                radius="xl"
+                style={{
+                  background: theme.other.headerIconOverlayBg as string,
+                  color: "var(--mantine-color-white)",
+                }}
+              >
+                <IconNote size={19} />
+              </ThemeIcon>
+              <div className="min-w-0">
+                <Text size="md" fw={700} c="white" className="leading-tight truncate">
+                  {editId ? (isView ? "View Loan Disbursement" : "Update Loan Disbursement") : "Disburse Loan"}
+                </Text>
+                <Text size="xs" c="brand.1" className="leading-tight truncate">
+                  {editId ? `Disbursement · ${editId}` : "Process a disbursement payout against a sanctioned loan account."}
+                </Text>
+              </div>
+            </Group>
+            <Group gap="xs" className="shrink-0" wrap="nowrap">
+              {isView && (
+                <Badge variant="light" color="gray" radius="sm" size="sm">
+                  View Only
+                </Badge>
+              )}
+              <Button
+                variant="subtle"
+                size="xs"
+                px={8}
+                onClick={onClose}
+                style={{ color: "var(--mantine-color-white)" }}
+                styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg as string } } }}
+              >
+                <IconX size={18} />
+              </Button>
+            </Group>
+          </Box>
 
-        <div className="border-b border-gray-200" />
+          {/* Body: main form + summary sidebar */}
+          <div className="flex overflow-hidden" style={{ height: 460 }}>
+            {/* Main form column */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <fieldset disabled={isView} className="border-0 p-0 m-0">
+                <div className="flex flex-wrap items-start gap-4 mb-4">
+                  <Select
+                    size="sm"
+                    withAsterisk
+                    searchable
+                    maw={280}
+                    clearable={!!form.values.acNo}
+                    label="Loan Number"
+                    placeholder={isLoanAppsLoading ? "Loading..." : "Search loan account"}
+                    data={loanAppOptions}
+                    disabled={isLoanAppsLoading}
+                    leftSection={<IconSearch size={14} color="var(--mantine-color-slate-4)" />}
+                    onClick={() => refetchLoanApps()}
+                    {...form.getInputProps("acNo")}
+                    onChange={(value) => {
+                      form.setFieldValue("acNo", value ?? "");
+                      setHasUserChangedLoanAccount(true);
+                    }}
+                  />
+                  <TextInput
+                    size="sm"
+                    withAsterisk
+                    maw={190}
+                    type="date"
+                    label="Value Date"
+                    {...form.getInputProps("valueDate")}
+                    leftSection={<IconCalendar size={14} color="var(--mantine-color-success-6)" />}
+                  />
+                  <NumberInput
+                    size="sm"
+                    withAsterisk
+                    maw={230}
+                    label="Disburse Amount"
+                    hideControls
+                    min={0}
+                    placeholder="Enter amount"
+                    {...form.getInputProps("disburseAmount")}
+                    leftSection={<IconNotes size={14} color="var(--mantine-color-warning-5)" />}
+                    thousandSeparator=","
+                  />
+                </div>
+              </fieldset>
 
-        {/* Body: main form + summary sidebar */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Main form column */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <fieldset disabled={isView} className="border-0 p-0 m-0">
-            <div className="grid grid-cols-3 gap-4 mb-5">
-           <Select
-  size="sm"
-  withAsterisk
-  searchable
-  clearable={!!form.values.acNo}  
-  label="Loan Number"
-  placeholder={isLoanAppsLoading ? "Loading..." : "Search loan account"}
-  data={loanAppOptions}
-  disabled={isLoanAppsLoading}
-  leftSection={<IconSearch size={14} className="text-gray-400" />}
-  onClick={() => refetchLoanApps()}
-  {...form.getInputProps("acNo")}
-  onChange={(value) => {
-    form.setFieldValue("acNo", value ?? "");
-    setHasUserChangedLoanAccount(true);
-  }}
-/>
-             <TextInput
-                size="sm"
-                withAsterisk
-                type="date"
-                label="Value Date"
-                 {...form.getInputProps("valueDate")}
-                leftSection={<IconCalendar size={14} className="text-emerald-600" />}
-                classNames={labelClass}
-              />
-              <NumberInput
-                size="sm"
-                withAsterisk
-                label="Disburse Amount"
-                 hideControls
-                 min={0}
-                placeholder="Enter amount"
-                 {...form.getInputProps("disburseAmount")}
-                leftSection={<IconNotes size={14} className="text-orange-500" />}
-                thousandSeparator=","
-                classNames={labelClass}
-              />
-            </div>
-            </fieldset>
+              <Tabs value={activeTab} onChange={setActiveTab} variant="default">
+                <Tabs.List style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
+                  <Tabs.Tab value="settlement">
+                    Settlement
+                  </Tabs.Tab>
+                  <Tabs.Tab value="charges">
+                    Charges
+                  </Tabs.Tab>
+                </Tabs.List>
 
-            <Tabs value={activeTab} onChange={setActiveTab} variant="default">
-              <Tabs.List className="border-b border-gray-200">
-                <Tabs.Tab value="settlement" className="font-medium text-sm">
-                  Settlement
-                </Tabs.Tab>
-                <Tabs.Tab
-                  value="charges"
-                  className="font-medium text-sm"
-                >
-                  Charges
-                </Tabs.Tab>
-              </Tabs.List>
-
-              <Tabs.Panel value="settlement" pt="lg">
-                <div className="grid grid-cols-2 gap-x-8">
-                  {/* Pay From */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <div className="w-1 h-4 rounded bg-gradient-to-b from-[#7C3AED] to-[#4F46E5]" />
-                      <Text size="sm" fw={700} className="text-gray-900">
-                        Pay From
-                      </Text>
+                <Tabs.Panel value="settlement" pt="md">
+                  <div className="flex flex-wrap items-start justify-between">
+                    {/* Pay From */}
+                    <div className="shrink-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <div className="w-1 h-4 rounded" style={{ background: theme.other.brandGradient as string }} />
+                        <Text size="sm" fw={700} c="slate.8">
+                          Pay From
+                        </Text>
+                      </div>
+                      <div className="flex flex-col gap-2 mt-3">
+                        <Select
+                          size="sm"
+                          withAsterisk
+                          maw={200}
+                          label="Mode of Payment"
+                          placeholder="Select mode of payment"
+                          data={PAYMENT_MODES}
+                          disabled={isView}
+                          {...form.getInputProps("modeOfPayment")}
+                          leftSection={<IconCreditCard size={14} color="var(--mantine-color-brand-5)" />}
+                          rightSection={chevronDown}
+                        />
+                        {editId ? (
+                          <TextInput
+                            size="sm"
+                            maw={280}
+                            // withAsterisk
+                            label="Disbursement A/c"
+                            disabled={isView}
+                            {...form.getInputProps("disbursementAc")}
+                            leftSection={<IconHome size={14} color="var(--mantine-color-brand-5)" />}
+                          />
+                        ) : (
+                          <Select
+                            size="sm"
+                            maw={280}
+                            // withAsterisk
+                            searchable
+                            clearable
+                            label="Disbursement A/c"
+                            placeholder={isDsbrAccountsLoading ? "Loading..." : "Select disburse account"}
+                            data={dsbrAccountOptions}
+                            searchValue={dsbrAcSearch}
+                            onSearchChange={setDsbrAcSearch}
+                            disabled={isView || isDsbrAccountsLoading}
+                            {...form.getInputProps("disbursementAc")}
+                            leftSection={<IconHome size={14} color="var(--mantine-color-brand-5)" />}
+                            rightSection={chevronDown}
+                          />
+                        )}
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-4 mt-4">
-                     <Select
-                        size="sm"
-                        withAsterisk
-                        label="Mode of Payment"
-                        placeholder="Select mode of payment"
-                        data={PAYMENT_MODES}
-                        disabled={isView}
-                         {...form.getInputProps("modeOfPayment")}
-                        leftSection={<IconCreditCard size={14} className="text-indigo-500" />}
-                        rightSection={chevronDown}
-                        classNames={labelClass}
-                      />
-                    {editId ? (
-  <TextInput
-    size="sm"
-    // withAsterisk
-    label="Disbursement A/c"
-    disabled={isView}
-    {...form.getInputProps("disbursementAc")}
-    leftSection={<IconHome size={14} className="text-indigo-500" />}
-    classNames={labelClass}
-  />
-) : (
-  <Select
-    size="sm"
-    // withAsterisk
-    searchable
-    clearable
-    label="Disbursement A/c"
-    placeholder={isDsbrAccountsLoading ? "Loading..." : "Select disburse account"}
-    data={dsbrAccountOptions}
-    searchValue={dsbrAcSearch}
-    onSearchChange={setDsbrAcSearch}
-    disabled={isView || isDsbrAccountsLoading}
-    {...form.getInputProps("disbursementAc")}
-    leftSection={<IconHome size={14} className="text-indigo-500" />}
-    rightSection={chevronDown}
-    classNames={labelClass}
-  />
-)}
-                    </div>
-                  </div>
 
-                  {/* Pay To */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <div className="w-1 h-4 rounded bg-gradient-to-b from-[#7C3AED] to-[#4F46E5]" />
-                      <Text size="sm" fw={700} className="text-gray-900">
-                        Pay To
-                      </Text>
-                    </div>
-                    <div className="flex flex-col gap-4 mt-4">
-                      <TextInput
-                        size="sm"
-                        withAsterisk
-                        type="date"
-                        label="Ref Date"
-                        disabled={isView}
-                         {...form.getInputProps("refDate")}
-                        leftSection={<IconCalendar size={14} className="text-emerald-600" />}
-                        classNames={labelClass}
-                      />
-                      <TextInput
-                        size="sm"
-                        withAsterisk
-                        label="Ref No"
-                        disabled={isView}
-                        placeholder="e.g. DSB-2026-000452"
-                         {...form.getInputProps("refNo")}
-                        leftSection={<IconCalendar size={14} className="text-orange-500" />}
-                        classNames={labelClass}
-                      />
-                     {/* <Select
+                    {/* Pay To */}
+                    <div className="shrink-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <div className="w-1 h-4 rounded" style={{ background: theme.other.brandGradient as string }} />
+                        <Text size="sm" fw={700} c="slate.8">
+                          Pay To
+                        </Text>
+                      </div>
+                      <div className="flex flex-col gap-2 mt-3">
+                        <TextInput
+                          size="sm"
+                          withAsterisk
+                          maw={180}
+                          type="date"
+                          label="Ref Date"
+                          disabled={isView}
+                          {...form.getInputProps("refDate")}
+                          leftSection={<IconCalendar size={14} color="var(--mantine-color-success-6)" />}
+                        />
+                        <TextInput
+                          size="sm"
+                          withAsterisk
+                          maw={230}
+                          label="Ref No"
+                          disabled={isView}
+                          placeholder="e.g. DSB-2026-000452"
+                          {...form.getInputProps("refNo")}
+                          leftSection={<IconCalendar size={14} color="var(--mantine-color-warning-5)" />}
+                        />
+                        {/* <Select
                         size="sm"
                         withAsterisk
                         searchable
@@ -610,261 +635,223 @@ useEffect(() => {
                         rightSection={chevronDown}
                         classNames={labelClass}
                       /> */}
-<TextInput
-  size="sm"
-  // withAsterisk
-  label="A/c No"
-  placeholder="Account number"
-  disabled ={isView}
-  {...form.getInputProps("beneficiaryAcNo")}
-  leftSection={<IconHome size={14} className="text-indigo-500" />}
-  classNames={labelClass}
-/>
+                        <TextInput
+                          size="sm"
+                          maw={340}
+                          // withAsterisk
+                          label="A/c No"
+                          placeholder="Account number"
+                          disabled={isView}
+                          {...form.getInputProps("beneficiaryAcNo")}
+                          leftSection={<IconHome size={14} color="var(--mantine-color-brand-5)" />}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Tabs.Panel>
+                </Tabs.Panel>
 
-              <Tabs.Panel value="charges" pt="lg">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 bg-indigo-50 text-indigo-700 text-xs px-3 py-2 rounded-md">
-                    <IconLock size={13} />
-                    Charges are loaded from the selected loan account and can be reviewed or adjusted here.
-                  </div>
-
-                  {loanAccountDetailsError && (
-                    <Text size="sm" c="red" fw={500}>
-                      Unable to load loan charges for the selected account. Please try again.
-                    </Text>
-                  )}
-
-                  {isLoanAccountChargesLoading ? (
-                    <div className="flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-md py-8 text-sm text-gray-500">
-                      <Loader size="sm" />
-                      Loading loan charges...
+                <Tabs.Panel value="charges" pt="md">
+                  <div className="space-y-3">
+                    <div
+                      className="flex items-center gap-2 text-xs px-3 py-2 rounded-md"
+                      style={{
+                        backgroundColor: "var(--mantine-color-brand-0)",
+                        color: "var(--mantine-color-brand-7)",
+                      }}
+                    >
+                      <IconLock size={13} />
+                      Charges are loaded from the selected loan account and can be reviewed or adjusted here.
                     </div>
-                  ) : form.values.charges.length === 0 ? (
-                    <div className="border border-dashed border-gray-300 rounded-md py-10 text-center text-sm text-gray-500 bg-gray-50/60">
-                      No charges added yet.
-                    </div>
-                  ) : (
-                    <div className="border border-gray-200 rounded-md overflow-hidden">
-                      <Table size="sm" verticalSpacing="sm" horizontalSpacing="sm" className="w-full">
-                        <Table.Thead className="bg-gray-50">
-                          <Table.Tr>
-                            <Table.Th className="w-1/3">Charge</Table.Th>
-                            <Table.Th className="w-1/4">Amount</Table.Th>
-                            <Table.Th className="w-1/3">Treatment of Charge</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                          {form.values.charges.map((charge, index) => (
-                            <Table.Tr key={charge.id} className="align-top">
-                              <Table.Td>
-                                <TextInput
-                                  size="xs"
-                                  value={charge.name}
-                                  disabled
-                                  readOnly
-                                  placeholder="Charge"
-                                />
-                              </Table.Td>
-                              <Table.Td>
-                                <TextInput
-                                  size="xs"
-                                  placeholder="Amount"
-                                  type="number"
-                                  min={0}
-                                  value={charge.amount}
-                                  disabled={isView}
-                                  onChange={(event) => handleChargeUpdate(index, "amount", event.currentTarget.value)}
-                                />
-                              </Table.Td>
-                              <Table.Td>
-                                <Select
-                                  size="xs"
-                                  data={CHARGE_TREATMENT_OPTIONS}
-                                  value={charge.treatment_of_charge || "Billed Separately"}
-                                  disabled={isView}
-                                  onChange={(value) =>
-                                    handleChargeUpdate(index, "treatment_of_charge", value || "Billed Separately")
-                                  }
-                                  styles={{ input: { minWidth: 170 } }}
-                                />
-                              </Table.Td>
+
+                    {loanAccountDetailsError && (
+                      <Text size="sm" c="red" fw={500}>
+                        Unable to load loan charges for the selected account. Please try again.
+                      </Text>
+                    )}
+
+                    {isLoanAccountChargesLoading ? (
+                      <div
+                        className="flex items-center justify-center gap-2 border border-dashed rounded-md py-8 text-sm"
+                        style={{ borderColor: "var(--mantine-color-slate-3)", color: "var(--mantine-color-slate-5)" }}
+                      >
+                        <Loader size="sm" />
+                        Loading loan charges...
+                      </div>
+                    ) : form.values.charges.length === 0 ? (
+                      <div
+                        className="border border-dashed rounded-md py-10 text-center text-sm"
+                        style={{
+                          borderColor: "var(--mantine-color-slate-3)",
+                          color: "var(--mantine-color-slate-5)",
+                          background: "var(--mantine-color-slate-0)",
+                        }}
+                      >
+                        No charges added yet.
+                      </div>
+                    ) : (
+                      <div
+                        className="rounded-md overflow-hidden"
+                        style={{ border: "1px solid var(--mantine-color-slate-2)" }}
+                      >
+                        <Table size="sm" verticalSpacing="sm" horizontalSpacing="sm" className="w-full">
+                          <Table.Thead>
+                            <Table.Tr>
+                              <Table.Th className="w-1/3">Charge</Table.Th>
+                              <Table.Th className="w-1/4">Amount</Table.Th>
+                              <Table.Th className="w-1/3">Treatment of Charge</Table.Th>
                             </Table.Tr>
-                          ))}
-                        </Table.Tbody>
-                      </Table>
-                    </div>
-                  )}
-                </div>
-              </Tabs.Panel>
-            </Tabs>
-          </div>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            {form.values.charges.map((charge, index) => (
+                              <Table.Tr key={charge.id} className="align-top">
+                                <Table.Td>
+                                  <TextInput
+                                    size="xs"
+                                    value={charge.name}
+                                    disabled
+                                    readOnly
+                                    placeholder="Charge"
+                                  />
+                                </Table.Td>
+                                <Table.Td>
+                                  <TextInput
+                                    size="xs"
+                                    placeholder="Amount"
+                                    type="number"
+                                    min={0}
+                                    value={charge.amount}
+                                    disabled={isView}
+                                    onChange={(event) => handleChargeUpdate(index, "amount", event.currentTarget.value)}
+                                  />
+                                </Table.Td>
+                                <Table.Td>
+                                  <Select
+                                    size="xs"
+                                    data={CHARGE_TREATMENT_OPTIONS}
+                                    value={charge.treatment_of_charge || "Billed Separately"}
+                                    disabled={isView}
+                                    onChange={(value) =>
+                                      handleChargeUpdate(index, "treatment_of_charge", value || "Billed Separately")
+                                    }
+                                    styles={{ input: { minWidth: 170 } }}
+                                  />
+                                </Table.Td>
+                              </Table.Tr>
+                            ))}
+                          </Table.Tbody>
+                        </Table>
+                      </div>
+                    )}
+                  </div>
+                </Tabs.Panel>
+              </Tabs>
+            </div>
 
-         {/* Summary sidebar */}
-          <div className="w-[280px] border-l border-gray-200 p-5 shrink-0 overflow-y-auto">
-            <div className="flex items-center gap-2 mb-0.5">
-              {/* <div className="w-1 h-4 rounded bg-gradient-to-b from-[#7C3AED] to-[#4F46E5]" /> */}
-              {/* <Text size="sm" fw={700} className="text-gray-900">
+            {/* Summary sidebar — styled after the Loan Booking summary sidebar */}
+            <div
+              className="w-[280px] shrink-0 overflow-y-auto p-4"
+              style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
+            >
+              <Text size="sm" fw={700} c="slate.7" tt="uppercase" style={{ letterSpacing: "0.05em" }} mb="sm">
                 Summary
-              </Text> */}
-            </div>
-            <div className="flex flex-col gap-3">
-              <SummaryItem
-                icon={<IconUser size={14} className="text-gray-500" />}
-                iconBg="#F3F4F6"
-                label="Customer Name"
-                value={selectedLoanApp ? (selectedLoanApp.applicant_name || selectedLoanApp.applicant) : "—"}
-              />
-              <SummaryItem
-                icon={<IconNote size={14} className="text-indigo-500" />}
-                iconBg="#EEF2FF"
-                label="Currency"
-                value={companyCurrency}
-              />
-              <SummaryItem
-                icon={<IconNote size={14} className="text-emerald-600" />}
-                iconBg="#ECFDF5"
-                label="Sanctioned Amount"
-                value={
-  selectedLoanApp
-    ? `${currencySymbol}${selectedLoanApp.loan_amount}`
-    : `${currencySymbol}0`
-}
-                bold
-              />
-            <SummaryItem
-  icon={<IconClock size={14} className="text-orange-500" />}
-  iconBg="#FFF7ED"
-  label="Disbursement till Date"
-  value={
-    selectedLoanApp
-      ? `${currencySymbol}${selectedLoanApp.current_disbursed_amount || 0}`
-      : `${currencySymbol}0`
-  }
-  bold
-/>
-<SummaryItem
-  icon={<IconCalendar size={14} className="text-emerald-600" />}
-  iconBg="#ECFDF5"
-  label="Repayment Start Date"
-  value={selectedLoanApp?.repayment_start_date || "—"} 
-  bold
-/>
-             <SummaryItem
-  icon={<IconCreditCard size={14} className="text-indigo-500" />}
-  iconBg="#EEF2FF"
-  label="Mode of Disbursement"
-  value={
-    form.values.modeOfPayment ? (
-      <Badge
-        size="sm"
-        variant="light"
-        color="orange"
-        className="font-semibold"
-        styles={{ root: { fontSize: 10 } }}
-      >
-        {form.values.modeOfPayment}
-      </Badge>
-    ) : (
-      <div className="w-4 h-4 rounded-full bg-orange-100" />
-    )
-  }
-/>
+              </Text>
+
+              <Stack gap="sm">
+                <SummaryCard>
+                  <Stack gap={2}>
+                    <SummaryRow
+                      label="Customer Name"
+                      value={selectedLoanApp ? (selectedLoanApp.applicant_name || selectedLoanApp.applicant) : "—"}
+                    />
+                    <SummaryRow label="Currency" value={companyCurrency || "—"} />
+                    <SummaryRow
+                      label="Sanctioned Amount"
+                      value={selectedLoanApp ? `${currencySymbol}${selectedLoanApp.loan_amount}` : `${currencySymbol}0`}
+                      bold
+                    />
+                    <SummaryRow
+                      label="Disbursement till Date"
+                      value={
+                        selectedLoanApp
+                          ? `${currencySymbol}${selectedLoanApp.current_disbursed_amount || 0}`
+                          : `${currencySymbol}0`
+                      }
+                      bold
+                    />
+                    <SummaryRow
+                      label="Repayment Start Date"
+                      value={selectedLoanApp?.repayment_start_date || "—"}
+                      bold
+                    />
+                  </Stack>
+                </SummaryCard>
+
+                <SummaryCard>
+                  <Group justify="space-between" wrap="nowrap" py={2}>
+                    <Text size="xs" c="slate.5">
+                      Mode of Disbursement
+                    </Text>
+                    {form.values.modeOfPayment ? (
+                      <Badge size="sm" variant="light" color="brand" styles={{ root: { fontSize: 10 } }}>
+                        {form.values.modeOfPayment}
+                      </Badge>
+                    ) : (
+                      <Text size="xs" fw={700} c="slate.8">
+                        —
+                      </Text>
+                    )}
+                  </Group>
+                </SummaryCard>
+              </Stack>
             </div>
           </div>
-        </div>
 
-     {/* Footer */}
-        <div className="border-t border-gray-200 p-4 px-6 flex justify-between items-center shrink-0">
-          
-          <Button variant="default" size="sm" onClick={onClose} className="font-semibold">
-            {isView ? "Close" : "Cancel"} {/* <-- Update text dynamically */}
-          </Button>
-
-          {/* Wrap the action buttons so they only show if it's NOT view mode */}
-          {!isView && (
-            <div className="flex gap-2">
-              
-              {/* Show API Error if any */}
-              {(createDisbursementMutation.isError || updateDisbursementMutation.isError) && (
-                <Text size="xs" c="red" className="mr-2 self-center">
-                  Failed to {editId ? "update" : "create"} disbursement.
-                </Text>
-              )}
-
-              <Button
-                size="sm"
-                variant="subtle"
-                color="red"
-                leftSection={<IconRefresh size={14} />}
-                onClick={handleReset}
-                disabled={isPending}
-                className="font-semibold px-4"
-              >
-                Reset
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                loading={isPending}
-                rightSection={!isPending ? <IconArrowRight size={16} /> : null}
-                className="bg-gradient-to-r from-[#6366F1] to-[#7C3AED] hover:opacity-90 font-semibold px-6"
-              >
-                {editId ? "Update" : "Submit"}
-              </Button>
-            </div>
-          )}
-        </div>
-      </Box>
+          {/* Footer — shared ModalFooter, matching Loan Booking modal */}
+          <Box style={{ flexShrink: 0 }}>
+            <ModalFooter
+              variant="theme"
+              isViewMode={isView}
+              onClose={onClose}
+              submitLabel={editId ? "Update" : "Save"}
+              submitLoading={isPending}
+              submitIcon={<IconArrowRight size={16} />}
+              errorMessage={footerErrorMessage}
+            />
+          </Box>
+        </Box>
       </form>
     </Modal>
   );
 }
 
-function ActionCloseButton({ onClose }: { onClose: () => void }) {
+function SummaryRow({ label, value, bold }: { label: string; value: React.ReactNode; bold?: boolean }) {
   return (
-    <Button variant="subtle" color="gray" onClick={onClose} className="px-2" size="xs">
-      <IconX size={18} />
-    </Button>
+    <Group justify="space-between" wrap="nowrap" py={5}>
+      <Text size="xs" c="slate.5">
+        {label}
+      </Text>
+      {typeof value === "string" ? (
+        <Text size="xs" fw={bold ? 700 : 600} c="slate.8" ta="right">
+          {value}
+        </Text>
+      ) : (
+        value
+      )}
+    </Group>
   );
 }
 
-function SummaryItem({
-  icon,
-  iconBg,
-  label,
-  value,
-  bold,
-}: {
-  icon: React.ReactNode;
-  iconBg: string;
-  label: string;
-  value: React.ReactNode;
-  bold?: boolean;
-}) {
+function SummaryCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3 bg-gray-50/60 border border-gray-100 rounded-md p-3">
-      <div
-        className="p-1.5 rounded-md flex items-center justify-center shrink-0 mt-0.5"
-        style={{ backgroundColor: iconBg }}
-      >
-        {icon}
-      </div>
-      <div className="flex flex-col">
-        <Text size="xs" c="dimmed">
-          {label}
-        </Text>
-        {typeof value === "string" ? (
-          <Text size="sm" fw={bold ? 700 : 600} className="text-gray-900">
-            {value}
-          </Text>
-        ) : (
-          value
-        )}
-      </div>
+    <div
+      style={{
+        background: "var(--mantine-color-slate-1)",
+        border: "1px solid var(--mantine-color-slate-2)",
+        borderRadius: "var(--mantine-radius-lg)",
+        padding: "10px 12px",
+      }}
+    >
+      {children}
     </div>
   );
 }

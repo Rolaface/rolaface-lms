@@ -29,8 +29,8 @@ import {
   IconSearch,
   IconTrash,
   IconShieldCheck,
+  IconBox,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -40,14 +40,15 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CollateralTypeModal } from '../../../components/Modal/CollateralTypeModal';
+import { collateralTypeModal } from '../../../components/Modal/CollateralTypeModal';
 import {
   getAllCollateralTypes,
   enableCollateralType,
   disableCollateralType,
   deleteCollateralType,
 } from '../../../api/collateralTypeApi';
-import { modals } from '@mantine/modals';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
+import { parseFrappeError } from '../../../utils/parseFrappeError';
 
 interface CollateralRow {
   id: string;
@@ -102,22 +103,12 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function CollateralType() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
 
   const [sorting, setSorting] = useState([{ id: 'type', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-
-  const [selectedCollateralId, setSelectedCollateralId] = useState<string | null>(null);
-  const [isViewMode, setIsViewMode] = useState(false);
-
-  const handleModalClose = () => {
-    close();
-    setSelectedCollateralId(null);
-    setIsViewMode(false);
-  };
 
   const { data: collateralResponse, isLoading } = useQuery({
     queryKey: ['collateralTypes'],
@@ -126,38 +117,77 @@ export function CollateralType() {
 
   const queryClient = useQueryClient();
 
-  const { mutate: enableType } = useMutation({
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
+  const { mutate: enableType, isPending: isEnabling } = useMutation({
     mutationFn: (id: string) => enableCollateralType(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collateralTypes'] });
+      showSuccess('Collateral Type Activated', 'Collateral type has been activated successfully.');
     },
+    onError: (error: any) => showError('Status Update Failed', error),
   });
 
-  const { mutate: disableType } = useMutation({
+  const { mutate: disableType, isPending: isDisabling } = useMutation({
     mutationFn: (id: string) => disableCollateralType(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collateralTypes'] });
+      showSuccess('Collateral Type Deactivated', 'Collateral type has been deactivated successfully.');
     },
+    onError: (error: any) => showError('Status Update Failed', error),
   });
 
   const { mutate: removeType, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteCollateralType(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collateralTypes'] });
+      showSuccess('Collateral Type Deleted', 'Collateral type deleted successfully.');
     },
+    onError: (error: any) => showError('Delete Failed', error),
   });
 
-  const handleDelete = (id: string) => {
-    modals.openConfirmModal({
-      title: 'Delete collateral type',
-      children: (
-        <Text size="sm">
-          Are you sure you want to delete this collateral type? This cannot be undone.
-        </Text>
+  const handleDelete = (row: CollateralRow) => {
+    openCommonModal({
+      heading: 'Delete Collateral Type',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete collateral type{' '}
+          <Text span fw={600}>
+            {row.type}
+          </Text>
+          ?
+        </>
       ),
-      labels: { confirm: 'Delete', cancel: 'Cancel' },
-      confirmProps: { color: 'danger' },
-      onConfirm: () => removeType(id),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => {
+            removeType(row.id);
+          },
+        },
+      ],
     });
   };
 
@@ -185,12 +215,36 @@ export function CollateralType() {
     });
   }, [data, search, status]);
 
-  const handleToggleStatus = (id: string, currentStatus: string) => {
-    if (currentStatus === 'ACTIVE') {
-      disableType(id);
-    } else {
-      enableType(id);
-    }
+  const handleToggleStatus = (row: CollateralRow) => {
+    const willDisable = row.status === 'ACTIVE';
+    openCommonModal({
+      heading: willDisable ? 'Disable Collateral Type' : 'Activate Collateral Type',
+      subtitle: 'Please confirm this action before continuing.',
+      body: (
+        <>
+          Are you sure you want to {willDisable ? 'disable' : 'activate'} collateral type{' '}
+          <Text span fw={600}>
+            {row.type}
+          </Text>
+          ?
+        </>
+      ),
+      color: willDisable ? 'red' : 'green',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: willDisable ? 'Disable' : 'Activate',
+          color: willDisable ? 'red' : 'green',
+          onClick: () => {
+            if (willDisable) {
+              disableType(row.id);
+            } else {
+              enableType(row.id);
+            }
+          },
+        },
+      ],
+    });
   };
 
   const columns = useMemo(
@@ -235,6 +289,8 @@ export function CollateralType() {
         cell: (info) => {
           const row = info.row.original;
           const isActive = row.status === 'ACTIVE';
+          const isTogglingStatus =
+            (isEnabling || isDisabling);
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap">
               <Tooltip label="View" withArrow>
@@ -244,9 +300,7 @@ export function CollateralType() {
                   color="slate"
                   radius="md"
                   onClick={() => {
-                    setSelectedCollateralId(row.id);
-                    setIsViewMode(true);
-                    open();
+                    collateralTypeModal.open({ editId: row.id, isView: true });
                   }}
                 >
                   <IconEye size={14} />
@@ -259,9 +313,7 @@ export function CollateralType() {
                   color="brand"
                   radius="md"
                   onClick={() => {
-                    setSelectedCollateralId(row.id);
-                    setIsViewMode(false);
-                    open();
+                    collateralTypeModal.open({ editId: row.id, isView: false });
                   }}
                 >
                   <IconPencil size={14} />
@@ -273,8 +325,8 @@ export function CollateralType() {
                   variant="subtle"
                   color="danger"
                   radius="md"
-                  disabled={isDeleting}
-                  onClick={() => handleDelete(row.id)}
+                  loading={isDeleting}
+                  onClick={() => handleDelete(row)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
@@ -284,7 +336,8 @@ export function CollateralType() {
                   size="xs"
                   color="success"
                   checked={isActive}
-                  onChange={() => handleToggleStatus(row.id, row.status)}
+                  disabled={isTogglingStatus}
+                  onChange={() => handleToggleStatus(row)}
                 />
               </Tooltip>
             </Group>
@@ -292,7 +345,7 @@ export function CollateralType() {
         },
       }),
     ],
-    [isDeleting]
+    [isDeleting, isEnabling, isDisabling]
   );
 
   const table = useReactTable({
@@ -319,12 +372,10 @@ export function CollateralType() {
 
   return (
     <Stack gap="lg" p="lg">
-      <CollateralTypeModal
-        opened={opened}
-        onClose={handleModalClose}
-        editId={selectedCollateralId}
-        isView={isViewMode}
-      />
+      {/* No local modal render needed — importing CollateralTypeModal.tsx
+          runs createModal(...) as a side effect, which registers the modal
+          Host with the global registry. It's rendered centrally wherever
+          the app renders getRegisteredModals(). */}
 
       {/* Scoped, purely visual — same theme.other tokens as Customer / LoanProduct */}
       <style>{`
@@ -350,7 +401,7 @@ export function CollateralType() {
               justifyContent: 'center',
             }}
           >
-            <IconShieldCheck size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconBox size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
@@ -361,8 +412,6 @@ export function CollateralType() {
             </Text>
           </Stack>
         </Group>
-
-    
       </Group>
 
       {/* Toolbar — pill search + segmented status control */}
@@ -409,23 +458,22 @@ export function CollateralType() {
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
             Reset
           </Button>
-           <Button
-          size="sm"
-          radius="xl"
-          color="brand"
-          onClick={() => {
-            setSelectedCollateralId(null);
-            setIsViewMode(false);
-            open();
-          }}
-          leftSection={<IconPlus size={14} />}
-          style={{
-            background: theme.other.brandGradient,
-            boxShadow: theme.other.brandGlowShadowSm,
-          }}
-        >
-          Add Collateral Type
-        </Button>
+
+          <Button
+            size="sm"
+            radius="xl"
+            color="brand"
+            onClick={() => {
+              collateralTypeModal.open({ editId: null, isView: false });
+            }}
+            leftSection={<IconPlus size={14} />}
+            style={{
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadowSm,
+            }}
+          >
+            Add Collateral Type
+          </Button>
         </Group>
       </Paper>
 
