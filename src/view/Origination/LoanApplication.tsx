@@ -45,6 +45,7 @@ import {
 } from '@tanstack/react-table';
 
 import { LoanApplicationModal } from '../../components/Modal/LoanApplication/LoanApplicationModal';
+import { loanApplicationModal } from '../../components/Modal/LoanApplication/loanApplicationModalStore'; 
 import { LoanApplicationDetailView } from './LoanApplicationDetailView';
 import {
   getAllLoanApplications,
@@ -320,19 +321,26 @@ const statusMutation = useMutation({
     }
   }, [viewingApplicationId, data]);
 
-  const handleAdd = () => {
-    setEditingId(null);
-    open();
+  // const handleAdd = () => {
+  //   setEditingId(null);
+  //   open();
+  // };
+const handleAdd = () => {
+    loanApplicationModal.open({ loanApplicationId: null });
+  };
+
+  const handleEdit = (id: string) => {
+    loanApplicationModal.open({ loanApplicationId: id });
   };
 
   const handleView = (id: string) => {
     setViewingApplicationId(id);
   };
 
-  const handleEdit = (id: string) => {
-    setEditingId(id);
-    open();
-  };
+  // const handleEdit = (id: string) => {
+  //   setEditingId(id);
+  //   open();
+  // };
 
   const handleModalClose = () => {
     setEditingId(null);
@@ -615,13 +623,20 @@ columnHelper.accessor('status', {
     if (application) {
       return (
         <Box p="xl" mt="xl">
-          <LoanApplicationDetailView
+          {/* <LoanApplicationDetailView
             application={application}
             onBack={() => setViewingApplicationId(null)}
             onEdit={() => {
               setViewingApplicationId(null);
               handleEdit(application.name);
-            }}
+            }} */}
+            <LoanApplicationDetailView
+          application={application}
+          onBack={() => setViewingApplicationId(null)}
+          onEdit={() => {
+            setViewingApplicationId(null);
+            loanApplicationModal.open({ loanApplicationId: application.name });
+          }}
             onApprove={() => confirmApprove(application.name)}
             onReject={() => confirmReject(application.name)}
             isActionPending={statusMutation.isPending}
@@ -634,7 +649,7 @@ columnHelper.accessor('status', {
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanApplicationModal opened={opened} onClose={handleModalClose} loanApplicationId={editingId} />
+      {/* <LoanApplicationModal opened={opened} onClose={handleModalClose} loanApplicationId={editingId} /> */}
       <CreateLoanBookingModal
   opened={bookingOpened}
   applicationId={bookingApplicationId}
