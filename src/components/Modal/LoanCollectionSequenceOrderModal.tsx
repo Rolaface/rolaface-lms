@@ -10,24 +10,25 @@ import {
   TextInput,
   ThemeIcon,
 } from "@mantine/core";
-import { IconGripVertical, IconListNumbers, IconX } from "@tabler/icons-react";
+import { IconGripVertical, IconListNumbers, IconX , IconMinus} from "@tabler/icons-react";
 import { useRef, useState } from "react";
 import { ModalFooter } from "../shared/ModalFooter";
 import { useCollectionOrderForm } from "../../hooks/CollectionOrder/useCollectionOrderForm";
 import { openCommonModal } from "./AlertModal";
 import type { CollectionOrderListItem } from "../../types/collectionOrder";
 
-interface LoanCollectionSequenceOrderModalProps {
+export interface LoanCollectionSequenceOrderModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   mode?: "add" | "edit" | "view";
   data?: CollectionOrderListItem | null;
   onSaved: () => void;
 }
-
 export function LoanCollectionSequenceOrderModal({
   opened,
   onClose,
+  onMinimize,
   mode = "add",
   data = null,
   onSaved,
@@ -61,7 +62,9 @@ export function LoanCollectionSequenceOrderModal({
     onClose();
     setTimeout(() => setDraggedIndex(null), 200);
   };
-
+  const handleMinimize = () => {
+    onMinimize?.();
+  };
   const dragStart = (_e: React.DragEvent<HTMLDivElement>, position: number) => {
     dragItem.current = position;
     setTimeout(() => setDraggedIndex(position), 0);
@@ -139,9 +142,21 @@ export function LoanCollectionSequenceOrderModal({
               </Text>
             </Box>
           </Group>
-          <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={handleClose} aria-label="Close">
-            <IconX size={16} color="white" />
-          </ActionIcon>
+<Group gap="xs" wrap="nowrap">
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={handleMinimize}
+              aria-label="Minimize"
+            >
+              <IconMinus size={16} color="white" />
+            </ActionIcon>
+            <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={handleClose} aria-label="Close">
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
         <Box px="xl" py="lg" bg="slate.0">

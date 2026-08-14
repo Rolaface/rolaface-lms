@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   Box,
   Button,
@@ -28,12 +28,11 @@ import {
   IconListNumbers,
   IconTrash,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import { useReactTable, getCoreRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
-import { LoanCollectionSequenceOrderModal } from '../../../components/Modal/LoanCollectionSequenceOrderModal';
 import { useCollectionOrders } from '../../../hooks/CollectionOrder/useCollectionOrders';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import type { CollectionOrderListItem, CollectionOrderSort } from '../../../types/collectionOrder';
+import { collectionSequenceOrderModal } from './LoanCollectionSequenceOrderStore';
 
 const columnHelper = createColumnHelper<CollectionOrderListItem>();
 
@@ -47,9 +46,6 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function LoanCollectionSequenceOrder() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
-  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
-  const [selectedData, setSelectedData] = useState<CollectionOrderListItem | null>(null);
 
   const {
     rows,
@@ -71,9 +67,7 @@ export function LoanCollectionSequenceOrder() {
   } = useCollectionOrders();
 
   const handleOpenModal = (mode: 'add' | 'edit' | 'view', data: CollectionOrderListItem | null = null) => {
-    setModalMode(mode);
-    setSelectedData(data);
-    open();
+    collectionSequenceOrderModal.open({ mode, data, onSaved: refetch });
   };
 
   const handleDelete = (row: CollectionOrderListItem) => {
@@ -108,9 +102,9 @@ export function LoanCollectionSequenceOrder() {
       columnHelper.accessor('title', {
         header: 'Sequence Name',
         cell: (info) => (
-            <Text fz="sm" fw={700} c="slate.8">
-              {info.getValue()}
-            </Text>
+          <Text fz="sm" fw={700} c="slate.8">
+            {info.getValue()}
+          </Text>
         ),
       }),
       columnHelper.accessor('components', {
@@ -212,14 +206,6 @@ export function LoanCollectionSequenceOrder() {
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanCollectionSequenceOrderModal
-        opened={opened}
-        onClose={close}
-        mode={modalMode}
-        data={selectedData}
-        onSaved={refetch}
-      />
-
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
         .lms-row-actions { opacity: 1; }
