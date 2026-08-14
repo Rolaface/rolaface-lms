@@ -157,6 +157,19 @@ loan: {
     disable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.product.api.disable_loan_product`,
   },
 
+  loanRestructure: {
+    create:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.restructure.api.create`,
+    getAll:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.restructure.api.get_all`,
+    getById:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.restructure.api.get`,
+    update:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.restructure.api.update`,
+    summary:`${ERP_BASE}/api/method/lending.loan_management.doctype.loan_repayment.loan_repayment.calculate_amounts`,
+    search:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.get_loan_repayment_account`,
+    delete:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.restructure.api.delete`,
+    loanGetById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_loan_by_id`,
+    getCharges:`${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_items`,
+    updateStatus:`${ERP_BASE}/api/method/frappe.desk.doctype.bulk_update.bulk_update.submit_cancel_or_update_docs`
+  },
+
   // =========================
   // SEARCH / LOOKUPS (accounts, items, offset orders)
   // =========================
@@ -230,10 +243,7 @@ loan: {
     deleteLoanRepay: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.delete`,
   },
 
-  // =========================
-  // LOAN RESTRUCTURE
-  // =========================
-  loanRestructure: {},
+
 
   // =========================
   // LOAN CLOSURE
