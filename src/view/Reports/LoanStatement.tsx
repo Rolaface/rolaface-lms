@@ -56,11 +56,7 @@ import {
 } from "recharts";
 
 import { useLoanStatement } from "../../hooks/Report/LoanStatement/useLoanStatement";
-import type {
-  StatementRow,
-  StatementSort,
-} from "../../types/Report/loanStatement";
-
+import type { StatementRow, StatementSort } from "../../types/Report/loanStatement";
 import { formatAmount, usePrefetchCurrencies } from "../../store/currencyStore";
 
 const theme = {
@@ -91,13 +87,7 @@ const inputClassNames = {
     "min-h-[28px] h-[28px] text-[11.5px] px-2 border-slate-200 rounded-lg focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)]",
 };
 
-function SortIcon({
-  active,
-  direction,
-}: {
-  active: boolean;
-  direction: StatementSort["direction"];
-}) {
+function SortIcon({ active, direction }: { active: boolean; direction: StatementSort["direction"] }) {
   if (!active) return <IconSelector size={13} className="text-slate-300" />;
   return direction === "asc" ? (
     <IconChevronUp size={13} className="text-slate-500" />
@@ -137,15 +127,7 @@ function SummaryCard({ card }: { card: any }) {
   );
 }
 
-function ChartCard({
-  title,
-  right,
-  children,
-}: {
-  title: string;
-  right?: React.ReactNode;
-  children: React.ReactNode;
-}) {
+function ChartCard({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
     <Paper
       withBorder
@@ -173,13 +155,15 @@ export function LoanStatement() {
   const { sort, toggleSort } = sortState;
 
   const currencyCode = dashboardData?.snapshot?.currency;
-  
   usePrefetchCurrencies(dashboardData, (d) => [d?.snapshot?.currency]);
 
-  const renderCurrency = useCallback((val: number | string | undefined | null) => {
-    if (val === undefined || val === null || val === "") return "-";
-    return formatAmount(currencyCode, val, { withSymbol: true });
-  }, [currencyCode]);
+  const renderCurrency = useCallback(
+    (val: number | string | undefined | null) => {
+      if (val === undefined || val === null || val === "") return "-";
+      return formatAmount(currencyCode, val, { withSymbol: true });
+    },
+    [currencyCode]
+  );
 
   const customerOptions = (lookups?.customers || [])
     .map((c: any) => {
@@ -282,8 +266,7 @@ export function LoanStatement() {
         ),
       }),
     ],
-    // IMPORTANT: Include renderCurrency in the dependency array so the table updates when formatting loaded
-    [renderCurrency], 
+    [renderCurrency]
   );
 
   const table = useReactTable({
@@ -302,10 +285,9 @@ export function LoanStatement() {
       : (paginationState.page - 1) * paginationState.pageSize + 1;
   const lastRow = Math.min(
     totalRows,
-    paginationState.page * paginationState.pageSize,
+    paginationState.page * paginationState.pageSize
   );
 
-  // --- Chart Data Mapping ---
   const balanceTrend = dashboardData?.balance_trend || [];
   const cashFlow =
     dashboardData?.cash_flow?.map((c: any) => ({
@@ -333,7 +315,6 @@ export function LoanStatement() {
   return (
     <Box className="bg-[#F7F8FB] text-slate-800 min-h-full">
       <Box component="main" className="p-4 flex flex-col gap-3.5">
-        {/* Page header */}
         <Group justify="space-between" align="flex-start">
           <div>
             <Title order={3} className="text-slate-900">
@@ -381,7 +362,6 @@ export function LoanStatement() {
           </Group>
         </Group>
 
-        {/* Filters Box */}
         <Paper withBorder radius="lg" p="sm" className="border-slate-200">
           <div className="flex flex-wrap gap-12">
             <Select
@@ -392,7 +372,7 @@ export function LoanStatement() {
               value={filters.customerId}
               onChange={(val) => {
                 filters.setCustomerId(val);
-                filters.setLoanId(null); // Reset loan dropdown when customer changes
+                filters.setLoanId(null);
               }}
               searchable
               clearable
@@ -444,8 +424,45 @@ export function LoanStatement() {
           </div>
         </Paper>
 
-        {/* Summary Cards */}
         <div>
+          <Group justify="space-between" mb={8}>
+            <Title order={5} className="text-slate-900">
+              Loan Statement Summary
+            </Title>
+            <Group
+              gap={4}
+              className="rounded-lg border border-slate-200 p-1 bg-white"
+            >
+              {["summary", "detailed"].map((t) => (
+                <Button
+                  key={t}
+                  size="xs"
+                  radius="md"
+                  variant="subtle"
+                  onClick={() => filters.setViewType(t as any)}
+                  className="px-3"
+                  styles={{
+                    root:
+                      filters.viewType === t
+                        ? {
+                            backgroundColor: theme.brand[0],
+                            color: theme.brand[6],
+                          }
+                        : { color: "#94A3B8", backgroundColor: "transparent" },
+                  }}
+                >
+                  <Text
+                    size="12.5px"
+                    fw={700}
+                    inherit
+                    style={{ textTransform: "capitalize" }}
+                  >
+                    {t === "summary" ? "Summary View" : "Detailed"}
+                  </Text>
+                </Button>
+              ))}
+            </Group>
+          </Group>
 
           <Group
             gap="sm"
@@ -495,7 +512,6 @@ export function LoanStatement() {
           </Group>
         </div>
 
-        {/* Charts Row */}
         <div className="grid grid-cols-[1.3fr_1.3fr_1fr_1fr] gap-3 relative">
           {status.loadingDashboard && (
             <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center rounded-lg">
@@ -758,7 +774,6 @@ export function LoanStatement() {
           </ChartCard>
         </div>
 
-        {/* Ledger Table */}
         <Paper
           withBorder
           radius="lg"
@@ -849,7 +864,6 @@ export function LoanStatement() {
                           header.column.id === "balance";
                         const isActive = sort.field === header.column.id;
 
-                        // Right-align numeric columns
                         const isRightAligned = [
                           "debit",
                           "credit",

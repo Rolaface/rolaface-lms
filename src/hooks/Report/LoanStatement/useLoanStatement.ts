@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDebouncedValue } from '@mantine/hooks';
 import {
   getLoanStatementDashboard,
@@ -38,8 +38,6 @@ export function useLoanStatement() {
   const [loadingTable, setLoadingTable] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exportingType, setExportingType] = useState<'pdf' | 'excel' | null>(null);
-
-  const orderBy = useMemo(() => `${sort.field} ${sort.direction}`, [sort]);
 
   useEffect(() => {
     getCustomerList({ page_size: 100 })
@@ -133,6 +131,8 @@ export function useLoanStatement() {
         page,
         page_size: pageSize,
         search: debouncedSearch,
+        sort_by: sort.field,
+        sort_order: sort.direction
       });
       const payload = res.message || res;
       if (payload.status_code === 200 && payload.data) {
@@ -146,7 +146,7 @@ export function useLoanStatement() {
     } finally {
       setLoadingTable(false);
     }
-  }, [loanId, fromDate, toDate, viewType, page, pageSize, debouncedSearch]);
+  }, [loanId, fromDate, toDate, viewType, page, pageSize, debouncedSearch, sort]);
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
   useEffect(() => { fetchTable(); }, [fetchTable]);
