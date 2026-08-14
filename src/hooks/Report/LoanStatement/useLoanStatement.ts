@@ -12,10 +12,9 @@ import { notifyError } from '../../../utils/notify';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 
 const DEFAULT_SORT: StatementSort = { field: 'date', direction: 'asc' };
-const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 5;
 
 export function useLoanStatement() {
-  // Filters
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [loanId, setLoanId] = useState<string | null>(null);
   const [fromDate, setFromDate] = useState('2026-04-01');
@@ -24,21 +23,17 @@ export function useLoanStatement() {
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 350);
 
-  // Lookups State
   const [customers, setCustomers] = useState<{ value: string; label: string }[]>([]);
   const [loans, setLoans] = useState<{ value: string; label: string }[]>([]);
 
-  // Table State
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sort, setSort] = useState<StatementSort>(DEFAULT_SORT);
 
-  // Data State
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [rows, setRows] = useState<StatementRow[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   
-  // Loading & Action States
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [loadingTable, setLoadingTable] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,51 +41,53 @@ export function useLoanStatement() {
 
   const orderBy = useMemo(() => `${sort.field} ${sort.direction}`, [sort]);
 
-  // Fetch Customers on Mount
-useEffect(() => {
+  useEffect(() => {
     getCustomerList({ page_size: 100 })
       .then((res) => {
         const data = res.message?.data || res.data || [];
-        console.log("🚀 ~ useLoanStatement ~ data:", data);
-        
         setCustomers(
           data.map((c: any) => ({
-            value: c.value,
-            // If the label is different from the value (ID), format as "ID - Name", otherwise just use the value
-            label: c.label && c.label !== c.value ? `${c.value} - ${c.label}` : c.value,
+            value: String(c.value),
+            label: c.label && c.label !== c.value ? `${c.value} - ${c.label}` : String(c.value),
           }))
         );
       })
-      .catch((err) => console.error('Failed to fetch customers', err));
+      .catch((err) => console.error(err));
   }, []);
 
-  // Fetch Loans when Customer changes
-useEffect(() => {
+  useEffect(() => {
     if (!customerId) {
       setLoans([]);
       return;
     }
-    
-    getLoanList({ page_size: 100 })
+
+    const allowedStatuses = [
+      "Partially Disbursed",
+      "Disbursed",
+      "Active",
+      "Loan Closure Requested",
+      "Closed",
+      "Written Off",
+      "Settled"
+    ];
+
+    getLoanList({
+      applicant: JSON.stringify([customerId]),
+      status: JSON.stringify(allowedStatuses),
+      page_size: 100
+    })
       .then((res) => {
-        // 1. Extract data
-        const allLoans = res.message?.data || res.data || [];
-        
-        // 2. Filter loans by the selected customerId
-        const customerLoans = allLoans.filter((l: any) => l.applicant === customerId);
-        
-        // 3. Map to select options
+        const data = res.message?.data || res.data || [];
         setLoans(
-          customerLoans.map((l: any) => ({ 
-            value: l.name, 
-            label: l.loan_product ? `${l.name} - ${l.loan_product}` : l.name 
+          data.map((l: any) => ({
+            value: String(l.name),
+            label: l.loan_product ? `${l.name} - ${l.loan_product}` : String(l.name)
           }))
         );
       })
-      .catch((err) => console.error('Failed to fetch loans', err));
+      .catch((err) => console.error(err));
   }, [customerId]);
 
-  // Reset page when search or core filters change
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, loanId, fromDate, toDate, viewType]);
