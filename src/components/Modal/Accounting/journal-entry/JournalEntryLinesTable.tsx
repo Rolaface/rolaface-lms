@@ -1,12 +1,12 @@
 import { Badge, Button, Table, Text, Paper, Group, Box } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
 
-import JournalEntryLineRow from "./JournalEntryLineRow";
+import JournalEntryLineRow from "../journal-entry/JournalEntryLineRow";
 import type {
   JournalEntryLine,
   JournalEntryRowErrors,
   SelectOption,
-} from "../../../types/Accounting/Journalentry.types";
+} from "../../../../types/Accounting/Journalentry.types";
 
 interface JournalEntryLinesTableProps {
   rows: JournalEntryLine[];

@@ -1,16 +1,18 @@
 import { useMantineTheme, Box, Text, Button, Modal, Group, ThemeIcon, Badge, ScrollArea, Divider, Paper } from "@mantine/core";
-import { IconX, IconFileText, IconCheck, IconInfoCircle } from "@tabler/icons-react";
+import { IconX, IconFileText, IconCheck, IconInfoCircle,IconMinus } from "@tabler/icons-react";
 
 import JournalEntryBasicInfo from "./JournalEntryBasicInfo";
 import JournalEntryLinesTable from "./JournalEntryLinesTable";
-import { useJournalEntryForm } from "../../../hooks/Accounting/journal-entry/useJournalEntryForm";
-import { ModalFooter } from "../../shared/ModalFooter";
+import { useJournalEntryForm } from "../../../../hooks/Accounting/journal-entry/useJournalEntryForm";
+import { ModalFooter } from "../../../shared/ModalFooter";
 
-import type { JournalEntryModalProps as BaseModalProps } from "../../../types/Accounting/Journalentry.types";
-import { formatAmount } from "../../../store/currencyStore";
+import type { JournalEntryModalProps as BaseModalProps } from "../../../../types/Accounting/Journalentry.types";
+import { formatAmount } from "../../../../store/currencyStore";
 
 interface JournalEntryModalProps extends BaseModalProps {
   baseCurrency: string;
+    onMinimize: () => void;
+
 }
 
 function SummaryRow({
@@ -38,6 +40,7 @@ export default function JournalEntryModal({
   opened,
   onClose,
   onSuccess,
+  onMinimize,
   entryId,
   isReadOnly = false,
   baseCurrency,
@@ -62,7 +65,7 @@ export default function JournalEntryModal({
     handleSubmit,
     reset,
   } = useJournalEntryForm({
-    opened,
+    
     entryId,
     baseCurrency,
     onSuccess: () => {
@@ -148,6 +151,16 @@ export default function JournalEntryModal({
                 View Only
               </Badge>
             )}
+              <Button
+    variant="subtle"
+    size="xs"
+    px={8}
+    onClick={onMinimize}
+    style={{ color: "var(--mantine-color-white)" }}
+    styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+  >
+    <IconMinus size={18} />
+  </Button>
             <Button
               variant="subtle"
               size="xs"

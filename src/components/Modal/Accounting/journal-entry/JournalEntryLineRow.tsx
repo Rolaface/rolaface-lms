@@ -14,7 +14,7 @@ import type {
   JournalEntryLine,
   JournalEntryLineError,
   SelectOption,
-} from "../../../types/Accounting/Journalentry.types";
+} from "../../../../types/Accounting/Journalentry.types";
 
 interface JournalEntryLineRowProps {
   entry: JournalEntryLine;

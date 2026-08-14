@@ -30,14 +30,12 @@ import type {
 } from "../../../types/Accounting/Journalentry.types";
 
 interface UseJournalEntryFormArgs {
-  opened: boolean;
   entryId?: string | null;
   baseCurrency: string;
   onSuccess?: () => void;
 }
 
 export function useJournalEntryForm({
-  opened,
   entryId,
   baseCurrency,
   onSuccess,
@@ -72,25 +70,20 @@ export function useJournalEntryForm({
     setMissingExchanges([]);
   }, []);
 
-  useEffect(() => {
-    if (!opened) {
-      reset();
-      return;
-    }
+useEffect(() => {
+  queryClient.invalidateQueries({ queryKey: lookupKeys.accounts });
+  queryClient.invalidateQueries({ queryKey: lookupKeys.partyTypes });
+  queryClient.invalidateQueries({ queryKey: lookupKeys.customers });
+  queryClient.invalidateQueries({ queryKey: lookupKeys.suppliers });
 
-    queryClient.invalidateQueries({ queryKey: lookupKeys.accounts });
-    queryClient.invalidateQueries({ queryKey: lookupKeys.partyTypes });
-    queryClient.invalidateQueries({ queryKey: lookupKeys.customers });
-    queryClient.invalidateQueries({ queryKey: lookupKeys.suppliers });
-
-    if (entryId && entryDoc) {
-      const { form: loadedForm, entries: loadedEntries } = mapDocToFormState(entryDoc);
-      setForm(loadedForm);
-      setEntries(loadedEntries);
-    } else if (!entryId) {
-      reset();
-    }
-  }, [opened, entryId, entryDoc, reset, queryClient]);
+  if (entryId && entryDoc) {
+    const { form: loadedForm, entries: loadedEntries } = mapDocToFormState(entryDoc);
+    setForm(loadedForm);
+    setEntries(loadedEntries);
+  } else if (!entryId) {
+    reset();
+  }
+}, [entryId, entryDoc, reset, queryClient]);
 
   const totals = useMemo(() => {
     let debit = 0;

@@ -4,7 +4,7 @@ import { DateInput } from "@mantine/dates";
 import type {
   JournalEntryErrors,
   JournalEntryFormValues,
-} from "../../../types/Accounting/Journalentry.types";
+} from "../../../../types/Accounting/Journalentry.types";
 
 interface JournalEntryBasicInfoProps {
   form: JournalEntryFormValues;
