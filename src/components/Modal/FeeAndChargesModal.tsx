@@ -9,7 +9,7 @@ import {
   TextInput,
   ThemeIcon,
 } from '@mantine/core';
-import { IconCheck, IconReceipt, IconReceipt2, IconX } from '@tabler/icons-react';
+import { IconMinus, IconReceipt, IconX } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useForm } from '@mantine/form';
 import {
@@ -19,8 +19,8 @@ import {
 } from '../../api/loanChargesApi';
 
 import { parseFrappeError } from '../../utils/parseFrappeError';
-import { showSuccess, showApiError } from '../../utils/alert';
-import { ModalFooter } from '../shared/ModalFooter'; 
+import { openCommonModal } from './AlertModal';
+import { ModalFooter } from '../shared/ModalFooter';
 import type { CreateFeeAndChargePayload } from '../../types/loanCharges';
 
 export interface FeeAndCharge {
@@ -30,14 +30,21 @@ export interface FeeAndCharge {
   item_group?: string;
 }
 
-interface FeeAndChargesModalProps {
+export interface FeeAndChargesModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   mode?: 'add' | 'edit' | 'view';
   data?: FeeAndCharge | null;
 }
 
-export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null }: FeeAndChargesModalProps) {
+export function FeeAndChargesModal({
+  opened,
+  onClose,
+  onMinimize,
+  mode = 'add',
+  data = null,
+}: FeeAndChargesModalProps) {
   const isView = mode === 'view';
 
   const title =
@@ -81,16 +88,41 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchedCharge]);
 
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
+  const handleMinimize = () => {
+    onMinimize?.();
+  };
+
   const saveChargeMutation = useMutation({
     mutationFn: (payload: CreateFeeAndChargePayload & { id?: string }) =>
       payload.id ? updateFeeAndCharge(payload as CreateFeeAndChargePayload & { id: string }) : createFeeAndCharge(payload),
     onSuccess: () => {
-      showSuccess(mode === 'edit' ? 'Fee/Charge updated successfully.' : 'Fee/Charge created successfully.');
+      showSuccess(
+        mode === 'edit' ? 'Fee/Charge Updated' : 'Fee/Charge Created',
+        mode === 'edit' ? 'Fee/Charge updated successfully.' : 'Fee/Charge created successfully.'
+      );
       onClose();
     },
-    onError: (err) => {
-      showApiError(parseFrappeError(err));
-    },
+    onError: (err: any) => showError(mode === 'edit' ? 'Update Failed' : 'Create Failed', err),
   });
 
   const handleSubmit = (values: typeof form.values) => {
@@ -144,16 +176,28 @@ export function FeeAndChargesModal({ opened, onClose, mode = 'add', data = null 
               </Text>
             </Box>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
+          <Group gap="xs" wrap="nowrap">
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={handleMinimize}
+              aria-label="Minimize"
+            >
+              <IconMinus size={16} color="white" />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
         <form onSubmit={form.onSubmit(handleSubmit)}>

@@ -39,16 +39,17 @@ import {
   updateLoanRepayment,
 } from '../../api/loanRepaymentApi';
 import { ModalFooter } from '../shared/ModalFooter';
-import { showApiError, showSuccess, showValidationError } from '../../utils/alert';
+import { openCommonModal } from './AlertModal';
+import { IconMinus } from '@tabler/icons-react';
 
-interface LoanCapitalizationModalProps {
+export interface LoanCapitalizationModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   onSubmit?: (data: LoanCapitalizationFormData) => void;
   editId?: string | null;
   isView?: boolean;
 }
-
 export interface LoanCapitalizationFormData {
   loanAc: string;
   customerName: string;
@@ -175,7 +176,7 @@ function PaymentEffectModal({ opened, onClose, loanId, customerName, rows }: Pay
   );
 }
 
-export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isView }: LoanCapitalizationModalProps) {
+export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit, editId, isView }: LoanCapitalizationModalProps) {
   const theme = useMantineTheme();
   const [search, setSearch] = useState('');
   const [selectedBorrower, setSelectedBorrower] = useState<Borrower | null>(null);
@@ -334,6 +335,39 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
     setEditRecordType(null);
   };
 
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: typeof error === 'string' ? error : 'Something went wrong. Please try again.',
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccessAlert = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
+  const showValidation = (body: string) => {
+    openCommonModal({
+      heading: 'Validation Error',
+      subtitle: '',
+      body,
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const handleMinimize = () => {
+    onMinimize?.();
+  };
   const createCapitalizationMutation = useMutation({
     mutationFn: createLoanRepayment,
   });
@@ -354,7 +388,7 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
     if (!selectedLoan || !selectedBorrower) return;
 
     if (!hasAnyCapitalizedAmount) {
-      showValidationError('Please enter at least one capitalized amount before submitting.');
+      showValidation('Please enter at least one capitalized amount before submitting.');
       return;
     }
 
@@ -383,8 +417,8 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
       updateCapitalizationMutation.mutate(
         { id: editId, payload },
         {
-          onSuccess: () => showSuccess('Loan capitalization updated successfully.'),
-          onError: () => showApiError('Something went wrong while updating the capitalization.'),
+          onSuccess: () => showSuccessAlert('Capitalization Updated', 'Loan capitalization updated successfully.'),
+          onError: () => showError('Update Failed', null),
         }
       );
       return;
@@ -396,7 +430,7 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
     if (Number(capitalizedFee) > 0) entries.push({ repayment_type: toCapitalizationType('fee'), amount: Number(capitalizedFee) });
 
     if (entries.length === 0) {
-      showValidationError('Please enter at least one capitalized amount before submitting.');
+      showValidation('Please enter at least one capitalized amount before submitting.');
       return;
     }
 
@@ -411,7 +445,7 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
         await createCapitalizationMutation.mutateAsync(payload);
       }
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-      showSuccess('Loan capitalization processed successfully.');
+      showSuccessAlert('Capitalization Processed', 'Loan capitalization processed successfully.');
       onSubmit?.({
         loanAc: selectedLoan.id,
         customerName: selectedBorrower.name,
@@ -430,12 +464,11 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
       handleReset();
       onClose();
     } catch (err) {
-      showApiError('Something went wrong while processing the capitalization.');
+      showError('Processing Failed', null);
     } finally {
       setIsSubmittingAll(false);
     }
   };
-
   const isPending = isSubmittingAll || updateCapitalizationMutation.isPending;
 
   return (
@@ -482,9 +515,14 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
               </Text>
             </Box>
           </Group>
-          <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={onClose} aria-label="Close">
-            <IconX size={16} color="white" />
-          </ActionIcon>
+          <Group gap="xs" wrap="nowrap">
+            <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={handleMinimize} aria-label="Minimize">
+              <IconMinus size={16} color="white" />
+            </ActionIcon>
+            <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={onClose} aria-label="Close">
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
         <Group style={{ flex: 1, minHeight: 0 }} gap={0} wrap="nowrap" align="stretch">
@@ -531,7 +569,7 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
             ) : (
               <>
                 <Group justify="space-between" align="center" mb={2}>
-    <div className="flex items-center gap-2 mb-0.5">
+                  <div className="flex items-center gap-2 mb-0.5">
                     <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
                     <IconUserSearch size={15} style={{ color: "var(--mantine-color-brand-6)" }} />
                     <Text size="sm" fw={700} c="slate.8">
@@ -873,13 +911,13 @@ export function LoanCapitalizationModal({ opened, onClose, onSubmit, editId, isV
           </Box>
 
           {/* Dues summary */}
-              <div
-                className="w-[300px] p-5 shrink-0 flex flex-col shadow-[var(--mantine-shadow-lg)]"
-                style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
-                  <Text size="sm" fw={700} c="slate.8" tt="uppercase" style={{ letterSpacing: "0.05em" }}>
+          <div
+            className="w-[300px] p-5 shrink-0 flex flex-col shadow-[var(--mantine-shadow-lg)]"
+            style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
+              <Text size="sm" fw={700} c="slate.8" tt="uppercase" style={{ letterSpacing: "0.05em" }}>
                 Dues Summary
               </Text>
             </div>

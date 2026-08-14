@@ -1,5 +1,5 @@
 import { Paper, Group, Text, ThemeIcon, ActionIcon } from '@mantine/core';
-import { IconX, IconSquare } from '@tabler/icons-react';
+import { IconX, IconArrowsDiagonal } from '@tabler/icons-react';
 import type { Icon } from '@tabler/icons-react';
 
 interface MinimizedChipProps {
@@ -10,12 +10,18 @@ interface MinimizedChipProps {
   onClose: () => void;
 }
 
-export function MinimizedChip({ title, icon: IconComp, offset = 0, onRestore, onClose }: MinimizedChipProps) {
+export function MinimizedChip({
+  title,
+  icon: IconComp,
+  offset = 0,
+  onRestore,
+  onClose,
+}: MinimizedChipProps) {
   return (
     <Paper
       pos="fixed"
       bottom={16 + offset * 56}
-    right={16}
+      right={16}
       p="xs"
       radius="md"
       shadow="md"
@@ -24,20 +30,39 @@ export function MinimizedChip({ title, icon: IconComp, offset = 0, onRestore, on
       onClick={onRestore}
     >
       <Group justify="space-between" wrap="nowrap" gap="xs">
-        <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
-          <ThemeIcon size={20} radius="xl" color="brand" variant="light">
-            <IconComp size={12} />
+        <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+          <ThemeIcon size={28} radius="md" color="brand" variant="light">
+            <IconComp size={16} />
           </ThemeIcon>
-          <Text size="xs" fw={600} truncate>{title}</Text>
+          <Text size="sm" fw={600} truncate>
+            {title}
+          </Text>
         </Group>
+
         <Group gap={4} wrap="nowrap">
-          <ActionIcon size="xs" variant="subtle" aria-label="Restore"
-            onClick={(e) => { e.stopPropagation(); onRestore(); }}>
-            <IconSquare size={12} />
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            color="gray"
+            aria-label="Expand"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRestore();
+            }}
+          >
+            <IconArrowsDiagonal size={16} />
           </ActionIcon>
-          <ActionIcon size="xs" variant="subtle" color="red" aria-label="Close"
-            onClick={(e) => { e.stopPropagation(); onClose(); }}>
-            <IconX size={12} />
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            color="gray"
+            aria-label="Close"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+          >
+            <IconX size={16} />
           </ActionIcon>
         </Group>
       </Group>

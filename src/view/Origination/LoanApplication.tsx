@@ -49,14 +49,13 @@ import { LoanApplicationDetailView } from './LoanApplicationDetailView';
 import {
   getAllLoanApplications,
   deleteLoanApplication,
-  changeLoanApplicationStatus,
+  updateLoanApplicationStatus,
   convertCustomLoanApplicationToLoan,
 } from '../../api/loanApplicationApi';
 import { parseFrappeError } from '../../utils/parseFrappeError';
 import { useCompanyStore } from '../../store/companyStore';
-
-// Matches the actual /getAllLoanApplications response shape:
-// { name, application_type, customer, status, application_date, first_name, last_name, company_name }
+import { openCommonModal } from '../../components/Modal/AlertModal';
+import { CreateLoanBookingModal } from '../../components/Modal/CreateLoanBookingModal';
 export interface LoanApplicationRow {
   name: string;
   application_type: string;
@@ -69,18 +68,22 @@ export interface LoanApplicationRow {
 }
 const columnHelper = createColumnHelper<LoanApplicationRow>();
 
-// TODO: replace with your real status picklist if it differs.
-// Added 'Submitted' since it appears in the real API response's data.
-const STATUS_OPTIONS = ['Open', 'Draft', 'Submitted', 'Sanctioned', 'Rejected', 'Closed'];
+// const STATUS_OPTIONS = ['Open', 'Draft', 'Approved', 'Sanctioned', 'Rejected', 'Closed'];
+const STATUS_OPTIONS = ['Draft', 'Approved', 'Rejected'];
 
 export const STATUS_COLOR: Record<string, string> = {
   Open: 'info',
   Draft: 'slate',
-  Submitted: 'info',
+  Approved: 'info',
   Sanctioned: 'success',
   Rejected: 'danger',
   Closed: 'slate',
 };
+export function getDisplayStatus(status: string) {
+  if (status === 'Cancelled') return 'Rejected';
+  if (status === 'Submitted') return 'Approved';
+  return status;
+}
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
@@ -140,9 +143,6 @@ function ApplicationIdCell({ name }: { name: string }) {
   );
 }
 
-// Business Loan rows don't have first_name/last_name, so the applicant column
-// falls back to company_name for those; Personal Loan rows fall back to the
-// concatenated name.
 function getApplicantDisplayName(row: LoanApplicationRow) {
   if (row.application_type === 'Business Loan') {
     return row.company_name || '—';
@@ -161,75 +161,92 @@ function formatDate(date: string) {
 }
 
 export function LoanApplication() {
+  const [bookingOpened, { open: openBooking, close: closeBooking }] = useDisclosure(false);
+const [bookingApplicationId, setBookingApplicationId] = useState<string | null>(null);
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
   const [opened, { open, close }] = useDisclosure(false);
   const companyName = useCompanyStore((state) => state.companyName);
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  // Replaces the old modal-based "view" mode — now swaps the whole page
-  // content for LoanApplicationDetailView, mirroring Customer.tsx/Borrower360.
+
   const [viewingApplicationId, setViewingApplicationId] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
   const [company, setCompany] = useState<string | null>(null);
-  // Replaces the old loan-product filter: the real API response has no
-  // loan_product field, so this now filters by application_type instead.
   const [applicationType, setApplicationType] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
 
   const [sorting, setSorting] = useState([{ id: 'application_date', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  const statusMutation = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: string }) => changeLoanApplicationStatus(id, action),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
-    },
-    onError: (error: any) => {
-      const errorMessage = parseFrappeError(error);
-      modals.open({
-        title: <Text fw={600} c="red">Action Failed</Text>,
-        children: (
-          <div>
-            <Text size="sm" mb="lg">
-              {errorMessage}
-            </Text>
-            <Group justify="flex-end">
-              <Button onClick={() => modals.closeAll()} variant="default">
-                Close
-              </Button>
-            </Group>
-          </div>
-        ),
+  const showSuccess = (heading: string, body: string) => {
+      openCommonModal({
+        heading,
+        subtitle: '',
+        body,
+        color: 'green',
+        buttons: [{ label: 'Close', color: 'green' }],
       });
-    },
+    };
+
+const statusMutation = useMutation({
+  mutationFn: ({ id, status }: { id: string; status: string }) =>
+    updateLoanApplicationStatus({ id, status }),
+  // onSuccess: () => {
+  onSuccess: (_, variables) => {
+    queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
+    showSuccess('Status Updated', `Loan Application ${variables.id} was ${status} successfully.`);
+  },
+   onError: (error: any) => {
+     openCommonModal({
+       heading: "Action Failed",
+       subtitle: "We couldn't complete your request.",
+       body: parseFrappeError(error),
+       color: "red",
+   
+       buttons: [
+         {
+           label: "Close",
+           color: "red",
+         },
+       ],
+     });
+   },
   });
 
-  const convertToLoanMutation = useMutation({
-    mutationFn: ({ id, company: companyParam }: { id: string; company: string }) =>
-      convertCustomLoanApplicationToLoan({ id, company: companyParam }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
-    },
-    onError: (error: any) => {
-      const errorMessage = parseFrappeError(error);
-      modals.open({
-        title: <Text fw={600} c="red">Action Failed</Text>,
-        children: (
-          <div>
-            <Text size="sm" mb="lg">
-              {errorMessage}
-            </Text>
-            <Group justify="flex-end">
-              <Button onClick={() => modals.closeAll()} variant="default">
-                Close
-              </Button>
-            </Group>
-          </div>
-        ),
-      });
-    },
+ const convertToLoanMutation = useMutation({
+  mutationFn: ({
+    id,
+    company: companyParam,
+    loan_product,
+  }: {
+    id: string;
+    company: string;
+    loan_product: string;
+  }) => convertCustomLoanApplicationToLoan({ id, company: companyParam, loan_product }),
+  // onSuccess: () => {
+  onSuccess: (_, variables) => {
+    queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
+    closeBooking();
+    showSuccess("Loan Created", `Application ${variables.id} was successfully converted to a loan.`
+    );
+  },
+     onError: (error: any) => {
+     openCommonModal({
+       heading: "Action Failed",
+       subtitle: "We couldn't complete your request.",
+       body: parseFrappeError(error),
+       color: "red",
+   
+       buttons: [
+         {
+           label: "Close",
+           color: "red",
+         },
+       ],
+     });
+   },
   });
 
   const {
@@ -248,8 +265,10 @@ export function LoanApplication() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteLoanApplication,
-    onSuccess: () => {
+    // onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
+      showSuccess('Application Deleted', `Loan Application ${variables} deleted successfully.`);
     },
     onError: (error: any) => {
       const errorMessage = parseFrappeError(error);
@@ -292,9 +311,7 @@ export function LoanApplication() {
     });
   }, [data, search, company, applicationType, status]);
 
-  // If the application being viewed disappears (deleted / filtered out of a
-  // fresh fetch), fall back to the list instead of showing a stale detail page.
-  useEffect(() => {
+   useEffect(() => {
     if (viewingApplicationId !== null && !data.some((a) => a.name === viewingApplicationId)) {
       setViewingApplicationId(null);
     }
@@ -319,57 +336,89 @@ export function LoanApplication() {
     close();
   };
 
-  const confirmApprove = (id: string) => {
-    modals.openConfirmModal({
-      title: 'Approve loan application',
-      children: (
-        <Text size="sm">
-          Are you sure you want to approve loan application <b>{id}</b>?
+ const confirmApprove = (id: string) => {
+  openCommonModal({
+    heading: "Approve Loan Application",
+    subtitle: "Please confirm this action before continuing.",
+    body: (
+      <>
+        Are you sure you want to approve loan application{" "}
+        <Text span fw={600}>
+          {id}
         </Text>
-      ),
-      labels: { confirm: 'Approve', cancel: 'Cancel' },
-      confirmProps: { color: 'green' },
-      onConfirm: () => statusMutation.mutate({ id, action: 'approved' }),
-    });
-  };
-
-  const confirmReject = (id: string) => {
-    modals.openConfirmModal({
-      title: 'Reject loan application',
-      children: (
-        <Text size="sm">
-          Are you sure you want to reject loan application <b>{id}</b>? This cannot be undone.
+        ?
+      </>
+    ),
+    color: "green",
+    buttons: [
+      { label: "Cancel", variant: "default" },
+      {
+        label: "Approve",
+        color: "green",
+        onClick: () => statusMutation.mutate({ id, status: "Submitted" }),
+      },
+    ],
+  });
+};
+const confirmReject = (id: string) => {
+  openCommonModal({
+    heading: "Reject Loan Application",
+    subtitle: "This action cannot be undone.",
+    body: (
+      <>
+        Are you sure you want to reject loan application{" "}
+        <Text span fw={600}>
+          {id}
         </Text>
-      ),
-      labels: { confirm: 'Reject', cancel: 'Cancel' },
-      confirmProps: { color: 'red' },
-      onConfirm: () => statusMutation.mutate({ id, action: 'rejected' }),
-    });
-  };
+        ?
+      </>
+    ),
+    color: "red",
+    buttons: [
+      { label: "Cancel", variant: "default" },
+      {
+        label: "Reject",
+        color: "red",
+        onClick: () => statusMutation.mutate({ id, status: "Cancelled" }),
+      },
+    ],
+  });
+};
 
-  const confirmDelete = (id: string) => {
-    modals.openConfirmModal({
-      title: 'Delete loan application',
-      children: <Text size="sm">Are you sure you want to delete <b>{id}</b>? This cannot be undone.</Text>,
-      labels: { confirm: 'Delete', cancel: 'Cancel' },
-      confirmProps: { color: 'red' },
-      onConfirm: () => deleteMutation.mutate(id),
-    });
-  };
-
-  const confirmCreateLoanBooking = (id: string) => {
-    modals.openConfirmModal({
-      title: 'Create loan booking',
-      children: (
-        <Text size="sm">
-          Are you sure you want to create a loan booking for application <b>{id}</b>?
+ const confirmDelete = (id: string) => {
+  openCommonModal({
+    heading: "Delete Loan Application",
+    subtitle: "This action cannot be undone.",
+    body: (
+      <>
+        Are you sure you want to delete{" "}
+        <Text span fw={600}>
+          {id}
         </Text>
-      ),
-      labels: { confirm: 'Create Booking', cancel: 'Cancel' },
-      confirmProps: { color: 'brand' },
-      onConfirm: () => convertToLoanMutation.mutate({ id, company: companyName }),
-    });
-  };
+        ?
+      </>
+    ),
+    color: "red",
+    buttons: [
+      { label: "Cancel", variant: "default" },
+      {
+        label: "Delete",
+        color: "red",
+        onClick: () => deleteMutation.mutate(id),
+      },
+    ],
+  });
+};
+
+const confirmCreateLoanBooking = (id: string) => {
+  setBookingApplicationId(id);
+  openBooking();
+};
+
+const handleConfirmCreateBooking = (loanProduct: string) => {
+  if (!bookingApplicationId) return;
+  convertToLoanMutation.mutate({ id: bookingApplicationId, company: companyName, loan_product: loanProduct });
+};
 
   const columns = useMemo(
     () => [
@@ -408,10 +457,25 @@ export function LoanApplication() {
           </Text>
         ),
       }),
-      columnHelper.accessor('status', {
-        header: 'Status',
-        cell: (info) => <StatusBadge status={info.getValue()} />,
-      }),
+//      columnHelper.accessor('status', {
+//   header: 'Status',
+//   cell: (info) => {
+//     const status = info.getValue();
+
+//     const displayStatus =
+//       status === 'Cancelled'
+//         ? 'Rejected'
+//         : status === 'Submitted'
+//           ? 'Approved'
+//           : status;
+
+//     return <StatusBadge status={displayStatus} />;
+//   },
+// }),
+columnHelper.accessor('status', {
+  header: 'Status',
+  cell: (info) => <StatusBadge status={getDisplayStatus(info.getValue())} />,
+}),
       columnHelper.accessor('application_date', {
         header: 'Application Date',
         cell: (info) => (
@@ -429,7 +493,8 @@ export function LoanApplication() {
         ),
         cell: (info) => {
           const row = info.row.original;
-          const isDraft = row.status === 'Draft' || row.status === 'Open';
+          const isDraft = row.status === 'Draft';
+          const isCancelled = row.status === 'Cancelled';
           return (
             <Group justify="flex-end" gap={6} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
@@ -448,46 +513,38 @@ export function LoanApplication() {
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={isDraft ? 'Delete' : 'Only Open/Draft applications can be deleted'} withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={isDraft ? 'danger' : 'gray'}
-                  disabled={!isDraft || deleteMutation.isPending}
-                  onClick={() => confirmDelete(row.name)}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Menu shadow="md" width={180} position="bottom-end">
-                <Menu.Target>
-                  <ActionIcon size="sm" variant="subtle" color="gray">
-                    <IconDotsVertical size={14} />
-                  </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  {isDraft ? (
-                    <>
-                      <Menu.Item onClick={() => confirmApprove(row.name)}>Approve</Menu.Item>
-                      <Menu.Item color="red" onClick={() => confirmReject(row.name)}>
-                        Reject
-                      </Menu.Item>
-                      <Menu.Item onClick={() => confirmCreateLoanBooking(row.name)}>
-                      Create Loan Booking
-                    </Menu.Item>
-                    </>
-                  ) : (
-                    <>
-                     <Menu.Item onClick={() => confirmCreateLoanBooking(row.name)}>
-                      Create Loan Booking
-                    </Menu.Item>
-                    <Menu.Item>
-                      Delete
-                    </Menu.Item>
-                    </>
-                  )}
-                </Menu.Dropdown>
-              </Menu>
+             <Tooltip label={isDraft || isCancelled ? 'Delete' : 'Only Draft/Cancelled applications can be deleted'} withArrow>
+  <ActionIcon
+    size="sm"
+    variant="subtle"
+    color={isDraft || isCancelled ? 'danger' : 'gray'}
+    disabled={(!isDraft && !isCancelled) || deleteMutation.isPending}
+    onClick={() => confirmDelete(row.name)}
+  >
+    <IconTrash size={14} />
+  </ActionIcon>
+</Tooltip>
+              <Menu shadow="md" width={180} position="bottom-end" disabled={isCancelled}>
+  <Menu.Target>
+    <ActionIcon size="sm" variant="subtle" color="gray" disabled={isCancelled}>
+      <IconDotsVertical size={14} />
+    </ActionIcon>
+  </Menu.Target>
+  <Menu.Dropdown>
+    {isDraft ? (
+      <>
+        <Menu.Item onClick={() => confirmApprove(row.name)}>Approve</Menu.Item>
+        <Menu.Item color="red" onClick={() => confirmReject(row.name)}>
+          Reject
+        </Menu.Item>
+      </>
+    ) : (
+      <Menu.Item onClick={() => confirmCreateLoanBooking(row.name)}>
+        Create Loan
+      </Menu.Item>
+    )}
+  </Menu.Dropdown>
+</Menu>
             </Group>
           );
         },
@@ -546,6 +603,13 @@ export function LoanApplication() {
   return (
     <Stack gap="lg" p="lg">
       <LoanApplicationModal opened={opened} onClose={handleModalClose} loanApplicationId={editingId} />
+      <CreateLoanBookingModal
+  opened={bookingOpened}
+  applicationId={bookingApplicationId}
+  onClose={closeBooking}
+  onConfirm={handleConfirmCreateBooking}
+  isSubmitting={convertToLoanMutation.isPending}
+/>
 
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
@@ -741,7 +805,8 @@ export function LoanApplication() {
                     const scale = STATUS_COLOR[row.original.status] ?? 'slate';
                     const cells = row.getVisibleCells();
                     return (
-                      <Table.Tr key={row.id} className="lms-row">
+                      <Table.Tr key={row.id} className="lms-row" onDoubleClick={() => handleView(row.original.name)}
+           style={{ cursor: 'pointer' }}>
                         {cells.map((cell, idx) => (
                           <Table.Td
                             key={cell.id}

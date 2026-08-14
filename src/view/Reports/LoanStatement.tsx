@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import {
   Box,
   Button,
@@ -56,10 +56,8 @@ import {
 } from "recharts";
 
 import { useLoanStatement } from "../../hooks/Report/LoanStatement/useLoanStatement";
-import type {
-  StatementRow,
-  StatementSort,
-} from "../../types/Report/loanStatement";
+import type { StatementRow, StatementSort } from "../../types/Report/loanStatement";
+import { formatAmount, usePrefetchCurrencies } from "../../store/currencyStore";
 
 const theme = {
   brand: {
@@ -89,20 +87,7 @@ const inputClassNames = {
     "min-h-[28px] h-[28px] text-[11.5px] px-2 border-slate-200 rounded-lg focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)]",
 };
 
-const formatCurrency = (val: number | string | undefined | null) => {
-  if (val === undefined || val === null) return "-";
-  const num = typeof val === "string" ? parseFloat(val) : val;
-  if (isNaN(num)) return val.toString();
-  return `₹${num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
-
-function SortIcon({
-  active,
-  direction,
-}: {
-  active: boolean;
-  direction: StatementSort["direction"];
-}) {
+function SortIcon({ active, direction }: { active: boolean; direction: StatementSort["direction"] }) {
   if (!active) return <IconSelector size={13} className="text-slate-300" />;
   return direction === "asc" ? (
     <IconChevronUp size={13} className="text-slate-500" />
@@ -142,15 +127,7 @@ function SummaryCard({ card }: { card: any }) {
   );
 }
 
-function ChartCard({
-  title,
-  right,
-  children,
-}: {
-  title: string;
-  right?: React.ReactNode;
-  children: React.ReactNode;
-}) {
+function ChartCard({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
     <Paper
       withBorder
@@ -173,12 +150,21 @@ const columnHelper = createColumnHelper<StatementRow>();
 
 export function LoanStatement() {
   const { filters, lookups, searchState, paginationState, sortState, data, status, actions } = useLoanStatement();
-  console.log("🚀 ~ LoanStatement ~ lookups:", lookups)
 
   const { dashboardData, rows, pagination } = data;
   const { sort, toggleSort } = sortState;
 
-  // --- Safe Option Mappers to prevent Mantine <Select> crashes ---
+  const currencyCode = dashboardData?.snapshot?.currency;
+  usePrefetchCurrencies(dashboardData, (d) => [d?.snapshot?.currency]);
+
+  const renderCurrency = useCallback(
+    (val: number | string | undefined | null) => {
+      if (val === undefined || val === null || val === "") return "-";
+      return formatAmount(currencyCode, val, { withSymbol: true });
+    },
+    [currencyCode]
+  );
+
   const customerOptions = (lookups?.customers || [])
     .map((c: any) => {
       if (typeof c === "string") return { value: c, label: c };
@@ -199,7 +185,6 @@ export function LoanStatement() {
     })
     .filter((l) => l.value);
 
-  // --- TanStack Table Definition ---
   const columns = useMemo(
     () => [
       columnHelper.accessor("date", {
@@ -242,28 +227,28 @@ export function LoanStatement() {
         },
       }),
       columnHelper.accessor("debit", {
-        header: "Debit (₹)",
+        header: "Debit",
         enableSorting: false,
         cell: (info) => (
           <div className="text-slate-600 text-right">
-            {info.getValue() > 0 ? formatCurrency(info.getValue()) : "-"}
+            {info.getValue() > 0 ? renderCurrency(info.getValue()) : "-"}
           </div>
         ),
       }),
       columnHelper.accessor("credit", {
-        header: "Credit (₹)",
+        header: "Credit",
         enableSorting: false,
         cell: (info) => (
           <div className="text-slate-600 text-right">
-            {info.getValue() > 0 ? formatCurrency(info.getValue()) : "-"}
+            {info.getValue() > 0 ? renderCurrency(info.getValue()) : "-"}
           </div>
         ),
       }),
       columnHelper.accessor("balance", {
-        header: "Balance (₹)",
+        header: "Balance",
         cell: (info) => (
           <div className="text-slate-800 font-bold text-right">
-            {formatCurrency(info.getValue())}
+            {renderCurrency(info.getValue())}
           </div>
         ),
       }),
@@ -281,7 +266,7 @@ export function LoanStatement() {
         ),
       }),
     ],
-    [],
+    [renderCurrency]
   );
 
   const table = useReactTable({
@@ -300,10 +285,9 @@ export function LoanStatement() {
       : (paginationState.page - 1) * paginationState.pageSize + 1;
   const lastRow = Math.min(
     totalRows,
-    paginationState.page * paginationState.pageSize,
+    paginationState.page * paginationState.pageSize
   );
 
-  // --- Chart Data Mapping ---
   const balanceTrend = dashboardData?.balance_trend || [];
   const cashFlow =
     dashboardData?.cash_flow?.map((c: any) => ({
@@ -331,7 +315,6 @@ export function LoanStatement() {
   return (
     <Box className="bg-[#F7F8FB] text-slate-800 min-h-full">
       <Box component="main" className="p-4 flex flex-col gap-3.5">
-        {/* Page header */}
         <Group justify="space-between" align="flex-start">
           <div>
             <Title order={3} className="text-slate-900">
@@ -379,7 +362,6 @@ export function LoanStatement() {
           </Group>
         </Group>
 
-        {/* Filters Box */}
         <Paper withBorder radius="lg" p="sm" className="border-slate-200">
           <div className="flex flex-wrap gap-12">
             <Select
@@ -390,7 +372,7 @@ export function LoanStatement() {
               value={filters.customerId}
               onChange={(val) => {
                 filters.setCustomerId(val);
-                filters.setLoanId(null); // Reset loan dropdown when customer changes
+                filters.setLoanId(null);
               }}
               searchable
               clearable
@@ -442,7 +424,6 @@ export function LoanStatement() {
           </div>
         </Paper>
 
-        {/* Summary Cards */}
         <div>
           <Group justify="space-between" mb={8}>
             <Title order={5} className="text-slate-900">
@@ -496,31 +477,31 @@ export function LoanStatement() {
             {[
               {
                 label: "Opening Balance",
-                value: formatCurrency(dashboardData?.summary?.opening_balance),
+                value: renderCurrency(dashboardData?.summary?.opening_balance),
                 icon: IconWallet,
                 color: "indigoAlt",
               },
               {
                 label: "Total Disbursed",
-                value: formatCurrency(dashboardData?.summary?.total_disbursed),
+                value: renderCurrency(dashboardData?.summary?.total_disbursed),
                 icon: IconArrowDown,
                 color: "accent",
               },
               {
                 label: "Total Repayments",
-                value: formatCurrency(dashboardData?.summary?.total_repayments),
+                value: renderCurrency(dashboardData?.summary?.total_repayments),
                 icon: IconArrowUp,
                 color: "brand",
               },
               {
                 label: "Total Charges",
-                value: formatCurrency(dashboardData?.summary?.total_charges),
+                value: renderCurrency(dashboardData?.summary?.total_charges),
                 icon: IconReceipt2,
                 color: "gold",
               },
               {
                 label: "Closing Balance",
-                value: formatCurrency(dashboardData?.summary?.closing_balance),
+                value: renderCurrency(dashboardData?.summary?.closing_balance),
                 icon: IconWallet,
                 color: "brand",
                 highlight: true,
@@ -531,7 +512,6 @@ export function LoanStatement() {
           </Group>
         </div>
 
-        {/* Charts Row */}
         <div className="grid grid-cols-[1.3fr_1.3fr_1fr_1fr] gap-3 relative">
           {status.loadingDashboard && (
             <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center rounded-lg">
@@ -587,7 +567,7 @@ export function LoanStatement() {
                     width={30}
                   />
                   <RTooltip
-                    formatter={(v: number) => `₹${v.toLocaleString("en-IN")}`}
+                    formatter={(v: number) => renderCurrency(v)}
                     contentStyle={{ fontSize: 12, borderRadius: 8 }}
                   />
                   <Area
@@ -612,7 +592,7 @@ export function LoanStatement() {
             </Group>
           </ChartCard>
 
-          <ChartCard title="Cash Flow (₹)">
+          <ChartCard title="Cash Flow">
             <div className="h-[165px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
@@ -634,7 +614,7 @@ export function LoanStatement() {
                     width={36}
                   />
                   <RTooltip
-                    formatter={(v: number) => `₹${v.toLocaleString("en-IN")}`}
+                    formatter={(v: number) => renderCurrency(v)}
                     contentStyle={{ fontSize: 12, borderRadius: 8 }}
                   />
                   <Bar
@@ -697,16 +677,16 @@ export function LoanStatement() {
                 ["Loan Product", dashboardData?.snapshot?.loan_product || "-"],
                 [
                   "Loan Amount",
-                  formatCurrency(dashboardData?.snapshot?.loan_amount),
+                  renderCurrency(dashboardData?.snapshot?.loan_amount),
                 ],
                 [
                   "Disbursed Amount",
-                  formatCurrency(dashboardData?.snapshot?.disbursed_amount),
+                  renderCurrency(dashboardData?.snapshot?.disbursed_amount),
                 ],
                 ["ROI (%)", `${dashboardData?.snapshot?.roi || 0}%`],
                 [
                   "EMI Amount",
-                  formatCurrency(dashboardData?.snapshot?.emi_amount),
+                  renderCurrency(dashboardData?.snapshot?.emi_amount),
                 ],
                 [
                   "EMI Start Date",
@@ -777,7 +757,7 @@ export function LoanStatement() {
                       </Text>
                     </Group>
                     <Text size="11px" fw={500} className="text-slate-700">
-                      {a.percentage}% ({formatCurrency(a.amount)})
+                      {a.percentage}% ({renderCurrency(a.amount)})
                     </Text>
                   </Group>
                 ))}
@@ -794,7 +774,6 @@ export function LoanStatement() {
           </ChartCard>
         </div>
 
-        {/* Ledger Table */}
         <Paper
           withBorder
           radius="lg"
@@ -885,7 +864,6 @@ export function LoanStatement() {
                           header.column.id === "balance";
                         const isActive = sort.field === header.column.id;
 
-                        // Right-align numeric columns
                         const isRightAligned = [
                           "debit",
                           "credit",
@@ -966,9 +944,9 @@ export function LoanStatement() {
                 radius="md"
                 disabled={status.loadingTable}
               />
-              {/* Added safe object mapping to pagination as well */}
               <Select
                 data={[
+                  { value: "5 / page", label: "5 / page" },
                   { value: "10 / page", label: "10 / page" },
                   { value: "20 / page", label: "20 / page" },
                   { value: "50 / page", label: "50 / page" },

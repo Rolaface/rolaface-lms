@@ -35,7 +35,6 @@ import {
   IconGauge,
   IconCoins,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -45,7 +44,6 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CollateralModal } from '../../components/Modal/CollateralModal';
 import {
   getAllCollaterals,
   enableCollateral,
@@ -54,6 +52,7 @@ import {
 } from '../../api/collateralApi';
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../utils/parseFrappeError';
+import { collateralModal } from '../../components/Modal/collateralModalStore';
 
 interface CollateralRow {
   id: string;
@@ -158,7 +157,6 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function Collateral() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
 
   // filter state
   const [search, setSearch] = useState('');
@@ -168,15 +166,6 @@ export function Collateral() {
   // table state
   const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-
-  const [selectedCollateralId, setSelectedCollateralId] = useState<string | null>(null);
-  const [isViewMode, setIsViewMode] = useState(false);
-
-  const handleModalClose = () => {
-    close();
-    setSelectedCollateralId(null);
-    setIsViewMode(false);
-  };
 
   const { data: collateralResponse, isLoading } = useQuery({
     queryKey: ['collaterals'],
@@ -273,15 +262,6 @@ export function Collateral() {
       status: item.disabled === 1 ? 'DISABLED' : 'ACTIVE',
     }));
   }, [collateralResponse]);
-
-  const stats = useMemo(() => {
-    const activeCount = data.filter((c) => c.status === 'ACTIVE').length;
-    return {
-      total: data.length,
-      active: activeCount,
-      disabled: data.length - activeCount,
-    };
-  }, [data]);
 
   const filteredData = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -387,11 +367,7 @@ export function Collateral() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => {
-                    setSelectedCollateralId(row.id);
-                    setIsViewMode(true);
-                    open();
-                  }}
+                  onClick={() => collateralModal.open({ editId: row.id, isView: true })}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -402,11 +378,7 @@ export function Collateral() {
                   variant="subtle"
                   color="brand"
                   radius="md"
-                  onClick={() => {
-                    setSelectedCollateralId(row.id);
-                    setIsViewMode(false);
-                    open();
-                  }}
+                  onClick={() => collateralModal.open({ editId: row.id, isView: false })}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -467,13 +439,6 @@ export function Collateral() {
 
   return (
     <Stack gap="lg" p="lg">
-      <CollateralModal
-        opened={opened}
-        onClose={handleModalClose}
-        editId={selectedCollateralId}
-        isView={isViewMode}
-      />
-
       {/* Scoped, purely visual — mirrors the Customers module styling,
           pulling from theme.other instead of one-off literals. */}
       <style>{`
@@ -577,11 +542,7 @@ export function Collateral() {
               size="sm"
               radius="xl"
               color="brand"
-              onClick={() => {
-                setSelectedCollateralId(null);
-                setIsViewMode(false);
-                open();
-              }}
+              onClick={() => collateralModal.open({ editId: null, isView: false })}
               leftSection={<IconPlus size={14} />}
               style={{
                 background: theme.other.brandGradient,

@@ -12,14 +12,15 @@ import {
   Fieldset,
   Divider,
   Grid,
-  ActionIcon,
+  Button,
+  useMantineTheme,
 } from "@mantine/core";
 import {
   IconShieldLock,
   IconX,
   IconPercentage,
   IconChevronDown,
-  IconCoins,
+  IconMinus,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@mantine/form";
@@ -34,18 +35,19 @@ import { ModalFooter } from "../shared/ModalFooter";
 import { openCommonModal } from "./AlertModal";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 
-
-
-interface CollateralModalProps {
+export interface CollateralModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   editId?: string | null;
   isView?: boolean;
 }
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-export function CollateralModal({ opened, onClose, editId, isView }: CollateralModalProps) {
+export function CollateralModal({ opened, onClose, onMinimize, editId, isView }: CollateralModalProps) {
+  const theme = useMantineTheme();
+
   const form = useForm({
     initialValues: {
       code: "",
@@ -152,6 +154,10 @@ export function CollateralModal({ opened, onClose, editId, isView }: CollateralM
     onClose();
   };
 
+  const handleMinimize = () => {
+    onMinimize?.();
+  };
+
   const handleSubmit = () => {
     const validation = form.validate();
     if (validation.hasErrors) return;
@@ -216,48 +222,57 @@ export function CollateralModal({ opened, onClose, editId, isView }: CollateralM
       }}
     >
       <Box style={{ display: "flex", flexDirection: "column" }} bg="white">
-        {/* Header — same gradient banner treatment as the Customer wizard modal,
-            driven by theme.other tokens instead of hard-coded hex values. */}
-        <Group
-          justify="space-between"
-          align="center"
-          px="xl"
-          py="sm"
-          bg="brand.6"
+        {/* Header — gradient banner + overlay ThemeIcon, matching AccountFormModal */}
+        <Box
+          className="px-6 py-3 flex justify-between items-center rounded-t-md shrink-0"
           style={{
+            background: theme.other.brandGradient,
             borderBottom: "1px solid var(--mantine-color-brand-7)",
-            flexShrink: 0,
           }}
         >
-          <Group gap="sm">
-            <ThemeIcon radius="md" size={34} variant="white" color="brand">
-              <IconCoins size={16} />
+          <Group gap="sm" className="min-w-0" wrap="nowrap">
+            <ThemeIcon
+              size={38}
+              radius="xl"
+              style={{
+                background: theme.other.headerIconOverlayBg,
+                color: "var(--mantine-color-white)",
+              }}
+            >
+              <IconShieldLock size={19} />
             </ThemeIcon>
-            <Box>
-              <Text
-                size="md"
-                fw={700}
-                c="white"
-                style={{ color: "var(--mantine-color-white)", letterSpacing: "-0.01em" }}
-              >
+            <div className="min-w-0">
+              <Text size="md" fw={700} c="white" className="leading-tight truncate">
                 {headerTitle}
               </Text>
-              <Text size="xs" fw={500} c="brand.1" style={{ color: "var(--mantine-color-brand-1)" }}>
+              <Text size="xs" c="brand.1" className="leading-tight truncate">
                 Valuation, haircut & LTV details
               </Text>
-            </Box>
+            </div>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={handleClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
-        </Group>
+          <Group gap="xs" className="shrink-0" wrap="nowrap">
+            <Button
+              variant="subtle"
+              size="xs"
+              px={8}
+              onClick={handleMinimize}
+              style={{ color: "var(--mantine-color-white)" }}
+              styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+            >
+              <IconMinus size={18} />
+            </Button>
+            <Button
+              variant="subtle"
+              size="xs"
+              px={8}
+              onClick={handleClose}
+              style={{ color: "var(--mantine-color-white)" }}
+              styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+            >
+              <IconX size={18} />
+            </Button>
+          </Group>
+        </Box>
 
         {/* Body */}
         <Box px="xl" py="lg" bg="slate.0" style={{ flex: 1 }}>

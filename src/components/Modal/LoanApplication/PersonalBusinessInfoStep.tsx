@@ -1,6 +1,7 @@
-import { SimpleGrid, TextInput, Select } from "@mantine/core";
+import { SimpleGrid, TextInput, Select, NumberInput } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import type { LoanApplicationValues, LoanType } from "./LoanApplicationModal";
+import { DateInput } from "@mantine/dates";
 
 interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
@@ -8,8 +9,15 @@ interface StepProps {
 }
 
 const GENDERS = ["Male", "Female", "Other"];
-const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed"];
-const BUSINESS_TYPES = ["Sole Proprietorship", "Partnership", "Limited Company", "Cooperative"];
+const MARITAL_STATUSES = [
+  "Single",
+  "Married",
+  "Divorced",
+  "Widowed",
+  "Separated",
+];
+const BUSINESS_TYPES = ["Sole Proprietorship", "Partnership", "Private Limited Company", "Public Limited Company", "Limited Liability Company", "Cooperative", "Other",
+];
 
 function Label({ text, required, optional }: { text: string; required?: boolean; optional?: boolean }) {
   return (
@@ -41,7 +49,15 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
           {...form.getInputProps("surname")}
         />
 
-        <TextInput radius="md" type="tel" label={<Label text="Phone" required />} {...form.getInputProps("phone")} />
+        {/* <TextInput radius="md" type="tel" label={<Label text="Phone" required />} {...form.getInputProps("phone")} /> */}
+        <TextInput
+  radius="md"
+  type="tel"
+  label={<Label text="Phone" required />}
+  value={form.values.phone}
+  onChange={(e) => form.setFieldValue("phone", e.currentTarget.value.replace(/\D/g, ""))}
+  error={form.errors.phone}
+/>
         <TextInput radius="md" type="email" label={<Label text="Email" required />} {...form.getInputProps("email")} />
         <TextInput radius="md" label={<Label text="NRC" required />} {...form.getInputProps("nrc")} />
 
@@ -59,12 +75,20 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
           data={MARITAL_STATUSES}
           {...form.getInputProps("maritalStatus")}
         />
-        <TextInput
-          radius="md"
-          type="date"
-          label={<Label text="Birth date" required />}
-          {...form.getInputProps("birthDate")}
-        />
+       <DateInput
+  radius="md"
+  label={<Label text="Birth date" required />}
+  valueFormat="DD-MMM-YYYY"
+  placeholder="DD-MMM-YYYY"
+  value={form.values.birthDate ? new Date(form.values.birthDate) : null}
+  onChange={(date) =>
+    form.setFieldValue(
+      "birthDate",
+      date ? new Date(date).toISOString().slice(0, 10) : ""
+    )
+  }
+  error={form.errors.birthDate}
+/>
       </SimpleGrid>
     );
   }
@@ -83,12 +107,20 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
         data={BUSINESS_TYPES}
         {...form.getInputProps("typeOfBusiness")}
       />
-      <TextInput
-        radius="md"
-        type="date"
-        label={<Label text="Established date" required />}
-        {...form.getInputProps("establishedDate")}
-      />
+    <DateInput
+  radius="md"
+  label={<Label text="Established date" required />}
+  valueFormat="DD-MMM-YYYY"
+  placeholder="DD-MMM-YYYY"
+  value={form.values.establishedDate ? new Date(form.values.establishedDate) : null}
+  onChange={(date) =>
+    form.setFieldValue(
+      "establishedDate",
+      date ? new Date(date).toISOString().slice(0, 10) : ""
+    )
+  }
+  error={form.errors.establishedDate}
+/>
 
       <TextInput
         radius="md"
@@ -100,11 +132,14 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
         label={<Label text="Registered office" required />}
         {...form.getInputProps("registeredOffice")}
       />
-      <TextInput
-        radius="md"
-        label={<Label text="Collateral pledged" required />}
-        {...form.getInputProps("collateralPledged")}
-      />
+    <NumberInput
+  min={0}
+  allowNegative={false}
+  hideControls
+  radius="md"
+  label={<Label text="Collateral pledged" required />}
+  {...form.getInputProps("collateralPledged")}
+/>
 
       <TextInput
         radius="md"

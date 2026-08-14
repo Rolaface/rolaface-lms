@@ -40,7 +40,6 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { collateralTypeModal } from '../../../components/Modal/CollateralTypeModal';
 import {
   getAllCollateralTypes,
   enableCollateralType,
@@ -49,6 +48,7 @@ import {
 } from '../../../api/collateralTypeApi';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
+import { collateralTypeModal } from '../../../components/Modal/collateralTypeModalStore';
 
 interface CollateralRow {
   id: string;
@@ -372,12 +372,7 @@ export function CollateralType() {
 
   return (
     <Stack gap="lg" p="lg">
-      {/* No local modal render needed — importing CollateralTypeModal.tsx
-          runs createModal(...) as a side effect, which registers the modal
-          Host with the global registry. It's rendered centrally wherever
-          the app renders getRegisteredModals(). */}
 
-      {/* Scoped, purely visual — same theme.other tokens as Customer / LoanProduct */}
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
         .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }

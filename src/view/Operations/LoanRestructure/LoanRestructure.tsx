@@ -1,674 +1,219 @@
-// LoanRestructure.tsx
 import { useMemo, useState } from 'react';
 import {
-  Box,
-  Button,
-  TextInput,
-  Select,
-  Group,
-  Paper,
-  Table,
-  Badge,
-  ActionIcon,
-  Text,
-  Pagination,
-  Tooltip,
-  Title,
-  Menu,
-  Stack,
-  useMantineTheme,
-  SegmentedControl,
+  Box, Button, TextInput, Select, Group, Paper, Table, Badge, ActionIcon,
+  Text, Pagination, Tooltip, Title, Stack, useMantineTheme, Loader, Menu,
 } from '@mantine/core';
 import {
-  IconEye,
-  IconPencil,
-  IconPlus,
-  IconChevronUp,
-  IconChevronDown,
-  IconSelector,
-  IconSearch,
-  IconFileOff,
-  IconTrash,
-  IconDotsVertical,
-  IconRefresh,
+  IconEye, IconPencil, IconPlus, IconSearch, IconFileOff, IconTrash, IconRefresh,
+  IconCircleCheck, IconDotsVertical,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
-  flexRender,
-  createColumnHelper,
-} from '@tanstack/react-table';
-import { LoanRestructureModal, type RestructureFormData } from "../../../components/Modal/LoanRestructure/LoanRestructureModal"
+import dayjs from 'dayjs';
+import { useLoanRestructureList } from '../../../hooks/useLoanRestructureList';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
+import { RESTRUCTURE_STATUSES, type LoanRestructureListItem } from '../../../api/loanRestructureApi';
+import { loanRestructureModal } from './LoanRestructureModalStore';
 
-interface RestructureRow {
-  id: number;
-  loanAc: string;
-  customer: string;
-  loanType: string;
-  restructureType: 'RATE_CHANGE' | 'TOPUP' | 'MODIFY_MATURITY';
-  reason: string;
-  valueDate: string;
-  totalCharges: number;
-  status: 'APPROVED' | 'PENDING' | 'REJECTED';
-}
-
-const DUMMY_RESTRUCTURES: RestructureRow[] = [
-  {
-    id: 1,
-    loanAc: 'LNA-2025-001',
-    customer: 'Yash Joshi',
-    loanType: 'Vehicle Loan',
-    restructureType: 'RATE_CHANGE',
-    reason: 'Rate Renegotiation',
-    valueDate: '2026-07-20',
-    totalCharges: 4250,
-    status: 'PENDING',
-  },
-  {
-    id: 2,
-    loanAc: 'LNA-2025-032',
-    customer: 'Arjun Kapoor',
-    loanType: 'Vehicle Loan',
-    restructureType: 'TOPUP',
-    reason: 'Financial Hardship',
-    valueDate: '2026-07-14',
-    totalCharges: 3750,
-    status: 'APPROVED',
-  },
-  {
-    id: 3,
-    loanAc: 'LNA-2025-014',
-    customer: 'Meera Nair',
-    loanType: 'Home Loan',
-    restructureType: 'MODIFY_MATURITY',
-    reason: 'Loan Consolidation',
-    valueDate: '2026-07-05',
-    totalCharges: 2000,
-    status: 'REJECTED',
-  },
-  {
-    id: 4,
-    loanAc: 'LNA-2025-071',
-    customer: 'Rohan Mehta',
-    loanType: 'Vehicle Loan',
-    restructureType: 'RATE_CHANGE',
-    reason: 'Collateral Revaluation',
-    valueDate: '2026-06-28',
-    totalCharges: 4250,
-    status: 'APPROVED',
-  },
-];
-
-// Same status meta pattern as LoanAccount
 const STATUS_META: Record<string, { label: string; color: string }> = {
-  PENDING: { label: 'PENDING', color: 'gold' },
-  APPROVED: { label: 'APPROVED', color: 'brand' },
-  REJECTED: { label: 'REJECTED', color: 'danger' },
+  Initiated: { label: 'INITIATED', color: 'gold' },
+  Approved: { label: 'APPROVED', color: 'brand' },
+  Draft: { label: 'DRAFT', color: 'slate' },
+  Cancelled: { label: 'CANCELLED', color: 'danger' },
 };
 
-const columnHelper = createColumnHelper<RestructureRow>();
 
-function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
-  const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
-  if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
-  if (sorted === 'desc') return <IconChevronDown size={12} color={color} />;
-  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
-}
+const fmtDate = (iso: string) => (iso ? dayjs(iso).format('DD-MMM-YYYY') : '—');
 
-const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
-
-function restructureTypeColor(type: RestructureRow['restructureType']) {
-  if (type === 'RATE_CHANGE') return 'brand';
-  if (type === 'TOPUP') return 'gold';
-  return 'accent';
-}
-
-function restructureTypeLabel(type: RestructureRow['restructureType']) {
-  if (type === 'RATE_CHANGE') return 'Rate Change';
-  if (type === 'TOPUP') return 'Topup';
-  return 'Modify Maturity';
-}
-
-const fmtAmount = (n: number) =>
-  n ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
-
-const fmtDate = (iso: string) =>
-  iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+const chevronDown = undefined;
 
 export function LoanRestructure() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
 
-  // filter state
-  const [search, setSearch] = useState('');
-  const [restructureType, setRestructureType] = useState<string | null>(null);
-  const [status, setStatus] = useState('all');
 
-  // table state
-  const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  const [rowsData, setRowsData] = useState(DUMMY_RESTRUCTURES);
+  const {
+    search, setSearch,
+    status, setStatus,
+    page, setPage,
+    pageSize, setPageSize,
+    rows, pagination, loading,
+    refetch, handleDelete,
+    handleApprove, approvingName,
+  } = useLoanRestructureList();
 
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rowsData.filter((r) => {
-      const matchesSearch =
-        !q ||
-        r.customer.toLowerCase().includes(q) ||
-        r.loanAc.toLowerCase().includes(q);
-      const matchesType = !restructureType || r.restructureType === restructureType;
-      const matchesStatus = status === 'all' || r.status === status;
-      return matchesSearch && matchesType && matchesStatus;
-    });
-  }, [rowsData, search, restructureType, status]);
-
-  const showError = (heading: string, message: string) => {
-    openCommonModal({
-      heading,
-      subtitle: "We couldn't complete your request.",
-      body: message,
-      color: 'red',
-      buttons: [{ label: 'Close', color: 'red' }],
-    });
-  };
-
-  const showSuccess = (heading: string, body: string) => {
-    openCommonModal({
-      heading,
-      subtitle: '',
-      body,
-      color: 'green',
-      buttons: [{ label: 'Close', color: 'green' }],
-    });
-  };
-
-  const showWarning = (heading: string, body: string) => {
-    openCommonModal({
-      heading,
-      subtitle: '',
-      body,
-      color: 'orange',
-      buttons: [{ label: 'Close', color: 'orange' }],
-    });
-  };
-
-  const handleDelete = (id: number, loanAc: string) => {
-    try {
-      setRowsData((prev) => prev.filter((r) => r.id !== id));
-      showSuccess('Restructure Deleted', `Restructure request ${loanAc} deleted successfully.`);
-    } catch (err) {
-      showError('Delete Failed', 'Failed to delete restructure request. Please try again.');
-    }
-  };
-
-  const confirmDelete = (row: RestructureRow) => {
+  const confirmDelete = (row: LoanRestructureListItem) => {
     openCommonModal({
       heading: 'Delete Restructure Request',
       subtitle: 'This action cannot be undone.',
-      body: (
-        <>
-          Are you sure you want to delete restructure request{' '}
-          <Text span fw={600}>
-            {row.loanAc}
-          </Text>
-          ?
-        </>
-      ),
+      body: <>Are you sure you want to delete restructure request <Text span fw={600}>{row.name}</Text>?</>,
       color: 'red',
       buttons: [
         { label: 'Cancel', variant: 'default' },
-        {
-          label: 'Delete',
-          color: 'red',
-          onClick: () => handleDelete(row.id, row.loanAc),
-        },
+        { label: 'Delete', color: 'red', onClick: () => handleDelete(row.name) },
       ],
     });
   };
 
-  const handleStatusChange = (id: number, newStatus: RestructureRow['status'], loanAc: string) => {
-    try {
-      setRowsData((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
-      );
-
-      if (newStatus === 'APPROVED') {
-        showSuccess('Restructure Approved', `Restructure request ${loanAc} approved.`);
-      } else if (newStatus === 'REJECTED') {
-        showWarning('Restructure Rejected', `Restructure request ${loanAc} rejected.`);
-      } else {
-        showSuccess('Restructure Reverted', `Restructure request ${loanAc} reverted to pending.`);
-      }
-    } catch (err) {
-      showError('Update Failed', 'Failed to update status. Please try again.');
-    }
+  const confirmApprove = (row: LoanRestructureListItem) => {
+    openCommonModal({
+      heading: 'Approve Restructure Request',
+      subtitle: 'Please confirm before proceeding.',
+      body: <>Are you sure you want to approve restructure request <Text span fw={600}>{row.name}</Text>? Once approved, this request can no longer be edited or deleted.</>,
+      color: 'teal',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        { label: 'Approve', color: 'teal', onClick: () => handleApprove(row.name) },
+      ],
+    });
   };
 
-  const handleAddRestructure = (formData: RestructureFormData) => {
-    try {
-      setRowsData((prev) => [
-        ...prev,
-        {
-          id: prev.length ? Math.max(...prev.map((r) => r.id)) + 1 : 1,
-          loanAc: formData.loanAc || '—',
-          customer: formData.customerName || '—',
-          loanType: formData.loanType || '—',
-          restructureType: formData.restructureType,
-          reason: formData.reason || '—',
-          valueDate: formData.valueDate || '—',
-          totalCharges: formData.totalCharges || 0,
-          status: 'PENDING',
-        },
-      ]);
-      showSuccess('Restructure Created', 'Restructure request created successfully.');
-    } catch (err) {
-      showError('Create Failed', 'Failed to create restructure request. Please try again.');
-    }
-  };
 
-  const resetFilters = () => {
-    setSearch('');
-    setRestructureType(null);
-    setStatus('all');
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
-  };
 
-  const restructureTypeOptions = [
-    { value: 'RATE_CHANGE', label: 'Rate Change' },
-    { value: 'TOPUP', label: 'Topup' },
-    { value: 'MODIFY_MATURITY', label: 'Modify Maturity' },
-  ];
-
-  const columns = useMemo(
-    () => [
-      columnHelper.accessor('loanAc', {
-        header: 'Loan A/c',
-        cell: (info) => (
-          <Stack gap={0}>
-            <Text fz="sm" fw={700} c="slate.8" className="font-mono">
-              {info.getValue()}
-            </Text>
-            <Text fz="xs" c="slate.5">
-              {info.row.original.customer}
-            </Text>
-          </Stack>
-        ),
-      }),
-      columnHelper.accessor('loanType', {
-        header: 'Loan Type',
-        cell: (info) => (
-          <Text fz="xs" c="slate.5">
-            {info.getValue()}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor('restructureType', {
-        header: 'Restructure Type',
-        cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            radius="sm"
-            color={restructureTypeColor(info.getValue())}
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-          >
-            {restructureTypeLabel(info.getValue())}
-          </Badge>
-        ),
-      }),
-      columnHelper.accessor('reason', {
-        header: 'Reason',
-        cell: (info) => (
-          <Text fz="xs" c="slate.5">
-            {info.getValue()}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor('valueDate', {
-        header: 'Value Date',
-        cell: (info) => (
-          <Text fz="xs" c="slate.5">
-            {fmtDate(info.getValue())}
-          </Text>
-        ),
-        sortingFn: 'basic',
-      }),
-      columnHelper.accessor('totalCharges', {
-        header: 'Charges',
-        cell: (info) => (
-          <Text fz="xs" fw={600} c="slate.7" className="font-mono">
-            ZMW {fmtAmount(info.getValue())}
-          </Text>
-        ),
-        sortingFn: 'basic',
-      }),
-      columnHelper.accessor('status', {
-        header: 'Status',
-        cell: (info) => {
-          const meta = STATUS_META[info.getValue()] || { label: info.getValue(), color: 'slate' };
-          return (
-            <Badge
-              variant="light"
-              size="sm"
-              radius="sm"
-              color={meta.color}
-              className="font-semibold tracking-wider"
-              styles={{ root: { fontSize: 10, padding: '0 8px' } }}
-            >
-              {meta.label}
-            </Badge>
-          );
-        },
-      }),
-      columnHelper.display({
-        id: 'actions',
-        header: () => (
-          <Text fz="xs" fw={600} ta="right" w="100%">
-            Actions
-          </Text>
-        ),
-        cell: (info) => {
-          const row = info.row.original;
-          const isPending = row.status === 'PENDING';
-
-          return (
-            <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-              <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={isPending ? 'Edit' : 'Only Pending can be edited'} withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={isPending ? 'brand' : 'slate'}
-                  radius="md"
-                  disabled={!isPending}
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={isPending ? 'Delete' : 'Only Pending can be deleted'} withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={isPending ? 'danger' : 'slate'}
-                  radius="md"
-                  disabled={!isPending}
-                  onClick={() => confirmDelete(row)}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Menu shadow="md" width={160} position="bottom-end" radius="md">
-                <Menu.Target>
-                  <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
-                    <IconDotsVertical size={14} />
-                  </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  {isPending ? (
-                    <>
-                      <Menu.Item onClick={() => handleStatusChange(row.id, 'APPROVED', row.loanAc)}>
-                        Approve
-                      </Menu.Item>
-                      <Menu.Item color="danger" onClick={() => handleStatusChange(row.id, 'REJECTED', row.loanAc)}>
-                        Reject
-                      </Menu.Item>
-                    </>
-                  ) : (
-                    <Menu.Item color="danger" onClick={() => handleStatusChange(row.id, 'PENDING', row.loanAc)}>
-                      Revert to Pending
-                    </Menu.Item>
-                  )}
-                </Menu.Dropdown>
-              </Menu>
-            </Group>
-          );
-        },
-      }),
-    ],
-    []
-  );
-
-  const table = useReactTable({
-    data: filteredData,
-    columns,
-    state: { sorting, pagination },
-    onSortingChange: setSorting,
-    onPaginationChange: setPagination,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-  });
-
-  const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+  const totalRows = pagination?.total ?? 0;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanRestructureModal opened={opened} onClose={close} onSubmit={handleAddRestructure} />
-
-      {/* Scoped, purely visual — mirrors FeeAndCharges.tsx / Customer.tsx */}
       <style>{`
-        .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
-        .lms-row-actions { opacity: 1; }
         .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
         .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
         .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
         .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
       `}</style>
 
-      {/* Header — icon tile + title on the left */}
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
         <Group gap="sm" align="center">
-          <Box
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 'var(--mantine-radius-md)',
-              background: theme.other.brandGradient,
-              boxShadow: theme.other.brandGlowShadow,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
+          <Box style={{ width: 40, height: 40, borderRadius: 'var(--mantine-radius-md)', background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadow, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <IconRefresh size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
-            <Title order={2} c="slate.8" fw={700}>
-              Loan Restructures
-            </Title>
-            <Text fz="sm" c="slate.5">
-              Manage rate changes, top-ups and maturity modifications
-            </Text>
+            <Title order={2} c="slate.8" fw={700}>Loan Restructures</Title>
+            <Text fz="sm" c="slate.5">Manage rate changes, top-ups and maturity modifications</Text>
           </Stack>
         </Group>
       </Group>
 
-      {/* Toolbar — pill search + filters */}
-      <Paper
-        radius="xl"
-        p="xs"
-        style={{
-          background: 'var(--mantine-color-slate-0)',
-          border: '1px solid var(--mantine-color-slate-2)',
-        }}
-      >
-        <Stack gap="xs">
-          <Group gap="sm" wrap="wrap" align="center">
-            <TextInput
-              className="lms-search"
-              size="sm"
-              radius="xl"
-              placeholder="Loan A/c / Customer"
-              leftSection={<IconSearch size={14} />}
-              style={{ flex: 1, minWidth: 220 }}
-              styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
-              value={search}
-              onChange={(e) => {
-                setSearch(e.currentTarget.value);
-                setPagination((p) => ({ ...p, pageIndex: 0 }));
-              }}
-            />
-
-            <Select
-              size="sm"
-              radius="xl"
-              placeholder="All Restructure Types"
-              data={restructureTypeOptions}
-              w={200}
-              searchable
-              clearable
-              rightSection={chevronDown}
-              styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
-              value={restructureType}
-              onChange={(v) => {
-                setRestructureType(v);
-                setPagination((p) => ({ ...p, pageIndex: 0 }));
-              }}
-            />
-
-            <SegmentedControl
-              size="xs"
-              radius="xl"
-              color="brand"
-              value={status}
-              onChange={(v) => {
-                setStatus(v);
-                setPagination((p) => ({ ...p, pageIndex: 0 }));
-              }}
-              data={[
-                { label: 'All', value: 'all' },
-                { label: 'Pending', value: 'PENDING' },
-                { label: 'Approved', value: 'APPROVED' },
-                { label: 'Rejected', value: 'REJECTED' },
-              ]}
-            />
-
-            <Group gap="xs" ml="auto">
-              <Button
-                size="sm"
-                radius="xl"
-                color="brand"
-                onClick={open}
-                leftSection={<IconPlus size={14} />}
-                style={{
-                  background: theme.other.brandGradient,
-                  boxShadow: theme.other.brandGlowShadowSm,
-                }}
-              >
-                Restructure Loan
-              </Button>
-            </Group>
+      <Paper radius="xl" p="xs" style={{ background: 'var(--mantine-color-slate-0)', border: '1px solid var(--mantine-color-slate-2)' }}>
+        <Group gap="sm" wrap="wrap" align="center">
+          <TextInput
+            size="sm" radius="xl" placeholder="Search by restructure name / loan"
+            leftSection={<IconSearch size={14} />}
+            style={{ flex: 1, minWidth: 220 }}
+            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+            value={search}
+            onChange={(e) => setSearch(e.currentTarget.value)}
+          />
+          <Select
+            size="sm" radius="xl" placeholder="All Statuses"
+            data={RESTRUCTURE_STATUSES.map((s) => ({ value: s, label: s }))}
+            w={180} clearable rightSection={chevronDown}
+            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+            value={status === 'all' ? null : status}
+            onChange={(v) => { setStatus((v as any) || 'all'); setPage(1); }}
+          />
+          <Group gap="xs" ml="auto">
+            <Button
+              size="sm" radius="xl" color="brand" onClick={() => loanRestructureModal.open({ editName: null, viewName: null })}
+              leftSection={<IconPlus size={14} />}
+              style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
+            >
+              Restructure Loan
+            </Button>
           </Group>
-        </Stack>
+        </Group>
       </Paper>
 
-      {/* Data Table — floating rounded row-cards on a soft canvas */}
-      <Paper
-        radius="lg"
-        p="sm"
-        style={{
-          background: 'var(--mantine-color-slate-0)',
-          border: '1px solid var(--mantine-color-slate-2)',
-        }}
-      >
-        <Table
-          verticalSpacing="sm"
-          horizontalSpacing="sm"
-          fz="xs"
-          w="100%"
-          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
-        >
+      <Paper radius="lg" p="sm" style={{ background: 'var(--mantine-color-slate-0)', border: '1px solid var(--mantine-color-slate-2)' }}>
+        <Table verticalSpacing="sm" horizontalSpacing="sm" fz="xs" w="100%" style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}>
           <Table.Thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <Table.Tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  const canSort = header.column.getCanSort();
-                  return (
-                    <Table.Th
-                      key={header.id}
-                      c="slate.5"
-                      fw={700}
-                      style={{
-                        fontSize: 'var(--mantine-font-size-xs)',
-                        padding: '0 10px 6px',
-                        userSelect: 'none',
-                        cursor: canSort ? 'pointer' : 'default',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        border: 'none',
-                      }}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      <Group
-                        gap="xs"
-                        wrap="nowrap"
-                        justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
-                      </Group>
-                    </Table.Th>
-                  );
-                })}
-              </Table.Tr>
-            ))}
+            <Table.Tr>
+              <Table.Th style={{ padding: '0 10px 6px', textTransform: 'uppercase', letterSpacing: '0.04em', border: 'none' }}>Restructure ID</Table.Th>
+              <Table.Th style={{ padding: '0 10px 6px', textTransform: 'uppercase', letterSpacing: '0.04em', border: 'none' }}>Type</Table.Th>
+              <Table.Th style={{ padding: '0 10px 6px', textTransform: 'uppercase', letterSpacing: '0.04em', border: 'none' }}>Reason</Table.Th>
+              <Table.Th style={{ padding: '0 10px 6px', textTransform: 'uppercase', letterSpacing: '0.04em', border: 'none' }}>Date</Table.Th>
+              <Table.Th style={{ padding: '0 10px 6px', textTransform: 'uppercase', letterSpacing: '0.04em', border: 'none' }}>Status</Table.Th>
+              <Table.Th style={{ padding: '0 10px 6px', textAlign: 'right', border: 'none' }}>Actions</Table.Th>
+            </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {rows.length === 0 ? (
+            {loading ? (
+              <Table.Tr><Table.Td colSpan={6} style={{ border: 'none' }}><Text ta="center" c="slate.5" fz="xs" py="xl">Loading...</Text></Table.Td></Table.Tr>
+            ) : rows.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                <Table.Td colSpan={6} style={{ border: 'none' }}>
                   <Stack align="center" gap="xs" py="xl">
-                    <Box
-                      style={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: '50%',
-                        background: 'var(--mantine-color-white)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '1px solid var(--mantine-color-slate-2)',
-                      }}
-                    >
-                      <IconFileOff size={26} color="var(--mantine-color-slate-4)" />
-                    </Box>
-                    <Text ta="center" c="slate.5" fz="xs">
-                      No restructure requests match your filters.
-                    </Text>
+                    <IconFileOff size={26} color="var(--mantine-color-slate-4)" />
+                    <Text ta="center" c="slate.5" fz="xs">No restructure requests match your filters.</Text>
                   </Stack>
                 </Table.Td>
               </Table.Tr>
             ) : (
               rows.map((row) => {
-                const cells = row.getVisibleCells();
+                const meta = STATUS_META[row.status] || { label: row.status || '—', color: 'slate' };
+                const isDraft = row.status === 'Draft';
+                const isApproving = approvingName === row.name;
                 return (
-                  <Table.Tr key={row.id} className="lms-row">
-                    {cells.map((cell, idx) => (
-                      <Table.Td
-                        key={cell.id}
-                        style={{
-                          padding: '10px 10px',
-                          border: 'none',
-                          boxShadow: 'var(--mantine-shadow-xs)',
-                          borderLeft: idx === 0 ? '3px solid var(--mantine-color-brand-4)' : undefined,
-                        }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </Table.Td>
-                    ))}
+                  <Table.Tr key={row.name} className="lms-row">
+                    <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)', borderLeft: '3px solid var(--mantine-color-brand-4)' }}>
+                      <Text fz="sm" fw={700} c="slate.8" className="font-mono">{row.name}</Text>
+                    </Table.Td>
+                    <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)' }}>
+                      <Badge variant="light" size="sm" radius="sm" color="brand" styles={{ root: { fontSize: 10 } }}>{row.restructure_type}</Badge>
+                    </Table.Td>
+                    <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)' }}>
+                      <Text fz="xs" c="slate.5">{row.reason_for_restructure || '—'}</Text>
+                    </Table.Td>
+                    <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)' }}>
+                      <Text fz="xs" c="slate.5">{fmtDate(row.restructure_date)}</Text>
+                    </Table.Td>
+                    <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)' }}>
+                      <Badge variant="light" size="sm" radius="sm" color={meta.color} styles={{ root: { fontSize: 10 } }}>{meta.label}</Badge>
+                    </Table.Td>
+                    <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)' }}>
+                      <Group justify="flex-end" gap={4} wrap="nowrap">
+                        <Tooltip label="View" withArrow>
+                          <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => loanRestructureModal.open({ editName: null, viewName: row.name })}>
+                            <IconEye size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip label={isDraft ? 'Edit' : 'Only Draft can be edited'} withArrow>
+                          <ActionIcon size="sm" variant="subtle" color={isDraft ? 'brand' : 'slate'} radius="md" disabled={!isDraft} onClick={() => loanRestructureModal.open({ editName: row.name, viewName: null })}>
+                            <IconPencil size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip label={isDraft ? 'Delete' : 'Only Draft can be deleted'} withArrow>
+                          <ActionIcon size="sm" variant="subtle" color={isDraft ? 'danger' : 'slate'} radius="md" disabled={!isDraft} onClick={() => confirmDelete(row)}>
+                            <IconTrash size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+
+                        <Menu shadow="md" width={170} radius="md" position="bottom-end" withArrow disabled={!isDraft || isApproving}>
+                          <Menu.Target>
+                            <Tooltip label={isDraft ? 'More actions' : 'No actions available'} withArrow>
+                              <ActionIcon
+                                size="sm"
+                                variant="subtle"
+                                color="slate"
+                                radius="md"
+                                disabled={!isDraft || isApproving}
+                                aria-label="More actions"
+                              >
+                                {isApproving ? <Loader size={14} /> : <IconDotsVertical size={14} />}
+                              </ActionIcon>
+                            </Tooltip>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Item
+                              leftSection={<IconCircleCheck size={14} />}
+                              color="success"
+                              onClick={() => confirmApprove(row)}
+                            >
+                              Approve
+                            </Menu.Item>
+                          </Menu.Dropdown>
+                        </Menu>
+                      </Group>
+                    </Table.Td>
                   </Table.Tr>
                 );
               })
@@ -676,34 +221,15 @@ export function LoanRestructure() {
           </Table.Tbody>
         </Table>
 
-        {/* Pagination Footer */}
         <Group justify="space-between" px="sm" pt="xs">
           <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
-            <span>
-              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-            </span>
+            <span>{totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}</span>
             <Group gap="xs">
               <span>Rows:</span>
-              <Select
-                data={['10', '20', '50']}
-                value={String(pageSize)}
-                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
-                rightSection={chevronDown}
-                size="xs"
-                radius="xl"
-                w={60}
-              />
+              <Select data={['10', '20', '50']} value={String(pageSize)} onChange={(v) => { setPageSize(Number(v) || 10); setPage(1); }} size="xs" radius="xl" w={60} />
             </Group>
           </Group>
-          <Pagination
-            total={table.getPageCount() || 1}
-            value={pageIndex + 1}
-            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-            color="brand"
-            size="xs"
-            radius="xl"
-            disabled={totalRows === 0}
-          />
+          <Pagination total={pagination?.total_pages || 1} value={page} onChange={setPage} color="brand" size="xs" radius="xl" disabled={totalRows === 0} />
         </Group>
       </Paper>
     </Stack>

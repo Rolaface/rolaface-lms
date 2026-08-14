@@ -7,7 +7,8 @@ import {
   Button, 
   Stack, 
   Modal, 
-  ActionIcon 
+  ActionIcon, 
+  FileInput
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconPencil, IconTrash } from "@tabler/icons-react";
@@ -35,24 +36,36 @@ function FileField({
   label,
   required,
   file,
+  error,
   onChange,
 }: {
   label: string;
   required?: boolean;
   file: File | null;
+  error?: React.ReactNode;
   onChange: (file: File | null) => void;
 }) {
   return (
     <div>
       <Label text={label} required={required} />
-      <input
-        type="file"
-        className="block w-full mt-1 text-sm text-slate-600 border border-slate-300 rounded-md file:mr-3 file:py-2 file:px-3 file:border-0 file:bg-slate-100 file:text-slate-700 file:text-sm file:font-medium hover:file:bg-slate-200"
-        onChange={(e) => onChange(e.currentTarget.files?.[0] ?? null)}
+      <FileInput
+        placeholder="Upload document or choose file"
+        value={file}
+        onChange={onChange}
+        error={error}
+        clearable
+        radius="md"
+        mt={4}
+        styles={{
+          input: {
+            fontSize: '14px',
+            borderColor: 'var(--mantine-color-slate-3)',
+            color: 'var(--mantine-color-slate-7)',
+            backgroundColor: 'var(--mantine-color-slate-50)',
+            cursor: 'pointer',
+          }
+        }}
       />
-      <Text fz="xs" c="slate.4" mt={2}>
-        {file ? file.name : "Upload document or choose file"}
-      </Text>
     </div>
   );
 }
@@ -64,34 +77,39 @@ export function DocumentsStep({ form, loanType }: StepProps) {
   if (loanType === "Personal") {
     return (
       <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" verticalSpacing="lg">
-        <FileField
+       <FileField
           label="Latest three payslips"
           required
           file={form.values.payslips}
+          error={form.errors.payslips}
           onChange={(f) => form.setFieldValue("payslips", f)}
         />
         <FileField
           label="Bank statements (3 months)"
           required
           file={form.values.bankStatementsPersonal}
+          error={form.errors.bankStatementsPersonal}
           onChange={(f) => form.setFieldValue("bankStatementsPersonal", f)}
         />
         <FileField
           label="NRC copy"
           required
           file={form.values.nrcCopy}
+          error={form.errors.nrcCopy}
           onChange={(f) => form.setFieldValue("nrcCopy", f)}
         />
         <FileField
           label="Passport-sized photo"
           required
           file={form.values.passportPhotoPersonal}
+          error={form.errors.passportPhotoPersonal}
           onChange={(f) => form.setFieldValue("passportPhotoPersonal", f)}
         />
         <FileField
           label="TPIN certificate"
           required
           file={form.values.tpinCertificate}
+          error={form.errors.tpinCertificate}
           onChange={(f) => form.setFieldValue("tpinCertificate", f)}
         />
       </SimpleGrid>
@@ -198,49 +216,55 @@ export function DocumentsStep({ form, loanType }: StepProps) {
             label="PACRA certificate"
             required
             file={form.values.pacraCertificate}
+            error={form.errors.pacraCertificate}
             onChange={(f) => form.setFieldValue("pacraCertificate", f)}
           />
           <FileField
             label="Form 2"
             required
             file={form.values.form2}
+            error={form.errors.form2}
             onChange={(f) => form.setFieldValue("form2", f)}
           />
           <FileField
             label="Tax clearance certificate / TPIN"
             required
             file={form.values.taxClearanceCertificate}
+            error={form.errors.taxClearanceCertificate}
             onChange={(f) => form.setFieldValue("taxClearanceCertificate", f)}
           />
-
           <FileField
             label="Latest tax compliance return"
             required
             file={form.values.taxComplianceReturn}
+            error={form.errors.taxComplianceReturn}
             onChange={(f) => form.setFieldValue("taxComplianceReturn", f)}
           />
           <FileField
             label="Order / Invoice (if applying for order financing or invoice discounting)"
             file={form.values.orderInvoice}
+            error={form.errors.orderInvoice}
             onChange={(f) => form.setFieldValue("orderInvoice", f)}
           />
           <FileField
             label="Bank statements (6 months)"
             required
             file={form.values.bankStatementsBusiness}
+            error={form.errors.bankStatementsBusiness}
             onChange={(f) => form.setFieldValue("bankStatementsBusiness", f)}
           />
-
           <FileField
             label="Applicant Passport-sized photo"
             required
             file={form.values.applicantPassportPhoto}
+            error={form.errors.applicantPassportPhoto}
             onChange={(f) => form.setFieldValue("applicantPassportPhoto", f)}
           />
           <FileField
             label="Board resolution"
             required
             file={form.values.boardResolution}
+            error={form.errors.boardResolution}
             onChange={(f) => form.setFieldValue("boardResolution", f)}
           />
         </SimpleGrid>
@@ -264,12 +288,14 @@ export function DocumentsStep({ form, loanType }: StepProps) {
                 label={`Director ${editingIndex + 1} NRC`}
                 required
                 file={form.values.directorDocuments[editingIndex].nrcFile}
+                error={form.errors[`directorDocuments.${editingIndex}.nrcFile`]}
                 onChange={(f) => form.setFieldValue(`directorDocuments.${editingIndex}.nrcFile`, f)}
               />
               <FileField
                 label={`Director ${editingIndex + 1} passport photo`}
                 required
                 file={form.values.directorDocuments[editingIndex].photoFile}
+                error={form.errors[`directorDocuments.${editingIndex}.photoFile`]}
                 onChange={(f) => form.setFieldValue(`directorDocuments.${editingIndex}.photoFile`, f)}
               />
             </SimpleGrid>

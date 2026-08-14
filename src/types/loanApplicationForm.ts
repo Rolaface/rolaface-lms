@@ -5,6 +5,7 @@ export interface BaseLoanApplication {
   amount: string;
   tenure: string;
   total_amount: string;
+  status: string;
 }
  
 export interface BusinessLoanApplication extends BaseLoanApplication {
@@ -57,7 +58,8 @@ export interface BusinessLoanApplication extends BaseLoanApplication {
 export interface PersonalLoanApplication extends BaseLoanApplication {
   application_type: "Personal Loan";
   marital_status: string;
-  // Applicant details (Personal specific names)
+  nationality: string;
+  next_of_kin_relationship: string;
   first_name: string;
   last_name: string;
   phone: string;
