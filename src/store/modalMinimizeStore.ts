@@ -20,23 +20,16 @@ export const useModalMinimizeStore = create<ModalMinimizeState>((set) => ({
 
   minimize: (id, entry) =>
     set((state) => ({
-      minimized: {
-        ...state.minimized,
-        [id]: entry,
-      },
+      minimized: { ...state.minimized, [id]: entry },
     })),
 
   restore: (id) => {
     const entry = useModalMinimizeStore.getState().minimized[id];
-
     if (!entry) return;
-
     entry.restore();
-
     set((state) => {
       const next = { ...state.minimized };
       delete next[id];
-
       return { minimized: next };
     });
   },
@@ -45,7 +38,6 @@ export const useModalMinimizeStore = create<ModalMinimizeState>((set) => ({
     set((state) => {
       const next = { ...state.minimized };
       delete next[id];
-
       return { minimized: next };
     }),
 }));
