@@ -29,7 +29,7 @@ import {
   IconSearch,
   IconTrash,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
+import { loanClassificationModal } from './LoanClassificationsStore';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createColumnHelper,
@@ -41,7 +41,6 @@ import {
 } from '@tanstack/react-table';
 import type { SortDirection } from '@tanstack/react-table';
 
-import { LoanClassificationModal } from '../../../components/Modal/LoanClassificationModal';
 import type { LoanClassificationData } from '../../../types/loanClassification';
 import {
   getAllLoanClassifications,
@@ -83,19 +82,6 @@ export function LoanClassification() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
 
-  const [opened, { open, close }] = useDisclosure(false);
-  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
-  const [selectedData, setSelectedData] = useState<LoanClassificationData | null>(null);
-
-  const handleOpenModal = (
-    mode: 'add' | 'edit' | 'view',
-    data: LoanClassificationData | null = null
-  ) => {
-    setModalMode(mode);
-    setSelectedData(data);
-    open();
-  };
-
   const [search, setSearch] = useState('');
   const [sorting, setSorting] = useState(DEFAULT_SORTING);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
@@ -134,6 +120,18 @@ export function LoanClassification() {
     },
     onError: (error: any) => showError('Delete Failed', error),
   });
+
+  const handleAdd = () => {
+    loanClassificationModal.open({ editId: null, initialData: null, isView: false });
+  };
+
+  const handleEdit = (row: LoanClassificationData) => {
+    loanClassificationModal.open({ editId: row.code, initialData: row, isView: false });
+  };
+
+  const handleView = (row: LoanClassificationData) => {
+    loanClassificationModal.open({ editId: row.code, initialData: row, isView: true });
+  };
 
   const handleDelete = (row: LoanClassificationData) => {
     openCommonModal({
@@ -182,11 +180,12 @@ export function LoanClassification() {
       }),
       columnHelper.accessor('code', {
         header: 'Code',
-  cell: (info) => (
+        cell: (info) => (
           <Text fz="xs" c="slate.6">
             {info.getValue()}
           </Text>
-        )      }),
+        ),
+      }),
       columnHelper.accessor('name', {
         header: 'Name',
         cell: (info) => (
@@ -239,7 +238,7 @@ export function LoanClassification() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => handleOpenModal('view', row)}
+                  onClick={() => handleView(row)}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -250,7 +249,7 @@ export function LoanClassification() {
                   variant="subtle"
                   color="brand"
                   radius="md"
-                  onClick={() => handleOpenModal('edit', row)}
+                  onClick={() => handleEdit(row)}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -300,8 +299,6 @@ export function LoanClassification() {
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanClassificationModal opened={opened} onClose={close} mode={modalMode} data={selectedData} />
-
       {/* Scoped, purely visual — pulls from theme.other to stay in sync
           with the brand color everywhere else (mirrors Customer.tsx). */}
       <style>{`
@@ -374,7 +371,7 @@ export function LoanClassification() {
               size="sm"
               radius="xl"
               color="brand"
-              onClick={() => handleOpenModal('add')}
+              onClick={handleAdd}
               leftSection={<IconPlus size={14} />}
               style={{
                 background: theme.other.brandGradient,

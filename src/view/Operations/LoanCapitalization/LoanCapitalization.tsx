@@ -32,7 +32,6 @@ import {
   IconFileOff,
   IconWallet,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -43,13 +42,13 @@ import {
 } from '@tanstack/react-table';
 import { modals } from '@mantine/modals';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LoanCapitalizationModal } from '../../../components/Modal/LoanCapitalizationModal';
 import {
   getAllLoanRepayment,
   deleteLoanRepayment,
   changeLoanRepaymentStatus,
 } from '../../../api/loanRepaymentApi';
 import { showApiError, showSuccess } from '../../../utils/alert';
+import { loanCapitalizationModal } from './LoanCapitalizationModalStore';
 
 const CAPITALIZATION_TYPES = ['Interest Capitalization', 'Penalty Capitalization', 'Charges Capitalization', 'Principal Capitalization'];
 
@@ -126,20 +125,13 @@ function AmountCell({ value }: { value: number }) {
 
 export function LoanCapitalization() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
   const [search, setSearch] = useState('');
   const [loanType, setLoanType] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  const [selectedCapitalizationId, setSelectedCapitalizationId] = useState<string | null>(null);
-  const [isViewMode, setIsViewMode] = useState(false);
-
-  const handleModalClose = () => {
-    close();
-    setSelectedCapitalizationId(null);
-    setIsViewMode(false);
-  };
+  
+  
 
   const { data: repaymentsResponse, isLoading } = useQuery({
     queryKey: ['loanRepayments'],
@@ -294,11 +286,7 @@ export function LoanCapitalization() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => {
-                    setSelectedCapitalizationId(row.id);
-                    setIsViewMode(true);
-                    open();
-                  }}
+                 onClick={() => loanCapitalizationModal.open({ editId: row.id, isView: true })}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -310,11 +298,7 @@ export function LoanCapitalization() {
                   color={isDraft ? 'brand' : 'slate'}
                   radius="md"
                   disabled={!isDraft}
-                  onClick={() => {
-                    setSelectedCapitalizationId(row.id);
-                    setIsViewMode(false);
-                    open();
-                  }}
+                 onClick={() => loanCapitalizationModal.open({ editId: row.id, isView: false })}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -386,7 +370,7 @@ export function LoanCapitalization() {
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanCapitalizationModal opened={opened} onClose={handleModalClose} editId={selectedCapitalizationId} isView={isViewMode} />
+      
 
       {/* Scoped, purely visual — mirrors Customer.tsx row/search styling */}
       <style>{`
@@ -489,11 +473,7 @@ export function LoanCapitalization() {
         <Button
           size="sm"
           radius="xl"
-          onClick={() => {
-            setSelectedCapitalizationId(null);
-            setIsViewMode(false);
-            open();
-          }}
+         onClick={() => loanCapitalizationModal.open({ editId: null, isView: false })}
           leftSection={<IconPlus size={14} />}
           style={{
             background: theme.other.brandGradient,

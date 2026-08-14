@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
 import {
@@ -40,6 +40,7 @@ import {
   IconTrash,
   IconGitBranch,
   IconAlertCircle,
+  
 } from "@tabler/icons-react";
 
 import {
@@ -49,8 +50,7 @@ import {
 import { useChartOfAccounts } from "../../hooks/Accounting/chart of account/Usechartofaccounts";
 
 import { useCurrencyReady } from "../../store/currencyStore";
-import { AccountFormModal } from "../../components/Modal/Accounting/chart of account/AccountFormModal";
-
+import { accountFormModal } from "../../components/Modal/Accounting/chart of account/accountFormModalStore";
 const ROOT_TYPE_COLOR: Record<COAAccount["root_type"], string> = {
   Asset: "indigoAlt",
   Liability: "danger",
@@ -129,24 +129,24 @@ function FilterBar({
           >
             {allExpanded ? "Collapse" : "Expand All"}
           </Button>
-            <Button
-              size="xs"
-              radius="xl"
-              color="brand"
-              leftSection={
-                <IconRefresh
-                  size={13}
-                  className={loading ? "animate-spin" : ""}
-                />
-              }
-              onClick={onRefresh}
-              style={{
-                background: theme.other?.brandGradient,
-                boxShadow: theme.other?.brandGlowShadowSm,
-              }}
-            >
-              Refresh
-            </Button>
+          <Button
+            size="xs"
+            radius="xl"
+            color="brand"
+            leftSection={
+              <IconRefresh
+                size={13}
+                className={loading ? "animate-spin" : ""}
+              />
+            }
+            onClick={onRefresh}
+            style={{
+              background: theme.other?.brandGradient,
+              boxShadow: theme.other?.brandGlowShadowSm,
+            }}
+          >
+            Refresh
+          </Button>
           <Button
             size="xs"
             radius="xl"
@@ -461,37 +461,46 @@ export function ChartOfAccounts() {
     handleView,
   } = useChartOfAccounts();
 
-  const [formModal, setFormModal] = useState<{
-    parent?: COAAccount | null;
-    edit?: COAAccount | null;
-    viewOnly?: boolean;
-  } | null>(null);
-  const [modalOpened, setModalOpened] = useState(false);
+  
 
-  const onView = async (node: COAAccount) => {
-    const data = await handleView(node);
-    if (data) {
-      setFormModal({ edit: data, viewOnly: true });
-      setModalOpened(true);
-    }
-  };
+ const onView = async (node: COAAccount) => {
+  const data = await handleView(node);
+  if (data) {
+    accountFormModal.open({
+      company: import.meta.env.VITE_COMPANY_NAME,
+      baseCurrency,
+      editAccount: data,
+      readOnly: true,
+      onSuccess: handleRefresh,
+    });
+  }
+};
 
-  const onEdit = async (node: COAAccount) => {
-    const data = await handleView(node);
-    if (data) {
-      setFormModal({ edit: data, viewOnly: false });
-      setModalOpened(true);
-    }
-  };
-
+const onEdit = async (node: COAAccount) => {
+  const data = await handleView(node);
+  if (data) {
+    accountFormModal.open({
+      company: import.meta.env.VITE_COMPANY_NAME,
+      baseCurrency,
+      editAccount: data,
+      readOnly: false,
+      onSuccess: handleRefresh,
+    });
+  }
+};
   const columns = useColumns(
     onView,
     onEdit,
     handleDelete,
     (node) => {
-      setFormModal({ parent: node });
-      setModalOpened(true);
-    },
+  accountFormModal.open({
+    company: import.meta.env.VITE_COMPANY_NAME,
+    baseCurrency,
+    parentAccount: node,
+    readOnly: false,
+    onSuccess: handleRefresh,
+  });
+},
     (node) => {
       navigate({
         to: "/accounting/general-ledger/report",
@@ -523,17 +532,7 @@ export function ChartOfAccounts() {
         .coa-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
       `}</style>
 
-      <AccountFormModal
-        opened={modalOpened}
-        onClose={() => setModalOpened(false)}
-        onExited={() => setFormModal(null)}
-        onSuccess={handleRefresh}
-        company={import.meta.env.VITE_COMPANY_NAME}
-        baseCurrency={baseCurrency}
-        parentAccount={formModal?.parent}
-        editAccount={formModal?.edit}
-        readOnly={formModal?.viewOnly ?? false}
-      />
+
 
       <FilterBar
         searchTerm={searchTerm}

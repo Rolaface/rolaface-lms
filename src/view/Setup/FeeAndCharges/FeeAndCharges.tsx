@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { modals } from '@mantine/modals';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
+import { parseFrappeError } from '../../../utils/parseFrappeError'; import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getFeeAndCharges, deleteFeeAndCharge } from '../../../api/loanChargesApi';
 import {
   Box,
@@ -31,7 +31,6 @@ import {
   IconReceipt2,
   IconReceipt,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -39,7 +38,8 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { FeeAndChargesModal, type FeeAndCharge } from '../../../components/Modal/FeeAndChargesModal';
+import { feeAndChargesModal } from './feeAndChargesModalStore';
+import type { FeeAndCharge } from '../../../components/Modal/FeeAndChargesModal';
 
 const columnHelper = createColumnHelper<FeeAndCharge>();
 
@@ -55,15 +55,9 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function FeeAndCharges() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
-  const [opened, { open, close }] = useDisclosure(false);
-
-  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
-  const [selectedData, setSelectedData] = useState<FeeAndCharge | null>(null);
 
   const handleOpenModal = (mode: 'add' | 'edit' | 'view', data: FeeAndCharge | null = null) => {
-    setModalMode(mode);
-    setSelectedData(data);
-    open();
+    feeAndChargesModal.open({ mode, data });
   };
 
   const [search, setSearch] = useState('');
@@ -81,14 +75,61 @@ export function FeeAndCharges() {
       }),
     placeholderData: (prev) => prev,
   });
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: deleteFeeAndCharge,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fee-and-charges'] });
+      showSuccess('Fee/Charge Deleted', 'Fee/Charge deleted successfully.');
     },
+    onError: (error: any) => showError('Delete Failed', error),
   });
 
+  const handleDelete = (row: FeeAndCharge) => {
+    openCommonModal({
+      heading: 'Delete Fee/Charge',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete{' '}
+          <Text span fw={600}>
+            {row.name}
+          </Text>
+          ?
+        </>
+      ),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => {
+            deleteMutation.mutate(String(row.id));
+          },
+        },
+      ],
+    });
+  };
   const filteredData: FeeAndCharge[] = useMemo(() => {
     const list = chargesResponse?.data ?? [];
     return list.map((item) => ({
@@ -106,9 +147,9 @@ export function FeeAndCharges() {
       columnHelper.accessor('name', {
         header: 'Fee/Charge Name',
         cell: (info) => (
-            <Text fz="sm" fw={700} c="slate.8">
-              {info.getValue()}
-            </Text>
+          <Text fz="sm" fw={700} c="slate.8">
+            {info.getValue()}
+          </Text>
         ),
       }),
       columnHelper.display({
@@ -149,19 +190,7 @@ export function FeeAndCharges() {
                 color="danger"
                 radius="md"
                 loading={deleteMutation.isPending && deleteMutation.variables === info.row.original.name}
-                onClick={() => {
-                  modals.openConfirmModal({
-                    title: 'Delete fee/charge',
-                    children: (
-                      <Text size="sm">
-                        Are you sure you want to delete <b>{info.row.original.name}</b>? This cannot be undone.
-                      </Text>
-                    ),
-                    labels: { confirm: 'Delete', cancel: 'Cancel' },
-                    confirmProps: { color: 'danger' },
-                    onConfirm: () => deleteMutation.mutate(String(info.row.original.id)),
-                  });
-                }}
+                onClick={() => handleDelete(info.row.original)}
               >
                 <IconTrash size={14} />
               </ActionIcon>
@@ -193,10 +222,6 @@ export function FeeAndCharges() {
 
   return (
     <Stack gap="lg" p="lg">
-      <FeeAndChargesModal opened={opened} onClose={close} mode={modalMode} data={selectedData} />
-
-      {/* Scoped, purely visual — pulls from theme.other to stay in sync
-          with the brand color everywhere else (mirrors Customer.tsx). */}
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
         .lms-row-actions { opacity: 1; }
@@ -206,7 +231,6 @@ export function FeeAndCharges() {
         .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
       `}</style>
 
-      {/* Header — icon tile + title on the left */}
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
         <Group gap="sm" align="center">
           <Box
@@ -234,7 +258,6 @@ export function FeeAndCharges() {
         </Group>
       </Group>
 
-      {/* Toolbar — pill search */}
       <Paper
         radius="xl"
         p="xs"
@@ -277,7 +300,6 @@ export function FeeAndCharges() {
         </Group>
       </Paper>
 
-      {/* Data Table — floating rounded row-cards on a soft canvas */}
       <Paper
         radius="lg"
         p="sm"
@@ -397,7 +419,6 @@ export function FeeAndCharges() {
           </Table.Tbody>
         </Table>
 
-        {/* Pagination Footer */}
         <Group justify="space-between" px="sm" pt="xs">
           <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
             <span>
