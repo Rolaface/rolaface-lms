@@ -16,7 +16,7 @@ import {
   IconX,
   IconBriefcase,
   IconCheck,
-  IconChevronRight,
+  IconChevronRight,IconMinus
 } from "@tabler/icons-react";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import {
@@ -42,9 +42,10 @@ interface LoanProductProps {
   onSaved?: () => void;
   loanProductId?: string | null;
   isViewMode?: boolean;
+  onMinimize: () => void;
 }
 
-export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isViewMode }: LoanProductProps) {
+export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isViewMode ,onMinimize }: LoanProductProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<string | null>("0");
 
@@ -612,18 +613,32 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
                 </Group>
               </Box>
             </Group>
-            <ActionIcon
-              type="button"
-              variant="subtle"
-              color="white"
-              radius="xl"
-              size="md"
-              onClick={handleModalClose}
-              aria-label="Close"
-            >
-              <IconX size={16} color="white" />
-            </ActionIcon>
+            <Group gap="xs" wrap="nowrap">
+              <ActionIcon
+                type="button"
+                variant="subtle"
+                color="white"
+                radius="xl"
+                size="md"
+                onClick={onMinimize}
+                aria-label="Minimize"
+              >
+                <IconMinus size={16} color="white" />
+              </ActionIcon>
+              <ActionIcon
+                type="button"
+                variant="subtle"
+                color="white"
+                radius="xl"
+                size="md"
+                onClick={handleModalClose}
+                aria-label="Close"
+              >
+                <IconX size={16} color="white" />
+              </ActionIcon>
+            </Group>
           </Group>
+           
 
           {/* Tab bar */}
           <Box
