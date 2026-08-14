@@ -7,19 +7,13 @@ import {
   Text,
   Button,
   ActionIcon,
-  SegmentedControl,
-  Badge,
-  Stack,
   ScrollArea,
-  Checkbox,
   ThemeIcon,
   Divider,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
 import { 
   IconX, 
-  IconCheck, 
   IconFileText, 
   IconChevronRight, 
   IconUser, 
@@ -40,8 +34,6 @@ import type {
   PersonalLoanApplication,
   BusinessLoanApplication,
 } from "../../../types/loanApplicationForm";
-import { useCompanyStore } from "../../../store/companyStore";
-import { getSymbol } from "../../../store/currencyStore";
 import { uploadFile } from "../../../api/loanApi";
 
 export type LoanType = "Personal" | "Business";
@@ -682,7 +674,8 @@ const getDocFile = (docsArray: any[], documentNames: string[], key?: string) => 
   const { mutate: submitLoanApplication, isPending: isSubmitting } = useMutation({
   mutationFn: (payload: LoanApplicationPayload) => createLoanApplication(payload),
   onSuccess: () => {
-    handleModalClose(); // Closes the main form upon success
+    queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
+    handleModalClose();  
   },
   onError: (error) => {
     console.error("Failed to submit loan application:", error);

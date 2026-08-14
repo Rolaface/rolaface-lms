@@ -142,7 +142,7 @@ export function CreateLoanBookingModal({
               loading={isSubmitting}
               onClick={() => selectedProduct && onConfirm(selectedProduct)}
             >
-              Create Booking
+              Create Loan
             </Button>
           </Group>
         </Stack>
