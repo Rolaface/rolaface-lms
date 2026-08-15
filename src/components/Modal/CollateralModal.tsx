@@ -350,7 +350,7 @@ export function CollateralModal({ opened, onClose, onMinimize, editId, isView }:
                   {...form.getInputProps("haircut")}
                 />
               </Grid.Col>
-              <Grid.Col span={12}>
+              {/* <Grid.Col span={12}>
                 <Divider color="slate.2" my={4} />
                 <Checkbox
                   size="sm"
@@ -360,7 +360,7 @@ export function CollateralModal({ opened, onClose, onMinimize, editId, isView }:
                   mt="sm"
                   {...form.getInputProps("disabled", { type: "checkbox" })}
                 />
-              </Grid.Col>
+              </Grid.Col> */}
             </Grid>
           </Fieldset>
         </Box>
