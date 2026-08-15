@@ -271,14 +271,14 @@ export function CollateralTypeModal({
               />
             </Group>
 
-            <Checkbox
+            {/* <Checkbox
               mt="lg"
               size="sm"
               label="Disabled"
               color="brand"
               styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)' } }}
               {...form.getInputProps("disabled", { type: "checkbox" })}
-            />
+            /> */}
           </Fieldset>
         </Box>
  <ModalFooter

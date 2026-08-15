@@ -179,7 +179,7 @@ export function LoanAccount() {
   const [branch, setBranch] = useState<string | null>(null);
   const [status, setStatus] = useState("all");
 
-  const [sorting, setSorting] = useState([{ id: "appliedDate", desc: true }]);
+  const [sorting, setSorting] = useState([{ id: "id", desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
   const data = useMemo(() => {
