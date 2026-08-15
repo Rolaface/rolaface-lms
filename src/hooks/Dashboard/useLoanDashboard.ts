@@ -86,10 +86,10 @@ export function useLoanDashboard() {
     setLoadingPending(true);
     getPendingApprovals({ from_date: fromDate, to_date: toDate, company, page: pendingPage, page_size: 5 })
       .then((res) => {
-        const payload = res.message || res;
+        const payload = res;
         if (payload.status_code === 200) {
-          setPendingApprovals(payload.data.data);
-          setPendingPagination(payload.data.pagination);
+          setPendingApprovals(payload.data);
+          setPendingPagination(payload.pagination);
         }
       })
       .catch((err) => notifyError(parseFrappeError(err), "Failed to load pending approvals"))
@@ -100,10 +100,10 @@ export function useLoanDashboard() {
     setLoadingOverdue(true);
     getOverdueTasks({ from_date: fromDate, to_date: toDate, company, page: overduePage, page_size: 5 })
       .then((res) => {
-        const payload = res.message || res;
+        const payload = res;
         if (payload.status_code === 200) {
-          setOverdueTasks(payload.data.data);
-          setOverduePagination(payload.data.pagination);
+          setOverdueTasks(payload.data);
+          setOverduePagination(payload.pagination);
         }
       })
       .catch((err) => notifyError(parseFrappeError(err), "Failed to load overdue tasks"))
