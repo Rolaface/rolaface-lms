@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDebouncedValue } from '@mantine/hooks';
 import {
   getLoanStatementDashboard,
@@ -24,7 +24,7 @@ export function useLoanStatement() {
   const [debouncedSearch] = useDebouncedValue(search, 350);
 
   const [customers, setCustomers] = useState<{ value: string; label: string }[]>([]);
-  const [loans, setLoans] = useState<{ value: string; label: string }[]>([]);
+  const [loans, setLoans] = useState<{ value: string; label: string; applicant?: string }[]>([]);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -38,6 +38,8 @@ export function useLoanStatement() {
   const [loadingTable, setLoadingTable] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exportingType, setExportingType] = useState<'pdf' | 'excel' | null>(null);
+
+  const orderBy = useMemo(() => `${sort.field} ${sort.direction}`, [sort]);
 
   useEffect(() => {
     getCustomerList({ page_size: 100 })
@@ -54,11 +56,6 @@ export function useLoanStatement() {
   }, []);
 
   useEffect(() => {
-    if (!customerId) {
-      setLoans([]);
-      return;
-    }
-
     const allowedStatuses = [
       "Partially Disbursed",
       "Disbursed",
@@ -69,17 +66,23 @@ export function useLoanStatement() {
       "Settled"
     ];
 
-    getLoanList({
-      applicant: JSON.stringify([customerId]),
+    const params: Record<string, any> = {
       status: JSON.stringify(allowedStatuses),
       page_size: 100
-    })
+    };
+
+    if (customerId) {
+      params.applicant = JSON.stringify([customerId]);
+    }
+
+    getLoanList(params)
       .then((res) => {
         const data = res.message?.data || res.data || [];
         setLoans(
           data.map((l: any) => ({
             value: String(l.name),
-            label: l.loan_product ? `${l.name} - ${l.loan_product}` : String(l.name)
+            label: l.loan_product ? `${l.name} - ${l.loan_product}` : String(l.name),
+            applicant: l.applicant
           }))
         );
       })
