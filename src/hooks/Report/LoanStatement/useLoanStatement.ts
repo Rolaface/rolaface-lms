@@ -14,11 +14,30 @@ import { parseFrappeError } from '../../../utils/parseFrappeError';
 const DEFAULT_SORT: StatementSort = { field: 'date', direction: 'asc' };
 const DEFAULT_PAGE_SIZE = 5;
 
+const today = new Date();
+const currentYear = today.getFullYear();
+const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+const currentDay = String(today.getDate()).padStart(2, '0');
+
+const defaultFromDate = `${currentYear}-01-01`;
+const defaultToDate = `${currentYear}-${currentMonth}-${currentDay}`;
+
+const formatDateToAPI = (dateString: string) => {
+  if (!dateString) return dateString;
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = monthNames[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
 export function useLoanStatement() {
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [loanId, setLoanId] = useState<string | null>(null);
-  const [fromDate, setFromDate] = useState('2026-04-01');
-  const [toDate, setToDate] = useState('2026-08-01');
+  const [fromDate, setFromDate] = useState(defaultFromDate);
+  const [toDate, setToDate] = useState(defaultToDate);
   const [viewType, setViewType] = useState<'summary' | 'detailed'>('summary');
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 350);
@@ -102,8 +121,8 @@ export function useLoanStatement() {
     try {
       const res = await getLoanStatementDashboard({
         loan_id: loanId,
-        from_date: fromDate,
-        to_date: toDate,
+        from_date: formatDateToAPI(fromDate),
+        to_date: formatDateToAPI(toDate),
         view_type: viewType,
       });
       const payload = res.message || res;
@@ -128,8 +147,8 @@ export function useLoanStatement() {
     try {
       const res = await getLoanStatement({
         loan_id: loanId,
-        from_date: fromDate,
-        to_date: toDate,
+        from_date: formatDateToAPI(fromDate),
+        to_date: formatDateToAPI(toDate),
         view_type: viewType,
         page,
         page_size: pageSize,
@@ -168,7 +187,12 @@ export function useLoanStatement() {
     setExportingType(type);
     try {
       const exportFn = type === 'pdf' ? exportLoanStatementPDF : exportLoanStatementExcel;
-      const blob = await exportFn({ loan_id: loanId, from_date: fromDate, to_date: toDate, view_type: viewType });
+      const blob = await exportFn({ 
+        loan_id: loanId, 
+        from_date: formatDateToAPI(fromDate), 
+        to_date: formatDateToAPI(toDate), 
+        view_type: viewType 
+      });
       
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement('a');

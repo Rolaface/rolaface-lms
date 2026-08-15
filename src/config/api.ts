@@ -111,7 +111,13 @@ Accounting: {
   // =========================
   // DASHBOARD
   // =========================
-  dashboard: {},
+  dashboard: {
+    getSummary: `${ERP_BASE}/api/method/rolaface_lms_app.modules.dashboard.api.get_dashboard_summary`,
+    getCharts: `${ERP_BASE}/api/method/rolaface_lms_app.modules.dashboard.api.get_dashboard_charts`,
+    getQuickInsights: `${ERP_BASE}/api/method/rolaface_lms_app.modules.dashboard.api.get_quick_insights`,
+    getPendingApprovals: `${ERP_BASE}/api/method/rolaface_lms_app.modules.dashboard.api.get_pending_approvals`,
+    getOverdueTasks: `${ERP_BASE}/api/method/rolaface_lms_app.modules.dashboard.api.get_overdue_tasks`,
+  },
 
   // =========================
   // CUSTOMER

@@ -432,7 +432,7 @@ export function LoanStatement() {
         </Paper>
 
         <div>
-          <Group justify="space-between" mb={8}>
+          {/* <Group justify="space-between" mb={8}>
             <Title order={5} className="text-slate-900">
               Loan Statement Summary
             </Title>
@@ -469,7 +469,7 @@ export function LoanStatement() {
                 </Button>
               ))}
             </Group>
-          </Group>
+          </Group> */}
 
           <Group
             gap="sm"
