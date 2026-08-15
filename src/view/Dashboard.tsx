@@ -13,6 +13,7 @@ import {
   Loader,
   Popover,
   TextInput,
+  Pagination,
 } from "@mantine/core";
 import {
   IconFileText,
@@ -184,7 +185,7 @@ const getRiskGradeColors = (code: string) => {
 };
 
 export function Dashboard() {
-  const { data, status, actions, filters } = useLoanDashboard();
+  const { data, status, actions, filters, pagination } = useLoanDashboard();
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
 
   const currencyCode = useCompanyStore((state) => state.baseCurrency);
@@ -198,36 +199,16 @@ export function Dashboard() {
     [currencyCode]
   );
 
-  const renderCompactCurrency = useCallback(
-    (val: number | string | undefined | null) => {
-      if (val === undefined || val === null || val === "") return "$0";
-      const num = Number(val);
-      if (isNaN(num)) return "$0";
-      
-      if (num >= 1000000) return `${formatAmount(currencyCode, num / 1000000, { withSymbol: true })}M`;
-      if (num >= 1000) return `${formatAmount(currencyCode, num / 1000, { withSymbol: true })}K`;
-      return formatAmount(currencyCode, num, { withSymbol: true });
-    },
-    [currencyCode]
-  );
-
-  const renderFullWithCompact = useCallback(
+  const renderSmartCurrency = useCallback(
     (val: number | string | undefined | null) => {
       if (val === undefined || val === null || val === "") return "$0";
       const num = Number(val);
       if (isNaN(num)) return "$0";
 
-      const full = formatAmount(currencyCode, num, { withSymbol: true });
-      
       if (num >= 1000000) {
-        const compact = `${formatAmount(currencyCode, num / 1000000, { withSymbol: true })}M`;
-        return `${full} (${compact})`;
+        return `${formatAmount(currencyCode, num / 1000000, { withSymbol: true })}M`;
       }
-      if (num >= 1000) {
-        const compact = `${formatAmount(currencyCode, num / 1000, { withSymbol: true })}K`;
-        return `${full} (${compact})`;
-      }
-      return full;
+      return formatAmount(currencyCode, num, { withSymbol: true });
     },
     [currencyCode]
   );
@@ -235,9 +216,9 @@ export function Dashboard() {
   const STATS = useMemo(() => [
     { title: "TOTAL LOANS", value: data.summary?.total_loans || 0, delta: "5.2%", up: true, icon: IconFileText, color: "brand" },
     { title: "ACTIVE CUSTOMERS", value: data.summary?.active_customers || 0, delta: "3.1%", up: true, icon: IconUsers, color: "green" },
-    { title: "TOTAL DISBURSED", value: renderFullWithCompact(data.summary?.total_disbursed || 0), delta: "8.7%", up: true, icon: IconCashBanknote, color: "indigoAlt" },
+    { title: "TOTAL DISBURSED", value: renderSmartCurrency(data.summary?.total_disbursed || 0), delta: "8.7%", up: true, icon: IconCashBanknote, color: "indigoAlt" },
     { title: "PENDING APPLICATIONS", value: data.summary?.pending_applications || 0, delta: "12.5%", up: false, icon: IconApps, color: "gold" },
-  ], [data.summary, renderFullWithCompact]);
+  ], [data.summary, renderSmartCurrency]);
 
   const eff = data.charts?.collection_efficiency;
   const npa = data.charts?.npa;
@@ -249,9 +230,9 @@ export function Dashboard() {
   const ins = data.insights;
   const QUICK_INSIGHTS = [
     { icon: IconTrophy, color: "brand", label: "Top Loan Product", value: ins?.top_loan_product?.loan_product || "-", note: `${ins?.top_loan_product?.pct_of_total || 0}% of total disbursed` },
-    { icon: IconTrendingUp, color: "green", label: "Highest Disbursement", value: renderFullWithCompact(ins?.highest_disbursement?.amount || 0), note: `in ${ins?.highest_disbursement?.month_label || "-"}` },
+    { icon: IconTrendingUp, color: "green", label: "Highest Disbursement", value: renderSmartCurrency(ins?.highest_disbursement?.amount || 0), note: `in ${ins?.highest_disbursement?.month_label || "-"}` },
     { icon: IconClock, color: "gold", label: "Avg. Approval Time", value: ins?.avg_approval_time || "2.4 Days", note: "↓ 10% vs last month" },
-    { icon: IconAlertTriangle, color: "accent", label: "Overdue Loans", value: renderFullWithCompact(ins?.overdue_loans?.amount || 0), note: `${ins?.overdue_loans?.pct_of_total || 0}% of total portfolio` },
+    { icon: IconAlertTriangle, color: "accent", label: "Overdue Loans", value: renderSmartCurrency(ins?.overdue_loans?.amount || 0), note: `${ins?.overdue_loans?.pct_of_total || 0}% of total portfolio` },
     { icon: IconUsersGroup, color: "indigoAlt", label: "Active Agents", value: ins?.active_agents || "12", note: "↑ 2 vs last month" },
   ];
 
@@ -264,33 +245,33 @@ export function Dashboard() {
             <Text size="13px" c="dimmed" mt={2}>Welcome back to LMS. Here is your overview.</Text>
           </div>
           <Group gap={10}>
-            <Popover opened={datePopoverOpen} onChange={setDatePopoverOpen} width={340} position="bottom-end" withArrow shadow="md">
+            <Popover opened={datePopoverOpen} onChange={setDatePopoverOpen} width={380} position="bottom-end" withArrow shadow="md">
               <Popover.Target>
                 <Button 
                   variant="default" 
-                  size="md" 
+                  size="lg" 
                   radius="md"
-                  h={42}
+                  h={46}
                   onClick={() => setDatePopoverOpen((o) => !o)}
-                  leftSection={<IconCalendar size={18} className="text-slate-500" />} 
-                  rightSection={<IconChevronDown size={16} className="text-slate-500" />}
+                  leftSection={<IconCalendar size={20} className="text-slate-500" />} 
+                  rightSection={<IconChevronDown size={18} className="text-slate-500" />}
                   styles={{
-                    root: { paddingLeft: 16, paddingRight: 16 },
-                    label: { fontSize: 15, fontWeight: 700, color: '#1e293b' }
+                    root: { paddingLeft: 18, paddingRight: 18 },
+                    label: { fontSize: 16, fontWeight: 700, color: '#1e293b' }
                   }}
                 >
                   {formatDateToDDMMMYYYY(filters.fromDate)} - {formatDateToDDMMMYYYY(filters.toDate)}
                 </Button>
               </Popover.Target>
-              <Popover.Dropdown p="md">
-                <Group grow mb="md" align="flex-start">
+              <Popover.Dropdown p="lg">
+                <Group grow mb="lg" align="flex-start">
                   <TextInput 
                     label="From Date" 
                     type="date" 
                     size="md"
                     value={filters.fromDate} 
                     onChange={(e) => filters.setFromDate(e.currentTarget.value)} 
-                    styles={{ label: { fontSize: 13, marginBottom: 6, fontWeight: 600, color: '#475569' } }}
+                    styles={{ label: { fontSize: 14, marginBottom: 8, fontWeight: 600, color: '#475569' } }}
                   />
                   <TextInput 
                     label="To Date" 
@@ -298,7 +279,7 @@ export function Dashboard() {
                     size="md"
                     value={filters.toDate} 
                     onChange={(e) => filters.setToDate(e.currentTarget.value)} 
-                    styles={{ label: { fontSize: 13, marginBottom: 6, fontWeight: 600, color: '#475569' } }}
+                    styles={{ label: { fontSize: 14, marginBottom: 8, fontWeight: 600, color: '#475569' } }}
                   />
                 </Group>
                 <Button fullWidth size="md" radius="md" color="brand" onClick={() => {
@@ -310,7 +291,7 @@ export function Dashboard() {
               </Popover.Dropdown>
             </Popover>
             
-            <ActionIcon variant="default" size={42} radius="md" onClick={actions.refetch}>
+            <ActionIcon variant="default" size={46} radius="md" onClick={actions.refetch}>
               <IconRefresh size={20} className="text-slate-500" />
             </ActionIcon>
           </Group>
@@ -327,7 +308,7 @@ export function Dashboard() {
               <CircularProgress percent={eff?.rate_pct || 0} />
               <Text size="12px" c="dimmed" mt={8}>Collected</Text>
               <Text fw={700} size="12.5px" className="text-slate-700">
-                {renderCompactCurrency(eff?.collected || 0)} / {renderCompactCurrency(eff?.demand || 0)}
+                {renderSmartCurrency(eff?.collected || 0)} / {renderSmartCurrency(eff?.demand || 0)}
               </Text>
               <Badge mt={8} radius="sm" variant="light" color="green" size="sm" className="!normal-case">
                 <Group gap={4}>
@@ -356,11 +337,11 @@ export function Dashboard() {
                   <CartesianGrid vertical={false} stroke="#F1F5F9" />
                   <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
                   <YAxis 
-                    tickFormatter={(v) => renderCompactCurrency(v)} 
+                    tickFormatter={(v) => renderSmartCurrency(v)} 
                     tick={{ fontSize: 10, fill: "#94A3B8" }} 
                     axisLine={false} tickLine={false} width={44} 
                   />
-                  <RTooltip formatter={(v: number) => renderCompactCurrency(v)} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                  <RTooltip formatter={(v: number) => renderSmartCurrency(v)} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                   <Line type="monotone" dataKey="disbursement" stroke={cv("brand", 6)} strokeWidth={1.5} dot={{ r: 2.5, fill: cv("brand", 6) }} />
                   <Line type="monotone" dataKey="collection" stroke={cv("green", 6)} strokeWidth={1.5} dot={{ r: 2.5, fill: cv("green", 6) }} />
                 </LineChart>
@@ -383,7 +364,7 @@ export function Dashboard() {
                     </div>
                     <div className="flex flex-col items-end">
                       <Text size="12px" fw={700} className="text-slate-800">
-                        {renderFullWithCompact(r.amount)}
+                        {renderSmartCurrency(r.amount)}
                       </Text>
                       <Text size="10.5px" c="dimmed">{r.pct}%</Text>
                     </div>
@@ -394,7 +375,7 @@ export function Dashboard() {
               <div className="mt-auto">
                 <Group justify="space-between" pt={12} className="border-t border-slate-100">
                   <Text size="11.5px" c="dimmed">Total Portfolio</Text>
-                  <Text size="13px" fw={800} className="text-slate-900">{renderFullWithCompact(totalPortfolio)}</Text>
+                  <Text size="13px" fw={800} className="text-slate-900">{renderSmartCurrency(totalPortfolio)}</Text>
                 </Group>
               </div>
             </div>
@@ -402,7 +383,7 @@ export function Dashboard() {
         </div>
 
         <div className="grid grid-cols-2 gap-3.5 items-start">
-          <Paper withBorder radius="lg" className="border-slate-200 overflow-hidden relative min-h-[250px]">
+          <Paper withBorder radius="lg" className="border-slate-200 flex flex-col relative min-h-[300px]">
             {status.loadingPending && (
               <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center">
                 <Loader size="sm" color="blue" />
@@ -411,7 +392,7 @@ export function Dashboard() {
             <Group p="sm" className="border-b border-slate-100">
               <Title order={5} className="text-slate-900">Pending Approvals List</Title>
             </Group>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto flex-1">
               <Table verticalSpacing="xs" horizontalSpacing="md" className="text-[12.5px]">
                 <Table.Thead>
                   <Table.Tr>
@@ -441,13 +422,25 @@ export function Dashboard() {
                 </Table.Tbody>
               </Table>
             </div>
-            <Group p="sm" gap={4} className="cursor-pointer border-t border-slate-50">
-              <Text size="12.5px" fw={600} style={{ color: cv("brand", 6) }}>View All Applications</Text>
-              <IconChevronRight size={14} style={{ color: cv("brand", 6) }} />
+            <Group justify="space-between" p="sm" className="border-t border-slate-50 mt-auto">
+              <Group gap={4} className="cursor-pointer">
+                <Text size="12.5px" fw={600} style={{ color: cv("brand", 6) }}>View All Applications</Text>
+                <IconChevronRight size={14} style={{ color: cv("brand", 6) }} />
+              </Group>
+              {pagination.pendingPagination && pagination.pendingPagination.total_pages > 1 && (
+                <Pagination
+                  value={pagination.pendingPage}
+                  onChange={pagination.setPendingPage}
+                  total={pagination.pendingPagination.total_pages}
+                  size="sm"
+                  color="brand"
+                  radius="md"
+                />
+              )}
             </Group>
           </Paper>
 
-          <Paper withBorder radius="lg" className="border-slate-200 overflow-hidden relative min-h-[250px]">
+          <Paper withBorder radius="lg" className="border-slate-200 flex flex-col relative min-h-[300px]">
             {status.loadingOverdue && (
               <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center">
                 <Loader size="sm" color="blue" />
@@ -456,7 +449,7 @@ export function Dashboard() {
             <Group p="sm" className="border-b border-slate-100">
               <Title order={5} className="text-slate-900">Overdue Collections Task List</Title>
             </Group>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto flex-1">
               <Table verticalSpacing="xs" horizontalSpacing="md" className="text-[12.5px]">
                 <Table.Thead>
                   <Table.Tr>
@@ -487,9 +480,21 @@ export function Dashboard() {
                 </Table.Tbody>
               </Table>
             </div>
-            <Group p="sm" gap={4} className="cursor-pointer border-t border-slate-50">
-              <Text size="12.5px" fw={600} style={{ color: cv("brand", 6) }}>View All Tasks</Text>
-              <IconChevronRight size={14} style={{ color: cv("brand", 6) }} />
+            <Group justify="space-between" p="sm" className="border-t border-slate-50 mt-auto">
+              <Group gap={4} className="cursor-pointer">
+                <Text size="12.5px" fw={600} style={{ color: cv("brand", 6) }}>View All Tasks</Text>
+                <IconChevronRight size={14} style={{ color: cv("brand", 6) }} />
+              </Group>
+              {pagination.overduePagination && pagination.overduePagination.total_pages > 1 && (
+                <Pagination
+                  value={pagination.overduePage}
+                  onChange={pagination.setOverduePage}
+                  total={pagination.overduePagination.total_pages}
+                  size="sm"
+                  color="brand"
+                  radius="md"
+                />
+              )}
             </Group>
           </Paper>
         </div>
