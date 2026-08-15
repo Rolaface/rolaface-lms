@@ -164,7 +164,7 @@ export function LoanCollectionSequenceOrderModal({
             <TextInput
               size="sm"
               radius="md"
-              label="Collection Sequence Name"
+              label="Sequence Name"
               placeholder="e.g. Standard Write-Off Liquidation Sequence"
               value={sequenceName}
               onChange={(e) => setSequenceName(e.currentTarget.value)}
@@ -206,7 +206,7 @@ export function LoanCollectionSequenceOrderModal({
                     No.
                   </Text>
                   <Text size="xs" fw={700} c="slate.5" style={{ flex: 1 }}>
-                    Demand Type
+                    Component
                   </Text>
                 </Group>
 

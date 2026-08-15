@@ -211,7 +211,7 @@ export function AddLoanCategoryModal({
         <Box px="xl" py="lg" bg="slate.0">
           <Group align="flex-start" gap="md" wrap="nowrap">
             <TextInput
-              label="Loan Category Code"
+              label="Category Code"
               withAsterisk
               radius="md"
               placeholder="e.g. HOME"
@@ -224,7 +224,7 @@ export function AddLoanCategoryModal({
               style={{ flex: 1 }}
             />
             <TextInput
-              label="Loan Category Name"
+              label="Category Name"
               withAsterisk
               radius="md"
               placeholder="Enter category name"

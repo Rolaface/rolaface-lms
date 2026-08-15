@@ -221,7 +221,7 @@ export function LoanAccount() {
   const columns = useMemo(
     () => [
       columnHelper.accessor("appNo", {
-        header: "Loan Number.",
+        header: "Loan Account Number",
         cell: (info) => (
           <Text
             fz="sm"

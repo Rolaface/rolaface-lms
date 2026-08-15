@@ -108,7 +108,7 @@ export function LoanCollectionSequenceOrder() {
         ),
       }),
       columnHelper.accessor('components', {
-        header: 'Component Sequence',
+        header: 'Component Offset Sequence',
         enableSorting: false,
         cell: (info) => {
           const items = info.getValue();
@@ -233,7 +233,7 @@ export function LoanCollectionSequenceOrder() {
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
-              Collection Sequence
+              Collection Offset Sequence
             </Title>
             <Text fz="sm" c="slate.5">
               Define component liquidation sequence
