@@ -24,11 +24,12 @@ import {
   ThemeIcon,
   useMantineTheme,
 } from '@mantine/core';
-import { IconX, IconFileOff } from '@tabler/icons-react';
+import { IconX, IconFileOff, IconMinus } from '@tabler/icons-react';
 
 interface LoanWriteOffModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   onSubmit?: (data: LoanWriteOffFormData) => void;
   editData?: LoanWriteOffDetail | null;
 }
@@ -54,7 +55,7 @@ function formatCurrency(amount: number) {
   return `₹${amount.toLocaleString('en-IN')}`;
 }
 
-export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanWriteOffModalProps) {
+export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editData }: LoanWriteOffModalProps) {
   const theme = useMantineTheme();
   const isEdit = !!editData;
 
@@ -302,16 +303,28 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
               </Text>
             </Box>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
+          <Group gap="xs">
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={() => onMinimize?.()}
+              aria-label="Minimize"
+            >
+              <IconMinus size={16} color="white" />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
         {/* Body: main form + summary sidebar */}
@@ -332,9 +345,9 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
                   data={
                     loanAc && !loanAccountOptions.some((acc) => acc.name === loanAc)
                       ? [
-                          { value: loanAc, label: loanAc },
-                          ...loanAccountOptions.map((acc) => ({ value: acc.name, label: acc.name })),
-                        ]
+                        { value: loanAc, label: loanAc },
+                        ...loanAccountOptions.map((acc) => ({ value: acc.name, label: acc.name })),
+                      ]
                       : loanAccountOptions.map((acc) => ({ value: acc.name, label: acc.name }))
                   }
                   value={loanAc || null}
@@ -386,9 +399,9 @@ export function LoanWriteOffModal({ opened, onClose, onSubmit, editData }: LoanW
                   data={
                     writeOffAccount && !accountOptions.some((a) => a.value === writeOffAccount)
                       ? [
-                          { value: writeOffAccount, label: writeOffAccount },
-                          ...accountOptions.map((a) => ({ value: a.value, label: a.label })),
-                        ]
+                        { value: writeOffAccount, label: writeOffAccount },
+                        ...accountOptions.map((a) => ({ value: a.value, label: a.label })),
+                      ]
                       : accountOptions.map((a) => ({ value: a.value, label: a.label }))
                   }
                   value={writeOffAccount}

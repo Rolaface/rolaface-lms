@@ -983,8 +983,7 @@ const createDisbursementMutation = useMutation({
               onClose={onClose}
               submitLabel={editId ? "Update" : "Save"}
               submitLoading={isPending}
-              submitIcon={<IconArrowRight size={16} />}
-              errorMessage={footerErrorMessage}
+                            errorMessage={footerErrorMessage}
             />
           </Box>
         </Box>
