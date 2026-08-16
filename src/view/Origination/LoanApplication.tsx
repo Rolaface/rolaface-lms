@@ -334,6 +334,7 @@ const handleAdd = () => {
   };
 
   const handleView = (id: string) => {
+    queryClient.invalidateQueries({ queryKey: ['loan-application-detail', id] });
     setViewingApplicationId(id);
   };
 

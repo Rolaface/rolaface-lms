@@ -178,7 +178,7 @@ const { mutate: updateStatus } = useMutation({
   const [branch, setBranch] = useState<string | null>(null);
   const [status, setStatus] = useState("all");
 
-  const [sorting, setSorting] = useState([{ id: "appliedDate", desc: true }]);
+  const [sorting, setSorting] = useState([{ id: "id", desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
   const data = useMemo(() => {
@@ -220,7 +220,7 @@ const { mutate: updateStatus } = useMutation({
   const columns = useMemo(
     () => [
       columnHelper.accessor("appNo", {
-        header: "Application No.",
+        header: "Loan Account Number",
         cell: (info) => (
           <Text
             fz="sm"

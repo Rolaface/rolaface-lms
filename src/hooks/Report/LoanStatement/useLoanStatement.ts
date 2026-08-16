@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDebouncedValue } from '@mantine/hooks';
 import {
   getLoanStatementDashboard,
@@ -14,17 +14,36 @@ import { parseFrappeError } from '../../../utils/parseFrappeError';
 const DEFAULT_SORT: StatementSort = { field: 'date', direction: 'asc' };
 const DEFAULT_PAGE_SIZE = 5;
 
+const today = new Date();
+const currentYear = today.getFullYear();
+const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+const currentDay = String(today.getDate()).padStart(2, '0');
+
+const defaultFromDate = `${currentYear}-01-01`;
+const defaultToDate = `${currentYear}-${currentMonth}-${currentDay}`;
+
+const formatDateToAPI = (dateString: string) => {
+  if (!dateString) return dateString;
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = monthNames[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
 export function useLoanStatement() {
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [loanId, setLoanId] = useState<string | null>(null);
-  const [fromDate, setFromDate] = useState('2026-04-01');
-  const [toDate, setToDate] = useState('2026-08-01');
+  const [fromDate, setFromDate] = useState(defaultFromDate);
+  const [toDate, setToDate] = useState(defaultToDate);
   const [viewType, setViewType] = useState<'summary' | 'detailed'>('summary');
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 350);
 
   const [customers, setCustomers] = useState<{ value: string; label: string }[]>([]);
-  const [loans, setLoans] = useState<{ value: string; label: string }[]>([]);
+  const [loans, setLoans] = useState<{ value: string; label: string; applicant?: string }[]>([]);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -38,6 +57,8 @@ export function useLoanStatement() {
   const [loadingTable, setLoadingTable] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exportingType, setExportingType] = useState<'pdf' | 'excel' | null>(null);
+
+  const orderBy = useMemo(() => `${sort.field} ${sort.direction}`, [sort]);
 
   useEffect(() => {
     getCustomerList({ page_size: 100 })
@@ -54,11 +75,6 @@ export function useLoanStatement() {
   }, []);
 
   useEffect(() => {
-    if (!customerId) {
-      setLoans([]);
-      return;
-    }
-
     const allowedStatuses = [
       "Partially Disbursed",
       "Disbursed",
@@ -69,17 +85,23 @@ export function useLoanStatement() {
       "Settled"
     ];
 
-    getLoanList({
-      applicant: JSON.stringify([customerId]),
+    const params: Record<string, any> = {
       status: JSON.stringify(allowedStatuses),
       page_size: 100
-    })
+    };
+
+    if (customerId) {
+      params.applicant = JSON.stringify([customerId]);
+    }
+
+    getLoanList(params)
       .then((res) => {
         const data = res.message?.data || res.data || [];
         setLoans(
           data.map((l: any) => ({
             value: String(l.name),
-            label: l.loan_product ? `${l.name} - ${l.loan_product}` : String(l.name)
+            label: l.loan_product ? `${l.name} - ${l.loan_product}` : String(l.name),
+            applicant: l.applicant
           }))
         );
       })
@@ -99,8 +121,8 @@ export function useLoanStatement() {
     try {
       const res = await getLoanStatementDashboard({
         loan_id: loanId,
-        from_date: fromDate,
-        to_date: toDate,
+        from_date: formatDateToAPI(fromDate),
+        to_date: formatDateToAPI(toDate),
         view_type: viewType,
       });
       const payload = res.message || res;
@@ -125,8 +147,8 @@ export function useLoanStatement() {
     try {
       const res = await getLoanStatement({
         loan_id: loanId,
-        from_date: fromDate,
-        to_date: toDate,
+        from_date: formatDateToAPI(fromDate),
+        to_date: formatDateToAPI(toDate),
         view_type: viewType,
         page,
         page_size: pageSize,
@@ -165,7 +187,12 @@ export function useLoanStatement() {
     setExportingType(type);
     try {
       const exportFn = type === 'pdf' ? exportLoanStatementPDF : exportLoanStatementExcel;
-      const blob = await exportFn({ loan_id: loanId, from_date: fromDate, to_date: toDate, view_type: viewType });
+      const blob = await exportFn({ 
+        loan_id: loanId, 
+        from_date: formatDateToAPI(fromDate), 
+        to_date: formatDateToAPI(toDate), 
+        view_type: viewType 
+      });
       
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement('a');

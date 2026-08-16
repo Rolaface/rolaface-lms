@@ -136,7 +136,7 @@ const toDateString = (date: Date | string | null) => {
           />
 
           <TextInput
-            label="Loan A/C Number"
+            label="Loan Account Number"
             placeholder="Auto-generated on save"
             value={loanAcNumber}
             disabled
