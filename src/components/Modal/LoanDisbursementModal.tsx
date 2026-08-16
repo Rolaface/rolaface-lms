@@ -206,12 +206,23 @@ export function LoanDisbursementModal({
   //     onClose();
   //   },
   // });
-  const createDisbursementMutation = useMutation({
+const createDisbursementMutation = useMutation({
     mutationFn: createLoanDisbursement,
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
+      const newId =
+        data?.data?.name || data?.message?.name || data?.name || "";
       handleReset();
       onClose();
+      openCommonModal({
+        heading: "Disbursement Created",
+        subtitle: "",
+        body: newId
+          ? `Loan disbursement ${newId} has been created successfully.`
+          : "Loan disbursement has been created successfully.",
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
     },
     onError: (error: any) => {
       openCommonModal({
@@ -238,6 +249,15 @@ export function LoanDisbursementModal({
 
       handleReset();
       onClose();
+      openCommonModal({
+        heading: "Disbursement Updated",
+        subtitle: "",
+        body: editId
+          ? `Loan disbursement ${editId} has been updated successfully.`
+          : "Loan disbursement has been updated successfully.",
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
     },
     onError: (error: any) => {
       openCommonModal({
