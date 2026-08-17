@@ -47,6 +47,7 @@ import {
   changeLoanRepaymentStatus,
 } from '../../../api/loanRepaymentApi';
 import { loanWaiverModal } from './LoanWaiverModalStore';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
 
 const WAIVER_TYPES = ['Interest Waiver', 'Penalty Waiver', 'Charges Waiver'];
 
@@ -133,22 +134,26 @@ export function LoanWaiver() {
     queryFn: getAllLoanRepayment,
   });
 
-  const queryClient = useQueryClient();
+ const queryClient = useQueryClient();
 
-  const { mutate: removeWaiver, isPending: isDeleting } = useMutation({
-    mutationFn: (id: string) => deleteLoanRepayment(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-    },
-  });
+ const { mutate: updateStatus } = useMutation({
+  mutationFn: ({ id, action }: { id: string; action: string }) =>
+    changeLoanRepaymentStatus(id, action),
+  onSuccess: (_data, variables) => {
+    queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+    const isCancel = variables.action === 'cancelled';
+    openCommonModal({
+      heading: isCancel ? 'Waiver Cancelled' : 'Waiver Submitted',
+      body: isCancel
+        ? 'The waiver has been cancelled.'
+        : 'The waiver has been submitted successfully.',
+      color: isCancel ? 'danger' : 'success',
+      buttons: [{ label: 'Okay' }],
+    });
+  },
+});
 
-  const { mutate: updateStatus } = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: string }) =>
-      changeLoanRepaymentStatus(id, action),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-    },
-  });
+
 
   // Only rows whose repayment_type is one of the waiver types — the shared
   // getAllLoanRepayment endpoint returns every repayment/waiver/etc. record.

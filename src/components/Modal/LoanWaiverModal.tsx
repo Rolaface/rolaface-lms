@@ -16,7 +16,7 @@ import { WaiverExecutionPanel } from "./Waiver/Waiverexecutionpanel";
 import { DuesSummaryPanel } from "./Waiver/Duessummarypanel";
 import { WaiverEffectModal } from "./Waiver/Waivereffectmodal";
 import { ModalFooter } from "../../components/shared/ModalFooter";
-
+import { openCommonModal } from "./AlertModal";
 export type { LoanWaiverFormData };
 
 interface LoanWaiverModalProps {
@@ -175,14 +175,21 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
     mutationFn: createLoanRepayment,
   });
 
-  const updateWaiverMutation = useMutation({
-    mutationFn: updateLoanRepayment,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
-      handleReset();
-      onClose();
-    },
-  });
+const updateWaiverMutation = useMutation({
+  mutationFn: updateLoanRepayment,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
+    handleReset();
+    onClose();
+    openCommonModal({
+      heading: "Waiver Updated",
+      subtitle: "Changes saved successfully",
+      body: "The loan waiver record has been updated.",
+      color: "success",
+      buttons: [{ label: "Okay" }],
+    });
+  },
+});
 
   const handleSubmit = async () => {
     if (!selectedLoan || !selectedBorrower) return;
@@ -248,8 +255,15 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
         waivedPenalty,
         waivedFee,
       });
-      handleReset();
+handleReset();
       onClose();
+      openCommonModal({
+        heading: "Waiver Processed",
+        subtitle: `${entries.length} entr${entries.length > 1 ? "ies" : "y"} created`,
+        body: "The loan waiver has been recorded successfully.",
+        color: "success",
+        buttons: [{ label: "Okay" }],
+      });
     } finally {
       setIsSubmittingAll(false);
     }
