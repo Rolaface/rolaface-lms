@@ -33,7 +33,7 @@ export interface ScheduleRow {
   balance: number;
 }
 
-export const CONTENT_HEIGHT = "65vh"; // adjust if this doesn't match your modal sizing
+export const CONTENT_HEIGHT = "65vh";
 
 export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);

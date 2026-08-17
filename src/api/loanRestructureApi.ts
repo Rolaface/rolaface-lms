@@ -171,7 +171,7 @@ export async function searchLoanRepaymentAccounts(
   if (!searchTerm.trim()) return [];
   const resp: AxiosResponse<{ message: FrappeEnvelope<LoanRepaymentAccount[]> }> = await apiClient.get(
     API.loanRestructure.search,
-    { params: { search_term: searchTerm } }
+   { params: { search_term: searchTerm, initiated_restructure: true } }
   );
   return unwrap(resp.data?.message, "Failed to search loan accounts.") ?? [];
 }
@@ -194,6 +194,9 @@ export interface LoanDetailsResponse {
   loan_amount?: number;
   status?: string;
   loan_charges: LoanChargeLine[];
+  loan_product?: string;
+  repayment_periods?: number;
+  repayment_frequency?: string;
   [key: string]: unknown;
 }
 
@@ -276,4 +279,44 @@ export async function approveLoanRestructure(name: string): Promise<void> {
     docnames: [name],
   };
   await apiClient.put(API.loanRestructure.updateStatus, payload);
+}
+
+
+export interface RepaymentScheduleParams {
+  loan_product: string;
+  loan_amount: number;
+  rate_of_interest: number;
+  tenure: number;
+  repayment_frequency: string;
+  repayment_start_date: string;
+}
+
+export interface RepaymentSchedulePeriod {
+  payment_date: string;
+  principal_amount: number;
+  interest_amount: number;
+  total_payment: number;
+  balance_loan_amount: number;
+}
+
+export interface RepaymentScheduleResponse {
+  loan_amount: number;
+  rate_of_interest: number;
+  tenure: number;
+  repayment_start_date: string;
+  repayment_periods: RepaymentSchedulePeriod[];
+}
+
+
+export async function getRepaymentSchedule(
+  params: RepaymentScheduleParams
+): Promise<RepaymentScheduleResponse> {
+  const resp: AxiosResponse<{ message: RepaymentScheduleResponse }> = await apiClient.get(
+    API.loanRestructure.getRepaymentSchedule,
+    { params }
+  );
+  if (!resp.data?.message) {
+    throw new Error("Failed to fetch repayment schedule.");
+  }
+  return resp.data.message;
 }
