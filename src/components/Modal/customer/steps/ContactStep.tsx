@@ -1,16 +1,21 @@
-import { Box, TextInput, Select, Checkbox, Text, Group, Divider } from "@mantine/core";
+import {
+  Box,
+  TextInput,
+  Select,
+  Checkbox,
+  Text,
+  Group,
+  Divider,
+  Paper,
+} from "@mantine/core";
 import {
   IconChevronDown,
   IconMail,
   IconPhone,
   IconMapPin,
-  IconWorld,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
-import {
-  IconChip,
-  PlainCard,
-  SectionHeader,
-} from "../../../shared/customer/Shared";
+import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
 
 interface ContactStepProps {
   mobileNumber: string;
@@ -37,6 +42,8 @@ interface ContactStepProps {
   setSameAsResidential: (v: boolean) => void;
   mailingAddress: string;
   setMailingAddress: (v: string) => void;
+  mobileDuplicateName?: string | null;
+  errors?: Record<string, string>;
 }
 
 const chevron = (
@@ -114,6 +121,8 @@ export function ContactStep(props: ContactStepProps) {
     setSameAsResidential,
     mailingAddress,
     setMailingAddress,
+    mobileDuplicateName,
+    errors = {},
   } = props;
 
   return (
@@ -122,29 +131,48 @@ export function ContactStep(props: ContactStepProps) {
         icon={IconMail}
         title="Contact information"
         badge="REQUIRED"
-        description="How and where to reach this customer"
         accent="indigoAlt"
       />
 
-      {/* --- Phone & email --- */}
       <SubHeading icon={IconPhone} label="Phone & Email" />
+
+      {mobileDuplicateName && (
+        <Paper
+          radius="md"
+          p="sm"
+          mb="sm"
+          style={{ background: "var(--mantine-color-danger-0)" }}
+        >
+          <Group gap={8} wrap="nowrap" align="flex-start">
+            <IconAlertTriangle
+              size={16}
+              color="var(--mantine-color-danger-6)"
+              style={{ marginTop: 1, flexShrink: 0 }}
+            />
+            <Text size="xs" c="danger.7">
+              This mobile number matches an existing customer:{" "}
+              <Text span fw={700}>
+                {mobileDuplicateName}
+              </Text>
+            </Text>
+          </Group>
+        </Paper>
+      )}
+
       <FieldRow columns="repeat(4, minmax(0, 1fr))">
         <TextInput
           radius="md"
           label="Mobile Number"
           placeholder="+260 9__ ___ ___"
           withAsterisk
-          leftSection={<IconChip icon={IconPhone} />}
-          leftSectionWidth={38}
           value={mobileNumber}
           onChange={(e) => setMobileNumber(e.currentTarget.value)}
+          error={errors.mobileNumber}
         />
         <TextInput
           radius="md"
           label="Alternate Mobile"
           placeholder="+260 9__ ___ ___"
-          leftSection={<IconChip icon={IconPhone} color="indigoAlt" />}
-          leftSectionWidth={38}
           value={alternateMobile}
           onChange={(e) => setAlternateMobile(e.currentTarget.value)}
         />
@@ -152,10 +180,9 @@ export function ContactStep(props: ContactStepProps) {
           radius="md"
           label="Email Address"
           placeholder="name@example.com"
-          leftSection={<IconChip icon={IconMail} color="gold" />}
-          leftSectionWidth={38}
           value={email}
           onChange={(e) => setEmail(e.currentTarget.value)}
+          error={errors.email}
         />
         <Select
           radius="md"
@@ -169,17 +196,13 @@ export function ContactStep(props: ContactStepProps) {
         />
       </FieldRow>
 
-      {/* --- Address --- */}
       <SubHeading icon={IconMapPin} label="Address" />
-
 
       <FieldRow columns="2fr 1fr 1fr">
         <TextInput
           radius="md"
           label="Residential Address"
           placeholder="Plot / street, area"
-          leftSection={<IconChip icon={IconMapPin} color="accent" />}
-          leftSectionWidth={38}
           value={residentialAddress}
           onChange={(e) => setResidentialAddress(e.currentTarget.value)}
         />
@@ -189,8 +212,6 @@ export function ContactStep(props: ContactStepProps) {
           rightSection={chevron}
           label="Country"
           placeholder="Select"
-          leftSection={<IconChip icon={IconWorld} color="brand" />}
-          leftSectionWidth={38}
           data={["Zambia", "Zimbabwe", "Malawi", "South Africa"]}
           value={country}
           onChange={setCountry}
@@ -206,7 +227,6 @@ export function ContactStep(props: ContactStepProps) {
           onChange={setProvince}
         />
       </FieldRow>
-
 
       <FieldRow columns="repeat(3, minmax(0, 1fr))">
         <TextInput
@@ -232,7 +252,6 @@ export function ContactStep(props: ContactStepProps) {
         />
       </FieldRow>
 
-      {/* --- Mailing address --- */}
       <Group justify="space-between" mt="lg" mb="xs">
         <Text size="xs" fw={700} c="slate.8">
           Mailing Address
