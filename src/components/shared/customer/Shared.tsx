@@ -65,6 +65,7 @@ const BADGE_COLOR: Record<string, ChipColor | "gray"> = {
   REQUIRED: "gold",
   OPTIONAL: "gray",
   "RUNS AUTOMATICALLY": "brand",
+  "FROM BUREAU": "info",
 };
 
 export const SectionHeader = ({
@@ -74,6 +75,7 @@ export const SectionHeader = ({
   description,
   accent = "brand",
   dense = false,
+  stepNumber,
 }: {
   icon: any;
   title: string;
@@ -81,6 +83,8 @@ export const SectionHeader = ({
   description?: string;
   accent?: ChipColor;
   dense?: boolean;
+  /** Optional numbered step badge (e.g. 1, 2, 3) rendered instead of the icon chip. */
+  stepNumber?: number;
 }) => (
   <Group
     justify="space-between"
@@ -90,9 +94,28 @@ export const SectionHeader = ({
     style={{ borderBottom: "1px solid var(--mantine-color-gray-1)" }}
   >
     <Group align="flex-start" gap="sm" wrap="nowrap">
-      <ThemeIcon radius="md" variant="light" color={accent} size={dense ? 24 : 28}>
-        <Icon size={dense ? 14 : 16} />
-      </ThemeIcon>
+      {stepNumber !== undefined ? (
+        <Box
+          style={{
+            width: dense ? 24 : 28,
+            height: dense ? 24 : 28,
+            borderRadius: "var(--mantine-radius-sm)",
+            background: `var(--mantine-color-${accent}-6)`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          <Text size={dense ? "xs" : "sm"} fw={800} c="white">
+            {stepNumber}
+          </Text>
+        </Box>
+      ) : (
+        <ThemeIcon radius="md" variant="light" color={accent} size={dense ? 24 : 28}>
+          <Icon size={dense ? 14 : 16} />
+        </ThemeIcon>
+      )}
       <Box>
         <Group gap="xs">
           <Text size="sm" fw={800} c="dark.9">
