@@ -64,7 +64,7 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function LoanWriteOff() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
-  
+
 
   const [editData, setEditData] = useState<LoanWriteOffDetail | null>(null);
   const [search, setSearch] = useState('');
@@ -141,12 +141,12 @@ export function LoanWriteOff() {
 
   /* ---------------- handlers ---------------- */
 
-const handleAddClick = () => {
+  const handleAddClick = () => {
     setEditData(null);
     loanWriteOffModal.open({ onSubmit: handleModalSuccess });
   };
 
-const handleEditClick = async (id: string) => {
+  const handleEditClick = async (id: string) => {
     try {
       const detail = await getLoanWriteOffById(id);
       setEditData(detail);
@@ -155,7 +155,15 @@ const handleEditClick = async (id: string) => {
       showError('Load Failed', err);
     }
   };
-
+  const handleViewClick = async (id: string) => {
+    try {
+      const detail = await getLoanWriteOffById(id);
+      setEditData(detail);
+      loanWriteOffModal.open({ editData: detail, isView: true, onSubmit: handleModalSuccess });
+    } catch (err) {
+      showError('Load Failed', err);
+    }
+  };
   const handleDeleteClick = (id: string) => {
     openCommonModal({
       heading: 'Delete Write-off',
@@ -187,7 +195,7 @@ const handleEditClick = async (id: string) => {
     statusMutation.mutate({ id, action });
   };
 
-const handleModalSuccess = () => {
+  const handleModalSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['loan-write-offs'] });
     showSuccess(
       editData ? 'Write-off Updated' : 'Write-off Created',
@@ -202,9 +210,9 @@ const handleModalSuccess = () => {
       columnHelper.accessor('name', {
         header: 'Write-off ID',
         cell: (info) => (
-            <Text fz="sm" fw={700} c="slate.8">
-              {info.getValue()}
-            </Text>
+          <Text fz="sm" fw={700} c="slate.8">
+            {info.getValue()}
+          </Text>
 
         ),
       }),
@@ -260,7 +268,13 @@ const handleModalSuccess = () => {
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="slate"
+                  radius="md"
+                  onClick={() => handleViewClick(row.name)}
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
