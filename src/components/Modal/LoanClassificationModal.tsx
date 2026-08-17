@@ -334,12 +334,12 @@ export function LoanClassificationModal({
                 </Grid.Col>
               </Grid>
 
-              <Switch
+              {/* <Switch
                 label="Written off"
                 checked={formData.is_written_off}
                 onChange={(e) => updateField("is_written_off", e.currentTarget.checked)}
                 color="brand"
-              />
+              /> */}
             </Box>
           </Fieldset>
         </Box>

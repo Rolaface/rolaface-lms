@@ -388,8 +388,15 @@ export function LoanStatement() {
               placeholder="Select account"
               data={loanOptions}
               value={filters.loanId}
-              onChange={(val) => val && filters.setLoanId(val)}
-              disabled={!filters.customerId || loanOptions.length === 0}
+              onChange={(val) => {
+                filters.setLoanId(val);
+                if (val && !filters.customerId) {
+                  const matchedLoan = lookups.loans.find((l: any) => String(l.value) === String(val));
+                  if (matchedLoan && matchedLoan.applicant) {
+                    filters.setCustomerId(matchedLoan.applicant);
+                  }
+                }
+              }}
               searchable
               classNames={inputClassNames}
               className="w-[230px]"
@@ -425,7 +432,7 @@ export function LoanStatement() {
         </Paper>
 
         <div>
-          <Group justify="space-between" mb={8}>
+          {/* <Group justify="space-between" mb={8}>
             <Title order={5} className="text-slate-900">
               Loan Statement Summary
             </Title>
@@ -462,7 +469,7 @@ export function LoanStatement() {
                 </Button>
               ))}
             </Group>
-          </Group>
+          </Group> */}
 
           <Group
             gap="sm"

@@ -31,7 +31,6 @@ import {
   IconDotsVertical,
   IconFileOff,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -42,12 +41,12 @@ import {
 } from '@tanstack/react-table';
 import { modals } from '@mantine/modals';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LoanWaiverModal } from '../../../components/Modal/LoanWaiverModal';
 import {
   getAllLoanRepayment,
   deleteLoanRepayment,
   changeLoanRepaymentStatus,
 } from '../../../api/loanRepaymentApi';
+import { loanWaiverModal } from './LoanWaiverModalStore';
 
 const WAIVER_TYPES = ['Interest Waiver', 'Penalty Waiver', 'Charges Waiver'];
 
@@ -120,23 +119,14 @@ function natureColor(type: string) {
   if (type === 'Penalty Waiver') return 'gold';
   return 'accent';
 }
-
 export function LoanWaiver() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
   const [search, setSearch] = useState('');
   const [loanType, setLoanType] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  const [selectedWaiverId, setSelectedWaiverId] = useState<string | null>(null);
-  const [isViewMode, setIsViewMode] = useState(false);
 
-  const handleModalClose = () => {
-    close();
-    setSelectedWaiverId(null);
-    setIsViewMode(false);
-  };
 
   const { data: repaymentsResponse, isLoading } = useQuery({
     queryKey: ['loanRepayments'],
@@ -297,11 +287,8 @@ export function LoanWaiver() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => {
-                    setSelectedWaiverId(row.id);
-                    setIsViewMode(true);
-                    open();
-                  }}
+                                  onClick={() => loanWaiverModal.open({ editId: row.id, isView: true })}
+
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -313,11 +300,8 @@ export function LoanWaiver() {
                   color={isDraft ? 'brand' : 'slate'}
                   radius="md"
                   disabled={!isDraft}
-                  onClick={() => {
-                    setSelectedWaiverId(row.id);
-                    setIsViewMode(false);
-                    open();
-                  }}
+                                   onClick={() => loanWaiverModal.open({ editId: row.id, isView: false })}
+
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -389,8 +373,6 @@ export function LoanWaiver() {
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanWaiverModal opened={opened} onClose={handleModalClose} editId={selectedWaiverId} isView={isViewMode} />
-
       {/* Scoped, purely visual — mirrors LoanProduct's row/hover treatment */}
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
@@ -489,15 +471,11 @@ export function LoanWaiver() {
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
             Reset
           </Button>
-          <Button
+     <Button
             size="sm"
             radius="xl"
             color="brand"
-            onClick={() => {
-              setSelectedWaiverId(null);
-              setIsViewMode(false);
-              open();
-            }}
+            onClick={() => loanWaiverModal.open({ editId: null, isView: false })}
             leftSection={<IconPlus size={14} />}
             style={{
               background: theme.other.brandGradient,

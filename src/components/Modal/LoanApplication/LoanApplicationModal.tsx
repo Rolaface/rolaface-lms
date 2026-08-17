@@ -9,7 +9,7 @@ import {
   ActionIcon,
   ScrollArea,
   ThemeIcon,
-  Divider,
+  Divider, 
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { 
@@ -21,7 +21,7 @@ import {
   IconBriefcase, 
   IconFileInvoice, 
   IconUsers, 
-  IconArrowRight
+  IconArrowRight, IconMinus
 } from "@tabler/icons-react";
 
 import { PersonalBusinessInfoStep } from "./PersonalBusinessInfoStep";
@@ -387,10 +387,12 @@ function buildBusinessPayload(
 interface LoanApplicationModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize: () => void;
+  onExited?: () => void; 
   loanApplicationId?: string | null;
 }
 
-export function LoanApplicationModal({ opened, onClose, loanApplicationId }: LoanApplicationModalProps) {
+export function LoanApplicationModal({ opened, onClose, onMinimize, onExited,loanApplicationId }: LoanApplicationModalProps) {
   const originalDocumentUrls = useRef<Record<string, string>>({});
 const [isUploadingDocs, setIsUploadingDocs] = useState(false);
   const queryClient = useQueryClient();
@@ -819,6 +821,11 @@ const handleSubmitApplication = async () => {
       <Modal
       opened={opened}
       onClose={handleModalClose}
+      transitionProps={{
+        onExited: () => {
+          onExited?.();
+        },
+      }}
       size={1400}
       padding={0}
       lockScroll
@@ -865,7 +872,7 @@ const handleSubmitApplication = async () => {
                 </Text>
               </Box>
             </Group>
-            <ActionIcon
+            {/* <ActionIcon
               variant="subtle"
               color="white"
               radius="xl"
@@ -874,7 +881,30 @@ const handleSubmitApplication = async () => {
               aria-label="Close"
             >
               <IconX size={16} color="white" />
-            </ActionIcon>
+            </ActionIcon> */}
+            <Group gap="xs" wrap="nowrap">
+              <ActionIcon
+                variant="subtle"
+                color="white"
+                radius="xl"
+                size="md"
+                onClick={onMinimize}
+                aria-label="Minimize"
+              >
+                <IconMinus size={16} color="white" />
+              </ActionIcon>
+              
+              <ActionIcon
+                variant="subtle"
+                color="white"
+                radius="xl"
+                size="md"
+                onClick={handleModalClose}
+                aria-label="Close"
+              >
+                <IconX size={16} color="white" />
+              </ActionIcon>
+            </Group>
           </Group>
 
        <ScrollArea type="auto" scrollbarSize={8} style={{ flex: 1, minHeight: 0 }}>

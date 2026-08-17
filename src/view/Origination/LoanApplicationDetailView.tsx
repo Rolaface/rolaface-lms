@@ -191,26 +191,24 @@ export function LoanApplicationDetailView({
                 <StageBar stage={detail.stage} isRejected={isRejected} />
               </Paper>
 
-              <Tabs
-                value={tab}
-                onChange={(v) => v && setTab(v)}
-                variant="pills"
-                radius="xl"
-                styles={{
-                  tab: {
-                    color: '#6B7280',
-                    background: 'transparent',
-                    border: 'none',
-                    '&[data-active]': { background: '#E5E7EB !important', color: '#111827 !important', fontWeight: 700 },
-                  },
-                }}
-              >
-                <Tabs.List className="mb-5 flex-wrap gap-1 pb-3 border-b border-gray-200">
-                  <Tabs.Tab value="overview">Overview</Tabs.Tab>
-                  <Tabs.Tab value="applicant">Applicant &amp; Business</Tabs.Tab>
-                  <Tabs.Tab value="documents">Documents</Tabs.Tab>
-                  <Tabs.Tab value="activity">Activity</Tabs.Tab>
-                </Tabs.List>
+             <Tabs
+  value={tab}
+  onChange={(v) => v && setTab(v)}
+  variant="default"
+  color="indigo"
+  styles={{
+    tab: {
+      fontWeight: 600,
+      color: '#6B7280',
+    },
+  }}
+>
+  <Tabs.List className="mb-5 flex-wrap gap-1 pb-0 border-b border-gray-200">
+    <Tabs.Tab value="overview">Overview</Tabs.Tab>
+    <Tabs.Tab value="applicant">Applicant &amp; Business</Tabs.Tab>
+    <Tabs.Tab value="documents">Documents</Tabs.Tab>
+    <Tabs.Tab value="activity">Activity</Tabs.Tab>
+  </Tabs.List>
 
                 <Tabs.Panel value="overview">
                   <div className="flex flex-col gap-5">
@@ -245,7 +243,7 @@ export function LoanApplicationDetailView({
                       </div>
                     </Paper>
 
-                    {detail.business.isBusinessLoan && (
+                    {/* {detail.business.isBusinessLoan && (
                       <>
                         <SectionHeading title="Business summary" aside="Company details on file" />
                         <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
@@ -258,7 +256,40 @@ export function LoanApplicationDetailView({
                           </div>
                         </Paper>
                       </>
-                    )}
+                    )} */}
+                    {detail.business.isBusinessLoan && (
+  <>
+    <SectionHeading title="Business summary" aside="Company details on file" />
+    <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
+        <OverviewField label="COMPANY NAME" value={detail.business.companyName} />
+        <OverviewField label="TYPE OF BUSINESS" value={detail.business.typeOfBusiness} />
+        <OverviewField label="ESTABLISHED" value={detail.business.establishedDate} />
+        <OverviewField label="REGISTERED OFFICE" value={detail.business.registeredOffice} />
+        <OverviewField label="NATURE OF BUSINESS" value={detail.business.natureOfBusiness} />
+      </div>
+    </Paper>
+  </>
+)}
+
+{detail.business.isBusinessLoan && detail.directors.length > 0 && (
+  <>
+    <SectionHeading title="Directors" aside={`${detail.directors.length} on file`} />
+    <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
+        {detail.directors.map((dir) => (
+          <div key={dir.name} className="col-span-3 grid grid-cols-1 md:grid-cols-4 gap-4 pb-3 border-b last:border-b-0 border-gray-50">
+            <OverviewField label="NAME" value={dir.fullName} />
+            <OverviewField label="PHONE" value={dir.phone} />
+            <OverviewField label="EMAIL" value={dir.email} />
+            <OverviewField label="NRC" value={dir.nrc} />
+          </div>
+        ))}
+      </div>
+    </Paper>
+  </>
+)}
+
 
                     <SectionHeading title="Documents" aside={`${docsUploaded} / ${detail.documents.length} on file`} />
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -297,6 +328,24 @@ export function LoanApplicationDetailView({
                         <OverviewField label="EMPLOYER" value={detail.applicant.employerName} />
                       </div>
                     </Paper>
+                    {detail.business.isBusinessLoan && detail.directors.length > 0 && (
+  <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
+    <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
+      <Text fz="lg" fw={600} c="gray.9" style={serif}>Directors</Text>
+      <Text fz="xs" c="dimmed">{detail.directors.length} on file</Text>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
+      {detail.directors.map((dir) => (
+        <div key={dir.name} className="col-span-3 grid grid-cols-1 md:grid-cols-4 gap-4 pb-3 border-b last:border-b-0 border-gray-50">
+          <OverviewField label="NAME" value={dir.fullName} />
+          <OverviewField label="PHONE" value={dir.phone} />
+          <OverviewField label="EMAIL" value={dir.email} />
+          <OverviewField label="NRC" value={dir.nrc} />
+        </div>
+      ))}
+    </div>
+  </Paper>
+)}
 
                     {detail.business.isBusinessLoan && (
                       <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>

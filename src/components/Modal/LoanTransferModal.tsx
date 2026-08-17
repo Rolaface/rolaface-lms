@@ -13,6 +13,7 @@ import {
 } from '@mantine/core';
 import {
   IconX,
+  IconMinus,
   IconCalendar,
   IconBuildingBank,
   IconTrash,
@@ -40,6 +41,7 @@ export interface LoanTransferFormData {
 interface LoanTransferModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?:()=> void;
   onSubmit?: (data: LoanTransferFormData) => void;
 }
 
@@ -65,8 +67,7 @@ type TransferRow = { rowId: number; loanId: string; applicant: string };
 
 const columnHelper = createColumnHelper<TransferRow>();
 
-export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferModalProps) {
-  const [transferDate, setTransferDate] = useState('2026-07-28');
+export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: LoanTransferModalProps) {  const [transferDate, setTransferDate] = useState('2026-07-28');
   const [fromBranch, setFromBranch] = useState('');
   const [toBranch, setToBranch] = useState('');
 
@@ -231,16 +232,28 @@ export function LoanTransferModal({ opened, onClose, onSubmit }: LoanTransferMod
               </Text>
             </Box>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
+<Group gap="xs">
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={() => onMinimize?.()}
+              aria-label="Minimize"
+            >
+              <IconMinus size={16} color="white" />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
         {/* Body */}
