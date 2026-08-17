@@ -12,7 +12,7 @@ import {
   useMantineTheme,
   Stack,
 } from "@mantine/core";
-import { IconX, IconUser, IconCheck } from "@tabler/icons-react";
+import { IconX, IconUser, IconCheck, IconMinus } from "@tabler/icons-react";
 
 import { STEPS, STEP_GROUPS } from "../../constants/customer/constants";
 import { CustomerSummarySidebar } from "./Customersummarysidebar";
@@ -47,12 +47,14 @@ import {
 interface CustomerModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize: () => void;
   isViewMode?: boolean;
 }
 
 export function CustomerModal({
   opened,
   onClose,
+  onMinimize,
   isViewMode,
 }: CustomerModalProps) {
   const theme = useMantineTheme();
@@ -93,9 +95,6 @@ export function CustomerModal({
     primaryDoc && primaryDoc.docNumber.replace(/\s/g, "") === "221009/11/1"
       ? "Mwansa Chileshe (CUST-0042118)"
       : null;
-
-
-      
 
   const isBusinessType = identity.customerType === "Business";
   const sidebarCustomerName = isBusinessType
@@ -418,6 +417,8 @@ export function CustomerModal({
       size="90vw"
       padding={0}
       lockScroll
+      closeOnClickOutside={false}
+      closeOnEscape={false}
       styles={{
         content: {
           height: "94vh",
@@ -477,16 +478,28 @@ export function CustomerModal({
               </Text>
             </Box>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={handleModalClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
+          <Group gap="xs">
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={onMinimize}
+              aria-label="Minimize"
+            >
+              <IconMinus size={16} color="white" />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={handleModalClose}
+              aria-label="Close"
+            >
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
         <Box px="md" bg="white" style={{ flexShrink: 0 }}>
