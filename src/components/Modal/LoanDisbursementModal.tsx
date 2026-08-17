@@ -432,21 +432,36 @@ export function LoanDisbursementModal({
     enabled: opened && !!form.values.acNo && (!editId || hasUserChangedLoanAccount),
   });
 
-  const actualDisbursableAmount = useMemo(() => {
+const actualDisbursableAmount = useMemo(() => {
     const loanData =
       (loanAccountDetailsData as any)?.message?.data ||
       (loanAccountDetailsData as any)?.data ||
       (loanAccountDetailsData as any)?.message ||
       loanAccountDetailsData;
 
-    if (!loanData) return 0;
+    if (loanData) {
+      const sanctioned = Number(loanData.loan_amount || 0);
+      const disbursed = Number(loanData.disbursed_amount || 0);
+      return sanctioned - disbursed;
+    }
 
-    const sanctioned = Number(loanData.loan_amount || 0);
-    const disbursed = Number(loanData.disbursed_amount || 0);
-    return sanctioned - disbursed;
-  }, [loanAccountDetailsData]);
+    // Fallback: loanAccountDetailsData query hasn't fired yet (e.g. edit mode,
+    // account not changed) — derive from the disbursement record itself.
+    if (editId && editDetailsResponse) {
+      const item =
+        (editDetailsResponse as any).message?.data ||
+        (editDetailsResponse as any).data ||
+        (editDetailsResponse as any).message ||
+        editDetailsResponse;
+      const sanctioned = Number(item?.loan_amount || 0);
+      const disbursed = Number(item?.disbursed_amount || 0);
+      return sanctioned - disbursed;
+    }
 
-  const canShowTopup = Number(form.values.disburseAmount || 0) > actualDisbursableAmount;
+    return null;
+  }, [loanAccountDetailsData, editId, editDetailsResponse]);
+
+  const canShowTopup = actualDisbursableAmount !== null && actualDisbursableAmount === 0;
 
 useEffect(() => {
     if (!opened || !form.values.acNo) {
