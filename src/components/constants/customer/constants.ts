@@ -54,12 +54,12 @@ export const STEP_GROUPS = [
     icon: IconBankFile,
     stepIndices: [3], // Financial & Lending (merged)
   },
-  {
-    id: "additional",
-    label: "Additional",
-    icon: IconDots,
-    stepIndices: [7], // Tags & Notes
-  },
+  // {
+  //   id: "additional",
+  //   label: "Additional",
+  //   icon: IconDots,
+  //   stepIndices: [7], // Tags & Notes
+  // },
 ] as const;
 
 export const DOC_TILES = [

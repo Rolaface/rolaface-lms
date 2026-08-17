@@ -1,22 +1,5 @@
-import {
-  TextInput,
-  Select,
-  Text,
-  Group,
-  Paper,
-  Button,
-  Divider,
-  Stack,
-  Box,
-} from "@mantine/core";
-import {
-  IconChevronDown,
-  IconUsers,
-  IconLink,
-  IconUserPlus,
-  IconUser,
-  IconMapPin,
-} from "@tabler/icons-react";
+import { TextInput, Select, Text, Group, Divider, Box } from "@mantine/core";
+import { IconChevronDown, IconUsers, IconUser, IconMapPin } from "@tabler/icons-react";
 import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
 
 interface KinStepProps {
@@ -38,15 +21,11 @@ interface KinStepProps {
   setKinCityTown: (v: string) => void;
   kinPostalCode: string;
   setKinPostalCode: (v: string) => void;
-  guarantorLinked: boolean;
-  setGuarantorLinked: (v: boolean) => void;
 }
 
 const chevron = (
   <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
 );
-
-const FIELD_W = 220;
 
 function FieldRow({
   columns,
@@ -113,17 +92,14 @@ export function KinStep(props: KinStepProps) {
     setKinCityTown,
     kinPostalCode,
     setKinPostalCode,
-    guarantorLinked,
-    setGuarantorLinked,
   } = props;
 
   return (
     <PlainCard>
       <SectionHeader
         icon={IconUsers}
-        title="Next of kin & guarantor"
+        title="Next of kin"
         badge="OPTIONAL"
-
         accent="gold"
       />
       {/* --- Kin details --- */}
@@ -201,50 +177,6 @@ export function KinStep(props: KinStepProps) {
           onChange={(e) => setKinPostalCode(e.currentTarget.value)}
         />
       </FieldRow>
-      <Divider mt="lg" mb="sm" color="slate.2" />
-      <Stack gap="sm">
-        <Group justify="space-between">
-          <Text size="sm" fw={700} c="slate.8">
-            Guarantor
-          </Text>
-          <Text size="10px" c="slate.5">
-            — link an existing customer or add a new one
-          </Text>
-        </Group>
-        <Paper
-          withBorder
-          radius="md"
-          p="md"
-          bg="slate.0"
-          style={{ borderColor: "var(--mantine-color-slate-2)" }}
-        >
-          <Group gap="sm">
-            <Button
-              size="xs"
-              radius="md"
-              variant="light"
-              color="brand"
-              leftSection={<IconLink size={14} />}
-              onClick={() => setGuarantorLinked(true)}
-            >
-              Link Existing Customer
-            </Button>
-            <Button
-              size="xs"
-              radius="md"
-              variant="default"
-              leftSection={<IconUserPlus size={14} />}
-            >
-              Add New Guarantor
-            </Button>
-          </Group>
-          <Text size="xs" c="slate.5" mt="sm">
-            {guarantorLinked
-              ? "1 guarantor linked."
-              : "No guarantor linked yet."}
-          </Text>
-        </Paper>
-      </Stack>
     </PlainCard>
   );
 }

@@ -22,11 +22,13 @@ import {
   IconTrash,
   IconAlertTriangle,
 } from "@tabler/icons-react";
+import dayjs from "dayjs";
 import {
   PlainCard,
   SectionHeader,
 } from "../../../../components/shared/customer/Shared";
 import type { IdDocument } from "../../../../types/customer/types";
+import { DatePickerInput } from "@mantine/dates";
 
 interface IdentificationStepProps {
   idDocuments: IdDocument[];
@@ -100,11 +102,11 @@ function DocRow({
           {doc.idType || "Untitled document"}
         </Text>
       </Group>
-      {doc.expiryDate && (
-        <Text size="10px" c="slate.5" mb={6}>
-          Exp: {doc.expiryDate}
-        </Text>
-      )}
+     {doc.expiryDate && (
+  <Text size="10px" c="slate.5" mb={6}>
+    Exp: {dayjs(doc.expiryDate).format("DD-MMM-YYYY")}
+  </Text>
+)}
       <Group gap={4}>
         <Badge
           size="xs"
@@ -188,7 +190,12 @@ export function IdentificationStep({
             overflow: "hidden",
           }}
         >
-          <Group justify="space-between" px="sm" py="xs" style={{ flexShrink: 0 }}>
+          <Group
+            justify="space-between"
+            px="sm"
+            py="xs"
+            style={{ flexShrink: 0 }}
+          >
             <Text
               size="xs"
               fw={800}
@@ -249,7 +256,10 @@ export function IdentificationStep({
                 mb="sm"
                 wrap={isMobile ? "wrap" : "nowrap"}
               >
-                <Box w={isMobile ? "100%" : "33%"} maw={isMobile ? "100%" : 240}>
+                <Box
+                  w={isMobile ? "100%" : "33%"}
+                  maw={isMobile ? "100%" : 240}
+                >
                   <TextInput
                     size="xs"
                     radius="md"
@@ -291,29 +301,46 @@ export function IdentificationStep({
                   }
                   error={errors[`doc-${selectedDoc.id}`]}
                 />
-                <TextInput
+                <DatePickerInput
                   size="xs"
                   radius="md"
-                  type="date"
                   label="Issue Date"
-                  value={selectedDoc.issueDate}
-                  onChange={(e) =>
+                  placeholder="DD-MMM-YYYY"
+                  value={
+                    selectedDoc.issueDate
+                      ? new Date(selectedDoc.issueDate)
+                      : null
+                  }
+                  valueFormat="DD-MMM-YYYY"
+                  onChange={(date) =>
                     updateIdDocument(selectedDoc.id, {
-                      issueDate: e.currentTarget.value,
+                      issueDate: date
+                        ? new Date(date).toISOString().split("T")[0]
+                        : "",
                     })
                   }
+                  maxDate={new Date()}
+                  clearable
                 />
-                <TextInput
+                <DatePickerInput
                   size="xs"
                   radius="md"
-                  type="date"
                   label="Expiry Date"
-                  value={selectedDoc.expiryDate}
-                  onChange={(e) =>
+                  placeholder="DD-MMM-YYYY"
+                  value={
+                    selectedDoc.expiryDate
+                      ? new Date(selectedDoc.expiryDate)
+                      : null
+                  }
+                  valueFormat="DD-MMM-YYYY"
+                  onChange={(date) =>
                     updateIdDocument(selectedDoc.id, {
-                      expiryDate: e.currentTarget.value,
+                      expiryDate: date
+                        ? new Date(date).toISOString().split("T")[0]
+                        : "",
                     })
                   }
+                  clearable
                 />
                 <Select
                   size="xs"
