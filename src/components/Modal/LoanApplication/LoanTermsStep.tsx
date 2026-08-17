@@ -101,7 +101,7 @@ export function LoanTermsStep({ form, loanType }: StepProps) {
         <SummaryRow label="Loan amount" value={`${currencySymbol}${form.values.loanAmount.toLocaleString()}`} />
         <SummaryRow label="Tenure" value={`${tenure} months`} />
         <SummaryRow label="Monthly repayment" value={`${currencySymbol}${monthlyRepayment.toLocaleString()}`} />
-        <SummaryRow label="Facility fee" value={`K${facilityFee.toLocaleString()}`} />
+        <SummaryRow label="Facility fee" value={`${currencySymbol} ${facilityFee.toLocaleString()}`} />
 
         <Box className="bg-white border border-slate-200 rounded-md px-3 py-2 mt-2">
           <SummaryRow label="Total repayable" value={`${currencySymbol}${totalRepayable.toLocaleString()}`} bold />

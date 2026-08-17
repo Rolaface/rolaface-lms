@@ -18,6 +18,7 @@ import type { LoanApplicationValues, LoanType, DirectorDocEntry } from "./LoanAp
 interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
   loanType: LoanType;
+  directorDocsError?: string | null;
 }
 
 const nextId = () => Math.random().toString(36).slice(2, 10);
@@ -38,12 +39,14 @@ function FileField({
   file,
   error,
   onChange,
+  onBlur,
 }: {
   label: string;
   required?: boolean;
   file: File | null;
   error?: React.ReactNode;
   onChange: (file: File | null) => void;
+  onBlur?: () => void;
 }) {
   return (
     <div>
@@ -52,6 +55,7 @@ function FileField({
         placeholder="Upload document or choose file"
         value={file}
         onChange={onChange}
+        onBlur={onBlur}
         error={error}
         clearable
         radius="md"
@@ -70,7 +74,8 @@ function FileField({
   );
 }
 
-export function DocumentsStep({ form, loanType }: StepProps) {
+// export function DocumentsStep({ form, loanType }: StepProps) {
+export function DocumentsStep({ form, loanType, directorDocsError }: StepProps) {
   const [opened, { open, close }] = useDisclosure(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
@@ -126,6 +131,16 @@ export function DocumentsStep({ form, loanType }: StepProps) {
     setEditingIndex(newIndex);
     open();
   };
+  const handleDoneDirectorDoc = () => {
+    if (editingIndex === null) return;
+    const nrcErr = form.validateField(`directorDocuments.${editingIndex}.nrcFile`).hasError;
+    const photoErr = form.validateField(`directorDocuments.${editingIndex}.photoFile`).hasError;
+
+    if (nrcErr || photoErr) return;
+
+    setEditingIndex(null);
+    close();
+  };
 
   const handleEditDirectorDoc = (index: number) => {
     setEditingIndex(index);
@@ -171,6 +186,12 @@ export function DocumentsStep({ form, loanType }: StepProps) {
               Add Director Docs
             </Button>
           </Group>
+
+          {directorDocsError && (
+            <Text fz="xs" c="red.6">
+              {directorDocsError}
+            </Text>
+          )}
 
           {directorDocs.length > 0 && (
             <Stack gap="sm">
@@ -284,12 +305,13 @@ export function DocumentsStep({ form, loanType }: StepProps) {
         {editingIndex !== null && (
           <Box>
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" verticalSpacing="md" mb="xl">
-              <FileField
+             <FileField
                 label={`Director ${editingIndex + 1} NRC`}
                 required
                 file={form.values.directorDocuments[editingIndex].nrcFile}
                 error={form.errors[`directorDocuments.${editingIndex}.nrcFile`]}
                 onChange={(f) => form.setFieldValue(`directorDocuments.${editingIndex}.nrcFile`, f)}
+                onBlur={() => form.validateField(`directorDocuments.${editingIndex}.nrcFile`)}
               />
               <FileField
                 label={`Director ${editingIndex + 1} passport photo`}
@@ -297,11 +319,15 @@ export function DocumentsStep({ form, loanType }: StepProps) {
                 file={form.values.directorDocuments[editingIndex].photoFile}
                 error={form.errors[`directorDocuments.${editingIndex}.photoFile`]}
                 onChange={(f) => form.setFieldValue(`directorDocuments.${editingIndex}.photoFile`, f)}
+                onBlur={() => form.validateField(`directorDocuments.${editingIndex}.photoFile`)}
               />
             </SimpleGrid>
 
-            <Group justify="flex-end">
-              <Button color="brand" radius="md" onClick={handleCloseModal}>
+          <Group justify="flex-end">
+              <Button variant="default" radius="md" onClick={handleCloseModal}>
+                Close
+              </Button>
+              <Button color="brand" radius="md" onClick={handleDoneDirectorDoc}>
                 Done
               </Button>
             </Group>

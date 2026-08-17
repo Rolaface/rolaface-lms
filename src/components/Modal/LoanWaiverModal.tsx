@@ -16,8 +16,11 @@ import { WaiverExecutionPanel } from "./Waiver/Waiverexecutionpanel";
 import { DuesSummaryPanel } from "./Waiver/Duessummarypanel";
 import { WaiverEffectModal } from "./Waiver/Waivereffectmodal";
 import { ModalFooter } from "../../components/shared/ModalFooter";
+import { openCommonModal } from '../../components/Modal/AlertModal';
+
 
 export type { LoanWaiverFormData };
+
 
 interface LoanWaiverModalProps {
   opened: boolean;
@@ -175,14 +178,29 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
     mutationFn: createLoanRepayment,
   });
 
-  const updateWaiverMutation = useMutation({
-    mutationFn: updateLoanRepayment,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
-      handleReset();
-      onClose();
-    },
-  });
+const updateWaiverMutation = useMutation({
+  mutationFn: updateLoanRepayment,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
+    handleReset();
+    onClose();
+    openCommonModal({
+      heading: "Waiver Updated",
+      subtitle: "Changes saved successfully",
+      body: "The loan waiver record has been updated.",
+      color: "success",
+      buttons: [{ label: "Okay" }],
+    });
+  },
+  onError: () => {
+    openCommonModal({
+      heading: "Update Failed",
+      body: "Something went wrong while updating the waiver. Please try again.",
+      color: "danger",
+      buttons: [{ label: "Okay" }],
+    });
+  },
+});
 
   const handleSubmit = async () => {
     if (!selectedLoan || !selectedBorrower) return;
@@ -223,7 +241,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
     if (entries.length === 0) return;
 
     setIsSubmittingAll(true);
-    try {
+try {
       for (const entry of entries) {
         const payload: LoanRepaymentPayload = {
           ...basePayload,
@@ -232,7 +250,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
         };
         await createWaiverMutation.mutateAsync(payload);
       }
-      queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
+queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
       onSubmit?.({
         loanAc: selectedLoan.id,
         customerName: selectedBorrower.name,
@@ -250,6 +268,20 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
       });
       handleReset();
       onClose();
+      openCommonModal({
+        heading: "Waiver Processed",
+        subtitle: `${entries.length} entr${entries.length > 1 ? "ies" : "y"} created`,
+        body: "The loan waiver has been recorded successfully.",
+        color: "success",
+        buttons: [{ label: "Okay" }],
+      });
+    } catch (err) {
+      openCommonModal({
+        heading: "Waiver Failed",
+        body: "Something went wrong while processing the waiver. Please try again.",
+        color: "danger",
+        buttons: [{ label: "Okay" }],
+      });
     } finally {
       setIsSubmittingAll(false);
     }

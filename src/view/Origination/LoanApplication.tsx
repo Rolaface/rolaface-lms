@@ -58,6 +58,7 @@ import { useCompanyStore } from '../../store/companyStore';
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { CreateLoanBookingModal } from '../../components/Modal/CreateLoanBookingModal';
 import { getSymbol } from '../../store/currencyStore';
+import { loanAccountModal } from '../../components/Modal/LoanBooking/loanAccountModalStore';
 export interface LoanApplicationRow {
   name: string;
   application_type: string;
@@ -222,22 +223,40 @@ const statusMutation = useMutation({
    },
   });
 
- const convertToLoanMutation = useMutation({
+// const convertToLoanMutation = useMutation({
+//   mutationFn: ({
+//     id,
+//     loan_product,
+//   }: {
+//     id: string;
+//     loan_product: string;
+//   }) => convertCustomLoanApplicationToLoan({ id, loan_product }),
+
+//   // onSuccess: () => {
+//   onSuccess: (_, variables) => {
+//     queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
+//     closeBooking();
+//     showSuccess("Loan Created", `Application ${variables.id} was successfully converted to a loan.`
+//     );
+//   },
+const convertToLoanMutation = useMutation({
   mutationFn: ({
     id,
-    company: companyParam,
     loan_product,
   }: {
     id: string;
-    company: string;
     loan_product: string;
-  }) => convertCustomLoanApplicationToLoan({ id, company: companyParam, loan_product }),
-  // onSuccess: () => {
-  onSuccess: (_, variables) => {
+  }) => convertCustomLoanApplicationToLoan({ id, loan_product }),
+
+  onSuccess: (data, variables) => {
     queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
     closeBooking();
-    showSuccess("Loan Created", `Application ${variables.id} was successfully converted to a loan.`
-    );
+    showSuccess("Loan Created", `Application ${variables.id} was successfully converted to a loan.`);
+
+    const newLoanId = data?.message?.data?.name;
+    if (newLoanId) {
+      loanAccountModal.open({ loanId: newLoanId });
+    }
   },
      onError: (error: any) => {
      openCommonModal({
@@ -422,6 +441,9 @@ const confirmReject = (id: string) => {
   });
 };
 
+const bookingApplications = data.find((a) => a.name === bookingApplicationId);
+const bookingApplicantName = bookingApplications ? getApplicantDisplayName(bookingApplications) : null;
+
 const confirmCreateLoanBooking = (id: string) => {
   setBookingApplicationId(id);
   openBooking();
@@ -429,7 +451,7 @@ const confirmCreateLoanBooking = (id: string) => {
 
 const handleConfirmCreateBooking = (loanProduct: string) => {
   if (!bookingApplicationId) return;
-  convertToLoanMutation.mutate({ id: bookingApplicationId, company: companyName, loan_product: loanProduct });
+  convertToLoanMutation.mutate({ id: bookingApplicationId, loan_product: loanProduct });
 };
 
   const columns = useMemo(
@@ -654,6 +676,7 @@ columnHelper.accessor('status', {
       <CreateLoanBookingModal
   opened={bookingOpened}
   applicationId={bookingApplicationId}
+  customerName={bookingApplicantName}
   onClose={closeBooking}
   onConfirm={handleConfirmCreateBooking}
   isSubmitting={convertToLoanMutation.isPending}

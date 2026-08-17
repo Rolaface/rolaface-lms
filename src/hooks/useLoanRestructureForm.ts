@@ -57,6 +57,10 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
   const [currentPenaltyRate, setCurrentPenaltyRate] = useState<number>(0);
   const [loanDetailsLoading, setLoanDetailsLoading] = useState(false);
 
+
+  const [currentLoanProduct, setCurrentLoanProduct] = useState<string>("");
+  const [currentLoanAmount, setCurrentLoanAmount] = useState<number>(0);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingRecord, setIsLoadingRecord] = useState(false);
 
@@ -120,8 +124,8 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
   }, [search, selectedBorrower]);
 
   const initLoanFields = (loan: RestructureLoan) => {
-    setNewInterestRate(loan.interestRate || "");
-    setNewPenaltyRate(loan.penaltyRate || "");
+    setNewInterestRate("");
+    setNewPenaltyRate("");
     setTopupAmount("");
     setCurrentPrincipalOutstanding(loan.principalOutstanding || "");
     setNewPrincipalOutstanding(loan.principalOutstanding || "");
@@ -130,6 +134,8 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
     setCurrentInterestRate(loan.interestRate || 0);
     setCurrentPenaltyRate(loan.penaltyRate || 0);
     setChargeRows([]);
+    setCurrentLoanProduct("");
+    setCurrentLoanAmount(0);
   };
 
   const handleSelectBorrower = (borrower: RestructureBorrower) => {
@@ -152,6 +158,8 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
     setExtendTenureBy(""); setChargeRows([]); setOldValues(null);
     setCurrentPrincipalOutstanding("");
     setCurrentInterestRate(0); setCurrentPenaltyRate(0);
+    setCurrentLoanProduct("");
+    setCurrentLoanAmount(0);
   };
 
   const handleClearBorrower = () => {
@@ -172,11 +180,8 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
 
         setCurrentInterestRate(interest);
         setCurrentPenaltyRate(penalty);
-
-
-        setNewInterestRate(interest);
-        setNewPenaltyRate(penalty);
-
+        setCurrentLoanProduct(details.loan_product || "");
+        setCurrentLoanAmount(Number(details.loan_amount) || 0);
 
         const rows: ChargeRow[] = (details.loan_charges || []).map(() => ({
           id: nextChargeRowId(),
@@ -190,6 +195,24 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
       })
       .finally(() => {
         if (!cancelled) setLoanDetailsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [selectedLoan?.id, isViewMode, isEditMode]);
+
+
+  useEffect(() => {
+    if (!selectedLoan?.id || (!isViewMode && !isEditMode)) return;
+
+    let cancelled = false;
+    getLoanDetails(selectedLoan.id)
+      .then((details) => {
+        if (cancelled) return;
+        setCurrentLoanProduct(details.loan_product || "");
+        setCurrentLoanAmount(Number(details.loan_amount) || 0);
+      })
+      .catch(() => {
+        // non-critical — silently ignored
       });
 
     return () => { cancelled = true; };
@@ -272,7 +295,6 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
     }
   };
 
-  // ---------- Charges table row helpers ----------
   const addChargeRow = () => {
     setChargeRows((rows) => [...rows, { id: nextChargeRowId(), charge: "", amount: "" }]);
   };
@@ -281,31 +303,16 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
     setChargeRows((rows) => rows.filter((r) => r.id !== id));
   };
 
-  // new — close updateChargeRow properly first
+
   const updateChargeRow = (id: string, patch: Partial<Pick<ChargeRow, "charge" | "amount">>) => {
     setChargeRows((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   };
 
   const canSubmit =
-    !isViewMode &&
-    !!selectedLoan &&
-    !!reason &&
-    !!valueDate &&
-    restructureType !== "TOPUP" &&
-    (restructureType === "RATE_CHANGE" ? newInterestRate !== "" : extendTenureBy !== "");
+    !isViewMode;
 
   const getMissingFields = (): string[] => {
     const missing: string[] = [];
-    if (!selectedBorrower) missing.push("Borrower");
-    if (!selectedLoan) missing.push("Loan Account");
-    if (!reason) missing.push("Reason for Restructure");
-    if (!valueDate) missing.push("Value Date");
-    if (restructureType === "RATE_CHANGE" && newInterestRate === "") missing.push("New Interest Rate");
-    if (restructureType === "MODIFY_MATURITY" && extendTenureBy === "") missing.push("Extend Tenure By");
-    if (restructureType === "TOPUP") missing.push("Topup restructures aren't supported yet");
-
-    const incompleteRow = chargeRows.some((r) => Number(r.amount) > 0 && !r.charge);
-    if (incompleteRow) missing.push("Charge Type for one or more charge rows");
 
     return missing;
   };
@@ -378,5 +385,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
     canSubmit, isProcessing, handleSubmit,
     oldValues,
     resetAll,
+    currentLoanProduct,
+    currentLoanAmount,
   };
 }

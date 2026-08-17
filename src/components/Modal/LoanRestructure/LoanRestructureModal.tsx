@@ -1,24 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActionIcon, Anchor, Box, Text, Group, Button, TextInput, Select, Badge,
-  Modal, Table, ScrollArea, ThemeIcon, UnstyledButton, useMantineTheme, Loader,
-  Tooltip,
+  ScrollArea, ThemeIcon, UnstyledButton, useMantineTheme, Loader,
 } from "@mantine/core";
 import {
   IconX, IconRestore, IconSearch, IconCalendarDue, IconCar, IconClipboardList,
   IconChevronDown, IconUserSearch, IconBuildingBank, IconMinus
 } from "@tabler/icons-react";
 import { DateInput } from "@mantine/dates";
+import { Modal } from "@mantine/core";
 import dayjs from "dayjs";
 import { ModalFooter } from "../../shared/ModalFooter";
 import { useCompanyStore } from "../../../store/companyStore";
 import { formatAmount, useCurrencyReady } from "../../../store/currencyStore";
 import { useLoanRestructureForm } from "../../../hooks/useLoanRestructureForm";
-import {
-  CONTENT_HEIGHT, RESTRUCTURE_REASONS, buildSchedule, npaBadgeColor, restructureTypeLabel,
-} from "../../../types/RestructureTypes";
+import { CONTENT_HEIGHT, RESTRUCTURE_REASONS, npaBadgeColor } from "../../../types/RestructureTypes";
 import { RestructureDetailsTab } from "./RestructureDetailsTab";
 import { RestructureChargesTab } from "./RestructureChargesTab";
+import { RestructureSchedulePreviewModal } from "./ViewScheduleModal";
 
 export interface LoanRestructureModalProps {
   opened: boolean;
@@ -73,6 +72,8 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
     isProcessing, handleSubmit,
     oldValues,
     resetAll,
+    currentLoanProduct,
+    currentLoanAmount,
   } = useLoanRestructureForm({ opened, editName, viewName, onSaved });
 
   const [scheduleOpened, setScheduleOpened] = useState(false);
@@ -82,20 +83,17 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
     if (opened) setActiveTab("DETAILS");
   }, [opened]);
 
-  const scheduleRows = useMemo(
-    () =>
-      buildSchedule(
-        selectedLoan,
-        restructureType,
-        newInterestRate,
-        newPrincipalOutstanding,
-        newMaturityDate,
-        valueDate
-      ),
-    [selectedLoan, restructureType, newInterestRate, newPrincipalOutstanding, newMaturityDate, valueDate]
-  );
+ 
+  const scheduleLoanAmount: number | "" =
+    restructureType === "TOPUP" && newPrincipalOutstanding !== ""
+      ? Number(newPrincipalOutstanding)
+      : currentLoanAmount > 0
+        ? currentLoanAmount
+        : "";
+  const scheduleRateOfInterest: number | "" =
+    newInterestRate !== "" ? Number(newInterestRate) : currentInterestRate;
 
-  const canPreviewSchedule = !!selectedLoan?.maturityDate;
+  const canPreviewSchedule = !!selectedLoan;
 
   const handleModalClose = () => {
     resetAll();
@@ -350,7 +348,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                         </div>
 
                         <DateInput
-                          size="sm" className="w-[180px] shrink-0" withAsterisk
+                          size="sm" className="w-[180px] shrink-0"
                           label="Value Date" disabled={isViewMode}
                           valueFormat="DD-MMM-YYYY"
                           value={toDateValue(valueDate)}
@@ -358,7 +356,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                           leftSection={<IconCalendarDue size={14} className="text-emerald-600" />}
                         />
                         <Select
-                          size="sm" withAsterisk label="Reason for Restructure" className="w-[220px] shrink-0"
+                          size="sm" label="Reason for Restructure" className="w-[220px] shrink-0"
                           placeholder="Select a reason" disabled={isViewMode}
                           data={RESTRUCTURE_REASONS}
                           value={reason}
@@ -525,107 +523,17 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
         )}
       </Box>
 
-      {/* Schedule preview */}
-      <Modal
+      <RestructureSchedulePreviewModal
         opened={scheduleOpened}
         onClose={() => setScheduleOpened(false)}
-        withCloseButton={false}
-        size="900px"
-        radius="md"
-        padding={0}
-      >
-        <Box className="flex flex-col max-h-[85vh]">
-          <div className="flex items-start justify-between px-6 pt-5 pb-4 shrink-0">
-            <div>
-              <Text size="md" fw={700} className="text-gray-900 leading-tight">New Repayment Schedule</Text>
-              <Text size="xs" c="dimmed" className="mt-0.5">
-                Projected schedule based on the updated restructure terms.
-              </Text>
-            </div>
-            <Button variant="subtle" color="gray" onClick={() => setScheduleOpened(false)} className="px-2" size="xs">
-              <IconX size={18} />
-            </Button>
-          </div>
-
-          {selectedLoan && (
-            <div className="flex flex-wrap gap-2 px-6 pb-4 shrink-0">
-              <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
-                Type: {restructureTypeLabel(restructureType)}
-              </Badge>
-              {restructureType === "RATE_CHANGE" && (
-                <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
-                  New Rate: {newInterestRate === "" ? selectedLoan.interestRate : newInterestRate}%
-                </Badge>
-              )}
-              {restructureType === "MODIFY_MATURITY" && (
-                <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
-                  New Maturity: {formatDate(newMaturityDate || selectedLoan.maturityDate)}
-                </Badge>
-              )}
-              <Badge size="lg" variant="light" color="brand" radius="sm" className="font-semibold normal-case">
-                Principal: {fmt(selectedLoan.principalOutstanding)}
-              </Badge>
-            </div>
-          )}
-
-          <div className="px-6 pb-6 overflow-y-auto flex-1">
-            {scheduleRows.length === 0 ? (
-              <Table verticalSpacing="sm" horizontalSpacing="md" fz="sm" stickyHeader>
-                <Table.Thead>
-                  <Table.Tr className="border-b border-gray-200">
-                    <Table.Th className="text-gray-500 font-semibold" style={{ fontSize: 11 }}>INSTALLMENT</Table.Th>
-                    <Table.Th className="text-gray-500 font-semibold" style={{ fontSize: 11 }}>DUE DATE</Table.Th>
-                    <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>PRINCIPAL</Table.Th>
-                    <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>INTEREST</Table.Th>
-                    <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>TOTAL EMI</Table.Th>
-                    <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>BALANCE</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td colSpan={6}>
-                      <Text size="sm" c="dimmed" className="py-8 text-center">
-                        Schedule preview not available yet.
-                      </Text>
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            ) : (
-              <Table verticalSpacing="sm" horizontalSpacing="md" fz="sm" stickyHeader>
-                <Table.Thead>
-                  <Table.Tr className="border-b border-gray-200">
-                    <Table.Th className="text-gray-500 font-semibold" style={{ fontSize: 11 }}>INSTALLMENT</Table.Th>
-                    <Table.Th className="text-gray-500 font-semibold" style={{ fontSize: 11 }}>DUE DATE</Table.Th>
-                    <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>PRINCIPAL</Table.Th>
-                    <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>INTEREST</Table.Th>
-                    <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>TOTAL EMI</Table.Th>
-                    <Table.Th className="text-gray-500 font-semibold text-right" style={{ fontSize: 11 }}>BALANCE</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {scheduleRows.map((row) => (
-                    <Table.Tr key={row.emiNo} className="border-b border-gray-100 last:border-0">
-                      <Table.Td>#{row.emiNo}</Table.Td>
-                      <Table.Td>{formatDate(row.dueDate)}</Table.Td>
-                      <Table.Td className="text-right font-mono">{fmt(row.principal)}</Table.Td>
-                      <Table.Td className="text-right font-mono">{fmt(row.interest)}</Table.Td>
-                      <Table.Td className="text-right font-mono font-semibold">{fmt(row.totalEmi)}</Table.Td>
-                      <Table.Td className="text-right font-mono">{fmt(row.balance)}</Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            )}
-          </div>
-
-          <div className="border-t border-gray-200 p-4 px-6 flex justify-end shrink-0">
-            <Button size="sm" variant="default" onClick={() => setScheduleOpened(false)} className="font-semibold px-5">
-              Close
-            </Button>
-          </div>
-        </Box>
-      </Modal>
+        restructureType={restructureType}
+        loanProduct={currentLoanProduct}
+        loanAmount={scheduleLoanAmount}
+        rateOfInterest={scheduleRateOfInterest}
+        tenure={extendTenureBy}
+        repaymentFrequency={selectedLoan?.repaymentFrequency ?? ""}
+        repaymentStartDate={valueDate}
+      />
     </Modal>
   );
 }
