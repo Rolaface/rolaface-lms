@@ -118,7 +118,7 @@ function StatusBadge({ docstatus }: { docstatus: number }) {
 function AmountCell({ value }: { value: number }) {
   return (
     <Text fz="xs" fw={700} c="slate.8" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-      ${value.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+      {value.toLocaleString('en-US', { minimumFractionDigits: 2 })}
     </Text>
   );
 }
