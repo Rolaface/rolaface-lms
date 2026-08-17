@@ -487,7 +487,7 @@ useEffect(() => {
     form.setFieldValue("disburseAmount", outstanding);
   }, [opened, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
 
-  useEffect(() => {
+ useEffect(() => {
     const currentSanctioned = Number(form.values.topupSanctionedCurrent || 0);
     const currentOutstanding = Number(form.values.topupOutstandingCurrent || 0);
     const topup = Number(form.values.topupAmount || 0);
@@ -495,6 +495,19 @@ useEffect(() => {
     form.setFieldValue("topupOutstandingNew", currentOutstanding + topup);
    
   }, [form.values.topupSanctionedCurrent, form.values.topupOutstandingCurrent]);
+
+  useEffect(() => {
+    if (!canShowTopup) return;
+    const outstandingCurrent = Number(form.values.topupOutstandingCurrent || 0);
+    const sanctionedCurrent = Number(form.values.topupSanctionedCurrent || 0);
+    const disburse = Number(form.values.disburseAmount || 0);
+    const topup = disburse - outstandingCurrent;
+
+    form.setFieldValue("topupAmount", topup);
+    form.setFieldValue("topupSanctionedNew", sanctionedCurrent + topup);
+    form.setFieldValue("topupOutstandingNew", outstandingCurrent + topup);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.values.disburseAmount, canShowTopup]);
   useEffect(() => {
     if (form.values.isTopup && !canShowTopup) {
       form.setFieldValue("isTopup", false);
@@ -927,6 +940,7 @@ useEffect(() => {
                                     const topupVal = newSanctionedVal - currentSanctioned;
                                     form.setFieldValue("topupAmount", topupVal);
                                     form.setFieldValue("topupOutstandingNew", currentOutstanding + topupVal);
+                                    form.setFieldValue("disburseAmount", currentOutstanding + topupVal);
                                   }}
                                   thousandSeparator=","
                                 />
@@ -981,6 +995,7 @@ useEffect(() => {
                               const currentOutstanding = Number(form.values.topupOutstandingCurrent || 0);
                               form.setFieldValue("topupSanctionedNew", currentSanctioned + topupVal);
                               form.setFieldValue("topupOutstandingNew", currentOutstanding + topupVal);
+                              form.setFieldValue("disburseAmount", currentOutstanding + topupVal);
                             }}
                             thousandSeparator=","
                           />
