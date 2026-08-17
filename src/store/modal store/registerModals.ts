@@ -12,3 +12,4 @@ import  '../../view/Setup/LoanCollectionSequence/LoanCollectionSequenceOrderStor
 import '../../view/Operations/LoanDisbursement/LoanDisbursementModalStore'
 import '../../components/Modal/loanRepaymentModalStore'
 import "../../view/Operations/LoanWaiver/LoanWaiverModalStore"
+import "../../components/Modal/customer/CustomerModalStore";
