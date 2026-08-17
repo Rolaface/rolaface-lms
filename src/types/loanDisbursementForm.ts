@@ -52,7 +52,16 @@ export interface LoanDisbursementPayload {
   status?: string;
   is_imported?: 0 | 1;
 
-  tranche_number?: number;
+tranche_number?: number;
+
+  top_up?: 0 | 1;
+  top_up_details?: {
+    old_sanctioned_amount: number;
+    new_sanctioned_amount: number;
+    old_outstanding_amount: number;
+    new_outstanding_amount: number;
+    top_up_amount: number;
+  };
 }
 
 // Frappe whitelisted methods wrap the response in `message`

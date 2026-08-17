@@ -263,7 +263,9 @@ export function LoanDisbursementModal({
   };
 
   const handleSubmit = (values: typeof form.values) => {
-    const payload: Partial<LoanDisbursementPayload> & { loan_disbursement_charges?: Array<{ charge: string; amount: number; account: string; treatment_of_charge: string }> } = {
+ const payload: Partial<LoanDisbursementPayload> & {
+      loan_disbursement_charges?: Array<{ charge: string; amount: number; account: string; treatment_of_charge: string }>;
+    } = {
       against_loan: values.acNo,
       posting_date: values.valueDate,
       disbursement_date: values.valueDate,
@@ -281,6 +283,17 @@ export function LoanDisbursementModal({
         treatment_of_charge: charge.treatment_of_charge || "Billed Separately",
       })),
     };
+
+    if (values.isTopup) {
+      payload.top_up = 1;
+      payload.top_up_details = {
+        old_sanctioned_amount: Number(values.topupSanctionedCurrent || 0),
+        new_sanctioned_amount: Number(values.topupSanctionedNew || 0),
+        old_outstanding_amount: Number(values.topupOutstandingCurrent || 0),
+        new_outstanding_amount: Number(values.topupOutstandingNew || 0),
+        top_up_amount: Number(values.topupAmount || 0),
+      };
+    }
 
     if (editId) {
       updateDisbursementMutation.mutate({ id: editId, payload });
@@ -327,6 +340,21 @@ export function LoanDisbursementModal({
     if (opened && editId && editDetailsResponse) {
       const item = editDetailsResponse.message?.data || editDetailsResponse.data || editDetailsResponse.message || editDetailsResponse;
 
+      let topupDetails: any = null;
+      if (item.top_up_details) {
+        if (typeof item.top_up_details === "string") {
+          try {
+            topupDetails = JSON.parse(item.top_up_details);
+          } catch {
+            topupDetails = null;
+          }
+        } else {
+          topupDetails = item.top_up_details;
+        }
+      }
+
+      const isTopupValue = Boolean(item.top_up);
+
       form.setValues({
         acNo: item.against_loan || "",
         valueDate: normalizeDateValue(item.disbursement_date || item.posting_date || getTodayDate()),
@@ -336,6 +364,12 @@ export function LoanDisbursementModal({
         refDate: normalizeDateValue(item.reference_date || getTodayDate()),
         refNo: item.reference_number || "",
         beneficiaryAcNo: item.loan_account || "",
+        isTopup: isTopupValue,
+        topupSanctionedCurrent: topupDetails?.old_sanctioned_amount ?? "",
+        topupSanctionedNew: topupDetails?.new_sanctioned_amount ?? "",
+        topupOutstandingCurrent: topupDetails?.old_outstanding_amount ?? "",
+        topupOutstandingNew: topupDetails?.new_outstanding_amount ?? "",
+        topupAmount: topupDetails?.top_up_amount ?? "",
       });
       const existingCharges = normalizeLoanCharges({ loan_charges: item.loan_disbursement_charges });
       form.setFieldValue("charges", existingCharges);
@@ -409,6 +443,39 @@ export function LoanDisbursementModal({
     const chargeDefaults = normalizeLoanCharges(loanAccountDetailsData);
     form.setFieldValue("charges", chargeDefaults);
   }, [opened, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
+
+  useEffect(() => {
+    if (!opened || !form.values.acNo) return;
+    if (editId && !hasUserChangedLoanAccount) return;
+    if (isLoanAccountChargesLoading) return;
+
+    const loanData =
+      (loanAccountDetailsData as any)?.message?.data ||
+      (loanAccountDetailsData as any)?.data ||
+      (loanAccountDetailsData as any)?.message ||
+      loanAccountDetailsData;
+
+    if (!loanData) return;
+
+    const sanctioned = Number(loanData.loan_amount || 0);
+    const disbursed = Number(loanData.disbursed_amount || 0);
+    const outstanding = sanctioned - disbursed;
+
+    form.setFieldValue("topupSanctionedCurrent", sanctioned);
+    form.setFieldValue("topupOutstandingCurrent", outstanding);
+  }, [opened, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
+
+  useEffect(() => {
+    const currentSanctioned = Number(form.values.topupSanctionedCurrent || 0);
+    const topup = Number(form.values.topupAmount || 0);
+    form.setFieldValue("topupSanctionedNew", currentSanctioned + topup);
+  }, [form.values.topupSanctionedCurrent, form.values.topupAmount]);
+
+  useEffect(() => {
+    const currentOutstanding = Number(form.values.topupOutstandingCurrent || 0);
+    const topup = Number(form.values.topupAmount || 0);
+    form.setFieldValue("topupOutstandingNew", currentOutstanding + topup);
+  }, [form.values.topupOutstandingCurrent, form.values.topupAmount]);
 
   const handleChargeUpdate = (index: number, field: "amount" | "treatment_of_charge", value: string) => {
     form.setFieldValue(
@@ -813,12 +880,12 @@ export function LoanDisbursementModal({
                                   size="xs"
                                   hideControls
                                   min={0}
-                                  disabled={isView}
+                                  disabled
                                   {...form.getInputProps("topupSanctionedCurrent")}
                                   thousandSeparator=","
                                 />
                               </Table.Td>
-                              <Table.Td>
+                             <Table.Td>
                                 <NumberInput
                                   size="xs"
                                   hideControls
@@ -840,7 +907,7 @@ export function LoanDisbursementModal({
                                   size="xs"
                                   hideControls
                                   min={0}
-                                  disabled={isView}
+                                  disabled
                                   {...form.getInputProps("topupOutstandingCurrent")}
                                   thousandSeparator=","
                                 />
@@ -850,7 +917,7 @@ export function LoanDisbursementModal({
                                   size="xs"
                                   hideControls
                                   min={0}
-                                  disabled={isView}
+                                  disabled
                                   {...form.getInputProps("topupOutstandingNew")}
                                   thousandSeparator=","
                                 />
