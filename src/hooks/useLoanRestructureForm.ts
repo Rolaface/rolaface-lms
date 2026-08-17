@@ -295,7 +295,6 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
     }
   };
 
-  // ---------- Charges table row helpers ----------
   const addChargeRow = () => {
     setChargeRows((rows) => [...rows, { id: nextChargeRowId(), charge: "", amount: "" }]);
   };
@@ -304,31 +303,16 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
     setChargeRows((rows) => rows.filter((r) => r.id !== id));
   };
 
-  // new — close updateChargeRow properly first
+
   const updateChargeRow = (id: string, patch: Partial<Pick<ChargeRow, "charge" | "amount">>) => {
     setChargeRows((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   };
 
   const canSubmit =
-    !isViewMode &&
-    !!selectedLoan &&
-    !!reason &&
-    !!valueDate &&
-    restructureType !== "TOPUP" &&
-    (restructureType === "RATE_CHANGE" ? newInterestRate !== "" : extendTenureBy !== "");
+    !isViewMode;
 
   const getMissingFields = (): string[] => {
     const missing: string[] = [];
-    if (!selectedBorrower) missing.push("Borrower");
-    if (!selectedLoan) missing.push("Loan Account");
-    if (!reason) missing.push("Reason for Restructure");
-    if (!valueDate) missing.push("Value Date");
-    if (restructureType === "RATE_CHANGE" && newInterestRate === "") missing.push("New Interest Rate");
-    if (restructureType === "MODIFY_MATURITY" && extendTenureBy === "") missing.push("Extend Tenure By");
-    if (restructureType === "TOPUP") missing.push("Topup restructures aren't supported yet");
-
-    const incompleteRow = chargeRows.some((r) => Number(r.amount) > 0 && !r.charge);
-    if (incompleteRow) missing.push("Charge Type for one or more charge rows");
 
     return missing;
   };
