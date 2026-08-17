@@ -12,18 +12,32 @@ export async function getAllLoanApplications() {
   return data;
 }
 
+// export async function convertCustomLoanApplicationToLoan({
+//   id,
+//   company,
+//   loan_product,
+// }: {
+//   id: string;
+//   company: string;
+//   loan_product: string;
+// }) {
+//   const { data } = await apiClient.post(
+//     `${API.loanApplication.convertToLoan}?id=${id}`,
+//     { company, loan_product }
+//   );
+//   return data;
+// }
+
 export async function convertCustomLoanApplicationToLoan({
   id,
-  company,
   loan_product,
 }: {
   id: string;
-  company: string;
   loan_product: string;
 }) {
   const { data } = await apiClient.post(
     `${API.loanApplication.convertToLoan}?id=${id}`,
-    { company, loan_product }
+    { loan_product }
   );
   return data;
 }
