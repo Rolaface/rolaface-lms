@@ -180,7 +180,8 @@ loanStatement: {
     delete:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.restructure.api.delete`,
     loanGetById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_loan_by_id`,
     getCharges:`${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_items`,
-    updateStatus:`${ERP_BASE}/api/method/frappe.desk.doctype.bulk_update.bulk_update.submit_cancel_or_update_docs`
+    updateStatus:`${ERP_BASE}/api/method/frappe.desk.doctype.bulk_update.bulk_update.submit_cancel_or_update_docs`,
+    getRepaymentSchedule:`${ERP_BASE}/api/method/lending.api.get_repayment_schedule`
   },
 
   // =========================
