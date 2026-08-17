@@ -41,7 +41,7 @@ export interface LoanRestructurePayload {
   applicant: string;
   restructure_type: "Normal Restructure";
   loan: string;
-  restructure_date: string; // YYYY-MM-DD
+  restructure_date: string; 
   reason_for_restructure: string;
   new_rate_of_interest?: number;
   new_repayment_period_in_months?: number;

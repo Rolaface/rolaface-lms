@@ -343,8 +343,8 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onSa
                           </div>
                         </div>
 
-                        <DateInput
-                          size="sm" className="w-[180px] shrink-0" withAsterisk
+                      <DateInput
+                          size="sm" className="w-[180px] shrink-0"
                           label="Value Date" disabled={isViewMode}
                           valueFormat="DD-MMM-YYYY"
                           value={toDateValue(valueDate)}
@@ -352,7 +352,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onSa
                           leftSection={<IconCalendarDue size={14} className="text-emerald-600" />}
                         />
                         <Select
-                          size="sm" withAsterisk label="Reason for Restructure" className="w-[220px] shrink-0"
+                          size="sm" label="Reason for Restructure" className="w-[220px] shrink-0"
                           placeholder="Select a reason" disabled={isViewMode}
                           data={RESTRUCTURE_REASONS}
                           value={reason}

@@ -3,14 +3,14 @@ import type { LoanRepaymentAccount } from "../api/loanRestructureApi";
 export type NpaStatus = "Standard" | "Sub-Standard" | "Doubtful" | "Loss";
 export type RestructureType = "RATE_CHANGE" | "TOPUP" | "MODIFY_MATURITY";
 
-/** UI-shaped loan, built from a LoanRepaymentAccount search row. */
+
 export interface RestructureLoan {
-  id: string; // against_loan
-  type: string; // loan_product — "—" until backend adds it
+  id: string; 
+  type: string; 
   principalOutstanding: number;
   interestRate: number;
   penaltyRate: number;
-  maturityDate: string; // "" until backend adds it
+  maturityDate: string; 
   repaymentFrequency: string;
   npaStatus: NpaStatus;
   dpd: number;
@@ -52,8 +52,7 @@ export function restructureTypeLabel(type: RestructureType): string {
   }
 }
 
-/** Not implemented yet — schedule calc/API pending. Returns empty so only
- * the table header renders in the preview modal. */
+
 export function buildSchedule(
   _loan: RestructureLoan | null,
   _restructureType: RestructureType,
@@ -77,8 +76,7 @@ function toNpaStatus(v?: string): NpaStatus {
   return "Standard";
 }
 
-/** Groups flat search rows (one per loan) into borrower -> loans[],
- * since get_loan_repayment_account returns loan-level rows, not a tree. */
+
 export function groupAccountsByBorrower(rows: LoanRepaymentAccount[]): RestructureBorrower[] {
   const map = new Map<string, RestructureBorrower>();
   for (const row of rows) {
@@ -109,8 +107,7 @@ export function groupAccountsByBorrower(rows: LoanRepaymentAccount[]): Restructu
   return [...map.values()];
 }
 
-/** Advances a date by `amount` units of `frequency`. Used only to DISPLAY
- * "New Maturity Date" — never sent in the payload. */
+
 export function addByFrequency(dateISO: string, amount: number, frequency?: string): string {
   if (!dateISO) return "";
   const d = new Date(dateISO);

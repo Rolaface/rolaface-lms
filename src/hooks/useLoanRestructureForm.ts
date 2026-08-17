@@ -120,8 +120,8 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
   }, [search, selectedBorrower]);
 
   const initLoanFields = (loan: RestructureLoan) => {
-    setNewInterestRate(loan.interestRate || "");
-    setNewPenaltyRate(loan.penaltyRate || "");
+    setNewInterestRate("");
+    setNewPenaltyRate("");
     setTopupAmount("");
     setCurrentPrincipalOutstanding(loan.principalOutstanding || "");
     setNewPrincipalOutstanding(loan.principalOutstanding || "");
@@ -172,11 +172,6 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
 
         setCurrentInterestRate(interest);
         setCurrentPenaltyRate(penalty);
-
-
-        setNewInterestRate(interest);
-        setNewPenaltyRate(penalty);
-
 
         const rows: ChargeRow[] = (details.loan_charges || []).map(() => ({
           id: nextChargeRowId(),
