@@ -31,7 +31,7 @@ import {
   IconTrash,
   IconDotsVertical,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
+
 import {
   useReactTable,
   getCoreRowModel,
@@ -40,10 +40,10 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { LoanDisbursementModal } from '../../../components/Modal/LoanDisbursementModal';
 import { getAllLoansDisbursement, deleteLoanDisbursement, changeLoanDsbrStatus } from '../../../api/loanDisbursementAPi';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
+import { loanDisbursementModal } from './LoanDisbursementModalStore';
 
 interface DisbursementRow {
   id: string; // Maps to 'name'
@@ -97,11 +97,6 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function LoanDisbursement() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
-  const queryClient = useQueryClient();
-  const [editId, setEditId] = useState<string | null>(null);
-  const [isView, setIsView] = useState(false);
-  const [editData, setEditData] = useState<any>(null);
   const [search, setSearch] = useState('');
   const [applicantType, setApplicantType] = useState<string | null>(null);
   const [company, setCompany] = useState<string | null>(null);
@@ -204,32 +199,20 @@ export function LoanDisbursement() {
     });
   }, [rowsData, search, status]);
 
+  const queryClient = useQueryClient();
+
   const handleAdd = () => {
-    setEditId(null);
-    setEditData(null);
-    setIsView(false);
-    open();
+    loanDisbursementModal.open({ editId: null, isView: false, initialData: null });
   };
 
   const handleEdit = (row: DisbursementRow) => {
     queryClient.invalidateQueries({ queryKey: ['loanDisbursement', row.id] });
-    setEditId(row.id);
-    setEditData(row);
-    setIsView(false);
-    open();
-  };
-  const handleView = (row: DisbursementRow) => {
-    queryClient.invalidateQueries({ queryKey: ['loanDisbursement', row.id] });
-    setEditId(row.id);
-    setIsView(true);
-    open();
+    loanDisbursementModal.open({ editId: row.id, isView: false, initialData: row });
   };
 
-  const handleModalClose = () => {
-    setEditId(null);
-    setEditData(null);
-    setIsView(false);
-    close();
+  const handleView = (row: DisbursementRow) => {
+    queryClient.invalidateQueries({ queryKey: ['loanDisbursement', row.id] });
+    loanDisbursementModal.open({ editId: row.id, isView: true, initialData: row });
   };
 
   const confirmDelete = (row: DisbursementRow) => {
@@ -484,14 +467,6 @@ export function LoanDisbursement() {
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanDisbursementModal
-        opened={opened}
-        onClose={handleModalClose}
-        editId={editId}
-        initialData={editData}
-        isView={isView}
-      />
-
       {/* Scoped, purely visual — mirrors LoanAccount's row/hover treatment */}
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }

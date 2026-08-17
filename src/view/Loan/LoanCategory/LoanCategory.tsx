@@ -31,7 +31,6 @@ import {
   IconTag,
   IconTrash,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -42,8 +41,6 @@ import {
 } from '@tanstack/react-table';
 import type { SortDirection, SortingState, PaginationState } from '@tanstack/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AddLoanCategoryModal } from '../../../components/Modal/Lending Setup Modal/AddLoanCategoryModel';
-import type { LoanCategoryFormData } from '../../../components/Modal/Lending Setup Modal/AddLoanCategoryModel';
 import {
   getAllLoanCategories,
   deleteLoanCategory,
@@ -51,6 +48,7 @@ import {
 } from '../../../api/loanCategoryApi';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
+import { loanCategoryModal } from './loanCategoryModalStore';
 
 type LoanStatus = 'ACTIVE' | 'INACTIVE';
 
@@ -121,13 +119,7 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function LoanCategory() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
   const queryClient = useQueryClient();
-
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<LoanCategoryFormData | null>(null);
-  const [isView, setIsView] = useState(false);
-
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
 
@@ -205,31 +197,15 @@ export function LoanCategory() {
   }, [rowsData, search, status]);
 
   const handleAdd = () => {
-    setEditId(null);
-    setEditData(null);
-    setIsView(false);
-    open();
+    loanCategoryModal.open({ editId: null, initialData: null, isView: false });
   };
 
   const handleEdit = (row: LoanCategoryRow) => {
-    setEditId(row.id);
-    setEditData({ code: row.code, name: row.name });
-    setIsView(false);
-    open();
+    loanCategoryModal.open({ editId: row.id, initialData: { code: row.code, name: row.name }, isView: false });
   };
 
   const handleView = (row: LoanCategoryRow) => {
-    setEditId(row.id);
-    setEditData({ code: row.code, name: row.name });
-    setIsView(true);
-    open();
-  };
-
-  const handleModalClose = () => {
-    setEditId(null);
-    setEditData(null);
-    setIsView(false);
-    close();
+    loanCategoryModal.open({ editId: row.id, initialData: { code: row.code, name: row.name }, isView: true });
   };
 
   const toggleStatus = (row: LoanCategoryRow) => {
@@ -383,14 +359,6 @@ export function LoanCategory() {
 
   return (
     <Stack gap="lg" p="lg">
-      <AddLoanCategoryModal
-        opened={opened}
-        onClose={handleModalClose}
-        editId={editId}
-        initialData={editData}
-        isView={isView}
-      />
-
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
         .lms-row-actions { opacity: 1; }

@@ -16,10 +16,12 @@ import {
   Loader,
   Stack,
   ThemeIcon,
+  Checkbox,
   useMantineTheme,
 } from "@mantine/core";
 import {
   IconX,
+  IconMinus,
   IconSearch,
   IconCalendar,
   IconChevronDown,
@@ -43,12 +45,12 @@ import { ModalFooter } from "../shared/ModalFooter";
 interface LoanDisbursementModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   onSubmit?: (data: LoanDisbursementFormData) => void;
   editId?: string | null;
   initialData?: any;
   isView?: boolean;
 }
-
 export interface LoanDisbursementChargeRow {
   id: string;
   name: string;
@@ -67,6 +69,12 @@ export interface LoanDisbursementFormData {
   refNo: string;
   beneficiaryAcNo: string;
   charges: LoanDisbursementChargeRow[];
+  isTopup: boolean;
+  topupSanctionedCurrent: number | "";
+  topupSanctionedNew: number | "";
+  topupOutstandingCurrent: number | "";
+  topupOutstandingNew: number | "";
+  topupAmount: number | "";
 }
 
 const PAYMENT_MODES = ["Bank Draft", "Cash", "Cheque", "Credit Card", "Wire Transfer"];
@@ -100,6 +108,7 @@ const chevronDown = <IconChevronDown size={14} color="var(--mantine-color-slate-
 export function LoanDisbursementModal({
   opened,
   onClose,
+  onMinimize,
   onSubmit: _onSubmit,
   editId,
   initialData,
@@ -159,6 +168,12 @@ export function LoanDisbursementModal({
       refNo: "",
       beneficiaryAcNo: "",
       charges: [],
+      isTopup: false,
+      topupSanctionedCurrent: "" as number | "",
+      topupSanctionedNew: "" as number | "",
+      topupOutstandingCurrent: "" as number | "",
+      topupOutstandingNew: "" as number | "",
+      topupAmount: "" as number | "",
     },
     validate: {
       acNo: (v) => (!v ? "Account Number is required" : null),
@@ -191,12 +206,23 @@ export function LoanDisbursementModal({
   //     onClose();
   //   },
   // });
-  const createDisbursementMutation = useMutation({
+const createDisbursementMutation = useMutation({
     mutationFn: createLoanDisbursement,
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
+      const newId =
+        data?.data?.name || data?.message?.name || data?.name || "";
       handleReset();
       onClose();
+      openCommonModal({
+        heading: "Disbursement Created",
+        subtitle: "",
+        body: newId
+          ? `Loan disbursement ${newId} has been created successfully.`
+          : "Loan disbursement has been created successfully.",
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
     },
     onError: (error: any) => {
       openCommonModal({
@@ -215,7 +241,7 @@ export function LoanDisbursementModal({
     },
   });
 
-const updateDisbursementMutation = useMutation({
+  const updateDisbursementMutation = useMutation({
     mutationFn: updateLoanDisbursement,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
@@ -223,6 +249,15 @@ const updateDisbursementMutation = useMutation({
 
       handleReset();
       onClose();
+      openCommonModal({
+        heading: "Disbursement Updated",
+        subtitle: "",
+        body: editId
+          ? `Loan disbursement ${editId} has been updated successfully.`
+          : "Loan disbursement has been updated successfully.",
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
     },
     onError: (error: any) => {
       openCommonModal({
@@ -250,7 +285,9 @@ const updateDisbursementMutation = useMutation({
   };
 
   const handleSubmit = (values: typeof form.values) => {
-    const payload: Partial<LoanDisbursementPayload> & { loan_disbursement_charges?: Array<{ charge: string; amount: number; account: string; treatment_of_charge: string }> } = {
+ const payload: Partial<LoanDisbursementPayload> & {
+      loan_disbursement_charges?: Array<{ charge: string; amount: number; account: string; treatment_of_charge: string }>;
+    } = {
       against_loan: values.acNo,
       posting_date: values.valueDate,
       disbursement_date: values.valueDate,
@@ -268,6 +305,17 @@ const updateDisbursementMutation = useMutation({
         treatment_of_charge: charge.treatment_of_charge || "Billed Separately",
       })),
     };
+
+    if (values.isTopup) {
+      payload.top_up = 1;
+      payload.top_up_details = {
+        old_sanctioned_amount: Number(values.topupSanctionedCurrent || 0),
+        new_sanctioned_amount: Number(values.topupSanctionedNew || 0),
+        old_outstanding_amount: Number(values.topupOutstandingCurrent || 0),
+        new_outstanding_amount: Number(values.topupOutstandingNew || 0),
+        top_up_amount: Number(values.topupAmount || 0),
+      };
+    }
 
     if (editId) {
       updateDisbursementMutation.mutate({ id: editId, payload });
@@ -314,6 +362,21 @@ const updateDisbursementMutation = useMutation({
     if (opened && editId && editDetailsResponse) {
       const item = editDetailsResponse.message?.data || editDetailsResponse.data || editDetailsResponse.message || editDetailsResponse;
 
+      let topupDetails: any = null;
+      if (item.top_up_details) {
+        if (typeof item.top_up_details === "string") {
+          try {
+            topupDetails = JSON.parse(item.top_up_details);
+          } catch {
+            topupDetails = null;
+          }
+        } else {
+          topupDetails = item.top_up_details;
+        }
+      }
+
+      const isTopupValue = Boolean(item.top_up);
+
       form.setValues({
         acNo: item.against_loan || "",
         valueDate: normalizeDateValue(item.disbursement_date || item.posting_date || getTodayDate()),
@@ -323,6 +386,12 @@ const updateDisbursementMutation = useMutation({
         refDate: normalizeDateValue(item.reference_date || getTodayDate()),
         refNo: item.reference_number || "",
         beneficiaryAcNo: item.loan_account || "",
+        isTopup: isTopupValue,
+        topupSanctionedCurrent: topupDetails?.old_sanctioned_amount ?? "",
+        topupSanctionedNew: topupDetails?.new_sanctioned_amount ?? "",
+        topupOutstandingCurrent: topupDetails?.old_outstanding_amount ?? "",
+        topupOutstandingNew: topupDetails?.new_outstanding_amount ?? "",
+        topupAmount: topupDetails?.top_up_amount ?? "",
       });
       const existingCharges = normalizeLoanCharges({ loan_charges: item.loan_disbursement_charges });
       form.setFieldValue("charges", existingCharges);
@@ -397,6 +466,39 @@ const updateDisbursementMutation = useMutation({
     form.setFieldValue("charges", chargeDefaults);
   }, [opened, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
 
+  useEffect(() => {
+    if (!opened || !form.values.acNo) return;
+    if (editId && !hasUserChangedLoanAccount) return;
+    if (isLoanAccountChargesLoading) return;
+
+    const loanData =
+      (loanAccountDetailsData as any)?.message?.data ||
+      (loanAccountDetailsData as any)?.data ||
+      (loanAccountDetailsData as any)?.message ||
+      loanAccountDetailsData;
+
+    if (!loanData) return;
+
+    const sanctioned = Number(loanData.loan_amount || 0);
+    const disbursed = Number(loanData.disbursed_amount || 0);
+    const outstanding = sanctioned - disbursed;
+
+    form.setFieldValue("topupSanctionedCurrent", sanctioned);
+    form.setFieldValue("topupOutstandingCurrent", outstanding);
+  }, [opened, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
+
+  useEffect(() => {
+    const currentSanctioned = Number(form.values.topupSanctionedCurrent || 0);
+    const topup = Number(form.values.topupAmount || 0);
+    form.setFieldValue("topupSanctionedNew", currentSanctioned + topup);
+  }, [form.values.topupSanctionedCurrent, form.values.topupAmount]);
+
+  useEffect(() => {
+    const currentOutstanding = Number(form.values.topupOutstandingCurrent || 0);
+    const topup = Number(form.values.topupAmount || 0);
+    form.setFieldValue("topupOutstandingNew", currentOutstanding + topup);
+  }, [form.values.topupOutstandingCurrent, form.values.topupAmount]);
+
   const handleChargeUpdate = (index: number, field: "amount" | "treatment_of_charge", value: string) => {
     form.setFieldValue(
       "charges",
@@ -407,9 +509,19 @@ const updateDisbursementMutation = useMutation({
     );
   };
 
+  // useEffect(() => {
+  //   if (!editId) {
+  //     form.setFieldValue("beneficiaryAcNo", selectedLoanApp?.loan_account || "");
+  //   }
+  // }, [form.values.acNo, selectedLoanApp]);
   useEffect(() => {
     if (!editId) {
       form.setFieldValue("beneficiaryAcNo", selectedLoanApp?.loan_account || "");
+
+      // Auto-populate the disburse amount when a loan is selected
+      if (selectedLoanApp?.loan_amount) {
+        form.setFieldValue("disburseAmount", Number(selectedLoanApp.loan_amount));
+      }
     }
   }, [form.values.acNo, selectedLoanApp]);
 
@@ -459,7 +571,7 @@ const updateDisbursementMutation = useMutation({
                 </Text>
               </div>
             </Group>
-            <Group gap="xs" className="shrink-0" wrap="nowrap">
+<Group gap="xs" className="shrink-0" wrap="nowrap">
               {isView && (
                 <Badge variant="light" color="gray" radius="sm" size="sm">
                   View Only
@@ -469,7 +581,19 @@ const updateDisbursementMutation = useMutation({
                 variant="subtle"
                 size="xs"
                 px={8}
+                onClick={() => onMinimize?.()}
+                aria-label="Minimize"
+                style={{ color: "var(--mantine-color-white)" }}
+                styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg as string } } }}
+              >
+                <IconMinus size={18} />
+              </Button>
+              <Button
+                variant="subtle"
+                size="xs"
+                px={8}
                 onClick={onClose}
+                aria-label="Close"
                 style={{ color: "var(--mantine-color-white)" }}
                 styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg as string } } }}
               >
@@ -523,6 +647,19 @@ const updateDisbursementMutation = useMutation({
                     leftSection={<IconNotes size={14} color="var(--mantine-color-warning-5)" />}
                     thousandSeparator=","
                   />
+                  <Checkbox
+                    mt={22}
+                    label="Topup"
+                    disabled={isView}
+                    checked={form.values.isTopup}
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked;
+                      form.setFieldValue("isTopup", checked);
+                      if (!checked && activeTab === "topup") {
+                        setActiveTab("settlement");
+                      }
+                    }}
+                  />
                 </div>
               </fieldset>
 
@@ -534,6 +671,11 @@ const updateDisbursementMutation = useMutation({
                   <Tabs.Tab value="charges">
                     Charges
                   </Tabs.Tab>
+                  {form.values.isTopup && (
+                    <Tabs.Tab value="topup">
+                      Topup
+                    </Tabs.Tab>
+                  )}
                 </Tabs.List>
 
                 <Tabs.Panel value="settlement" pt="md">
@@ -642,7 +784,7 @@ const updateDisbursementMutation = useMutation({
                           label="A/c No"
                           placeholder="Account number"
                           disabled={isView}
-                          {...form.getInputProps("beneficiaryAcNo")}
+                          // {...form.getInputProps("beneficiaryAcNo")}
                           leftSection={<IconHome size={14} color="var(--mantine-color-brand-5)" />}
                         />
                       </div>
@@ -744,6 +886,100 @@ const updateDisbursementMutation = useMutation({
                     )}
                   </div>
                 </Tabs.Panel>
+
+                {form.values.isTopup && (
+                  <Tabs.Panel value="topup" pt="md">
+                    <div className="space-y-1">
+                      <div
+                        className="rounded-md overflow-hidden"
+                        style={{ border: "1px solid var(--mantine-color-slate-2)" }}
+                      >
+                        <Table size="sm" verticalSpacing="sm" horizontalSpacing="sm" className="w-full">
+                          <Table.Thead>
+                            <Table.Tr>
+                              <Table.Th className="w-1/3"></Table.Th>
+                              <Table.Th className="w-1/3" style={{ textAlign: "center" }}>Current</Table.Th>
+                              <Table.Th className="w-1/3" style={{ textAlign: "center" }}>New</Table.Th>
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            <Table.Tr>
+                              <Table.Td>
+                                <Text size="xs" fw={600} c="slate.7">
+                                  Sanctioned Amount
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <NumberInput
+                                  size="xs"
+                                  hideControls
+                                  min={0}
+                                  disabled
+                                  {...form.getInputProps("topupSanctionedCurrent")}
+                                  thousandSeparator=","
+                                />
+                              </Table.Td>
+                             <Table.Td>
+                                <NumberInput
+                                  size="xs"
+                                  hideControls
+                                  min={0}
+                                  disabled={isView}
+                                  {...form.getInputProps("topupSanctionedNew")}
+                                  thousandSeparator=","
+                                />
+                              </Table.Td>
+                            </Table.Tr>
+                            <Table.Tr>
+                              <Table.Td>
+                                <Text size="xs" fw={600} c="slate.7">
+                                  Outstanding Amount
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <NumberInput
+                                  size="xs"
+                                  hideControls
+                                  min={0}
+                                  disabled
+                                  {...form.getInputProps("topupOutstandingCurrent")}
+                                  thousandSeparator=","
+                                />
+                              </Table.Td>
+                              <Table.Td>
+                                <NumberInput
+                                  size="xs"
+                                  hideControls
+                                  min={0}
+                                  disabled
+                                  {...form.getInputProps("topupOutstandingNew")}
+                                  thousandSeparator=","
+                                />
+                              </Table.Td>
+                            </Table.Tr>
+                          </Table.Tbody>
+                        </Table>
+                      </div>
+
+                      <Group gap="xs" wrap="nowrap" align="center" mt={4} px="sm" justify="flex-end">
+                        <Text size="xs" fw={600} c="slate.7">
+                          Topup
+                        </Text>
+                        <div style={{ width: "225px" }}>
+                          <NumberInput
+                            size="xs"
+                            hideControls
+                            min={0}
+                            disabled={isView}
+                            {...form.getInputProps("topupAmount")}
+                            thousandSeparator=","
+                          />
+                        </div>
+
+                      </Group>
+                    </div>
+                  </Tabs.Panel>
+                )}
               </Tabs>
             </div>
 
@@ -814,8 +1050,7 @@ const updateDisbursementMutation = useMutation({
               onClose={onClose}
               submitLabel={editId ? "Update" : "Save"}
               submitLoading={isPending}
-              submitIcon={<IconArrowRight size={16} />}
-              errorMessage={footerErrorMessage}
+                            errorMessage={footerErrorMessage}
             />
           </Box>
         </Box>

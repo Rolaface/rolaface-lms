@@ -13,7 +13,7 @@ import {
   TextInput,
   ThemeIcon,
 } from "@mantine/core";
-import { IconLayersLinked, IconX } from "@tabler/icons-react";
+import { IconLayersLinked, IconX, IconMinus } from "@tabler/icons-react";
 
 import type { LoanClassificationData } from "../../types/loanClassification";
 import {
@@ -29,6 +29,7 @@ export type { LoanClassificationData } from "../../types/loanClassification";
 interface LoanClassificationModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   mode?: "add" | "edit" | "view";
   data?: LoanClassificationData | null;
 }
@@ -56,6 +57,7 @@ const EMPTY_FORM_STATE: LoanClassificationFormState = {
 export function LoanClassificationModal({
   opened,
   onClose,
+  onMinimize,
   mode = "add",
   data = null,
 }: LoanClassificationModalProps) {
@@ -148,6 +150,10 @@ export function LoanClassificationModal({
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
+  const handleMinimize = () => {
+    onMinimize?.();
+  };
+
   const handleSave = () => {
     if (formData.level === "") {
       showErrorMessage("Validation Error", "Level is required.");
@@ -212,26 +218,39 @@ export function LoanClassificationModal({
         >
           <Group gap="sm">
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
-            < IconLayersLinked size={20} stroke={1.8} />
+              <IconLayersLinked size={20} stroke={1.8} />
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
                 {title}
               </Text>
               <Text size="xs" fw={500} c="brand.1">
-                Manage levels and provisioning              </Text>
+                Manage levels and provisioning
+              </Text>
             </Box>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
+          <Group gap="xs" wrap="nowrap">
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={handleMinimize}
+              aria-label="Minimize"
+            >
+              <IconMinus size={16} color="white" />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
         {/* Body — flat, no card wrappers */}
@@ -315,12 +334,12 @@ export function LoanClassificationModal({
                 </Grid.Col>
               </Grid>
 
-              <Switch
+              {/* <Switch
                 label="Written off"
                 checked={formData.is_written_off}
                 onChange={(e) => updateField("is_written_off", e.currentTarget.checked)}
                 color="brand"
-              />
+              /> */}
             </Box>
           </Fieldset>
         </Box>

@@ -32,9 +32,8 @@ import {
   IconPhone,
   IconWorld,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import { useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
-import { CustomerModal } from '../../components/Modal/customer/CustomerModal';
+import { customerModal } from '../../components/Modal/customer/CustomerModalStore';
 import { getBorrowerProfile } from './mockdata';
 import { Borrower360 } from './CustomerView';
 
@@ -125,7 +124,6 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-
 function StatusBadge({ status }: { status: string }) {
   const isActive = status === 'ACTIVE';
   const scale = isActive ? 'success' : 'danger';
@@ -157,7 +155,6 @@ function StatusBadge({ status }: { status: string }) {
     </Badge>
   );
 }
-
 
 function NameCell({ name, type }: { name: string; type: string }) {
   const initials = name
@@ -205,7 +202,6 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function Customer() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
 
   const [search, setSearch] = useState('');
   const [type, setType] = useState<string | null>(null);
@@ -227,7 +223,6 @@ export function Customer() {
       })),
     [customers, statusOverrides]
   );
-
 
   const stats = useMemo(() => {
     const activeCount = data.filter((c) => c.status === 'ACTIVE').length;
@@ -358,7 +353,13 @@ export function Customer() {
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="brand" radius="md">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="brand"
+                  radius="md"
+                  onClick={() => customerModal.open({ isViewMode: false })}
+                >
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -422,8 +423,6 @@ export function Customer() {
 
   return (
     <Stack gap="lg" p="lg">
-      <CustomerModal opened={opened} onClose={close} />
-
       {/* Scoped, purely visual — now pulls from theme.other instead of
           hand-tuned color-mix() literals so it stays in sync with the
           brand color everywhere else. */}
@@ -462,8 +461,6 @@ export function Customer() {
             </Text>
           </Stack>
         </Group>
-
-     
       </Group>
 
       {/* Toolbar — pill search + pill filters + segmented status control */}
@@ -521,7 +518,6 @@ export function Customer() {
             }}
           />
 
-
           <SegmentedControl
             size="xs"
             radius="xl"
@@ -546,7 +542,7 @@ export function Customer() {
               size="sm"
               radius="xl"
               color="brand"
-              onClick={open}
+              onClick={() => customerModal.open({ isViewMode: false })}
               leftSection={<IconPlus size={14} />}
               style={{
                 background: theme.other.brandGradient,

@@ -5,6 +5,7 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
+import dayjs from "dayjs";
 import {
   Box,
   TextInput,
@@ -39,7 +40,7 @@ import { DateInput } from "@mantine/dates";
 
 import { type JournalEntry } from "../../api/Accounting/Journalentries.api";
 import { useJournalEntries } from "../../hooks/Accounting/journal-entry/useJournalEntries";
-import JournalEntryModal from "../../components/Modal/Accounting/JournalEntryModal";
+import { journalEntryModal } from "../../components/Modal/Accounting/journal-entry/journalEntryModalStore";
 import { useCompanyStore } from "../../store/companyStore";
 import {
   formatAmount,
@@ -47,24 +48,6 @@ import {
   ensureCurrencies,
 } from "../../store/currencyStore";
 
-function formatDate(date: string) {
-  const months = [
-    "JAN",
-    "FEB",
-    "MAR",
-    "APR",
-    "MAY",
-    "JUN",
-    "JUL",
-    "AUG",
-    "SEP",
-    "OCT",
-    "NOV",
-    "DEC",
-  ];
-  const [y, m, d] = date.split("T")[0].split("-").map(Number);
-  return `${String(d).padStart(2, "0")}-${months[m - 1]}-${y}`;
-}
 
 function statusInfo(docstatus: JournalEntry["docstatus"]) {
   if (docstatus === 1) return { label: "Submitted", scale: "success" as const };
@@ -133,14 +116,14 @@ function useColumns(
           </Group>
         ),
       }),
-      columnHelper.accessor("posting_date", {
-        header: "Posting Date",
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {formatDate(info.getValue())}
-          </Text>
-        ),
-      }),
+     columnHelper.accessor("posting_date", {
+  header: "Posting Date",
+  cell: (info) => (
+    <Text fz="xs" c="slate.6">
+      {dayjs(info.getValue()).format("DD-MMM-YYYY")}
+    </Text>
+  ),
+}),
       columnHelper.accessor("docstatus", {
         header: "Status",
         cell: (info) => <StatusBadge docstatus={info.getValue()} />,
@@ -294,9 +277,6 @@ function useColumns(
 export function JournalEntries() {
   useCurrencyReady();
   const theme = useMantineTheme();
-  const [opened, setOpened] = useState(false);
-  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
-  const [modalReadOnly, setModalReadOnly] = useState(false);
 
   const baseCurrency = useCompanyStore((state) => state.baseCurrency);
 
@@ -324,26 +304,15 @@ export function JournalEntries() {
     handleRefresh,
   } = useJournalEntries();
 
-  const openNew = () => {
-    setActiveEntryId(null);
-    setModalReadOnly(false);
-    setOpened(true);
-  };
-  const openView = (name: string) => {
-    setActiveEntryId(name);
-    setModalReadOnly(true);
-    setOpened(true);
-  };
-  const openEdit = (name: string) => {
-    setActiveEntryId(name);
-    setModalReadOnly(false);
-    setOpened(true);
-  };
-  const closeModal = () => {
-    setOpened(false);
-    setActiveEntryId(null);
-  };
-
+const openNew = () => {
+  journalEntryModal.open({ baseCurrency, onSuccess: handleRefresh });
+};
+const openView = (name: string) => {
+  journalEntryModal.open({ entryId: name, isReadOnly: true, baseCurrency, onSuccess: handleRefresh });
+};
+const openEdit = (name: string) => {
+  journalEntryModal.open({ entryId: name, isReadOnly: false, baseCurrency, onSuccess: handleRefresh });
+};
   const columns = useColumns(
     handleSubmit,
     handleCancel,
@@ -425,7 +394,7 @@ export function JournalEntries() {
               placeholder="From Date"
               value={fromDate}
               onChange={(value) => setFromDate(value || "")}
-              valueFormat="DD/MM/YYYY"
+                valueFormat="DD-MMM-YYYY" 
               w={150}
               clearable
             />
@@ -445,7 +414,7 @@ export function JournalEntries() {
               placeholder="To Date"
               value={toDate}
               onChange={(value) => setToDate(value || "")}
-              valueFormat="DD/MM/YYYY"
+             valueFormat="DD-MMM-YYYY" 
               w={150}
               clearable
             />
@@ -650,14 +619,7 @@ export function JournalEntries() {
         </Group>
       </Paper>
 
-      <JournalEntryModal
-        opened={opened}
-        onClose={closeModal}
-        onSuccess={handleRefresh}
-        entryId={activeEntryId}
-        isReadOnly={modalReadOnly}
-        baseCurrency={baseCurrency}
-      />
+     
     </Stack>
   );
 }

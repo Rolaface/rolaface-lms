@@ -8,7 +8,7 @@ import {
   Group,
   TextInput,
 } from "@mantine/core";
-import { IconX, IconCategory } from "@tabler/icons-react";
+import { IconX, IconCategory ,IconMinus} from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ModalFooter } from "../../shared/ModalFooter";
 import { openCommonModal } from "../AlertModal";
@@ -26,6 +26,7 @@ export interface LoanCategoryFormData {
 interface AddLoanCategoryModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   editId?: string | null;
   initialData?: LoanCategoryFormData | null;
   isView?: boolean;
@@ -41,6 +42,7 @@ const initialState: LoanCategoryFormData = { code: "", name: "" };
 export function AddLoanCategoryModal({
   opened,
   onClose,
+  onMinimize,
   editId,
   initialData,
   isView = false,
@@ -80,7 +82,9 @@ export function AddLoanCategoryModal({
     setErrors({});
     onClose();
   };
-
+ const handleMinimize = () => {
+    onMinimize?.();
+  };
   const showError = (heading: string, error: any) => {
     openCommonModal({
       heading,
@@ -179,23 +183,35 @@ export function AddLoanCategoryModal({
               </Text>
             </Box>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={handleClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
+                <Group gap="xs" wrap="nowrap">
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={handleMinimize}
+              aria-label="Minimize"
+            >
+              <IconMinus size={16} color="white" />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={handleClose}
+              aria-label="Close"
+            >
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
         {/* Body */}
         <Box px="xl" py="lg" bg="slate.0">
           <Group align="flex-start" gap="md" wrap="nowrap">
             <TextInput
-              label="Loan Category Code"
+              label="Category Code"
               withAsterisk
               radius="md"
               placeholder="e.g. HOME"
@@ -208,7 +224,7 @@ export function AddLoanCategoryModal({
               style={{ flex: 1 }}
             />
             <TextInput
-              label="Loan Category Name"
+              label="Category Name"
               withAsterisk
               radius="md"
               placeholder="Enter category name"

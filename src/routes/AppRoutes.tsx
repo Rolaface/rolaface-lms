@@ -243,6 +243,10 @@ const GL_TABS: RouteTabItem[] = [
 function GeneralLedgerTabs() {
   return <RouteTabs tabs={GL_TABS} />;
 }
+function GeneralLedgerReportRoute() {
+  const { account } = generalLedgerRoute.useSearch();
+  return <GeneralLedger account={account} />;
+}
 
 const accountingRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -284,9 +288,11 @@ const journaEntryroutes = createRoute({
 const generalLedgerRoute = createRoute({
   getParentRoute: () => generalLedgerGroupRoute,
   path: "/report",
-  component: GeneralLedger,
+  validateSearch: (search: Record<string, unknown>): { account?: string } => ({
+    account: typeof search.account === "string" ? search.account : undefined,
+  }),
+  component: GeneralLedgerReportRoute,
 });
-
 const trialBalanceRoute = createRoute({
   getParentRoute: () => accountingRoute,
   path: "/trial-balance",

@@ -7,12 +7,11 @@ import {
   IconEye, IconPencil, IconPlus, IconSearch, IconFileOff, IconTrash, IconRefresh,
   IconCircleCheck, IconDotsVertical,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import dayjs from 'dayjs';
 import { useLoanRestructureList } from '../../../hooks/useLoanRestructureList';
-import { LoanRestructureModal } from "../../../components/Modal/LoanRestructure/LoanRestructureModal";
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { RESTRUCTURE_STATUSES, type LoanRestructureListItem } from '../../../api/loanRestructureApi';
+import { loanRestructureModal } from './LoanRestructureModalStore';
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   Initiated: { label: 'INITIATED', color: 'gold' },
@@ -28,9 +27,7 @@ const chevronDown = undefined;
 
 export function LoanRestructure() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
-  const [editName, setEditName] = useState<string | null>(null);
-  const [viewName, setViewName] = useState<string | null>(null);
+
 
 
   const {
@@ -69,11 +66,7 @@ export function LoanRestructure() {
     });
   };
 
-  const openCreate = () => { setEditName(null); setViewName(null); open(); };
-  const openEdit = (name: string) => { setEditName(name); setViewName(null); open(); };
-  const openView = (name: string) => { setViewName(name); setEditName(null); open(); };
-  const handleModalClose = () => { close(); setEditName(null); setViewName(null); };
-  const handleSaved = () => { handleModalClose(); refetch(); };
+
 
   const totalRows = pagination?.total ?? 0;
   const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -81,14 +74,6 @@ export function LoanRestructure() {
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanRestructureModal
-        opened={opened}
-        onClose={handleModalClose}
-        editName={editName}
-        viewName={viewName}
-        onSaved={handleSaved}
-      />
-
       <style>{`
         .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
         .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
@@ -128,7 +113,7 @@ export function LoanRestructure() {
           />
           <Group gap="xs" ml="auto">
             <Button
-              size="sm" radius="xl" color="brand" onClick={openCreate}
+              size="sm" radius="xl" color="brand" onClick={() => loanRestructureModal.open({ editName: null, viewName: null })}
               leftSection={<IconPlus size={14} />}
               style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
             >
@@ -187,12 +172,12 @@ export function LoanRestructure() {
                     <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)' }}>
                       <Group justify="flex-end" gap={4} wrap="nowrap">
                         <Tooltip label="View" withArrow>
-                          <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => openView(row.name)}>
+                          <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => loanRestructureModal.open({ editName: null, viewName: row.name })}>
                             <IconEye size={14} />
                           </ActionIcon>
                         </Tooltip>
                         <Tooltip label={isDraft ? 'Edit' : 'Only Draft can be edited'} withArrow>
-                          <ActionIcon size="sm" variant="subtle" color={isDraft ? 'brand' : 'slate'} radius="md" disabled={!isDraft} onClick={() => openEdit(row.name)}>
+                          <ActionIcon size="sm" variant="subtle" color={isDraft ? 'brand' : 'slate'} radius="md" disabled={!isDraft} onClick={() => loanRestructureModal.open({ editName: row.name, viewName: null })}>
                             <IconPencil size={14} />
                           </ActionIcon>
                         </Tooltip>

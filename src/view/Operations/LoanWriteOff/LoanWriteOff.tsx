@@ -42,7 +42,6 @@ import {
   IconCheck,
   IconSend,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -50,8 +49,7 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { LoanWriteOffModal } from '../../../components/Modal/LoanWriteOffModal';
-
+import { loanWriteOffModal } from './LoanWriteOffModalStore';
 const columnHelper = createColumnHelper<LoanWriteOffListItem>();
 
 function SortIcon({ sorted }: { sorted: string | boolean }) {
@@ -66,7 +64,7 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function LoanWriteOff() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
-  const [opened, { open, close }] = useDisclosure(false);
+
 
   const [editData, setEditData] = useState<LoanWriteOffDetail | null>(null);
   const [search, setSearch] = useState('');
@@ -145,19 +143,27 @@ export function LoanWriteOff() {
 
   const handleAddClick = () => {
     setEditData(null);
-    open();
+    loanWriteOffModal.open({ onSubmit: handleModalSuccess });
   };
 
   const handleEditClick = async (id: string) => {
     try {
       const detail = await getLoanWriteOffById(id);
       setEditData(detail);
-      open();
+      loanWriteOffModal.open({ editData: detail, onSubmit: handleModalSuccess });
     } catch (err) {
       showError('Load Failed', err);
     }
   };
-
+  const handleViewClick = async (id: string) => {
+    try {
+      const detail = await getLoanWriteOffById(id);
+      setEditData(detail);
+      loanWriteOffModal.open({ editData: detail, isView: true, onSubmit: handleModalSuccess });
+    } catch (err) {
+      showError('Load Failed', err);
+    }
+  };
   const handleDeleteClick = (id: string) => {
     openCommonModal({
       heading: 'Delete Write-off',
@@ -195,10 +201,8 @@ export function LoanWriteOff() {
       editData ? 'Write-off Updated' : 'Write-off Created',
       editData ? 'Write-off updated successfully.' : 'Write-off created successfully.'
     );
-    close();
     setEditData(null);
   };
-
   /* ---------------- columns ---------------- */
 
   const columns = useMemo(
@@ -206,9 +210,9 @@ export function LoanWriteOff() {
       columnHelper.accessor('name', {
         header: 'Write-off ID',
         cell: (info) => (
-            <Text fz="sm" fw={700} c="slate.8">
-              {info.getValue()}
-            </Text>
+          <Text fz="sm" fw={700} c="slate.8">
+            {info.getValue()}
+          </Text>
 
         ),
       }),
@@ -264,7 +268,13 @@ export function LoanWriteOff() {
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="slate"
+                  radius="md"
+                  onClick={() => handleViewClick(row.name)}
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -346,15 +356,7 @@ export function LoanWriteOff() {
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanWriteOffModal
-        opened={opened}
-        onClose={() => {
-          close();
-          setEditData(null);
-        }}
-        onSubmit={handleModalSuccess}
-        editData={editData}
-      />
+
 
       {/* Scoped, purely visual — pulls from theme.other, mirrors FeeAndCharges.tsx */}
       <style>{`

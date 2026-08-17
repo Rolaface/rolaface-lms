@@ -10,8 +10,10 @@ import {
   ThemeIcon,
   Group,
   Fieldset,
+  Button,
+  useMantineTheme,
 } from "@mantine/core";
-import { IconShieldCheck, IconX, IconPercentage } from "@tabler/icons-react";
+import { IconX, IconPercentage, IconBox, IconMinus } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateCollateralTypePayload } from "../../types/collateralTypeForm";
 import {
@@ -24,14 +26,23 @@ import { ModalFooter } from "../shared/ModalFooter";
 import { openCommonModal } from "./AlertModal";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 
-interface CollateralTypeModalProps {
+export interface CollateralTypeModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   editId?: string | null;
   isView?: boolean;
 }
 
-export function CollateralTypeModal({ opened, onClose, editId, isView }: CollateralTypeModalProps) {
+export function CollateralTypeModal({
+  opened,
+  onClose,
+  onMinimize,
+  editId,
+  isView,
+}: CollateralTypeModalProps) {
+  const theme = useMantineTheme();
+
   const form = useForm({
     initialValues: {
       type: "",
@@ -128,6 +139,10 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
     onClose();
   };
 
+  const handleMinimize = () => {
+    onMinimize?.();
+  };
+
   const handleSubmit = () => {
     const validation = form.validate();
     if (validation.hasErrors) return;
@@ -176,7 +191,7 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
         >
           <Group gap="sm">
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
-              <IconShieldCheck size={16} />
+              <IconBox size={16} />
             </ThemeIcon>
             <Box>
               <Text
@@ -192,16 +207,28 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
               </Text>
             </Box>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={handleClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
+          <Group gap="xs" wrap="nowrap">
+            <Button
+              variant="subtle"
+              size="xs"
+              px={8}
+              onClick={handleMinimize}
+              style={{ color: "var(--mantine-color-white)" }}
+              styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+            >
+              <IconMinus size={18} />
+            </Button>
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={handleClose}
+              aria-label="Close"
+            >
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
         {/* Body */}
@@ -244,14 +271,14 @@ export function CollateralTypeModal({ opened, onClose, editId, isView }: Collate
               />
             </Group>
 
-            <Checkbox
+            {/* <Checkbox
               mt="lg"
               size="sm"
               label="Disabled"
               color="brand"
               styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)' } }}
               {...form.getInputProps("disabled", { type: "checkbox" })}
-            />
+            /> */}
           </Fieldset>
         </Box>
  <ModalFooter

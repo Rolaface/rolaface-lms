@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { useMediaQuery } from "@mantine/hooks";
 import {
   TextInput,
   Select,
@@ -8,18 +10,22 @@ import {
   Paper,
   Box,
   Button,
+  Alert,
+  Badge,
+  ScrollArea,
+  UnstyledButton,
 } from "@mantine/core";
 import {
   IconChevronDown,
   IconId,
   IconPlus,
   IconTrash,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
 import {
   PlainCard,
   SectionHeader,
 } from "../../../../components/shared/customer/Shared";
-import { colorVar } from "../../../../utils/customer/utils";
 import type { IdDocument } from "../../../../types/customer/types";
 
 interface IdentificationStepProps {
@@ -27,12 +33,20 @@ interface IdentificationStepProps {
   updateIdDocument: (id: string, patch: Partial<IdDocument>) => void;
   addIdDocument: () => void;
   removeIdDocument: (id: string) => void;
+  errors?: Record<string, string>;
+  duplicateDocMatch?: string | null;
 }
 
 const chevron = (
   <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
 );
 
+const VERIFICATION_COLOR: Record<string, string> = {
+  Verified: "success",
+  Pending: "warning",
+  "Not verified": "slate",
+  Rejected: "danger",
+};
 
 function FieldRow({
   columns,
@@ -54,148 +68,303 @@ function FieldRow({
   );
 }
 
+function DocRow({
+  doc,
+  isSelected,
+  onSelect,
+}: {
+  doc: IdDocument;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <UnstyledButton
+      onClick={onSelect}
+      px="xs"
+      py={6}
+      style={{
+        borderRadius: "var(--mantine-radius-sm)",
+        background: isSelected ? "var(--mantine-color-brand-0)" : "transparent",
+        border: isSelected
+          ? "1px solid var(--mantine-color-brand-4)"
+          : "1px solid transparent",
+      }}
+    >
+      <Group justify="space-between" wrap="nowrap" mb={2}>
+        <Text
+          size="xs"
+          fw={isSelected ? 700 : 600}
+          c={isSelected ? "brand.7" : "slate.8"}
+          truncate
+        >
+          {doc.idType || "Untitled document"}
+        </Text>
+      </Group>
+      {doc.expiryDate && (
+        <Text size="10px" c="slate.5" mb={6}>
+          Exp: {doc.expiryDate}
+        </Text>
+      )}
+      <Group gap={4}>
+        <Badge
+          size="xs"
+          variant="light"
+          color={VERIFICATION_COLOR[doc.verification] ?? "slate"}
+          radius="sm"
+        >
+          {doc.verification.toUpperCase()}
+        </Badge>
+      </Group>
+    </UnstyledButton>
+  );
+}
+
+// Document Manager pattern: a scrollable document list on the left, the
+// selected document's field set on the right. Document type is now a
+// free-text field the user types — it's reflected live in the left list.
+// Layout/spacing mirrors the DocumentsStep upload screen (compact list
+// rows in a bordered Paper with its own header + ScrollArea).
 export function IdentificationStep({
   idDocuments,
   updateIdDocument,
   addIdDocument,
   removeIdDocument,
+  errors = {},
+  duplicateDocMatch,
 }: IdentificationStepProps) {
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(
+    idDocuments[0]?.id ?? null,
+  );
+  const prevCount = useRef(idDocuments.length);
+
+  // Auto-select a newly added document; if the selected one was removed,
+  // fall back to the first document in the list.
+  useEffect(() => {
+    if (idDocuments.length > prevCount.current) {
+      setSelectedDocId(idDocuments[idDocuments.length - 1].id);
+    } else if (!idDocuments.some((d) => d.id === selectedDocId)) {
+      setSelectedDocId(idDocuments[0]?.id ?? null);
+    }
+    prevCount.current = idDocuments.length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idDocuments]);
+
+  const selectedDoc =
+    idDocuments.find((d) => d.id === selectedDocId) ?? idDocuments[0];
+
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  // Fixed regardless of item count — this is what stops the section from
+  // growing taller (and pushing the modal into its own scroll) as more
+  // documents get added. Only the list itself ever scrolls internally.
+  const LIST_PANEL_HEIGHT = isMobile ? 200 : 300;
+
   return (
     <PlainCard>
       <SectionHeader
         icon={IconId}
         title="Identification documents"
         badge="REQUIRED"
-        description="At least one valid government-issued ID — add as many as needed"
         accent="gold"
       />
-      <Stack gap="sm">
-        {idDocuments.map((doc) => (
-          <Paper
-            key={doc.id}
-            withBorder
-            radius="md"
-            p="md"
-            bg="slate.0"
-            style={{ borderColor: "var(--mantine-color-slate-2)" }}
-          >
-            <Group justify="space-between" mb="sm">
-              <Box w="33%" maw={240}>
+
+      <Box
+        style={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          alignItems: "flex-start",
+          gap: "var(--mantine-spacing-md)",
+        }}
+      >
+        {/* --- Document list: fixed height, only this section scrolls --- */}
+        <Paper
+          withBorder
+          radius="md"
+          bg="white"
+          w={isMobile ? "100%" : 260}
+          style={{
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
+          <Group justify="space-between" px="sm" py="xs" style={{ flexShrink: 0 }}>
+            <Text
+              size="xs"
+              fw={800}
+              tt="uppercase"
+              c="slate.5"
+              style={{ letterSpacing: 0.5 }}
+            >
+              Identifications
+            </Text>
+            <Badge size="xs" variant="light" color="slate" radius="sm">
+              {idDocuments.length} {idDocuments.length === 1 ? "Item" : "Items"}
+            </Badge>
+          </Group>
+
+          <ScrollArea h={LIST_PANEL_HEIGHT} type="auto" scrollbarSize={6}>
+            <Stack gap={4} px={6} pb={6}>
+              {idDocuments.map((doc) => (
+                <DocRow
+                  key={doc.id}
+                  doc={doc}
+                  isSelected={doc.id === selectedDoc?.id}
+                  onSelect={() => setSelectedDocId(doc.id)}
+                />
+              ))}
+            </Stack>
+          </ScrollArea>
+
+          <Box px={6} pb={6} style={{ flexShrink: 0 }}>
+            <Button
+              fullWidth
+              mt={4}
+              variant="subtle"
+              color="gold"
+              radius="md"
+              size="xs"
+              leftSection={<IconPlus size={14} />}
+              onClick={addIdDocument}
+              style={{ border: "1px dashed var(--mantine-color-gold-2)" }}
+            >
+              Add Document
+            </Button>
+          </Box>
+        </Paper>
+
+        {/* --- Selected document editor (no scroll here — grows naturally) --- */}
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          {selectedDoc ? (
+            <Paper
+              withBorder
+              radius="md"
+              p="md"
+              bg="slate.0"
+              style={{ borderColor: "var(--mantine-color-slate-2)" }}
+            >
+              <Group
+                justify="space-between"
+                align={isMobile ? "flex-start" : "flex-end"}
+                mb="sm"
+                wrap={isMobile ? "wrap" : "nowrap"}
+              >
+                <Box w={isMobile ? "100%" : "33%"} maw={isMobile ? "100%" : 240}>
+                  <TextInput
+                    size="xs"
+                    radius="md"
+                    label="Document Name"
+                    withAsterisk
+                    placeholder="e.g. Passport"
+                    value={selectedDoc.idType}
+                    onChange={(e) =>
+                      updateIdDocument(selectedDoc.id, {
+                        idType: e.currentTarget.value,
+                      })
+                    }
+                  />
+                </Box>
+                <Group gap="xs">
+                  <ActionIcon
+                    size="sm"
+                    color="danger"
+                    variant="subtle"
+                    onClick={() => removeIdDocument(selectedDoc.id)}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Group>
+              </Group>
+
+              <FieldRow columns={isMobile ? "1fr" : "1.5fr 0.9fr 0.9fr 1fr"}>
+                <TextInput
+                  size="xs"
+                  radius="md"
+                  label="Document Number"
+                  withAsterisk
+                  placeholder="221009/11/1"
+                  value={selectedDoc.docNumber}
+                  onChange={(e) =>
+                    updateIdDocument(selectedDoc.id, {
+                      docNumber: e.currentTarget.value,
+                    })
+                  }
+                  error={errors[`doc-${selectedDoc.id}`]}
+                />
+                <TextInput
+                  size="xs"
+                  radius="md"
+                  type="date"
+                  label="Issue Date"
+                  value={selectedDoc.issueDate}
+                  onChange={(e) =>
+                    updateIdDocument(selectedDoc.id, {
+                      issueDate: e.currentTarget.value,
+                    })
+                  }
+                />
+                <TextInput
+                  size="xs"
+                  radius="md"
+                  type="date"
+                  label="Expiry Date"
+                  value={selectedDoc.expiryDate}
+                  onChange={(e) =>
+                    updateIdDocument(selectedDoc.id, {
+                      expiryDate: e.currentTarget.value,
+                    })
+                  }
+                />
                 <Select
                   size="xs"
                   radius="md"
-                  data={[
-                    "National ID (NRC)",
-                    "Passport",
-                    "Driver's Licence",
-                    "Voter's Card",
-                  ]}
-                  value={doc.idType}
+                  label="Verification"
+                  data={["Not verified", "Pending", "Verified", "Rejected"]}
+                  value={selectedDoc.verification}
                   onChange={(v) =>
-                    updateIdDocument(doc.id, { idType: v ?? doc.idType })
+                    updateIdDocument(selectedDoc.id, {
+                      verification: v ?? selectedDoc.verification,
+                    })
                   }
                   rightSection={chevron}
                 />
+              </FieldRow>
+
+              <Box mt="sm">
+                <TextInput
+                  size="xs"
+                  radius="md"
+                  label="Issuing Authority"
+                  placeholder="e.g. NRC Dept."
+                  value={selectedDoc.issuingAuthority}
+                  onChange={(e) =>
+                    updateIdDocument(selectedDoc.id, {
+                      issuingAuthority: e.currentTarget.value,
+                    })
+                  }
+                />
               </Box>
-              {doc.isPrimary ? (
-                <Text
-                  size="10px"
-                  fw={700}
-                  tt="uppercase"
-                  style={{ letterSpacing: 0.4, color: colorVar("gold", 6) }}
+
+              {duplicateDocMatch && (
+                <Alert
+                  mt="sm"
+                  color="warning"
+                  radius="md"
+                  icon={<IconAlertTriangle size={16} />}
                 >
-                  Primary ID
-                </Text>
-              ) : (
-                <ActionIcon
-                  size="sm"
-                  color="danger"
-                  variant="subtle"
-                  onClick={() => removeIdDocument(doc.id)}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
+                  This document number matches an existing record for{" "}
+                  <b>{duplicateDocMatch}</b>. Link to this customer instead of
+                  creating a new one.
+                </Alert>
               )}
-            </Group>
-
-
-            <FieldRow columns="1.1fr 1.5fr 0.9fr 0.9fr 1fr">
-              <TextInput
-                size="xs"
-                radius="md"
-                label="Document Number"
-                withAsterisk
-                placeholder="221009/11/1"
-                value={doc.docNumber}
-                onChange={(e) =>
-                  updateIdDocument(doc.id, {
-                    docNumber: e.currentTarget.value,
-                  })
-                }
-              />
-              <TextInput
-                size="xs"
-                radius="md"
-                label="Issuing Authority"
-                placeholder="e.g. NRC Dept."
-                value={doc.issuingAuthority}
-                onChange={(e) =>
-                  updateIdDocument(doc.id, {
-                    issuingAuthority: e.currentTarget.value,
-                  })
-                }
-              />
-              <TextInput
-                size="xs"
-                radius="md"
-                type="date"
-                label="Issue Date"
-                value={doc.issueDate}
-                onChange={(e) =>
-                  updateIdDocument(doc.id, {
-                    issueDate: e.currentTarget.value,
-                  })
-                }
-              />
-              <TextInput
-                size="xs"
-                radius="md"
-                type="date"
-                label="Expiry Date"
-                value={doc.expiryDate}
-                onChange={(e) =>
-                  updateIdDocument(doc.id, {
-                    expiryDate: e.currentTarget.value,
-                  })
-                }
-              />
-              <Select
-                size="xs"
-                radius="md"
-                label="Verification"
-                data={["Not verified", "Pending", "Verified", "Rejected"]}
-                value={doc.verification}
-                onChange={(v) =>
-                  updateIdDocument(doc.id, {
-                    verification: v ?? doc.verification,
-                  })
-                }
-                rightSection={chevron}
-              />
-            </FieldRow>
-          </Paper>
-        ))}
-        <Button
-          variant="subtle"
-          color="gold"
-          radius="md"
-          leftSection={<IconPlus size={14} />}
-          onClick={addIdDocument}
-          style={{ border: `1px dashed ${colorVar("gold", 1)}` }}
-        >
-          Add Another Document
-        </Button>
-      </Stack>
+            </Paper>
+          ) : (
+            <Text size="sm" c="slate.5">
+              No document selected.
+            </Text>
+          )}
+        </Box>
+      </Box>
     </PlainCard>
   );
 }

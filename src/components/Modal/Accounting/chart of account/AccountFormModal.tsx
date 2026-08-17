@@ -24,6 +24,7 @@ import { ModalFooter } from '../../../shared/ModalFooter';
 interface AccountFormModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize: () => void;
   onSuccess: () => void;
   company: string;
   baseCurrency: string;
@@ -36,6 +37,7 @@ interface AccountFormModalProps {
 export function AccountFormModal({
   opened,
   onClose,
+  onMinimize,
   onSuccess,
   company,
   baseCurrency,
@@ -71,7 +73,6 @@ export function AccountFormModal({
     ? `Creating under: ${parentAccount.account_name}`
     : 'Add a new account to the chart of accounts';
 
-  
   const [currencySearch, setCurrencySearch] = useState('');
   const [debouncedCurrencySearch] = useDebouncedValue(currencySearch, 300);
 
@@ -96,6 +97,10 @@ export function AccountFormModal({
   const handleClose = () => {
     reset();
     onClose();
+  };
+
+  const handleMinimize = () => {
+    onMinimize();
   };
 
   return (
@@ -132,7 +137,6 @@ export function AccountFormModal({
       }}
     >
       <Box style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }} bg="white">
-        {/* Header — brandGradient + icon-overlay treatment, matching LoanAccountModal */}
         <Box
           className="px-6 py-3 flex justify-between items-center rounded-t-md shrink-0"
           style={{
@@ -165,6 +169,7 @@ export function AccountFormModal({
               variant="subtle"
               size="xs"
               px={8}
+              onClick={handleMinimize}
               style={{ color: 'var(--mantine-color-white)' }}
               styles={{ root: { '&:hover': { backgroundColor: theme.other.headerButtonHoverBg } } }}
             >
@@ -183,10 +188,8 @@ export function AccountFormModal({
           </Group>
         </Box>
 
-        {/* Body */}
         <ScrollArea type="auto" scrollbarSize={8} style={{ flex: 1, minHeight: 0 }} bg="slate.0">
           <Box px="lg" pt="sm" pb="lg">
-
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="md:col-span-5">
                 <TextInput
@@ -212,7 +215,6 @@ export function AccountFormModal({
                 />
               </div>
 
-
               <div className="md:col-span-3 md:row-span-2">
                 <Checkbox
                   label="Is Group"
@@ -224,7 +226,6 @@ export function AccountFormModal({
                 />
               </div>
 
-
               <div className="md:col-span-5">
                 <TextInput
                   label="Account Number"
@@ -234,7 +235,6 @@ export function AccountFormModal({
                 />
               </div>
 
-              {/* Row 2, cols 6-7 */}
               <div className="md:col-span-2">
                 <Select
                   label="Currency"
@@ -248,7 +248,6 @@ export function AccountFormModal({
                   disabled={readOnly}
                 />
               </div>
-
 
               <div className="md:col-span-2">
                 {form.isGroup && (
@@ -268,7 +267,6 @@ export function AccountFormModal({
           </Box>
         </ScrollArea>
 
-        {/* Footer — shared ModalFooter, same as LoanAccountModal; Reset moved into leftSlot */}
         <Box style={{ flexShrink: 0 }}>
           <ModalFooter
             variant="theme"

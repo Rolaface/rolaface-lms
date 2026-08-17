@@ -136,7 +136,7 @@ const toDateString = (date: Date | string | null) => {
           />
 
           <TextInput
-            label="Loan A/C Number"
+            label="Loan Account Number"
             placeholder="Auto-generated on save"
             value={loanAcNumber}
             disabled
@@ -162,11 +162,21 @@ const toDateString = (date: Date | string | null) => {
                 onChange={(e) => form.setFieldValue("isImport", e.currentTarget.checked)}
               />
             </Group>
-            <TextInput
+            {/* <TextInput
               type="date"
               disabled={!form.values.isImport}
               {...form.getInputProps("migrationDate")}
-            />
+            /> */}
+           <DateInput
+  valueFormat="DD-MMM-YYYY"
+  placeholder="DD-MMM-YYYY"
+  radius="lg"
+  disabled={!form.values.isImport}
+  value={toDateObj(form.values.migrationDate)}
+  onChange={(date) =>
+    form.setFieldValue("migrationDate", toDateString(date))
+  }
+/>
           </div>
         </SimpleGrid>
       </Paper>

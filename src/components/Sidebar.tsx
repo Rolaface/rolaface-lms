@@ -31,6 +31,8 @@ import {
   IconChartBar,
   IconArrowsExchange,
   IconReceipt,
+  IconBox,
+  IconCoins,
 } from "@tabler/icons-react";
 
 /* ───────────────── Nav item types (recursive) ───────────────── */
@@ -58,11 +60,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
   {
     path: "/collateral",
     label: "Collateral",
-    icon: IconShieldCheck,
+    icon: IconBuildingBank,
     matchPrefix: true,
     subItems: [
-      { path: "/collateral/type", label: "Collateral Type", icon: IconListDetails },
-      { path: "/collateral/list", label: "Collateral", icon: IconShieldCheck },
+      { path: "/collateral/type", label: "Collateral Type", icon: IconBox },
+      { path: "/collateral/list", label: "Collateral", icon: IconCoins },
     ],
   },
   {

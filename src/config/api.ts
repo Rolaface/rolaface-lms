@@ -49,7 +49,8 @@ Accounting: {
   },
 
   generalLedger: {
-    get: `${ERP_BASE}/api/method/frappe.desk.query_report.run`,
+    get: `${ERP_BASE}/api/method/custom_api.api.chart_of_account.get_general_ledger_detail`,
+    viewLedger:`${ERP_BASE}/api/method/custom_api.api.chart_of_account.get_general_ledger_detail`,
   },
   payable:{
 
@@ -110,7 +111,13 @@ Accounting: {
   // =========================
   // DASHBOARD
   // =========================
-  dashboard: {},
+  dashboard: {
+    getSummary: `${ERP_BASE}/api/method/rolaface_lms_app.modules.dashboard.api.get_dashboard_summary`,
+    getCharts: `${ERP_BASE}/api/method/rolaface_lms_app.modules.dashboard.api.get_dashboard_charts`,
+    getQuickInsights: `${ERP_BASE}/api/method/rolaface_lms_app.modules.dashboard.api.get_quick_insights`,
+    getPendingApprovals: `${ERP_BASE}/api/method/rolaface_lms_app.modules.dashboard.api.get_pending_approvals`,
+    getOverdueTasks: `${ERP_BASE}/api/method/rolaface_lms_app.modules.dashboard.api.get_overdue_tasks`,
+  },
 
   // =========================
   // CUSTOMER
@@ -133,6 +140,12 @@ loan: {
   statusLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.update_loan_status`,
   getLoanScheduleById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_repayment_schedule_by_id`,
 },
+loanStatement: {
+    getDashboard: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_statement.api.get_loan_statement_dashboard`,
+    getStatement: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_statement.api.get_loan_statement`,
+    exportPdf: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_statement.api.export_loan_statement_pdf`,
+    exportExcel: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_statement.api.export_loan_statement_excel`,
+  },
 
   collectionSequence: {
     create:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collection_order.api.create`,
@@ -198,12 +211,12 @@ loan: {
   // LOAN APPLICATION
   // =========================
   loanApplication: {
-    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.create_loan_application`,
-    getLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.get_loan_applications`,
-    getLoanApplicationById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.get_loan_application_by_id`,
-    updateLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.update_loan_application`,
-    deleteLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.delete_loan_application`,
-    statusLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.update_loan_application_status`,
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.create_custom_loan_application`,
+    getLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.get_custom_loan_applications`,
+    convertToLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.convert_custom_loan_application_to_loan`,
+    getLoanApplicationById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.get_custom_loan_application_by_id`,
+    updateLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.update_custom_loan_application`,
+    deleteLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.delete_custom_loan_application`,
     getCountries: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.get_countries`,
   },
 
@@ -337,9 +350,24 @@ loan: {
     getReceivableAccounts: `${ERP_BASE}/api/method/custom_api.api.search.get_receivable_accounts`,
     getCurrency: `${ERP_BASE}/api/method/erpnext.setup.utils.get_exchange_rate`,
     currencylistsearch:`${ERP_BASE}/api/method/custom_api.api.search.get_currencies`,
+
+    getLoanProducts: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_products`,
+    getLoanApplications: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_applications`,
+    getCurrencies: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_currencies`,
+    getLoans: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loans`,
+    getLoanSecurityTypes: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_security_types`,
+    getLoanCategory: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_category`,
+    getLoanSecurities: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_securities`,
+    getLoanDisbursements: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_disbursements`,
+    getLoanRepayments: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_repayments`,
+    getLoanPartners: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_partners`,
+    getLoanDemandOffsetOrders: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_demand_offset_orders`,
+    getAccounts: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_accounts`,
+    getItems: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_items`,
   },
   frappeUtilsAPI:{
  getCompanyCurrentFiscalYear: `${ERP_BASE}/api/method/custom_api.utils.frappe_utils.get_current_fiscal_year`,
+ getaccounts:`${ERP_BASE}/api/resource/Account`
   },
 } as const;
 

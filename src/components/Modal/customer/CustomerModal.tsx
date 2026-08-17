@@ -9,25 +9,13 @@ import {
   Group,
   ScrollArea,
   UnstyledButton,
-  Fieldset,
-  Divider,
+  useMantineTheme,
+  Stack,
 } from "@mantine/core";
-import {
-  IconX,
-  IconUser,
-  IconCheck,
-  IconArrowRight,
-  IconChevronRight,
-} from "@tabler/icons-react";
+import { IconX, IconUser, IconCheck, IconMinus } from "@tabler/icons-react";
 
-import { GradientButton } from "../../shared/customer/Shared";
-import { STEPS } from "../../constants/customer/constants";
-import { nextId } from "../../../utils/customer/utils";
-import type {
-  IdDocument,
-  CustomField,
-  UploadedDoc,
-} from "../../../types/customer/types";
+import { STEPS, STEP_GROUPS } from "../../constants/customer/constants";
+import { CustomerSummarySidebar } from "./Customersummarysidebar";
 
 import { IdentityStep } from "./steps/IdentityStep";
 import { ContactStep } from "./steps/ContactStep";
@@ -39,226 +27,167 @@ import { DocumentsStep } from "./steps/DocumentsStep";
 import { KinStep } from "./steps/KinStep";
 import { TagsStep } from "./steps/TagsStep";
 import { ModalFooter } from "../../shared/ModalFooter";
-import { showApiError, showSuccess, showValidationError } from "../../../utils/alert";
+import {
+  showApiError,
+  showSuccess,
+  showValidationError,
+} from "../../../utils/alert";
+
+import { useIdentityState } from "../../../hooks/customer/modal/useIdentityState";
+import { useContactState } from "../../../hooks/customer/modal/useContactState";
+import { useIdentificationState } from "../../../hooks/customer/modal/useIdentificationState";
+import { useFinancialBorrowerState } from "../../../hooks/customer/modal/useFinancialBorrowerState";
+import {
+  useKycState,
+  useDocumentsState,
+  useKinState,
+  useTagsState,
+} from "../../../hooks/customer/modal/useLaterStepsState";
+
 interface CustomerModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize: () => void;
   isViewMode?: boolean;
 }
 
 export function CustomerModal({
   opened,
   onClose,
+  onMinimize,
   isViewMode,
 }: CustomerModalProps) {
+  const theme = useMantineTheme();
   const [activeTab, setActiveTab] = useState<string>("0");
   const currentStep = parseInt(activeTab);
 
-  // --- Identity ---
-  const [customerNumber] = useState(
-    () =>
-      `CUST-${String(Math.floor(1000000 + Math.random() * 9000000)).slice(0, 7)}`,
-  );
-  const [customerType, setCustomerType] = useState<string>("Individual");
-  const [fullLegalName, setFullLegalName] = useState("");
-  const [preferredName, setPreferredName] = useState("");
-  const [gender, setGender] = useState<string | null>(null);
-  const [dateOfBirth, setDateOfBirth] = useState("");
-  const [nationality, setNationality] = useState<string | null>(null);
-  const [maritalStatus, setMaritalStatus] = useState<string | null>(null);
-  const [occupation, setOccupation] = useState("");
-  const [industry, setIndustry] = useState<string | null>(null);
-  const [employer, setEmployer] = useState("");
+  const identity = useIdentityState();
+  const contact = useContactState();
+  const identification = useIdentificationState();
+  const financialBorrower = useFinancialBorrowerState();
+  const kyc = useKycState();
+  const documents = useDocumentsState();
+  const kin = useKinState();
+  const tagsState = useTagsState();
 
-  // --- Contact ---
-  const [mobileNumber, setMobileNumber] = useState("");
-  const [alternateMobile, setAlternateMobile] = useState("");
-  const [email, setEmail] = useState("");
-  const [preferredCommunication, setPreferredCommunication] = useState<string | null>(null);
-  const [residentialAddress, setResidentialAddress] = useState("");
-  const [country, setCountry] = useState<string | null>(null);
-  const [province, setProvince] = useState<string | null>(null);
-  const [district, setDistrict] = useState("");
-  const [cityTown, setCityTown] = useState("");
-  const [postalCode, setPostalCode] = useState("");
-  const [sameAsResidential, setSameAsResidential] = useState(true);
-  const [mailingAddress, setMailingAddress] = useState("");
+  const activeGroup =
+    STEP_GROUPS.find((g) =>
+      (g.stepIndices as readonly number[]).includes(currentStep),
+    ) ?? STEP_GROUPS[0];
+  const stepInGroup = activeGroup.stepIndices.indexOf(currentStep as never) + 1;
+  const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
+    if (group.id === activeGroup.id) return;
+    const target =
+      group.stepIndices.find((idx) => idx >= currentStep) ??
+      group.stepIndices[0];
+    setActiveTab(target.toString());
+  };
 
-  // --- Identification documents ---
-  const [idDocuments, setIdDocuments] = useState<IdDocument[]>([
-    {
-      id: nextId(),
-      idType: "National ID (NRC)",
-      docNumber: "",
-      issuingAuthority: "",
-      issueDate: "",
-      expiryDate: "",
-      verification: "Not verified",
-      isPrimary: true,
-    },
-  ]);
-  const updateIdDocument = (id: string, patch: Partial<IdDocument>) =>
-    setIdDocuments((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, ...patch } : d)),
-    );
-  const addIdDocument = () =>
-    setIdDocuments((prev) => [
-      ...prev,
-      {
-        id: nextId(),
-        idType: "Passport",
-        docNumber: "",
-        issuingAuthority: "",
-        issueDate: "",
-        expiryDate: "",
-        verification: "Not verified",
-        isPrimary: false,
-      },
-    ]);
-  const removeIdDocument = (id: string) =>
-    setIdDocuments((prev) => prev.filter((d) => d.id !== id));
+  const mobileDuplicateName = contact.mobileNumber
+    .replace(/\D/g, "")
+    .endsWith("7124456")
+    ? "Mwansa Chileshe (CUST-0042118)"
+    : null;
+  const primaryDoc =
+    identification.idDocuments.find((d) => d.isPrimary) ??
+    identification.idDocuments[0];
+  const duplicateDocMatch =
+    primaryDoc && primaryDoc.docNumber.replace(/\s/g, "") === "221009/11/1"
+      ? "Mwansa Chileshe (CUST-0042118)"
+      : null;
 
-  // --- Financial ---
-  const [educationLevel, setEducationLevel] = useState<string | null>(null);
-  const [employmentType, setEmploymentType] = useState<string | null>(null);
-  const [sourceOfIncome, setSourceOfIncome] = useState<string | null>(null);
-  const [monthlyIncome, setMonthlyIncome] = useState<number | "">("");
-  const [annualIncome, setAnnualIncome] = useState<number | "">("");
-  const [creditRiskCategory, setCreditRiskCategory] = useState<string | null>(
-    null,
-  );
+  const isBusinessType = identity.customerType === "Business";
+  const sidebarCustomerName = isBusinessType
+    ? identity.companyName
+    : [identity.firstName, identity.lastName].filter(Boolean).join(" ");
 
-  // --- Borrower ---
-  const [convertToBorrower, setConvertToBorrower] = useState(true);
-  const [borrowerCategory, setBorrowerCategory] = useState<string | null>(
-    null,
-  );
-  const [loanPurpose, setLoanPurpose] = useState<string | null>(null);
-  const [intendedLoanProduct, setIntendedLoanProduct] = useState<string | null>(null);
-  const [preliminaryRiskRating, setPreliminaryRiskRating] = useState<string | null>(null);
-  const [branch, setBranch] = useState<string | null>(null);
-  const [creditOfficer, setCreditOfficer] = useState<string | null>(null);
-  const [relationshipManager, setRelationshipManager] = useState<string | null>(null);
+  const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(new Set());
 
-  // --- KYC ---
-  const [kycStatus, setKycStatus] = useState<Record<string, string>>({
-    kyc: "Pending",
-    aml: "Pending",
-    sanctions: "Pending",
-    pep: "Clear",
-    fatca: "Not applicable",
-    crs: "Not applicable",
-  });
-  const runCheck = (key: string) =>
-    setKycStatus((prev) => ({ ...prev, [key]: "Clear" }));
-
+  const getStepErrors = (step: number): Record<string, string> => {
+    switch (step) {
+      case 0: {
+        const errs: Record<string, string> = {};
+        if (isBusinessType) {
+          if (!identity.companyName.trim())
+            errs.companyName = "Registered company name is required";
+          if (!identity.registrationNumber.trim())
+            errs.registrationNumber = "Registration number is required";
+        } else {
+          if (!identity.firstName.trim())
+            errs.firstName = "First name is required";
+          if (!identity.lastName.trim())
+            errs.lastName = "Last name is required";
+          if (!identity.gender) errs.gender = "Gender is required";
+          if (!identity.dateOfBirth)
+            errs.dateOfBirth = "Date of birth is required";
+          if (!identity.nationality)
+            errs.nationality = "Nationality is required";
+        }
+        return errs;
+      }
+      case 1: {
+        const errs: Record<string, string> = {};
+        if (!contact.mobileNumber.trim())
+          errs.mobileNumber = "Mobile number is required";
+        else if (!/^\+?[0-9\s]{7,15}$/.test(contact.mobileNumber.trim()))
+          errs.mobileNumber = "Enter a valid phone number";
+        if (
+          contact.email.trim() &&
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim())
+        )
+          errs.email = "Enter a valid email address";
+        return errs;
+      }
+      case 2: {
+        const errs: Record<string, string> = {};
+        if (primaryDoc && !primaryDoc.docNumber.trim())
+          errs[`doc-${primaryDoc.id}`] = "Document number is required";
+        return errs;
+      }
+      case 3:
+        return financialBorrower.getErrors();
+      default:
+        return {};
+    }
+  };
 
   const handleCreateCustomer = () => {
-  if (!fullLegalName.trim() || !mobileNumber.trim()) {
-    showValidationError("Please fill in all required fields before submitting.");
-    return;
-  }
+    const stepsToCheck = [0, 1, 2, 3];
+    let firstInvalid: number | null = null;
+    const newAttempted = new Set(attemptedSteps);
+    for (const s of stepsToCheck) {
+      if (Object.keys(getStepErrors(s)).length > 0) {
+        newAttempted.add(s);
+        if (firstInvalid === null) firstInvalid = s;
+      }
+    }
+    if (firstInvalid !== null) {
+      setAttemptedSteps(newAttempted);
+      setActiveTab(firstInvalid.toString());
+      showValidationError(
+        "Please fill in all required fields before submitting.",
+      );
+      return;
+    }
 
-  try {
-    showSuccess("Customer created successfully.");
-    handleModalClose();
-  } catch (err) {
-    showApiError("Something went wrong while creating the customer.");
-  }
-};
-  // --- Documents ---
-  const [uploadedDocs, setUploadedDocs] = useState<Record<string, UploadedDoc>>({});
-
-  // --- Next of kin & guarantor ---
-  const [kinName, setKinName] = useState("");
-  const [kinRelationship, setKinRelationship] = useState<string | null>(null);
-  const [kinPhone, setKinPhone] = useState("");
-  const [kinAddress, setKinAddress] = useState("");
-  const [guarantorLinked, setGuarantorLinked] = useState(false);
-
-  // --- Tags, notes & custom fields ---
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
-  const [relationshipNotes, setRelationshipNotes] = useState("");
-  const [customFields, setCustomFields] = useState<CustomField[]>([]);
-  const addTag = (tag: string) => {
-    const t = tag.trim();
-    if (t && !tags.includes(t)) setTags((p) => [...p, t]);
-    setTagInput("");
+    try {
+      showSuccess("Customer created successfully.");
+      handleModalClose();
+    } catch (err) {
+      showApiError("Something went wrong while creating the customer.");
+    }
   };
-  const removeTag = (tag: string) =>
-    setTags((p) => p.filter((t) => t !== tag));
-  const addCustomField = () =>
-    setCustomFields((p) => [
-      ...p,
-      { id: nextId(), label: "", value: "", type: "Text" },
-    ]);
-  const removeCustomField = (id: string) =>
-    setCustomFields((p) => p.filter((f) => f.id !== id));
-  const updateCustomField = (id: string, patch: Partial<CustomField>) =>
-    setCustomFields((p) =>
-      p.map((f) => (f.id === id ? { ...f, ...patch } : f)),
-    );
 
   const handleReset = () => {
-    setCustomerType("Individual");
-    setFullLegalName("");
-    setPreferredName("");
-    setGender(null);
-    setDateOfBirth("");
-    setNationality(null);
-    setMaritalStatus(null);
-    setOccupation("");
-    setIndustry(null);
-    setEmployer("");
-    setMobileNumber("");
-    setAlternateMobile("");
-    setEmail("");
-    setPreferredCommunication(null);
-    setResidentialAddress("");
-    setCountry(null);
-    setProvince(null);
-    setDistrict("");
-    setCityTown("");
-    setPostalCode("");
-    setMailingAddress("");
-    setIdDocuments([
-      {
-        id: nextId(),
-        idType: "National ID (NRC)",
-        docNumber: "",
-        issuingAuthority: "",
-        issueDate: "",
-        expiryDate: "",
-        verification: "Not verified",
-        isPrimary: true,
-      },
-    ]);
-    setEducationLevel(null);
-    setEmploymentType(null);
-    setSourceOfIncome(null);
-    setMonthlyIncome("");
-    setAnnualIncome("");
-    setCreditRiskCategory(null);
-    setBorrowerCategory(null);
-    setLoanPurpose(null);
-    setIntendedLoanProduct(null);
-    setPreliminaryRiskRating(null);
-    setBranch(null);
-    setCreditOfficer(null);
-    setRelationshipManager(null);
-    Object.values(uploadedDocs).forEach(
-      (d) => d.previewUrl && URL.revokeObjectURL(d.previewUrl),
-    );
-    setUploadedDocs({});
-    setKinName("");
-    setKinRelationship(null);
-    setKinPhone("");
-    setKinAddress("");
-    setGuarantorLinked(false);
-    setTags([]);
-    setRelationshipNotes("");
-    setCustomFields([]);
+    identity.reset();
+    contact.reset();
+    identification.reset();
+    financialBorrower.reset();
+    kyc.reset();
+    documents.reset();
+    kin.reset();
+    tagsState.reset();
+    setAttemptedSteps(new Set());
     setActiveTab("0");
   };
 
@@ -267,6 +196,14 @@ export function CustomerModal({
     onClose();
   };
   const handleNext = () => {
+    const errs = getStepErrors(currentStep);
+    if (Object.keys(errs).length > 0) {
+      setAttemptedSteps((prev) => new Set(prev).add(currentStep));
+      showValidationError(
+        "Please fill in all required fields before continuing.",
+      );
+      return;
+    }
     if (currentStep < STEPS.length - 1)
       setActiveTab((currentStep + 1).toString());
   };
@@ -283,144 +220,189 @@ export function CustomerModal({
       case 0:
         return (
           <IdentityStep
-            customerNumber={customerNumber}
-            customerType={customerType}
-            setCustomerType={setCustomerType}
-            fullLegalName={fullLegalName}
-            setFullLegalName={setFullLegalName}
-            preferredName={preferredName}
-            setPreferredName={setPreferredName}
-            gender={gender}
-            setGender={setGender}
-            dateOfBirth={dateOfBirth}
-            setDateOfBirth={setDateOfBirth}
-            nationality={nationality}
-            setNationality={setNationality}
-            maritalStatus={maritalStatus}
-            setMaritalStatus={setMaritalStatus}
-            occupation={occupation}
-            setOccupation={setOccupation}
-            industry={industry}
-            setIndustry={setIndustry}
-            employer={employer}
-            setEmployer={setEmployer}
+            customerNumber={identity.customerNumber}
+            customerType={identity.customerType}
+            setCustomerType={identity.setCustomerType}
+            firstName={identity.firstName}
+            setFirstName={identity.setFirstName}
+            middleName={identity.middleName}
+            setMiddleName={identity.setMiddleName}
+            lastName={identity.lastName}
+            setLastName={identity.setLastName}
+            preferredName={identity.preferredName}
+            setPreferredName={identity.setPreferredName}
+            gender={identity.gender}
+            setGender={identity.setGender}
+            dateOfBirth={identity.dateOfBirth}
+            setDateOfBirth={identity.setDateOfBirth}
+            nationality={identity.nationality}
+            setNationality={identity.setNationality}
+            occupation={identity.occupation}
+            setOccupation={identity.setOccupation}
+            industry={identity.industry}
+            setIndustry={identity.setIndustry}
+            employer={identity.employer}
+            setEmployer={identity.setEmployer}
+            companyName={identity.companyName}
+            setCompanyName={identity.setCompanyName}
+            registrationNumber={identity.registrationNumber}
+            setRegistrationNumber={identity.setRegistrationNumber}
+            incorporationDate={identity.incorporationDate}
+            setIncorporationDate={identity.setIncorporationDate}
+            businessAddress={identity.businessAddress}
+            setBusinessAddress={identity.setBusinessAddress}
+            businessIndustry={identity.businessIndustry}
+            setBusinessIndustry={identity.setBusinessIndustry}
+            numberOfEmployees={identity.numberOfEmployees}
+            setNumberOfEmployees={identity.setNumberOfEmployees}
+            annualRevenue={identity.annualRevenue}
+            setAnnualRevenue={identity.setAnnualRevenue}
+            businessType={identity.businessType}
+            setBusinessType={identity.setBusinessType}
+            legalStructure={identity.legalStructure}
+            setLegalStructure={identity.setLegalStructure}
+            taxId={identity.taxId}
+            setTaxId={identity.setTaxId}
+            vatNumber={identity.vatNumber}
+            setVatNumber={identity.setVatNumber}
+            currency={identity.currency}
+            setCurrency={identity.setCurrency}
+            fiscalYearEnd={identity.fiscalYearEnd}
+            setFiscalYearEnd={identity.setFiscalYearEnd}
+            businessCity={identity.businessCity}
+            setBusinessCity={identity.setBusinessCity}
+            businessCountry={identity.businessCountry}
+            setBusinessCountry={identity.setBusinessCountry}
+            businessPostalCode={identity.businessPostalCode}
+            setBusinessPostalCode={identity.setBusinessPostalCode}
+            directors={identity.directors}
+            addDirector={identity.addDirector}
+            updateDirector={identity.updateDirector}
+            removeDirector={identity.removeDirector}
+            errors={attemptedSteps.has(0) ? getStepErrors(0) : {}}
           />
         );
       case 1:
         return (
           <ContactStep
-            mobileNumber={mobileNumber}
-            setMobileNumber={setMobileNumber}
-            alternateMobile={alternateMobile}
-            setAlternateMobile={setAlternateMobile}
-            email={email}
-            setEmail={setEmail}
-            preferredCommunication={preferredCommunication}
-            setPreferredCommunication={setPreferredCommunication}
-            residentialAddress={residentialAddress}
-            setResidentialAddress={setResidentialAddress}
-            country={country}
-            setCountry={setCountry}
-            province={province}
-            setProvince={setProvince}
-            district={district}
-            setDistrict={setDistrict}
-            cityTown={cityTown}
-            setCityTown={setCityTown}
-            postalCode={postalCode}
-            setPostalCode={setPostalCode}
-            sameAsResidential={sameAsResidential}
-            setSameAsResidential={setSameAsResidential}
-            mailingAddress={mailingAddress}
-            setMailingAddress={setMailingAddress}
+            mobileNumber={contact.mobileNumber}
+            setMobileNumber={contact.setMobileNumber}
+            alternateMobile={contact.alternateMobile}
+            setAlternateMobile={contact.setAlternateMobile}
+            email={contact.email}
+            setEmail={contact.setEmail}
+            preferredCommunication={contact.preferredCommunication}
+            setPreferredCommunication={contact.setPreferredCommunication}
+            residentialAddress={contact.residentialAddress}
+            setResidentialAddress={contact.setResidentialAddress}
+            country={contact.country}
+            setCountry={contact.setCountry}
+            province={contact.province}
+            setProvince={contact.setProvince}
+            district={contact.district}
+            setDistrict={contact.setDistrict}
+            cityTown={contact.cityTown}
+            setCityTown={contact.setCityTown}
+            postalCode={contact.postalCode}
+            setPostalCode={contact.setPostalCode}
+            sameAsResidential={contact.sameAsResidential}
+            setSameAsResidential={contact.setSameAsResidential}
+            mailingAddress={contact.mailingAddress}
+            setMailingAddress={contact.setMailingAddress}
+            mobileDuplicateName={mobileDuplicateName}
+            errors={attemptedSteps.has(1) ? getStepErrors(1) : {}}
           />
         );
       case 2:
         return (
           <IdentificationStep
-            idDocuments={idDocuments}
-            updateIdDocument={updateIdDocument}
-            addIdDocument={addIdDocument}
-            removeIdDocument={removeIdDocument}
+            idDocuments={identification.idDocuments}
+            updateIdDocument={identification.updateIdDocument}
+            addIdDocument={identification.addIdDocument}
+            removeIdDocument={identification.removeIdDocument}
+            errors={attemptedSteps.has(2) ? getStepErrors(2) : {}}
+            duplicateDocMatch={duplicateDocMatch}
           />
         );
       case 3:
         return (
-          <FinancialStep
-            educationLevel={educationLevel}
-            setEducationLevel={setEducationLevel}
-            employmentType={employmentType}
-            setEmploymentType={setEmploymentType}
-            sourceOfIncome={sourceOfIncome}
-            setSourceOfIncome={setSourceOfIncome}
-            monthlyIncome={monthlyIncome}
-            setMonthlyIncome={setMonthlyIncome}
-            annualIncome={annualIncome}
-            setAnnualIncome={setAnnualIncome}
-            creditRiskCategory={creditRiskCategory}
-            setCreditRiskCategory={setCreditRiskCategory}
-          />
+          <Stack gap="lg">
+            <FinancialStep
+              educationLevel={financialBorrower.educationLevel}
+              setEducationLevel={financialBorrower.setEducationLevel}
+              employmentType={financialBorrower.employmentType}
+              setEmploymentType={financialBorrower.setEmploymentType}
+              sourceOfIncome={financialBorrower.sourceOfIncome}
+              setSourceOfIncome={financialBorrower.setSourceOfIncome}
+              monthlyIncome={financialBorrower.monthlyIncome}
+              setMonthlyIncome={financialBorrower.setMonthlyIncome}
+              annualIncome={financialBorrower.annualIncome}
+              setAnnualIncome={financialBorrower.setAnnualIncome}
+              creditRiskCategory={financialBorrower.creditRiskCategory}
+              setCreditRiskCategory={financialBorrower.setCreditRiskCategory}
+            />
+            <BorrowerStep
+              convertToBorrower={financialBorrower.convertToBorrower}
+              setConvertToBorrower={financialBorrower.setConvertToBorrower}
+              borrowerCategory={financialBorrower.borrowerCategory}
+              setBorrowerCategory={financialBorrower.setBorrowerCategory}
+              loanPurpose={financialBorrower.loanPurpose}
+              setLoanPurpose={financialBorrower.setLoanPurpose}
+              intendedLoanProduct={financialBorrower.intendedLoanProduct}
+              setIntendedLoanProduct={financialBorrower.setIntendedLoanProduct}
+              preliminaryRiskRating={financialBorrower.preliminaryRiskRating}
+              setPreliminaryRiskRating={
+                financialBorrower.setPreliminaryRiskRating
+              }
+              branch={financialBorrower.branch}
+              setBranch={financialBorrower.setBranch}
+              creditOfficer={financialBorrower.creditOfficer}
+              setCreditOfficer={financialBorrower.setCreditOfficer}
+              relationshipManager={financialBorrower.relationshipManager}
+              setRelationshipManager={financialBorrower.setRelationshipManager}
+              errors={attemptedSteps.has(3) ? getStepErrors(3) : {}}
+            />
+          </Stack>
         );
       case 4:
-        return (
-          <BorrowerStep
-            convertToBorrower={convertToBorrower}
-            setConvertToBorrower={setConvertToBorrower}
-            borrowerCategory={borrowerCategory}
-            setBorrowerCategory={setBorrowerCategory}
-            loanPurpose={loanPurpose}
-            setLoanPurpose={setLoanPurpose}
-            intendedLoanProduct={intendedLoanProduct}
-            setIntendedLoanProduct={setIntendedLoanProduct}
-            preliminaryRiskRating={preliminaryRiskRating}
-            setPreliminaryRiskRating={setPreliminaryRiskRating}
-            branch={branch}
-            setBranch={setBranch}
-            creditOfficer={creditOfficer}
-            setCreditOfficer={setCreditOfficer}
-            relationshipManager={relationshipManager}
-            setRelationshipManager={setRelationshipManager}
-          />
-        );
+        return <KycStep kycStatus={kyc.kycStatus} runCheck={kyc.runCheck} />;
       case 5:
-        return <KycStep kycStatus={kycStatus} runCheck={runCheck} />;
-      case 6:
         return (
           <DocumentsStep
-            uploadedDocs={uploadedDocs}
-            setUploadedDocs={setUploadedDocs}
+            uploadedDocs={documents.uploadedDocs}
+            setUploadedDocs={documents.setUploadedDocs}
             isViewMode={isViewMode}
+          />
+        );
+      case 6:
+        return (
+          <KinStep
+            kinName={kin.kinName}
+            setKinName={kin.setKinName}
+            kinRelationship={kin.kinRelationship}
+            setKinRelationship={kin.setKinRelationship}
+            kinPhone={kin.kinPhone}
+            setKinPhone={kin.setKinPhone}
+            kinAddress={kin.kinAddress}
+            setKinAddress={kin.setKinAddress}
+            guarantorLinked={kin.guarantorLinked}
+            setGuarantorLinked={kin.setGuarantorLinked}
           />
         );
       case 7:
         return (
-          <KinStep
-            kinName={kinName}
-            setKinName={setKinName}
-            kinRelationship={kinRelationship}
-            setKinRelationship={setKinRelationship}
-            kinPhone={kinPhone}
-            setKinPhone={setKinPhone}
-            kinAddress={kinAddress}
-            setKinAddress={setKinAddress}
-            guarantorLinked={guarantorLinked}
-            setGuarantorLinked={setGuarantorLinked}
-          />
-        );
-      case 8:
-        return (
           <TagsStep
-            tags={tags}
-            tagInput={tagInput}
-            setTagInput={setTagInput}
-            addTag={addTag}
-            removeTag={removeTag}
-            relationshipNotes={relationshipNotes}
-            setRelationshipNotes={setRelationshipNotes}
-            customFields={customFields}
-            addCustomField={addCustomField}
-            removeCustomField={removeCustomField}
-            updateCustomField={updateCustomField}
+            tags={tagsState.tags}
+            tagInput={tagsState.tagInput}
+            setTagInput={tagsState.setTagInput}
+            addTag={tagsState.addTag}
+            removeTag={tagsState.removeTag}
+            relationshipNotes={tagsState.relationshipNotes}
+            setRelationshipNotes={tagsState.setRelationshipNotes}
+            customFields={tagsState.customFields}
+            addCustomField={tagsState.addCustomField}
+            removeCustomField={tagsState.removeCustomField}
+            updateCustomField={tagsState.updateCustomField}
           />
         );
       default:
@@ -432,13 +414,17 @@ export function CustomerModal({
     <Modal
       opened={opened}
       onClose={handleModalClose}
-      size={1040}
+      size="90vw"
       padding={0}
       lockScroll
+      closeOnClickOutside={false}
+      closeOnEscape={false}
       styles={{
         content: {
-          height: "88vh",
-          maxHeight: "88vh",
+          height: "94vh",
+          maxHeight: "96vh",
+          width: "90vw",
+          maxWidth: "1600px",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
@@ -463,16 +449,13 @@ export function CustomerModal({
         }}
         bg="white"
       >
-        {/* Header — now driven entirely by theme.other.modalHeader* tokens
-            instead of scattered "brand.6" / "white" / "brand.1" literals,
-            so the header styling has one place to change. */}
         <Group
           justify="space-between"
           align="center"
           px="xl"
           py="sm"
-          bg="brand.6"
           style={{
+            background: theme.other.brandGradient,
             borderBottom: "1px solid var(--mantine-color-brand-7)",
             flexShrink: 0,
           }}
@@ -486,150 +469,252 @@ export function CustomerModal({
                 size="md"
                 fw={700}
                 c="white"
-                style={{ color: "var(--mantine-color-white)", letterSpacing: "-0.01em" }}
+                style={{ letterSpacing: "-0.01em" }}
               >
                 {headerTitle}
               </Text>
-              <Group gap={6}>
-                <Text size="xs" fw={600} c="brand.1" style={{ color: "var(--mantine-color-brand-1)" }}>
-                  Step {currentStep + 1} of {STEPS.length}
-                </Text>
-                <Text size="xs" c="brand.3" style={{ color: "var(--mantine-color-brand-3)" }}>
-                  ·
-                </Text>
-                <Text size="xs" fw={500} c="brand.1" style={{ color: "var(--mantine-color-brand-1)" }}>
-                  {STEPS[currentStep]?.label}
-                </Text>
-              </Group>
+              <Text size="xs" fw={600} c="brand.1">
+                Step {currentStep + 1} of {STEPS.length}
+              </Text>
             </Box>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={handleModalClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
+          <Group gap="xs">
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={onMinimize}
+              aria-label="Minimize"
+            >
+              <IconMinus size={16} color="white" />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={handleModalClose}
+              aria-label="Close"
+            >
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
         </Group>
 
-
-        <Box
-          px="md"
-          py={8}
-          style={{
-            borderBottom: "1px solid var(--mantine-color-slate-2)",
-            flexShrink: 0,
-          }}
-          bg="slate.0"
-        >
-          <Group gap={4} wrap="nowrap">
-            {STEPS.map((step, idx) => {
-              const isActive = currentStep === idx;
-              const isComplete = currentStep > idx;
-              const StepIcon = step.icon;
+        <Box px="md" bg="white" style={{ flexShrink: 0 }}>
+          <Group
+            gap={8}
+            wrap="nowrap"
+            style={{
+              overflow: "hidden",
+              borderBottom: "1px solid var(--mantine-color-slate-2)",
+            }}
+          >
+            {STEP_GROUPS.map((group) => {
+              const isActiveGroup = group.id === activeGroup.id;
+              const GroupIcon = group.icon;
               return (
-                <Group key={step.label} gap={4} wrap="nowrap">
-                  <UnstyledButton
-                    onClick={() => setActiveTab(idx.toString())}
-                    px={8}
-                    py={6}
-                    style={{
-                      borderRadius: "var(--mantine-radius-sm)",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                      background: isActive
-                        ? "var(--mantine-color-white)"
-                        : "transparent",
-                      boxShadow: isActive ? "var(--mantine-shadow-sm)" : "none",
-                      border: isActive
-                        ? "1px solid var(--mantine-color-slate-2)"
-                        : "1px solid transparent",
-                      transition:
-                        "background-color 120ms ease, box-shadow 120ms ease",
-                    }}
-                  >
-                    <Group gap={6} wrap="nowrap">
-                      <ThemeIcon
-                        radius="xl"
-                        size={20}
-                        variant={isActive || isComplete ? "filled" : "outline"}
-                        color={isActive || isComplete ? "brand" : "slate"}
-                        style={{ flexShrink: 0 }}
-                      >
-                        {isComplete ? (
-                          <IconCheck size={10} />
-                        ) : (
-                          <StepIcon size={10} />
-                        )}
-                      </ThemeIcon>
-                      <Text
-                        size="xs"
-                        fw={isActive ? 700 : 500}
-                        c={
-                          isActive
-                            ? "brand.7"
-                            : isComplete
-                              ? "slate.7"
-                              : "slate.5"
-                        }
-                        style={{ whiteSpace: "nowrap" }}
-                      >
-                        {step.label}
-                      </Text>
-                    </Group>
-                  </UnstyledButton>
-                  {idx < STEPS.length - 1 && (
-                    <IconChevronRight
-                      size={11}
-                      color="var(--mantine-color-slate-3)"
-                      style={{ flexShrink: 0 }}
+                <UnstyledButton
+                  key={group.id}
+                  onClick={() => handleGroupClick(group)}
+                  px={14}
+                  py={9}
+                  style={{
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    borderBottom: isActiveGroup
+                      ? "2px solid var(--mantine-color-brand-6)"
+                      : "2px solid transparent",
+                    marginBottom: -1,
+                    transition:
+                      "border-color 120ms ease, background-color 120ms ease",
+                  }}
+                >
+                  <Group gap={7} wrap="nowrap">
+                    <GroupIcon
+                      size={16}
+                      color={
+                        isActiveGroup
+                          ? "var(--mantine-color-brand-6)"
+                          : "var(--mantine-color-slate-4)"
+                      }
                     />
-                  )}
-                </Group>
+                    <Text
+                      size="sm"
+                      fw={isActiveGroup ? 600 : 500}
+                      c={isActiveGroup ? "brand.7" : "slate.5"}
+                      style={{ whiteSpace: "nowrap" }}
+                    >
+                      {group.label}
+                    </Text>
+                  </Group>
+                </UnstyledButton>
               );
             })}
           </Group>
-        </Box>
-        {/* Main Content */}
-        <ScrollArea type="auto" scrollbarSize={8} style={{ flex: 1, minHeight: 0 }} bg="slate.0">
-          <Box mx="auto" pt="md" pl="lg" pr="lg" pb="md">
-            <Fieldset disabled={isViewMode} variant="unstyled" p={0} m={0}>
-              {renderStep()}
-            </Fieldset>
-          </Box>
-        </ScrollArea>
 
-        {/* Footer */}
-   <ModalFooter
-  variant="theme"
-  isViewMode={isViewMode}
-  onClose={handleModalClose}
-  leftSlot={
-    currentStep > 0 ? (
-      <Button variant="default" onClick={handleBack} px="lg">
-        Back
-      </Button>
-    ) : undefined
-  }
-  submitLabel={
-    currentStep < STEPS.length - 1
-      ? isViewMode
-        ? "Next"
-        : "Save & Continue"
-      : "Save"
-  }
-  onSubmit={
-    currentStep < STEPS.length - 1
-      ? handleNext
-      : isViewMode
-      ? undefined
-      : handleCreateCustomer
-  }
-  submitDisabled={isViewMode && currentStep === STEPS.length - 1}
-/>
+          {activeGroup.stepIndices.length > 1 && (
+            <Group
+              gap={0}
+              wrap="nowrap"
+              px={14}
+              py={10}
+              style={{ overflow: "hidden" }}
+            >
+              {activeGroup.stepIndices.map((stepIdx, i) => {
+                const isCurrent = stepIdx === currentStep;
+                const isDone = stepIdx < currentStep;
+                const hasError =
+                  attemptedSteps.has(stepIdx) &&
+                  Object.keys(getStepErrors(stepIdx)).length > 0;
+                return (
+                  <Group
+                    key={stepIdx}
+                    gap={10}
+                    wrap="nowrap"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <UnstyledButton
+                      onClick={() => setActiveTab(stepIdx.toString())}
+                      style={{ flexShrink: 0 }}
+                    >
+                      <Group gap={10} wrap="nowrap">
+                        {isDone && !hasError ? (
+                          <ThemeIcon
+                            size={28}
+                            radius="xl"
+                            variant="outline"
+                            color="brand"
+                            style={{ background: "white" }}
+                          >
+                            <IconCheck size={14} />
+                          </ThemeIcon>
+                        ) : (
+                          <ThemeIcon
+                            size={28}
+                            radius="xl"
+                            variant={isCurrent ? "filled" : "light"}
+                            color={
+                              hasError
+                                ? "danger"
+                                : isCurrent
+                                  ? "brand"
+                                  : "slate"
+                            }
+                          >
+                            <Text
+                              size="sm"
+                              fw={700}
+                              c={isCurrent || hasError ? "white" : "slate.5"}
+                            >
+                              {i + 1}
+                            </Text>
+                          </ThemeIcon>
+                        )}
+                        <Text
+                          size="sm"
+                          fw={isCurrent ? 600 : 500}
+                          c={
+                            hasError
+                              ? "danger.6"
+                              : isCurrent
+                                ? "brand.7"
+                                : isDone
+                                  ? "slate.6"
+                                  : "slate.4"
+                          }
+                          style={{ whiteSpace: "nowrap" }}
+                        >
+                          {STEPS[stepIdx].label}
+                        </Text>
+                      </Group>
+                    </UnstyledButton>
+                    {i < activeGroup.stepIndices.length - 1 && (
+                      <Box
+                        style={{
+                          width: 72,
+                          height: 1,
+                          background: isDone
+                            ? "var(--mantine-color-brand-3)"
+                            : "var(--mantine-color-slate-2)",
+                          flexShrink: 0,
+                          marginInline: 10,
+                        }}
+                      />
+                    )}
+                  </Group>
+                );
+              })}
+            </Group>
+          )}
+        </Box>
+
+        <Box
+          bg="slate.0"
+          className="flex-1 flex flex-col lg:flex-row min-w-0"
+          style={{ minHeight: 0, overflow: "hidden" }}
+        >
+          <ScrollArea
+            style={{ flex: 1, minWidth: 0, minHeight: 0, height: "100%" }}
+            type="auto"
+            scrollbarSize={6}
+          >
+            <Box
+              component="fieldset"
+              disabled={isViewMode}
+              style={{ border: 0, padding: 0, margin: 0 }}
+              pt="md"
+              pl="lg"
+              pr="lg"
+              pb="md"
+            >
+              {renderStep()}
+            </Box>
+          </ScrollArea>
+
+          <Box style={{ flexShrink: 0, overflow: "hidden" }}>
+            <CustomerSummarySidebar
+              customerName={sidebarCustomerName}
+              customerType={identity.customerType}
+              customerNumber={identity.customerNumber}
+              activeGroupLabel={activeGroup.label}
+              currentStepLabel={STEPS[currentStep]?.label ?? ""}
+              stepInGroup={stepInGroup}
+              groupStepCount={activeGroup.stepIndices.length}
+              overallCompleted={currentStep}
+              overallTotal={STEPS.length}
+            />
+          </Box>
+        </Box>
+
+        <ModalFooter
+          variant="theme"
+          isViewMode={isViewMode}
+          onClose={handleModalClose}
+          leftSlot={
+            currentStep > 0 ? (
+              <Button variant="default" onClick={handleBack} px="lg">
+                Back
+              </Button>
+            ) : undefined
+          }
+          submitLabel={
+            currentStep < STEPS.length - 1
+              ? isViewMode
+                ? "Next"
+                : "Save & Continue"
+              : "Save"
+          }
+          onSubmit={
+            currentStep < STEPS.length - 1
+              ? handleNext
+              : isViewMode
+                ? undefined
+                : handleCreateCustomer
+          }
+          submitDisabled={isViewMode && currentStep === STEPS.length - 1}
+        />
       </Box>
     </Modal>
   );

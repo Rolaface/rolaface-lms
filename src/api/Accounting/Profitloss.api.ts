@@ -14,7 +14,7 @@ export interface PLNode {
   account_name: string;
   is_group: boolean;
   indent: number;
-  periods: Record<string, number>; // keyed by column fieldname
+  periods: Record<string, number>;
   total: number;
   children?: PLNode[];
 }
@@ -29,7 +29,7 @@ export interface PLSummaryItem {
   label: string;
   value: number;
   indicator: 'green' | 'red';
-  type?: string; // KPI strip filters out items that carry a `type`
+  type?: string;
 }
 
 export interface PLData {
@@ -49,7 +49,7 @@ export interface ProfitLossFilters {
   to_date: string;
 }
 
-/* Raw shapes as they come off the wire, before normalization */
+
 interface RawPLNode {
   account: string;
   account_name: string;
@@ -81,8 +81,6 @@ interface PLApiResponse {
 
 /* ───────────────── Node normalization ───────────────── */
 
-// Mirrors the old project's `mapNode` — normalizes is_group (0/1 -> boolean),
-// defaults periods/total, and recurses into children so nested groups are typed too.
 function mapNode(raw: RawPLNode): PLNode {
   return {
     account: raw.account,
@@ -97,7 +95,7 @@ function mapNode(raw: RawPLNode): PLNode {
 
 /* ───────────────── Param building ───────────────── */
 
-// Old project branched params by mode (filter_based_on) — same here.
+
 function buildParams(filters: ProfitLossFilters) {
   if (filters.mode === 'Date Range') {
     return {
@@ -117,13 +115,11 @@ function buildParams(filters: ProfitLossFilters) {
 
 /* ───────────────── GET Profit & Loss ───────────────── */
 
-/** GET /accounting/profit-and-loss?periodicity=...&from_fiscal_year=... (or date range) */
+
 export async function fetchProfitAndLoss(filters: ProfitLossFilters): Promise<PLData> {
   const params = buildParams(filters);
 
-  // NOTE: rename this to whatever your new project's config/api.ts actually
-  // calls the P&L endpoint (matching the Receivable pattern e.g.
-  // API.Accounting.receivable.getAllReceivable).
+
   const response: AxiosResponse<PLApiResponse> = await api.get(
     API.Accounting.profitLoss.get,
     { params },

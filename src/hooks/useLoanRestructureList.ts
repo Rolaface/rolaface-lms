@@ -7,7 +7,7 @@ import {
   type LoanRestructurePagination,
   type LoanRestructureStatus,
 } from "../api/loanRestructureApi";
-import { showSuccess, showApiError } from "../utils/alert";
+import { openCommonModal } from "../components/Modal/AlertModal";
 import { parseFrappeError } from "../utils/parseFrappeError";
 
 export function useLoanRestructureList() {
@@ -21,8 +21,27 @@ export function useLoanRestructureList() {
   const [pagination, setPagination] = useState<LoanRestructurePagination | null>(null);
   const [loading, setLoading] = useState(false);
 
-
   const [approvingName, setApprovingName] = useState<string | null>(null);
+
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const showSuccessModal = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -31,7 +50,7 @@ export function useLoanRestructureList() {
       setRows(res.restructures);
       setPagination(res.pagination);
     } catch (err) {
-      showApiError(parseFrappeError(err));
+      showError("Failed to Load Restructures", err);
     } finally {
       setLoading(false);
     }
@@ -51,10 +70,10 @@ export function useLoanRestructureList() {
   const handleDelete = async (name: string) => {
     try {
       await deleteLoanRestructure(name);
-      showSuccess("Restructure request deleted successfully.");
+      showSuccessModal("Restructure Deleted", "Restructure request deleted successfully.");
       fetchList();
     } catch (err) {
-      showApiError(parseFrappeError(err));
+      showError("Delete Failed", err);
     }
   };
 
@@ -62,10 +81,10 @@ export function useLoanRestructureList() {
     setApprovingName(name);
     try {
       await approveLoanRestructure(name);
-      showSuccess("Restructure request approved successfully.");
+      showSuccessModal("Restructure Approved", "Restructure request approved successfully.");
       fetchList();
     } catch (err) {
-      showApiError(parseFrappeError(err));
+      showError("Approval Failed", err);
     } finally {
       setApprovingName(null);
     }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Box, Button, Modal, Text, useMantineTheme } from "@mantine/core";
-import { IconArrowRight, IconCash, IconX } from "@tabler/icons-react";
+import { IconArrowRight, IconCash, IconMinus, IconX } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@mantine/form";
 import type { LoanRepaymentPayload } from "../../types/loanRepaymentForm";
@@ -30,9 +30,10 @@ interface LoanRepaymentModalProps {
   onSubmit?: (data: LoanRepaymentFormData) => void;
   editId?: string | null;
   isView?: boolean;
+  onMinimize: () => void;
 }
 
-export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }: LoanRepaymentModalProps) {
+export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView, onMinimize }: LoanRepaymentModalProps) {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
 
@@ -296,9 +297,14 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }
               </Text>
             </div>
           </div>
-          <Button variant="subtle" color="slate" onClick={onClose} className="px-2" size="xs">
-            <IconX size={18} />
-          </Button>
+             <div className="flex items-center gap-1 shrink-0">
+          <Button variant="subtle" color="slate" onClick={onMinimize} className="px-2" size="xs">
+              <IconMinus size={18} />
+            </Button>
+            <Button variant="subtle" color="slate" onClick={onClose} className="px-2" size="xs">
+              <IconX size={18} />
+            </Button>
+          </div>
         </div>
 
         <div style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }} />
@@ -345,8 +351,7 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView }
           submitLabel={editId ? "Update" : "Save"}
           submitLoading={isProcessing}
           submitDisabled={!selectedLoan || isProcessing}
-          submitIcon={<IconArrowRight size={16} />}
-          onSubmit={() => form.onSubmit(handleSubmit)()}
+                    onSubmit={() => form.onSubmit(handleSubmit)()}
         />
       </Box>
 
