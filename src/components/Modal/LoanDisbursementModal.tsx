@@ -484,6 +484,26 @@ const actualDisbursableAmount = useMemo(() => {
   }, [loanAccountDetailsData, editId, editDetailsResponse]);
 
   const canShowTopup = actualDisbursableAmount !== null && actualDisbursableAmount === 0;
+  const selectedLoanDisbursedAmount = useMemo(() => {
+    const loanData =
+      (loanAccountDetailsData as any)?.message?.data ||
+      (loanAccountDetailsData as any)?.data ||
+      (loanAccountDetailsData as any)?.message ||
+      loanAccountDetailsData;
+
+    if (loanData) return Number(loanData.disbursed_amount || 0);
+
+    if (editId && editDetailsResponse) {
+      const item =
+        (editDetailsResponse as any).message?.data ||
+        (editDetailsResponse as any).data ||
+        (editDetailsResponse as any).message ||
+        editDetailsResponse;
+      return Number(item?.disbursed_amount || 0);
+    }
+
+    return 0;
+  }, [loanAccountDetailsData, editId, editDetailsResponse]);
 
 useEffect(() => {
     if (!opened || !form.values.acNo) {
@@ -1081,11 +1101,7 @@ useEffect(() => {
                     />
                     <SummaryRow
                       label="Disbursement till Date"
-                      value={
-                        selectedLoanApp
-                          ? `${currencySymbol}${selectedLoanApp.current_disbursed_amount || 0}`
-                          : `${currencySymbol}0`
-                      }
+                      value={`${currencySymbol}${selectedLoanDisbursedAmount}`}
                       bold
                     />
                     <SummaryRow
