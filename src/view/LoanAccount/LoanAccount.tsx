@@ -668,7 +668,7 @@ const { mutate: updateStatus } = useMutation({
             }
             leftSection={<IconPlus size={14} />}
           >
-            Add Booking
+            Add Loan
           </Button>
         </Group>
       </Paper>
