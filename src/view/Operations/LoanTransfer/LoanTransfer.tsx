@@ -29,7 +29,6 @@ import {
   IconArrowsExchange,
   IconArrowsExchange2,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -38,8 +37,9 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { LoanTransferModal, type LoanTransferFormData } from '../../../components/Modal/LoanTransferModal';
+import type { LoanTransferFormData } from '../../../components/Modal/LoanTransferModal';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
+import { loanTransferModal } from './LoanTransferModalStore';
 
 interface TransferRow {
   id: number;
@@ -77,7 +77,6 @@ const DUMMY_TRANSFERS: TransferRow[] = [
   },
 ];
 
-// Same status meta pattern as LoanRestructure
 const STATUS_META: Record<string, { label: string; color: string }> = {
   PENDING: { label: 'PENDING', color: 'gold' },
   COMPLETED: { label: 'COMPLETED', color: 'brand' },
@@ -96,7 +95,6 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function LoanTransfer() {
   const theme = useMantineTheme();
-  const [opened, { open, close }] = useDisclosure(false);
 
   const [search, setSearch] = useState('');
   const [branch, setBranch] = useState<string | null>(null);
@@ -195,7 +193,6 @@ export function LoanTransfer() {
       columnHelper.accessor('transferDate', {
         header: 'Transfer Date',
         cell: (info) => (
-
           <Text fz="sm" fw={700} c="slate.8">
             {info.getValue()}
           </Text>
@@ -313,8 +310,6 @@ export function LoanTransfer() {
 
   return (
     <Stack gap="lg" p="lg">
-      <LoanTransferModal opened={opened} onClose={close} onSubmit={handleAddTransfer} />
-
       {/* Scoped, purely visual — mirrors FeeAndCharges.tsx */}
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
@@ -419,7 +414,7 @@ export function LoanTransfer() {
               size="sm"
               radius="xl"
               color="brand"
-              onClick={open}
+              onClick={() => loanTransferModal.open({ onSubmit: handleAddTransfer })}
               leftSection={<IconPlus size={14} />}
               style={{
                 background: theme.other.brandGradient,

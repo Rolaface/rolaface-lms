@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Box, Button, Modal, Text, useMantineTheme } from "@mantine/core";
-import { IconArrowRight, IconDiscount2, IconX } from "@tabler/icons-react"; import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Box, Button, Group, Modal, Text, ThemeIcon, useMantineTheme } from "@mantine/core";
+import { IconArrowRight, IconDiscount2, IconX, IconMinus } from "@tabler/icons-react"; import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LoanRepaymentPayload } from "../../types/loanRepaymentForm";
 import type { LoanWaiverBorrower, LoanWaiverFormData, LoanWaiverLoanAccount } from "../../types/loanwaiver";
 import {
@@ -22,13 +22,13 @@ export type { LoanWaiverFormData };
 interface LoanWaiverModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   onSubmit?: (data: LoanWaiverFormData) => void;
   editId?: string | null;
   isView?: boolean;
 }
 
-export function LoanWaiverModal({ opened, onClose, onSubmit, editId, isView }: LoanWaiverModalProps) {
-  const theme = useMantineTheme();
+export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId, isView }: LoanWaiverModalProps) {  const theme = useMantineTheme();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
@@ -273,25 +273,56 @@ export function LoanWaiverModal({ opened, onClose, onSubmit, editId, isView }: L
       >
         <Box className="flex flex-col h-[700px] max-h-[90vh] overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl flex items-center justify-center" style={{ background: theme.other.brandGradient }}>
-                <IconDiscount2 size={20} style={{ color: "var(--mantine-color-white)" }} />
-              </div>
-              <div>
-                <Text size="md" fw={700} c="slate.8" className="leading-tight">
-                  Loan Waiver
+          <Box
+            className="px-6 py-3 flex justify-between items-center shrink-0"
+            style={{
+              background: theme.other.brandGradient,
+              borderBottom: "1px solid var(--mantine-color-brand-7)",
+            }}
+          >
+            <Group gap="sm" className="min-w-0" wrap="nowrap">
+              <ThemeIcon
+                size={38}
+                radius="xl"
+                style={{
+                  background: theme.other.headerIconOverlayBg,
+                  color: "var(--mantine-color-white)",
+                }}
+              >
+                <IconDiscount2 size={19} />
+              </ThemeIcon>
+              <div className="min-w-0">
+                <Text size="md" fw={700} c="white" className="leading-tight truncate">
+                  {isView ? "View Loan Waiver" : editId ? "Edit Loan Waiver" : "Process Waiver"}
                 </Text>
-                <Text size="xs" c="dimmed">
+                <Text size="xs" c="brand.1" className="leading-tight truncate">
                   Search a borrower and process a waiver against their loan account.
                 </Text>
               </div>
-            </div>
-            <Button variant="subtle" color="slate" onClick={onClose} className="px-2" size="xs">
-              <IconX size={18} />
-            </Button>
-          </div>
-
+            </Group>
+            <Group gap="xs" className="shrink-0" wrap="nowrap">
+              <Button
+                variant="subtle"
+                size="xs"
+                px={8}
+                onClick={() => onMinimize?.()}
+                style={{ color: "var(--mantine-color-white)" }}
+                styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+              >
+                <IconMinus size={18} />
+              </Button>
+              <Button
+                variant="subtle"
+                size="xs"
+                px={8}
+                onClick={onClose}
+                style={{ color: "var(--mantine-color-white)" }}
+                styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+              >
+                <IconX size={18} />
+              </Button>
+            </Group>
+          </Box>
           <div style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }} />
 
           {/* Body */}
@@ -347,8 +378,7 @@ export function LoanWaiverModal({ opened, onClose, onSubmit, editId, isView }: L
             submitLabel={editId ? "Update" : "Save"}
             submitLoading={isPending}
             submitDisabled={!selectedLoan || !hasAnyWaivedAmount || isPending}
-            submitIcon={<IconArrowRight size={16} />}
-            onSubmit={handleSubmit}
+                        onSubmit={handleSubmit}
           />
         </Box>
       </Modal>

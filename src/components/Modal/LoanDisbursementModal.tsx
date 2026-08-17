@@ -21,6 +21,7 @@ import {
 } from "@mantine/core";
 import {
   IconX,
+  IconMinus,
   IconSearch,
   IconCalendar,
   IconChevronDown,
@@ -44,12 +45,12 @@ import { ModalFooter } from "../shared/ModalFooter";
 interface LoanDisbursementModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   onSubmit?: (data: LoanDisbursementFormData) => void;
   editId?: string | null;
   initialData?: any;
   isView?: boolean;
 }
-
 export interface LoanDisbursementChargeRow {
   id: string;
   name: string;
@@ -107,6 +108,7 @@ const chevronDown = <IconChevronDown size={14} color="var(--mantine-color-slate-
 export function LoanDisbursementModal({
   opened,
   onClose,
+  onMinimize,
   onSubmit: _onSubmit,
   editId,
   initialData,
@@ -204,12 +206,23 @@ export function LoanDisbursementModal({
   //     onClose();
   //   },
   // });
-  const createDisbursementMutation = useMutation({
+const createDisbursementMutation = useMutation({
     mutationFn: createLoanDisbursement,
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
+      const newId =
+        data?.data?.name || data?.message?.name || data?.name || "";
       handleReset();
       onClose();
+      openCommonModal({
+        heading: "Disbursement Created",
+        subtitle: "",
+        body: newId
+          ? `Loan disbursement ${newId} has been created successfully.`
+          : "Loan disbursement has been created successfully.",
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
     },
     onError: (error: any) => {
       openCommonModal({
@@ -236,6 +249,15 @@ export function LoanDisbursementModal({
 
       handleReset();
       onClose();
+      openCommonModal({
+        heading: "Disbursement Updated",
+        subtitle: "",
+        body: editId
+          ? `Loan disbursement ${editId} has been updated successfully.`
+          : "Loan disbursement has been updated successfully.",
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
     },
     onError: (error: any) => {
       openCommonModal({
@@ -549,7 +571,7 @@ export function LoanDisbursementModal({
                 </Text>
               </div>
             </Group>
-            <Group gap="xs" className="shrink-0" wrap="nowrap">
+<Group gap="xs" className="shrink-0" wrap="nowrap">
               {isView && (
                 <Badge variant="light" color="gray" radius="sm" size="sm">
                   View Only
@@ -559,7 +581,19 @@ export function LoanDisbursementModal({
                 variant="subtle"
                 size="xs"
                 px={8}
+                onClick={() => onMinimize?.()}
+                aria-label="Minimize"
+                style={{ color: "var(--mantine-color-white)" }}
+                styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg as string } } }}
+              >
+                <IconMinus size={18} />
+              </Button>
+              <Button
+                variant="subtle"
+                size="xs"
+                px={8}
                 onClick={onClose}
+                aria-label="Close"
                 style={{ color: "var(--mantine-color-white)" }}
                 styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg as string } } }}
               >
@@ -1016,8 +1050,7 @@ export function LoanDisbursementModal({
               onClose={onClose}
               submitLabel={editId ? "Update" : "Save"}
               submitLoading={isPending}
-              submitIcon={<IconArrowRight size={16} />}
-              errorMessage={footerErrorMessage}
+                            errorMessage={footerErrorMessage}
             />
           </Box>
         </Box>

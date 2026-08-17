@@ -351,8 +351,7 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView, 
           submitLabel={editId ? "Update" : "Save"}
           submitLoading={isProcessing}
           submitDisabled={!selectedLoan || isProcessing}
-          submitIcon={<IconArrowRight size={16} />}
-          onSubmit={() => form.onSubmit(handleSubmit)()}
+                    onSubmit={() => form.onSubmit(handleSubmit)()}
         />
       </Box>
 

@@ -123,7 +123,6 @@ const fmtDate = (iso: string) =>
 
 export function LoanAccount() {
   const theme = useMantineTheme();
-
   const { data: loansResponse, isLoading } = useQuery({
     queryKey: ["loans"],
     queryFn: getAllLoans,
@@ -131,7 +130,7 @@ export function LoanAccount() {
 
   const queryClient = useQueryClient();
 
-  const { mutate: removeLoan, isPending: isDeleting } = useMutation({
+const { mutate: removeLoan, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteLoan(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loans"] });
@@ -152,7 +151,7 @@ export function LoanAccount() {
     },
   });
 
-  const { mutate: updateStatus } = useMutation({
+const { mutate: updateStatus } = useMutation({
     mutationFn: ({ id, action }: { id: string; action: string }) =>
       changeLoanStatus(id, action),
     onSuccess: () => {
