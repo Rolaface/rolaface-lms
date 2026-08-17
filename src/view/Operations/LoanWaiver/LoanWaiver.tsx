@@ -64,9 +64,6 @@ interface WaiverRow {
 
 const columnHelper = createColumnHelper<WaiverRow>();
 
-// Docstatus -> status badge meta, driven by theme semantic colors
-// (slate/info/danger) instead of raw Mantine color names, same tokens
-// LoanProduct.tsx uses for Active/Inactive.
 const STATUS_META: Record<number, { label: string; color: string }> = {
   0: { label: 'DRAFT', color: 'slate' },
   1: { label: 'SUBMITTED', color: 'info' },
@@ -80,7 +77,6 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-// Same dot+badge pattern as LoanProduct's StatusBadge.
 function StatusBadge({ label, color }: { label: string; color: string }) {
   return (
     <Badge
@@ -113,8 +109,6 @@ function StatusBadge({ label, color }: { label: string; color: string }) {
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-// Nature-of-waiver -> badge color. Already theme tokens (brand/gold/accent),
-// left unchanged.
 function natureColor(type: string) {
   if (type === 'Interest Waiver') return 'brand';
   if (type === 'Penalty Waiver') return 'gold';
@@ -128,35 +122,60 @@ export function LoanWaiver() {
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-
   const { data: repaymentsResponse, isLoading } = useQuery({
     queryKey: ['loanRepayments'],
     queryFn: getAllLoanRepayment,
   });
 
- const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
- const { mutate: updateStatus } = useMutation({
-  mutationFn: ({ id, action }: { id: string; action: string }) =>
-    changeLoanRepaymentStatus(id, action),
-  onSuccess: (_data, variables) => {
-    queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-    const isCancel = variables.action === 'cancelled';
-    openCommonModal({
-      heading: isCancel ? 'Waiver Cancelled' : 'Waiver Submitted',
-      body: isCancel
-        ? 'The waiver has been cancelled.'
-        : 'The waiver has been submitted successfully.',
-      color: isCancel ? 'danger' : 'success',
-      buttons: [{ label: 'Okay' }],
-    });
-  },
-});
+  const { mutate: removeWaiver, isPending: isDeleting } = useMutation({
+    mutationFn: (id: string) => deleteLoanRepayment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+      openCommonModal({
+        heading: 'Waiver Deleted',
+        body: 'The loan waiver record has been removed.',
+        color: 'success',
+        buttons: [{ label: 'Okay' }],
+      });
+    },
+    onError: () => {
+      openCommonModal({
+        heading: 'Delete Failed',
+        body: 'Something went wrong while deleting the waiver. Please try again.',
+        color: 'danger',
+        buttons: [{ label: 'Okay' }],
+      });
+    },
+  });
 
+  const { mutate: updateStatus } = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: string }) =>
+      changeLoanRepaymentStatus(id, action),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+      const isCancel = variables.action === 'cancelled';
+      openCommonModal({
+        heading: isCancel ? 'Waiver Cancelled' : 'Waiver Submitted',
+        body: isCancel
+          ? 'The waiver has been cancelled.'
+          : 'The waiver has been submitted successfully.',
+        color: isCancel ? 'danger' : 'success',
+        buttons: [{ label: 'Okay' }],
+      });
+    },
+    onError: (_error, variables) => {
+      const isCancel = variables.action === 'cancelled';
+      openCommonModal({
+        heading: isCancel ? 'Cancel Failed' : 'Submit Failed',
+        body: `Something went wrong while ${isCancel ? 'cancelling' : 'submitting'} the waiver. Please try again.`,
+        color: 'danger',
+        buttons: [{ label: 'Okay' }],
+      });
+    },
+  });
 
-
-  // Only rows whose repayment_type is one of the waiver types — the shared
-  // getAllLoanRepayment endpoint returns every repayment/waiver/etc. record.
   const rowsData = useMemo(() => {
     const list = repaymentsResponse?.message?.data?.repayments ?? [];
     return list
@@ -292,8 +311,7 @@ export function LoanWaiver() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                                  onClick={() => loanWaiverModal.open({ editId: row.id, isView: true })}
-
+                  onClick={() => loanWaiverModal.open({ editId: row.id, isView: true })}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -305,8 +323,7 @@ export function LoanWaiver() {
                   color={isDraft ? 'brand' : 'slate'}
                   radius="md"
                   disabled={!isDraft}
-                                   onClick={() => loanWaiverModal.open({ editId: row.id, isView: false })}
-
+                  onClick={() => loanWaiverModal.open({ editId: row.id, isView: false })}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -378,7 +395,6 @@ export function LoanWaiver() {
 
   return (
     <Stack gap="lg" p="lg">
-      {/* Scoped, purely visual — mirrors LoanProduct's row/hover treatment */}
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
         .lms-row-actions { opacity: 1; }
@@ -388,7 +404,6 @@ export function LoanWaiver() {
         .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
       `}</style>
 
-      {/* Header — icon tile + title, same pattern as Loan Products */}
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
         <Group gap="sm" align="center">
           <Box
@@ -416,7 +431,6 @@ export function LoanWaiver() {
         </Group>
       </Group>
 
-      {/* Toolbar — pill search + pill filter + segmented status control */}
       <Paper
         radius="xl"
         p="xs"
@@ -492,7 +506,6 @@ export function LoanWaiver() {
         </Group>
       </Paper>
 
-      {/* Data Table — floating rounded row-cards on a soft canvas */}
       <Paper
         radius="lg"
         p="sm"
@@ -604,7 +617,6 @@ export function LoanWaiver() {
               </Table.Tbody>
             </Table>
 
-            {/* Pagination Footer */}
             <Group justify="space-between" px="sm" pt="xs">
               <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
                 <span>

@@ -32,6 +32,7 @@ interface LoanWriteOffModalProps {
   onMinimize?: () => void;
   onSubmit?: (data: LoanWriteOffFormData) => void;
   editData?: LoanWriteOffDetail | null;
+  isView?: boolean
 }
 
 export interface LoanWriteOffFormData {
@@ -55,11 +56,11 @@ function formatCurrency(amount: number) {
   return `₹${amount.toLocaleString('en-IN')}`;
 }
 
-export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editData }: LoanWriteOffModalProps) {
+export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editData, isView }: LoanWriteOffModalProps) {
   const theme = useMantineTheme();
   const isEdit = !!editData;
 
-  const title = isEdit ? 'Update Write Off' : 'Write Off Loan';
+  const title = isView ? 'View Write Off' : isEdit ? 'Update Write Off' : 'Write Off Loan';
   const description = 'Record a principal write-off against a loan account.';
 
   const [loanAc, setLoanAc] = useState('');
@@ -496,7 +497,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
         {/* Footer */}
         <ModalFooter
           variant="theme"
-          isViewMode={false}
+          isViewMode={isView}
           onClose={onClose}
           onSubmit={handleSubmit}
           submitLabel={isEdit ? 'Update' : 'Save'}
