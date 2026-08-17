@@ -163,9 +163,27 @@ export const scheduleStatusColor: Record<string, string> = {
 ============================================================================ */
 
 export const MOCK_LOANS: LoanSummary[] = [
+  // {
+  //   id: 'ACC-LOAN-2026-00024',
+  //   loanNumber: 'ACC-LOAN-2026-00024',
+  //   product: 'Business Growth Loan',
+  //   status: 'Active',
+  //   outstanding: 86420,
+  //   nextInstallment: 4620,
+  //   repaidPercent: 38,
+  // },
   {
-    id: 'LN-2024-08841',
-    loanNumber: 'LN-2024-08841',
+    id: 'ACC-LOAN-2026-00006',
+    loanNumber: 'ACC-LOAN-2026-00006',
+    product: 'Business Growth Loan',
+    status: 'Active',
+    outstanding: 86420,
+    nextInstallment: 4620,
+    repaidPercent: 38,
+  },
+  {
+    id: 'ACC-LOAN-2026-00004',
+    loanNumber: 'ACC-LOAN-2026-00004',
     product: 'Business Growth Loan',
     status: 'Active',
     outstanding: 86420,
