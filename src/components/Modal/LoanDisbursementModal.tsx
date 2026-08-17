@@ -467,15 +467,12 @@ export function LoanDisbursementModal({
 
   useEffect(() => {
     const currentSanctioned = Number(form.values.topupSanctionedCurrent || 0);
-    const topup = Number(form.values.topupAmount || 0);
-    form.setFieldValue("topupSanctionedNew", currentSanctioned + topup);
-  }, [form.values.topupSanctionedCurrent, form.values.topupAmount]);
-
-  useEffect(() => {
     const currentOutstanding = Number(form.values.topupOutstandingCurrent || 0);
     const topup = Number(form.values.topupAmount || 0);
+    form.setFieldValue("topupSanctionedNew", currentSanctioned + topup);
     form.setFieldValue("topupOutstandingNew", currentOutstanding + topup);
-  }, [form.values.topupOutstandingCurrent, form.values.topupAmount]);
+   
+  }, [form.values.topupSanctionedCurrent, form.values.topupOutstandingCurrent]);
 
   const handleChargeUpdate = (index: number, field: "amount" | "treatment_of_charge", value: string) => {
     form.setFieldValue(
@@ -891,7 +888,16 @@ export function LoanDisbursementModal({
                                   hideControls
                                   min={0}
                                   disabled={isView}
-                                  {...form.getInputProps("topupSanctionedNew")}
+                                  value={form.values.topupSanctionedNew}
+                                  onChange={(value) => {
+                                    const newSanctionedVal = Number(value || 0);
+                                    form.setFieldValue("topupSanctionedNew", value as number | "");
+                                    const currentSanctioned = Number(form.values.topupSanctionedCurrent || 0);
+                                    const currentOutstanding = Number(form.values.topupOutstandingCurrent || 0);
+                                    const topupVal = newSanctionedVal - currentSanctioned;
+                                    form.setFieldValue("topupAmount", topupVal);
+                                    form.setFieldValue("topupOutstandingNew", currentOutstanding + topupVal);
+                                  }}
                                   thousandSeparator=","
                                 />
                               </Table.Td>
@@ -937,7 +943,15 @@ export function LoanDisbursementModal({
                             hideControls
                             min={0}
                             disabled={isView}
-                            {...form.getInputProps("topupAmount")}
+                            value={form.values.topupAmount}
+                            onChange={(value) => {
+                              const topupVal = Number(value || 0);
+                              form.setFieldValue("topupAmount", value as number | "");
+                              const currentSanctioned = Number(form.values.topupSanctionedCurrent || 0);
+                              const currentOutstanding = Number(form.values.topupOutstandingCurrent || 0);
+                              form.setFieldValue("topupSanctionedNew", currentSanctioned + topupVal);
+                              form.setFieldValue("topupOutstandingNew", currentOutstanding + topupVal);
+                            }}
                             thousandSeparator=","
                           />
                         </div>
