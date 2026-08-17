@@ -4,11 +4,12 @@ import { Alert, Box, Button, Group, Modal, Select, Stack, Text, ActionIcon } fro
 import { IconBuildingBank, IconX, IconAlertCircle } from "@tabler/icons-react";
 import { getAllLoanProducts } from "../../api/productApi";
 
-const hex = "#1971C2"; // same "info/blue" theme hex used in AlertModal.tsx
+const hex = "#1971C2";
 
 interface CreateLoanBookingModalProps {
   opened: boolean;
   applicationId: string | null;
+  customerName: string | null;
   onClose: () => void;
   onConfirm: (loanProduct: string) => void;
   isSubmitting?: boolean;
@@ -17,6 +18,7 @@ interface CreateLoanBookingModalProps {
 export function CreateLoanBookingModal({
   opened,
   applicationId,
+  customerName,
   onClose,
   onConfirm,
   isSubmitting,
@@ -97,26 +99,29 @@ export function CreateLoanBookingModal({
             <Text fw={700} size="xl" ta="center">
               Want to create a loan?
             </Text>
-            <Text size="sm" c="dimmed" ta="center">
+            {/* <Text size="sm" c="dimmed" ta="center">
               Select the loan product to use for{" "}
               <Text span fw={600} c="dark">
                 {applicationId}
               </Text>
-            </Text>
+            </Text> */}
+            <Text size="sm" c="dimmed" ta="center">
+  Select the loan product to use for{" "}
+  <Text span fw={600} c="dark">
+    {customerName || applicationId}
+  </Text>
+  {customerName && (
+    <>
+      {" "}
+      (
+      <Text span fw={500} c="dimmed">
+        {applicationId}
+      </Text>
+      )
+    </>
+  )}
+</Text>
           </Stack>
-
-          <Alert
-            color="blue"
-            variant="light"
-            radius="md"
-            w="100%"
-            icon={<IconAlertCircle size={20} />}
-            styles={{ root: { background: `${hex}0D`, border: `1px solid ${hex}26` } }}
-          >
-            <Text size="sm">
-              This will convert the application into a Loan Booking using the product selected below.
-            </Text>
-          </Alert>
 
           <Select
             w="100%"

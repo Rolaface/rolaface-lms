@@ -104,7 +104,6 @@ export function RestructureDetailsTab({
                 <NumberInput
                   size="sm"
                   className="max-w-[220px]"
-                  withAsterisk
                   label="New Interest Rate (%)"
                   value={newInterestRate}
                   onChange={(v) => setNewInterestRate(v as number | "")}
@@ -131,7 +130,6 @@ export function RestructureDetailsTab({
                 <NumberInput
                   size="sm"
                   className="max-w-[220px]"
-                  withAsterisk
                   label="New Penalty Rate (%)"
                   value={newPenaltyRate}
                   hideControls
@@ -151,7 +149,6 @@ export function RestructureDetailsTab({
               <div className="grid grid-cols-3 gap-x-4 gap-y-4">
                 <NumberInput
                   size="sm"
-                  withAsterisk
                   label="Current Principal"
                   value={currentPrincipalOutstanding}
                   hideControls
@@ -161,7 +158,6 @@ export function RestructureDetailsTab({
                 />
                 <NumberInput
                   size="sm"
-                  withAsterisk
                   label="Topup Amount"
                   hideControls
                   placeholder="e.g. 2000"
@@ -172,7 +168,6 @@ export function RestructureDetailsTab({
                 />
                 <NumberInput
                   size="sm"
-                  withAsterisk
                   label="New Principal"
                   value={newPrincipalOutstanding}
                   hideControls
@@ -194,7 +189,7 @@ export function RestructureDetailsTab({
                   className="max-w-[200px]"
                 />
                 <NumberInput
-                  size="sm" withAsterisk hideControls
+                  size="sm" hideControls
                   label={`Extend Tenure By (${repaymentFrequency})`}
                   value={extendTenureBy}
                   onChange={(v) => setExtendTenureBy(v as number | "")}

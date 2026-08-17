@@ -80,7 +80,7 @@ interface Borrower {
 }
 
 function formatCurrency(amount: number) {
-  return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  return `${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 }
 
 function toCapitalizationType(field: 'interest' | 'penalty' | 'fee') {
@@ -126,7 +126,7 @@ function PaymentEffectModal({ opened, onClose, loanId, customerName, rows }: Pay
             </Box>
             <Box>
               <Text size="md" fw={700} c="slate.8">
-                Payment Effect
+                Capitalization Effect
               </Text>
               <Text size="xs" c="slate.5">
                 Projected impact on <Text span fw={600} c="slate.7">{loanId} / {customerName}</Text>
@@ -144,8 +144,9 @@ function PaymentEffectModal({ opened, onClose, loanId, customerName, rows }: Pay
           <Table withTableBorder withColumnBorders striped verticalSpacing="sm" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th c="slate.5" fz="xs" tt="uppercase">Component</Table.Th>
+                <Table.Th c="slate.5" fz="xs" tt="uppercase">head</Table.Th>
                 <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">Before</Table.Th>
+                <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">Capitalization</Table.Th>
                 <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">After</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -155,6 +156,9 @@ function PaymentEffectModal({ opened, onClose, loanId, customerName, rows }: Pay
                   <Table.Td fz="sm" fw={600} c="slate.7">{row.component}</Table.Td>
                   <Table.Td ta="right" fz="sm" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
                     {formatCurrency(row.before)}
+                  </Table.Td>
+                  <Table.Td ta="right" fz="sm" fw={700} c="success.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+                    0.0
                   </Table.Td>
                   <Table.Td ta="right" fz="sm" fw={700} c="success.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
                     {formatCurrency(row.after)}
@@ -287,14 +291,16 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
     // Capitalization folds waived-as-added amounts into principal — principal
     // goes up by the capitalized total, arrears/interest go down by the same.
     return [
-      { component: 'Total Outstanding', before: totalDue, after: totalDue },
-      { component: 'Principal Outstanding', before: principalDue, after: clamp(principalDue + totalCapitalized) },
-      { component: 'Arrears', before: totalDue, after: clamp(totalDue - totalCapitalized) },
       {
-        component: 'Interest Payable',
+        component: 'Interest Outstanding',
         before: interestDue,
         after: clamp(interestDue - Math.min(Number(capitalizedInterest) || 0, interestDue)),
       },
+      {component: 'Penalty Outstanding', before: 0.0, after: 0.0},
+      {component: 'Charges Outstanding', before: 0.0, after: 0.0},
+      { component: 'Total Outstanding', before: totalDue, after: totalDue },
+      { component: 'Arrears', before: totalDue, after: clamp(totalDue - totalCapitalized) },
+      {component: 'Installment Remaining', before:10, after:5}
     ];
   }, [selectedLoan, dues, capitalizedInterest, capitalizedPenalty, capitalizedFee, totalDue]);
 
@@ -999,7 +1005,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
               onClick={() => setPaymentEffectOpened(true)}
               px="md"
             >
-              Payment Effect
+              Capitalization Effect
             </Button>
           }
           submitLabel={editId ? 'Update' : 'Save'}

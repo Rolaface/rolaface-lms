@@ -1,5 +1,15 @@
-import { Box, Text, Avatar, Paper, Group, Progress, Badge } from "@mantine/core";
-import { IconUser } from "@tabler/icons-react";
+import {
+  Box,
+  Text,
+  Avatar,
+  Paper,
+  Group,
+  Progress,
+  Badge,
+  Button,
+  SimpleGrid,
+} from "@mantine/core";
+import { IconUser, IconEye } from "@tabler/icons-react";
 
 interface CustomerSummarySidebarProps {
   customerName: string;
@@ -11,14 +21,18 @@ interface CustomerSummarySidebarProps {
   groupStepCount: number;
   overallCompleted: number;
   overallTotal: number;
+
+  creditScore?: number | null;
+  creditBand?: string | null;
+  activeFacilities?: number | null;
+  outstandingDebt?: string | null;
+  bureau?: string | null;
+  lastChecked?: string | null;
+  reportStatus?: string | null;
+
+  onViewSnapshot?: () => void;
 }
 
-// NOTE: Active Loans / Exposure / Risk Level / Estimated EMI have no
-// backing state anywhere in the app today (unlike LoanSummarySidebarTab,
-// which computes real EMI from form values). These render as static
-// placeholders for now — same pattern already used for the mock KYC
-// statuses in KycStep. Wire real values here later without touching
-// CustomerModal.
 export function CustomerSummarySidebar({
   customerName,
   customerType,
@@ -29,32 +43,64 @@ export function CustomerSummarySidebar({
   groupStepCount,
   overallCompleted,
   overallTotal,
+  creditScore = null,
+  creditBand = null,
+  activeFacilities = null,
+  onViewSnapshot,
 }: CustomerSummarySidebarProps) {
   const displayName = customerName.trim() || "New Customer";
+
   const overallProgress =
-    overallTotal > 0 ? Math.round((overallCompleted / overallTotal) * 100) : 0;
+    overallTotal > 0
+      ? Math.min(100, Math.round((overallCompleted / overallTotal) * 100))
+      : 0;
 
   return (
     <Box
-      w={260}
-      style={{ flexShrink: 0, borderLeft: "1px solid var(--mantine-color-slate-2)" }}
+      className="w-full lg:w-[260px] border-t lg:border-t-0 lg:border-l"
+      style={{
+        flexShrink: 0,
+        borderColor: "var(--mantine-color-slate-2)",
+        overflow: "hidden",
+      }}
       bg="slate.0"
-      p="md"
+      p="sm"
     >
-      <Box ta="center" mb="md">
-        <Avatar radius="md" size={64} color="brand" variant="light" mx="auto" mb="xs">
-          <IconUser size={28} />
+      <Box ta="center" mb="sm">
+        <Avatar
+          radius="md"
+          size={56}
+          color="brand"
+          variant="light"
+          mx="auto"
+          mb={6}
+        >
+          <IconUser size={25} />
         </Avatar>
-        <Text size="sm" fw={700} c="slate.8" truncate>
+
+        <Text
+          size="sm"
+          fw={700}
+          c="slate.8"
+          truncate
+          title={displayName}
+        >
           {displayName}
         </Text>
-        <Text size="xs" c="slate.5">
+
+        <Text size="xs" c="slate.5" truncate>
           {customerType}
-          {customerNumber ? ` \u00b7 ${customerNumber}` : ""}
+          {customerNumber ? ` · ${customerNumber}` : ""}
         </Text>
       </Box>
 
-      <Paper withBorder radius="md" p="sm" mb="sm" bg="white">
+      <Paper
+        withBorder
+        radius="md"
+        p="sm"
+        mb="sm"
+        bg="white"
+      >
         <Text
           size="10px"
           fw={700}
@@ -65,69 +111,187 @@ export function CustomerSummarySidebar({
         >
           Onboarding Progress
         </Text>
-        <Group justify="space-between" mb={4}>
+
+        <Group justify="space-between" mb={4} wrap="nowrap">
           <Text size="xs" c="slate.5">
             Group
           </Text>
-          <Text size="xs" fw={600} c="slate.8">
+
+          <Text
+            size="xs"
+            fw={600}
+            c="slate.8"
+            ta="right"
+            truncate
+            style={{ maxWidth: 150 }}
+          >
             {activeGroupLabel}
           </Text>
         </Group>
-        <Group justify="space-between" mb="xs">
+
+        <Group justify="space-between" mb="xs" wrap="nowrap">
           <Text size="xs" c="slate.5">
             Step
           </Text>
-          <Text size="xs" fw={600} c="slate.8">
-            {stepInGroup} of {groupStepCount} ({currentStepLabel})
+
+          <Text
+            size="xs"
+            fw={600}
+            c="slate.8"
+            ta="right"
+            truncate
+            style={{ maxWidth: 150 }}
+          >
+            {stepInGroup} of {groupStepCount}
           </Text>
         </Group>
-        <Progress value={overallProgress} size="sm" radius="xl" color="brand" />
+
+        <Progress
+          value={overallProgress}
+          size={5}
+          radius="xl"
+          color="brand"
+        />
       </Paper>
 
-      <Paper withBorder radius="md" p="sm" mb="sm" bg="white">
+      <Paper
+        withBorder
+        radius="md"
+        p="sm"
+        bg="white"
+      >
         <Text
           size="10px"
           fw={700}
           tt="uppercase"
           c="slate.5"
-          mb="xs"
+          mb="sm"
           style={{ letterSpacing: 0.5 }}
         >
           Lending Snapshot
         </Text>
-        <Group justify="space-between" mb={4}>
-          <Text size="xs" c="slate.5">
-            Active Loans
-          </Text>
-          <Text size="xs" fw={600} c="slate.8">
-            0
-          </Text>
-        </Group>
-        <Group justify="space-between" mb={4}>
-          <Text size="xs" c="slate.5">
-            Exposure
-          </Text>
-          <Text size="xs" fw={600} c="slate.8">
-            K 0.00
-          </Text>
-        </Group>
-        <Group justify="space-between">
-          <Text size="xs" c="slate.5">
-            Risk Level
-          </Text>
-          <Badge size="xs" color="success" variant="light">
-            LOW
-          </Badge>
-        </Group>
-      </Paper>
 
-      <Paper radius="md" p="sm" style={{ background: "var(--mantine-color-brand-6)" }}>
-        <Text size="10px" fw={700} tt="uppercase" c="brand.1" style={{ letterSpacing: 0.5 }}>
-          Estimated EMI
-        </Text>
-        <Text size="lg" fw={700} c="white" mt={4}>
-          &mdash;
-        </Text>
+        <SimpleGrid
+          cols={2}
+          spacing="sm"
+          verticalSpacing="sm"
+        >
+          <Box>
+            <Text
+              size="9px"
+              tt="uppercase"
+              c="slate.5"
+              fw={600}
+            >
+              Credit Score
+            </Text>
+
+            <Text
+              size="sm"
+              fw={700}
+              c={creditScore !== null ? "brand.7" : "slate.5"}
+            >
+              {creditScore ?? "—"}
+            </Text>
+          </Box>
+
+          <Box>
+            <Text
+              size="9px"
+              tt="uppercase"
+              c="slate.5"
+              fw={600}
+              mb={2}
+            >
+              Risk Band
+            </Text>
+
+            {creditBand ? (
+              <Badge
+                size="xs"
+                color="success"
+                variant="light"
+              >
+                {creditBand}
+              </Badge>
+            ) : (
+              <Text size="sm" fw={600} c="slate.5">
+                —
+              </Text>
+            )}
+          </Box>
+
+          <Box>
+            <Text
+              size="9px"
+              tt="uppercase"
+              c="slate.5"
+              fw={600}
+            >
+              Active Facilities
+            </Text>
+
+            <Text
+              size="sm"
+              fw={600}
+              c="slate.8"
+            >
+              {activeFacilities ?? "—"}
+            </Text>
+          </Box>
+
+          <Box>
+            <Text
+              size="9px"
+              tt="uppercase"
+              c="slate.5"
+              fw={600}
+            >
+              Active Loans
+            </Text>
+
+            <Text
+              size="sm"
+              fw={600}
+              c="slate.8"
+            >
+              0
+            </Text>
+          </Box>
+
+          <Box style={{ gridColumn: "1 / -1" }}>
+            <Text
+              size="9px"
+              tt="uppercase"
+              c="slate.5"
+              fw={600}
+            >
+              Exposure
+            </Text>
+
+            <Text
+              size="sm"
+              fw={600}
+              c="slate.8"
+            >
+              K 0.00
+            </Text>
+          </Box>
+        </SimpleGrid>
+
+        {onViewSnapshot && (
+          <Button
+            fullWidth
+            size="xs"
+            variant="default"
+            radius="sm"
+            mt="sm"
+            leftSection={<IconEye size={12} />}
+            onClick={onViewSnapshot}
+          >
+            View Full Snapshot
+          </Button>
+        )}
       </Paper>
     </Box>
   );

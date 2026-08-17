@@ -23,6 +23,7 @@ import { DateInput } from "@mantine/dates";
 interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
   loanType: LoanType;
+    directorsError?: string | null;
 }
 
 const RELATIONSHIPS = [ "Spouse", "Parent", "Child", "Sibling", "Other",];
@@ -48,7 +49,8 @@ function Label({ text, required, optional }: { text: string; required?: boolean;
   );
 }
 
-export function ResidenceEmploymentStep({ form, loanType }: StepProps) {
+// export function ResidenceEmploymentStep({ form, loanType }: StepProps) {
+export function ResidenceEmploymentStep({ form, loanType, directorsError }: StepProps) {
   const [opened, { open, close }] = useDisclosure(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
@@ -139,6 +141,18 @@ const countryOptions = useMemo(() => {
   const handleDeleteDirector = (index: number) => {
     form.removeListItem("directors", index);
   };
+  const handleDone = () => {
+    if (editingIndex === null) return;
+    const nameErr = form.validateField(`directors.${editingIndex}.name`).hasError;
+    const phoneErr = form.validateField(`directors.${editingIndex}.phone`).hasError;
+    const emailErr = form.validateField(`directors.${editingIndex}.email`).hasError;
+    const nrcErr = form.validateField(`directors.${editingIndex}.nrc`).hasError;
+
+    if (nameErr || phoneErr || emailErr || nrcErr) return;
+
+    setEditingIndex(null);
+    close();
+  };
 
   const handleCloseModal = () => {
     // Cleanup: If a user opened "Add Director" but didn't fill anything out, remove it.
@@ -157,7 +171,7 @@ const countryOptions = useMemo(() => {
       <Stack gap="sm">
                <Group justify="space-between" align="center">
             {/* Replaced Box with Group and added align="center" for perfect vertical alignment */}
-            <Group gap="sm" align="center">
+            {/* <Group gap="sm" align="center">
               <Text fz="sm" fw={700} c="slate.8">
                 Directors ({directors.length}/{MAX_DIRECTORS})
               </Text>
@@ -165,7 +179,22 @@ const countryOptions = useMemo(() => {
                 Add up to 3 directors. Each director requires a name, phone, email, and NRC.
               </Text>
             </Group>
-            
+             */}
+             <Box>
+              <Group gap="sm" align="center">
+                <Text fz="sm" fw={700} c="slate.8">
+                  Directors ({directors.length}/{MAX_DIRECTORS})
+                </Text>
+                <Text fz="xs" c="slate.5">
+                  Add up to 3 directors. Each director requires a name, phone, email, and NRC.
+                </Text>
+              </Group>
+              {directorsError && (
+                <Text fz="xs" c="red.6" mt={4}>
+                  {directorsError}
+                </Text>
+              )}
+            </Box>
             <Button 
               variant="light" 
               color="brand" 
@@ -317,12 +346,13 @@ const countryOptions = useMemo(() => {
         {editingIndex !== null && (
           <Box>
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" verticalSpacing="md" mb="xl">
-              <TextInput
+             <TextInput
                 radius="md"
                 label={<Label text="Director name" required />}
                 {...form.getInputProps(`directors.${editingIndex}.name`)}
+                onBlur={() => form.validateField(`directors.${editingIndex}.name`)}
               />
-             <TextInput
+            <TextInput
   radius="md"
   type="tel"
   label={<Label text="Director phone" required />}
@@ -330,23 +360,29 @@ const countryOptions = useMemo(() => {
   onChange={(e) =>
     form.setFieldValue(`directors.${editingIndex}.phone`, e.currentTarget.value.replace(/\D/g, ""))
   }
+  onBlur={() => form.validateField(`directors.${editingIndex}.phone`)}
   error={form.errors[`directors.${editingIndex}.phone`]}
 />
-              <TextInput
+             <TextInput
                 radius="md"
                 type="email"
                 label={<Label text="Director email" required />}
                 {...form.getInputProps(`directors.${editingIndex}.email`)}
+                onBlur={() => form.validateField(`directors.${editingIndex}.email`)}
               />
-              <TextInput
+             <TextInput
                 radius="md"
                 label={<Label text="Director NRC" required />}
                 {...form.getInputProps(`directors.${editingIndex}.nrc`)}
+                onBlur={() => form.validateField(`directors.${editingIndex}.nrc`)}
               />
             </SimpleGrid>
 
             <Group justify="flex-end">
-              <Button color="brand" radius="md" onClick={handleCloseModal}>
+              <Button variant="default" radius="md" onClick={handleCloseModal}>
+                Close
+              </Button>
+              <Button color="brand" radius="md" onClick={handleDone}>
                 Done
               </Button>
             </Group>

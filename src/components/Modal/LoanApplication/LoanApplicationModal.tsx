@@ -81,7 +81,9 @@ export interface LoanApplicationValues {
   kinPhone: string;
   kinEmail: string;
   kinRelationship: string;
-  directors: DirectorEntry[];
+ directors: DirectorEntry[];
+  directorsCount: string;
+directorsDocunentCount: string;
   applicantFirstName: string;
   applicantMiddleName: string;
   applicantLastName: string;
@@ -144,8 +146,8 @@ const INITIAL_VALUES: LoanApplicationValues = {
   kinPhone: "",
   kinEmail: "",
   kinRelationship: "",
-
-  directors: [{ id: nextId(), name: "", phone: "", email: "", nrc: "" }],
+  directors: [],
+  directorsCount: "",
   applicantFirstName: "",
   applicantMiddleName: "",
   applicantLastName: "",
@@ -173,8 +175,8 @@ const INITIAL_VALUES: LoanApplicationValues = {
   bankStatementsBusiness: null,
   applicantPassportPhoto: null,
   boardResolution: null,
-  directorDocuments: [{ id: nextId(), nrcFile: null, photoFile: null }],
-
+  directorDocuments: [],
+directorsDocunentCount: "",
   loanAmount: 4000,
   tenureMonths: 6,
 };
@@ -236,8 +238,6 @@ function buildPersonalPayload(
       file: resolvedUrls.tpinCertificate as string,
     });
   }
-  // ...rest of the return object stays exactly the same
-
   return {
     application_type: "Personal Loan",
     application_date: new Date().toISOString().slice(0, 10),
@@ -394,10 +394,13 @@ interface LoanApplicationModalProps {
 
 export function LoanApplicationModal({ opened, onClose, onMinimize, onExited,loanApplicationId }: LoanApplicationModalProps) {
   const originalDocumentUrls = useRef<Record<string, string>>({});
+  const [directorsError, setDirectorsError] = useState<string | null>(null);
 const [isUploadingDocs, setIsUploadingDocs] = useState(false);
   const queryClient = useQueryClient();
   const [activeStep, setActiveStep] = useState(0);
-// const [loanTypeSelected, setLoanTypeSelected] = useState(false);
+  const [directorDocsError, setDirectorDocsError] = useState<string | null>(null);
+const ALLOWED_FILE_TYPES = ["application/pdf", "image/jpeg", "image/jpg"];
+const isAllowedFileType = (file: File | null) => !file || ALLOWED_FILE_TYPES.includes(file.type);
 const [loanTypeSelected, setLoanTypeSelected] = useState(!!loanApplicationId);
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;  
 const showSuccess = (heading: string, body: string) => {
@@ -450,11 +453,41 @@ maritalStatus: (v, values) => values.loanType === "Personal" && !v?.trim() ? "Re
     },
 
     // --- Personal Docs ---
-    payslips: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
-    bankStatementsPersonal: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
-    nrcCopy: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
-    passportPhotoPersonal: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
-    tpinCertificate: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
+    // payslips: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
+    // bankStatementsPersonal: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
+    // nrcCopy: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
+    // passportPhotoPersonal: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
+    // tpinCertificate: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
+    payslips: (v, values) => {
+  if (values.loanType !== "Personal") return null;
+  if (!v) return "Required";
+  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+  return null;
+},
+bankStatementsPersonal: (v, values) => {
+  if (values.loanType !== "Personal") return null;
+  if (!v) return "Required";
+  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+  return null;
+},
+nrcCopy: (v, values) => {
+  if (values.loanType !== "Personal") return null;
+  if (!v) return "Required";
+  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+  return null;
+},
+passportPhotoPersonal: (v, values) => {
+  if (values.loanType !== "Personal") return null;
+  if (!v) return "Required";
+  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+  return null;
+},
+tpinCertificate: (v, values) => {
+  if (values.loanType !== "Personal") return null;
+  if (!v) return "Required";
+  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+  return null;
+},
 
     // --- Business Base ---
     companyName: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
@@ -462,7 +495,8 @@ maritalStatus: (v, values) => values.loanType === "Personal" && !v?.trim() ? "Re
     natureOfBusiness: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
     registeredOffice: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
     purposeOfLoan: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-    
+    typeOfBusiness: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
+collateralPledged: (v, values) => (values.loanType === "Business" && !String(v ?? "").trim() ? "Required" : null),
     // --- Business Applicant ---
     applicantFirstName: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
     applicantLastName: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
@@ -473,24 +507,90 @@ maritalStatus: (v, values) => values.loanType === "Personal" && !v?.trim() ? "Re
     applicantPosition: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
     
     // --- Business Docs ---
-    pacraCertificate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    form2: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    taxClearanceCertificate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    taxComplianceReturn: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    bankStatementsBusiness: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    applicantPassportPhoto: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    boardResolution: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+    // pacraCertificate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+    // form2: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+    // taxClearanceCertificate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+    // taxComplianceReturn: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+    // bankStatementsBusiness: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+    // applicantPassportPhoto: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+    // boardResolution: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+    pacraCertificate: (v, values) => {
+  if (values.loanType !== "Business") return null;
+  if (!v) return "Required";
+  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+  return null;
+},
+form2: (v, values) => {
+  if (values.loanType !== "Business") return null;
+  if (!v) return "Required";
+  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+  return null;
+},
+taxClearanceCertificate: (v, values) => {
+  if (values.loanType !== "Business") return null;
+  if (!v) return "Required";
+  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+  return null;
+},
+taxComplianceReturn: (v, values) => {
+  if (values.loanType !== "Business") return null;
+  if (!v) return "Required";
+  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+  return null;
+},
+bankStatementsBusiness: (v, values) => {
+  if (values.loanType !== "Business") return null;
+  if (!v) return "Required";
+  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+  return null;
+},
+applicantPassportPhoto: (v, values) => {
+  if (values.loanType !== "Business") return null;
+  if (!v) return "Required";
+  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+  return null;
+},
+boardResolution: (v, values) => {
+  if (values.loanType !== "Business") return null;
+  if (!v) return "Required";
+  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+  return null;
+},
 
     // --- Array Validations (Business) ---
-    directors: {
+  directors: {
       name: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
       phone: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
+      email: (v, values) => {
+        if (values.loanType !== "Business") return null;
+        if (!v?.trim()) return "Required";
+        if (!EMAIL_REGEX.test(v)) return "Enter a valid email address";
+        return null;
+      },
       nrc: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
     },
+    directorsCount: (v, values) =>
+      values.loanType === "Business" && values.directors.length === 0
+        ? "Please add at least one director"
+        : null,
+    // directorDocuments: {
+    //   nrcFile: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+    //   photoFile: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+    // },
     directorDocuments: {
-      nrcFile: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-      photoFile: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    },
+  nrcFile: (v, values) => {
+    if (values.loanType !== "Business") return null;
+    if (!v) return "Required";
+    if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+    return null;
+  },
+  photoFile: (v, values) => {
+    if (values.loanType !== "Business") return null;
+    if (!v) return "Required";
+    if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
+    return null;
+  },
+},
   }
 });
 
@@ -513,6 +613,8 @@ maritalStatus: (v, values) => values.loanType === "Personal" && !v?.trim() ? "Re
  const handleReset = () => {
     form.setValues(INITIAL_VALUES);
     form.resetDirty(INITIAL_VALUES);
+    setDirectorDocsError(null);
+    setDirectorsError(null);
     setActiveStep(0);
     setLoanTypeSelected(false);
   };
@@ -530,9 +632,19 @@ const handleModalClose = () => {
     if (activeStep === 1) fieldsToValidate = ["residentialAddress", "occupation", "employerName", "principalObjective", "kinName", "kinPhone", "kinRelationship", "kinEmail", "nationality"];
     if (activeStep === 2) fieldsToValidate = ["payslips", "bankStatementsPersonal", "nrcCopy", "passportPhotoPersonal", "tpinCertificate"];
   } else {
-    if (activeStep === 1) fieldsToValidate = ["residentialAddress", "occupation", "employerName", "principalObjective", "kinName", "kinPhone", "kinEmail", "kinRelationship"];
+    if (activeStep === 0) fieldsToValidate = ["companyName", "typeOfBusiness", "establishedDate", "natureOfBusiness", "registeredOffice", "collateralPledged", "purposeOfLoan"];
     if (activeStep === 1) fieldsToValidate = ["applicantFirstName", "applicantLastName", "applicantPhone", "applicantEmail", "applicantNrc", "applicantBirthDate", "applicantAddress", "applicantPosition"];
+    // if (activeStep === 2) fieldsToValidate = ["pacraCertificate", "form2", "taxClearanceCertificate", "taxComplianceReturn", "bankStatementsBusiness", "applicantPassportPhoto", "boardResolution"];
     if (activeStep === 2) fieldsToValidate = ["pacraCertificate", "form2", "taxClearanceCertificate", "taxComplianceReturn", "bankStatementsBusiness", "applicantPassportPhoto", "boardResolution"];
+  }
+
+  if (loanType === "Business" && activeStep === 2) {
+    if (form.values.directorDocuments.length === 0) {
+      hasError = true;
+      setDirectorDocsError("Please add at least one director's documents");
+    } else {
+      setDirectorDocsError(null);
+    }
   }
 
   fieldsToValidate.forEach((field) => {
@@ -540,10 +652,17 @@ const handleModalClose = () => {
   });
 
   if (loanType === "Business") {
-    if (activeStep === 1) {
+  if (activeStep === 1) {
+      if (form.values.directors.length === 0) {
+        hasError = true;
+        setDirectorsError("Please add at least one director");
+      } else {
+        setDirectorsError(null);
+      }
       form.values.directors.forEach((_, i) => {
         if (form.validateField(`directors.${i}.name`).hasError) hasError = true;
         if (form.validateField(`directors.${i}.phone`).hasError) hasError = true;
+        if (form.validateField(`directors.${i}.email`).hasError) hasError = true;
         if (form.validateField(`directors.${i}.nrc`).hasError) hasError = true;
       });
     }
@@ -579,6 +698,13 @@ useEffect(() => {
   }
 }, [opened, loanApplicationId, refetchLoanApplication]);
 
+const getMimeTypeFromFileName = (fileName: string): string => {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  return "";
+};
+
 useEffect(() => {
   const application = existingApplicationData?.message?.data;
   if (!application) return;
@@ -587,10 +713,15 @@ useEffect(() => {
 const getDocFile = (docsArray: any[], documentNames: string[], key?: string) => {
     if (!docsArray) return null;
     const doc = docsArray.find((d: any) => documentNames.includes(d.document_name));
+    // if (doc && doc.file) {
+    //   const fileName = doc.file.split('/').pop() || doc.file;
+    //   if (key) originalDocumentUrls.current[key] = doc.file;
+    //   return new File([""], fileName);
+    // }
     if (doc && doc.file) {
       const fileName = doc.file.split('/').pop() || doc.file;
       if (key) originalDocumentUrls.current[key] = doc.file;
-      return new File([""], fileName);
+      return new File([""], fileName, { type: getMimeTypeFromFileName(fileName) });
     }
     return null;
   };
@@ -804,10 +935,14 @@ const handleSubmitApplication = async () => {
     switch (activeStep) {
       case 0:
         return <PersonalBusinessInfoStep form={form} loanType={loanType} />;
+      // case 1:
+      //   return <ResidenceEmploymentStep form={form} loanType={loanType} />;
       case 1:
-        return <ResidenceEmploymentStep form={form} loanType={loanType} />;
+        return <ResidenceEmploymentStep form={form} loanType={loanType} directorsError={directorsError} />;
+      // case 2:
+      //   return <DocumentsStep form={form} loanType={loanType} />;
       case 2:
-        return <DocumentsStep form={form} loanType={loanType} />;
+        return <DocumentsStep form={form} loanType={loanType} directorDocsError={directorDocsError} />;
       case 3:
         case 3:
          return <LoanTermsStep form={form} loanType={loanType} />;
