@@ -79,7 +79,7 @@ export async function getAllIncomeAccounts(searchTerm?: string) {
     params: {
       root_type: "Income",
       is_group: 0,
-      txt: searchTerm
+      search: searchTerm
     }
   });
   return data;
@@ -89,7 +89,7 @@ export async function getAllIPAccounts(searchTerm?: string) {
   const { data } = await apiClient.get(API.search.getAccounts, {
     params: {
       is_group: 0,
-      txt: searchTerm
+      search: searchTerm
     }
   });
   return data;
@@ -104,7 +104,7 @@ export async function getAllPrincipalAccounts(searchTerm?: string) {
     const { data } = await apiClient.get(API.search.getAccounts, {
         params: {
             filters: JSON.stringify(filters),
-            txt: searchTerm // <-- Pass the search term to Frappe
+            search: searchTerm // <-- Pass the search term to Frappe
         }
     });
     return data;
