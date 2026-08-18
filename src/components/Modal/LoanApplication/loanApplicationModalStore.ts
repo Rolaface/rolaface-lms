@@ -25,9 +25,9 @@ export const loanApplicationModal = createModal<LoanApplicationModalParams, Loan
   {
     icon: IconFileText,
     getTitle,
-    buildProps: (params) => ({
-      loanApplicationId: params.loanApplicationId,
-      onSaved: params.onSaved,
-    }),
+   buildProps: (params) => ({
+  loanApplicationId: params.loanApplicationId ?? null,
+  onSaved: params.onSaved,
+}),
   },
 );

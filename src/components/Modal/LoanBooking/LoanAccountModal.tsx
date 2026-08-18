@@ -215,28 +215,42 @@ const handleRemoveCollateralItem = (id: string) => {
   },
 });
 
-const createLoanMutation = useMutation({
-  mutationFn: createLoan,
-  onSuccess: async (data) => {
-    queryClient.invalidateQueries({ queryKey: ["loans"] });
+const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
 
-    const newLoanId = (data as { message?: { data?: { name?: string } } })?.message?.data?.name;
-    if (newLoanId) {
-      const documentsToAttach = await resolveDocumentsPayload(documents);
-      if (documentsToAttach.length > 0) {
-        attachDocumentsMutation.mutate({ id: newLoanId, documents: documentsToAttach });
+  const createLoanMutation = useMutation({
+    mutationFn: createLoan,
+    onSuccess: async (data) => {
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      const newLoanId = (data as { message?: { data?: { name?: string } } })?.message?.data?.name;
+      if (newLoanId) {
+        const documentsToAttach = await resolveDocumentsPayload(documents);
+        if (documentsToAttach.length > 0) {
+          attachDocumentsMutation.mutate({ id: newLoanId, documents: documentsToAttach });
+        }
       }
-    }
+      showSuccess(
+        "Loan Booking Created",
+        newLoanId 
+          ? `Loan Booking ${newLoanId} created successfully.`
+          : "Loan Booking created successfully."
+      );
 
-    handleModalClose();
-  },
-   onError: (error: any) => {
+      handleModalClose();
+    },
+    onError: (error: any) => {
       openCommonModal({
         heading: "Action Failed",
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(error),
         color: "red",
-    
         buttons: [
           {
             label: "Close",
@@ -245,7 +259,8 @@ const createLoanMutation = useMutation({
         ],
       });
     },
-});
+  });
+
 
 const handleSubmit = (values: typeof form.values) => {
      const payload: any = {
@@ -264,7 +279,10 @@ const handleSubmit = (values: typeof form.values) => {
     
     payload.rate_of_interest = chargeSectionDefaults.interestRate === "" ? 0 : Number(chargeSectionDefaults.interestRate);
     payload.penalty_charges_rate = chargeSectionDefaults.penaltyRate === "" ? 0 : Number(chargeSectionDefaults.penaltyRate);
-
+    payload.transaction_date = values.trnDate || "";
+    payload.reference_number = values.refNumber || "";
+    payload.migration_date = values.migrationDate || "";
+    payload.grace_period = chargeSectionDefaults.gracePeriodDays === "" ? 0 : Number(chargeSectionDefaults.gracePeriodDays);
     payload.loan_charges = charges.map((c) => ({
       charge: c.feeName || "",
       amount: Number(c.amount) || 0,
@@ -272,8 +290,7 @@ const handleSubmit = (values: typeof form.values) => {
       treatment_of_charge: c.treatment || "",
     }));
 
-    // ADDED: Collateral Mapping
-    if (collateral.items.length > 0) {
+     if (collateral.items.length > 0) {
       payload.collaterals = {
         status: collateral.status || "",
         reference_no: collateral.reference_no || "",
@@ -377,9 +394,12 @@ useEffect(() => {
       form.setValues({
         customerNumber: loan.applicant || "",
         productCode: loan.loan_product || "",
+        isImport: !!loan.migration_date,
         loanAmount: loan.loan_amount || "",
         loanAppNumber: loan.loan_application_number || "",
-        trnDate: loan.posting_date || getTodayDate(),
+        trnDate: loan.transaction_date || getTodayDate(),
+        refNumber: loan.reference_number || "",
+        migrationDate: loan.migration_date || "",
         fixedRepaymentsIn: loan.repayment_method === "Repay Over Number of Periods" ? "TENOR" : "EMI",
         tenureValue: loan.repayment_periods || "",
         auto_create_disbursement_on_loan_booking: loan.auto_create_disbursement_on_loan_booking || 0,
@@ -392,7 +412,7 @@ useEffect(() => {
       });
 
       // loadedLoanProductCode.current = loan.loan_product || "";
-if (!loan.rate_of_interest && (!loan.loan_charges || loan.loan_charges.length === 0)) {
+if (!loan.loan_charges || loan.loan_charges.length === 0) {
   loadedLoanProductCode.current = null;
 } else {
   loadedLoanProductCode.current = loan.loan_product || "";
@@ -400,7 +420,7 @@ if (!loan.rate_of_interest && (!loan.loan_charges || loan.loan_charges.length ==
       setChargeSectionDefaults({
         interestRate: loan.rate_of_interest ?? "",
         penaltyRate: loan.penalty_charges_rate ?? "",
-        gracePeriodDays: "",
+        gracePeriodDays: loan.grace_period ?? "",
       });
 
       const mappedCharges: ChargeRow[] = (loan.loan_charges || []).map((lc: any) => ({
@@ -450,43 +470,35 @@ if (!loan.rate_of_interest && (!loan.loan_charges || loan.loan_charges.length ==
     }
   }, [existingLoanData]);
 
-  // const updateLoanMutation = useMutation({
-  //   mutationFn: updateLoan,
-  //   onSuccess: (data, variables) => {
-  //     queryClient.invalidateQueries({ queryKey: ["loans"] });
-  //     queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
-  //     handleModalClose();
-  //   },
-const updateLoanMutation = useMutation({
-  mutationFn: updateLoan,
-  onSuccess: async (data, variables) => {
-    queryClient.invalidateQueries({ queryKey: ["loans"] });
-    queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
-
-    const documentsToAttach = await resolveDocumentsPayload(documents);
-    if (documentsToAttach.length > 0) {
-      attachDocumentsMutation.mutate({ id: variables.id, documents: documentsToAttach });
-    }
-
-    handleModalClose();
-  },
+ const updateLoanMutation = useMutation({mutationFn: updateLoan,onSuccess: async (data, variables) => {
+queryClient.invalidateQueries({ queryKey: ["loans"] });
+queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
+const documentsToAttach = await resolveDocumentsPayload(documents);
+if (documentsToAttach.length > 0) {
+attachDocumentsMutation.mutate({ id: variables.id, documents: documentsToAttach });
+}
+   showSuccess(
+        "Loan Booking Updated",
+        `Loan Booking ${variables.id} updated successfully.`
+      );
+      handleModalClose();
+    },
     onError: (error: any) => {
-  openCommonModal({
-    heading: "Action Failed",
-    subtitle: "We couldn't complete your request.",
-    body: parseFrappeError(error),
-    color: "red",
-
-    buttons: [
-      {
-        label: "Close",
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
         color: "red",
-      },
-    ],
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
   });
-},
-  });
-
+  
 const handleReset = () => {
   form.reset();
   setCharges([{ id: Date.now().toString(), feeName: "", amount: "", account: "", treatment: "" }]);

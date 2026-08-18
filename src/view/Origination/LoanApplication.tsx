@@ -234,8 +234,8 @@ const convertToLoanMutation = useMutation({
     try {
       await updateLoanApplicationStatus({
         id: variables.id,
-        status: "Submitted", // Keep system doc status as Submitted
-        loan_application_status: "Created", // Update your custom status
+        status: "Submitted", 
+        loan_application_status: "Created", 
       });
     } catch (error) {
       console.error("Failed to update application status to Created", error);
