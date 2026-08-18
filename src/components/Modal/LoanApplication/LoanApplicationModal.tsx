@@ -505,6 +505,9 @@ collateralPledged: (v, values) => (values.loanType === "Business" && !String(v ?
     applicantBirthDate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
     applicantAddress: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
     applicantPosition: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
+    applicantGender: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
+applicantMaritalStatus: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
+applicantNationality: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
     
     // --- Business Docs ---
     // pacraCertificate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
@@ -633,7 +636,7 @@ const handleModalClose = () => {
     if (activeStep === 2) fieldsToValidate = ["payslips", "bankStatementsPersonal", "nrcCopy", "passportPhotoPersonal", "tpinCertificate"];
   } else {
     if (activeStep === 0) fieldsToValidate = ["companyName", "typeOfBusiness", "establishedDate", "natureOfBusiness", "registeredOffice", "collateralPledged", "purposeOfLoan"];
-    if (activeStep === 1) fieldsToValidate = ["applicantFirstName", "applicantLastName", "applicantPhone", "applicantEmail", "applicantNrc", "applicantBirthDate", "applicantAddress", "applicantPosition"];
+    if (activeStep === 1) fieldsToValidate = ["applicantFirstName", "applicantLastName", "applicantPhone", "applicantEmail", "applicantNrc", "applicantBirthDate", "applicantAddress", "applicantPosition", "applicantGender", "applicantMaritalStatus", "applicantNationality"];
     // if (activeStep === 2) fieldsToValidate = ["pacraCertificate", "form2", "taxClearanceCertificate", "taxComplianceReturn", "bankStatementsBusiness", "applicantPassportPhoto", "boardResolution"];
     if (activeStep === 2) fieldsToValidate = ["pacraCertificate", "form2", "taxClearanceCertificate", "taxComplianceReturn", "bankStatementsBusiness", "applicantPassportPhoto", "boardResolution"];
   }
