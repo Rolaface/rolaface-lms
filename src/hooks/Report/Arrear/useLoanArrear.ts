@@ -7,7 +7,7 @@ import {
   getTopOverdueAccounts,
   exportArrearReportExcel,
 } from '../../../api/Report/loanArrearApi';
-import { getCustomerList, getLoanList, getLoanClassification } from '../../../api/lookup api/lookUpApi';
+import { getCustomerList, getLoanList, getLoanClassification, getLoanProductList } from '../../../api/lookup api/lookUpApi';
 import type {
   ArrearSummary,
   ArrearCharts,
@@ -42,8 +42,9 @@ export function useLoanArrear() {
   const [debouncedDpdTo] = useDebouncedValue(dpdTo, 350);
 
   const [customers, setCustomers] = useState<{ value: string; label: string }[]>([]);
-  const [classification, setClassification] = useState<{ value: string; label: string }[]>([]);
+  const [loanClassification, setLoanClassification] = useState<{ value: string; label: string }[]>([]);
   const [loans, setLoans] = useState<{ value: string; label: string; applicant?: string }[]>([]);
+  const [loanProducts, setLoanProducts] = useState<{ value: string; label: string; applicant?: string }[]>([]);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -77,7 +78,21 @@ export function useLoanArrear() {
     getLoanClassification({ page_size: 100 })
       .then((res) => {
         const data = res.message?.data || res.data || [];
-        setClassification(
+        setLoanClassification(
+          data.map((c: any) => ({
+            value: String(c.value),
+            label: c.label && c.label !== c.value ? `${c.value} - ${c.label}` : String(c.value),
+          }))
+        );
+      })
+      .catch((err) => console.error(err));
+  }, []);
+
+  useEffect(() => {
+    getLoanProductList({ page_size: 100 })
+      .then((res) => {
+        const data = res.message?.data || res.data || [];
+        setLoanProducts(
           data.map((c: any) => ({
             value: String(c.value),
             label: c.label && c.label !== c.value ? `${c.value} - ${c.label}` : String(c.value),
@@ -253,7 +268,7 @@ export function useLoanArrear() {
       dpdTo, setDpdTo,
       includeWrittenOff, setIncludeWrittenOff,
     },
-    lookups: { customers, loans },
+    lookups: { customers, loans, loanClassification, loanProducts },
     paginationState: { page, setPage, pageSize, setPageSize },
     data: { summary, charts, insights, topAccounts, paginationMeta },
     status: { loadingDashboard, loadingTable, error, exporting },

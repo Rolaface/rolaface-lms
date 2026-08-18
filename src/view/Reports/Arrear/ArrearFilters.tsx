@@ -42,21 +42,21 @@ export function ArrearFilters({ filters, lookups, actions }: any) {
           classNames={inputClassNames} rightSection={<IconChevronDown size={13} className="text-slate-400" />} 
         />
         <Select 
-          label="Loan Product" placeholder="Select product" data={["Personal Loan", "Business Loan", "Home Loan", "Vehicle Loan"]} clearable
+          label="Loan Product" placeholder="Select product" data={lookups.loanProducts} clearable
           value={filters.loanProduct} onChange={(val) => filters.setLoanProduct(val || "")}
           classNames={inputClassNames} rightSection={<IconChevronDown size={13} className="text-slate-400" />} 
         />
-        <TextInput 
-          label="Customer" placeholder="Search customer..." 
-          value={filters.customer} onChange={(e) => filters.setCustomer(e.currentTarget.value)}
-          classNames={inputClassNames} rightSection={<IconSearch size={13} className="text-slate-400" />} 
+        <Select 
+          label="Customer" placeholder="Select Customer" data={lookups.customers} searchable clearable
+          value={filters.customer} onChange={(val) => filters.setCustomer(val || "")}
+          classNames={inputClassNames} rightSection={<IconChevronDown size={13} className="text-slate-400" />} 
         />
       </div>
 
       <Group justify="space-between" align="flex-end">
         <Group gap={28} align="flex-end">
           <Select 
-            label="Arrear Bucket" data={["All Buckets", "1 - 30 Days", "31 - 60 Days", "61 - 90 Days", "91 - 180 Days", "> 180 Days"]} 
+            label="Arrear Bucket" data={["All Buckets", ...lookups.loanClassification]}
             value={filters.arrearBucket} onChange={(val) => filters.setArrearBucket(val || "All Buckets")}
             classNames={inputClassNames} className="w-[180px]" rightSection={<IconChevronDown size={13} className="text-slate-400" />} 
           />
