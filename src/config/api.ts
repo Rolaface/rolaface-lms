@@ -160,6 +160,15 @@ loanStatement: {
     exportExcel: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_statement.api.export_loan_statement_excel`,
   },
 
+    loanArrear: {
+    getSummary: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_arrear.api.get_arrear_summary`,
+    getCharts: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_arrear.api.get_arrear_charts`,
+    getInsights: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_arrear.api.get_arrear_insights`,
+    getTopOverdueAccounts: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_arrear.api.get_top_overdue_accounts`,
+    exportExcel: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_arrear.api.export_arrear_report`,
+  },
+
+
   collectionSequence: {
     create:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collection_order.api.create`,
     getSequence:`${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.collection_order.api.get_all`,
@@ -377,6 +386,7 @@ loanStatement: {
     getLoanDemandOffsetOrders: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_demand_offset_orders`,
     getAccounts: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_accounts`,
     getItems: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_items`,
+    get_loan_classification: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_classification`,
   },
   frappeUtilsAPI:{
  getCompanyCurrentFiscalYear: `${ERP_BASE}/api/method/custom_api.utils.frappe_utils.get_current_fiscal_year`,
