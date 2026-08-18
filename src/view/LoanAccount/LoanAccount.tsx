@@ -196,21 +196,63 @@ export function LoanAccount() {
     }));
   }, [productsResponse]);
 
+  const showSuccess = (heading: string, body: string) => {
+      openCommonModal({
+        heading,
+        subtitle: '',
+        body,
+        color: 'green',
+        buttons: [{ label: 'Close', color: 'green' }],
+      });
+    };
+
   const { mutate: removeLoan, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteLoan(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["loans"] }); 
+      showSuccess('Loan Booking Deleted', `Loan Booking ${variables} deleted successfully.`);
     },
-    onError: (error: any) => {
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-        buttons: [{ label: "Close", color: "red" }],
-      });
-    },
+     onError: (error: any) => {
+     openCommonModal({
+       heading: "Action Failed",
+       subtitle: "We couldn't complete your request.",
+       body: parseFrappeError(error),
+       color: "red",
+   
+       buttons: [
+         {
+           label: "Close",
+           color: "red",
+         },
+       ],
+     });
+   },
   });
+
+  const confirmDelete = (id: string) => {
+    openCommonModal({
+      heading: "Delete Loan Booking",
+      subtitle: "This action cannot be undone.",
+      body: (
+        <>
+          Are you sure you want to delete{" "}
+          <Text span fw={600}>
+            {id}
+          </Text>
+          ?
+        </>
+      ),
+      color: "red",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        {
+          label: "Delete",
+          color: "red",
+          onClick: () => removeLoan(id), 
+        },
+      ],
+    });
+  };
 
   const { mutate: updateStatus } = useMutation({
     mutationFn: ({ id, action }: { id: string; action: string }) =>
@@ -405,29 +447,21 @@ export function LoanAccount() {
                 label={isDraft ? "Delete" : "Only Drafts can be deleted"}
                 withArrow
               >
+               <Tooltip
+                label={isDraft ? "Delete" : "Only Drafts can be deleted"}
+                withArrow
+              >
                 <ActionIcon
                   size="sm"
                   variant="subtle"
                   color={isDraft ? "danger" : "slate"}
                   radius="md"
                   disabled={!isDraft || isDeleting}
-                  onClick={() => {
-                    modals.openConfirmModal({
-                      title: "Delete loan application",
-                      children: (
-                        <Text size="sm">
-                          Are you sure you want to delete loan application{" "}
-                          <b>{loanIdentifier}</b>? This cannot be undone.
-                        </Text>
-                      ),
-                      labels: { confirm: "Delete", cancel: "Cancel" },
-                      confirmProps: { color: "danger" },
-                      onConfirm: () => removeLoan(loanIdentifier),
-                    });
-                  }}
+                  onClick={() => confirmDelete(loanIdentifier)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
+              </Tooltip>
               </Tooltip>
               <Menu shadow="md" width={140} position="bottom-end" radius="md">
                 <Menu.Target>
@@ -454,7 +488,7 @@ export function LoanAccount() {
                               <Text span fw={600}>
                                 {loanIdentifier}
                               </Text>{" "}
-                              for approval?
+                              for submission?
                             </>
                           ),
                           color: "green",

@@ -68,6 +68,17 @@ export function LoanSummarySidebar({
      const companyCurrency = useCompanyStore((state) => state.baseCurrency);
       const currencySymbol = getSymbol(companyCurrency);
 
+      function formatDate(dateStr: string | null) {
+  if (!dateStr) return "—";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = date.toLocaleString("default", { month: "short" });
+  const year = date.getFullYear();
+  
+  return `${day}-${month}-${year}`;
+}
   return (
     <div
       className="w-full lg:w-[300px] shrink-0"
@@ -95,8 +106,10 @@ export function LoanSummarySidebar({
               <SummaryRow label="Interest Rate" value={`${rateOfInterest || 0}% p.a.`} />
               <SummaryRow label="Tenure" value={tenureMonths ? `${tenureMonths} months` : "—"} />
               <SummaryRow label="Frequency" value={frequency || "—"} bold />
-              <SummaryRow label="Repayment Start" value={repaymentStartDate || "—"} />
-              <SummaryRow label="Maturity Date" value={maturityDate || "—"} />
+              {/* <SummaryRow label="Repayment Start" value={repaymentStartDate || "—"} />
+              <SummaryRow label="Maturity Date" value={maturityDate || "—"} /> */}
+              <SummaryRow label="Repayment Start" value={formatDate(repaymentStartDate)} />
+<SummaryRow label="Maturity Date" value={formatDate(maturityDate)} />
               <div style={{ paddingBottom: 0 }}>
                 <Group justify="space-between" wrap="nowrap" py={5}>
                   <Text size="xs" c="slate.5">

@@ -20,6 +20,10 @@ export interface CreateLoanPayload {
   moratorium_tenure?: number;
   moratorium_type?: "EMI" | "Principal" | string;
   treatment_of_interest?: "Capitalize" | string;
+  transaction_date?: string;
+  reference_number?: string;
+  migration_date?: string;
+  grace_period?: number;
 
  loan_charges?: {
   charge: string;
