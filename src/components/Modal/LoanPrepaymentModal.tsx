@@ -77,7 +77,7 @@ interface Borrower {
 }
 
 
-const PAYMENT_MODES = ["Direct Debit from A/C", "Cash", "Cheque", "NEFT/RTGS", "UPI"];
+const PAYMENT_MODES = ["Cash", "Cheque", "NEFT/RTGS", "UPI"];
 
 interface ScheduleInstallment {
   installmentNo: number;
@@ -216,7 +216,7 @@ const matches: Borrower[] = useMemo(() => {
     setValueDate(new Date().toISOString().slice(0, 10));
     setNatureOfPayment("PAY_DUES");
     setAmountToPay("");
-    setPaymentMode("Direct Debit from A/C");
+    setPaymentMode("");
     setReferenceNumber("");
     setReferenceDate("");
     setAccountNumber("");
