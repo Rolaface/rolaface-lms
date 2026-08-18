@@ -112,18 +112,18 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 const fmtAmount = (n: number) =>
   n
     ? n.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
     : "0.00";
 
 const fmtDate = (iso: string) =>
   iso
     ? new Date(iso).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
     : "-";
 
 export function LoanAccount() {
@@ -133,7 +133,7 @@ export function LoanAccount() {
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebouncedValue(searchInput, 400);
-    const [productSearchInput, setProductSearchInput] = useState("");
+  const [productSearchInput, setProductSearchInput] = useState("");
   const [debouncedProductSearch] = useDebouncedValue(productSearchInput, 400);
 
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -168,7 +168,7 @@ export function LoanAccount() {
     queryKey: ["loanProducts", debouncedProductSearch],
     queryFn: () => getAllLoanProducts({ search: debouncedProductSearch || undefined }),
   });
-  
+
   const productFilterOptions = useMemo(() => {
     const products = productsResponse?.data || [];
     return products.map((p: any) => ({
@@ -601,16 +601,16 @@ export function LoanAccount() {
           />
 
           <FilterMultiSelect
-  placeholder="All Products"
-  data={productFilterOptions}
-  value={productFilter}
-  onChange={setProductFilter}
-  searchable
-  searchValue={productSearchInput}
-  onSearchChange={setProductSearchInput}
-  loading={isProductsLoading}
-  width={140}
-/>
+            placeholder="All Products"
+            data={productFilterOptions}
+            value={productFilter}
+            onChange={setProductFilter}
+            searchable
+            searchValue={productSearchInput}
+            onSearchChange={setProductSearchInput}
+            loading={isProductsLoading}
+            width={140}
+          />
 
           <Select
             size="sm"
@@ -626,13 +626,13 @@ export function LoanAccount() {
             onChange={setBranch}
           />
 
-        <FilterMultiSelect
-  placeholder="All Statuses"
-  data={STATUS_FILTER_OPTIONS.map((s) => ({ value: s, label: s }))}
-  value={statusFilter}
-  onChange={setStatusFilter}
-  width={140}
-/>
+          <FilterMultiSelect
+            placeholder="All Statuses"
+            data={STATUS_FILTER_OPTIONS.map((s) => ({ value: s, label: s }))}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            width={140}
+          />
 
           <Button
             size="sm"
@@ -781,7 +781,17 @@ export function LoanAccount() {
                       };
                       const cells = row.getVisibleCells();
                       return (
-                        <Table.Tr key={row.id} className="lms-row">
+                        <Table.Tr
+                          key={row.id}
+                          className="lms-row"
+                          onDoubleClick={() =>
+                            loanAccountModal.open({
+                              loanId: row.original.id,
+                              isViewMode: true,
+                            })
+                          }
+                          style={{ cursor: "pointer" }}
+                        >
                           {cells.map((cell, idx) => (
                             <Table.Td
                               key={cell.id}
