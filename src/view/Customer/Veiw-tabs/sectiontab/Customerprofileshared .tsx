@@ -1,6 +1,6 @@
-import { Badge, Button, Paper, Text, ThemeIcon } from '@mantine/core';
+import { Badge, Button, Paper, Text, ThemeIcon ,Group } from '@mantine/core';
 import { IconAlertCircle, IconArrowRight, IconCheck } from '@tabler/icons-react';
-
+import { LineChart, Line } from 'recharts';
 /**
  * A single label/value field, stacked (icon+label on top, value below).
  * Stacking instead of side-by-side lets fields pack tightly into a
@@ -139,6 +139,7 @@ export function SectionCard({
   icon,
   title,
   subtitle,
+  action,
   children,
   dense = false,
   empty = false,
@@ -147,6 +148,7 @@ export function SectionCard({
   icon: React.ReactNode;
   title: string;
   subtitle?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
   dense?: boolean;
   empty?: boolean;
@@ -154,20 +156,23 @@ export function SectionCard({
 }) {
   return (
     <Paper withBorder radius="md" p="md" className="h-full flex flex-col" style={{ borderColor: 'var(--mantine-color-slate-2)' }}>
-      <div className={`flex items-center gap-2 ${dense ? 'mb-2' : 'mb-3'}`}>
-        <ThemeIcon variant="light" color="brand" size={28} radius="md">
-          {icon}
-        </ThemeIcon>
-        <div>
-          <Text size="sm" fw={700} c="slate.8">
-            {title}
-          </Text>
-          {subtitle && (
-            <Text size="xs" c="slate.5">
-              {subtitle}
+      <div className={`flex items-center justify-between ${dense ? 'mb-2' : 'mb-3'}`}>
+        <div className="flex items-center gap-2">
+          <ThemeIcon variant="light" color="brand" size={28} radius="md">
+            {icon}
+          </ThemeIcon>
+          <div>
+            <Text size="sm" fw={700} c="slate.8">
+              {title}
             </Text>
-          )}
+            {subtitle && (
+              <Text size="xs" c="slate.5">
+                {subtitle}
+              </Text>
+            )}
+          </div>
         </div>
+        {action}
       </div>
 
       {empty ? (
@@ -283,37 +288,65 @@ export function StatCard({
   subtitle,
   icon,
   tone = 'brand',
+  trend,
+  trendDirection = 'up',
+  sparkline,
+  rightIcon,
 }: {
   label: string;
   value: React.ReactNode;
   subtitle?: string;
   icon?: React.ReactNode;
   tone?: 'brand' | 'success' | 'warning' | 'danger';
+  /** e.g. "8.2% vs last 30 days" */
+  trend?: string;
+  trendDirection?: 'up' | 'down';
+  /** optional series for the inline sparkline, e.g. [12,14,13,18,...] */
+  sparkline?: number[];
+  /** shown instead of a sparkline when there's nothing to trend (e.g. a status checkmark) */
+  rightIcon?: React.ReactNode;
 }) {
   const isEmpty = value === '—' || value === undefined || value === null;
+  const sparkColor = trendDirection === 'down' ? 'var(--mantine-color-danger-5)' : 'var(--mantine-color-success-5)';
 
   return (
-    <Paper withBorder radius="md" p="sm" className="h-full" style={{ borderColor: 'var(--mantine-color-slate-2)' }}>
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <Text size="xs" c="slate.5" fw={600}>
-            {label}
-          </Text>
-          <Text mt={4} size="xl" fw={800} c={isEmpty ? 'slate.4' : `${tone}.6`}>
-            {value}
-          </Text>
-          {subtitle && (
-            <Text mt={2} size="xs" c="slate.5">
-              {subtitle}
-            </Text>
-          )}
-        </div>
+    <Paper withBorder radius="md" p="sm" style={{ borderColor: 'var(--mantine-color-slate-2)' }}>
+      <Group gap={8} wrap="nowrap" mb={10}>
         {icon && (
-          <ThemeIcon variant="light" color={isEmpty ? 'gray' : tone} size={32} radius="md">
+          <ThemeIcon variant="light" color={isEmpty ? 'gray' : tone} size={30} radius="md">
             {icon}
           </ThemeIcon>
         )}
-      </div>
+        <Text size="xs" c="slate.5" fw={600}>
+          {label}
+        </Text>
+      </Group>
+
+      <Group justify="space-between" align="flex-end" wrap="nowrap">
+        <Text size="xl" fw={800} c={isEmpty ? 'slate.4' : `${tone}.6`} lh={1.1}>
+          {value}
+        </Text>
+        {sparkline && sparkline.length > 1 ? (
+          <div className="shrink-0" style={{ width: 64, height: 30 }}>
+            <LineChart width={64} height={30} data={sparkline.map((v, i) => ({ v, i }))}>
+              <Line type="monotone" dataKey="v" stroke={sparkColor} strokeWidth={1.75} dot={false} />
+            </LineChart>
+          </div>
+        ) : rightIcon ? (
+          <div className="shrink-0">{rightIcon}</div>
+        ) : null}
+      </Group>
+
+      {subtitle && (
+        <Text mt={6} size="xs" c="slate.5">
+          {subtitle}
+        </Text>
+      )}
+      {trend && (
+        <Text mt={2} size="xs" fw={600} c={trendDirection === 'down' ? 'danger.6' : 'success.6'}>
+          {trendDirection === 'down' ? '↓' : '↑'} {trend}
+        </Text>
+      )}
     </Paper>
   );
 }
