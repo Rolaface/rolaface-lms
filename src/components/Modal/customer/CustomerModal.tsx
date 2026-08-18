@@ -21,7 +21,8 @@ import { IdentityStep } from "./steps/IdentityStep";
 import { ContactStep } from "./steps/ContactStep";
 import { IdentificationStep } from "./steps/IdentificationStep";
 import { FinancialStep } from "./steps/FinancialStep";
-import { BorrowerStep } from "./steps/BorrowerStep";
+// import { BorrowerStep } from "./steps/BorrowerStep";
+import { CreditAssessmentStep } from "./steps/Creditassessmentstep";
 import { KycStep } from "./steps/KycStep";
 import { DocumentsStep } from "./steps/DocumentsStep";
 import { KinStep } from "./steps/KinStep";
@@ -37,12 +38,14 @@ import { useIdentityState } from "../../../hooks/customer/modal/useIdentityState
 import { useContactState } from "../../../hooks/customer/modal/useContactState";
 import { useIdentificationState } from "../../../hooks/customer/modal/useIdentificationState";
 import { useFinancialBorrowerState } from "../../../hooks/customer/modal/useFinancialBorrowerState";
+import { useCreditAssessmentState } from "../../../hooks/customer/modal/Usecreditassessmentstate";
 import {
   useKycState,
   useDocumentsState,
   useKinState,
   useTagsState,
 } from "../../../hooks/customer/modal/useLaterStepsState";
+import { getScoreBand } from "../../../components/shared/Creditscoregauge";
 
 interface CustomerModalProps {
   opened: boolean;
@@ -50,6 +53,14 @@ interface CustomerModalProps {
   onMinimize: () => void;
   isViewMode?: boolean;
 }
+
+// NOTE: step indices are unchanged from constants.ts — Credit Assessment is
+// NOT a new step. It's a second stacked card inside case 3 ("Financial &
+// Lending"), same pattern already used for Financial + Borrower there.
+// Consent is captured on the card itself (see useCreditAssessmentState) —
+// Financial & Lending (index 3) runs before KYC (index 4) in this app's
+// real step order, so gating consent on the KYC step would make the check
+// unrunnable on first pass through the wizard.
 
 export function CustomerModal({
   opened,
@@ -65,6 +76,9 @@ export function CustomerModal({
   const contact = useContactState();
   const identification = useIdentificationState();
   const financialBorrower = useFinancialBorrowerState();
+  const creditAssessment = useCreditAssessmentState({
+    customerId: identity.customerNumber ?? null,
+  });
   const kyc = useKycState();
   const documents = useDocumentsState();
   const kin = useKinState();
@@ -100,6 +114,16 @@ export function CustomerModal({
   const sidebarCustomerName = isBusinessType
     ? identity.companyName
     : [identity.firstName, identity.lastName].filter(Boolean).join(" ");
+
+  // Derived, sidebar-only view of the credit assessment result. `result`
+  // stays the single source of truth (owned by useCreditAssessmentState);
+  // this just reshapes it into the flat props CustomerSummarySidebar takes.
+  // Returns all-null when there's no result yet, so the sidebar's credit
+  // panels simply don't render (see hasCreditData in CustomerSummarySidebar).
+  const creditResult = creditAssessment.result;
+  const activeFacilitiesFlag = creditResult?.flags.find(
+    (f) => f.label === "Active Facilities",
+  );
 
   const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(new Set());
 
@@ -145,6 +169,8 @@ export function CustomerModal({
         return errs;
       }
       case 3:
+        // Financial & Lending. Credit Assessment is optional/unvalidated —
+        // only the Financial income/employment fields are required here.
         return financialBorrower.getErrors();
       default:
         return {};
@@ -183,6 +209,7 @@ export function CustomerModal({
     contact.reset();
     identification.reset();
     financialBorrower.reset();
+    creditAssessment.reset();
     kyc.reset();
     documents.reset();
     kin.reset();
@@ -327,6 +354,20 @@ export function CustomerModal({
       case 3:
         return (
           <Stack gap="lg">
+            <CreditAssessmentStep
+              status={creditAssessment.status}
+              result={creditAssessment.result}
+              errorMessage={creditAssessment.errorMessage}
+              isExpired={creditAssessment.isExpired}
+              consentGiven={creditAssessment.consentGiven}
+              setConsentGiven={creditAssessment.setConsentGiven}
+              runCheck={creditAssessment.runCheck}
+              refreshCheck={creditAssessment.refreshCheck}
+              onViewFullReport={() => {
+                // TODO: open a Drawer/Modal with the full bureau report
+                // (trade lines, inquiry history, exportable PDF).
+              }}
+            />
             <FinancialStep
               educationLevel={financialBorrower.educationLevel}
               setEducationLevel={financialBorrower.setEducationLevel}
@@ -341,27 +382,7 @@ export function CustomerModal({
               creditRiskCategory={financialBorrower.creditRiskCategory}
               setCreditRiskCategory={financialBorrower.setCreditRiskCategory}
             />
-            <BorrowerStep
-              convertToBorrower={financialBorrower.convertToBorrower}
-              setConvertToBorrower={financialBorrower.setConvertToBorrower}
-              borrowerCategory={financialBorrower.borrowerCategory}
-              setBorrowerCategory={financialBorrower.setBorrowerCategory}
-              loanPurpose={financialBorrower.loanPurpose}
-              setLoanPurpose={financialBorrower.setLoanPurpose}
-              intendedLoanProduct={financialBorrower.intendedLoanProduct}
-              setIntendedLoanProduct={financialBorrower.setIntendedLoanProduct}
-              preliminaryRiskRating={financialBorrower.preliminaryRiskRating}
-              setPreliminaryRiskRating={
-                financialBorrower.setPreliminaryRiskRating
-              }
-              branch={financialBorrower.branch}
-              setBranch={financialBorrower.setBranch}
-              creditOfficer={financialBorrower.creditOfficer}
-              setCreditOfficer={financialBorrower.setCreditOfficer}
-              relationshipManager={financialBorrower.relationshipManager}
-              setRelationshipManager={financialBorrower.setRelationshipManager}
-              errors={attemptedSteps.has(3) ? getStepErrors(3) : {}}
-            />
+            {/* <BorrowerStep ... /> */}
           </Stack>
         );
       case 4:
@@ -421,7 +442,7 @@ export function CustomerModal({
       closeOnEscape={false}
       styles={{
         content: {
-          height: "94vh",
+          height: "95vh",
           maxHeight: "96vh",
           width: "90vw",
           maxWidth: "1600px",
@@ -650,15 +671,28 @@ export function CustomerModal({
           )}
         </Box>
 
+        {/*
+          Content region — this is the piece that was causing the dead
+          gap + clipped sidebar on narrow/mobile widths.
+
+          Below `lg`: the OUTER box owns the scroll (`overflow-y-auto`) and
+          both children (main content + sidebar) just flow naturally, full
+          width, stacked. No fixed heights fighting each other, nothing
+          gets clipped — it just scrolls as one long page.
+
+          At `lg` and above: outer scroll is turned off
+          (`lg:overflow-hidden`) and we go back to the original two-pane
+          layout — main content and sidebar each own their own
+          ScrollArea/overflow independently, side by side.
+        */}
         <Box
           bg="slate.0"
-          className="flex-1 flex flex-col lg:flex-row min-w-0"
-          style={{ minHeight: 0, overflow: "hidden" }}
+          className="flex-1 flex flex-col lg:flex-row min-w-0 overflow-y-auto lg:overflow-hidden"
+          style={{ minHeight: 0 }}
         >
-          <ScrollArea
-            style={{ flex: 1, minWidth: 0, minHeight: 0, height: "100%" }}
-            type="auto"
-            scrollbarSize={6}
+          <Box
+            className="lg:flex-1 lg:min-w-0 lg:h-full lg:overflow-y-auto"
+            style={{ minHeight: 0 }}
           >
             <Box
               component="fieldset"
@@ -671,20 +705,33 @@ export function CustomerModal({
             >
               {renderStep()}
             </Box>
-          </ScrollArea>
+          </Box>
 
-          <Box style={{ flexShrink: 0, overflow: "hidden" }}>
-            <CustomerSummarySidebar
-              customerName={sidebarCustomerName}
-              customerType={identity.customerType}
-              customerNumber={identity.customerNumber}
-              activeGroupLabel={activeGroup.label}
-              currentStepLabel={STEPS[currentStep]?.label ?? ""}
-              stepInGroup={stepInGroup}
-              groupStepCount={activeGroup.stepIndices.length}
-              overallCompleted={currentStep}
-              overallTotal={STEPS.length}
-            />
+          <Box className="w-full lg:w-auto lg:flex-shrink-0 lg:h-full lg:overflow-y-auto">
+           <CustomerSummarySidebar
+  customerName={sidebarCustomerName}
+  customerType={identity.customerType}
+  customerNumber={identity.customerNumber}
+  activeGroupLabel={activeGroup.label}
+  currentStepLabel={STEPS[currentStep]?.label ?? ""}
+  stepInGroup={stepInGroup}
+  groupStepCount={activeGroup.stepIndices.length}
+  overallCompleted={currentStep}
+  overallTotal={STEPS.length}
+  creditScore={creditResult?.score ?? null}
+  creditBand={
+    creditResult
+      ? getScoreBand(creditResult.score).label
+      : null
+  }
+  activeFacilities={
+    activeFacilitiesFlag
+      ? Number(activeFacilitiesFlag.value)
+      : null
+  }
+  onViewSnapshot={() => {
+  }}
+/>
           </Box>
         </Box>
 

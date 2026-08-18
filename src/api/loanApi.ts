@@ -42,7 +42,7 @@ export async function attachLoanDocuments({
 export async function getAllApplicationDsbr() {
    const { data } = await apiClient.get(API.loan.getLoans);
 
-   const allowedStatuses = ["Sanctioned", "Active", "Partially Disbursed"];
+   const allowedStatuses = ["Sanctioned", "Active", "Partially Disbursed", "Disbursed"];
 
    if (data && Array.isArray(data.data)) {
     data.data = data.data.filter((loan: any) =>

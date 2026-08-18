@@ -76,13 +76,15 @@ export async function updateLoanApplication({id, payload,}: {
 export async function updateLoanApplicationStatus({
   id,
   status,
+  loan_application_status,
 }: {
   id: string;
   status: string;
+  loan_application_status: string;
 }) {
   const { data } = await apiClient.patch(
     API.loanApplication.updateLoanApplication,
-    { status },
+    { status, loan_application_status },
     {
       params: { id },
     }

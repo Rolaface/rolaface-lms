@@ -380,7 +380,7 @@ const createDisbursementMutation = useMutation({
       form.setValues({
         acNo: item.against_loan || "",
         valueDate: normalizeDateValue(item.disbursement_date || item.posting_date || getTodayDate()),
-        disburseAmount: item.disbursed_amount || "",
+        disburseAmount: (Number(item.disbursed_amount) || 0),
         modeOfPayment: item.mode_of_payment || null,
         disbursementAc: item.disbursement_account || null,
         refDate: normalizeDateValue(item.reference_date || getTodayDate()),
@@ -448,15 +448,71 @@ const createDisbursementMutation = useMutation({
       .filter((item): item is LoanDisbursementChargeRow => Boolean(item));
   };
 
-  const { data: loanAccountDetailsData, isLoading: isLoanAccountChargesLoading, error: loanAccountDetailsError } = useQuery({
+ const { data: loanAccountDetailsData, isLoading: isLoanAccountChargesLoading, error: loanAccountDetailsError } = useQuery({
     queryKey: ["loanAccountDetails", form.values.acNo],
     queryFn: () => getLoanById(form.values.acNo),
     enabled: opened && !!form.values.acNo && (!editId || hasUserChangedLoanAccount),
   });
 
-  useEffect(() => {
+const actualDisbursableAmount = useMemo(() => {
+    const loanData =
+      (loanAccountDetailsData as any)?.message?.data ||
+      (loanAccountDetailsData as any)?.data ||
+      (loanAccountDetailsData as any)?.message ||
+      loanAccountDetailsData;
+
+    if (loanData) {
+      const sanctioned = Number(loanData.loan_amount || 0);
+      const disbursed = Number(loanData.disbursed_amount || 0);
+      return sanctioned - disbursed;
+    }
+
+    // Fallback: loanAccountDetailsData query hasn't fired yet (e.g. edit mode,
+    // account not changed) — derive from the disbursement record itself.
+    if (editId && editDetailsResponse) {
+      const item =
+        (editDetailsResponse as any).message?.data ||
+        (editDetailsResponse as any).data ||
+        (editDetailsResponse as any).message ||
+        editDetailsResponse;
+      const sanctioned = Number(item?.sanctioned_loan_amount || 0);
+      const disbursed = Number(item?.disbursed_amount || 0);
+      return sanctioned - disbursed;
+    }
+
+    return null;
+  }, [loanAccountDetailsData, editId, editDetailsResponse]);
+
+  const canShowTopup = actualDisbursableAmount !== null && actualDisbursableAmount === 0;
+  const selectedLoanDisbursedAmount = useMemo(() => {
+    const loanData =
+      (loanAccountDetailsData as any)?.message?.data ||
+      (loanAccountDetailsData as any)?.data ||
+      (loanAccountDetailsData as any)?.message ||
+      loanAccountDetailsData;
+
+    if (loanData) return Number(loanData.disbursed_amount || 0);
+
+    if (editId && editDetailsResponse) {
+      const item =
+        (editDetailsResponse as any).message?.data ||
+        (editDetailsResponse as any).data ||
+        (editDetailsResponse as any).message ||
+        editDetailsResponse;
+      return Number(item?.disbursed_amount || 0);
+    }
+
+    return 0;
+  }, [loanAccountDetailsData, editId, editDetailsResponse]);
+
+useEffect(() => {
     if (!opened || !form.values.acNo) {
       form.setFieldValue("charges", []);
+      if (!editId) {
+        form.setFieldValue("disburseAmount", "");
+        form.setFieldValue("topupSanctionedCurrent", "");
+        form.setFieldValue("topupOutstandingCurrent", "");
+      }
       return;
     }
     if (editId && !hasUserChangedLoanAccount) return;
@@ -485,21 +541,43 @@ const createDisbursementMutation = useMutation({
 
     form.setFieldValue("topupSanctionedCurrent", sanctioned);
     form.setFieldValue("topupOutstandingCurrent", outstanding);
+    form.setFieldValue("disburseAmount", outstanding);
   }, [opened, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
 
-  useEffect(() => {
+ useEffect(() => {
     const currentSanctioned = Number(form.values.topupSanctionedCurrent || 0);
-    const topup = Number(form.values.topupAmount || 0);
-    form.setFieldValue("topupSanctionedNew", currentSanctioned + topup);
-  }, [form.values.topupSanctionedCurrent, form.values.topupAmount]);
-
-  useEffect(() => {
     const currentOutstanding = Number(form.values.topupOutstandingCurrent || 0);
     const topup = Number(form.values.topupAmount || 0);
+    form.setFieldValue("topupSanctionedNew", currentSanctioned + topup);
     form.setFieldValue("topupOutstandingNew", currentOutstanding + topup);
-  }, [form.values.topupOutstandingCurrent, form.values.topupAmount]);
+   
+  }, [form.values.topupSanctionedCurrent, form.values.topupOutstandingCurrent]);
+
+  useEffect(() => {
+    if (!canShowTopup) return;
+    const outstandingCurrent = Number(form.values.topupOutstandingCurrent || 0);
+    const sanctionedCurrent = Number(form.values.topupSanctionedCurrent || 0);
+    const disburse = Number(form.values.disburseAmount || 0);
+    const topup = disburse - outstandingCurrent;
+
+    form.setFieldValue("topupAmount", topup);
+    form.setFieldValue("topupSanctionedNew", sanctionedCurrent + topup);
+    form.setFieldValue("topupOutstandingNew", outstandingCurrent + topup);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.values.disburseAmount, canShowTopup]);
+  useEffect(() => {
+    if (form.values.isTopup && !canShowTopup) {
+      form.setFieldValue("isTopup", false);
+      if (activeTab === "topup") {
+        setActiveTab("settlement");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canShowTopup]);
 
   const handleChargeUpdate = (index: number, field: "amount" | "treatment_of_charge", value: string) => {
+
+ 
     form.setFieldValue(
       "charges",
       form.values.charges.map((charge, chargeIndex) => {
@@ -517,11 +595,6 @@ const createDisbursementMutation = useMutation({
   useEffect(() => {
     if (!editId) {
       form.setFieldValue("beneficiaryAcNo", selectedLoanApp?.loan_account || "");
-
-      // Auto-populate the disburse amount when a loan is selected
-      if (selectedLoanApp?.loan_amount) {
-        form.setFieldValue("disburseAmount", Number(selectedLoanApp.loan_amount));
-      }
     }
   }, [form.values.acNo, selectedLoanApp]);
 
@@ -639,27 +712,30 @@ const createDisbursementMutation = useMutation({
                     size="sm"
                     withAsterisk
                     maw={230}
-                    label="Disburse Amount"
+                    label="Disbursement Amount"
                     hideControls
                     min={0}
                     placeholder="Enter amount"
                     {...form.getInputProps("disburseAmount")}
                     leftSection={<IconNotes size={14} color="var(--mantine-color-warning-5)" />}
                     thousandSeparator=","
+                     disabled={isView || (canShowTopup && !form.values.isTopup)}
                   />
-                  <Checkbox
-                    mt={22}
-                    label="Topup"
-                    disabled={isView}
-                    checked={form.values.isTopup}
-                    onChange={(event) => {
-                      const checked = event.currentTarget.checked;
-                      form.setFieldValue("isTopup", checked);
-                      if (!checked && activeTab === "topup") {
-                        setActiveTab("settlement");
-                      }
-                    }}
-                  />
+                  {canShowTopup && (
+                    <Checkbox
+                      mt={22}
+                      label="Topup"
+                      disabled={isView}
+                      checked={form.values.isTopup}
+                      onChange={(event) => {
+                        const checked = event.currentTarget.checked;
+                        form.setFieldValue("isTopup", checked);
+                        if (!checked && activeTab === "topup") {
+                          setActiveTab("settlement");
+                        }
+                      }}
+                    />
+                  )}
                 </div>
               </fieldset>
 
@@ -925,7 +1001,17 @@ const createDisbursementMutation = useMutation({
                                   hideControls
                                   min={0}
                                   disabled={isView}
-                                  {...form.getInputProps("topupSanctionedNew")}
+                                  value={form.values.topupSanctionedNew}
+                                  onChange={(value) => {
+                                    const newSanctionedVal = Number(value || 0);
+                                    form.setFieldValue("topupSanctionedNew", value as number | "");
+                                    const currentSanctioned = Number(form.values.topupSanctionedCurrent || 0);
+                                    const currentOutstanding = Number(form.values.topupOutstandingCurrent || 0);
+                                    const topupVal = newSanctionedVal - currentSanctioned;
+                                    form.setFieldValue("topupAmount", topupVal);
+                                    form.setFieldValue("topupOutstandingNew", currentOutstanding + topupVal);
+                                    form.setFieldValue("disburseAmount", currentOutstanding + topupVal);
+                                  }}
                                   thousandSeparator=","
                                 />
                               </Table.Td>
@@ -971,7 +1057,16 @@ const createDisbursementMutation = useMutation({
                             hideControls
                             min={0}
                             disabled={isView}
-                            {...form.getInputProps("topupAmount")}
+                            value={form.values.topupAmount}
+                            onChange={(value) => {
+                              const topupVal = Number(value || 0);
+                              form.setFieldValue("topupAmount", value as number | "");
+                              const currentSanctioned = Number(form.values.topupSanctionedCurrent || 0);
+                              const currentOutstanding = Number(form.values.topupOutstandingCurrent || 0);
+                              form.setFieldValue("topupSanctionedNew", currentSanctioned + topupVal);
+                              form.setFieldValue("topupOutstandingNew", currentOutstanding + topupVal);
+                              form.setFieldValue("disburseAmount", currentOutstanding + topupVal);
+                            }}
                             thousandSeparator=","
                           />
                         </div>
@@ -1007,11 +1102,7 @@ const createDisbursementMutation = useMutation({
                     />
                     <SummaryRow
                       label="Disbursement till Date"
-                      value={
-                        selectedLoanApp
-                          ? `${currencySymbol}${selectedLoanApp.current_disbursed_amount || 0}`
-                          : `${currencySymbol}0`
-                      }
+                      value={`${currencySymbol}${selectedLoanDisbursedAmount}`}
                       bold
                     />
                     <SummaryRow

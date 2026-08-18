@@ -114,7 +114,7 @@ export function BasicDetailsTab({
     const found = products.find((p: any) => p.name === form.values.productCode);
     return found ? found.product_name || found.name : "";
   }, [productResponse, form.values.productCode]);
-
+  const hasLoanAppNumber = !!form.values.loanAppNumber;
   return (
     <div className="flex flex-col gap-3">
       <Paper withBorder radius="lg" shadow="md" p="lg">
@@ -123,7 +123,7 @@ export function BasicDetailsTab({
             label="Customer Number"
             placeholder={isCustomersLoading ? "Loading..." : "Search customer number..."}
             data={customerOptions}
-            disabled={isCustomersLoading}
+            disabled={isCustomersLoading || hasLoanAppNumber}
             searchable
             clearable
             rightSection={chevronDown}
@@ -142,7 +142,7 @@ export function BasicDetailsTab({
             label="Product Code"
             placeholder={isProductsLoading ? "Loading..." : "Search product code..."}
             data={productOptions}
-            disabled={isProductsLoading}
+            disabled={isProductsLoading || hasLoanAppNumber}
             searchable
             clearable={!!form.values.productCode}
             rightSection={chevronDown}
@@ -171,11 +171,13 @@ export function BasicDetailsTab({
           />
           <TextInput
             label="Loan Application Number"
+            disabled={hasLoanAppNumber}
             {...form.getInputProps("loanAppNumber")}
           />
           <TextInput
             label="Ref Number"
             placeholder="Optional reference"
+            disabled={hasLoanAppNumber}
             {...form.getInputProps("refNumber")}
           />
           <div className="flex flex-col gap-1">
@@ -186,15 +188,17 @@ export function BasicDetailsTab({
               <Checkbox
                 size="xs"
                 label="Migrated"
+                disabled={hasLoanAppNumber}
                 checked={form.values.isImport}
                 onChange={(e) => form.setFieldValue("isImport", e.currentTarget.checked)}
               />
             </Group>
+
             <DateInput
               valueFormat="DD-MMM-YYYY"
               placeholder="DD-MMM-YYYY"
               radius="lg"
-              disabled={!form.values.isImport}
+              disabled={!form.values.isImport || hasLoanAppNumber}
               value={toDateObj(form.values.migrationDate)}
               onChange={(date) =>
                 form.setFieldValue("migrationDate", toDateString(date))
@@ -279,7 +283,7 @@ export function BasicDetailsTab({
               placeholder="DD-MMM-YYYY"
               value={toDateObj(maturityDate)}
               disabled
-              onChange={() => {}}
+              onChange={() => { }}
             />
             <DateInput
               label="Repayment Start Date"

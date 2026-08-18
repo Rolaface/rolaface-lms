@@ -67,10 +67,10 @@ export function LoanTermsStep({ form, loanType }: StepProps) {
         />
         <Group justify="space-between" mb="md">
           <Text fz="xs" c="slate.4">
-            K{min.toLocaleString()}
+            ${currencySymbol}{min.toLocaleString()}
           </Text>
           <Text fz="xs" c="slate.4">
-            K{max.toLocaleString()}
+            ${currencySymbol}{max.toLocaleString()}
           </Text>
         </Group>
 

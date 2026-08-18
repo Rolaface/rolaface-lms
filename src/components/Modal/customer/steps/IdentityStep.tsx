@@ -18,6 +18,7 @@ import {
   Modal,
   ScrollArea,
   Grid,
+  Box,
 } from "@mantine/core";
 import {
   IconChevronDown,
@@ -29,6 +30,7 @@ import {
   IconPencil,
   IconDots,
 } from "@tabler/icons-react";
+import { DatePickerInput } from "@mantine/dates";
 import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
 import { readOnlyClassNames } from "../../../constants/customer/constants";
 import { calcAge } from "../../../../utils/customer/utils";
@@ -95,7 +97,14 @@ const chevron = (
   <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
 );
 
-const FIELD_MAW = 220;
+// Sensible cap for grid fields in the Identity form. Too small (the old
+// 200px) left dead space in wide grid columns; no cap at all made every
+// field balloon to ~300px+ regardless of content (Gender/DOB/Nationality
+// don't need that much room). 260px is the sweet spot for this modal's
+// content width at 4 columns — fields read as properly sized for their
+// content, and the grid gap (not empty field padding) does the job of
+// separating columns.
+const FIELD_MAW = 260;
 
 const NATIONALITY_OPTIONS = [
   "Zambian",
@@ -570,9 +579,20 @@ export function IdentityStep(props: IdentityStepProps) {
 
           {typeHeaderRow}
 
-          <SimpleGrid cols={4} spacing="md" verticalSpacing="sm">
+          {/*
+            Widths are in `ch` (character-width, relative to font-size)
+            instead of raw px. A fixed px guess like 220px is still
+            arbitrary — it doesn't actually track the content, and it
+            doesn't adapt if font size or zoom changes. `ch` sizes each
+            field to roughly how many characters it needs to hold typical
+            content (e.g. "Zimbabwean" needs far fewer than a full name),
+            so it's genuinely content-driven. `maxWidth: "100%"` on every
+            field means on a narrow viewport a field will still shrink to
+            fit its wrapped row instead of overflowing.
+          */}
+          <Group gap="md" align="flex-start" wrap="wrap">
             <TextInput
-              maw={FIELD_MAW}
+              style={{ width: "22ch", maxWidth: "100%" }}
               radius="md"
               label="First name"
               placeholder="e.g. Bwalya"
@@ -582,7 +602,7 @@ export function IdentityStep(props: IdentityStepProps) {
               error={errors.firstName}
             />
             <TextInput
-              maw={FIELD_MAW}
+              style={{ width: "16ch", maxWidth: "100%" }}
               radius="md"
               label="Middle name (Optional)"
               placeholder="Optional"
@@ -590,7 +610,7 @@ export function IdentityStep(props: IdentityStepProps) {
               onChange={(e) => setMiddleName(e.currentTarget.value)}
             />
             <TextInput
-              maw={FIELD_MAW}
+              style={{ width: "22ch", maxWidth: "100%" }}
               radius="md"
               label="Last name"
               placeholder="e.g. Mutale"
@@ -600,7 +620,7 @@ export function IdentityStep(props: IdentityStepProps) {
               error={errors.lastName}
             />
             <TextInput
-              maw={FIELD_MAW}
+              style={{ width: "24ch", maxWidth: "100%" }}
               radius="md"
               label="Preferred name (Optional)"
               placeholder="What should we call them?"
@@ -608,7 +628,7 @@ export function IdentityStep(props: IdentityStepProps) {
               onChange={(e) => setPreferredName(e.currentTarget.value)}
             />
             <Select
-              maw={FIELD_MAW}
+              style={{ width: "13ch", maxWidth: "100%" }}
               radius="md"
               searchable
               rightSection={chevron}
@@ -620,26 +640,43 @@ export function IdentityStep(props: IdentityStepProps) {
               onChange={setGender}
               error={errors.gender}
             />
-            <TextInput
-              maw={FIELD_MAW}
-              radius="md"
-              type="date"
-              label="Date of birth"
-              withAsterisk
-              value={dateOfBirth}
-              onChange={(e) => setDateOfBirth(e.currentTarget.value)}
-              error={errors.dateOfBirth}
-            />
-            <TextInput
+            <Box style={{ width: "16ch", maxWidth: "100%" }}>
+              <DatePickerInput
+                radius="md"
+                label="Date of birth"
+                placeholder="DD-MMM-YYYY"
+                value={dateOfBirth ? new Date(dateOfBirth) : null}
+                valueFormat="DD-MMM-YYYY"
+                onChange={(date) =>
+                  setDateOfBirth(
+                    date ? new Date(date).toISOString().split("T")[0] : "",
+                  )
+                }
+                maxDate={new Date()}
+                clearable
+                withAsterisk
+                error={errors.dateOfBirth}
+              />
+
+              {dateOfBirth && (
+                <Text size="xs" c="slate.5" mt={4}>
+                  Age:{" "}
+                  <Text span fw={600} c="slate.7">
+                    {calcAge(dateOfBirth)}
+                  </Text>
+                </Text>
+              )}
+            </Box>
+            {/* <TextInput
               maw={FIELD_MAW}
               radius="md"
               label="Age (calculated)"
               value={calcAge(dateOfBirth)}
               disabled
               classNames={readOnlyClassNames}
-            />
+            /> */}
             <Select
-              maw={FIELD_MAW}
+              style={{ width: "18ch", maxWidth: "100%" }}
               radius="md"
               searchable
               rightSection={chevron}
@@ -652,7 +689,7 @@ export function IdentityStep(props: IdentityStepProps) {
               error={errors.nationality}
             />
             <TextInput
-              maw={FIELD_MAW}
+              style={{ width: "20ch", maxWidth: "100%" }}
               radius="md"
               label="Occupation (Optional)"
               placeholder="e.g. Agronomist"
@@ -660,7 +697,7 @@ export function IdentityStep(props: IdentityStepProps) {
               onChange={(e) => setOccupation(e.currentTarget.value)}
             />
             <Select
-              maw={FIELD_MAW}
+              style={{ width: "18ch", maxWidth: "100%" }}
               radius="md"
               searchable
               rightSection={chevron}
@@ -678,14 +715,14 @@ export function IdentityStep(props: IdentityStepProps) {
               onChange={setIndustry}
             />
             <TextInput
-              maw={FIELD_MAW}
+              style={{ width: "22ch", maxWidth: "100%" }}
               radius="md"
               label="Employer (Optional)"
               placeholder="e.g. Ministry of Agriculture"
               value={employer}
               onChange={(e) => setEmployer(e.currentTarget.value)}
             />
-          </SimpleGrid>
+          </Group>
         </PlainCard>
       )}
 
@@ -725,12 +762,19 @@ export function IdentityStep(props: IdentityStepProps) {
             </Grid.Col>
 
             <Grid.Col span={2}>
-              <TextInput
+              <DatePickerInput
                 radius="md"
-                type="date"
                 label="Incorporation date"
-                value={incorporationDate}
-                onChange={(e) => setIncorporationDate(e.currentTarget.value)}
+                placeholder="DD-MMM-YYYY"
+                value={incorporationDate ? new Date(incorporationDate) : null}
+                valueFormat="DD-MMM-YYYY"
+                onChange={(date) =>
+                  setIncorporationDate(
+                    date ? new Date(date).toISOString().split("T")[0] : "",
+                  )
+                }
+                maxDate={new Date()}
+                clearable
               />
             </Grid.Col>
 

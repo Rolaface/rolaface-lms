@@ -8,9 +8,8 @@ import {
   cancelJournalEntry,
   deleteJournalEntry,
 } from '../../../api/Accounting/Journalentries.api';
-import { showApiError, showSuccess } from '../../../utils/alert';
 import { parseFrappeError } from '../../../utils/Accounitng/Journal-Entry/Journalentry.utils';
-
+import { openCommonModal } from '../../../components/Modal/AlertModal';
 export function useJournalEntries() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [total, setTotal] = useState(0);
@@ -20,7 +19,25 @@ export function useJournalEntries() {
   const [toDate, setToDateState] = useState('');
   const [orderBy, setOrderByState] = useState('creation desc');
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
 
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
   const loadEntries = useCallback(() => {
     setLoading(true);
     fetchJournalEntries({
@@ -36,7 +53,7 @@ export function useJournalEntries() {
         setTotal(res.total);
       })
       .catch((err: any) => {
-        showApiError(parseFrappeError(err) || 'Failed to load journal entries.');
+        showError('Failed to Load Entries', err);
       })
       .finally(() => setLoading(false));
   }, [search, fromDate, toDate, orderBy, pagination.pageIndex, pagination.pageSize]);
@@ -69,55 +86,79 @@ export function useJournalEntries() {
     (name: string) => {
       submitJournalEntry(name)
         .then(() => {
-          showSuccess(`Entry ${name} has been submitted successfully.`);
+          showSuccess('Entry Submitted', `Entry ${name} has been submitted successfully.`);
           loadEntries();
         })
-        .catch((err: any) => showApiError(parseFrappeError(err) || 'Failed to submit entry.'));
+        .catch((err: any) => showError('Submit Failed', err));
     },
     [loadEntries]
   );
 
-  const handleCancel = useCallback(
-    (name: string) => {
-      modals.openConfirmModal({
-        title: 'Cancel Entry',
-        children: <Text size="sm">Are you sure you want to cancel entry "{name}"?</Text>,
-        labels: { confirm: 'Yes, Cancel', cancel: 'No, Keep' },
-        confirmProps: { color: 'red' },
-        onConfirm: async () => {
-          try {
-            await cancelJournalEntry(name);
-            showSuccess(`Entry ${name} has been cancelled successfully.`);
-            loadEntries();
-          } catch (err: any) {
-            showApiError(parseFrappeError(err) || 'Failed to cancel entry.');
-          }
+const handleCancel = useCallback(
+  (name: string) => {
+    openCommonModal({
+      heading: 'Cancel Entry',
+      subtitle: 'Please confirm this action before continuing.',
+      body: (
+        <>
+          Are you sure you want to cancel entry{' '}
+          <Text span fw={600}>{name}</Text>?
+        </>
+      ),
+      color: 'red',
+      buttons: [
+        { label: 'No, Keep', variant: 'default' },
+        {
+          label: 'Yes, Cancel',
+          color: 'red',
+          onClick: async () => {
+            try {
+              await cancelJournalEntry(name);
+              showSuccess('Entry Cancelled', `Entry ${name} has been cancelled successfully.`);
+              loadEntries();
+            } catch (err: any) {
+              showError('Cancel Failed', err);
+            }
+          },
         },
-      });
-    },
-    [loadEntries]
-  );
+      ],
+    });
+  },
+  [loadEntries]
+);
 
-  const handleDelete = useCallback(
-    (name: string) => {
-      modals.openConfirmModal({
-        title: 'Delete Entry',
-        children: <Text size="sm">Are you sure you want to delete entry "{name}"?</Text>,
-        labels: { confirm: 'Yes, Delete', cancel: 'Cancel' },
-        confirmProps: { color: 'red' },
-        onConfirm: async () => {
-          try {
-            await deleteJournalEntry(name);
-            showSuccess(`Entry ${name} has been successfully deleted.`);
-            loadEntries();
-          } catch (err: any) {
-            showApiError(parseFrappeError(err) || 'Failed to delete entry.');
-          }
+const handleDelete = useCallback(
+  (name: string) => {
+    openCommonModal({
+      heading: 'Delete Entry',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete entry{' '}
+          <Text span fw={600}>{name}</Text>?
+        </>
+      ),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: async () => {
+            try {
+              await deleteJournalEntry(name);
+              showSuccess('Entry Deleted', `Entry ${name} has been successfully deleted.`);
+              loadEntries();
+            } catch (err: any) {
+              showError('Delete Failed', err);
+            }
+          },
         },
-      });
-    },
-    [loadEntries]
-  );
+      ],
+    });
+  },
+  [loadEntries]
+);
 
   return {
     loading,

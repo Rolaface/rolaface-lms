@@ -40,14 +40,14 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { modals } from '@mantine/modals';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getAllLoanRepayment,
   deleteLoanRepayment,
   changeLoanRepaymentStatus,
 } from '../../../api/loanRepaymentApi';
-import { showApiError, showSuccess } from '../../../utils/alert';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
+import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { loanCapitalizationModal } from './LoanCapitalizationModalStore';
 
 const CAPITALIZATION_TYPES = ['Interest Capitalization', 'Penalty Capitalization', 'Charges Capitalization', 'Principal Capitalization'];
@@ -130,8 +130,6 @@ export function LoanCapitalization() {
   const [status, setStatus] = useState('all');
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  
-  
 
   const { data: repaymentsResponse, isLoading } = useQuery({
     queryKey: ['loanRepayments'],
@@ -140,15 +138,33 @@ export function LoanCapitalization() {
 
   const queryClient = useQueryClient();
 
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
   const { mutate: removeCapitalization, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteLoanRepayment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-      showSuccess('Loan capitalization deleted successfully.');
+      showSuccess('Capitalization Deleted', 'Loan capitalization deleted successfully.');
     },
-    onError: () => {
-      showApiError('Something went wrong while deleting the capitalization.');
-    },
+    onError: (error: any) => showError('Delete Failed', error),
   });
 
   const { mutate: updateStatus } = useMutation({
@@ -156,14 +172,15 @@ export function LoanCapitalization() {
       changeLoanRepaymentStatus(id, action),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+      const isCancel = variables.action === 'cancelled';
       showSuccess(
-        variables.action === 'approved'
-          ? 'Loan capitalization submitted successfully.'
-          : 'Loan capitalization cancelled successfully.'
+        isCancel ? 'Capitalization Cancelled' : 'Capitalization Submitted',
+        isCancel ? 'Loan capitalization cancelled successfully.' : 'Loan capitalization submitted successfully.'
       );
     },
-    onError: () => {
-      showApiError('Something went wrong while updating the status.');
+    onError: (error: any, variables) => {
+      const isCancel = variables.action === 'cancelled';
+      showError(isCancel ? 'Cancel Failed' : 'Submit Failed', error);
     },
   });
 
@@ -195,17 +212,58 @@ export function LoanCapitalization() {
     });
   }, [rowsData, search, loanType, status]);
 
-  const handleDelete = (id: string) => {
-    modals.openConfirmModal({
-      title: 'Delete loan capitalization',
-      children: (
-        <Text size="sm">
-          Are you sure you want to delete capitalization <b>{id}</b>? This cannot be undone.
-        </Text>
+  const handleDelete = (row: CapitalizationRow) => {
+    openCommonModal({
+      heading: 'Delete Loan Capitalization',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete capitalization{' '}
+          <Text span fw={600}>
+            {row.id}
+          </Text>
+          ?
+        </>
       ),
-      labels: { confirm: 'Delete', cancel: 'Cancel' },
-      confirmProps: { color: 'danger' },
-      onConfirm: () => removeCapitalization(id),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => {
+            removeCapitalization(row.id);
+          },
+        },
+      ],
+    });
+  };
+
+  const handleStatusChange = (row: CapitalizationRow, action: 'approved' | 'cancelled') => {
+    const isCancel = action === 'cancelled';
+    openCommonModal({
+      heading: isCancel ? 'Cancel Capitalization' : 'Submit Capitalization',
+      subtitle: 'Please confirm this action before continuing.',
+      body: (
+        <>
+          Are you sure you want to {isCancel ? 'cancel' : 'submit'} capitalization{' '}
+          <Text span fw={600}>
+            {row.id}
+          </Text>
+          ?
+        </>
+      ),
+      color: isCancel ? 'red' : 'green',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: isCancel ? 'Cancel Capitalization' : 'Submit',
+          color: isCancel ? 'red' : 'green',
+          onClick: () => {
+            updateStatus({ id: row.id, action });
+          },
+        },
+      ],
     });
   };
 
@@ -310,7 +368,7 @@ export function LoanCapitalization() {
                   color={canDelete ? 'danger' : 'slate'}
                   radius="md"
                   disabled={!canDelete || isDeleting}
-                  onClick={() => handleDelete(row.id)}
+                  onClick={() => handleDelete(row)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
@@ -324,11 +382,11 @@ export function LoanCapitalization() {
                   </Menu.Target>
                   <Menu.Dropdown>
                     {isDraft ? (
-                      <Menu.Item onClick={() => updateStatus({ id: row.id, action: 'approved' })}>
+                      <Menu.Item onClick={() => handleStatusChange(row, 'approved')}>
                         Submit
                       </Menu.Item>
                     ) : (
-                      <Menu.Item color="danger" onClick={() => updateStatus({ id: row.id, action: 'cancelled' })}>
+                      <Menu.Item color="danger" onClick={() => handleStatusChange(row, 'cancelled')}>
                         Cancel
                       </Menu.Item>
                     )}
@@ -370,8 +428,6 @@ export function LoanCapitalization() {
 
   return (
     <Stack gap="lg" p="lg">
-      
-
       {/* Scoped, purely visual — mirrors Customer.tsx row/search styling */}
       <style>{`
         .lms-cap-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
