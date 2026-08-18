@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { showApiError, showSuccess, showValidationError } from '../../../utils/alert';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
 import {
   createAccount,
   updateAccount,
@@ -62,7 +62,25 @@ export function useAccountForm({
   const [errors, setErrors] = useState<NewAccountErrors>({});
   const [loading, setLoading] = useState(false);
   const isEditMode = !!editAccount;
+const showError = (heading: string, body: string) => {
+  openCommonModal({
+    heading,
+    subtitle: "We couldn't complete your request.",
+    body,
+    color: 'red',
+    buttons: [{ label: 'Close', color: 'red' }],
+  });
+};
 
+const showSuccessModal = (heading: string, body: string) => {
+  openCommonModal({
+    heading,
+    subtitle: '',
+    body,
+    color: 'green',
+    buttons: [{ label: 'Close', color: 'green' }],
+  });
+};
   // Re-seed the form whenever the target (edit / add-child / plain create) changes
   useEffect(() => {
     if (editAccount) {
@@ -122,9 +140,9 @@ export function useAccountForm({
     setErrors({});
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
     if (!validate()) {
-      showValidationError('Please fix the highlighted fields.');
+      showError('Validation Error', 'Please fix the highlighted fields.');
       return;
     }
 
@@ -148,22 +166,21 @@ export function useAccountForm({
           name: editAccount.name,
           account_name: editAccount.account_name,
         });
-        showSuccess(res?.message?.message ?? 'Account updated successfully');
+        showSuccessModal('Account Updated', res?.message?.message ?? 'Account updated successfully.');
       } else {
         const res = await createAccount({
           ...basePayload,
           account_name: form.accountName.trim(),
         });
-        showSuccess(res?.message?.message ?? 'Account created successfully');
+        showSuccessModal('Account Created', res?.message?.message ?? 'Account created successfully.');
       }
 
       onSuccess?.();
     } catch (err: any) {
-      showApiError(err?.response?.data?.message ?? err?.message ?? 'Something went wrong');
+      showError('Save Failed', err?.response?.data?.message ?? err?.message ?? 'Something went wrong.');
     } finally {
       setLoading(false);
     }
   };
-
   return { form, setField, errors, loading, isEditMode, handleSubmit, reset };
 }

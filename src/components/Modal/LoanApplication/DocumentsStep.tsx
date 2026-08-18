@@ -60,6 +60,7 @@ function FileField({
         clearable
         radius="md"
         mt={4}
+        accept="application/pdf,image/jpeg,image/jpg,.pdf,.jpg,.jpeg"
         styles={{
           input: {
             fontSize: '14px',
@@ -70,11 +71,13 @@ function FileField({
           }
         }}
       />
+      <Text fz="xs" c="slate.5" mt={4}>
+        Supported formats: PDF, JPG, JPEG
+      </Text>
     </div>
   );
 }
 
-// export function DocumentsStep({ form, loanType }: StepProps) {
 export function DocumentsStep({ form, loanType, directorDocsError }: StepProps) {
   const [opened, { open, close }] = useDisclosure(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);

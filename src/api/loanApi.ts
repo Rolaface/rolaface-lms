@@ -38,16 +38,11 @@ export async function attachLoanDocuments({
   return data;
 }
 
-export async function getAllLoans() {
-  const { data } = await apiClient.get(API.loan.getLoans);
-  return data;
-  
-}
 
 export async function getAllApplicationDsbr() {
    const { data } = await apiClient.get(API.loan.getLoans);
 
-   const allowedStatuses = ["Sanctioned", "Active", "Partially Disbursed"];
+   const allowedStatuses = ["Sanctioned", "Active", "Partially Disbursed", "Disbursed"];
 
    if (data && Array.isArray(data.data)) {
     data.data = data.data.filter((loan: any) =>
@@ -95,5 +90,30 @@ export async function updateLoan({id, payload,}: {
 
 export async function getReapymentScheduleById(id: string) {
   const { data } = await apiClient.get(API.loan.getLoanScheduleById, { params: { id } });
+  return data;
+}
+
+export interface GetLoansParams {
+  search?: string;
+  status?: string[];
+  loan_product?: string[];
+  page?: number;
+  page_size?: number;
+}
+
+export async function getAllLoans(params: GetLoansParams = {}) {
+  const queryParams: Record<string, string | number> = {};
+
+  if (params.search) queryParams.search = params.search;
+  if (params.status && params.status.length > 0) {
+    queryParams.status = JSON.stringify(params.status);
+  }
+  if (params.loan_product && params.loan_product.length > 0) {
+    queryParams.loan_product = JSON.stringify(params.loan_product);
+  }
+  if (params.page) queryParams.page = params.page;
+  if (params.page_size) queryParams.page_size = params.page_size;
+
+  const { data } = await apiClient.get(API.loan.getLoans, { params: queryParams });
   return data;
 }

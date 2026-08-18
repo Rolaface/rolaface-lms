@@ -64,6 +64,7 @@ export interface LoanApplicationRow {
   application_type: string;
   amount: number;
   customer: string | null;
+  loan_application_status: string;
   status: string;
   application_date: string;
   first_name: string | null;
@@ -72,16 +73,13 @@ export interface LoanApplicationRow {
 }
 const columnHelper = createColumnHelper<LoanApplicationRow>();
 
-// const STATUS_OPTIONS = ['Open', 'Draft', 'Approved', 'Sanctioned', 'Rejected', 'Closed'];
-const STATUS_OPTIONS = ['Draft', 'Approved', 'Rejected'];
+ const STATUS_OPTIONS = ['Pending', 'Approved', 'Created', 'Rejected'];
 
 export const STATUS_COLOR: Record<string, string> = {
-  Open: 'info',
-  Draft: 'slate',
+  Pending: 'warning',  
   Approved: 'info',
-  Sanctioned: 'success',
+  Created: 'success',
   Rejected: 'danger',
-  Closed: 'slate',
 };
 export function getDisplayStatus(status: string) {
   if (status === 'Cancelled') return 'Rejected';
@@ -169,7 +167,6 @@ export function LoanApplication() {
 const [bookingApplicationId, setBookingApplicationId] = useState<string | null>(null);
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
-  const [opened, { open, close }] = useDisclosure(false);
   const companyName = useCompanyStore((state) => state.companyName);
  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
       const currencySymbol = getSymbol(companyCurrency);
@@ -196,49 +193,34 @@ const [bookingApplicationId, setBookingApplicationId] = useState<string | null>(
     };
 
 const statusMutation = useMutation({
-  mutationFn: ({ id, status }: { id: string; status: string }) =>
-    updateLoanApplicationStatus({ id, status }),
-  // onSuccess: () => {
+  mutationFn: ({ 
+    id, 
+    status, 
+    loan_application_status 
+  }: { 
+    id: string; 
+    status: string; 
+    loan_application_status: string; 
+  }) => updateLoanApplicationStatus({ id, status, loan_application_status }),
+  
   onSuccess: (_, variables) => {
     queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
     showSuccess(
       'Status Updated', 
-      `Loan Application ${variables.id} was ${getDisplayStatus(variables.status)} successfully.`
+      `Loan Application ${variables.id} was ${variables.loan_application_status} successfully.`
     );
   },
-   onError: (error: any) => {
-     openCommonModal({
-       heading: "Action Failed",
-       subtitle: "We couldn't complete your request.",
-       body: parseFrappeError(error),
-       color: "red",
-   
-       buttons: [
-         {
-           label: "Close",
-           color: "red",
-         },
-       ],
-     });
-   },
-  });
+  onError: (error: any) => {
+    openCommonModal({
+      heading: "Action Failed",
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  },
+});
 
-// const convertToLoanMutation = useMutation({
-//   mutationFn: ({
-//     id,
-//     loan_product,
-//   }: {
-//     id: string;
-//     loan_product: string;
-//   }) => convertCustomLoanApplicationToLoan({ id, loan_product }),
-
-//   // onSuccess: () => {
-//   onSuccess: (_, variables) => {
-//     queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
-//     closeBooking();
-//     showSuccess("Loan Created", `Application ${variables.id} was successfully converted to a loan.`
-//     );
-//   },
 const convertToLoanMutation = useMutation({
   mutationFn: ({
     id,
@@ -248,7 +230,16 @@ const convertToLoanMutation = useMutation({
     loan_product: string;
   }) => convertCustomLoanApplicationToLoan({ id, loan_product }),
 
-  onSuccess: (data, variables) => {
+ onSuccess: async (data, variables) => {
+    try {
+      await updateLoanApplicationStatus({
+        id: variables.id,
+        status: "Submitted", // Keep system doc status as Submitted
+        loan_application_status: "Created", // Update your custom status
+      });
+    } catch (error) {
+      console.error("Failed to update application status to Created", error);
+    }
     queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
     closeBooking();
     showSuccess("Loan Created", `Application ${variables.id} was successfully converted to a loan.`);
@@ -329,7 +320,8 @@ const convertToLoanMutation = useMutation({
         (a.customer ?? '').toLowerCase().includes(q) ||
         (a.application_type ?? '').toLowerCase().includes(q);
       const matchesType = !applicationType || a.application_type === applicationType;
-      const matchesStatus = status === 'all' || a.status === status;
+      // const matchesStatus = status === 'all' || a.status === status;
+      const matchesStatus = status === 'all' || a.loan_application_status === status;
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [data, search, company, applicationType, status]);
@@ -340,10 +332,6 @@ const convertToLoanMutation = useMutation({
     }
   }, [viewingApplicationId, data]);
 
-  // const handleAdd = () => {
-  //   setEditingId(null);
-  //   open();
-  // };
 const handleAdd = () => {
     loanApplicationModal.open({ loanApplicationId: null });
   };
@@ -357,27 +345,13 @@ const handleAdd = () => {
     setViewingApplicationId(id);
   };
 
-  // const handleEdit = (id: string) => {
-  //   setEditingId(id);
-  //   open();
-  // };
-
-  const handleModalClose = () => {
-    setEditingId(null);
-    close();
-  };
-
  const confirmApprove = (id: string) => {
   openCommonModal({
     heading: "Approve Loan Application",
     subtitle: "Please confirm this action before continuing.",
     body: (
       <>
-        Are you sure you want to approve loan application{" "}
-        <Text span fw={600}>
-          {id}
-        </Text>
-        ?
+        Are you sure you want to approve loan application <Text span fw={600}>{id}</Text>?
       </>
     ),
     color: "green",
@@ -386,22 +360,23 @@ const handleAdd = () => {
       {
         label: "Approve",
         color: "green",
-        onClick: () => statusMutation.mutate({ id, status: "Submitted" }),
+        onClick: () => statusMutation.mutate({ 
+          id, 
+          status: "Submitted", // Updates system state
+          loan_application_status: "Approved" // Updates your custom state
+        }),
       },
     ],
   });
 };
+
 const confirmReject = (id: string) => {
   openCommonModal({
     heading: "Reject Loan Application",
     subtitle: "This action cannot be undone.",
     body: (
       <>
-        Are you sure you want to reject loan application{" "}
-        <Text span fw={600}>
-          {id}
-        </Text>
-        ?
+        Are you sure you want to reject loan application <Text span fw={600}>{id}</Text>?
       </>
     ),
     color: "red",
@@ -410,7 +385,11 @@ const confirmReject = (id: string) => {
       {
         label: "Reject",
         color: "red",
-        onClick: () => statusMutation.mutate({ id, status: "Cancelled" }),
+        onClick: () => statusMutation.mutate({ 
+          id, 
+          status: "Cancelled", // Updates system state
+          loan_application_status: "Rejected" // Updates your custom state
+        }),
       },
     ],
   });
@@ -520,98 +499,98 @@ columnHelper.accessor('amount', {
           </Text>
         ),
       }),
-//      columnHelper.accessor('status', {
+// columnHelper.accessor('status', {
 //   header: 'Status',
-//   cell: (info) => {
-//     const status = info.getValue();
-
-//     const displayStatus =
-//       status === 'Cancelled'
-//         ? 'Rejected'
-//         : status === 'Submitted'
-//           ? 'Approved'
-//           : status;
-
-//     return <StatusBadge status={displayStatus} />;
-//   },
+//   cell: (info) => <StatusBadge status={getDisplayStatus(info.getValue())} />,
 // }),
-columnHelper.accessor('status', {
+//       columnHelper.accessor('application_date', {
+//         header: 'Application Date',
+//         cell: (info) => (
+//           <Text fz="xs" c="slate.6">
+//             {formatDate(info.getValue())}
+//           </Text>
+//         ),
+//       }),
+columnHelper.accessor('loan_application_status', {
   header: 'Status',
-  cell: (info) => <StatusBadge status={getDisplayStatus(info.getValue())} />,
+  cell: (info) => <StatusBadge status={info.getValue()} />,
 }),
-      columnHelper.accessor('application_date', {
-        header: 'Application Date',
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {formatDate(info.getValue())}
-          </Text>
-        ),
-      }),
       columnHelper.display({
-        id: 'actions',
-        header: () => (
-          <Text fz="xs" fw={600} ta="right" w="100%">
-            Actions
-          </Text>
-        ),
-        cell: (info) => {
-          const row = info.row.original;
-          const isDraft = row.status === 'Draft';
-          const isCancelled = row.status === 'Cancelled';
-          return (
-            <Group justify="flex-end" gap={6} wrap="nowrap" className="lms-row-actions">
-              <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="gray" onClick={() => handleView(row.name)}>
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={isDraft ? 'Edit' : 'Only Open/Draft applications can be edited'} withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={isDraft ? 'brand' : 'gray'}
-                  disabled={!isDraft}
-                  onClick={() => handleEdit(row.name)}
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-             <Tooltip label={isDraft || isCancelled ? 'Delete' : 'Only Draft/Cancelled applications can be deleted'} withArrow>
-  <ActionIcon
-    size="sm"
-    variant="subtle"
-    color={isDraft || isCancelled ? 'danger' : 'gray'}
-    disabled={(!isDraft && !isCancelled) || deleteMutation.isPending}
-    onClick={() => confirmDelete(row.name)}
-  >
-    <IconTrash size={14} />
-  </ActionIcon>
-</Tooltip>
-              <Menu shadow="md" width={180} position="bottom-end" disabled={isCancelled}>
-  <Menu.Target>
-    <ActionIcon size="sm" variant="subtle" color="gray" disabled={isCancelled}>
-      <IconDotsVertical size={14} />
-    </ActionIcon>
-  </Menu.Target>
-  <Menu.Dropdown>
-    {isDraft ? (
-      <>
-        <Menu.Item onClick={() => confirmApprove(row.name)}>Approve</Menu.Item>
-        <Menu.Item color="red" onClick={() => confirmReject(row.name)}>
-          Reject
-        </Menu.Item>
-      </>
-    ) : (
-      <Menu.Item onClick={() => confirmCreateLoanBooking(row.name)}>
-        Create Loan
-      </Menu.Item>
-    )}
-  </Menu.Dropdown>
-</Menu>
-            </Group>
-          );
-        },
-      }),
+  id: 'actions',
+  header: () => (
+    <Text fz="xs" fw={600} ta="right" w="100%">
+      Actions
+    </Text>
+  ),
+  cell: (info) => {
+    const row = info.row.original;
+    const currentStatus = row.loan_application_status;
+    
+    const isPending = currentStatus === 'Pending';
+    const isApproved = currentStatus === 'Approved';
+    const isCreated = currentStatus === 'Created';
+    const isRejected = currentStatus === 'Rejected';
+    
+    const menuDisabled = isCreated || isRejected;
+
+    return (
+      <Group justify="flex-end" gap={6} wrap="nowrap" className="lms-row-actions">
+        <Tooltip label="View" withArrow>
+          <ActionIcon size="sm" variant="subtle" color="gray" onClick={() => handleView(row.name)}>
+            <IconEye size={14} />
+          </ActionIcon>
+        </Tooltip>
+        
+        <Tooltip label={isPending ? 'Edit' : 'Only Pending applications can be edited'} withArrow>
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            color={isPending ? 'brand' : 'gray'}
+            disabled={!isPending}
+            onClick={() => handleEdit(row.name)}
+          >
+            <IconPencil size={14} />
+          </ActionIcon>
+        </Tooltip>
+        
+        <Tooltip label={isPending || isRejected ? 'Delete' : 'Only Pending/Rejected applications can be deleted'} withArrow>
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            color={isPending || isRejected ? 'danger' : 'gray'}
+            disabled={(!isPending && !isRejected) || deleteMutation.isPending}
+            onClick={() => confirmDelete(row.name)}
+          >
+            <IconTrash size={14} />
+          </ActionIcon>
+        </Tooltip>
+        
+        <Menu shadow="md" width={180} position="bottom-end" disabled={menuDisabled}>
+          <Menu.Target>
+            <ActionIcon size="sm" variant="subtle" color="gray" disabled={menuDisabled}>
+              <IconDotsVertical size={14} />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {isPending && (
+              <>
+                <Menu.Item onClick={() => confirmApprove(row.name)}>Approve</Menu.Item>
+                <Menu.Item color="red" onClick={() => confirmReject(row.name)}>
+                  Reject
+                </Menu.Item>
+              </>
+            )}
+            {isApproved && (
+              <Menu.Item onClick={() => confirmCreateLoanBooking(row.name)}>
+                Create Loan
+              </Menu.Item>
+            )}
+          </Menu.Dropdown>
+        </Menu>
+      </Group>
+    );
+  },
+}),
     ],
     [],
   );

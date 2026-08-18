@@ -22,7 +22,8 @@ import {
 import { CURRENCIES, FREQUENCIES } from "./Constants";
 import { useQuery } from "@tanstack/react-query";
 import { getAllCustomers } from "../../../api/customerApi";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useDebouncedValue } from "@mantine/hooks";
 import { getAllLoanProducts } from "../../../api/productApi";
 import { getSymbol } from "../../../store/currencyStore";
 import { useCompanyStore } from "../../../store/companyStore";
@@ -42,19 +43,23 @@ export function BasicDetailsTab({
   maturityDate,
   loanAcNumber,
 }: BasicDetailsTabProps) {
-    const companyCurrency = useCompanyStore((state) => state.baseCurrency);
-    const currencySymbol = getSymbol(companyCurrency);
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencySymbol = getSymbol(companyCurrency);
   const moratoriumEnabled = !!form.values.moratoriumType;
-const toDateObj = (value: string | null | undefined) => (value ? new Date(value) : null);
-// const toDateString = (date: Date | null) => (date ? date.toISOString().slice(0, 10) : "");
-const toDateString = (date: Date | string | null) => {
-  if (!date) return "";
-  const d = date instanceof Date ? date : new Date(date);
-  return d.toISOString().slice(0, 10);
-};
+  const toDateObj = (value: string | null | undefined) => (value ? new Date(value) : null);
+  const toDateString = (date: Date | string | null) => {
+    if (!date) return "";
+    const d = date instanceof Date ? date : new Date(date);
+    return d.toISOString().slice(0, 10);
+  };
+
+  // ---- Customer Number: backend search, debounced ----
+  const [customerSearchInput, setCustomerSearchInput] = useState("");
+  const [debouncedCustomerSearch] = useDebouncedValue(customerSearchInput, 400);
+
   const { data: customerResponse, isLoading: isCustomersLoading } = useQuery({
-    queryKey: ["customers"],
-    queryFn: getAllCustomers,
+    queryKey: ["customers", debouncedCustomerSearch],
+    queryFn: () => getAllCustomers({ search: debouncedCustomerSearch || undefined }),
   });
 
   const customerOptions = useMemo(() => {
@@ -65,11 +70,31 @@ const toDateString = (date: Date | string | null) => {
     }));
   }, [customerResponse]);
 
-  const selectedCustomerName = useMemo(() => {
+  // Cache value->label pairs across searches so a previously selected
+  // customer's name doesn't disappear once the search text changes
+  // (since results are now backend-filtered and no longer a static full list).
+  const [customerLabelMap, setCustomerLabelMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
     const customers = customerResponse?.data || [];
-    const found = customers.find((c: any) => c.value === form.values.customerNumber);
-    return found ? found.label : "";
-  }, [customerResponse, form.values.customerNumber]);
+    if (customers.length === 0) return;
+    setCustomerLabelMap((prev) => {
+      const next = { ...prev };
+      customers.forEach((c: any) => {
+        next[c.value] = c.label;
+      });
+      return next;
+    });
+  }, [customerResponse]);
+
+  const selectedCustomerName = form.values.customerNumber
+    ? customerLabelMap[form.values.customerNumber] || ""
+    : "";
+  // NOTE: in edit mode, if the loan's existing customer never appears in a
+  // fetched search result (e.g. a large customer base and the default/empty
+  // search doesn't include them), this will show blank until searched by
+  // name/code. There's no getCustomerById endpoint in what was shared — if
+  // one exists, tell me and I'll wire a direct lookup here instead.
 
   const { data: productResponse, isLoading: isProductsLoading, refetch: refetchProducts } = useQuery({
     queryKey: ["loanProducts"],
@@ -89,7 +114,7 @@ const toDateString = (date: Date | string | null) => {
     const found = products.find((p: any) => p.name === form.values.productCode);
     return found ? found.product_name || found.name : "";
   }, [productResponse, form.values.productCode]);
-
+  const hasLoanAppNumber = !!form.values.loanAppNumber;
   return (
     <div className="flex flex-col gap-3">
       <Paper withBorder radius="lg" shadow="md" p="lg">
@@ -98,10 +123,13 @@ const toDateString = (date: Date | string | null) => {
             label="Customer Number"
             placeholder={isCustomersLoading ? "Loading..." : "Search customer number..."}
             data={customerOptions}
-            disabled={isCustomersLoading}
+            disabled={isCustomersLoading || hasLoanAppNumber}
             searchable
             clearable
             rightSection={chevronDown}
+            searchValue={customerSearchInput}
+            onSearchChange={setCustomerSearchInput}
+            filter={({ options }) => options}
             {...form.getInputProps("customerNumber")}
           />
           <TextInput
@@ -114,9 +142,9 @@ const toDateString = (date: Date | string | null) => {
             label="Product Code"
             placeholder={isProductsLoading ? "Loading..." : "Search product code..."}
             data={productOptions}
-            disabled={isProductsLoading}
+            disabled={isProductsLoading || hasLoanAppNumber}
             searchable
-             clearable={!!form.values.productCode}  
+            clearable={!!form.values.productCode}
             rightSection={chevronDown}
             value={form.values.productCode}
             error={form.errors.productCode}
@@ -143,11 +171,13 @@ const toDateString = (date: Date | string | null) => {
           />
           <TextInput
             label="Loan Application Number"
+            disabled={hasLoanAppNumber}
             {...form.getInputProps("loanAppNumber")}
           />
           <TextInput
             label="Ref Number"
             placeholder="Optional reference"
+            disabled={hasLoanAppNumber}
             {...form.getInputProps("refNumber")}
           />
           <div className="flex flex-col gap-1">
@@ -158,25 +188,22 @@ const toDateString = (date: Date | string | null) => {
               <Checkbox
                 size="xs"
                 label="Migrated"
+                disabled={hasLoanAppNumber}
                 checked={form.values.isImport}
                 onChange={(e) => form.setFieldValue("isImport", e.currentTarget.checked)}
               />
             </Group>
-            {/* <TextInput
-              type="date"
-              disabled={!form.values.isImport}
-              {...form.getInputProps("migrationDate")}
-            /> */}
-           <DateInput
-  valueFormat="DD-MMM-YYYY"
-  placeholder="DD-MMM-YYYY"
-  radius="lg"
-  disabled={!form.values.isImport}
-  value={toDateObj(form.values.migrationDate)}
-  onChange={(date) =>
-    form.setFieldValue("migrationDate", toDateString(date))
-  }
-/>
+
+            <DateInput
+              valueFormat="DD-MMM-YYYY"
+              placeholder="DD-MMM-YYYY"
+              radius="lg"
+              disabled={!form.values.isImport || hasLoanAppNumber}
+              value={toDateObj(form.values.migrationDate)}
+              onChange={(date) =>
+                form.setFieldValue("migrationDate", toDateString(date))
+              }
+            />
           </div>
         </SimpleGrid>
       </Paper>
@@ -184,33 +211,22 @@ const toDateString = (date: Date | string | null) => {
       <Paper withBorder radius="lg" shadow="md" p="lg">
         <div className="flex flex-col gap-3">
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
-            {/* <TextInput
-              type="date"
+            <DateInput
               label="Transaction Date"
+              valueFormat="DD-MMM-YYYY"
+              placeholder="DD-MMM-YYYY"
               disabled
-              {...form.getInputProps("trnDate")}
-            /> */}
+              value={toDateObj(form.values.trnDate)}
+              onChange={(date) => form.setFieldValue("trnDate", toDateString(date))}
+            />
             <DateInput
-  label="Transaction Date"
-  valueFormat="DD-MMM-YYYY"
-  placeholder="DD-MMM-YYYY"
-  disabled
-  value={toDateObj(form.values.trnDate)}
-  onChange={(date) => form.setFieldValue("trnDate", toDateString(date))}
-/>
-            {/* <TextInput
-              type="date"
               label="Value Date"
-              {...form.getInputProps("valueDate")}
-            /> */}
-            <DateInput
-  label="Value Date"
-  withAsterisk
-  valueFormat="DD-MMM-YYYY"
-  placeholder="DD-MMM-YYYY"
-  value={toDateObj(form.values.valueDate)}
-  onChange={(date) => form.setFieldValue("valueDate", toDateString(date))}
-/>
+              withAsterisk
+              valueFormat="DD-MMM-YYYY"
+              placeholder="DD-MMM-YYYY"
+              value={toDateObj(form.values.valueDate)}
+              onChange={(date) => form.setFieldValue("valueDate", toDateString(date))}
+            />
             <TextInput
               label="Currency"
               value={companyCurrency}
@@ -226,7 +242,6 @@ const toDateString = (date: Date | string | null) => {
             />
           </SimpleGrid>
 
-          {/* Frequency and Repayment Amount swapped */}
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
             <Input.Wrapper label="Fixed Repayments In">
               <SegmentedControl
@@ -261,54 +276,40 @@ const toDateString = (date: Date | string | null) => {
             />
           </SimpleGrid>
 
-         
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
-            {/* <TextInput
-              type="date"
+            <DateInput
               label="Maturity Date"
-              placeholder="Auto-calculated"
-              value={maturityDate}
+              valueFormat="DD-MMM-YYYY"
+              placeholder="DD-MMM-YYYY"
+              value={toDateObj(maturityDate)}
               disabled
-            /> */}
+              onChange={() => { }}
+            />
             <DateInput
-  label="Maturity Date"
-  valueFormat="DD-MMM-YYYY"
-  placeholder="DD-MMM-YYYY"
-  value={toDateObj(maturityDate)}
-  disabled
-  onChange={() => {}}
-/>
-            {/* <TextInput
-              type="date"
               label="Repayment Start Date"
-              {...form.getInputProps("repaymentStartDate")}
-            /> */}
-            <DateInput
-  label="Repayment Start Date"
-  withAsterisk
-   valueFormat="DD-MMM-YYYY"
-  placeholder="DD-MMM-YYYY"
-  value={toDateObj(form.values.repaymentStartDate)}
-  onChange={(date) => form.setFieldValue("repaymentStartDate", toDateString(date))}
-/>
-  <div className="flex items-center h-full">
-    <Checkbox
-      size="xs"
-      label="Auto Disbursement on Loan Booking"
-      checked={form.values.auto_create_disbursement_on_loan_booking}
-      onChange={(e) =>
-        form.setFieldValue(
-          "auto_create_disbursement_on_loan_booking",
-          e.currentTarget.checked
-        )
-      }
-    />
-  </div>
+              withAsterisk
+              valueFormat="DD-MMM-YYYY"
+              placeholder="DD-MMM-YYYY"
+              value={toDateObj(form.values.repaymentStartDate)}
+              onChange={(date) => form.setFieldValue("repaymentStartDate", toDateString(date))}
+            />
+            <div className="flex items-center h-full">
+              <Checkbox
+                size="xs"
+                label="Auto Disbursement on Loan Booking"
+                checked={form.values.auto_create_disbursement_on_loan_booking}
+                onChange={(e) =>
+                  form.setFieldValue(
+                    "auto_create_disbursement_on_loan_booking",
+                    e.currentTarget.checked
+                  )
+                }
+              />
+            </div>
           </SimpleGrid>
         </div>
       </Paper>
 
-    
       <Paper withBorder radius="lg" shadow="md" p="lg">
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
           <Input.Wrapper label="Moratorium Type">

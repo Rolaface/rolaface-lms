@@ -214,29 +214,6 @@ const handleRemoveCollateralItem = (id: string) => {
     });
   },
 });
-  
-  // const createLoanMutation = useMutation({
-  //   mutationFn: createLoan,
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({ queryKey: ["loans"] });
-  //     handleModalClose();
-  //   },
-  //   onError: (error: any) => {
-  //     openCommonModal({
-  //       heading: "Action Failed",
-  //       subtitle: "We couldn't complete your request.",
-  //       body: parseFrappeError(error),
-  //       color: "red",
-    
-  //       buttons: [
-  //         {
-  //           label: "Close",
-  //           color: "red",
-  //         },
-  //       ],
-  //     });
-  //   },
-  // });
 
 const createLoanMutation = useMutation({
   mutationFn: createLoan,
@@ -341,9 +318,9 @@ const handleSubmit = (values: typeof form.values) => {
   };
 
   const { data: loanProductDetails } = useQuery({
-  queryKey: ["loanProductDetails", form.values.productCode],
+  queryKey: ["loanProductDetails", form.values.productCode, opened],
   queryFn: () => getLoanProductById(form.values.productCode as string),
-  enabled: !!form.values.productCode,
+  enabled: !!form.values.productCode && opened,
 });
 
 useEffect(() => {
@@ -354,12 +331,13 @@ useEffect(() => {
     return;
   }
 
+  // UPDATED: Catching multiple property names (charge vs charge_type) to ensure mapping works
   const mappedCharges: ChargeRow[] = (product.loan_charges || []).map((lc: any) => ({
-    id: lc.name ?? Date.now().toString(),
-    feeName: lc.charge_type ?? "",
+    id: lc.name ?? Date.now().toString() + Math.random(),
+    feeName: lc.charge ?? lc.charge_type ?? "",  
     amount: lc.amount ?? "",
-    account: "",
-    treatment: "",
+    account: lc.income_account ?? lc.account ?? "",  
+    treatment: lc.treatment_of_charge ?? lc.treatment ?? "",  
   }));
 
   if (mappedCharges.length > 0) {
@@ -368,7 +346,7 @@ useEffect(() => {
 
   setChargeSectionDefaults({
     interestRate: product.rate_of_interest ?? "",
-    penaltyRate: product.penalty_interest_rate ?? "",
+    penaltyRate: product.penalty_interest_rate ?? product.penalty_charges_rate ?? "",
     gracePeriodDays: product.grace_period_in_days ?? "",
   });
 }, [loanProductDetails]);
@@ -400,6 +378,7 @@ useEffect(() => {
         customerNumber: loan.applicant || "",
         productCode: loan.loan_product || "",
         loanAmount: loan.loan_amount || "",
+        loanAppNumber: loan.loan_application_number || "",
         trnDate: loan.posting_date || getTodayDate(),
         fixedRepaymentsIn: loan.repayment_method === "Repay Over Number of Periods" ? "TENOR" : "EMI",
         tenureValue: loan.repayment_periods || "",
@@ -412,8 +391,12 @@ useEffect(() => {
         moratoriumPeriod: loan.moratorium_tenure || "",
       });
 
-      loadedLoanProductCode.current = loan.loan_product || "";
-
+      // loadedLoanProductCode.current = loan.loan_product || "";
+if (!loan.rate_of_interest && (!loan.loan_charges || loan.loan_charges.length === 0)) {
+  loadedLoanProductCode.current = null;
+} else {
+  loadedLoanProductCode.current = loan.loan_product || "";
+}
       setChargeSectionDefaults({
         interestRate: loan.rate_of_interest ?? "",
         penaltyRate: loan.penalty_charges_rate ?? "",

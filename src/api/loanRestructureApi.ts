@@ -93,7 +93,7 @@ export interface GetAllParams {
   page_size?: number;
   order_by?: string;
   search?: string;
-  status?: LoanRestructureStatus | "all";
+  status?: LoanRestructureStatus[];   
 }
 
 export interface LoanRepaymentAccount {
@@ -159,7 +159,9 @@ export async function getAllLoanRestructures(
       page_size: params.page_size ?? 10,
       order_by: params.order_by ?? "creation desc",
       ...(params.search ? { search: params.search } : {}),
-      ...(params.status && params.status !== "all" ? { status: params.status } : {}),
+      ...(params.status && params.status.length > 0
+        ? { status: JSON.stringify(params.status) }
+        : {}),
     },
   });
   return unwrap(resp.data?.message, "Failed to fetch restructure requests.");

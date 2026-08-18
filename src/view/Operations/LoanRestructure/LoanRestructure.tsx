@@ -10,7 +10,8 @@ import {
 import dayjs from 'dayjs';
 import { useLoanRestructureList } from '../../../hooks/useLoanRestructureList';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
-import { RESTRUCTURE_STATUSES, type LoanRestructureListItem } from '../../../api/loanRestructureApi';
+import { RESTRUCTURE_STATUSES, type LoanRestructureListItem, type LoanRestructureStatus } from '../../../api/loanRestructureApi';
+import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
 import { loanRestructureModal } from './LoanRestructureModalStore';
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
@@ -23,7 +24,6 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
 
 const fmtDate = (iso: string) => (iso ? dayjs(iso).format('DD-MMM-YYYY') : '—');
 
-const chevronDown = undefined;
 
 export function LoanRestructure() {
   const theme = useMantineTheme();
@@ -103,13 +103,12 @@ export function LoanRestructure() {
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
-          <Select
-            size="sm" radius="xl" placeholder="All Statuses"
+         <FilterMultiSelect
+            placeholder="All Statuses"
             data={RESTRUCTURE_STATUSES.map((s) => ({ value: s, label: s }))}
-            w={180} clearable rightSection={chevronDown}
-            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
-            value={status === 'all' ? null : status}
-            onChange={(v) => { setStatus((v as any) || 'all'); setPage(1); }}
+            value={status}
+            onChange={(v) => { setStatus(v as LoanRestructureStatus[]); setPage(1); }}
+            width={180}
           />
           <Group gap="xs" ml="auto">
             <Button
@@ -153,7 +152,12 @@ export function LoanRestructure() {
                 const isDraft = row.status === 'Draft';
                 const isApproving = approvingName === row.name;
                 return (
-                  <Table.Tr key={row.name} className="lms-row">
+                  <Table.Tr
+                    key={row.name}
+                    className="lms-row"
+                    onDoubleClick={() => loanRestructureModal.open({ editName: null, viewName: row.name })}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)', borderLeft: '3px solid var(--mantine-color-brand-4)' }}>
                       <Text fz="sm" fw={700} c="slate.8" className="font-mono">{row.name}</Text>
                     </Table.Td>
