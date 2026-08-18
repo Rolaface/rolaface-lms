@@ -5,8 +5,8 @@ export function CollateralTab({ data, meta, page, setPage, onPaginate, renderCur
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {data.map((assignment: any) => (
-          <Paper key={assignment.name} radius="lg" className="overflow-hidden" style={{ border: "1px solid #ECE8DD", boxShadow: "0 3px 14px rgba(36,31,61,0.06)" }}>
-            <div className="flex justify-between p-4 border-b border-gray-100 bg-[#F8F5EE]">
+          <Paper key={assignment.name} radius="lg" className="overflow-hidden" style={{ border: "1px solid var(--mantine-color-slate-2)", boxShadow: "var(--mantine-shadow-sm)" }}>
+            <div className="flex justify-between p-4 border-b border-[var(--mantine-color-slate-1)] bg-[var(--mantine-color-slate-0)]">
               <div>
                 <Text fw={700}>{assignment.name}</Text>
                 <Text fz="xs" c="dimmed">Applicant: {assignment.applicant}</Text>
@@ -29,7 +29,7 @@ export function CollateralTab({ data, meta, page, setPage, onPaginate, renderCur
               </div>
 
               {assignment.items?.map((item: any) => (
-                <div key={item.loan_security} className="border-t border-gray-100 pt-3 mt-3">
+                <div key={item.loan_security} className="border-t border-[var(--mantine-color-slate-1)] pt-3 mt-3">
                   <Text fz="sm" fw={600}>{item.loan_security_name}</Text>
                   <Text fz="xs" c="dimmed" mb="xs">{item.loan_security_type} · Qty: {item.qty}</Text>
                   
@@ -43,7 +43,7 @@ export function CollateralTab({ data, meta, page, setPage, onPaginate, renderCur
                     <Text fz="xs">Post-Haircut Value ({item.haircut_percent}%)</Text>
                     <Text fz="xs">{renderCurrency(item.post_haircut_amount)}</Text>
                   </div>
-                  <Progress value={(item.post_haircut_amount / item.amount) * 100} color="gray" radius="xl" size="sm" />
+                  <Progress value={(item.post_haircut_amount / item.amount) * 100} color="slate" radius="xl" size="sm" />
                 </div>
               ))}
             </div>

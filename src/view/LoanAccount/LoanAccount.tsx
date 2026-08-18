@@ -50,6 +50,13 @@ import { getSymbol } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 
+// NOTE: adjust these paths if your folder layout differs — this assumes
+// LoanAccount.tsx lives in a folder that is a sibling of the Customer/
+// folder, same as how CustomerView.tsx imports LoanDetailView via
+// '../LoanAccount/LoanView/LoanDetailView'.
+import { Borrower360 } from "../Customer/CustomerView";
+import { getBorrowerProfile } from "../Customer/mockdata";
+
 const STATUS_META: Record<string, { label: string; color: string }> = {
   DRAFT: { label: "DRAFT", color: "gray" },
   PENDING_APPROVAL: { label: "PENDING APPROVAL", color: "yellow" },
@@ -121,6 +128,14 @@ const fmtDate = (iso: string) =>
       })
     : "-";
 
+/** Minimal shape we hand off to LoanDetailView when the user opens a loan
+ *  straight from the Loan Booking list (no customer context here yet). */
+interface SelectedLoan {
+  id: string;
+  customerId: string;
+  customerName: string;
+}
+
 export function LoanAccount() {
   const theme = useMantineTheme();
   const { data: loansResponse, isLoading } = useQuery({
@@ -130,7 +145,12 @@ export function LoanAccount() {
 
   const queryClient = useQueryClient();
 
-const { mutate: removeLoan, isPending: isDeleting } = useMutation({
+  // Replaces the old "open a modal" flow — clicking View now swaps the
+  // table out for LoanDetailView in place, same pattern as Customer.tsx's
+  // borrower360CustomerId -> Borrower360 swap.
+  const [selectedLoan, setSelectedLoan] = useState<SelectedLoan | null>(null);
+
+  const { mutate: removeLoan, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteLoan(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loans"] });
@@ -151,7 +171,7 @@ const { mutate: removeLoan, isPending: isDeleting } = useMutation({
     },
   });
 
-const { mutate: updateStatus } = useMutation({
+  const { mutate: updateStatus } = useMutation({
     mutationFn: ({ id, action }: { id: string; action: string }) =>
       changeLoanStatus(id, action),
     onSuccess: () => {
@@ -187,6 +207,7 @@ const { mutate: updateStatus } = useMutation({
         id: item.name,
         appNo: item.name,
         customer: item.applicant_name || item.applicant || "N/A",
+        customerId: item.applicant || item.name,
         product: item.loan_product || "N/A",
         branch: item.company || "N/A",
         amount: item.loan_amount || 0,
@@ -330,9 +351,10 @@ const { mutate: updateStatus } = useMutation({
                   color="slate"
                   radius="md"
                   onClick={() =>
-                    loanAccountModal.open({
-                      loanId: loanIdentifier,
-                      isViewMode: true,
+                    setSelectedLoan({
+                      id: loanIdentifier,
+                      customerId: rowData.customerId,
+                      customerName: rowData.customer,
                     })
                   }
                 >
@@ -516,6 +538,27 @@ const { mutate: updateStatus } = useMutation({
   const branchOptions = Array.from(
     new Set(data.map((a) => a.branch).filter(Boolean)),
   );
+
+  // ---- Detail view swap: same idea as Customer.tsx's borrower360CustomerId
+  // check — while a loan is selected, render the full Borrower360 (sidebar +
+  // profile/loans/investments/savings/FDs) instead of the table, deep-linked
+  // straight into this loan. getBorrowerProfile is the same mock generator
+  // Customer.tsx uses, seeded with whatever identifying info the loan row
+  // gives us. ----
+  if (selectedLoan) {
+    const borrower = getBorrowerProfile({
+      id: selectedLoan.customerId,
+      name: selectedLoan.customerName,
+    });
+
+    return (
+      <Borrower360
+        borrower={borrower}
+        onBack={() => setSelectedLoan(null)}
+        initialSelected={{ type: "loan", id: selectedLoan.id }}
+      />
+    );
+  }
 
   return (
     <Stack gap="lg" p="lg">

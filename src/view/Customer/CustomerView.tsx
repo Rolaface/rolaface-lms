@@ -10,38 +10,58 @@ import { BorrowerSidebar, GlobalSearchBar } from './Sharedui';
 import { AccountDetailView } from './DetailViews';
 
 // Import the brand colors from your new SharedUI file
-import { brand } from '../LoanAccount/LoanView/SharedUI';
+import { themeTokens } from "../LoanAccount/LoanView/SharedUI";
 
 // Import your newly integrated API-driven Loan Detail View
 import { LoanDetailView } from '../LoanAccount/LoanView/LoanDetailView';
+import { CustomerProfileView } from './Veiw-tabs/CustomerProfileView';
 
 /* ============================================================================
    MAIN EXPORT — Borrower360
 ============================================================================ */
 
-export function Borrower360({ borrower, onBack }: { borrower: BorrowerProfile; onBack: () => void }) {
+export function Borrower360({
+  borrower,
+  onBack,
+  initialSelected,
+}: {
+  borrower: BorrowerProfile;
+  onBack: () => void;
+  /**
+   * Lets a caller deep-link straight into a tab instead of always landing on
+   * "profile" — e.g. Loan Booking's View action opens this loan directly:
+   *   <Borrower360 borrower={b} onBack={...} initialSelected={{ type: 'loan', id: realLoanId }} />
+   */
+  initialSelected?: SelectedItem;
+}) {
   const [collapsed, setCollapsed] = useState(false);
-  
-  // Default to the first loan if it exists
-  const [selected, setSelected] = useState<SelectedItem | null>(
-    borrower.loans[0] ? { type: 'loan', id: borrower.loans[0].id } : null
-  );
 
+  // Default to the first loan if it exists
+  const [selected, setSelected] = useState<SelectedItem>(initialSelected ?? { type: 'profile' });
   const activeContent = useMemo(() => {
     if (!selected) return null;
+    if (selected.type === 'profile') {
+      return {
+        node: <CustomerProfileView borrower={borrower} />,
+        label: 'Customer Profile',
+      };
+    }
 
     // 1. REAL API-INTEGRATED LOAN VIEW
     if (selected.type === 'loan') {
+      // Try to enrich the label from the mock loans list, but don't require
+      // a match — the id here is often a real API loan id (e.g. coming from
+      // Loan Booking's "View" action) that won't exist in the mock array.
+      // LoanDetailView only needs the id itself; it fetches everything else.
       const loan = borrower.loans.find((l) => l.id === selected.id);
-      if (!loan) return null;
-      
-      return { 
+
+      return {
         // Notice we only pass the loanId now; the component fetches its own data
-        node: <LoanDetailView loanId={loan.id} borrower={borrower} />, 
-        label: `${loan.loanNumber} — ${loan.product}` 
+        node: <LoanDetailView loanId={selected.id} borrower={borrower} />,
+        label: loan ? `${loan.loanNumber} — ${loan.product}` : selected.id,
       };
     }
-    
+
     // 2. MOCK VIEWS (Investments, Savings, Fixed Deposits)
     if (selected.type === 'investment') {
       const inv = borrower.investments.find((i) => i.id === selected.id);
@@ -51,7 +71,7 @@ export function Borrower360({ borrower, onBack }: { borrower: BorrowerProfile; o
         label: `${inv.refNumber} — ${inv.product}`,
       };
     }
-    
+
     if (selected.type === 'savings') {
       const sav = borrower.savings.find((s) => s.id === selected.id);
       if (!sav) return null;
@@ -60,7 +80,7 @@ export function Borrower360({ borrower, onBack }: { borrower: BorrowerProfile; o
         label: `${sav.accountNumber} — Savings account`,
       };
     }
-    
+
     if (selected.type === 'fixedDeposit') {
       const fd = borrower.fixedDeposits.find((f) => f.id === selected.id);
       if (!fd) return null;
@@ -69,12 +89,12 @@ export function Borrower360({ borrower, onBack }: { borrower: BorrowerProfile; o
         label: `${fd.refNumber} — Fixed deposit`,
       };
     }
-    
+
     return null;
   }, [selected, borrower]);
 
   return (
-    <div className="flex h-full min-h-[calc(100vh-140px)] -m-8">
+    <div className="flex h-full min-h-screen">
       <BorrowerSidebar
         borrower={borrower}
         collapsed={collapsed}
@@ -84,17 +104,10 @@ export function Borrower360({ borrower, onBack }: { borrower: BorrowerProfile; o
         onSelect={setSelected}
       />
 
-      <div className="flex-1 flex flex-col overflow-y-auto" style={{ backgroundColor: brand.cream }}>
-        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
-          <GlobalSearchBar borrower={borrower} onSelect={setSelected} />
-        </div>
-
-        <div className="p-6">
+      <div className="flex-1 flex flex-col overflow-y-auto" style={{ backgroundColor: themeTokens.surface }}>
+        <div className="p-3">
           {activeContent ? (
             <div className="flex flex-col gap-3">
-              <Text fz="xs" c="dimmed">
-                Now viewing: <span className="font-semibold text-gray-700">{activeContent.label}</span>
-              </Text>
               {activeContent.node}
             </div>
           ) : (

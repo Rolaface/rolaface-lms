@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Paper, Group, Text, Loader } from "@mantine/core";
-import { OverviewField, brand } from "./SharedUI";
+import { OverviewField, themeTokens } from "./SharedUI";
 
 const scheduleStatusColor: Record<string, string> = {
-  "Paid": "#3F8B61",
-  "Partially Paid": "#C89A3C",
-  "Overdue": "#B8533A",
-  "Upcoming": "#F5F2EA",
+  "Paid": "var(--mantine-color-success-6)",
+  "Partially Paid": "var(--mantine-color-warning-6)",
+  "Overdue": "var(--mantine-color-danger-6)",
+  "Upcoming": "var(--mantine-color-slate-1)",
 };
 
 export function LoanInstallmentOverview({ data, renderCurrency, actions }: any) {
@@ -26,7 +26,7 @@ export function LoanInstallmentOverview({ data, renderCurrency, actions }: any) 
   };
 
   return (
-    <Paper radius="lg" p="md" style={{ border: "1px solid #ECE8DD", boxShadow: "0 3px 14px rgba(36,31,61,0.06)" }}>
+ <Paper radius="lg" p="md" withBorder shadow="xs">
       <div className="flex items-center gap-5 mb-4 flex-wrap">
         <Group gap={18}>
           {Object.entries(scheduleStatusColor).map(([label, color]) => (
@@ -47,10 +47,10 @@ export function LoanInstallmentOverview({ data, renderCurrency, actions }: any) 
               onClick={() => handleSelect(item.idx)}
               style={{
                 width: 40, height: 56, borderRadius: 8,
-                background: item.ui_status === "Upcoming" ? "#F5F2EA" : scheduleStatusColor[item.ui_status] || brand.slate,
-                border: isSelected ? `2px solid ${brand.ink}` : item.ui_status === "Upcoming" ? "1px solid #E5E1D6" : "none",
+                background: item.ui_status === "Upcoming" ? "var(--mantine-color-slate-1)" : scheduleStatusColor[item.ui_status] || themeTokens.slate,
+                border: isSelected ? `2px solid ${themeTokens.ink}` : item.ui_status === "Upcoming" ? "1px solid var(--mantine-color-slate-2)" : "none",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                color: item.ui_status === "Upcoming" ? "#9CA3AF" : "#fff",
+                color: item.ui_status === "Upcoming" ? "var(--mantine-color-slate-4)" : "var(--mantine-color-white)",
                 fontWeight: 700, fontSize: 13, padding: 0, cursor: "pointer", transition: "transform 0.1s ease",
               }}
             >
@@ -61,8 +61,8 @@ export function LoanInstallmentOverview({ data, renderCurrency, actions }: any) 
       </div>
 
       {activeInstallment ? (
-        <div className="rounded-xl p-4" style={{ backgroundColor: brand.cream, border: "1px solid #ECE8DD" }}>
-          <Text fz="sm" fw={700} c="gray.9" className="mb-3">
+        <div className="rounded-xl p-4" style={{ backgroundColor: themeTokens.surface, border: "1px solid var(--mantine-color-slate-2)" }}>
+          <Text fz="sm" fw={700} c="slate.9" className="mb-3">
             Installment {activeInstallment.idx} · due {activeInstallment.payment_date}
           </Text>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -74,7 +74,7 @@ export function LoanInstallmentOverview({ data, renderCurrency, actions }: any) 
           </div>
         </div>
       ) : (
-        <div className="h-24 flex items-center justify-center"><Loader size="sm" color="gray" /></div>
+        <div className="h-24 flex items-center justify-center"><Loader size="sm" color="slate" /></div>
       )}
     </Paper>
   );

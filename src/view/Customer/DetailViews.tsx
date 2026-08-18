@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Badge, Button, Paper, Table, Tabs, Text } from '@mantine/core';
 import { IconBell, IconRefreshDot, IconWallet } from '@tabler/icons-react';
 import type { AccountDetailData, BorrowerProfile, LoanSummary } from '../../types/customerview';
-import { brand, formatK, getLoanDetail, scheduleStatusColor, serif } from './mockdata';
+import { formatK, getLoanDetail, scheduleStatusColor, serif } from './mockdata';
+import { themeTokens } from '../LoanAccount/LoanView/SharedUI';
 import {
   AccountingTable,
   ActivityFeed,
@@ -46,10 +47,10 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
           p="md"
           className="border-l-4"
           style={{
-            borderLeftColor: loan.status === 'Active' ? brand.teal : loan.status === 'Closed' ? brand.slate : brand.rose,
-            border: '1px solid #ECE8DD',
+            borderLeftColor: loan.status === 'Active' ? themeTokens.success : loan.status === 'Closed' ? themeTokens.slate : themeTokens.danger,
+            border: '1px solid var(--mantine-color-slate-2)',
             borderLeftWidth: 4,
-            boxShadow: '0 6px 20px rgba(36,31,61,0.08)',
+            boxShadow: 'var(--mantine-shadow-md)',
           }}
         >
           <div className="flex justify-between items-start flex-wrap gap-3 mb-3">
@@ -57,12 +58,12 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
               <Text fz={10} fw={700} c="dimmed" className="tracking-wider">
                 ASSET FINANCE · LOAN {detail.loanNumber}
               </Text>
-              <Text fz="xl" fw={700} c="gray.9" style={serif}>
+              <Text fz="xl" fw={700} c="slate.9" style={serif}>
                 {detail.product === 'SME Working Capital' ? 'Equipment Asset Loan' : detail.product}
               </Text>
               <Text fz="xs" c="dimmed" className="mt-1">
-                Purpose: <span className="font-semibold text-gray-700">{detail.purpose}</span>
-                {'   '}Officer: <span className="font-semibold text-gray-700">{detail.officer}</span>
+                Purpose: <span className="font-semibold text-[var(--mantine-color-slate-7)]">{detail.purpose}</span>
+                {'   '}Officer: <span className="font-semibold text-[var(--mantine-color-slate-7)]">{detail.officer}</span>
               </Text>
             </div>
             <div className="flex items-center gap-2">
@@ -70,14 +71,14 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
                 label={detail.loanStatusLabel}
                 tone={loan.status === 'Active' ? 'active' : loan.status === 'Closed' ? 'neutral' : 'warn'}
               />
-              <Button size="xs" radius="md" styles={{ root: { backgroundColor: brand.primary } }}>
+              <Button size="xs" radius="md" styles={{ root: { backgroundColor: themeTokens.primary } }}>
                 Record payment
               </Button>
               <Button
                 size="xs"
                 radius="md"
                 variant="light"
-                styles={{ root: { backgroundColor: brand.goldSoft, color: '#8A5A0F' } }}
+                styles={{ root: { backgroundColor: themeTokens.warningSoft, color: 'var(--mantine-color-warning-8)' } }}
                 leftSection={<IconBell size={13} />}
               >
                 Send reminder
@@ -86,7 +87,7 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
                 size="xs"
                 radius="md"
                 variant="light"
-                styles={{ root: { backgroundColor: brand.skySoft, color: brand.sky } }}
+                styles={{ root: { backgroundColor: themeTokens.infoSoft, color: themeTokens.info } }}
                 leftSection={<IconRefreshDot size={13} />}
               >
                 Restructure
@@ -94,7 +95,7 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pb-3 border-b border-gray-100">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pb-3 border-b border-[var(--mantine-color-slate-1)]">
             <OverviewField label="TOTAL OUTSTANDING" value={formatK(detail.totalOutstanding)} />
             <OverviewField label="NEXT INSTALLMENT" value={detail.nextInstallment ? formatK(detail.nextInstallment) : '—'} />
             <OverviewField label="DAYS PAST DUE" value={detail.dpd} />
@@ -111,19 +112,19 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
           radius="xl"
           styles={{
             tab: {
-              color: "#6B7280",
+              color: "var(--mantine-color-slate-5)",
               background: "transparent",
               border: "none",
 
               "&[data-active]": {
-                background: "#E5E7EB !important",
-                color: "#111827 !important",
+                background: "var(--mantine-color-slate-2) !important",
+                color: "var(--mantine-color-slate-9) !important",
                 fontWeight: 700,
               },
             },
           }}
         >
-          <Tabs.List className="mb-5 flex-wrap gap-1 pb-3 border-b border-gray-200">
+          <Tabs.List className="mb-5 flex-wrap gap-1 pb-3 border-b border-[var(--mantine-color-slate-2)]">
             <Tabs.Tab value="overview">Overview</Tabs.Tab>
             <Tabs.Tab value="disbursement">Disbursement</Tabs.Tab>
             <Tabs.Tab value="schedule">Schedule</Tabs.Tab>
@@ -137,9 +138,9 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
 
           <Tabs.Panel value="overview">
             <div className="flex flex-col gap-5">
-              <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-                <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-                  <Text fz="lg" fw={600} c="gray.9" style={serif}>
+              <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid var(--mantine-color-slate-2)', boxShadow: 'var(--mantine-shadow-sm)' }}>
+                <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--mantine-color-slate-1)]">
+                  <Text fz="lg" fw={600} c="slate.9" style={serif}>
                     Loan overview
                   </Text>
                   <Text fz="xs" c="dimmed">
@@ -215,15 +216,15 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
                 <SectionHeading title="Disbursement" aside={`${detail.tranches.length} tranches released`} />
                 <div className="flex flex-col gap-2.5">
                   {detail.tranches.map((t) => (
-                    <div key={t.id} className="flex items-center justify-between rounded-lg border-l-[3px] border px-3 py-2.5" style={{ borderColor: '#EDEAE0', borderLeftColor: brand.teal, backgroundColor: '#fff' }}>
-                      <Text fz="xs" c="gray.9">
+                    <div key={t.id} className="flex items-center justify-between rounded-lg border-l-[3px] border px-3 py-2.5" style={{ borderColor: 'var(--mantine-color-slate-2)', borderLeftColor: themeTokens.success, backgroundColor: 'var(--mantine-color-white)' }}>
+                      <Text fz="xs" c="slate.9">
                         <span className="font-semibold">{t.label}</span> · {formatK(t.amount)}
-                        <span className="text-gray-400">
+                        <span className="text-[var(--mantine-color-slate-4)]">
                           {' '}
                           — {t.date} · {t.method} · {t.account} · Ref: {t.ref} · Approved by {t.approvedBy}
                         </span>
                       </Text>
-                      <Badge size="sm" variant="light" color="teal">
+                      <Badge size="sm" variant="light" color="success">
                         {t.status}
                       </Badge>
                     </div>
@@ -234,19 +235,19 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
           </Tabs.Panel>
 
           <Tabs.Panel value="disbursement">
-            <Paper radius="lg" className="p-4" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
+            <Paper radius="lg" className="p-4" style={{ border: '1px solid var(--mantine-color-slate-2)', boxShadow: 'var(--mantine-shadow-sm)' }}>
               <div className="flex flex-col gap-2.5">
                 {detail.tranches.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between rounded-lg border-l-[3px] border px-3 py-2.5" style={{ borderColor: '#EDEAE0', borderLeftColor: brand.teal, backgroundColor: '#fff' }}>
+                  <div key={t.id} className="flex items-center justify-between rounded-lg border-l-[3px] border px-3 py-2.5" style={{ borderColor: 'var(--mantine-color-slate-2)', borderLeftColor: themeTokens.success, backgroundColor: 'var(--mantine-color-white)' }}>
                     <div>
-                      <Text fz="xs" fw={700} c="gray.9">
+                      <Text fz="xs" fw={700} c="slate.9">
                         {t.label} · {formatK(t.amount)}
                       </Text>
                       <Text fz={11} c="dimmed">
                         {t.date} · {t.method} · {t.account} · Ref: {t.ref} · Approved by {t.approvedBy}
                       </Text>
                     </div>
-                    <Badge size="sm" variant="light" color="teal">
+                    <Badge size="sm" variant="light" color="success">
                       {t.status}
                     </Badge>
                   </div>
@@ -256,7 +257,7 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
           </Tabs.Panel>
 
           <Tabs.Panel value="schedule">
-            <Paper radius="lg" className="p-4" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
+            <Paper radius="lg" className="p-4" style={{ border: '1px solid var(--mantine-color-slate-2)', boxShadow: 'var(--mantine-shadow-sm)' }}>
               <div className="flex items-center gap-4 mb-3 text-xs">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: scheduleStatusColor['Paid on time'] }} />
@@ -271,7 +272,7 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
                   Overdue
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full inline-block border border-gray-300" style={{ background: scheduleStatusColor.Upcoming }} />
+                  <span className="w-2.5 h-2.5 rounded-full inline-block border border-[var(--mantine-color-slate-3)]" style={{ background: scheduleStatusColor.Upcoming }} />
                   Upcoming
                 </span>
               </div>
@@ -309,9 +310,9 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
           </Tabs.Panel>
 
           <Tabs.Panel value="history">
-            <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-              <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-                <Text fz="lg" fw={600} c="gray.9" style={serif}>
+            <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid var(--mantine-color-slate-2)', boxShadow: 'var(--mantine-shadow-sm)' }}>
+              <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--mantine-color-slate-1)]">
+                <Text fz="lg" fw={600} c="slate.9" style={serif}>
                   Repayment history
                 </Text>
                 <Text fz="xs" c="dimmed">
@@ -335,10 +336,10 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
                 <Table.Tbody>
                   {detail.history.map((r) => (
                     <Table.Tr key={r.receipt}>
-                      <Table.Td className="font-mono" style={{ color: brand.sky }}>{r.receipt}</Table.Td>
+                      <Table.Td className="font-mono" style={{ color: themeTokens.info }}>{r.receipt}</Table.Td>
                       <Table.Td>{r.date}</Table.Td>
                       <Table.Td>
-                        <Badge size="xs" variant="light" color="gray">
+                        <Badge size="xs" variant="light" color="slate">
                           {r.method}
                         </Badge>
                       </Table.Td>
@@ -356,10 +357,10 @@ export function LoanDetailView({ loan, borrower }: { loan: LoanSummary; borrower
           </Tabs.Panel>
 
           <Tabs.Panel value="accounting">
-            <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <IconWallet size={15} className="text-gray-500" />
-                <Text fz="lg" fw={600} c="gray.9" style={serif}>
+            <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid var(--mantine-color-slate-2)', boxShadow: 'var(--mantine-shadow-sm)' }}>
+              <div className="px-4 py-3 border-b border-[var(--mantine-color-slate-1)] flex items-center gap-2">
+                <IconWallet size={15} className="text-[var(--mantine-color-slate-5)]" />
+                <Text fz="lg" fw={600} c="slate.9" style={serif}>
                   Ledger entries
                 </Text>
               </div>
@@ -451,10 +452,10 @@ export function AccountDetailView({
           p="md"
           className="border-l-4"
           style={{
-            borderLeftColor: detail.statusLabel === 'Active' ? brand.teal : brand.slate,
-            border: '1px solid #ECE8DD',
+            borderLeftColor: detail.statusLabel === 'Active' ? themeTokens.success : themeTokens.slate,
+            border: '1px solid var(--mantine-color-slate-2)',
             borderLeftWidth: 4,
-            boxShadow: '0 6px 20px rgba(36,31,61,0.08)',
+            boxShadow: 'var(--mantine-shadow-md)',
           }}
         >
           <div className="flex justify-between items-start flex-wrap gap-3 mb-3">
@@ -462,20 +463,20 @@ export function AccountDetailView({
               <Text fz={10} fw={700} c="dimmed" className="tracking-wider">
                 EVERYDAY BANKING · ACCOUNT {detail.accountNumber}
               </Text>
-              <Text fz="xl" fw={700} c="gray.9" style={serif}>
+              <Text fz="xl" fw={700} c="slate.9" style={serif}>
                 {title}
               </Text>
             </div>
             <div className="flex items-center gap-2">
               <StatusPill label={detail.statusLabel} tone={detail.statusLabel === 'Active' ? 'active' : 'neutral'} />
-              <Button size="xs" radius="md" styles={{ root: { backgroundColor: brand.primary } }}>
+              <Button size="xs" radius="md" styles={{ root: { backgroundColor: themeTokens.primary } }}>
                 Record payment
               </Button>
               <Button
                 size="xs"
                 radius="md"
                 variant="light"
-                styles={{ root: { backgroundColor: brand.goldSoft, color: '#8A5A0F' } }}
+                styles={{ root: { backgroundColor: themeTokens.warningSoft, color: 'var(--mantine-color-warning-8)' } }}
                 leftSection={<IconBell size={13} />}
               >
                 Send reminder
@@ -484,7 +485,7 @@ export function AccountDetailView({
                 size="xs"
                 radius="md"
                 variant="light"
-                styles={{ root: { backgroundColor: brand.skySoft, color: brand.sky } }}
+                styles={{ root: { backgroundColor: themeTokens.infoSoft, color: themeTokens.info } }}
                 leftSection={<IconRefreshDot size={13} />}
               >
                 Restructure
@@ -492,7 +493,7 @@ export function AccountDetailView({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-3 border-b border-gray-100">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-3 border-b border-[var(--mantine-color-slate-1)]">
             <OverviewField label="CURRENT BALANCE" value={formatK(detail.currentBalance, 2)} />
             {detail.avgMonthlyInflow !== undefined && <OverviewField label="AVG. MONTHLY INFLOW" value={formatK(detail.avgMonthlyInflow)} />}
             {detail.interestEarnedYtd !== undefined && <OverviewField label="INTEREST EARNED YTD" value={formatK(detail.interestEarnedYtd)} />}
@@ -506,7 +507,7 @@ export function AccountDetailView({
         </Paper>
 
         <Tabs value={tab} onChange={(v) => v && setTab(v)} variant="pills" color="ink" radius="xl">
-          <Tabs.List className="mb-5 flex-wrap gap-1 pb-3 border-b border-gray-200">
+          <Tabs.List className="mb-5 flex-wrap gap-1 pb-3 border-b border-[var(--mantine-color-slate-2)]">
             <Tabs.Tab value="overview">Overview</Tabs.Tab>
             <Tabs.Tab value="history">History</Tabs.Tab>
             <Tabs.Tab value="documents">Documents</Tabs.Tab>
@@ -514,9 +515,9 @@ export function AccountDetailView({
           </Tabs.List>
 
           <Tabs.Panel value="overview">
-            <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-              <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-                <Text fz="lg" fw={600} c="gray.9" style={serif}>
+            <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid var(--mantine-color-slate-2)', boxShadow: 'var(--mantine-shadow-sm)' }}>
+              <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--mantine-color-slate-1)]">
+                <Text fz="lg" fw={600} c="slate.9" style={serif}>
                   Account overview
                 </Text>
                 <Text fz="xs" c="dimmed">
@@ -537,9 +538,9 @@ export function AccountDetailView({
           </Tabs.Panel>
 
           <Tabs.Panel value="history">
-            <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-              <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-                <Text fz="lg" fw={600} c="gray.9" style={serif}>
+            <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid var(--mantine-color-slate-2)', boxShadow: 'var(--mantine-shadow-sm)' }}>
+              <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--mantine-color-slate-1)]">
+                <Text fz="lg" fw={600} c="slate.9" style={serif}>
                   Transaction history
                 </Text>
                 <Text fz="xs" c="dimmed">
@@ -559,10 +560,10 @@ export function AccountDetailView({
                 <Table.Tbody>
                   {detail.history.map((r) => (
                     <Table.Tr key={r.receipt}>
-                      <Table.Td className="font-mono" style={{ color: brand.sky }}>{r.receipt}</Table.Td>
+                      <Table.Td className="font-mono" style={{ color: themeTokens.info }}>{r.receipt}</Table.Td>
                       <Table.Td>{r.date}</Table.Td>
                       <Table.Td>
-                        <Badge size="xs" variant="light" color="gray">
+                        <Badge size="xs" variant="light" color="slate">
                           {r.method}
                         </Badge>
                       </Table.Td>

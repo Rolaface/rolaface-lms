@@ -53,6 +53,7 @@ export interface FixedDepositSummary {
 }
 
 export type SelectedItem =
+  | { type: 'profile' }
   | { type: 'loan'; id: string }
   | { type: 'investment'; id: string }
   | { type: 'savings'; id: string }

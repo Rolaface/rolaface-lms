@@ -43,6 +43,8 @@ interface CreditScoreGaugeProps {
   bands?: CreditScoreBand[];
   size?: number; // rendered width in px, height follows aspect ratio
   showValue?: boolean; // render numeral + band label under the arc
+  /** Overrides the band label shown under the number, e.g. "/100". Omit to show the band label as before. */
+  scoreSuffix?: string;
 
   /** When the score was last fetched. Omit to hide the timestamp/refetch row. */
   lastFetchedAt?: Date | null;
@@ -130,6 +132,7 @@ export function CreditScoreGauge({
   bands = DEFAULT_BANDS,
   size = 180,
   showValue = true,
+  scoreSuffix,
   lastFetchedAt = null,
   onRefetch,
   minRefetchIntervalMs = 60_000,
@@ -288,7 +291,7 @@ export function CreditScoreGauge({
             {hasScore ? Math.round(animatedScore) : "—"}
           </Text>
           <Text fz="xs" fw={600} c={hasScore ? "slate.5" : "slate.4"}>
-            {hasScore ? band?.label : "Not assessed"}
+            {hasScore ? (scoreSuffix ?? band?.label) : "Not assessed"}
           </Text>
         </Stack>
       )}

@@ -5,10 +5,10 @@ import { serif } from "../SharedUI";
 export function AccountingTab({ data, meta, page, setPage, onPaginate, renderCurrency }: any) {
   return (
     <div className="flex flex-col gap-4">
-      <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-          <IconWallet size={15} className="text-gray-500" />
-          <Text fz="lg" fw={600} c="gray.9" style={serif}>Ledger entries</Text>
+      <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid var(--mantine-color-slate-2)', boxShadow: 'var(--mantine-shadow-sm)' }}>
+        <div className="px-4 py-3 border-b border-[var(--mantine-color-slate-1)] flex items-center gap-2">
+          <IconWallet size={15} className="text-[var(--mantine-color-slate-5)]" />
+          <Text fz="lg" fw={600} c="slate.9" style={serif}>Ledger entries</Text>
         </div>
         <div className="overflow-x-auto">
           <Table verticalSpacing="md" horizontalSpacing="md" highlightOnHover>
@@ -34,7 +34,7 @@ export function AccountingTab({ data, meta, page, setPage, onPaginate, renderCur
                   <Table.Td className="font-mono">{row.credit > 0 ? renderCurrency(row.credit) : '—'}</Table.Td>
                 </Table.Tr>
               ))}
-              {data.length === 0 && <Table.Tr><Table.Td colSpan={5} className="text-center py-4 text-gray-500 text-xs">No accounting entries found.</Table.Td></Table.Tr>}
+              {data.length === 0 && <Table.Tr><Table.Td colSpan={5} className="text-center py-4 text-[var(--mantine-color-slate-5)] text-xs">No accounting entries found.</Table.Td></Table.Tr>}
             </Table.Tbody>
           </Table>
         </div>
