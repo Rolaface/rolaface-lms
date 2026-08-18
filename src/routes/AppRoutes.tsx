@@ -18,8 +18,8 @@ import { LendingSetup } from "../view/Setup/LendingSetup";
 import { CollateralType } from "../view/Collateral/CollateralType/CollateralType";
 import { Collateral } from "../view/Collateral/Collateral";
 import { LoanApplication } from '../view/Origination/LoanApplication';
-import { LoanStatement } from "../view/Reports/LoanStatement";
-import { ArrearReports } from '../view/Reports/ArrearReports';
+import { LoanStatement } from "../view/Reports/LoanStatement/LoanStatement";
+import { ArrearReports } from '../view/Reports/Arrear/ArrearReports';
 
 import { LoanAccount } from "../view/LoanAccount/LoanAccount";
 import { LoanDisbursement } from "../view/Operations/LoanDisbursement/LoanDisbursement";
