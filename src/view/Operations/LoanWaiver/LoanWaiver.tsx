@@ -39,15 +39,15 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { modals } from '@mantine/modals';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getAllLoanRepayment,
   deleteLoanRepayment,
   changeLoanRepaymentStatus,
 } from '../../../api/loanRepaymentApi';
-import { loanWaiverModal } from './LoanWaiverModalStore';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
+import { parseFrappeError } from '../../../utils/parseFrappeError';
+import { loanWaiverModal } from './LoanWaiverModalStore';
 
 const WAIVER_TYPES = ['Interest Waiver', 'Penalty Waiver', 'Charges Waiver'];
 
@@ -129,25 +129,33 @@ export function LoanWaiver() {
 
   const queryClient = useQueryClient();
 
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
   const { mutate: removeWaiver, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteLoanRepayment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-      openCommonModal({
-        heading: 'Waiver Deleted',
-        body: 'The loan waiver record has been removed.',
-        color: 'success',
-        buttons: [{ label: 'Okay' }],
-      });
+      showSuccess('Waiver Deleted', 'Loan waiver deleted successfully.');
     },
-    onError: () => {
-      openCommonModal({
-        heading: 'Delete Failed',
-        body: 'Something went wrong while deleting the waiver. Please try again.',
-        color: 'danger',
-        buttons: [{ label: 'Okay' }],
-      });
-    },
+    onError: (error: any) => showError('Delete Failed', error),
   });
 
   const { mutate: updateStatus } = useMutation({
@@ -156,26 +164,19 @@ export function LoanWaiver() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
       const isCancel = variables.action === 'cancelled';
-      openCommonModal({
-        heading: isCancel ? 'Waiver Cancelled' : 'Waiver Submitted',
-        body: isCancel
-          ? 'The waiver has been cancelled.'
-          : 'The waiver has been submitted successfully.',
-        color: isCancel ? 'danger' : 'success',
-        buttons: [{ label: 'Okay' }],
-      });
+      showSuccess(
+        isCancel ? 'Waiver Cancelled' : 'Waiver Submitted',
+        isCancel ? 'Loan waiver cancelled successfully.' : 'Loan waiver submitted successfully.'
+      );
     },
-    onError: (_error, variables) => {
+    onError: (error: any, variables) => {
       const isCancel = variables.action === 'cancelled';
-      openCommonModal({
-        heading: isCancel ? 'Cancel Failed' : 'Submit Failed',
-        body: `Something went wrong while ${isCancel ? 'cancelling' : 'submitting'} the waiver. Please try again.`,
-        color: 'danger',
-        buttons: [{ label: 'Okay' }],
-      });
+      showError(isCancel ? 'Cancel Failed' : 'Submit Failed', error);
     },
   });
 
+  // Only rows whose repayment_type is one of the waiver types — the shared
+  // getAllLoanRepayment endpoint returns every repayment/waiver/etc. record.
   const rowsData = useMemo(() => {
     const list = repaymentsResponse?.message?.data?.repayments ?? [];
     return list
@@ -202,17 +203,58 @@ export function LoanWaiver() {
     });
   }, [rowsData, search, loanType, status]);
 
-  const handleDelete = (id: string) => {
-    modals.openConfirmModal({
-      title: 'Delete loan waiver',
-      children: (
-        <Text size="sm">
-          Are you sure you want to delete waiver <b>{id}</b>? This cannot be undone.
-        </Text>
+  const handleDelete = (row: WaiverRow) => {
+    openCommonModal({
+      heading: 'Delete Loan Waiver',
+      subtitle: 'This action cannot be undone.',
+      body: (
+        <>
+          Are you sure you want to delete waiver{' '}
+          <Text span fw={600}>
+            {row.id}
+          </Text>
+          ?
+        </>
       ),
-      labels: { confirm: 'Delete', cancel: 'Cancel' },
-      confirmProps: { color: 'danger' },
-      onConfirm: () => removeWaiver(id),
+      color: 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: 'Delete',
+          color: 'red',
+          onClick: () => {
+            removeWaiver(row.id);
+          },
+        },
+      ],
+    });
+  };
+
+  const handleStatusChange = (row: WaiverRow, action: 'approved' | 'cancelled') => {
+    const isCancel = action === 'cancelled';
+    openCommonModal({
+      heading: isCancel ? 'Cancel Waiver' : 'Submit Waiver',
+      subtitle: 'Please confirm this action before continuing.',
+      body: (
+        <>
+          Are you sure you want to {isCancel ? 'cancel' : 'submit'} waiver{' '}
+          <Text span fw={600}>
+            {row.id}
+          </Text>
+          ?
+        </>
+      ),
+      color: isCancel ? 'red' : 'green',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        {
+          label: isCancel ? 'Cancel Waiver' : 'Submit',
+          color: isCancel ? 'red' : 'green',
+          onClick: () => {
+            updateStatus({ id: row.id, action });
+          },
+        },
+      ],
     });
   };
 
@@ -335,7 +377,7 @@ export function LoanWaiver() {
                   color={canDelete ? 'danger' : 'slate'}
                   radius="md"
                   disabled={!canDelete || isDeleting}
-                  onClick={() => handleDelete(row.id)}
+                  onClick={() => handleDelete(row)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
@@ -349,11 +391,11 @@ export function LoanWaiver() {
                   </Menu.Target>
                   <Menu.Dropdown>
                     {isDraft ? (
-                      <Menu.Item onClick={() => updateStatus({ id: row.id, action: 'approved' })}>
+                      <Menu.Item onClick={() => handleStatusChange(row, 'approved')}>
                         Submit
                       </Menu.Item>
                     ) : (
-                      <Menu.Item color="danger" onClick={() => updateStatus({ id: row.id, action: 'cancelled' })}>
+                      <Menu.Item color="danger" onClick={() => handleStatusChange(row, 'cancelled')}>
                         Cancel
                       </Menu.Item>
                     )}

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ExpandedState } from "@tanstack/react-table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { showConfirm, showApiError, showSuccess } from "../../../utils/alert";
 import { usePrefetchCurrencies } from "../../../store/currencyStore";
+import { openCommonModal } from "../../../components/Modal/AlertModal";
 import {
   type COAAccount,
   fetchChartOfAccounts,
@@ -91,7 +91,25 @@ export const coaKeys = {
 
 export function useChartOfAccounts() {
   const queryClient = useQueryClient();
+const showError = (heading: string, body: string) => {
+  openCommonModal({
+    heading,
+    subtitle: "We couldn't complete your request.",
+    body,
+    color: 'red',
+    buttons: [{ label: 'Close', color: 'red' }],
+  });
+};
 
+const showSuccessModal = (heading: string, body: string) => {
+  openCommonModal({
+    heading,
+    subtitle: '',
+    body,
+    color: 'green',
+    buttons: [{ label: 'Close', color: 'green' }],
+  });
+};
   const [searchTerm, setSearchTerm] = useState("");
   const [hideZero, setHideZero] = useState(false);
   const [expanded, setExpanded] = useState<ExpandedState>({});
@@ -113,10 +131,10 @@ export function useChartOfAccounts() {
   );
   usePrefetchCurrencies(data, extractCurrencyCodes);
 
-  const deleteMutation = useMutation({
+const deleteMutation = useMutation({
     mutationFn: (accountName: string) => deleteAccount(accountName),
     onSuccess: (_data, accountName) => {
-      showSuccess("Account deleted successfully");
+      showSuccessModal("Account Deleted", "Account deleted successfully.");
       queryClient.setQueryData<typeof data>(coaKeys.all, (old) => {
         if (!old) return old;
         const removeNode = (list: COAAccount[]): COAAccount[] =>
@@ -130,23 +148,25 @@ export function useChartOfAccounts() {
       });
     },
     onError: (err: any) => {
-      showApiError(
-        err?.response?.data?.message?.message ?? "Failed to delete account",
+      showError(
+        "Delete Failed",
+        err?.response?.data?.message?.message ?? "Failed to delete account.",
       );
     },
   });
 
-  const handleView = useCallback(async (row: COAAccount) => {
+const handleView = useCallback(async (row: COAAccount) => {
     setViewLoading(true);
     try {
       const data = await getCOAById(row.name);
       if (!data) {
-        showApiError("Failed to load account details.");
+        showError("Load Failed", "Failed to load account details.");
         return null;
       }
       return { ...row, ...data };
     } catch (err: any) {
-      showApiError(
+      showError(
+        "Load Failed",
         err?.response?.data?.message?.message ??
           "Failed to load account details.",
       );
@@ -156,13 +176,24 @@ export function useChartOfAccounts() {
     }
   }, []);
 
-  const handleDelete = useCallback(
-    async (row: COAAccount) => {
-      const confirmed = await showConfirm(
-        `Are you sure you want to delete account "${row.account_name}"?`,
-        { title: "Delete Account", confirmButtonText: "Delete" },
-      );
-      if (confirmed) deleteMutation.mutate(row.name);
+const handleDelete = useCallback(
+    (row: COAAccount) => {
+      openCommonModal({
+        heading: 'Delete Account',
+        subtitle: 'This action cannot be undone.',
+        body: `Are you sure you want to delete account "${row.account_name}"?`,
+        color: 'red',
+        buttons: [
+          { label: 'Cancel', variant: 'default' },
+          {
+            label: 'Delete',
+            color: 'red',
+            onClick: () => {
+              deleteMutation.mutate(row.name);
+            },
+          },
+        ],
+      });
     },
     [deleteMutation],
   );

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { showApiError, showSuccess } from "../../../utils/alert";
+import { openCommonModal } from "../../../components/Modal/AlertModal";
 import {
   useAccountOptions,
   usePartyTypeOptions,
@@ -41,6 +41,25 @@ export function useJournalEntryForm({
   onSuccess,
 }: UseJournalEntryFormArgs) {
   const queryClient = useQueryClient();
+  const showError = (heading: string, error: any) => {
+  openCommonModal({
+    heading,
+    subtitle: "We couldn't complete your request.",
+    body: parseFrappeError(error),
+    color: "red",
+    buttons: [{ label: "Close", color: "red" }],
+  });
+};
+
+const showSuccessModal = (heading: string, body: string) => {
+  openCommonModal({
+    heading,
+    subtitle: "",
+    body,
+    color: "green",
+    buttons: [{ label: "Close", color: "green" }],
+  });
+};
 
   const [form, setForm] = useState<JournalEntryFormValues>(emptyJournalEntryForm());
   const [entries, setEntries] = useState<JournalEntryLine[]>(defaultJournalEntryLines());
@@ -198,24 +217,32 @@ useEffect(() => {
     const result = validateJournalEntry(form, entries, totals, missingExchanges);
     setErrors(result.fieldErrors);
     setRowErrors(result.rowErrors);
-    if (!result.isValid) {
-      if (result.blockingMessage) showApiError(result.blockingMessage);
-      return;
-    }
+if (!result.isValid) {
+  if (result.blockingMessage) {
+    openCommonModal({
+      heading: "Validation Error",
+      subtitle: "",
+      body: result.blockingMessage,
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  }
+  return;
+}
 
     const payload = buildJournalEntryPayload(form, entries);
     try {
       if (entryId) {
         await updateMutation.mutateAsync({ id: entryId, payload });
-        showSuccess("Journal Entry updated successfully");
+        showSuccessModal("Journal Entry Updated", "Journal Entry updated successfully.");
       } else {
         await createMutation.mutateAsync(payload);
-        showSuccess("Journal Entry created successfully");
+        showSuccessModal("Journal Entry Created", "Journal Entry created successfully.");
       }
       reset();
       onSuccess?.();
     } catch (err) {
-      showApiError(parseFrappeError(err) || "Failed to save journal entry.");
+      showError("Save Failed", err);
     }
   }, [form, entries, totals, missingExchanges, entryId, updateMutation, createMutation, reset, onSuccess]);
 
