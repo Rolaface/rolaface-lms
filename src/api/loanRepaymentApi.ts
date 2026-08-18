@@ -38,11 +38,17 @@ export async function changeLoanRepaymentStatus(id: string, action: string) {
   const { data } = await apiClient.post(API.loanRepayment.updateStatus, { id, action });
   return data;
 }
+export async function getAllLoanRepayment(search?: string, status?: string[]) {
+  const params: Record<string, string> = {};
+  if (search) params.search = search;
+  if (status && status.length > 0) {
+    params.status = JSON.stringify(status);
+  }
 
-export async function getAllLoanRepayment() {
-  const { data } = await apiClient.get(API.loanRepayment.getAllLoanRepay);
+  const { data } = await apiClient.get(API.loanRepayment.getAllLoanRepay, {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  });
   return data;
-  
 }
 
 // export async function updateLoanRepayment({id, payload,}: {

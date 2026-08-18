@@ -7,11 +7,18 @@ export async function createLoanDisbursement(payload: LoanDisbursementPayload) {
   return data;
 }
 
-export async function getAllLoansDisbursement(search?: string, applicantType?: string | null) {
+export async function getAllLoansDisbursement(
+  search?: string,
+  applicantType?: string | null,
+  status?: string[]
+) {
   const params: Record<string, string> = {};
   if (search) params.search = search;
     if (applicantType) {
    params.applicant_type = applicantType;
+  }
+   if (status && status.length > 0) {
+    params.status = JSON.stringify(status);
   }
   const { data } = await apiClient.get(API.loanDisbursement.getLoanDsbr, {
     params: Object.keys(params).length > 0 ? params : undefined,

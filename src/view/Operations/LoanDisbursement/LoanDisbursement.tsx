@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useDebouncedValue } from '@mantine/hooks';
+import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
 import {
   Box,
   Button,
@@ -58,6 +59,12 @@ interface DisbursementRow {
 }
 
 const columnHelper = createColumnHelper<DisbursementRow>();
+const STATUS_FILTER_OPTIONS = [
+  { value: 'Draft', label: 'Draft' },
+  { value: 'Submitted', label: 'Approved' },
+  { value: 'Cancelled', label: 'Cancelled' },
+  { value: 'Closed', label: 'Closed' },
+];
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
@@ -104,7 +111,7 @@ export function LoanDisbursement() {
  const [applicantType, setApplicantType] = useState<string | null>(null);
   const [debouncedApplicantType] = useDebouncedValue(applicantType, 400);
   const [company, setCompany] = useState<string | null>(null);
-  const [status, setStatus] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
 
   // Table state
   const [sorting, setSorting] = useState([{ id: 'disbursementDate', desc: true }]);
@@ -115,8 +122,8 @@ export function LoanDisbursement() {
     error: queryError,
     refetch: fetchDisbursements,
   } = useQuery({
-     queryKey: ['loanDisbursements', debouncedSearch, debouncedApplicantType],
-    queryFn: () => getAllLoansDisbursement(debouncedSearch, debouncedApplicantType),
+  queryKey: ['loanDisbursements', debouncedSearch, debouncedApplicantType, statusFilter],
+    queryFn: () => getAllLoansDisbursement(debouncedSearch, debouncedApplicantType, statusFilter),
     placeholderData: (prev) => prev,
   });
 
@@ -189,18 +196,8 @@ export function LoanDisbursement() {
 
   const filteredData = useMemo(() => {
     
-    return rowsData.filter((r) => {
-    
-
-      const matchesStatus =
-        status === 'all' ||
-        (status === 'SUBMITTED' && r.status.toUpperCase() === 'SUBMITTED') ||
-        (status === 'PENDING' && r.status.toUpperCase() !== 'SUBMITTED');
-
-       return matchesStatus;
-    });
-}, [rowsData, status]);
-
+       return rowsData;
+ }, [rowsData]);
   const queryClient = useQueryClient();
 
   const handleAdd = () => {
@@ -480,7 +477,7 @@ export function LoanDisbursement() {
     setSearch('');
      setApplicantType(null);
     setCompany(null);
-    setStatus('all');
+     setStatusFilter([]);
   };
 
   return (
@@ -562,25 +559,15 @@ export function LoanDisbursement() {
             }}
           />
 
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={status}
+          <FilterMultiSelect
+           placeholder="All Statuses"
+            data={STATUS_FILTER_OPTIONS}
+            value={statusFilter}
             onChange={(v) => {
-              setStatus(v);
+              setStatusFilter(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
-            style={{ flexShrink: 1 }}
-            styles={{
-              root: { padding: 3 },
-              label: { padding: '5px 8px', fontSize: 11 },
-            }}
-            data={[
-              { label: 'All', value: 'all' },
-              { label: 'Submitted', value: 'SUBMITTED' },
-              { label: 'Pending', value: 'PENDING' },
-            ]}
+            width={140}
           />
 
           <Button size="sm" radius="xl" variant="default" px="sm" style={{ flexShrink: 0 }} onClick={resetFilters}>
