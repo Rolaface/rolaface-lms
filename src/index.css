@@ -10,4 +10,7 @@
 :root {
   --font-main: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     sans-serif;
+  --mantine-color-disabled: var(--mantine-color-white) !important;
+  --mantine-color-disabled-color: var(--mantine-color-slate-8) !important;
+  --mantine-color-disabled-border: var(--mantine-color-slate-3) !important;
 }
