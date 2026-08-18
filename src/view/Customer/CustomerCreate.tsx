@@ -412,10 +412,8 @@ export function Customer() {
     const customer = customers.find((c) => c.id === borrower360CustomerId);
     if (customer) {
       const borrower = getBorrowerProfile({ id: customer.id, name: customer.name, mobile: customer.mobile });
-      return (
-        <Box p="xl" mt="xl">
-          <Borrower360 borrower={borrower} onBack={() => setBorrower360CustomerId(null)} />
-        </Box>
+       return (
+        <Borrower360 borrower={borrower} onBack={() => setBorrower360CustomerId(null)} />
       );
     }
     return null;

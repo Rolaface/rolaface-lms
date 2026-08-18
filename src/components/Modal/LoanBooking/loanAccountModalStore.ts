@@ -27,9 +27,9 @@ export const loanAccountModal = createModal<LoanAccountModalParams, LoanAccountM
   {
     icon: IconFileInvoice,
     getTitle,
-    buildProps: (params) => ({
-      loanId: params.loanId,
-      isViewMode: params.isViewMode,
-    }),
+   buildProps: (params) => ({
+  loanId: params.loanId ?? null,
+  isViewMode: params.isViewMode ?? false,
+}),
   },
 );

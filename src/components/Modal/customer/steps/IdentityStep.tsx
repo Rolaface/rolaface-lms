@@ -29,6 +29,8 @@ import {
   IconTrash,
   IconPencil,
   IconDots,
+  IconCheck,
+  IconX,
 } from "@tabler/icons-react";
 import { DatePickerInput } from "@mantine/dates";
 import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
@@ -140,102 +142,10 @@ function initialsForName(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-type DirectorDraft = Omit<BusinessDirector, "id"> & { id: string | null };
+type DirectorDraft = Omit<BusinessDirector, "id">;
 
 function emptyDraft(): DirectorDraft {
-  return { id: null, fullName: "", role: "Director", shareholdingPercent: "" };
-}
-
-function AddEditPersonModal({
-  opened,
-  onClose,
-  draft,
-  setDraft,
-  onSave,
-  isEditing,
-}: {
-  opened: boolean;
-  onClose: () => void;
-  draft: DirectorDraft;
-  setDraft: (d: DirectorDraft) => void;
-  onSave: () => void;
-  isEditing: boolean;
-}) {
-  const canSave =
-    draft.fullName.trim().length > 0 &&
-    !!draft.role &&
-    draft.shareholdingPercent !== "";
-
-  return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      title={
-        <Text fw={700} size="sm">
-          {isEditing
-            ? "Edit director / shareholder"
-            : "Add director / shareholder"}
-        </Text>
-      }
-      radius="md"
-      size="md"
-      centered
-    >
-      <Stack gap="sm">
-        <TextInput
-          radius="md"
-          label="Full name"
-          placeholder="e.g. John Banda"
-          withAsterisk
-          value={draft.fullName}
-          onChange={(e) =>
-            setDraft({ ...draft, fullName: e.currentTarget.value })
-          }
-        />
-        <Group grow>
-          <Select
-            radius="md"
-            rightSection={chevron}
-            label="Role"
-            placeholder="Select"
-            withAsterisk
-            data={ROLE_OPTIONS}
-            value={draft.role}
-            onChange={(v) => setDraft({ ...draft, role: v ?? "Director" })}
-          />
-          <NumberInput
-            radius="md"
-            label="Ownership %"
-            placeholder="e.g. 40"
-            min={0}
-            max={100}
-            hideControls
-            withAsterisk
-            value={draft.shareholdingPercent}
-            onChange={(v) =>
-              setDraft({
-                ...draft,
-                shareholdingPercent: v === "" ? "" : Number(v),
-              })
-            }
-          />
-        </Group>
-        <Group justify="flex-end" mt="sm">
-          <Button variant="default" radius="md" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            radius="md"
-            color="brand"
-            disabled={!canSave}
-            onClick={onSave}
-          >
-            {isEditing ? "Save changes" : "Add person"}
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
-  );
+  return { fullName: "", role: "Director", shareholdingPercent: "" };
 }
 
 const TABLE_ROW_MAX_VISIBLE = 3;
@@ -253,26 +163,99 @@ function DirectorsShareholdersTable({
   removeDirector: (id: string) => void;
 }) {
   const safeDirectors = directors ?? [];
-  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   const [draft, setDraft] = useState<DirectorDraft>(emptyDraft());
 
   const openAdd = () => {
     setDraft(emptyDraft());
-    setModalOpen(true);
+    setEditingId("new");
   };
   const openEdit = (d: BusinessDirector) => {
-    setDraft({ ...d });
-    setModalOpen(true);
+    setDraft({
+      fullName: d.fullName,
+      role: d.role,
+      shareholdingPercent: d.shareholdingPercent,
+    });
+    setEditingId(d.id);
   };
+  const cancelEdit = () => setEditingId(null);
+
+  const canSave =
+    draft.fullName.trim().length > 0 &&
+    !!draft.role &&
+    draft.shareholdingPercent !== "";
+
   const handleSave = () => {
-    const { id, ...patch } = draft;
-    if (id) {
-      updateDirector(id, patch);
-    } else {
-      addDirector(patch);
-    }
-    setModalOpen(false);
+    if (!canSave) return;
+    if (editingId === "new") addDirector(draft);
+    else if (editingId) updateDirector(editingId, draft);
+    setEditingId(null);
   };
+
+  const renderEditableRow = (key: string) => (
+    <Table.Tr key={key} style={{ height: TABLE_ROW_HEIGHT }}>
+      <Table.Td>
+        <TextInput
+          size="xs"
+          radius="md"
+          placeholder="Full name"
+          value={draft.fullName}
+          onChange={(e) =>
+            setDraft({ ...draft, fullName: e.currentTarget.value })
+          }
+        />
+      </Table.Td>
+      <Table.Td>
+        <Select
+          size="xs"
+          radius="md"
+          rightSection={chevron}
+          data={ROLE_OPTIONS}
+          value={draft.role}
+          onChange={(v) => setDraft({ ...draft, role: v ?? "Director" })}
+        />
+      </Table.Td>
+      <Table.Td>
+        <NumberInput
+          size="xs"
+          radius="md"
+          min={0}
+          max={100}
+          hideControls
+          value={draft.shareholdingPercent}
+          onChange={(v) =>
+            setDraft({
+              ...draft,
+              shareholdingPercent: v === "" ? "" : Number(v),
+            })
+          }
+        />
+      </Table.Td>
+      <Table.Td>
+        <Group gap={4} wrap="nowrap">
+          <ActionIcon
+            variant="filled"
+            color="brand"
+            radius="md"
+            disabled={!canSave}
+            onClick={handleSave}
+            aria-label="Save"
+          >
+            <IconCheck size={14} />
+          </ActionIcon>
+          <ActionIcon
+            variant="default"
+            radius="md"
+            onClick={cancelEdit}
+            aria-label="Cancel"
+          >
+            <IconX size={14} />
+          </ActionIcon>
+        </Group>
+      </Table.Td>
+    </Table.Tr>
+  );
 
   const needsScroll = safeDirectors.length > TABLE_ROW_MAX_VISIBLE;
 
@@ -307,7 +290,7 @@ function DirectorsShareholdersTable({
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
-        {safeDirectors.length === 0 && (
+        {safeDirectors.length === 0 && editingId !== "new" && (
           <Table.Tr>
             <Table.Td colSpan={4}>
               <Text size="sm" c="slate.5" ta="center" py="md">
@@ -317,78 +300,83 @@ function DirectorsShareholdersTable({
           </Table.Tr>
         )}
 
-        {safeDirectors.map((d) => (
-          <Table.Tr key={d.id} style={{ height: TABLE_ROW_HEIGHT }}>
-            <Table.Td>
-              <Group gap={8} wrap="nowrap">
-                <Avatar
-                  radius="xl"
-                  size={28}
-                  color={colorForName(d.fullName)}
-                  variant="light"
-                >
-                  <Text size={11} fw={700}>
-                    {initialsForName(d.fullName)}
+        {safeDirectors.map((d) =>
+          editingId === d.id ? (
+            renderEditableRow(d.id)
+          ) : (
+            <Table.Tr key={d.id} style={{ height: TABLE_ROW_HEIGHT }}>
+              <Table.Td>
+                <Group gap={8} wrap="nowrap">
+                  <Avatar
+                    radius="xl"
+                    size={28}
+                    color={colorForName(d.fullName)}
+                    variant="light"
+                  >
+                    <Text size={11} fw={700}>
+                      {initialsForName(d.fullName)}
+                    </Text>
+                  </Avatar>
+                  <Text size="sm" fw={600} c="slate.8" truncate>
+                    {d.fullName || "Unnamed"}
                   </Text>
-                </Avatar>
-                <Text size="sm" fw={600} c="slate.8" truncate>
-                  {d.fullName || "Unnamed"}
+                </Group>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm" c="slate.6">
+                  {d.role}
                 </Text>
-              </Group>
-            </Table.Td>
-            <Table.Td>
-              <Text size="sm" c="slate.6">
-                {d.role}
-              </Text>
-            </Table.Td>
-            <Table.Td>
-              <Text size="sm" c="slate.6">
-                {d.shareholdingPercent === ""
-                  ? "—"
-                  : `${d.shareholdingPercent}%`}
-              </Text>
-            </Table.Td>
-            <Table.Td>
-              <Group gap={4} wrap="nowrap">
-                <Button
-                  size="xs"
-                  radius="md"
-                  variant="default"
-                  leftSection={<IconPencil size={12} />}
-                  onClick={() => openEdit(d)}
-                >
-                  Edit
-                </Button>
-                <Menu position="bottom-end" withinPortal>
-                  <Menu.Target>
-                    <ActionIcon
-                      variant="default"
-                      radius="md"
-                      aria-label="More actions"
-                    >
-                      <IconDots size={14} />
-                    </ActionIcon>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Item
-                      leftSection={<IconPencil size={13} />}
-                      onClick={() => openEdit(d)}
-                    >
-                      Edit
-                    </Menu.Item>
-                    <Menu.Item
-                      color="danger"
-                      leftSection={<IconTrash size={13} />}
-                      onClick={() => removeDirector(d.id)}
-                    >
-                      Remove
-                    </Menu.Item>
-                  </Menu.Dropdown>
-                </Menu>
-              </Group>
-            </Table.Td>
-          </Table.Tr>
-        ))}
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm" c="slate.6">
+                  {d.shareholdingPercent === ""
+                    ? "—"
+                    : `${d.shareholdingPercent}%`}
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Group gap={4} wrap="nowrap">
+                  <Button
+                    size="xs"
+                    radius="md"
+                    variant="default"
+                    leftSection={<IconPencil size={12} />}
+                    onClick={() => openEdit(d)}
+                  >
+                    Edit
+                  </Button>
+                  <Menu position="bottom-end" withinPortal>
+                    <Menu.Target>
+                      <ActionIcon
+                        variant="default"
+                        radius="md"
+                        aria-label="More actions"
+                      >
+                        <IconDots size={14} />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item
+                        leftSection={<IconPencil size={13} />}
+                        onClick={() => openEdit(d)}
+                      >
+                        Edit
+                      </Menu.Item>
+                      <Menu.Item
+                        color="danger"
+                        leftSection={<IconTrash size={13} />}
+                        onClick={() => removeDirector(d.id)}
+                      >
+                        Remove
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                </Group>
+              </Table.Td>
+            </Table.Tr>
+          ),
+        )}
+        {editingId === "new" && renderEditableRow("new")}
       </Table.Tbody>
     </Table>
   );
@@ -417,32 +405,25 @@ function DirectorsShareholdersTable({
         tableBody
       )}
 
-      <UnstyledButton
-        onClick={openAdd}
-        style={{
-          width: "100%",
-          border: "1px dashed var(--mantine-color-slate-3)",
-          borderRadius: "var(--mantine-radius-md)",
-          padding: "10px 0",
-          textAlign: "center",
-        }}
-      >
-        <Group gap={6} justify="center">
-          <IconPlus size={14} color="var(--mantine-color-brand-6)" />
-          <Text size="sm" fw={600} c="brand.6">
-            Add director or shareholder
-          </Text>
-        </Group>
-      </UnstyledButton>
-
-      <AddEditPersonModal
-        opened={modalOpen}
-        onClose={() => setModalOpen(false)}
-        draft={draft}
-        setDraft={setDraft}
-        onSave={handleSave}
-        isEditing={draft.id !== null}
-      />
+      {editingId === null && (
+        <UnstyledButton
+          onClick={openAdd}
+          style={{
+            width: "100%",
+            border: "1px dashed var(--mantine-color-slate-3)",
+            borderRadius: "var(--mantine-radius-md)",
+            padding: "10px 0",
+            textAlign: "center",
+          }}
+        >
+          <Group gap={6} justify="center">
+            <IconPlus size={14} color="var(--mantine-color-brand-6)" />
+            <Text size="sm" fw={600} c="brand.6">
+              Add director or shareholder
+            </Text>
+          </Group>
+        </UnstyledButton>
+      )}
     </Stack>
   );
 }

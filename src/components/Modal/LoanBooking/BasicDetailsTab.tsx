@@ -171,7 +171,8 @@ export function BasicDetailsTab({
           />
           <TextInput
             label="Loan Application Number"
-            disabled={hasLoanAppNumber}
+            // disabled={hasLoanAppNumber}
+            disabled
             {...form.getInputProps("loanAppNumber")}
           />
           <TextInput
@@ -219,6 +220,14 @@ export function BasicDetailsTab({
               value={toDateObj(form.values.trnDate)}
               onChange={(date) => form.setFieldValue("trnDate", toDateString(date))}
             />
+            {/* <DateInput
+              label="Value Date"
+              withAsterisk
+              valueFormat="DD-MMM-YYYY"
+              placeholder="DD-MMM-YYYY"
+              value={toDateObj(form.values.valueDate)}
+              onChange={(date) => form.setFieldValue("valueDate", toDateString(date))}
+            /> */}
             <DateInput
               label="Value Date"
               withAsterisk
@@ -226,6 +235,7 @@ export function BasicDetailsTab({
               placeholder="DD-MMM-YYYY"
               value={toDateObj(form.values.valueDate)}
               onChange={(date) => form.setFieldValue("valueDate", toDateString(date))}
+              error={form.errors.valueDate}
             />
             <TextInput
               label="Currency"
@@ -285,6 +295,14 @@ export function BasicDetailsTab({
               disabled
               onChange={() => { }}
             />
+            {/* <DateInput
+              label="Repayment Start Date"
+              withAsterisk
+              valueFormat="DD-MMM-YYYY"
+              placeholder="DD-MMM-YYYY"
+              value={toDateObj(form.values.repaymentStartDate)}
+              onChange={(date) => form.setFieldValue("repaymentStartDate", toDateString(date))}
+            /> */}
             <DateInput
               label="Repayment Start Date"
               withAsterisk
@@ -292,6 +310,7 @@ export function BasicDetailsTab({
               placeholder="DD-MMM-YYYY"
               value={toDateObj(form.values.repaymentStartDate)}
               onChange={(date) => form.setFieldValue("repaymentStartDate", toDateString(date))}
+              error={form.errors.repaymentStartDate}
             />
             <div className="flex items-center h-full">
               <Checkbox

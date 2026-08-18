@@ -29,43 +29,6 @@ import type {
 
 
 
-export const brand = {
-  // surfaces
-  cream: '#F5F2EA',
-  canvas: '#EFEAE0',
-  paper: "var(--mantine-color-white)",
-
-  // ink / text
-  ink: '#241F3D',
-  inkHover: '#332C55',
-  inkSoft: '#6B6787',
-
-  // primary — brand & interactive actions
-  primary: "var(--mantine-color-brand-5)",
-  primaryHover: "var(--mantine-color-brand-6)",
-  primarySoft: "var(--mantine-color-brand-0)",
-
-  // success — healthy, on-track, positive money
-  teal: '#0E8A73',
-  tealSoft: '#DFF4EE',
-
-  // warning — attention, watch-list, expiring
-  gold: "var(--mantine-color-gold-7)",
-  goldSoft: "var(--mantine-color-gold-0)",
-
-  // danger — overdue, delinquent
-  rose: "var(--mantine-color-danger-5)",
-  roseSoft: "var(--mantine-color-danger-0)",
-
-  // info — neutral highlights, links, references
-  sky: "var(--mantine-color-info-7)",
-  skySoft: "var(--mantine-color-info-0)",
-
-  // neutral — closed, inactive
-  slate: "var(--mantine-color-slate-5)",
-  slateSoft: "var(--mantine-color-slate-1)",
-};
-
 export const serif = { fontFamily: 'Georgia, Cambria, "Times New Roman", Times, serif' };
 
 /* ============================================================================
@@ -114,12 +77,12 @@ export const docIconMap: Record<DocIconKind, React.ReactNode> = {
 };
 
 export const docAccentMap: Record<DocIconKind, { bg: string; fg: string }> = {
-  agreement: { bg: brand.primarySoft, fg: brand.primary },
-  id: { bg: brand.skySoft, fg: brand.sky },
-  folder: { bg: brand.slateSoft, fg: brand.slate },
-  income: { bg: brand.tealSoft, fg: brand.teal },
-  vehicle: { bg: brand.skySoft, fg: brand.sky },
-  shield: { bg: brand.goldSoft, fg: brand.gold },
+  agreement: { bg: "var(--mantine-color-brand-0)", fg: "var(--mantine-color-brand-6)" },
+  id: { bg: "var(--mantine-color-info-0)", fg: "var(--mantine-color-info-6)" },
+  folder: { bg: "var(--mantine-color-slate-1)", fg: "var(--mantine-color-slate-5)" },
+  income: { bg: "var(--mantine-color-success-0)", fg: "var(--mantine-color-success-6)" },
+  vehicle: { bg: "var(--mantine-color-info-0)", fg: "var(--mantine-color-info-6)" },
+  shield: { bg: "var(--mantine-color-warning-0)", fg: "var(--mantine-color-warning-6)" },
 };
 
 export const activityFilters: { key: 'all' | ActivityKind; label: string }[] = [
@@ -145,16 +108,16 @@ export const activityKindIcon: Record<ActivityKind, React.ReactNode> = {
 };
 
 export const activityKindTone: Record<ActivityKind, { bg: string; fg: string }> = {
-  system: { bg: brand.slateSoft, fg: brand.slate },
-  call: { bg: brand.skySoft, fg: brand.sky },
-  message: { bg: brand.primarySoft, fg: brand.primary },
-  note: { bg: brand.goldSoft, fg: brand.gold },
+  system: { bg: "var(--mantine-color-slate-1)", fg: "var(--mantine-color-slate-5)" },
+  call: { bg: "var(--mantine-color-info-0)", fg: "var(--mantine-color-info-6)" },
+  message: { bg: "var(--mantine-color-brand-0)", fg: "var(--mantine-color-brand-6)" },
+  note: { bg: "var(--mantine-color-warning-0)", fg: "var(--mantine-color-warning-6)" },
 };
 
 export const scheduleStatusColor: Record<string, string> = {
-  'Paid on time': brand.teal,
-  'Paid late': brand.gold,
-  Overdue: brand.rose,
+  'Paid on time': "var(--mantine-color-success-6)",
+  'Paid late': "var(--mantine-color-warning-6)",
+  Overdue: "var(--mantine-color-danger-6)",
   Upcoming: "var(--mantine-color-slate-3)",
 };
 
@@ -163,9 +126,27 @@ export const scheduleStatusColor: Record<string, string> = {
 ============================================================================ */
 
 export const MOCK_LOANS: LoanSummary[] = [
+  // {
+  //   id: 'ACC-LOAN-2026-00024',
+  //   loanNumber: 'ACC-LOAN-2026-00024',
+  //   product: 'Business Growth Loan',
+  //   status: 'Active',
+  //   outstanding: 86420,
+  //   nextInstallment: 4620,
+  //   repaidPercent: 38,
+  // },
   {
-    id: 'LN-2024-08841',
-    loanNumber: 'LN-2024-08841',
+    id: 'ACC-LOAN-2026-00006',
+    loanNumber: 'ACC-LOAN-2026-00006',
+    product: 'Business Growth Loan',
+    status: 'Active',
+    outstanding: 86420,
+    nextInstallment: 4620,
+    repaidPercent: 38,
+  },
+  {
+    id: 'ACC-LOAN-2026-00004',
+    loanNumber: 'ACC-LOAN-2026-00004',
     product: 'Business Growth Loan',
     status: 'Active',
     outstanding: 86420,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -49,9 +49,12 @@ import {
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { loanCapitalizationModal } from './LoanCapitalizationModalStore';
+import { useDebouncedValue } from '@mantine/hooks';
+import { keepPreviousData } from '@tanstack/react-query';
+import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
+import { getAllLoanProducts } from '../../../api/productApi';
 
-const CAPITALIZATION_TYPES = ['Interest Capitalization', 'Penalty Capitalization', 'Charges Capitalization', 'Principal Capitalization'];
-
+const CAPITALIZATION_TYPES = ['Interest Capitalization', 'Principal Capitalization', 'Charges Capitalization'];
 interface CapitalizationRow {
   id: string;
   loanAc: string;
@@ -64,11 +67,10 @@ interface CapitalizationRow {
 }
 
 const columnHelper = createColumnHelper<CapitalizationRow>();
-
 const STATUS_META: Record<number, { label: string; scale: 'gray' | 'info' | 'danger' }> = {
-  0: { label: 'DRAFT', scale: 'gray' },
-  1: { label: 'SUBMITTED', scale: 'info' },
-  2: { label: 'CANCELLED', scale: 'danger' },
+  0: { label: 'Draft', scale: 'gray' },
+  1: { label: 'Approved', scale: 'info' },
+  2: { label: 'Cancelled', scale: 'danger' },
 };
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
@@ -125,17 +127,43 @@ function AmountCell({ value }: { value: number }) {
 
 export function LoanCapitalization() {
   const theme = useMantineTheme();
-  const [search, setSearch] = useState('');
-  const [loanType, setLoanType] = useState<string | null>(null);
-  const [status, setStatus] = useState('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch] = useDebouncedValue(searchInput, 400);
+  const [productSearchInput, setProductSearchInput] = useState('');
+  const [debouncedProductSearch] = useDebouncedValue(productSearchInput, 400);
+  const [productFilter, setProductFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, productFilter]);
 
   const { data: repaymentsResponse, isLoading } = useQuery({
-    queryKey: ['loanRepayments'],
-    queryFn: getAllLoanRepayment,
+    queryKey: ['loanRepayments', 'capitalization', debouncedSearch, statusFilter, productFilter, page, pageSize],
+    queryFn: () =>
+      getAllLoanRepayment({
+        search: debouncedSearch || undefined,
+        status: statusFilter.length ? statusFilter : undefined,
+        loan_product: productFilter.length ? productFilter : undefined,
+        repayment_type: CAPITALIZATION_TYPES,
+        page,
+        page_size: pageSize,
+      }),
+    placeholderData: keepPreviousData,
   });
 
+  const { data: productsResponse, isLoading: isProductsLoading } = useQuery({
+    queryKey: ['loanProducts', debouncedProductSearch],
+    queryFn: () => getAllLoanProducts({ search: debouncedProductSearch || undefined }),
+  });
+
+  const productFilterOptions = useMemo(() => {
+    const products = productsResponse?.data || [];
+    return products.map((p: any) => ({ value: p.product_code, label: p.product_code }));
+  }, [productsResponse]);
   const queryClient = useQueryClient();
 
   const showError = (heading: string, error: any) => {
@@ -203,14 +231,18 @@ export function LoanCapitalization() {
   }, [repaymentsResponse]);
 
   const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rowsData.filter((r) => {
-      const matchesSearch = !q || r.customer.toLowerCase().includes(q) || r.loanAc.toLowerCase().includes(q);
-      const matchesLoanType = !loanType || r.loanType === loanType;
-      const matchesStatus = status === 'all' || String(r.docstatus) === status;
-      return matchesSearch && matchesLoanType && matchesStatus;
-    });
-  }, [rowsData, search, loanType, status]);
+    const list = repaymentsResponse?.message?.data?.repayments ?? [];
+    return list.map((item: any) => ({
+      id: item.name,
+      loanAc: item.against_loan || '—',
+      customer: item.applicant || '—',
+      loanType: item.loan_product || '—',
+      repaymentType: item.repayment_type,
+      docstatus: item.docstatus,
+      amountPaid: item.amount_paid || 0,
+      valueDate: item.value_date || '—',
+    }));
+  }, [repaymentsResponse]);
 
   const handleDelete = (row: CapitalizationRow) => {
     openCommonModal({
@@ -239,14 +271,17 @@ export function LoanCapitalization() {
     });
   };
 
-  const handleStatusChange = (row: CapitalizationRow, action: 'approved' | 'cancelled') => {
+ const handleStatusChange = (
+  row: CapitalizationRow,
+  action: 'submit' | 'cancelled'
+) => {
     const isCancel = action === 'cancelled';
     openCommonModal({
-      heading: isCancel ? 'Cancel Capitalization' : 'Submit Capitalization',
+      heading: isCancel ? 'Cancel Capitalization' : 'Approve Capitalization',
       subtitle: 'Please confirm this action before continuing.',
       body: (
         <>
-          Are you sure you want to {isCancel ? 'cancel' : 'submit'} capitalization{' '}
+          Are you sure you want to {isCancel ? 'cancel' : 'approve'} capitalization{' '}
           <Text span fw={600}>
             {row.id}
           </Text>
@@ -257,7 +292,7 @@ export function LoanCapitalization() {
       buttons: [
         { label: 'Cancel', variant: 'default' },
         {
-          label: isCancel ? 'Cancel Capitalization' : 'Submit',
+          label: isCancel ? 'Cancel Capitalization' : 'Approve',
           color: isCancel ? 'red' : 'green',
           onClick: () => {
             updateStatus({ id: row.id, action });
@@ -344,7 +379,7 @@ export function LoanCapitalization() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                 onClick={() => loanCapitalizationModal.open({ editId: row.id, isView: true })}
+                  onClick={() => loanCapitalizationModal.open({ editId: row.id, isView: true })}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -356,7 +391,7 @@ export function LoanCapitalization() {
                   color={isDraft ? 'brand' : 'slate'}
                   radius="md"
                   disabled={!isDraft}
-                 onClick={() => loanCapitalizationModal.open({ editId: row.id, isView: false })}
+                  onClick={() => loanCapitalizationModal.open({ editId: row.id, isView: false })}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -382,9 +417,9 @@ export function LoanCapitalization() {
                   </Menu.Target>
                   <Menu.Dropdown>
                     {isDraft ? (
-                      <Menu.Item onClick={() => handleStatusChange(row, 'approved')}>
-                        Submit
-                      </Menu.Item>
+                    <Menu.Item onClick={() => handleStatusChange(row, 'submit')}>
+  Approve
+</Menu.Item>
                     ) : (
                       <Menu.Item color="danger" onClick={() => handleStatusChange(row, 'cancelled')}>
                         Cancel
@@ -404,24 +439,23 @@ export function LoanCapitalization() {
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting, pagination },
+    state: { sorting },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+  const totalRows = repaymentsResponse?.message?.data?.pagination?.total ?? 0;
+  const totalPages = repaymentsResponse?.message?.data?.pagination?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
 
   const resetFilters = () => {
-    setSearch('');
-    setLoanType(null);
-    setStatus('all');
+    setSearchInput('');
+    setStatusFilter([]);
+    setProductFilter([]);
+    setPage(1);
   };
 
   const loanTypeOptions = Array.from(new Set(rowsData.map((r) => r.loanType).filter(Boolean)));
@@ -483,61 +517,48 @@ export function LoanCapitalization() {
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.currentTarget.value)}
           />
-          <Select
-            size="sm"
-            radius="xl"
+          <FilterMultiSelect
             placeholder="All Loan Types"
-            data={loanTypeOptions}
-            w={180}
+            data={productFilterOptions}
+            value={productFilter}
+            onChange={setProductFilter}
             searchable
-            clearable
-            rightSection={chevronDown}
-            value={loanType}
-            onChange={(v) => {
-              setLoanType(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            searchValue={productSearchInput}
+            onSearchChange={setProductSearchInput}
+            loading={isProductsLoading}
+            width={180}
           />
 
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+          <FilterMultiSelect
+            placeholder="All Statuses"
             data={[
-              { label: 'All', value: 'all' },
-              { label: 'Draft', value: '0' },
-              { label: 'Submitted', value: '1' },
-              { label: 'Cancelled', value: '2' },
+              { value: 'Draft', label: 'Draft' },
+              { value: 'Submitted', label: 'Approved' },
+              { value: 'Cancelled', label: 'Cancelled' },
             ]}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            width={160}
           />
-
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
             Reset
           </Button>
-          
-        <Button
-          size="sm"
-          radius="xl"
-         onClick={() => loanCapitalizationModal.open({ editId: null, isView: false })}
-          leftSection={<IconPlus size={14} />}
-          style={{
-            background: theme.other.brandGradient,
-            boxShadow: theme.other.brandGlowShadowSm,
-          }}
-        >
-          Process Capitalization
-        </Button>
+
+          <Button
+            size="sm"
+            radius="xl"
+            onClick={() => loanCapitalizationModal.open({ editId: null, isView: false })}
+            leftSection={<IconPlus size={14} />}
+            style={{
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadowSm,
+            }}
+          >
+            Process Capitalization
+          </Button>
         </Group>
       </Paper>
 
@@ -634,7 +655,12 @@ export function LoanCapitalization() {
                 const color = meta.scale === 'gray' ? 'slate' : meta.scale;
                 const cells = row.getVisibleCells();
                 return (
-                  <Table.Tr key={row.id} className="lms-cap-row">
+                  <Table.Tr
+                    key={row.id}
+                    className="lms-cap-row"
+                    onDoubleClick={() => loanCapitalizationModal.open({ editId: row.original.id, isView: true })}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {cells.map((cell, idx) => (
                       <Table.Td
                         key={cell.id}
@@ -666,7 +692,10 @@ export function LoanCapitalization() {
               <Select
                 data={['10', '20', '50']}
                 value={String(pageSize)}
-                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                onChange={(v) => {
+                  setPageSize(Number(v) || 10);
+                  setPage(1);
+                }}
                 rightSection={chevronDown}
                 size="xs"
                 radius="xl"
@@ -675,9 +704,9 @@ export function LoanCapitalization() {
             </Group>
           </Group>
           <Pagination
-            total={table.getPageCount() || 1}
-            value={pageIndex + 1}
-            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+            total={totalPages}
+            value={page}
+            onChange={(p) => setPage(p)}
             color="brand"
             size="xs"
             radius="xl"

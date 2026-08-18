@@ -12,7 +12,7 @@ import { parseFrappeError } from "../utils/parseFrappeError";
 
 export function useLoanRestructureList() {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<LoanRestructureStatus | "all">("all");
+  const [status, setStatus] = useState<LoanRestructureStatus[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [orderBy, setOrderBy] = useState("creation desc");
@@ -90,9 +90,9 @@ export function useLoanRestructureList() {
     }
   };
 
-  const resetFilters = () => {
+   const resetFilters = () => {
     setSearch("");
-    setStatus("all");
+    setStatus([]);
     setPage(1);
   };
 

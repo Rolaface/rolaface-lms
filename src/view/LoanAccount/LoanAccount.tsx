@@ -51,6 +51,13 @@ import { getSymbol } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 
+// NOTE: adjust these paths if your folder layout differs — this assumes
+// LoanAccount.tsx lives in a folder that is a sibling of the Customer/
+// folder, same as how CustomerView.tsx imports LoanDetailView via
+// '../LoanAccount/LoanView/LoanDetailView'.
+import { Borrower360 } from "../Customer/CustomerView";
+import { getBorrowerProfile } from "../Customer/mockdata";
+
 const STATUS_META: Record<string, { label: string; color: string }> = {
   Draft: { label: "DRAFT", color: "slate" },
   Sanctioned: { label: "SANCTIONED", color: "warning" },
@@ -112,28 +119,40 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 const fmtAmount = (n: number) =>
   n
     ? n.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
     : "0.00";
 
 const fmtDate = (iso: string) =>
   iso
     ? new Date(iso).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
     : "-";
+
+/** Minimal shape we hand off to LoanDetailView when the user opens a loan
+ *  straight from the Loan Booking list (no customer context here yet). */
+interface SelectedLoan {
+  id: string;
+  customerId: string;
+  customerName: string;
+}
 
 export function LoanAccount() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
 
+  // Replaces the old "open a modal" flow — clicking View now swaps the
+  // table out for LoanDetailView in place, same pattern as Customer.tsx's
+  // borrower360CustomerId -> Borrower360 swap.
+  const [selectedLoan, setSelectedLoan] = useState<SelectedLoan | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebouncedValue(searchInput, 400);
-    const [productSearchInput, setProductSearchInput] = useState("");
+  const [productSearchInput, setProductSearchInput] = useState("");
   const [debouncedProductSearch] = useDebouncedValue(productSearchInput, 400);
 
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -168,7 +187,7 @@ export function LoanAccount() {
     queryKey: ["loanProducts", debouncedProductSearch],
     queryFn: () => getAllLoanProducts({ search: debouncedProductSearch || undefined }),
   });
-  
+
   const productFilterOptions = useMemo(() => {
     const products = productsResponse?.data || [];
     return products.map((p: any) => ({
@@ -177,21 +196,63 @@ export function LoanAccount() {
     }));
   }, [productsResponse]);
 
+  const showSuccess = (heading: string, body: string) => {
+      openCommonModal({
+        heading,
+        subtitle: '',
+        body,
+        color: 'green',
+        buttons: [{ label: 'Close', color: 'green' }],
+      });
+    };
+
   const { mutate: removeLoan, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteLoan(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["loans"] }); 
+      showSuccess('Loan Booking Deleted', `Loan Booking ${variables} deleted successfully.`);
     },
-    onError: (error: any) => {
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-        buttons: [{ label: "Close", color: "red" }],
-      });
-    },
+     onError: (error: any) => {
+     openCommonModal({
+       heading: "Action Failed",
+       subtitle: "We couldn't complete your request.",
+       body: parseFrappeError(error),
+       color: "red",
+   
+       buttons: [
+         {
+           label: "Close",
+           color: "red",
+         },
+       ],
+     });
+   },
   });
+
+  const confirmDelete = (id: string) => {
+    openCommonModal({
+      heading: "Delete Loan Booking",
+      subtitle: "This action cannot be undone.",
+      body: (
+        <>
+          Are you sure you want to delete{" "}
+          <Text span fw={600}>
+            {id}
+          </Text>
+          ?
+        </>
+      ),
+      color: "red",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        {
+          label: "Delete",
+          color: "red",
+          onClick: () => removeLoan(id), 
+        },
+      ],
+    });
+  };
 
   const { mutate: updateStatus } = useMutation({
     mutationFn: ({ id, action }: { id: string; action: string }) =>
@@ -218,6 +279,7 @@ export function LoanAccount() {
         id: item.name,
         appNo: item.name,
         customer: item.applicant_name || item.applicant || "N/A",
+        customerId: item.applicant || item.name,
         product: item.loan_product || "N/A",
         branch: item.company || "N/A",
         amount: item.loan_amount || 0,
@@ -351,9 +413,10 @@ export function LoanAccount() {
                   color="slate"
                   radius="md"
                   onClick={() =>
-                    loanAccountModal.open({
-                      loanId: loanIdentifier,
-                      isViewMode: true,
+                    setSelectedLoan({
+                      id: loanIdentifier,
+                      customerId: rowData.customerId,
+                      customerName: rowData.customer,
                     })
                   }
                 >
@@ -384,29 +447,21 @@ export function LoanAccount() {
                 label={isDraft ? "Delete" : "Only Drafts can be deleted"}
                 withArrow
               >
+               <Tooltip
+                label={isDraft ? "Delete" : "Only Drafts can be deleted"}
+                withArrow
+              >
                 <ActionIcon
                   size="sm"
                   variant="subtle"
                   color={isDraft ? "danger" : "slate"}
                   radius="md"
                   disabled={!isDraft || isDeleting}
-                  onClick={() => {
-                    modals.openConfirmModal({
-                      title: "Delete loan application",
-                      children: (
-                        <Text size="sm">
-                          Are you sure you want to delete loan application{" "}
-                          <b>{loanIdentifier}</b>? This cannot be undone.
-                        </Text>
-                      ),
-                      labels: { confirm: "Delete", cancel: "Cancel" },
-                      confirmProps: { color: "danger" },
-                      onConfirm: () => removeLoan(loanIdentifier),
-                    });
-                  }}
+                  onClick={() => confirmDelete(loanIdentifier)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
+              </Tooltip>
               </Tooltip>
               <Menu shadow="md" width={140} position="bottom-end" radius="md">
                 <Menu.Target>
@@ -433,7 +488,7 @@ export function LoanAccount() {
                               <Text span fw={600}>
                                 {loanIdentifier}
                               </Text>{" "}
-                              for approval?
+                              for submission?
                             </>
                           ),
                           color: "green",
@@ -534,6 +589,28 @@ export function LoanAccount() {
     new Set(data.map((a) => a.branch).filter(Boolean)),
   );
 
+  // ---- Detail view swap: same idea as Customer.tsx's borrower360CustomerId
+  // check — while a loan is selected, render the full Borrower360 (sidebar +
+  // profile/loans/investments/savings/FDs) instead of the table, deep-linked
+  // straight into this loan. getBorrowerProfile is the same mock generator
+  // Customer.tsx uses, seeded with whatever identifying info the loan row
+  // gives us. ----
+  if (selectedLoan) {
+    const borrower = getBorrowerProfile({
+      id: selectedLoan.customerId,
+      name: selectedLoan.customerName,
+    });
+
+    return (
+      <Borrower360
+        borrower={borrower}
+        onBack={() => setSelectedLoan(null)}
+        initialSelected={{ type: "loan", id: selectedLoan.id }}
+        hideProfile
+      />
+    );
+  }
+
   return (
     <Stack gap="lg" p="lg">
       <style>{`
@@ -601,16 +678,16 @@ export function LoanAccount() {
           />
 
           <FilterMultiSelect
-  placeholder="All Products"
-  data={productFilterOptions}
-  value={productFilter}
-  onChange={setProductFilter}
-  searchable
-  searchValue={productSearchInput}
-  onSearchChange={setProductSearchInput}
-  loading={isProductsLoading}
-  width={140}
-/>
+            placeholder="All Products"
+            data={productFilterOptions}
+            value={productFilter}
+            onChange={setProductFilter}
+            searchable
+            searchValue={productSearchInput}
+            onSearchChange={setProductSearchInput}
+            loading={isProductsLoading}
+            width={140}
+          />
 
           <Select
             size="sm"
@@ -626,13 +703,13 @@ export function LoanAccount() {
             onChange={setBranch}
           />
 
-        <FilterMultiSelect
-  placeholder="All Statuses"
-  data={STATUS_FILTER_OPTIONS.map((s) => ({ value: s, label: s }))}
-  value={statusFilter}
-  onChange={setStatusFilter}
-  width={140}
-/>
+          <FilterMultiSelect
+            placeholder="All Statuses"
+            data={STATUS_FILTER_OPTIONS.map((s) => ({ value: s, label: s }))}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            width={140}
+          />
 
           <Button
             size="sm"
@@ -781,7 +858,17 @@ export function LoanAccount() {
                       };
                       const cells = row.getVisibleCells();
                       return (
-                        <Table.Tr key={row.id} className="lms-row">
+                        <Table.Tr
+                          key={row.id}
+                          className="lms-row"
+                          onDoubleClick={() =>
+                            loanAccountModal.open({
+                              loanId: row.original.id,
+                              isViewMode: true,
+                            })
+                          }
+                          style={{ cursor: "pointer" }}
+                        >
                           {cells.map((cell, idx) => (
                             <Table.Td
                               key={cell.id}

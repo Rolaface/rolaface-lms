@@ -62,9 +62,7 @@ export function useIdentityState() {
   const [businessCountry, setBusinessCountry] = useState<string | null>(null);
   const [businessPostalCode, setBusinessPostalCode] = useState("");
 
-  const [directors, setDirectors] = useState<BusinessDirector[]>([
-    emptyDirector(),
-  ]);
+  const [directors, setDirectors] = useState<BusinessDirector[]>([]);
   const addDirector = (patch?: Partial<Omit<BusinessDirector, "id">>) =>
     setDirectors((prev) => [...prev, { ...emptyDirector(), ...patch }]);
   const updateDirector = (id: string, patch: Partial<BusinessDirector>) =>
@@ -102,7 +100,7 @@ export function useIdentityState() {
     setBusinessCity("");
     setBusinessCountry(null);
     setBusinessPostalCode("");
-    setDirectors([emptyDirector()]);
+       setDirectors([]);
   };
 
   return {
