@@ -4,7 +4,6 @@ import {
   Button,
   TextInput,
   Select,
-  SegmentedControl,
   Group,
   Paper,
   Table,
@@ -19,6 +18,8 @@ import {
   Menu,
   useMantineTheme,
 } from '@mantine/core';
+import { useDebouncedValue } from '@mantine/hooks';
+import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
 import {
   IconEye,
   IconPencil,
@@ -68,6 +69,11 @@ const STATUS_META: Record<number, { label: string; color: string }> = {
   1: { label: 'SUBMITTED', color: 'info' },
   2: { label: 'CANCELLED', color: 'danger' },
 };
+const STATUS_FILTER_OPTIONS = [
+  { value: '0', label: 'Draft' },
+  { value: '1', label: 'Approved' },
+  { value: '2', label: 'Cancelled' },
+];
 
 const columnHelper = createColumnHelper<RepaymentRow>();
 
@@ -133,16 +139,18 @@ export function LoanRepayment() {
   const theme = useMantineTheme();
 
   const [search, setSearch] = useState('');
+   const [debouncedSearch] = useDebouncedValue(search, 400);
   const [loanType, setLoanType] = useState<string | null>(null);
-  const [status, setStatus] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
 
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   
 
   const { data: repaymentsResponse, isLoading } = useQuery({
-    queryKey: ['loanRepayments'],
-    queryFn: getAllLoanRepayment,
+    queryKey: ['loanRepayments', debouncedSearch, statusFilter],
+   queryFn: () => getAllLoanRepayment(debouncedSearch, statusFilter),
+    placeholderData: (prev) => prev,
   });
 
   const queryClient = useQueryClient();
@@ -206,17 +214,13 @@ export function LoanRepayment() {
   }, [repaymentsResponse]);
 
   const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    
     return rowsData.filter((r) => {
-      const matchesSearch =
-        !q ||
-        r.customer.toLowerCase().includes(q) ||
-        r.loanAc.toLowerCase().includes(q);
+      
       const matchesLoanType = !loanType || r.loanType === loanType;
-      const matchesStatus = status === 'all' || String(r.docstatus) === status;
-      return matchesSearch && matchesLoanType && matchesStatus;
+return matchesLoanType;
     });
-  }, [rowsData, search, loanType, status]);
+}, [rowsData, loanType]);
 
   const handleDelete = (id: string) => {
     openCommonModal({
@@ -478,7 +482,7 @@ export function LoanRepayment() {
   const resetFilters = () => {
     setSearch('');
     setLoanType(null);
-    setStatus('all');
+    setStatusFilter([]);
   };
 
   // Generate loan type options dynamically from loaded data (like LoanAccount)
@@ -567,21 +571,15 @@ export function LoanRepayment() {
             }}
           />
 
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={status}
+         <FilterMultiSelect
+           placeholder="All Statuses"
+            data={STATUS_FILTER_OPTIONS}
+            value={statusFilter}
             onChange={(v) => {
-              setStatus(v);
+              setStatusFilter(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
-            data={[
-              { label: 'All', value: 'all' },
-              { label: 'Draft', value: '0' },
-              { label: 'Submitted', value: '1' },
-              { label: 'Cancelled', value: '2' },
-            ]}
+            width={140}
           />
 
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>

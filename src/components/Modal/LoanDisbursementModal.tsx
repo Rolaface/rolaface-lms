@@ -542,6 +542,7 @@ useEffect(() => {
     form.setFieldValue("topupSanctionedCurrent", sanctioned);
     form.setFieldValue("topupOutstandingCurrent", outstanding);
     form.setFieldValue("disburseAmount", outstanding);
+     form.setFieldValue("disbursementAc", loanData.disbursement_account || null);
   }, [opened, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
 
  useEffect(() => {
