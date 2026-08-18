@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDebouncedValue } from '@mantine/hooks';
 import {
   Box,
   Button,
@@ -52,6 +53,7 @@ interface DisbursementRow {
   loanProduct: string;
   postingDate: string;
   disbursedAmount: number;
+  topUp: boolean;
   status: string;
 }
 
@@ -98,7 +100,9 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function LoanDisbursement() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState('');
-  const [applicantType, setApplicantType] = useState<string | null>(null);
+  const [debouncedSearch] = useDebouncedValue(search, 400);
+ const [applicantType, setApplicantType] = useState<string | null>(null);
+  const [debouncedApplicantType] = useDebouncedValue(applicantType, 400);
   const [company, setCompany] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
 
@@ -111,8 +115,9 @@ export function LoanDisbursement() {
     error: queryError,
     refetch: fetchDisbursements,
   } = useQuery({
-    queryKey: ['loanDisbursements'],
-    queryFn: getAllLoansDisbursement,
+     queryKey: ['loanDisbursements', debouncedSearch, debouncedApplicantType],
+    queryFn: () => getAllLoansDisbursement(debouncedSearch, debouncedApplicantType),
+    placeholderData: (prev) => prev,
   });
 
   const error = queryError ? (queryError as any)?.message || 'Failed to fetch loan disbursements.' : null;
@@ -128,6 +133,7 @@ export function LoanDisbursement() {
       postingDate: item.posting_date || '—',
       disbursedAmount: Number(item.disbursed_amount) || 0,
       status: item.status || 'Pending',
+      topUp: item.top_up ===1,
     }));
   }, [res]);
 
@@ -182,22 +188,18 @@ export function LoanDisbursement() {
   });
 
   const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    
     return rowsData.filter((r) => {
-      const matchesSearch =
-        !q ||
-        r.applicant.toLowerCase().includes(q) ||
-        r.againstLoan.toLowerCase().includes(q) ||
-        r.id.toLowerCase().includes(q); // Added search by ID (name)
+    
 
       const matchesStatus =
         status === 'all' ||
         (status === 'SUBMITTED' && r.status.toUpperCase() === 'SUBMITTED') ||
         (status === 'PENDING' && r.status.toUpperCase() !== 'SUBMITTED');
 
-      return matchesSearch && matchesStatus;
+       return matchesStatus;
     });
-  }, [rowsData, search, status]);
+}, [rowsData, status]);
 
   const queryClient = useQueryClient();
 
@@ -243,13 +245,29 @@ export function LoanDisbursement() {
   const columns = useMemo(
     () => [
       columnHelper.accessor('id', {
-        header: 'Disbursement Ref.',
-        cell: (info) => (
-          <Text fz="sm" fw={700} c="slate.8" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-            {info.getValue()}
-          </Text>
-        ),
-      }),
+  header: 'Disbursement Ref.',
+  cell: (info) => {
+    const row = info.row.original;
+    return (
+      <Group gap={6} wrap="nowrap">
+        <Text fz="sm" fw={700} c="slate.8" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+          {info.getValue()}
+        </Text>
+        {row.topUp && (
+          <Badge
+            variant="light"
+            color="violet"
+            radius="sm"
+            size="xs"
+            styles={{ root: { textTransform: 'none', fontWeight: 700, padding: '0 6px' } }}
+          >
+            Top Up
+          </Badge>
+        )}
+      </Group>
+    );
+  },
+}),
       columnHelper.accessor('againstLoan', {
         header: 'Loan Ref.',
         cell: (info) => (
@@ -460,7 +478,7 @@ export function LoanDisbursement() {
 
   const resetFilters = () => {
     setSearch('');
-    setApplicantType(null);
+     setApplicantType(null);
     setCompany(null);
     setStatus('all');
   };
@@ -528,11 +546,11 @@ export function LoanDisbursement() {
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
-          <Select
+           <Select
             size="sm"
             radius="xl"
             placeholder="All Applicant Types"
-            data={['Employee', 'Customer', 'Vendor']}
+             data={['Customer', 'Employee', 'Member']}
             style={{ flexGrow: 1, flexShrink: 1, minWidth: 130, maxWidth: 170 }}
             searchable
             clearable
