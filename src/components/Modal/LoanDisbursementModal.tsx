@@ -380,7 +380,7 @@ const createDisbursementMutation = useMutation({
       form.setValues({
         acNo: item.against_loan || "",
         valueDate: normalizeDateValue(item.disbursement_date || item.posting_date || getTodayDate()),
-        disburseAmount: (Number(item.loan_amount) || 0) - (Number(item.disbursed_amount) || 0),
+        disburseAmount: (Number(item.disbursed_amount) || 0),
         modeOfPayment: item.mode_of_payment || null,
         disbursementAc: item.disbursement_account || null,
         refDate: normalizeDateValue(item.reference_date || getTodayDate()),
@@ -475,7 +475,7 @@ const actualDisbursableAmount = useMemo(() => {
         (editDetailsResponse as any).data ||
         (editDetailsResponse as any).message ||
         editDetailsResponse;
-      const sanctioned = Number(item?.loan_amount || 0);
+      const sanctioned = Number(item?.sanctioned_loan_amount || 0);
       const disbursed = Number(item?.disbursed_amount || 0);
       return sanctioned - disbursed;
     }
@@ -719,6 +719,7 @@ useEffect(() => {
                     {...form.getInputProps("disburseAmount")}
                     leftSection={<IconNotes size={14} color="var(--mantine-color-warning-5)" />}
                     thousandSeparator=","
+                     disabled={isView || (canShowTopup && !form.values.isTopup)}
                   />
                   {canShowTopup && (
                     <Checkbox
