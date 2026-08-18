@@ -1,9 +1,10 @@
 import { useCallback } from "react";
 import { Box, Button, Group, Title, Alert, Text } from "@mantine/core";
 import { IconFileSpreadsheet, IconFileAlert, IconAlertCircle } from "@tabler/icons-react";
-import { useLoanArrear } from "../../../hooks/Report/Arrear/useLoanArrear"; 
+import { useLoanArrear } from "../../../hooks/Report/Arrear/useLoanArrear";
 
 import { formatAmount, usePrefetchCurrencies } from "../../../store/currencyStore"; 
+import { useCompanyStore } from "../../../store/companyStore";
 
 import { ArrearFilters } from "./ArrearFilters";
 import { ArrearSummaryCards } from "./ArrearSummaryCards";
@@ -20,20 +21,28 @@ export function ArrearReports() {
     status: { loadingDashboard, loadingTable, error, exporting },
   } = useLoanArrear();
 
-  const currencyCode = (summary as any)?.currency || "INR";
+  const currencyCode = useCompanyStore((state) => state.baseCurrency);
   
-  usePrefetchCurrencies(summary, (s: any) => [s?.currency || "INR"]);
+  usePrefetchCurrencies(summary, (s: any) => [s?.company_currency]);
 
-  const renderCurrency = useCallback((val: number | string | undefined | null) => {
-    if (val === undefined || val === null || val === "") return "-";
-    return formatAmount(currencyCode, Number(val), { withSymbol: true });
-  }, [currencyCode]);
+  const renderCurrency = useCallback(
+    (val: number | string | undefined | null) => {
+      if (val === undefined || val === null || val === "") return "-";
+      const num = Number(val);
+      if (isNaN(num)) return "-";
+
+      if (num >= 1000000) {
+        return `${formatAmount(currencyCode, num / 1000000, { withSymbol: true })}M`;
+      }
+      return formatAmount(currencyCode, num, { withSymbol: true });
+    },
+    [currencyCode]
+  );
 
   return (
     <Box className="bg-[#F7F8FB] text-slate-800 min-h-full relative">
       <Box component="main" className="p-4 flex flex-col gap-3.5">
         
-        {/* Page Header */}
         <Group justify="space-between" align="flex-start">
           <div>
             <Title order={3} className="text-slate-900">Arrear Reports</Title>
@@ -56,7 +65,6 @@ export function ArrearReports() {
           </Group>
         </Group>
 
-        {/* Global Filters */}
         <ArrearFilters filters={filters} lookups={lookups} actions={actions} />
 
         {error && (
@@ -65,13 +73,10 @@ export function ArrearReports() {
           </Alert>
         )}
 
-        {/* Top Summaries */}
         <ArrearSummaryCards summary={summary} loadingDashboard={loadingDashboard} renderCurrency={renderCurrency} />
 
-        {/* Charts Row */}
         <ArrearCharts summary={summary} charts={charts} loadingDashboard={loadingDashboard} renderCurrency={renderCurrency} />
 
-        {/* Data Table & Insights */}
         <div className="grid grid-cols-[2.2fr_1fr] gap-3 items-start relative">
           <ArrearTable 
             topAccounts={topAccounts} 
