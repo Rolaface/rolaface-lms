@@ -67,11 +67,10 @@ interface CapitalizationRow {
 }
 
 const columnHelper = createColumnHelper<CapitalizationRow>();
-
 const STATUS_META: Record<number, { label: string; scale: 'gray' | 'info' | 'danger' }> = {
-  0: { label: 'DRAFT', scale: 'gray' },
-  1: { label: 'SUBMITTED', scale: 'info' },
-  2: { label: 'CANCELLED', scale: 'danger' },
+  0: { label: 'Draft', scale: 'gray' },
+  1: { label: 'Approved', scale: 'info' },
+  2: { label: 'Cancelled', scale: 'danger' },
 };
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
@@ -272,14 +271,17 @@ export function LoanCapitalization() {
     });
   };
 
-  const handleStatusChange = (row: CapitalizationRow, action: 'approved' | 'cancelled') => {
+ const handleStatusChange = (
+  row: CapitalizationRow,
+  action: 'submit' | 'cancelled'
+) => {
     const isCancel = action === 'cancelled';
     openCommonModal({
-      heading: isCancel ? 'Cancel Capitalization' : 'Submit Capitalization',
+      heading: isCancel ? 'Cancel Capitalization' : 'Approve Capitalization',
       subtitle: 'Please confirm this action before continuing.',
       body: (
         <>
-          Are you sure you want to {isCancel ? 'cancel' : 'submit'} capitalization{' '}
+          Are you sure you want to {isCancel ? 'cancel' : 'approve'} capitalization{' '}
           <Text span fw={600}>
             {row.id}
           </Text>
@@ -290,7 +292,7 @@ export function LoanCapitalization() {
       buttons: [
         { label: 'Cancel', variant: 'default' },
         {
-          label: isCancel ? 'Cancel Capitalization' : 'Submit',
+          label: isCancel ? 'Cancel Capitalization' : 'Approve',
           color: isCancel ? 'red' : 'green',
           onClick: () => {
             updateStatus({ id: row.id, action });
@@ -415,9 +417,9 @@ export function LoanCapitalization() {
                   </Menu.Target>
                   <Menu.Dropdown>
                     {isDraft ? (
-                      <Menu.Item onClick={() => handleStatusChange(row, 'approved')}>
-                        Submit
-                      </Menu.Item>
+                    <Menu.Item onClick={() => handleStatusChange(row, 'submit')}>
+  Approve
+</Menu.Item>
                     ) : (
                       <Menu.Item color="danger" onClick={() => handleStatusChange(row, 'cancelled')}>
                         Cancel
@@ -534,7 +536,7 @@ export function LoanCapitalization() {
             placeholder="All Statuses"
             data={[
               { value: 'Draft', label: 'Draft' },
-              { value: 'Submitted', label: 'Submitted' },
+              { value: 'Submitted', label: 'Approved' },
               { value: 'Cancelled', label: 'Cancelled' },
             ]}
             value={statusFilter}
