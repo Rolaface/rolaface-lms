@@ -66,18 +66,25 @@ const countryOptions = useMemo(() => {
 
   if (loanType === "Personal") {
     return (
-      <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" verticalSpacing="md">
-        <TextInput
-          radius="md"
-          label={<Label text="Residential address" required />}
-          {...form.getInputProps("residentialAddress")}
-        />
-        <TextInput radius="md" label={<Label text="Occupation" required />} {...form.getInputProps("occupation")} />
-        <TextInput
-          radius="md"
-          label={<Label text="Employer name" required />}
-          {...form.getInputProps("employerName")}
-        />
+     <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" verticalSpacing="md">
+  <TextInput
+    radius="md"
+    label={<Label text="Residential address" required />}
+    placeholder="e.g. Plot 12, Kabulonga, Lusaka"
+    {...form.getInputProps("residentialAddress")}
+  />
+  <TextInput
+    radius="md"
+    label={<Label text="Occupation" required />}
+    placeholder="e.g. Software Engineer"
+    {...form.getInputProps("occupation")}
+  />
+  <TextInput
+    radius="md"
+    label={<Label text="Employer name" required />}
+    placeholder="e.g. ABC Enterprises Ltd"
+    {...form.getInputProps("employerName")}
+  />
 
      <Select
   radius="md"
@@ -90,27 +97,39 @@ const countryOptions = useMemo(() => {
   {...form.getInputProps("nationality")}
 />
         <TextInput
-          radius="md"
-          label={<Label text="Principal objective of loan" required />}
-          {...form.getInputProps("principalObjective")}
-        />
-        <TextInput
-          radius="md"
-          label={<Label text="Next of kin name" required />}
-          {...form.getInputProps("kinName")}
-        />
+    radius="md"
+    label={<Label text="Principal objective of loan" required />}
+    placeholder="e.g. Home renovation"
+    {...form.getInputProps("principalObjective")}
+  />
+  <TextInput
+    radius="md"
+    label={<Label text="Next of kin name" required />}
+    placeholder="e.g. John Doe"
+    {...form.getInputProps("kinName")}
+  />
 
-        {/* <TextInput radius="md" type="tel" label={<Label text="Next of kin phone" required />} {...form.getInputProps("kinPhone")} /> */}
-        <TextInput
-  radius="md"
-  type="tel"
-  label={<Label text="Next of kin phone" required />}
-  value={form.values.kinPhone}
-  onChange={(e) => form.setFieldValue("kinPhone", e.currentTarget.value.replace(/\D/g, ""))}
-  error={form.errors.kinPhone}
-/>
-        <TextInput radius="md" type="email" label={<Label text="Next of kin email" required />} {...form.getInputProps("kinEmail")} />
-        {/* <TextInput radius="md" label={<Label text="Relationship" required />} {...form.getInputProps("kinRelationship")} /> */}
+  <TextInput
+    radius="md"
+    type="tel"
+    label={<Label text="Next of kin phone" required />}
+    placeholder="e.g. 0971234567"
+    value={form.values.kinPhone}
+    onChange={(e) => form.setFieldValue("kinPhone", e.currentTarget.value.replace(/\D/g, ""))}
+    error={form.errors.kinPhone}
+  />
+  <TextInput
+    radius="md"
+    type="email"
+    label={<Label text="Next of kin email" required />}
+    placeholder="e.g. john.doe@example.com"
+    value={form.values.kinEmail}
+    onChange={(e) => {
+      form.setFieldValue("kinEmail", e.currentTarget.value);
+      form.validateField("kinEmail");
+    }}
+    error={form.errors.kinEmail}
+  />
         <Select
   radius="md"
   label={<Label text="Relationship" required />}
@@ -251,32 +270,51 @@ const countryOptions = useMemo(() => {
         {/* Applicant Details */}
         <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" verticalSpacing="md">
           <TextInput
-            radius="md"
-            label={<Label text="Applicant first name" required />}
-            {...form.getInputProps("applicantFirstName")}
-          />
-          <TextInput
-            radius="md"
-            label={<Label text="Applicant middle name" optional />}
-            {...form.getInputProps("applicantMiddleName")}
-          />
-          <TextInput
-            radius="md"
-            label={<Label text="Applicant last name" required />}
-            {...form.getInputProps("applicantLastName")}
-          />
+  radius="md"
+  label={<Label text="Applicant first name" required />}
+  placeholder="e.g. John"
+  {...form.getInputProps("applicantFirstName")}
+/>
+<TextInput
+  radius="md"
+  label={<Label text="Applicant middle name" optional />}
+  placeholder="e.g. K."
+  {...form.getInputProps("applicantMiddleName")}
+/>
+<TextInput
+  radius="md"
+  label={<Label text="Applicant last name" required />}
+  placeholder="e.g. Doe"
+  {...form.getInputProps("applicantLastName")}
+/>
 
-          {/* <TextInput radius="md" type="tel" label={<Label text="Applicant phone" required />} {...form.getInputProps("applicantPhone")} /> */}
-          <TextInput
+<TextInput
   radius="md"
   type="tel"
   label={<Label text="Applicant phone" required />}
+  placeholder="e.g. 0971234567"
   value={form.values.applicantPhone}
   onChange={(e) => form.setFieldValue("applicantPhone", e.currentTarget.value.replace(/\D/g, ""))}
   error={form.errors.applicantPhone}
 />
-          <TextInput radius="md" type="email" label={<Label text="Applicant email" required />} {...form.getInputProps("applicantEmail")} />
-          <TextInput radius="md" label={<Label text="Applicant NRC" required />} {...form.getInputProps("applicantNrc")} />
+<TextInput
+  radius="md"
+  type="email"
+  label={<Label text="Applicant email" required />}
+  placeholder="e.g. john.doe@example.com"
+  value={form.values.applicantEmail}
+  onChange={(e) => {
+    form.setFieldValue("applicantEmail", e.currentTarget.value);
+    form.validateField("applicantEmail");
+  }}
+  error={form.errors.applicantEmail}
+/>
+<TextInput
+  radius="md"
+  label={<Label text="Applicant NRC" required />}
+  placeholder="e.g. 123456/78/1"
+  {...form.getInputProps("applicantNrc")}
+/>
 
           <Select
             radius="md"
@@ -308,15 +346,17 @@ const countryOptions = useMemo(() => {
 />
 
           <TextInput
-            radius="md"
-            label={<Label text="Applicant address" required />}
-            {...form.getInputProps("applicantAddress")}
-          />
-          <TextInput
-            radius="md"
-            label={<Label text="Applicant position" required />}
-            {...form.getInputProps("applicantPosition")}
-          />
+  radius="md"
+  label={<Label text="Applicant address" required />}
+  placeholder="e.g. Plot 12, Kabulonga, Lusaka"
+  {...form.getInputProps("applicantAddress")}
+/>
+<TextInput
+  radius="md"
+  label={<Label text="Applicant position" required />}
+  placeholder="e.g. Managing Director"
+  {...form.getInputProps("applicantPosition")}
+/>
           <Select
   radius="md"
   label={<Label text="Applicant nationality" required />}
@@ -347,15 +387,17 @@ const countryOptions = useMemo(() => {
           <Box>
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" verticalSpacing="md" mb="xl">
              <TextInput
-                radius="md"
-                label={<Label text="Director name" required />}
-                {...form.getInputProps(`directors.${editingIndex}.name`)}
-                onBlur={() => form.validateField(`directors.${editingIndex}.name`)}
-              />
-            <TextInput
+  radius="md"
+  label={<Label text="Director name" required />}
+  placeholder="e.g. John Doe"
+  {...form.getInputProps(`directors.${editingIndex}.name`)}
+  onBlur={() => form.validateField(`directors.${editingIndex}.name`)}
+/>
+<TextInput
   radius="md"
   type="tel"
   label={<Label text="Director phone" required />}
+  placeholder="e.g. 0971234567"
   value={form.values.directors[editingIndex].phone}
   onChange={(e) =>
     form.setFieldValue(`directors.${editingIndex}.phone`, e.currentTarget.value.replace(/\D/g, ""))
@@ -363,19 +405,26 @@ const countryOptions = useMemo(() => {
   onBlur={() => form.validateField(`directors.${editingIndex}.phone`)}
   error={form.errors[`directors.${editingIndex}.phone`]}
 />
-             <TextInput
-                radius="md"
-                type="email"
-                label={<Label text="Director email" required />}
-                {...form.getInputProps(`directors.${editingIndex}.email`)}
-                onBlur={() => form.validateField(`directors.${editingIndex}.email`)}
-              />
-             <TextInput
-                radius="md"
-                label={<Label text="Director NRC" required />}
-                {...form.getInputProps(`directors.${editingIndex}.nrc`)}
-                onBlur={() => form.validateField(`directors.${editingIndex}.nrc`)}
-              />
+<TextInput
+  radius="md"
+  type="email"
+  label={<Label text="Director email" required />}
+  placeholder="e.g. jane.doe@example.com"
+  value={form.values.directors[editingIndex].email}
+  onChange={(e) => {
+    form.setFieldValue(`directors.${editingIndex}.email`, e.currentTarget.value);
+    form.validateField(`directors.${editingIndex}.email`);
+  }}
+  onBlur={() => form.validateField(`directors.${editingIndex}.email`)}
+  error={form.errors[`directors.${editingIndex}.email`]}
+/>
+<TextInput
+  radius="md"
+  label={<Label text="Director NRC" required />}
+  placeholder="e.g. 123456/78/1"
+  {...form.getInputProps(`directors.${editingIndex}.nrc`)}
+  onBlur={() => form.validateField(`directors.${editingIndex}.nrc`)}
+/>
             </SimpleGrid>
 
             <Group justify="flex-end">

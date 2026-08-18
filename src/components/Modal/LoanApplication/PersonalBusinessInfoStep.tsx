@@ -33,33 +33,52 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
   if (loanType === "Personal") {
     return (
       <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" verticalSpacing="md">
-        <TextInput
-          radius="md"
-          label={<Label text="First name" required />}
-          {...form.getInputProps("firstName")}
-        />
-        <TextInput
-          radius="md"
-          label={<Label text="Middle name" optional />}
-          {...form.getInputProps("middleName")}
-        />
-        <TextInput
-          radius="md"
-          label={<Label text="Surname" required />}
-          {...form.getInputProps("surname")}
-        />
-
-        {/* <TextInput radius="md" type="tel" label={<Label text="Phone" required />} {...form.getInputProps("phone")} /> */}
-        <TextInput
+       <TextInput
+  radius="md"
+  label={<Label text="First name" required />}
+  placeholder="e.g. John"
+  {...form.getInputProps("firstName")}
+/>
+<TextInput
+  radius="md"
+  label={<Label text="Middle name" optional />}
+  placeholder="e.g. K."
+  {...form.getInputProps("middleName")}
+/>
+<TextInput
+  radius="md"
+  label={<Label text="Surname" required />}
+  placeholder="e.g. Doe"
+  {...form.getInputProps("surname")}
+/>
+  <TextInput
   radius="md"
   type="tel"
   label={<Label text="Phone" required />}
+  placeholder="e.g. 0971234567"
   value={form.values.phone}
   onChange={(e) => form.setFieldValue("phone", e.currentTarget.value.replace(/\D/g, ""))}
   error={form.errors.phone}
 />
-        <TextInput radius="md" type="email" label={<Label text="Email" required />} {...form.getInputProps("email")} />
-        <TextInput radius="md" label={<Label text="NRC" required />} {...form.getInputProps("nrc")} />
+        <TextInput
+  radius="md"
+  type="email"
+  label={<Label text="Email" required />}
+  placeholder="e.g. john.doe@example.com"
+  value={form.values.email}
+  onChange={(e) => {
+    form.setFieldValue("email", e.currentTarget.value);
+    form.validateField("email");
+  }}
+  error={form.errors.email}
+/>
+<TextInput
+  radius="md"
+  label={<Label text="NRC" required />}
+  placeholder="e.g. 123456/78/1"
+  {...form.getInputProps("nrc")}
+/>
+
 
         <Select
           radius="md"
@@ -95,11 +114,12 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
 
   return (
     <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" verticalSpacing="md">
-      <TextInput
-        radius="md"
-        label={<Label text="Company name" required />}
-        {...form.getInputProps("companyName")}
-      />
+     <TextInput
+  radius="md"
+  label={<Label text="Company name" required />}
+  placeholder="e.g. ABC Enterprises Ltd"
+  {...form.getInputProps("companyName")}
+/>
       <Select
         radius="md"
         label={<Label text="Type of business" required />}
@@ -122,31 +142,36 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
   error={form.errors.establishedDate}
 />
 
-      <TextInput
-        radius="md"
-        label={<Label text="Nature of business" required />}
-        {...form.getInputProps("natureOfBusiness")}
-      />
-      <TextInput
-        radius="md"
-        label={<Label text="Registered office" required />}
-        {...form.getInputProps("registeredOffice")}
-      />
-    <NumberInput
+     <TextInput
+  radius="md"
+  label={<Label text="Nature of business" required />}
+  placeholder="e.g. Retail trading"
+  {...form.getInputProps("natureOfBusiness")}
+/>
+<TextInput
+  radius="md"
+  label={<Label text="Registered office" required />}
+  placeholder="e.g. Plot 12, Cairo Road, Lusaka"
+  {...form.getInputProps("registeredOffice")}
+/>
+<NumberInput
   min={0}
   allowNegative={false}
   hideControls
+  thousandSeparator=","
   radius="md"
   label={<Label text="Collateral pledged" required />}
+  placeholder="e.g. 50,000"
   {...form.getInputProps("collateralPledged")}
 />
 
-      <TextInput
-        radius="md"
-        label={<Label text="Purpose of loan" required />}
-        className="sm:col-span-2"
-        {...form.getInputProps("purposeOfLoan")}
-      />
+<TextInput
+  radius="md"
+  label={<Label text="Purpose of loan" required />}
+  placeholder="e.g. Purchase of stock"
+  className="sm:col-span-2"
+  {...form.getInputProps("purposeOfLoan")}
+/>
     </SimpleGrid>
   );
 }
