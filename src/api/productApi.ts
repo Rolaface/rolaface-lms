@@ -9,10 +9,18 @@ export interface OffsetOrderComponent {
   [key: string]: any;
 }
 
-export async function getAllLoanProducts() {
-  const { data } = await apiClient.get(API.loanProduct.getAllLoanProducts);
+export interface GetLoanProductsParams {
+  search?: string;
+}
+
+export async function getAllLoanProducts(params: GetLoanProductsParams = {}) {
+  const queryParams: Record<string, string> = {};
+  if (params.search) queryParams.search = params.search;
+
+  const { data } = await apiClient.get(API.loanProduct.getAllLoanProducts, {
+    params: queryParams,
+  });
   return data;
-  
 }
 
 export async function createLoanProduct(payload: CreateLoanProductPayload) {

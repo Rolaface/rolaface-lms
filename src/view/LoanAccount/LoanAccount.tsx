@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { modals } from "@mantine/modals";
 import {
   Box,
   Button,
   TextInput,
   Select,
-  SegmentedControl,
+  MultiSelect,
   Group,
   Paper,
   Table,
@@ -33,30 +33,35 @@ import {
   IconTrash,
   IconDotsVertical,
 } from "@tabler/icons-react";
-import { useDisclosure } from "@mantine/hooks";
+import { useDebouncedValue, useDisclosure } from "@mantine/hooks";
+import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getPaginationRowModel,
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
 import { loanAccountModal } from "../../components/Modal/LoanBooking/loanAccountModalStore";
 import { getAllLoans, deleteLoan, changeLoanStatus } from "../../api/loanApi";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getAllLoanProducts } from "../../api/productApi";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { openCommonModal } from "../../components/Modal/AlertModal";
 import { getSymbol } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: "DRAFT", color: "gray" },
-  PENDING_APPROVAL: { label: "PENDING APPROVAL", color: "yellow" },
-  APPROVED: { label: "APPROVED", color: "blue" },
-  DISBURSED: { label: "DISBURSED", color: "green" },
-  REJECTED: { label: "REJECTED", color: "red" },
+  Draft: { label: "DRAFT", color: "slate" },
+  Sanctioned: { label: "SANCTIONED", color: "warning" },
+  "Partially Disbursed": { label: "PARTIALLY DISBURSED", color: "info" },
+  Disbursed: { label: "DISBURSED", color: "success" },
+  Closed: { label: "CLOSED", color: "slate" },
+  Cancelled: { label: "CANCELLED", color: "danger" },
 };
+
+
+const STATUS_FILTER_OPTIONS = ["Draft", "Sanctioned", "Partially Disbursed", "Disbursed", "Closed"];
 
 const columnHelper = createColumnHelper<any>();
 
@@ -123,14 +128,56 @@ const fmtDate = (iso: string) =>
 
 export function LoanAccount() {
   const theme = useMantineTheme();
-  const { data: loansResponse, isLoading } = useQuery({
-    queryKey: ["loans"],
-    queryFn: getAllLoans,
-  });
-
   const queryClient = useQueryClient();
 
-const { mutate: removeLoan, isPending: isDeleting } = useMutation({
+
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch] = useDebouncedValue(searchInput, 400);
+    const [productSearchInput, setProductSearchInput] = useState("");
+  const [debouncedProductSearch] = useDebouncedValue(productSearchInput, 400);
+
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [productFilter, setProductFilter] = useState<string[]>([]);
+
+  // Branch filter is intentionally left as a frontend-only filter over the
+  // current page's rows, per explicit instruction — not wired to backend.
+  const [branch, setBranch] = useState<string | null>(null);
+
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Reset to page 1 whenever a backend filter actually changes.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, productFilter]);
+
+  const { data: loansResponse, isLoading, isFetching } = useQuery({
+    queryKey: ["loans", debouncedSearch, statusFilter, productFilter, page, pageSize],
+    queryFn: () =>
+      getAllLoans({
+        search: debouncedSearch || undefined,
+        status: statusFilter.length ? statusFilter : undefined,
+        loan_product: productFilter.length ? productFilter : undefined,
+        page,
+        page_size: pageSize,
+      }),
+    placeholderData: keepPreviousData,
+  });
+
+  const { data: productsResponse, isLoading: isProductsLoading } = useQuery({
+    queryKey: ["loanProducts", debouncedProductSearch],
+    queryFn: () => getAllLoanProducts({ search: debouncedProductSearch || undefined }),
+  });
+  
+  const productFilterOptions = useMemo(() => {
+    const products = productsResponse?.data || [];
+    return products.map((p: any) => ({
+      value: p.product_code,
+      label: p.product_code,
+    }));
+  }, [productsResponse]);
+
+  const { mutate: removeLoan, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteLoan(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loans"] });
@@ -141,17 +188,12 @@ const { mutate: removeLoan, isPending: isDeleting } = useMutation({
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(error),
         color: "red",
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
+        buttons: [{ label: "Close", color: "red" }],
       });
     },
   });
 
-const { mutate: updateStatus } = useMutation({
+  const { mutate: updateStatus } = useMutation({
     mutationFn: ({ id, action }: { id: string; action: string }) =>
       changeLoanStatus(id, action),
     onSuccess: () => {
@@ -163,23 +205,12 @@ const { mutate: updateStatus } = useMutation({
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(error),
         color: "red",
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
+        buttons: [{ label: "Close", color: "red" }],
       });
     },
   });
 
-  const [search, setSearch] = useState("");
-  const [product, setProduct] = useState<string | null>(null);
-  const [branch, setBranch] = useState<string | null>(null);
-  const [status, setStatus] = useState("all");
-
   const [sorting, setSorting] = useState([{ id: "id", desc: true }]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
   const data = useMemo(() => {
     if (loansResponse?.status === "success" && loansResponse.data) {
@@ -191,28 +222,18 @@ const { mutate: updateStatus } = useMutation({
         branch: item.company || "N/A",
         amount: item.loan_amount || 0,
         rate: 0,
-        status: item.status
-          ? item.status.toUpperCase().replace(" ", "_")
-          : "DRAFT",
+        status: item.status || "Draft",
         appliedDate: item.posting_date,
       }));
     }
     return [];
   }, [loansResponse]);
 
+
   const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return data.filter((a) => {
-      const matchesSearch =
-        !q ||
-        a.appNo.toLowerCase().includes(q) ||
-        a.customer.toLowerCase().includes(q);
-      const matchesProduct = !product || a.product === product;
-      const matchesBranch = !branch || a.branch === branch;
-      const matchesStatus = status === "all" || a.status === status;
-      return matchesSearch && matchesProduct && matchesBranch && matchesStatus;
-    });
-  }, [data, search, product, branch, status]);
+    if (!branch) return data;
+    return data.filter((a) => a.branch === branch);
+  }, [data, branch]);
 
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencySymbol = getSymbol(companyCurrency);
@@ -313,7 +334,7 @@ const { mutate: updateStatus } = useMutation({
         cell: (info) => {
           const rowData = info.row.original;
           const loanIdentifier = rowData.name || rowData.appNo || rowData.id;
-          const isDraft = rowData.status === "DRAFT";
+          const isDraft = rowData.status === "Draft";
           const isCancelled = rowData.status === "SUBMIT";
 
           return (
@@ -417,10 +438,7 @@ const { mutate: updateStatus } = useMutation({
                           ),
                           color: "green",
                           buttons: [
-                            {
-                              label: "Cancel",
-                              variant: "default",
-                            },
+                            { label: "Cancel", variant: "default" },
                             {
                               label: "Submit",
                               color: "green",
@@ -455,10 +473,7 @@ const { mutate: updateStatus } = useMutation({
                           ),
                           color: "red",
                           buttons: [
-                            {
-                              label: "Back",
-                              variant: "default",
-                            },
+                            { label: "Back", variant: "default" },
                             {
                               label: "Cancel Booking",
                               color: "red",
@@ -489,30 +504,32 @@ const { mutate: updateStatus } = useMutation({
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting, pagination },
+    state: { sorting },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+
+  // Total/page counts come from the backend. Note: since the Branch filter
+  // stays frontend-only (per instruction), "Showing X-Y of Z" reflects the
+  // backend total for the applied search/status/product filters, not the
+  // branch-narrowed subset visible on this page.
+  const totalRows = loansResponse?.pagination?.total ?? 0;
+  const totalPages = loansResponse?.pagination?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
 
   const resetFilters = () => {
-    setSearch("");
-    setProduct(null);
+    setSearchInput("");
+    setStatusFilter([]);
+    setProductFilter([]);
     setBranch(null);
-    setStatus("all");
+    setPage(1);
   };
 
-  const productOptions = Array.from(
-    new Set(data.map((a) => a.product).filter(Boolean)),
-  );
+  // Branch options still derived from the currently loaded page, unchanged.
   const branchOptions = Array.from(
     new Set(data.map((a) => a.branch).filter(Boolean)),
   );
@@ -579,28 +596,22 @@ const { mutate: updateStatus } = useMutation({
             styles={{
               input: { border: "1px solid var(--mantine-color-slate-2)" },
             }}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.currentTarget.value)}
           />
-          <Select
-            size="sm"
-            radius="xl"
-            placeholder="All Products"
-            data={productOptions as string[]}
-            w={128}
-            style={{ flexShrink: 1, minWidth: 90 }}
-            searchable
-            clearable
-            rightSection={chevronDown}
-            value={product}
-            onChange={(v) => {
-              setProduct(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          />
+
+          <FilterMultiSelect
+  placeholder="All Products"
+  data={productFilterOptions}
+  value={productFilter}
+  onChange={setProductFilter}
+  searchable
+  searchValue={productSearchInput}
+  onSearchChange={setProductSearchInput}
+  loading={isProductsLoading}
+  width={140}
+/>
+
           <Select
             size="sm"
             radius="xl"
@@ -612,35 +623,16 @@ const { mutate: updateStatus } = useMutation({
             clearable
             rightSection={chevronDown}
             value={branch}
-            onChange={(v) => {
-              setBranch(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            onChange={setBranch}
           />
 
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-            style={{ flexShrink: 1 }}
-            styles={{
-              root: { padding: 3 },
-              label: { padding: "5px 8px", fontSize: 11 },
-            }}
-            data={[
-              { label: "All", value: "all" },
-              { label: "Draft", value: "DRAFT" },
-              { label: "Pending", value: "PENDING_APPROVAL" },
-              { label: "Approved", value: "APPROVED" },
-              { label: "Disbursed", value: "DISBURSED" },
-              { label: "Rejected", value: "REJECTED" },
-            ]}
-          />
+        <FilterMultiSelect
+  placeholder="All Statuses"
+  data={STATUS_FILTER_OPTIONS.map((s) => ({ value: s, label: s }))}
+  value={statusFilter}
+  onChange={setStatusFilter}
+  width={140}
+/>
 
           <Button
             size="sm"
@@ -692,6 +684,8 @@ const { mutate: updateStatus } = useMutation({
               style={{
                 height: "clamp(320px, calc(100vh - 280px), 720px)",
                 overflowY: "auto",
+                opacity: isFetching ? 0.6 : 1,
+                transition: "opacity 120ms ease",
               }}
             >
               <Table
@@ -831,9 +825,10 @@ const { mutate: updateStatus } = useMutation({
                   <Select
                     data={["10", "20", "50"]}
                     value={String(pageSize)}
-                    onChange={(v) =>
-                      setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
-                    }
+                    onChange={(v) => {
+                      setPageSize(Number(v) || 10);
+                      setPage(1);
+                    }}
                     rightSection={chevronDown}
                     size="xs"
                     radius="xl"
@@ -842,11 +837,9 @@ const { mutate: updateStatus } = useMutation({
                 </Group>
               </Group>
               <Pagination
-                total={table.getPageCount() || 1}
-                value={pageIndex + 1}
-                onChange={(p) =>
-                  setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
-                }
+                total={totalPages}
+                value={page}
+                onChange={(p) => setPage(p)}
                 color="brand"
                 size="xs"
                 radius="xl"
