@@ -538,7 +538,12 @@ export function LoanWriteOff() {
               rows.map((row) => {
                 const cells = row.getVisibleCells();
                 return (
-                  <Table.Tr key={row.id} className="lms-row">
+                   <Table.Tr
+                    key={row.id}
+                    className="lms-row"
+                    onDoubleClick={() => handleViewClick(row.original.name)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {cells.map((cell, idx) => (
                       <Table.Td
                         key={cell.id}
