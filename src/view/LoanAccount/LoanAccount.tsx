@@ -556,6 +556,7 @@ export function LoanAccount() {
         borrower={borrower}
         onBack={() => setSelectedLoan(null)}
         initialSelected={{ type: "loan", id: selectedLoan.id }}
+        hideProfile
       />
     );
   }

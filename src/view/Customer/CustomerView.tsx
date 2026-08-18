@@ -24,6 +24,7 @@ export function Borrower360({
   borrower,
   onBack,
   initialSelected,
+  hideProfile = false,
 }: {
   borrower: BorrowerProfile;
   onBack: () => void;
@@ -33,6 +34,12 @@ export function Borrower360({
    *   <Borrower360 borrower={b} onBack={...} initialSelected={{ type: 'loan', id: realLoanId }} />
    */
   initialSelected?: SelectedItem;
+  /**
+   * When true, hides the "Profile" nav item from the sidebar entirely.
+   * Used by Loan Booking's View flow, which has no customer-profile
+   * context and should only show Loans/Investments/Savings/FDs.
+   */
+  hideProfile?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -102,6 +109,7 @@ export function Borrower360({
         onBack={onBack}
         selected={selected}
         onSelect={setSelected}
+        hideProfile={hideProfile}
       />
 
       <div className="flex-1 flex flex-col overflow-y-auto" style={{ backgroundColor: themeTokens.surface }}>

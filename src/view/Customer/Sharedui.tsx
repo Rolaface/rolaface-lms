@@ -912,7 +912,6 @@ export function ActivityFeed({ activity }: { activity: ActivityItem[] }) {
 /* ============================================================================
    LEFT SIDEBAR (customer summary + loans/investments/savings/FDs)
 ============================================================================ */
-
 export function BorrowerSidebar({
   borrower,
   collapsed,
@@ -920,6 +919,7 @@ export function BorrowerSidebar({
   onBack,
   selected,
   onSelect,
+  hideProfile = false,
 }: {
   borrower: BorrowerProfile;
   collapsed: boolean;
@@ -927,6 +927,7 @@ export function BorrowerSidebar({
   onBack: () => void;
   selected: SelectedItem;
   onSelect: (item: SelectedItem) => void;
+  hideProfile?: boolean;
 }) {
   const isSelected = (
     type: "loan" | "investment" | "savings" | "fixedDeposit",
@@ -961,7 +962,7 @@ if (collapsed) {
       >
         {initialsOf(borrower.name)}
       </Avatar>
-
+{!hideProfile && (
       <Tooltip label="Profile" position="right" withArrow>
         <ActionIcon
           variant={selected?.type === "profile" ? "light" : "subtle"}
@@ -973,6 +974,7 @@ if (collapsed) {
           <IconUser size={16} />
         </ActionIcon>
       </Tooltip>
+      )}
 
       <Tooltip label={`Loans (${borrower.loans.length})`} position="right" withArrow>
         <ActionIcon
@@ -1109,6 +1111,7 @@ if (collapsed) {
           </div>
         </div>
       </div>
+{!hideProfile && (
 
       <div className="px-2 py-2 border-b border-[var(--mantine-color-slate-1)]">
         <button
@@ -1139,12 +1142,13 @@ if (collapsed) {
           </div>
         </button>
       </div>
+      )}
 
       {/* Sections */}
       <Accordion
-        multiple
-        defaultValue={[]}
-        chevron={<IconChevronUp size={12} />}
+  multiple
+  defaultValue={selected?.type === "loan" ? ["loans"] : []}
+  chevron={<IconChevronUp size={12} />}
         styles={{
           control: { paddingLeft: 10, paddingRight: 10, paddingTop: 8, paddingBottom: 8 },
           panel: { paddingLeft: 8, paddingRight: 8 },
@@ -1180,82 +1184,85 @@ if (collapsed) {
             key={loan.id}
             onClick={() => onSelect({ type: "loan", id: loan.id })}
             title={loan.loanNumber}
-            className="text-left px-2 py-2.5 transition-colors"
+            className="text-left w-full transition-colors"
             style={{
-              backgroundColor: selected ? "var(--mantine-color-success-0)" : "transparent",
+              backgroundColor: selected ? themeTokens.primarySoft : "transparent",
+              borderLeft: selected
+                ? `2px solid ${themeTokens.primary}`
+                : "2px solid transparent",
               borderTop: idx === 0 ? "none" : "1px solid var(--mantine-color-slate-1)",
+              padding: "8px 8px 8px 10px",
             }}
           >
-            {/* id + status */}
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <Text fz={11} fw={700} c="slate.9" truncate className="min-w-0">
+            {/* row 1: loan number + status */}
+            <div className="flex items-center justify-between gap-2">
+              <Text
+                fz={11}
+                fw={selected ? 700 : 600}
+                c={selected ? "slate.9" : "slate.7"}
+                truncate
+                className="min-w-0 font-mono"
+              >
                 {loan.loanNumber}
               </Text>
               <Badge
                 size="xs"
                 variant="light"
                 color={loanStatusColor[loan.status]}
-                styles={{ root: { fontSize: 8, flexShrink: 0 } }}
+                styles={{
+                  root: { fontSize: 8, flexShrink: 0, height: 16, padding: "0 6px" },
+                }}
               >
                 {loan.status}
               </Badge>
             </div>
 
-            {/* outstanding / next due — grid so it never wraps */}
-            <div className="grid grid-cols-2 gap-2 mb-1.5">
-              <div>
-                <Text fz={13} fw={700} c="slate.9" className="font-mono leading-none">
-                  {formatK(loan.outstanding)}
-                </Text>
-                <Text fz={8} c="dimmed" className="mt-0.5">
-                  outstanding
-                </Text>
+            {/* row 2: outstanding amount + progress, single compact line */}
+            <div className="flex items-center gap-2 mt-1">
+              <Text fz={12} fw={700} c="slate.9" className="font-mono shrink-0">
+                {formatK(loan.outstanding)}
+              </Text>
+              <div
+                className="flex-1 h-1 rounded-full overflow-hidden"
+                style={{ backgroundColor: "var(--mantine-color-slate-1)" }}
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${loan.repaidPercent}%`,
+                    backgroundColor:
+                      loan.status === "Delinquent"
+                        ? themeTokens.danger
+                        : loan.status === "Closed"
+                          ? "var(--mantine-color-slate-4)"
+                          : themeTokens.success,
+                  }}
+                />
               </div>
-              <div>
-                <Text fz={13} fw={600} c="slate.7" className="font-mono leading-none">
-                  {loan.nextInstallment ? formatK(loan.nextInstallment) : "—"}
-                </Text>
-                <Text fz={8} c="dimmed" className="mt-0.5">
-                  next due
-                </Text>
-              </div>
+              <Text fz={9} c="dimmed" className="shrink-0">
+                {loan.repaidPercent}%
+              </Text>
             </div>
 
-            {/* progress */}
-            <Progress
-              value={loan.repaidPercent}
-              size={3}
-              radius="xl"
-              color={
-                loan.status === "Delinquent"
-                  ? "red"
-                  : loan.status === "Closed"
-                    ? "gray"
-                    : "teal"
-              }
-              styles={{ root: { backgroundColor: "var(--mantine-color-slate-1)" } }}
-            />
-            <div className="flex justify-between items-center mt-1">
-              <Text fz={9} c="dimmed">
-                {loan.repaidPercent}% repaid
-              </Text>
-              {loan.dpd ? (
-                <Text fz={9} fw={700} style={{ color: themeTokens.danger }}>
-                  DPD {loan.dpd}
-                </Text>
-              ) : (
+            {/* row 3: next due / dpd — only shown if relevant, kept minimal */}
+            {(loan.nextInstallment || loan.dpd) && (
+              <div className="flex items-center justify-between mt-1">
                 <Text fz={9} c="dimmed">
-                  On track
+                  {loan.nextInstallment ? `Next: ${formatK(loan.nextInstallment)}` : ""}
                 </Text>
-              )}
-            </div>
+                {loan.dpd ? (
+                  <Text fz={9} fw={700} style={{ color: themeTokens.danger }}>
+                    DPD {loan.dpd}
+                  </Text>
+                ) : null}
+              </div>
+            )}
           </button>
         );
       })}
     </div>
   </Accordion.Panel>
 </Accordion.Item>
-
         <Accordion.Item value="investments">
           <Accordion.Control
             icon={<IconChartLine size={13} color={themeTokens.primary} />}
