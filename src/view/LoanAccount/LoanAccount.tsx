@@ -34,6 +34,7 @@ import {
   IconDotsVertical,
 } from "@tabler/icons-react";
 import { useDebouncedValue, useDisclosure } from "@mantine/hooks";
+import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
 import {
   useReactTable,
   getCoreRowModel,
@@ -50,20 +51,16 @@ import { getSymbol } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 
-// Matches the exact status values returned by the backend (`get_loans`).
-// If the backend ever adds/renames a status, update this map — the badge
-// falls back to a gray, un-styled label automatically if a status isn't listed here.
 const STATUS_META: Record<string, { label: string; color: string }> = {
   Draft: { label: "DRAFT", color: "slate" },
   Sanctioned: { label: "SANCTIONED", color: "warning" },
   "Partially Disbursed": { label: "PARTIALLY DISBURSED", color: "info" },
   Disbursed: { label: "DISBURSED", color: "success" },
   Closed: { label: "CLOSED", color: "slate" },
-  // Defensive fallback only — seen in historical data, not a confirmed filterable status.
   Cancelled: { label: "CANCELLED", color: "danger" },
 };
 
-// Confirmed canonical list the backend accepts for the `status` filter param.
+
 const STATUS_FILTER_OPTIONS = ["Draft", "Sanctioned", "Partially Disbursed", "Disbursed", "Closed"];
 
 const columnHelper = createColumnHelper<any>();
@@ -133,9 +130,11 @@ export function LoanAccount() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
 
-  // ---- Backend-driven search / filters / pagination ----
+
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebouncedValue(searchInput, 400);
+    const [productSearchInput, setProductSearchInput] = useState("");
+  const [debouncedProductSearch] = useDebouncedValue(productSearchInput, 400);
 
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [productFilter, setProductFilter] = useState<string[]>([]);
@@ -166,10 +165,10 @@ export function LoanAccount() {
   });
 
   const { data: productsResponse, isLoading: isProductsLoading } = useQuery({
-    queryKey: ["loanProducts"],
-    queryFn: getAllLoanProducts,
+    queryKey: ["loanProducts", debouncedProductSearch],
+    queryFn: () => getAllLoanProducts({ search: debouncedProductSearch || undefined }),
   });
-
+  
   const productFilterOptions = useMemo(() => {
     const products = productsResponse?.data || [];
     return products.map((p: any) => ({
@@ -230,8 +229,7 @@ export function LoanAccount() {
     return [];
   }, [loansResponse]);
 
-  // Branch is the only remaining client-side filter, applied on top of the
-  // already backend-filtered/paginated `data` for the current page.
+
   const filteredData = useMemo(() => {
     if (!branch) return data;
     return data.filter((a) => a.branch === branch);
@@ -602,20 +600,17 @@ export function LoanAccount() {
             onChange={(e) => setSearchInput(e.currentTarget.value)}
           />
 
-          <MultiSelect
-            size="sm"
-            radius="xl"
-            placeholder={productFilter.length ? undefined : "All Products"}
-            data={productFilterOptions}
-            disabled={isProductsLoading}
-            searchable
-            clearable
-            hidePickedOptions
-            w={160}
-            style={{ flexShrink: 1, minWidth: 130 }}
-            value={productFilter}
-            onChange={setProductFilter}
-          />
+          <FilterMultiSelect
+  placeholder="All Products"
+  data={productFilterOptions}
+  value={productFilter}
+  onChange={setProductFilter}
+  searchable
+  searchValue={productSearchInput}
+  onSearchChange={setProductSearchInput}
+  loading={isProductsLoading}
+  width={140}
+/>
 
           <Select
             size="sm"
@@ -631,19 +626,13 @@ export function LoanAccount() {
             onChange={setBranch}
           />
 
-          <MultiSelect
-            size="sm"
-            radius="xl"
-            placeholder={statusFilter.length ? undefined : "All Statuses"}
-            data={STATUS_FILTER_OPTIONS}
-            searchable
-            clearable
-            hidePickedOptions
-            w={170}
-            style={{ flexShrink: 1, minWidth: 140 }}
-            value={statusFilter}
-            onChange={setStatusFilter}
-          />
+        <FilterMultiSelect
+  placeholder="All Statuses"
+  data={STATUS_FILTER_OPTIONS.map((s) => ({ value: s, label: s }))}
+  value={statusFilter}
+  onChange={setStatusFilter}
+  width={140}
+/>
 
           <Button
             size="sm"
