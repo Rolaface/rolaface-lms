@@ -1,11 +1,11 @@
 import { Paper, Text } from "@mantine/core";
+import type { ReactNode } from "react";
 import {
   IconArrowRight,
   IconInfoCircle,
   IconLayoutGrid,
   IconBuildingBank,
   IconWallet,
-  IconCoin,
   IconLock,
   IconPercentage,
   IconAlertTriangle,
@@ -21,6 +21,7 @@ import {
   IconCalculator,
   IconActivity,
 } from "@tabler/icons-react";
+import { CurrencySymbol } from "../../../../components/shared/CurrencyIcon";
 import { StatusPill, themeTokens, serif } from "../SharedUI";
 import { LoanInstallmentOverview } from "../LoanInstallmentOverview";
 import { HistoryTab } from "./HistoryTab";
@@ -28,19 +29,34 @@ import { AccountingTab } from "./AccountingTab";
 import { DisbursementTab } from "./DisbursementTab";
 import { CollateralTab } from "./CollateralTab";
 import { DocumentsTab } from "./DocumentsTab";
-
 const PREVIEW_LIMIT = 5;
 
 /** Pulls the outstanding amount for a given demand type, defaulting to 0 when absent. */
-function getDemandAmount(demands, type) {
+type Demand = {
+  type?: string;
+  outstanding?: number;
+};
+
+function getDemandAmount(demands: Demand[] | undefined, type: string) {
   return demands?.find((d) => d.type === type)?.outstanding ?? 0;
 }
-
 /* ============================================================================
    SMALL BUILDING BLOCKS
 ============================================================================ */
 
-function IconStat({ icon, iconBg, iconFg, label, valueNode }) {
+function IconStat({
+  icon,
+  iconBg,
+  iconFg,
+  label,
+  valueNode,
+}: {
+  icon: ReactNode;
+  iconBg: string;
+  iconFg: string;
+  label: string;
+  valueNode: ReactNode;
+}) {
   return (
     <div className="flex items-center gap-3 py-2.5">
       <div
@@ -49,17 +65,30 @@ function IconStat({ icon, iconBg, iconFg, label, valueNode }) {
       >
         {icon}
       </div>
+
       <div className="min-w-0">
         <Text fz="xs" c="dimmed">
           {label}
         </Text>
+
         {valueNode}
       </div>
     </div>
   );
 }
-
-function SubCardHeader({ icon, iconBg, iconFg, title, subtitle }) {
+function SubCardHeader({
+  icon,
+  iconBg,
+  iconFg,
+  title,
+  subtitle,
+}: {
+  icon: ReactNode;
+  iconBg: string;
+  iconFg: string;
+  title: string;
+  subtitle: string;
+}) {
   return (
     <div className="flex items-center gap-2.5 mb-2">
       <div
@@ -68,10 +97,12 @@ function SubCardHeader({ icon, iconBg, iconFg, title, subtitle }) {
       >
         {icon}
       </div>
+
       <div>
         <Text fz="sm" fw={700} c="slate.9">
           {title}
         </Text>
+
         <Text fz={11} c="dimmed">
           {subtitle}
         </Text>
@@ -79,7 +110,6 @@ function SubCardHeader({ icon, iconBg, iconFg, title, subtitle }) {
     </div>
   );
 }
-
 function SectionCardHeader({ icon, iconBg, iconFg, title, subtitle, right }) {
   return (
     <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--mantine-color-slate-1)] flex-wrap gap-2">
@@ -264,7 +294,7 @@ export function OverviewTab({
                   value: renderCurrency(overview.loan_amount),
                 },
                 {
-                  icon: <IconCoin size={16} />,
+                  icon: <CurrencySymbol size="xs" />,
                   iconBg: themeTokens.successSoft,
                   iconFg: themeTokens.success,
                   label: "Disbursed amount",
