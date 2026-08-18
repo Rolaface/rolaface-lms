@@ -7,7 +7,6 @@ const lookupAPI = API.lookup;
 
 export const getCustomerList = async (params?: Record<string, any>): Promise<any> => {
   const response: AxiosResponse = await api.get(lookupAPI.getCustomers, { params });
-  console.log("🚀 ~ getCustomerList ~ response:", response.data.data)
   return response.data;
 };
 
@@ -74,5 +73,10 @@ export const getAccountList = async (params?: Record<string, any>): Promise<any>
 
 export const getItemList = async (params?: Record<string, any>): Promise<any> => {
   const response: AxiosResponse = await api.get(lookupAPI.getItems, { params });
+  return response.data;
+};
+
+export const getLoanClassification = async (params?: Record<string, any>): Promise<any> => {
+  const response: AxiosResponse = await api.get(lookupAPI.get_loan_classification, { params });
   return response.data;
 };
