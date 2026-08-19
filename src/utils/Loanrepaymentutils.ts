@@ -27,7 +27,7 @@ export const PAYMENT_NATURE_OPTIONS = [
 ] as const;
 
 export function formatCurrency(amount: number) {
-  return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  return `${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 }
 
 export function computePaymentEffect(

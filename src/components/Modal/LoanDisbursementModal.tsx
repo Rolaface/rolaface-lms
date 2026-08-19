@@ -29,11 +29,10 @@ import {
   IconHome,
   IconLock,
   IconNote,
-  IconArrowRight,
   IconNotes,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createLoanDisbursement, getAllDsbrAccount, updateLoanDisbursement, getLoanDisbursementById } from "../../api/loanDisbursementAPi";
+import { createLoanDisbursement, getAllDsbrAccount, updateLoanDisbursement, getLoanDisbursementById, getAllModeOfPayments } from "../../api/loanDisbursementAPi";
 import { getAllApplicationDsbr, getLoanById } from "../../api/loanApi";
 import type { LoanDisbursementPayload, } from "../../types/loanDisbursementForm";
 import { parseFrappeError } from "../../utils/parseFrappeError";
@@ -77,7 +76,7 @@ export interface LoanDisbursementFormData {
   topupAmount: number | "";
 }
 
-const PAYMENT_MODES = ["Bank Draft", "Cash", "Cheque", "Credit Card", "Wire Transfer"];
+
 const CHARGE_TREATMENT_OPTIONS = ["Billed Separately", "Add to first repayment"] as const;
 
 const getTodayDate = (): string => {
@@ -118,44 +117,33 @@ export function LoanDisbursementModal({
   const theme = useMantineTheme();
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencySymbol = getSymbol(companyCurrency);
-  // console.log("Currency Symbol", currencySymbol);
+
   const [activeTab, setActiveTab] = useState<string | null>("settlement");
 
-  const [dsbrAcSearch, setDsbrAcSearch] = useState("");
-
-  const { data: dsbrAccountsResponse, isLoading: isDsbrAccountsLoading } = useQuery({
-    queryKey: ["dsbrAccounts", dsbrAcSearch],
-    queryFn: () => getAllDsbrAccount(dsbrAcSearch),
+  const { data: modeOfPaymentsResponse, isLoading: isModeOfPaymentsLoading } = useQuery({
+    queryKey: ["modeOfPayments"],
+    queryFn: getAllModeOfPayments,
     enabled: opened,
   });
 
-  const dsbrAccountOptions = useMemo(() => {
-    const list = dsbrAccountsResponse?.data || dsbrAccountsResponse?.message || dsbrAccountsResponse || [];
+  const modeOfPaymentOptions = useMemo(() => {
+    const list = modeOfPaymentsResponse?.data || modeOfPaymentsResponse?.message || modeOfPaymentsResponse || [];
     if (Array.isArray(list)) {
-      return list.map((item: any) => ({
-        value: item.value,
-        label: item.label,
-      }));
-    }
-
-
-    return [];
-  }, [dsbrAccountsResponse]);
-  const [beneficiaryAcSearch, setBeneficiaryAcSearch] = useState("");
-
-  const { data: beneficiaryAccountsResponse, isLoading: isBeneficiaryAccountsLoading } = useQuery({
-    queryKey: ["beneficiaryAccounts", beneficiaryAcSearch],
-    queryFn: () => getAllDsbrAccount(beneficiaryAcSearch),
-    enabled: opened,
-  });
-
-  const beneficiaryAccountOptions = useMemo(() => {
-    const list = beneficiaryAccountsResponse?.data || beneficiaryAccountsResponse?.message || beneficiaryAccountsResponse || [];
-    if (Array.isArray(list)) {
-      return list.map((item: any) => item.value || item.name || item);
+      return list.map((item: any) => item.name);
     }
     return [];
-  }, [beneficiaryAccountsResponse]);
+  }, [modeOfPaymentsResponse]);
+
+  const modeOfPaymentAccounts = useMemo(() => {
+    const list = modeOfPaymentsResponse?.data || modeOfPaymentsResponse?.message || modeOfPaymentsResponse || [];
+    const map: Record<string, string | null> = {};
+    if (Array.isArray(list)) {
+      list.forEach((item: any) => {
+        map[item.name] = item.default_account || null;
+      });
+    }
+    return map;
+  }, [modeOfPaymentsResponse]);
 
   const form = useForm<LoanDisbursementFormData>({
     initialValues: {
@@ -188,25 +176,7 @@ export function LoanDisbursementModal({
   });
 
   const queryClient = useQueryClient();
-
-  // const createDisbursementMutation = useMutation({
-  //   mutationFn: createLoanDisbursement,
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
-  //     handleReset();
-  //     onClose();
-  //   },
-  // });
-
-  // const updateDisbursementMutation = useMutation({
-  //   mutationFn: updateLoanDisbursement,
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
-  //     handleReset();
-  //     onClose();
-  //   },
-  // });
-const createDisbursementMutation = useMutation({
+  const createDisbursementMutation = useMutation({
     mutationFn: createLoanDisbursement,
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["loanDisbursements"] });
@@ -285,7 +255,19 @@ const createDisbursementMutation = useMutation({
   };
 
   const handleSubmit = (values: typeof form.values) => {
- const payload: Partial<LoanDisbursementPayload> & {
+    const modeAccount = values.modeOfPayment ? modeOfPaymentAccounts[values.modeOfPayment] : null;
+    const resolvedDisbursementAc = values.disbursementAc || modeAccount || loanDataDisbursementAccount || undefined;
+    console.log("DEBUG disbursement:", {
+      formDisbursementAc: values.disbursementAc,
+      modeOfPayment: values.modeOfPayment,
+      modeAccount,
+      loanDataDisbursementAccount,
+      resolvedDisbursementAc,
+      acNo: values.acNo,
+      hasUserChangedLoanAccount,
+    });
+
+    const payload: Partial<LoanDisbursementPayload> & {
       loan_disbursement_charges?: Array<{ charge: string; amount: number; account: string; treatment_of_charge: string }>;
     } = {
       against_loan: values.acNo,
@@ -296,7 +278,7 @@ const createDisbursementMutation = useMutation({
       reference_number: values.refNo,
       reference_date: values.refDate,
       repayment_start_date: selectedLoanApp?.repayment_start_date || undefined,
-      disbursement_account: values.disbursementAc || undefined,
+      disbursement_account: resolvedDisbursementAc,
       loan_account: selectedLoanApp?.loan_account || undefined,
       loan_disbursement_charges: values.charges.map((charge) => ({
         charge: charge.name,
@@ -317,6 +299,8 @@ const createDisbursementMutation = useMutation({
       };
     }
 
+
+
     if (editId) {
       updateDisbursementMutation.mutate({ id: editId, payload });
     } else {
@@ -324,26 +308,8 @@ const createDisbursementMutation = useMutation({
     }
   };
   const [hasUserChangedLoanAccount, setHasUserChangedLoanAccount] = useState(false);
-  useEffect(() => {
-    if (opened && editId && initialData) {
-      form.setValues({
-        acNo: initialData.againstLoan || "",
-        valueDate: normalizeDateValue(initialData.disbursementDate || getTodayDate()),
-        disburseAmount: initialData.disbursedAmount || "",
-        modeOfPayment: initialData.modeOfPayment || null,
-        disbursementAc: initialData.disbursementAccount || null,
-        refDate: normalizeDateValue(initialData.referenceDate || getTodayDate()),
-        refNo: initialData.referenceNumber || "",
-        beneficiaryAcNo: initialData.loanAccount || "",
-      });
-      setHasUserChangedLoanAccount(false);
-    } else if (opened && !editId) {
-      form.reset();
-      form.setValues({ valueDate: getTodayDate(), refDate: getTodayDate() });
-      setActiveTab("settlement");
-      setHasUserChangedLoanAccount(false);
-    }
-  }, [opened, editId, initialData]);
+  const [hasUserChangedMode, setHasUserChangedMode] = useState(false);
+  const skipTopupRecalc = Boolean(editId) && !hasUserChangedLoanAccount;
 
   const { data: loanAppsResponse, isLoading: isLoanAppsLoading, refetch: refetchLoanApps } = useQuery({
     queryKey: ["loanApplications"],
@@ -356,7 +322,7 @@ const createDisbursementMutation = useMutation({
     queryFn: () => getLoanDisbursementById(editId!),
     enabled: opened && !!editId,
   });
-  const isPending = createDisbursementMutation.isPending || updateDisbursementMutation.isPending || isEditLoading;
+
 
   useEffect(() => {
     if (opened && editId && editDetailsResponse) {
@@ -396,6 +362,7 @@ const createDisbursementMutation = useMutation({
       const existingCharges = normalizeLoanCharges({ loan_charges: item.loan_disbursement_charges });
       form.setFieldValue("charges", existingCharges);
       setHasUserChangedLoanAccount(false);
+      setHasUserChangedMode(false);
     } else if (opened && !editId) {
       form.reset();
       form.setValues({
@@ -404,6 +371,7 @@ const createDisbursementMutation = useMutation({
       });
       setActiveTab("settlement");
       setHasUserChangedLoanAccount(false);
+      setHasUserChangedMode(false);
 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -448,13 +416,15 @@ const createDisbursementMutation = useMutation({
       .filter((item): item is LoanDisbursementChargeRow => Boolean(item));
   };
 
- const { data: loanAccountDetailsData, isLoading: isLoanAccountChargesLoading, error: loanAccountDetailsError } = useQuery({
+  const { data: loanAccountDetailsData, isLoading: isLoanAccountChargesLoading, error: loanAccountDetailsError } = useQuery({
     queryKey: ["loanAccountDetails", form.values.acNo],
     queryFn: () => getLoanById(form.values.acNo),
     enabled: opened && !!form.values.acNo && (!editId || hasUserChangedLoanAccount),
   });
+  const isPending = createDisbursementMutation.isPending || updateDisbursementMutation.isPending || isEditLoading || isLoanAccountChargesLoading;
 
-const actualDisbursableAmount = useMemo(() => {
+
+  const actualDisbursableAmount = useMemo(() => {
     const loanData =
       (loanAccountDetailsData as any)?.message?.data ||
       (loanAccountDetailsData as any)?.data ||
@@ -476,14 +446,24 @@ const actualDisbursableAmount = useMemo(() => {
         (editDetailsResponse as any).message ||
         editDetailsResponse;
       const sanctioned = Number(item?.sanctioned_loan_amount || 0);
-      const disbursed = Number(item?.disbursed_amount || 0);
-      return sanctioned - disbursed;
+      const priorDisbursed = Number(item?.current_disbursed_amount || 0);
+      return sanctioned - priorDisbursed;
     }
 
     return null;
   }, [loanAccountDetailsData, editId, editDetailsResponse]);
 
   const canShowTopup = actualDisbursableAmount !== null && actualDisbursableAmount === 0;
+
+  const loanDataDisbursementAccount = useMemo(() => {
+    const loanData =
+      (loanAccountDetailsData as any)?.message?.data ||
+      (loanAccountDetailsData as any)?.data ||
+      (loanAccountDetailsData as any)?.message ||
+      loanAccountDetailsData;
+    return loanData?.disbursement_account || null;
+  }, [loanAccountDetailsData]);
+
   const selectedLoanDisbursedAmount = useMemo(() => {
     const loanData =
       (loanAccountDetailsData as any)?.message?.data ||
@@ -505,7 +485,7 @@ const actualDisbursableAmount = useMemo(() => {
     return 0;
   }, [loanAccountDetailsData, editId, editDetailsResponse]);
 
-useEffect(() => {
+  useEffect(() => {
     if (!opened || !form.values.acNo) {
       form.setFieldValue("charges", []);
       if (!editId) {
@@ -522,9 +502,9 @@ useEffect(() => {
     form.setFieldValue("charges", chargeDefaults);
   }, [opened, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
 
+  // CREATE mode: current sanctioned/outstanding always derived live from getLoanById.
   useEffect(() => {
-    if (!opened || !form.values.acNo) return;
-    if (editId && !hasUserChangedLoanAccount) return;
+    if (!opened || editId || !form.values.acNo) return;
     if (isLoanAccountChargesLoading) return;
 
     const loanData =
@@ -542,20 +522,52 @@ useEffect(() => {
     form.setFieldValue("topupSanctionedCurrent", sanctioned);
     form.setFieldValue("topupOutstandingCurrent", outstanding);
     form.setFieldValue("disburseAmount", outstanding);
-     form.setFieldValue("disbursementAc", loanData.disbursement_account || null);
-  }, [opened, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
+  }, [opened, editId, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
 
- useEffect(() => {
+  // EDIT mode: current sanctioned/outstanding derived from API — getLoanById
+  // once the user changes the loan account, otherwise from the disbursement record itself.
+  useEffect(() => {
+    if (!opened || !editId) return;
+    if (!hasUserChangedLoanAccount) return;
+    if (isLoanAccountChargesLoading) return;
+
+    const loanData =
+      (loanAccountDetailsData as any)?.message?.data ||
+      (loanAccountDetailsData as any)?.data ||
+      (loanAccountDetailsData as any)?.message ||
+      loanAccountDetailsData;
+
+    if (!loanData) return;
+
+    const sanctioned = Number(loanData.loan_amount || 0);
+    const disbursed = Number(loanData.disbursed_amount || 0);
+    form.setFieldValue("topupSanctionedCurrent", sanctioned);
+    form.setFieldValue("topupOutstandingCurrent", sanctioned - disbursed);
+  }, [opened, editId, hasUserChangedLoanAccount, loanAccountDetailsData, isLoanAccountChargesLoading, editDetailsResponse]);
+
+  useEffect(() => {
+    if (!opened) return;
+    if (editId && !hasUserChangedLoanAccount && !hasUserChangedMode) return;
+
+    const modeAccount = form.values.modeOfPayment ? modeOfPaymentAccounts[form.values.modeOfPayment] : null;
+    const loanFallback = form.values.acNo ? loanDataDisbursementAccount : null;
+    form.setFieldValue("disbursementAc", modeAccount || loanFallback || null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened, form.values.acNo, form.values.modeOfPayment, modeOfPaymentAccounts, loanDataDisbursementAccount, hasUserChangedMode]);
+
+  useEffect(() => {
+    if (skipTopupRecalc) return;
     const currentSanctioned = Number(form.values.topupSanctionedCurrent || 0);
     const currentOutstanding = Number(form.values.topupOutstandingCurrent || 0);
     const topup = Number(form.values.topupAmount || 0);
     form.setFieldValue("topupSanctionedNew", currentSanctioned + topup);
     form.setFieldValue("topupOutstandingNew", currentOutstanding + topup);
-   
-  }, [form.values.topupSanctionedCurrent, form.values.topupOutstandingCurrent]);
+
+  }, [form.values.topupSanctionedCurrent, form.values.topupOutstandingCurrent, skipTopupRecalc]);
 
   useEffect(() => {
     if (!canShowTopup) return;
+    if (skipTopupRecalc) return;
     const outstandingCurrent = Number(form.values.topupOutstandingCurrent || 0);
     const sanctionedCurrent = Number(form.values.topupSanctionedCurrent || 0);
     const disburse = Number(form.values.disburseAmount || 0);
@@ -565,20 +577,20 @@ useEffect(() => {
     form.setFieldValue("topupSanctionedNew", sanctionedCurrent + topup);
     form.setFieldValue("topupOutstandingNew", outstandingCurrent + topup);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.values.disburseAmount, canShowTopup]);
+  }, [form.values.disburseAmount, canShowTopup, skipTopupRecalc]);
   useEffect(() => {
+    if (skipTopupRecalc) return;
     if (form.values.isTopup && !canShowTopup) {
       form.setFieldValue("isTopup", false);
       if (activeTab === "topup") {
         setActiveTab("settlement");
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canShowTopup]);
+  }, [canShowTopup, skipTopupRecalc]);
 
   const handleChargeUpdate = (index: number, field: "amount" | "treatment_of_charge", value: string) => {
 
- 
+
     form.setFieldValue(
       "charges",
       form.values.charges.map((charge, chargeIndex) => {
@@ -588,11 +600,7 @@ useEffect(() => {
     );
   };
 
-  // useEffect(() => {
-  //   if (!editId) {
-  //     form.setFieldValue("beneficiaryAcNo", selectedLoanApp?.loan_account || "");
-  //   }
-  // }, [form.values.acNo, selectedLoanApp]);
+
   useEffect(() => {
     if (!editId) {
       form.setFieldValue("beneficiaryAcNo", selectedLoanApp?.loan_account || "");
@@ -645,7 +653,7 @@ useEffect(() => {
                 </Text>
               </div>
             </Group>
-<Group gap="xs" className="shrink-0" wrap="nowrap">
+            <Group gap="xs" className="shrink-0" wrap="nowrap">
               {isView && (
                 <Badge variant="light" color="gray" radius="sm" size="sm">
                   View Only
@@ -693,11 +701,29 @@ useEffect(() => {
                     data={loanAppOptions}
                     disabled={isLoanAppsLoading}
                     leftSection={<IconSearch size={14} color="var(--mantine-color-slate-4)" />}
-                    onClick={() => refetchLoanApps()}
+                                       onClick={() => refetchLoanApps()}
                     {...form.getInputProps("acNo")}
                     onChange={(value) => {
-                      form.setFieldValue("acNo", value ?? "");
+                      form.setValues({
+                        acNo: value ?? "",
+                        valueDate: getTodayDate(),
+                        disburseAmount: "",
+                        modeOfPayment: null,
+                        disbursementAc: null,
+                        refDate: getTodayDate(),
+                        refNo: "",
+                        beneficiaryAcNo: "",
+                        charges: [],
+                        isTopup: false,
+                        topupSanctionedCurrent: "",
+                        topupSanctionedNew: "",
+                        topupOutstandingCurrent: "",
+                        topupOutstandingNew: "",
+                        topupAmount: "",
+                      });
                       setHasUserChangedLoanAccount(true);
+                      setHasUserChangedMode(false);
+                      setActiveTab("settlement");
                     }}
                   />
                   <TextInput
@@ -720,7 +746,7 @@ useEffect(() => {
                     {...form.getInputProps("disburseAmount")}
                     leftSection={<IconNotes size={14} color="var(--mantine-color-warning-5)" />}
                     thousandSeparator=","
-                     disabled={isView || (canShowTopup && !form.values.isTopup)}
+                    disabled={isView || (canShowTopup && !form.values.isTopup)}
                   />
                   {canShowTopup && (
                     <Checkbox
@@ -771,41 +797,27 @@ useEffect(() => {
                           withAsterisk
                           maw={200}
                           label="Mode of Payment"
-                          placeholder="Select mode of payment"
-                          data={PAYMENT_MODES}
-                          disabled={isView}
+                          placeholder={isModeOfPaymentsLoading ? "Loading..." : "Select mode of payment"}
+                          data={modeOfPaymentOptions}
+                          disabled={isView || isModeOfPaymentsLoading}
                           {...form.getInputProps("modeOfPayment")}
+                          onChange={(value) => {
+                            form.setFieldValue("modeOfPayment", value);
+                            setHasUserChangedMode(true);
+                          }}
                           leftSection={<IconCreditCard size={14} color="var(--mantine-color-brand-5)" />}
                           rightSection={chevronDown}
                         />
-                        {editId ? (
-                          <TextInput
-                            size="sm"
-                            maw={280}
-                            // withAsterisk
-                            label="Disbursement A/c"
-                            disabled={isView}
-                            {...form.getInputProps("disbursementAc")}
-                            leftSection={<IconHome size={14} color="var(--mantine-color-brand-5)" />}
-                          />
-                        ) : (
-                          <Select
-                            size="sm"
-                            maw={280}
-                            // withAsterisk
-                            searchable
-                            clearable
-                            label="Disbursement A/c"
-                            placeholder={isDsbrAccountsLoading ? "Loading..." : "Select disburse account"}
-                            data={dsbrAccountOptions}
-                            searchValue={dsbrAcSearch}
-                            onSearchChange={setDsbrAcSearch}
-                            disabled={isView || isDsbrAccountsLoading}
-                            {...form.getInputProps("disbursementAc")}
-                            leftSection={<IconHome size={14} color="var(--mantine-color-brand-5)" />}
-                            rightSection={chevronDown}
-                          />
-                        )}
+                        <TextInput
+                          size="sm"
+                          maw={280}
+                          label="Disbursement A/c"
+                          disabled={isView}
+                          readOnly
+                          placeholder="Disbursement Account"
+                          {...form.getInputProps("disbursementAc")}
+                          leftSection={<IconHome size={14} color="var(--mantine-color-brand-5)" />}
+                        />
                       </div>
                     </div>
 
@@ -996,7 +1008,7 @@ useEffect(() => {
                                   thousandSeparator=","
                                 />
                               </Table.Td>
-                             <Table.Td>
+                              <Table.Td>
                                 <NumberInput
                                   size="xs"
                                   hideControls
@@ -1142,7 +1154,7 @@ useEffect(() => {
               onClose={onClose}
               submitLabel={editId ? "Update" : "Save"}
               submitLoading={isPending}
-                            errorMessage={footerErrorMessage}
+              errorMessage={footerErrorMessage}
             />
           </Box>
         </Box>

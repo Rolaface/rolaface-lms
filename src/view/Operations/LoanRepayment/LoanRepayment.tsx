@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { CurrencySymbol } from "../../../components/shared/CurrencyIcon";
 import {
   Box,
   Button,
@@ -66,7 +67,7 @@ interface RepaymentRow {
 // LoanProduct.tsx uses for Active/Inactive.
 const STATUS_META: Record<number, { label: string; color: string }> = {
   0: { label: 'DRAFT', color: 'slate' },
-  1: { label: 'SUBMITTED', color: 'info' },
+  1: { label: 'Approved', color: 'info' },
   2: { label: 'CANCELLED', color: 'danger' },
 };
 const STATUS_FILTER_OPTIONS = [
@@ -147,11 +148,18 @@ export function LoanRepayment() {
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   
 
-  const { data: repaymentsResponse, isLoading } = useQuery({
-    queryKey: ['loanRepayments', debouncedSearch, statusFilter],
-   queryFn: () => getAllLoanRepayment(debouncedSearch, statusFilter),
-    placeholderData: (prev) => prev,
-  });
+const { data: repaymentsResponse, isLoading } = useQuery({
+  queryKey: ['loanRepayments', debouncedSearch, statusFilter, loanType, pagination.pageIndex, pagination.pageSize],
+  queryFn: () =>
+    getAllLoanRepayment({
+      page: pagination.pageIndex + 1,
+      page_size: pagination.pageSize,
+      search: debouncedSearch || undefined,
+      status: statusFilter.length > 0 ? statusFilter : undefined,
+      loan_product: loanType ? [loanType] : undefined,
+    }),
+  placeholderData: (prev) => prev,
+});
 
   const queryClient = useQueryClient();
 
@@ -304,7 +312,7 @@ return matchesLoanType;
         header: 'Amount Paid',
         cell: (info) => (
           <Text fz="xs" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-            ZMW {fmtAmount(info.getValue())}
+             <CurrencySymbol size="sm" fw={700} />{" "}{fmtAmount(info.getValue())}
           </Text>
         ),
         sortingFn: 'basic',
@@ -418,7 +426,7 @@ return matchesLoanType;
                           });
                         }}
                       >
-                        Submit
+                        Approve
                       </Menu.Item>
                     ) : (
                       <Menu.Item
