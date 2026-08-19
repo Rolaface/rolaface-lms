@@ -32,11 +32,6 @@ export function ArrearFilters({ filters, lookups, actions }: any) {
           classNames={dateInputClassNames} 
         />
         <Select 
-          label="Loan Account" placeholder="Select account" data={lookups.loans} searchable clearable
-          value={filters.loanAccount} onChange={(val) => filters.setLoanAccount(val || "")}
-          classNames={inputClassNames} rightSection={<IconChevronDown size={13} className="text-slate-400" />} 
-        />
-        <Select 
           label="Branch" placeholder="Select branch" data={["Delhi", "Mumbai", "Bangalore", "Pune"]} clearable
           value={filters.branch} onChange={(val) => filters.setBranch(val || "")}
           classNames={inputClassNames} rightSection={<IconChevronDown size={13} className="text-slate-400" />} 
@@ -49,6 +44,11 @@ export function ArrearFilters({ filters, lookups, actions }: any) {
         <Select 
           label="Customer" placeholder="Select Customer" data={lookups.customers} searchable clearable
           value={filters.customer} onChange={(val) => filters.setCustomer(val || "")}
+          classNames={inputClassNames} rightSection={<IconChevronDown size={13} className="text-slate-400" />} 
+        />
+        <Select 
+          label="Loan Account" placeholder="Select account" data={lookups.loans} searchable clearable
+          value={filters.loanAccount} onChange={(val) => filters.setLoanAccount(val || "")}
           classNames={inputClassNames} rightSection={<IconChevronDown size={13} className="text-slate-400" />} 
         />
       </div>
