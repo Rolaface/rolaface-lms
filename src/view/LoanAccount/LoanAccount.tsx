@@ -412,13 +412,7 @@ export function LoanAccount() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() =>
-                    setSelectedLoan({
-                      id: loanIdentifier,
-                      customerId: rowData.customerId,
-                      customerName: rowData.customer,
-                    })
-                  }
+                  onClick={() => handleViewLoan(rowData)}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -589,6 +583,16 @@ export function LoanAccount() {
     new Set(data.map((a) => a.branch).filter(Boolean)),
   );
 
+
+  const handleViewLoan = (rowData: any) => {
+  const loanIdentifier = rowData.name || rowData.appNo || rowData.id;
+
+  setSelectedLoan({
+    id: loanIdentifier,
+    customerId: rowData.customerId,
+    customerName: rowData.customer,
+  });
+};
   // ---- Detail view swap: same idea as Customer.tsx's borrower360CustomerId
   // check — while a loan is selected, render the full Borrower360 (sidebar +
   // profile/loans/investments/savings/FDs) instead of the table, deep-linked
@@ -861,12 +865,7 @@ export function LoanAccount() {
                         <Table.Tr
                           key={row.id}
                           className="lms-row"
-                          onDoubleClick={() =>
-                            loanAccountModal.open({
-                              loanId: row.original.id,
-                              isViewMode: true,
-                            })
-                          }
+                         onDoubleClick={() => handleViewLoan(row.original)}
                           style={{ cursor: "pointer" }}
                         >
                           {cells.map((cell, idx) => (
