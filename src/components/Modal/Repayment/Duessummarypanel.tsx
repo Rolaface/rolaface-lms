@@ -2,6 +2,7 @@ import { Button, ScrollArea, Text, useMantineTheme } from "@mantine/core";
 import { IconReportMoney, IconCreditCard } from "@tabler/icons-react";
 import type { LoanAccount, LoanDuesSummary } from "../../../types/loanRepayment";
 import { formatCurrency } from "../../../utils/Loanrepaymentutils";
+import { CurrencySymbol } from "../../shared/CurrencyIcon";
 
 interface DuesSummaryPanelProps {
   selectedLoan: LoanAccount | null;
@@ -55,7 +56,7 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
                   Principal Due
                 </Text>
                 <Text size="xs" ff="monospace" c="slate.6">
-                  {formatCurrency(dues?.payable_principal_amount ?? 0)}
+                  <CurrencySymbol size="xs" fw={400} /> {formatCurrency(dues?.payable_principal_amount ?? 0)}
                 </Text>
               </div>
               <div className="flex justify-between">
@@ -63,7 +64,7 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
                   Interest Due
                 </Text>
                 <Text size="xs" ff="monospace" c="slate.6">
-                  {formatCurrency(dues?.interest_amount ?? 0)}
+                  <CurrencySymbol size="xs" fw={400} /> {formatCurrency(dues?.interest_amount ?? 0)}
                 </Text>
               </div>
               <div className="flex justify-between">
@@ -71,7 +72,7 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
                   Penalty
                 </Text>
                 <Text size="xs" ff="monospace" c="slate.6">
-                  {formatCurrency(dues?.penalty_amount ?? 0)}
+                  <CurrencySymbol size="xs" fw={400} /> {formatCurrency(dues?.penalty_amount ?? 0)}
                 </Text>
               </div>
               <div className="flex justify-between">
@@ -79,7 +80,7 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
                   Fees/Charges
                 </Text>
                 <Text size="xs" ff="monospace" c="slate.6">
-                  {formatCurrency(dues?.total_charges_payable ?? 0)}
+                  <CurrencySymbol size="xs" fw={400} /> {formatCurrency(dues?.total_charges_payable ?? 0)}
                 </Text>
               </div>
               <div className="flex justify-between items-center pt-1">
@@ -87,7 +88,7 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
                   Total Amount Due
                 </Text>
                 <Text size="sm" fw={700} ff="monospace" c="slate.8">
-                  {formatCurrency(dues?.payable_amount ?? 0)}
+                  <CurrencySymbol size="sm" fw={700} /> {formatCurrency(dues?.payable_amount ?? 0)}
                 </Text>
               </div>
             </div>

@@ -63,3 +63,11 @@ export async function changeLoanDsbrStatus(id: string, action: string) {
   return data;
 }
 
+export async function getAllModeOfPayments() {
+  const { data } = await apiClient.get(API.loanDisbursement.modeOfPayment, {
+    params: {
+      fields: JSON.stringify(["name", "accounts.default_account"]),
+    },
+  });
+  return data;
+}

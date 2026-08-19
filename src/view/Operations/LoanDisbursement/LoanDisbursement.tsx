@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useDebouncedValue } from '@mantine/hooks';
+import dayjs from 'dayjs';
 import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
+import { CurrencySymbol } from '../../../components/shared/CurrencyIcon';
 import {
   Box,
   Button,
@@ -296,27 +298,31 @@ export function LoanDisbursement() {
         ),
       }),
       columnHelper.accessor('postingDate', {
-        header: 'Posting Date',
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {info.getValue()}
-          </Text>
-        ),
-      }),
+  header: 'Posting Date',
+  cell: (info) => (
+    <Text fz="xs" c="slate.6">
+      {info.getValue() && info.getValue() !== '—'
+        ? dayjs(info.getValue()).format('DD-MMM-YYYY')
+        : '—'}
+    </Text>
+  ),
+}),
       columnHelper.accessor('disbursedAmount', {
-        header: 'Disbursed Amount',
-        cell: (info) => (
-          <Text fz="xs" fw={600} c="slate.8" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-            ₹{info.getValue().toLocaleString('en-IN')}
-          </Text>
-        ),
-      }),
+  header: 'Disbursed Amount',
+  cell: (info) => (
+    <Text fz="xs" fw={600} c="slate.8" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+      <CurrencySymbol size="xs" fw={600} />{' '}
+        {info.getValue().toLocaleString('en-IN')}
+    </Text>
+  ),
+}),
       columnHelper.accessor('status', {
         header: 'Status',
         cell: (info) => {
           const val = info.getValue();
           const color = val === 'Submitted' || val === 'Disbursed' ? 'success' : 'warning';
-          return <StatusBadge label={val} color={color} />;
+           const label = val === 'Submitted' ? 'Approved' : val;
+          return <StatusBadge label={label} color={color} />;
         },
       }),
       columnHelper.display({
@@ -390,7 +396,7 @@ export function LoanDisbursement() {
                           subtitle: 'Please confirm this action before continuing.',
                           body: (
                             <>
-                              Are you sure you want to submit loan disbursement{' '}
+                              Are you sure you want to approve loan disbursement{' '}
                               <Text span fw={600}>
                                 {row.id}
                               </Text>{' '}
@@ -411,7 +417,7 @@ export function LoanDisbursement() {
                         });
                       }}
                     >
-                      Submit
+                      Approve
                     </Menu.Item>
                   ) : !isCancelled ? (
                     <Menu.Item
@@ -677,9 +683,14 @@ export function LoanDisbursement() {
                     const st = row.original.status;
                     const rowColor = st === 'Submitted' || st === 'Disbursed' ? 'success' : 'warning';
                     const cells = row.getVisibleCells();
-                    return (
-                      <Table.Tr key={row.id} className="lms-row">
-                        {cells.map((cell, idx) => (
+                 return (
+  <Table.Tr
+    key={row.id}
+    className="lms-row"
+    onDoubleClick={() => handleView(row.original)}
+    style={{ cursor: 'pointer' }}
+  >
+    {cells.map((cell, idx) => (
                           <Table.Td
                             key={cell.id}
                             style={{
