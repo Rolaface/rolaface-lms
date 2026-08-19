@@ -5,6 +5,11 @@ import { API } from "../../config/api";
 const api = apiClient;
 const lookupAPI = API.lookup;
 
+interface FrappeListParams {
+  fields: string[];
+  filters?: [string, string, string][];
+}
+
 export const getCustomerList = async (params?: Record<string, any>): Promise<any> => {
   const response: AxiosResponse = await api.get(lookupAPI.getCustomers, { params });
   return response.data;
@@ -78,5 +83,20 @@ export const getItemList = async (params?: Record<string, any>): Promise<any> =>
 
 export const getLoanClassification = async (params?: Record<string, any>): Promise<any> => {
   const response: AxiosResponse = await api.get(lookupAPI.get_loan_classification, { params });
+  return response.data;
+};
+
+export const getCountryList = async (params?: Record<string, any>): Promise<any> => {
+  const response: AxiosResponse = await api.get(lookupAPI.getCountries, { params });
+  return response.data;
+};
+
+export const getGenderList = async (params?: Record<string, any>): Promise<any> => {
+  const response: AxiosResponse = await api.get(lookupAPI.getGenders, { params });
+  return response.data;
+};
+
+export const getIndustryList = async (params?: Record<string, any>): Promise<any> => {
+  const response: AxiosResponse = await api.get(lookupAPI.getIndustries, { params });
   return response.data;
 };

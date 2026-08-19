@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
+
 import {
   Box,
   Text,
@@ -10,9 +10,9 @@ import {
   Group,
   ScrollArea,
   ThemeIcon,
-  Badge,
   FileButton,
-  List,UnstyledButton
+  List,
+  UnstyledButton,
 } from "@mantine/core";
 
 import {
@@ -22,55 +22,30 @@ import {
   IconInfoCircle,
 } from "@tabler/icons-react";
 
-import {
-  colorVar,
-  formatFileSize,
-} from "../../../../utils/customer/utils";
+import { colorVar, formatFileSize } from "../../../../utils/customer/utils";
 
 import { DOC_TILES } from "../../../constants/customer/constants";
 import type { UploadedDoc } from "../../../../types/customer/types";
 
 interface DocumentsStepProps {
   uploadedDocs: Record<string, UploadedDoc>;
-  setUploadedDocs: Dispatch<SetStateAction<Record<string, UploadedDoc>>>;
+  uploadDoc: (key: string, file: File) => void;
+  removeUpload: (key: string) => void;
+  uploadingKey?: string | null;
   isViewMode?: boolean;
 }
 
 export function DocumentsStep({
   uploadedDocs,
-  setUploadedDocs,
+  uploadDoc,
+  removeUpload,
+  uploadingKey,
   isViewMode,
 }: DocumentsStepProps) {
   const [selectedKey, setSelectedKey] = useState<string>(DOC_TILES[0].key);
   const selected = DOC_TILES.find((t) => t.key === selectedKey)!;
   const uploaded = uploadedDocs[selectedKey];
   const SelectedIcon = selected.icon;
-
-  const handleFileSelected = (key: string, file: File | null) => {
-    if (!file) return;
-    setUploadedDocs((prev) => {
-      const existing = prev[key];
-      if (existing?.previewUrl) URL.revokeObjectURL(existing.previewUrl);
-      return {
-        ...prev,
-        [key]: {
-          name: file.name,
-          size: file.size,
-          previewUrl: file.type.startsWith("image/")
-            ? URL.createObjectURL(file)
-            : undefined,
-        },
-      };
-    });
-  };
-
-  const removeUpload = (key: string) =>
-    setUploadedDocs((prev) => {
-      const n = { ...prev };
-      if (n[key]?.previewUrl) URL.revokeObjectURL(n[key].previewUrl!);
-      delete n[key];
-      return n;
-    });
 
   return (
     <Group
@@ -79,79 +54,104 @@ export function DocumentsStep({
       wrap="nowrap"
       style={{ height: "100%", minHeight: 0 }}
     >
-   
-    {/* Left — document list, own scroll area, compact rows */}
-<Paper
-  withBorder
-  radius="md"
-  bg="white"
-  w={240}
-  style={{
-    flexShrink: 0,
-    display: "flex",
-    flexDirection: "column",
-    minHeight: 0,
-    overflow: "hidden",
-  }}
->
-  <Text size="xs" fw={800} tt="uppercase" c="slate.5" px="sm" py="xs" style={{ flexShrink: 0, letterSpacing: 0.5 }}>
-    Required Documents
-  </Text>
-  <ScrollArea style={{ flex: 1, minHeight: 0 }} type="auto" scrollbarSize={6}>
-    <Stack gap={2} px={6} pb={6}>
-      {DOC_TILES.map((tile) => {
-        const doc = uploadedDocs[tile.key];
-        const isSelected = tile.key === selectedKey;
-        const TileIcon = tile.icon;
-        return (
-          <UnstyledButton
-            key={tile.key}
-            onClick={() => setSelectedKey(tile.key)}
-            px="xs"
-            py={6}
-            style={{
-              borderRadius: "var(--mantine-radius-sm)",
-              background: isSelected ? "var(--mantine-color-brand-0)" : "transparent",
-              border: isSelected
-                ? `1px solid ${colorVar("brand", 4)}`
-                : "1px solid transparent",
-            }}
-          >
-            <Group justify="space-between" wrap="nowrap" gap={6}>
-              <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
-                <TileIcon
-                  size={14}
-                  color={
-                    isSelected
-                      ? "var(--mantine-color-brand-6)"
-                      : "var(--mantine-color-slate-4)"
-                  }
-                  style={{ flexShrink: 0 }}
-                />
-                <Text
-                  size="xs"
-                  fw={isSelected ? 700 : 600}
-                  c={isSelected ? "brand.7" : "slate.7"}
-                  truncate
+      {/* Left — document list, own scroll area, compact rows */}
+      <Paper
+        withBorder
+        radius="md"
+        bg="white"
+        w={240}
+        style={{
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+          overflow: "hidden",
+        }}
+      >
+        <Text
+          size="xs"
+          fw={800}
+          tt="uppercase"
+          c="slate.5"
+          px="sm"
+          py="xs"
+          style={{ flexShrink: 0, letterSpacing: 0.5 }}
+        >
+          Required Documents
+        </Text>
+        <ScrollArea
+          style={{ flex: 1, minHeight: 0 }}
+          type="auto"
+          scrollbarSize={6}
+        >
+          <Stack gap={2} px={6} pb={6}>
+            {DOC_TILES.map((tile) => {
+              const doc = uploadedDocs[tile.key];
+              const isSelected = tile.key === selectedKey;
+              const TileIcon = tile.icon;
+              return (
+                <UnstyledButton
+                  key={tile.key}
+                  onClick={() => setSelectedKey(tile.key)}
+                  px="xs"
+                  py={6}
+                  style={{
+                    borderRadius: "var(--mantine-radius-sm)",
+                    background: isSelected
+                      ? "var(--mantine-color-brand-0)"
+                      : "transparent",
+                    border: isSelected
+                      ? `1px solid ${colorVar("brand", 4)}`
+                      : "1px solid transparent",
+                  }}
                 >
-                  {tile.label}
-                </Text>
-              </Group>
-              {doc ? (
-                <IconCheck size={13} color="var(--mantine-color-success-6)" style={{ flexShrink: 0 }} />
-              ) : (
-                <IconAlertCircle size={13} color="var(--mantine-color-danger-5)" style={{ flexShrink: 0 }} />
-              )}
-            </Group>
-          </UnstyledButton>
-        );
-      })}
-    </Stack>
-  </ScrollArea>
-</Paper>
+                  <Group justify="space-between" wrap="nowrap" gap={6}>
+                    <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+                      <TileIcon
+                        size={14}
+                        color={
+                          isSelected
+                            ? "var(--mantine-color-brand-6)"
+                            : "var(--mantine-color-slate-4)"
+                        }
+                        style={{ flexShrink: 0 }}
+                      />
+                      <Text
+                        size="xs"
+                        fw={isSelected ? 700 : 600}
+                        c={isSelected ? "brand.7" : "slate.7"}
+                        truncate
+                      >
+                        {tile.label}
+                      </Text>
+                    </Group>
+                    {doc ? (
+                      <IconCheck
+                        size={13}
+                        color="var(--mantine-color-success-6)"
+                        style={{ flexShrink: 0 }}
+                      />
+                    ) : (
+                      <IconAlertCircle
+                        size={13}
+                        color="var(--mantine-color-danger-5)"
+                        style={{ flexShrink: 0 }}
+                      />
+                    )}
+                  </Group>
+                </UnstyledButton>
+              );
+            })}
+          </Stack>
+        </ScrollArea>
+      </Paper>
 
       {/* Right — upload panel for selected document, own scroll area */}
-      <ScrollArea style={{ flex: 1, minWidth: 0 }} type="auto" scrollbarSize={6}>
+      <ScrollArea
+        style={{ flex: 1, minWidth: 0 }}
+        type="auto"
+        scrollbarSize={6}
+      >
         <Stack gap="md" pr="xs">
           <Group gap="sm" wrap="nowrap">
             <ThemeIcon radius="md" size={40} variant="light" color="brand">
@@ -168,9 +168,9 @@ export function DocumentsStep({
           </Group>
 
           <FileButton
-            onChange={(file) => handleFileSelected(selected.key, file)}
+            onChange={(file) => file && uploadDoc(selected.key, file)}
             accept={selected.accept}
-            disabled={isViewMode}
+            disabled={isViewMode || uploadingKey === selected.key}
           >
             {(fileButtonProps) => (
               <Paper
@@ -224,7 +224,12 @@ export function DocumentsStep({
                   </Stack>
                 ) : (
                   <Stack align="center" gap="sm">
-                    <ThemeIcon radius="xl" size={56} variant="light" color="brand">
+                    <ThemeIcon
+                      radius="xl"
+                      size={56}
+                      variant="light"
+                      color="brand"
+                    >
                       <IconUpload size={26} />
                     </ThemeIcon>
                     <Text size="sm" fw={700} c="slate.8">
@@ -244,7 +249,13 @@ export function DocumentsStep({
             )}
           </FileButton>
 
-          <Paper withBorder radius="md" p="md" bg="info.0" style={{ borderColor: colorVar("info", 2) }}>
+          <Paper
+            withBorder
+            radius="md"
+            p="md"
+            bg="info.0"
+            style={{ borderColor: colorVar("info", 2) }}
+          >
             <Group gap="xs" mb="xs">
               <IconInfoCircle size={15} color="var(--mantine-color-info-6)" />
               <Text size="xs" fw={700} c="info.7">

@@ -4,21 +4,18 @@ import {
   IconReceipt, IconBuildingBank as IconBankFile, IconDots,
 } from "@tabler/icons-react";
 
-// Grid column spans — same 12-col widths the fields used before the split,
-// just kept in one place so every step imports the same scale.
+
 export const W = {
   xxs: 2, // postal code, dependents
   xs: 2,  // dates, district, gender
   sm: 3,  // marital status, city, industry
   md: 3,  // occupation, id number, education, credit officer
   lg: 4,  // employer, id type, borrower category, branch
-  xl: 3,  // mobile, email
-  xxl: 6, // residential address, mailing address, kin address
+  xl: 3,  
+  xxl: 6,
 } as const;
 
-// Financial + Borrower are merged into a single "Financial & Lending" step
-// (rendered as two stacked cards inside CustomerModal's case 3). This drops
-// the step count from 9 to 8 — every index after it shifts up by one.
+
 export const STEPS = [
   { label: "Identity", icon: IconUser },
   { label: "Contact", icon: IconPhone },
@@ -27,14 +24,11 @@ export const STEPS = [
   { label: "KYC", icon: IconShieldCheck },
   { label: "Documents", icon: IconUpload },
   { label: "Next of Kin", icon: IconUsers },
-  { label: "Tags & Notes", icon: IconTag },
+
 ] as const;
 
-// Business-level grouping over STEPS above — purely a navigation/display
-// layer. Step indices refer to positions in STEPS and are NOT reordered;
-// currentStep / validation / handleNext / handleBack in CustomerModal stay
-// linear exactly as before. Groups are not contiguous (Next of Kin is
-// index 6 but belongs to the first group) — that's expected.
+
+
 export const STEP_GROUPS = [
   {
     id: "profile",
@@ -151,8 +145,7 @@ export const DOC_TILES = [
 
 export const SUGGESTED_TAGS = ["VIP", "High risk", "Government employee", "Business owner", "Senior citizen", "Student"];
 
-// The only "exception" styling left in the app — a genuinely read-only,
-// muted-looking field. Not a parallel sizing system, just this one case.
+
 export const readOnlyClassNames = {
   input: "!bg-slate-50 !text-slate-400",
 };

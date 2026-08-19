@@ -16,6 +16,9 @@ import {
   IconAlertTriangle,
 } from "@tabler/icons-react";
 import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
+import { useState } from "react";
+import { useDebouncedValue } from "@mantine/hooks";
+import { useCountries } from "../../../../hooks/common/useLookups";
 
 interface ContactStepProps {
   mobileNumber: string;
@@ -96,6 +99,11 @@ function SubHeading({
 }
 
 export function ContactStep(props: ContactStepProps) {
+  const [countrySearch, setCountrySearch] = useState("");
+  const [debouncedCountrySearch] = useDebouncedValue(countrySearch, 300);
+  const { data: countryOptions, isLoading: countriesLoading } = useCountries(
+    debouncedCountrySearch,
+  );
   const {
     mobileNumber,
     setMobileNumber,
@@ -211,10 +219,11 @@ export function ContactStep(props: ContactStepProps) {
           searchable
           rightSection={chevron}
           label="Country"
-          placeholder="Select"
-          data={["Zambia", "Zimbabwe", "Malawi", "South Africa"]}
+          placeholder={countriesLoading ? "Loading..." : "Select"}
+          data={countryOptions ?? []}
           value={country}
           onChange={setCountry}
+          onSearchChange={setCountrySearch}
         />
         <Select
           radius="md"

@@ -36,6 +36,12 @@ import { DatePickerInput } from "@mantine/dates";
 import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
 import { readOnlyClassNames } from "../../../constants/customer/constants";
 import { calcAge } from "../../../../utils/customer/utils";
+import {
+  useGenders,
+  useIndustries,
+  useCountries,
+} from "../../../../hooks/common/useLookups";
+import { useDebouncedValue } from "@mantine/hooks";
 
 export interface BusinessDirector {
   id: string;
@@ -108,13 +114,6 @@ const chevron = (
 // separating columns.
 const FIELD_MAW = 260;
 
-const NATIONALITY_OPTIONS = [
-  "Zambian",
-  "Zimbabwean",
-  "Malawian",
-  "South African",
-  "Other",
-];
 const ROLE_OPTIONS = ["Director", "Shareholder", "Director & Shareholder"];
 
 // Deterministic avatar color per person so the same name always renders the
@@ -429,6 +428,19 @@ function DirectorsShareholdersTable({
 }
 
 export function IdentityStep(props: IdentityStepProps) {
+  const { data: genderOptions, isLoading: gendersLoading } = useGenders();
+  const [industrySearch, setIndustrySearch] = useState("");
+  const [debouncedIndustrySearch] = useDebouncedValue(industrySearch, 300);
+  const { data: industryOptions, isLoading: industriesLoading } = useIndustries(
+    debouncedIndustrySearch,
+  );
+  const [nationalitySearch, setNationalitySearch] = useState("");
+  const [debouncedNationalitySearch] = useDebouncedValue(
+    nationalitySearch,
+    300,
+  );
+  const { data: nationalityOptions, isLoading: nationalitiesLoading } =
+    useCountries(debouncedNationalitySearch);
   const {
     customerNumber,
     customerType,
@@ -614,12 +626,13 @@ export function IdentityStep(props: IdentityStepProps) {
               searchable
               rightSection={chevron}
               label="Gender"
-              placeholder="Select"
+              placeholder={gendersLoading ? "Loading..." : "Select"}
               withAsterisk
-              data={["Male", "Female", "Other"]}
+              data={genderOptions ?? []}
               value={gender}
               onChange={setGender}
               error={errors.gender}
+              disabled={gendersLoading}
             />
             <Box style={{ width: "16ch", maxWidth: "100%" }}>
               <DatePickerInput
@@ -662,11 +675,12 @@ export function IdentityStep(props: IdentityStepProps) {
               searchable
               rightSection={chevron}
               label="Nationality"
-              placeholder="Select"
+              placeholder={nationalitiesLoading ? "Loading..." : "Select"}
               withAsterisk
-              data={NATIONALITY_OPTIONS}
+              data={nationalityOptions ?? []}
               value={nationality}
               onChange={setNationality}
+              onSearchChange={setNationalitySearch}
               error={errors.nationality}
             />
             <TextInput
@@ -683,17 +697,12 @@ export function IdentityStep(props: IdentityStepProps) {
               searchable
               rightSection={chevron}
               label="Industry (Optional)"
-              placeholder="Select"
-              data={[
-                "Agriculture",
-                "Government",
-                "Retail",
-                "Manufacturing",
-                "Education",
-                "Other",
-              ]}
+              placeholder={industriesLoading ? "Loading..." : "Select"}
+              data={industryOptions ?? []}
               value={industry}
               onChange={setIndustry}
+              onSearchChange={setIndustrySearch}
+              disabled={industriesLoading && !industryOptions}
             />
             <TextInput
               style={{ width: "22ch", maxWidth: "100%" }}
@@ -765,17 +774,11 @@ export function IdentityStep(props: IdentityStepProps) {
                 searchable
                 rightSection={chevron}
                 label="Industry"
-                placeholder="Select"
-                data={[
-                  "Agriculture",
-                  "Government",
-                  "Retail",
-                  "Manufacturing",
-                  "Education",
-                  "Other",
-                ]}
+                placeholder={industriesLoading ? "Loading..." : "Select"}
+                data={industryOptions ?? []}
                 value={businessIndustry}
                 onChange={setBusinessIndustry}
+                onSearchChange={setIndustrySearch}
               />
             </Grid.Col>
 

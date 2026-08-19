@@ -387,6 +387,9 @@ loanStatement: {
     getAccounts: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_accounts`,
     getItems: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_items`,
     get_loan_classification: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_loan_classification`,
+    getCountries: `${ERP_BASE}/api/resource/Country`,
+    getGenders: `${ERP_BASE}/api/resource/Gender`,
+    getIndustries: `${ERP_BASE}/api/resource/Industry Type`,
   },
   frappeUtilsAPI:{
  getCompanyCurrentFiscalYear: `${ERP_BASE}/api/method/custom_api.utils.frappe_utils.get_current_fiscal_year`,

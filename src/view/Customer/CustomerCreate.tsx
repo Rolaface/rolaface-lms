@@ -347,7 +347,7 @@ export function Customer() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => setBorrower360CustomerId(row.id)}
+                  onClick={() => handleViewCustomer(row)}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -407,6 +407,10 @@ export function Customer() {
   };
 
   const countryOptions = Array.from(new Set(DUMMY_CUSTOMERS.map((c) => c.country)));
+
+  const handleViewCustomer = (customer: CustomerRow) => {
+  setBorrower360CustomerId(customer.id);
+};
 
   if (borrower360CustomerId !== null) {
     const customer = customers.find((c) => c.id === borrower360CustomerId);
@@ -634,7 +638,12 @@ export function Customer() {
                 const isActive = row.original.status === 'ACTIVE';
                 const cells = row.getVisibleCells();
                 return (
-                  <Table.Tr key={row.id} className="lms-row">
+                  <Table.Tr
+  key={row.id}
+  className="lms-row"
+  onDoubleClick={() => handleViewCustomer(row.original)}
+  style={{ cursor: 'pointer' }}
+>
                     {cells.map((cell, idx) => (
                       <Table.Td
                         key={cell.id}

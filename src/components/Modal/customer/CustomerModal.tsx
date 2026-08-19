@@ -79,8 +79,8 @@ export function CustomerModal({
   const creditAssessment = useCreditAssessmentState({
     customerId: identity.customerNumber ?? null,
   });
-  const kyc = useKycState();
-  const documents = useDocumentsState();
+const kyc = useKycState({ customerId: identity.customerNumber ?? null });
+const documents = useDocumentsState({ customerId: identity.customerNumber ?? null });
   const kin = useKinState();
   const tagsState = useTagsState();
 
@@ -89,13 +89,11 @@ export function CustomerModal({
       (g.stepIndices as readonly number[]).includes(currentStep),
     ) ?? STEP_GROUPS[0];
   const stepInGroup = activeGroup.stepIndices.indexOf(currentStep as never) + 1;
-  const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
-    if (group.id === activeGroup.id) return;
-    const target =
-      group.stepIndices.find((idx) => idx >= currentStep) ??
-      group.stepIndices[0];
-    setActiveTab(target.toString());
-  };
+const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
+  if (group.id === activeGroup.id) return;
+
+  setActiveTab(group.stepIndices[0].toString());
+};
 
   const mobileDuplicateName = contact.mobileNumber
     .replace(/\D/g, "")
@@ -389,11 +387,13 @@ export function CustomerModal({
         return <KycStep kycStatus={kyc.kycStatus} runCheck={kyc.runCheck} />;
       case 5:
         return (
-          <DocumentsStep
-            uploadedDocs={documents.uploadedDocs}
-            setUploadedDocs={documents.setUploadedDocs}
-            isViewMode={isViewMode}
-          />
+         <DocumentsStep
+      uploadedDocs={documents.uploadedDocs}
+      uploadDoc={documents.uploadDoc}
+      removeUpload={documents.removeUpload}
+      uploadingKey={documents.uploadingKey}
+      isViewMode={isViewMode}
+    />
         );
       case 6:
         return (
@@ -410,23 +410,23 @@ export function CustomerModal({
             setGuarantorLinked={kin.setGuarantorLinked}
           />
         );
-      case 7:
-        return (
-          <TagsStep
-            tags={tagsState.tags}
-            tagInput={tagsState.tagInput}
-            setTagInput={tagsState.setTagInput}
-            addTag={tagsState.addTag}
-            removeTag={tagsState.removeTag}
-            relationshipNotes={tagsState.relationshipNotes}
-            setRelationshipNotes={tagsState.setRelationshipNotes}
-            customFields={tagsState.customFields}
-            addCustomField={tagsState.addCustomField}
-            removeCustomField={tagsState.removeCustomField}
-            updateCustomField={tagsState.updateCustomField}
-          />
-        );
-      default:
+      // case 7:
+      //   return (
+      //     <TagsStep
+      //       tags={tagsState.tags}
+      //       tagInput={tagsState.tagInput}
+      //       setTagInput={tagsState.setTagInput}
+      //       addTag={tagsState.addTag}
+      //       removeTag={tagsState.removeTag}
+      //       relationshipNotes={tagsState.relationshipNotes}
+      //       setRelationshipNotes={tagsState.setRelationshipNotes}
+      //       customFields={tagsState.customFields}
+      //       addCustomField={tagsState.addCustomField}
+      //       removeCustomField={tagsState.removeCustomField}
+      //       updateCustomField={tagsState.updateCustomField}
+      //     />
+      //   );
+      // default:
         return null;
     }
   };

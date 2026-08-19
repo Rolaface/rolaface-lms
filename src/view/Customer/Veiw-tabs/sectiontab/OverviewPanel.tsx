@@ -1,4 +1,4 @@
-import { Group, Progress, Text, ThemeIcon, UnstyledButton } from '@mantine/core';
+import { Group, Progress, Text, ThemeIcon, UnstyledButton, Divider } from '@mantine/core';
 import {
   IconAlertCircle,
   IconAlertTriangle,
@@ -15,10 +15,14 @@ import {
   IconUser,
   IconWallet,
   IconCalendar,
+  IconLayoutDashboard,
 } from '@tabler/icons-react';
 import type { BorrowerProfile } from '../../../../types/customerview';
 import { InfoRow, SectionCard, StatCard, StatusBadge } from './Customerprofileshared ';
 import { RiskRatingCard } from './Riskratingcard';
+import { PersonalInfoPanel } from './PersonalInfoPanel';
+import { KycCompliancePanel } from './KycCompliancePanel';
+import { FinancialLendingPanel } from './FinancialLendingPanel';
 
 
 const DEMO_EXPOSURE = 2450000;
@@ -96,6 +100,31 @@ function AlertsBanner({ alerts }: { alerts: Alert[] }) {
           </Text>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Section break between the "quick glance" content and a folded-in tab's full detail. */
+function SectionGroupHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
+  return (
+    <div className="flex items-center gap-3 mt-2">
+      <Divider className="flex-1" color="slate.2" />
+      <Group gap={8} wrap="nowrap">
+        <ThemeIcon variant="light" color="brand" size={26} radius="md">
+          {icon}
+        </ThemeIcon>
+        <div>
+          <Text size="sm" fw={800} c="slate.8" lh={1.1}>
+            {title}
+          </Text>
+          {subtitle && (
+            <Text size="xs" c="slate.5">
+              {subtitle}
+            </Text>
+          )}
+        </div>
+      </Group>
+      <Divider className="flex-1" color="slate.2" />
     </div>
   );
 }
@@ -417,7 +446,6 @@ export function OverviewPanel({
   const alerts = buildAlerts(b);
 
   const outstandingPct = b.exposure ? Math.round(((b.outstandingBalance ?? 0) / b.exposure) * 100) : undefined;
-  const overdueAccounts = (b.loans ?? []).filter((l: any) => l.status === 'Overdue').length;
 
   const facilityClosed = (b.loans ?? []).filter((l: any) => l.status === 'Closed').length;
   const facilityOverdue = (b.loans ?? []).filter((l: any) => l.status === 'Overdue').length;
@@ -429,38 +457,38 @@ export function OverviewPanel({
 
       {/* Headline numbers */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
- <StatCard
-  label="Total Exposure"
-  value={money(DEMO_EXPOSURE)}
-  subtitle={`Across ${totalFacilities} facilities`}
-  icon={<IconWallet size={18} />}
-  sparkline={DEMO_EXPOSURE_TREND}
-  trend="4.1% vs last month"
-  trendDirection="up"
-/>
+        <StatCard
+          label="Total Exposure"
+          value={money(DEMO_EXPOSURE)}
+          subtitle={`Across ${totalFacilities} facilities`}
+          icon={<IconWallet size={18} />}
+          sparkline={DEMO_EXPOSURE_TREND}
+          trend="4.1% vs last month"
+          trendDirection="up"
+        />
 
-<StatCard
-  label="Outstanding Balance"
-  value={money(DEMO_OUTSTANDING)}
-  subtitle={`${Math.round((DEMO_OUTSTANDING / DEMO_EXPOSURE) * 100)}% of exposure`}
-  icon={<IconBuildingBank size={18} />}
-  sparkline={DEMO_OUTSTANDING_TREND}
-  trend="2.8% vs last month"
-  trendDirection="up"
-/>
+        <StatCard
+          label="Outstanding Balance"
+          value={money(DEMO_OUTSTANDING)}
+          subtitle={`${Math.round((DEMO_OUTSTANDING / DEMO_EXPOSURE) * 100)}% of exposure`}
+          icon={<IconBuildingBank size={18} />}
+          sparkline={DEMO_OUTSTANDING_TREND}
+          trend="2.8% vs last month"
+          trendDirection="up"
+        />
 
-<StatCard
-  label="Overdue Amount"
-  value={money(DEMO_OVERDUE)}
-  subtitle="All payments current"
-  icon={<IconAlertCircle size={18} />}
-  tone="danger"
-  rightIcon={
-    <ThemeIcon variant="light" color="success" size={34} radius="xl">
-      <IconCircleCheck size={18} />
-    </ThemeIcon>
-  }
-/>
+        <StatCard
+          label="Overdue Amount"
+          value={money(DEMO_OVERDUE)}
+          subtitle="All payments current"
+          icon={<IconAlertCircle size={18} />}
+          tone="danger"
+          rightIcon={
+            <ThemeIcon variant="light" color="success" size={34} radius="xl">
+              <IconCircleCheck size={18} />
+            </ThemeIcon>
+          }
+        />
         <RiskRatingCard
           riskRating={b.riskRating}
           creditScore={b.riskScore ?? b.creditAssessment?.score}
@@ -521,27 +549,46 @@ export function OverviewPanel({
         <ActivityTimeline activity={activity} />
       </SectionCard>
 
-      {/* Row 4: compliance + classification */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <SectionCard icon={<IconShieldCheck size={16} />} title="Risk & Compliance">
-          <InfoRow label="KYC Status" value={<StatusBadge status={b.kycStatus} />} />
-          <InfoRow label="KYC Last Updated" value={field(b.complianceChecks?.kycVerification?.checkedAt)} />
-          <InfoRow label="Compliance Status" value={<StatusBadge status={b.complianceStatus} />} />
-          <InfoRow label="Sanction Check" value={<StatusBadge status={b.complianceChecks?.sanctionsScreening?.status} />} />
-          <InfoRow label="PEP Status" value={<StatusBadge status={b.complianceChecks?.pepStatus?.status ?? 'No'} />} bordered={false} />
-        </SectionCard>
+      {/* Row 4: tags/classification (risk & compliance summary now lives in the detailed KYC section below) */}
+      <SectionCard icon={<IconTags size={16} />} title="Tags & Classification">
+        <InfoRow label="Customer Segment" value={field(b.customerSegment)} />
+        <InfoRow label="Industry" value={field(b.industry)} />
+        <InfoRow label="Source" value={field(b.source)} />
+        <InfoRow label="Tags" value={b.tags?.length ? b.tags.join(', ') : '—'} bordered={false} />
+      </SectionCard>
 
-        <SectionCard icon={<IconTags size={16} />} title="Tags & Classification">
-          <InfoRow label="Customer Segment" value={field(b.customerSegment)} />
-          <InfoRow label="Industry" value={field(b.industry)} />
-          <InfoRow label="Source" value={field(b.source)} />
-          <InfoRow label="Tags" value={b.tags?.length ? b.tags.join(', ') : '—'} bordered={false} />
-        </SectionCard>
-      </div>
+      {/* ---- Folded-in tab content below: Overview is now the single-page view ---- */}
+
+      <SectionGroupHeader
+        icon={<IconUser size={16} />}
+        title="Personal Information"
+        subtitle="Identity, contact details & next of kin"
+      />
+      <PersonalInfoPanel borrower={borrower} />
+
+      <SectionGroupHeader
+        icon={<IconShieldCheck size={16} />}
+        title="KYC & Compliance"
+        subtitle="Verification, screening & document checklist"
+      />
+      <KycCompliancePanel borrower={borrower} />
+
+      <SectionGroupHeader
+        icon={<IconWallet size={16} />}
+        title="Financial & Lending"
+        subtitle="Credit assessment, facilities & financial profile"
+      />
+      <FinancialLendingPanel
+        borrower={borrower}
+        activeFacilities={activeFacilities}
+        totalFacilities={totalFacilities}
+        onRefetchCreditScore={b.onRefetchCreditScore}
+      />
 
       <Group gap={8} className="rounded-lg p-3" style={{ backgroundColor: 'var(--mantine-color-slate-0)' }}>
+        <IconLayoutDashboard size={14} style={{ color: 'var(--mantine-color-slate-4)' }} />
         <Text size="xs" c="slate.5">
-          This is a summary overview. Use the tabs above to view detailed information.
+          This page combines all customer information. Use the tabs above to jump directly to a section.
         </Text>
       </Group>
     </div>
