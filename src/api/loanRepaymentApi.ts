@@ -38,12 +38,6 @@ export async function changeLoanRepaymentStatus(id: string, action: string) {
   const { data } = await apiClient.post(API.loanRepayment.updateStatus, { id, action });
   return data;
 }
-export async function getAllLoanRepayment(search?: string, status?: string[]) {
-  const params: Record<string, string> = {};
-  if (search) params.search = search;
-  if (status && status.length > 0) {
-    params.status = JSON.stringify(status);
-  }
 
 export interface GetAllLoanRepaymentParams {
   page?: number;
@@ -68,20 +62,7 @@ export async function getAllLoanRepayment(params: GetAllLoanRepaymentParams = {}
   return data;
 }
 
-// export async function updateLoanRepayment({id, payload,}: {
-//   id: string;
-//   payload: Partial<LoanRepaymentPayload>;
-// }) {
-//   const { data } = await apiClient.put(
-//     API.loanRepayment.updateLoanRepay,
-//     payload,
-//     {
-//       params: { id },
-//     }
-//   );
 
-//   return data;
-// }
 export async function updateLoanRepayment({ id, payload }: { id: string; payload: Partial<LoanRepaymentPayload> }) {
   const { data } = await apiClient.put(API.loanRepayment.updateLoanRepay, { ...payload, id });
   return data;
