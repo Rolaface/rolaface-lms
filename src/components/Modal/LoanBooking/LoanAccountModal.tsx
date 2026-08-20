@@ -93,7 +93,12 @@ const handleUpdateChargeSectionDefaults = (
     },
   });
 
-  // --- Derived Calculations ---
+  const handleFormError = (errors: typeof form.errors) => {
+    if (Object.keys(errors).length > 0) {
+      setActiveTab("basic");
+    }
+  };
+
   const tenureMonths = useMemo(() => {
     return form.values.tenureValue === "" ? 0 : Number(form.values.tenureValue);
   }, [form.values.tenureValue]);
@@ -553,8 +558,12 @@ const handleReset = () => {
         },
       }}
     >
-      <form
+      {/* <form
         onSubmit={form.onSubmit(handleSubmit)}
+        style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}
+      > */}
+      <form
+        onSubmit={form.onSubmit(handleSubmit, handleFormError)}
         style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}
       >
         <Box className="flex flex-col flex-1 min-h-0">
@@ -772,7 +781,6 @@ onGracePeriodChange={(v) => handleUpdateChargeSectionDefaults("gracePeriodDays",
             />
           </Box>
 
-          {/* Footer — shared ModalFooter, no Reset action exposed. */}
           {/* Footer — shared ModalFooter, no Reset action exposed. */}
           <Box style={{ flexShrink: 0 }}>
             <ModalFooter
