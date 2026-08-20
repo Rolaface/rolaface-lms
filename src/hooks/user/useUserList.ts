@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getUsers, getUserById, deleteUser, type UserRow } from "../../api/User/userApi";
 import { userModal } from "../../components/Modal/User/Usermodalstore";
 import type { CreateUserFormData } from "../../types/User/createUser";
+import { openCommonModal } from "../../components/Modal/AlertModal";
+import { parseFrappeError } from "../../utils/parseFrappeError";
 
 const DEBOUNCE_MS = 350;
 
@@ -16,7 +18,6 @@ export function useUserList() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
 
-  // Debounce search input -> actual search param, reset to page 1 on change
   useEffect(() => {
     const t = setTimeout(() => {
       setSearch(searchInput);
@@ -39,6 +40,13 @@ export function useUserList() {
     try {
       await deleteUser(id);
       await queryClient.invalidateQueries({ queryKey: ["lmsUsers"] });
+    } catch (error) {
+      openCommonModal({
+        heading: "Error",
+        body: parseFrappeError(error),
+        color: "danger",
+        buttons: [{ label: "OK" }],
+      });
     } finally {
       setDeletingId(null);
     }
@@ -64,25 +72,26 @@ export function useUserList() {
         mobile_no: d.mobile_no ?? "",
       };
       userModal.open({ editId: row.id, initialData });
+    } catch (error) {
+      openCommonModal({
+        heading: "Error",
+        body: parseFrappeError(error),
+        color: "danger",
+        buttons: [{ label: "OK" }],
+      });
     } finally {
       setLoadingEditId(null);
     }
   };
 
   return {
-    searchInput,
-    setSearchInput,
-    page,
-    setPage,
-    pageSize,
-    setPageSize,
-    rows,
-    pagination,
+    searchInput, setSearchInput,
+    page, setPage,
+    pageSize, setPageSize,
+    rows, pagination,
     loading: isLoading || isFetching,
     refetch,
-    handleDelete,
-    deletingId,
-    openEdit,
-    loadingEditId,
+    handleDelete, deletingId,
+    openEdit, loadingEditId,
   };
 }

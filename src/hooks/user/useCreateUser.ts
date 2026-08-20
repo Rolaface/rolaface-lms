@@ -3,22 +3,18 @@ import type { CreateUserFormData } from "../../types/User/createUser";
 import { EMPTY_CREATE_USER_FORM } from "../../types/User/createUser";
 import { getUserRoles } from "../../api/User/roleApi";
 import { getLanguages } from "../../api/User/userApi";
-
-// Same note as useUserRole.ts — swap for your notifications helper if
-// utils/alert doesn't exist in LMS.
-import { showApiError } from "../../utils/alert";
+import { openCommonModal } from "../../components/Modal/AlertModal";
+import { parseFrappeError } from "../../utils/parseFrappeError";
 
 type FormErrors = Partial<Record<keyof CreateUserFormData, string>>;
 
 function validateForm(form: CreateUserFormData): FormErrors {
   const errors: FormErrors = {};
-  if (!form.email.trim()) {
-    errors.email = "Email is required";
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+  // required-field checks removed per earlier request; format check stays
+  // only if the person actually typed something in Email
+  if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
     errors.email = "Enter a valid email address";
   }
-  if (!form.username.trim()) errors.username = "Username is required";
-  if (!form.firstName.trim()) errors.firstName = "First name is required";
   return errors;
 }
 
@@ -60,7 +56,13 @@ export function useCreateUser({ onSubmit, initialData }: UseCreateUserOptions) {
     try {
       const result = await getLanguages(search);
       return result.map((l) => ({ value: l.value, label: l.label }));
-    } catch {
+    } catch (error) {
+      openCommonModal({
+        heading: "Error",
+        body: parseFrappeError(error),
+        color: "danger",
+        buttons: [{ label: "OK" }],
+      });
       return [];
     }
   }, []);
@@ -70,7 +72,13 @@ export function useCreateUser({ onSubmit, initialData }: UseCreateUserOptions) {
       const res = await getUserRoles(search || undefined, 1, 30);
       if (res.status !== "success") return [];
       return res.data.map((r) => ({ value: r.Id, label: r.roleName }));
-    } catch {
+    } catch (error) {
+      openCommonModal({
+        heading: "Error",
+        body: parseFrappeError(error),
+        color: "danger",
+        buttons: [{ label: "OK" }],
+      });
       return [];
     }
   }, []);
@@ -103,7 +111,12 @@ export function useCreateUser({ onSubmit, initialData }: UseCreateUserOptions) {
     try {
       await onSubmit(form);
     } catch (error) {
-      showApiError(error);
+      openCommonModal({
+        heading: "Error",
+        body: parseFrappeError(error),
+        color: "danger",
+        buttons: [{ label: "OK" }],
+      });
     } finally {
       setIsSubmitting(false);
     }

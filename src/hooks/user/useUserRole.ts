@@ -1,4 +1,4 @@
-import { useCallback, useState ,useEffect} from "react";
+import { useCallback, useState, useEffect } from "react";
 import { LMS_MODULES, EMPTY_FORM } from "../../types/User/userRole";
 import type {
   PermissionEntry,
@@ -6,23 +6,14 @@ import type {
   UserRoleFormData,
   LmsModule,
 } from "../../types/User/userRole";
-
-
-import { showApiError } from "../../utils/alert";
+import { openCommonModal } from "../../components/Modal/AlertModal";
+import { parseFrappeError } from "../../utils/parseFrappeError";
 
 export type PermissionKey = keyof Omit<PermissionEntry, "module">;
 
 export const PERMISSION_KEYS: PermissionKey[] = [
-  "read",
-  "write",
-  "create",
-  "delete",
-  "import",
-  "export",
-  "report",
-  "submit",
-  "cancel",
-  "email",
+  "read", "write", "create", "delete", "import",
+  "export", "report", "submit", "cancel", "email",
 ];
 
 export const getPermissionActions = (
@@ -96,17 +87,8 @@ export const useUserRoleLogic = ({ onSubmit, initialData }: UseUserRoleLogicOpti
           };
         }
         const newEntry: PermissionEntry = {
-          module,
-          read: 0,
-          write: 0,
-          create: 0,
-          delete: 0,
-          import: 0,
-          export: 0,
-          report: 0,
-          submit: 0,
-          cancel: 0,
-          email: 0,
+          module, read: 0, write: 0, create: 0, delete: 0, import: 0,
+          export: 0, report: 0, submit: 0, cancel: 0, email: 0,
           [action]: 1,
         };
         return { ...prev, permission: [...prev.permission, newEntry] };
@@ -126,17 +108,8 @@ export const useUserRoleLogic = ({ onSubmit, initialData }: UseUserRoleLogicOpti
           permission: [
             ...filtered,
             {
-              module,
-              read: 1,
-              write: 1,
-              create: 1,
-              delete: 1,
-              import: 1,
-              export: 1,
-              report: 1,
-              submit: 1,
-              cancel: 1,
-              email: 1,
+              module, read: 1, write: 1, create: 1, delete: 1, import: 1,
+              export: 1, report: 1, submit: 1, cancel: 1, email: 1,
             },
           ],
         };
@@ -159,7 +132,12 @@ export const useUserRoleLogic = ({ onSubmit, initialData }: UseUserRoleLogicOpti
     try {
       await onSubmit(form);
     } catch (error) {
-      showApiError(error);
+      openCommonModal({
+        heading: "Error",
+        body: parseFrappeError(error),
+        color: "danger",
+        buttons: [{ label: "OK" }],
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -171,15 +149,9 @@ export const useUserRoleLogic = ({ onSubmit, initialData }: UseUserRoleLogicOpti
   }, [initialData]);
 
   return {
-    form,
-    errors,
-    isSubmitting,
-    handleFieldChange,
-    handleSubmit,
-    handleReset,
-    toggleAction,
-    toggleModuleLevel,
-    clearModulePermissions,
+    form, errors, isSubmitting,
+    handleFieldChange, handleSubmit, handleReset,
+    toggleAction, toggleModuleLevel, clearModulePermissions,
     getPermissionActions: (module: LmsModule) => getPermissionActions(form.permission, module),
     hasAnyPermission: (module: LmsModule) => hasAnyPermission(form.permission, module),
     modules: LMS_MODULES,

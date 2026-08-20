@@ -8,6 +8,7 @@ import { LMS_MODULES } from "../../../types/User/userRole";
 import type { LmsModule } from "../../../types/User/userRole";
 import { createUserRoles, updateUserRoles } from "../../../api/User/roleApi";
 import { ModalFooter } from "../../../components/shared/ModalFooter";
+import { openCommonModal } from "../../../components/Modal/AlertModal";
 
 const ACTION_LABELS: Record<string, string> = {
   read: "Read",
@@ -41,14 +42,23 @@ export function AssignUserRoleModal() {
   } = useUserRoleLogic({
     initialData,
     onSubmit: async (data) => {
-      if (isEdit) {
-        await updateUserRoles(editId as string, data);
-      } else {
-        await createUserRoles(data);
-      }
+      const res = isEdit
+        ? await updateUserRoles(editId as string, data)
+        : await createUserRoles(data);
+
       queryClient.invalidateQueries({ queryKey: ["userRoles"] });
       roleModal.close();
-    }
+
+      // backend-driven success message; falls back only if backend sends null
+      openCommonModal({
+        heading: "Success",
+        body:
+          res.message.message ||
+          (isEdit ? "Role updated successfully." : "Role created successfully."),
+        color: "success",
+        buttons: [{ label: "OK" }],
+      });
+    },
   });
 
   useEffect(() => {

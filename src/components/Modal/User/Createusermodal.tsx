@@ -14,14 +14,15 @@ import {
   Divider,
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
+import dayjs from "dayjs";
 import { IconUserPlus, IconX } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { userModal, useUserModal } from "./Usermodalstore";
 import { useCreateUser, type SelectOption } from "../../../hooks/user/useCreateUser";
-import { createUser, updateUser } from "../../../api/User/userApi";
-import { getAllGenders } from "../../../api/User/userApi";
+import { createUser, updateUser, getAllGenders } from "../../../api/User/userApi";
 import { ModalFooter } from "../../../components/shared/ModalFooter";
-import { showApiError } from "../../../utils/alert";
+import { openCommonModal } from "../../../components/Modal/AlertModal";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
 
 const TIMEZONES = [
   "Africa/Casablanca", "Europe/Rome", "Europe/Paris", "America/Aruba", "Asia/Baghdad",
@@ -56,20 +57,10 @@ function filterTimezones(search: string): SelectOption[] {
   return list.map((tz) => ({ value: tz, label: tz }));
 }
 
-function dobStringToDate(dob?: string): Date | null {
-  if (!dob) return null;
-  const [y, m, d] = dob.split("-").map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d); // local midnight, not UTC
-}
+const toDateValue = (dob: string | null | undefined): Date | null =>
+  dob && dayjs(dob).isValid() ? dayjs(dob).toDate() : null;
 
-function dateToDobString(date: Date | null): string {
-  if (!date) return "";
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+const TODAY = new Date();
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -98,13 +89,22 @@ export function CreateUserModal() {
   } = useCreateUser({
     initialData,
     onSubmit: async (data) => {
-      if (isEdit && editId) {
-        await updateUser(editId, data);
-      } else {
-        await createUser(data);
-      }
+      const res = isEdit && editId
+        ? await updateUser(editId, data)
+        : await createUser(data);
+
       queryClient.invalidateQueries({ queryKey: ["lmsUsers"] });
       userModal.close();
+
+      // backend puts the success text in `data` here (message.message is null)
+      openCommonModal({
+        heading: "Success",
+        body:
+          res.message.data ||
+          (isEdit ? "User updated successfully." : "User created successfully."),
+        color: "success",
+        buttons: [{ label: "OK" }],
+      });
     },
   });
 
@@ -127,7 +127,14 @@ export function CreateUserModal() {
   useEffect(() => {
     getAllGenders()
       .then(setGenderOptions)
-      .catch((err) => showApiError(err));
+      .catch((error) => {
+        openCommonModal({
+          heading: "Error",
+          body: parseFrappeError(error),
+          color: "danger",
+          buttons: [{ label: "OK" }],
+        });
+      });
   }, []);
 
   const handleRolesChange = (vals: string[]) => {
@@ -319,11 +326,9 @@ export function CreateUserModal() {
                     label="Date of Birth"
                     placeholder="DD-MMM-YYYY"
                     valueFormat="DD-MMM-YYYY"
-                    value={dobStringToDate(form.dob)}
-                    onChange={(date) => handleFieldChange("dob", dateToDobString(date))}
-                    clearable
-                    defaultLevel="decade"
-                    maxDate={new Date()}
+                    value={toDateValue(form.dob)}
+                    onChange={(d) => handleFieldChange("dob", d ? dayjs(d).format("YYYY-MM-DD") : "")}
+                    maxDate={TODAY}
                   />
                 </Grid.Col>
                 <Grid.Col span={colSpan}>

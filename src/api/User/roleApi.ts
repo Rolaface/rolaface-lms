@@ -7,6 +7,7 @@ import type { UserRoleFormData, PermissionEntry } from "../../types/User/userRol
 export interface CreateUserRoleResponse {
   message: {
     status: "success" | "error";
+    message: string | null; 
     data: { roleId: string };
   };
 }
