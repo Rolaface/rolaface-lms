@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { IconUserCog } from "@tabler/icons-react";
 import {
   Box,
   Text,
@@ -35,10 +36,10 @@ import {
   IconCoins,
 } from "@tabler/icons-react";
 
-/* ───────────────── Nav item types (recursive) ───────────────── */
+
 
 interface NavItem {
-  path?: string; // omit for a group that only holds children
+  path?: string; 
   label: string;
   icon: React.ComponentType<{
     size?: number;
@@ -57,6 +58,16 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     matchPrefix: false,
   },
   { path: "/customer", label: "Customer", icon: IconUsers, matchPrefix: true },
+   {
+    path: "/user",
+    label: "User",
+    icon: IconUserCog,
+    matchPrefix: true,
+    subItems: [
+      { path: "/user/management", label: "User Management", icon: IconUsers },
+      { path: "/user/roles", label: "Role Management", icon: IconShieldCheck },
+    ],
+  },
   {
     path: "/collateral",
     label: "Collateral",
@@ -177,7 +188,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
   },
 ];
 
-// Size config — tweak these to scale text/icons up or down
+
 const SIZES = {
   rootIcon: 19,
   subIcon: 16,
@@ -188,9 +199,7 @@ const SIZES = {
   chevron: 15,
 };
 
-/* ───────────────── Design tokens (all sourced from the Mantine theme) ─────────────────
-   Nothing below is a hardcoded color — every value reads off the `brand` / `slate`
-   color scales defined in mantineTheme, via Mantine's CSS variables. */
+
 
 const tk = {
   textDefault: "var(--mantine-color-slate-6)",
@@ -212,7 +221,6 @@ const tk = {
   logoGradient: "linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-8))",
 };
 
-/* ───────────────── Accordion wrapper: smooth height animation via CSS grid ───────────────── */
 
 function Collapse({ open, children }: { open: boolean; children: React.ReactNode }) {
   return (
@@ -242,7 +250,7 @@ function Chevron({ open }: { open: boolean }) {
   );
 }
 
-/* ───────────────── Recursive submenu node ───────────────── */
+
 
 function NavNode({
   item,
@@ -363,6 +371,7 @@ function getInitialOpenMenus(pathname: string): Record<string, boolean> {
     "0-Accounting": pathname.startsWith("/accounting"),
     "1-General Ledger": pathname.startsWith("/accounting/general-ledger"),
     "0-Lending Reports": pathname.startsWith("/reports"),
+    "0-User": pathname.startsWith("/user"),
   };
 }
 
@@ -384,9 +393,6 @@ const toggleMenu = (key: string, depth: number) => {
   setOpenMenus((prev) => {
     const willOpen = !prev[key];
     const next: Record<string, boolean> = { ...prev };
-
-    // Close every other menu at the SAME depth (accordion behavior).
-    // Menus at other depths (parent/child chains) are left untouched.
     Object.keys(next).forEach((k) => {
       if (k.startsWith(`${depth}-`)) {
         next[k] = false;
@@ -406,7 +412,6 @@ const toggleMenu = (key: string, depth: number) => {
         borderRight: `1px solid ${tk.border}`,
       }}
     >
-      {/* Thin scrollbar + focus ring, scoped to this component */}
       <style>{`
         .lms-nav-scroll::-webkit-scrollbar { width: 6px; }
         .lms-nav-scroll::-webkit-scrollbar-thumb {

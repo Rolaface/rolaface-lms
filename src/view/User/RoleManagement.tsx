@@ -1,0 +1,156 @@
+import { Box, Button, TextInput, Group, Paper, Table, Badge, ActionIcon, Text, Pagination, Tooltip, Title, Stack, useMantineTheme, Loader, Select } from '@mantine/core';
+import { IconEye, IconPencil, IconPlus, IconSearch, IconFileOff, IconShieldCheck, IconPower } from '@tabler/icons-react';
+import { useUserRoleList } from '../../hooks/user/useUserRoleList';
+import { openCommonModal } from '../../components/Modal/AlertModal';
+import { roleModal } from '../../components/Modal/User/Rolemodalstore';
+import { AssignUserRoleModal } from '../../components/Modal/User/Assignuserrolemodal';
+
+export function RoleManagement() {
+  const theme = useMantineTheme();
+  const {
+    searchInput, setSearchInput,
+    page, setPage,
+    pageSize, setPageSize,
+    rows, pagination, loading,
+    handleToggleStatus, togglingId,
+    openEdit, openView, loadingId,
+  } = useUserRoleList();
+
+  const confirmToggle = (row: { Id: string; roleName: string; disabled: 0 | 1 }) => {
+    const willEnable = row.disabled === 1;
+    openCommonModal({
+      heading: willEnable ? 'Enable Role' : 'Disable Role',
+      subtitle: 'Please confirm before proceeding.',
+      body: <>Are you sure you want to {willEnable ? 'enable' : 'disable'} role <Text span fw={600}>{row.roleName}</Text>?</>,
+      color: willEnable ? 'teal' : 'red',
+      buttons: [
+        { label: 'Cancel', variant: 'default' },
+        { label: willEnable ? 'Enable' : 'Disable', color: willEnable ? 'teal' : 'red', onClick: () => handleToggleStatus(row.Id, row.disabled) },
+      ],
+    });
+  };
+
+  const totalRows = pagination?.total ?? 0;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
+
+  return (
+    <Stack gap="lg" p="lg">
+      <style>{`
+        .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+        .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
+        .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+        .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+      `}</style>
+
+      <Group justify="space-between" align="center" wrap="wrap" gap="md">
+        <Group gap="sm" align="center">
+          <Box style={{ width: 40, height: 40, borderRadius: 'var(--mantine-radius-md)', background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadow, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <IconShieldCheck size={20} color="var(--mantine-color-white)" stroke={1.8} />
+          </Box>
+          <Stack gap={2}>
+            <Title order={2} c="slate.8" fw={700}>Role Management</Title>
+            <Text fz="sm" c="slate.5">Manage roles and module permissions</Text>
+          </Stack>
+        </Group>
+      </Group>
+
+      <Paper radius="xl" p="xs" style={{ background: 'var(--mantine-color-slate-0)', border: '1px solid var(--mantine-color-slate-2)' }}>
+        <Group gap="sm" wrap="wrap" align="center">
+          <TextInput
+            size="sm" radius="xl" placeholder="Search by role name"
+            leftSection={<IconSearch size={14} />}
+            style={{ flex: 1, minWidth: 220 }}
+            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.currentTarget.value)}
+          />
+          <Group gap="xs" ml="auto">
+            <Button
+              size="sm" radius="xl" color="brand" onClick={() => roleModal.open()}
+              leftSection={<IconPlus size={14} />}
+              style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
+            >
+              Add Role
+            </Button>
+          </Group>
+        </Group>
+      </Paper>
+
+      <Paper radius="lg" p="sm" style={{ background: 'var(--mantine-color-slate-0)', border: '1px solid var(--mantine-color-slate-2)' }}>
+        <Table verticalSpacing="sm" horizontalSpacing="sm" fz="xs" w="100%" style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th style={{ padding: '0 10px 6px', textTransform: 'uppercase', letterSpacing: '0.04em', border: 'none' }}>Role Name</Table.Th>
+              <Table.Th style={{ padding: '0 10px 6px', textTransform: 'uppercase', letterSpacing: '0.04em', border: 'none' }}>Status</Table.Th>
+              <Table.Th style={{ padding: '0 10px 6px', textAlign: 'right', border: 'none' }}>Actions</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {loading ? (
+              <Table.Tr><Table.Td colSpan={3} style={{ border: 'none' }}><Text ta="center" c="slate.5" fz="xs" py="xl">Loading...</Text></Table.Td></Table.Tr>
+            ) : rows.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={3} style={{ border: 'none' }}>
+                  <Stack align="center" gap="xs" py="xl">
+                    <IconFileOff size={26} color="var(--mantine-color-slate-4)" />
+                    <Text ta="center" c="slate.5" fz="xs">No roles match your filters.</Text>
+                  </Stack>
+                </Table.Td>
+              </Table.Tr>
+            ) : (
+              rows.map((row) => {
+                const isLoadingRow = loadingId === row.Id;
+                const isToggling = togglingId === row.Id;
+                return (
+                  <Table.Tr key={row.Id} className="lms-row">
+                    <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)', borderLeft: '3px solid var(--mantine-color-brand-4)' }}>
+                      <Text fz="sm" fw={700} c="slate.8">{row.roleName}</Text>
+                    </Table.Td>
+                    <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)' }}>
+                      <Badge variant="light" size="sm" radius="sm" color={row.disabled ? 'danger' : 'success'} styles={{ root: { fontSize: 10 } }}>
+                        {row.disabled ? 'DISABLED' : 'ENABLED'}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)' }}>
+                      <Group justify="flex-end" gap={4} wrap="nowrap">
+                        <Tooltip label="View" withArrow>
+                          <ActionIcon size="sm" variant="subtle" color="slate" radius="md" disabled={isLoadingRow} onClick={() => openView(row.Id)}>
+                            {isLoadingRow ? <Loader size={14} /> : <IconEye size={14} />}
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip label="Edit" withArrow>
+                          <ActionIcon size="sm" variant="subtle" color="brand" radius="md" disabled={isLoadingRow} onClick={() => openEdit(row.Id)}>
+                            <IconPencil size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip label={row.disabled ? 'Enable' : 'Disable'} withArrow>
+                          <ActionIcon size="sm" variant="subtle" color={row.disabled ? 'success' : 'danger'} radius="md" disabled={isToggling} onClick={() => confirmToggle(row)}>
+                            {isToggling ? <Loader size={14} /> : <IconPower size={14} />}
+                          </ActionIcon>
+                        </Tooltip>
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })
+            )}
+          </Table.Tbody>
+        </Table>
+
+        <Group justify="space-between" px="sm" pt="xs">
+          <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
+            <span>{totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}</span>
+            <Group gap="xs">
+              <span>Rows:</span>
+              <Select data={['10', '20', '50']} value={String(pageSize)} onChange={(v) => { setPageSize(Number(v) || 10); setPage(1); }} size="xs" radius="xl" w={60} />
+            </Group>
+          </Group>
+          <Pagination total={pagination?.total_pages || 1} value={page} onChange={setPage} color="brand" size="xs" radius="xl" disabled={totalRows === 0} />
+        </Group>
+      </Paper>
+
+      <AssignUserRoleModal />
+    </Stack>
+  );
+}

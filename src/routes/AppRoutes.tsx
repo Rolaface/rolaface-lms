@@ -10,11 +10,9 @@ import { AppLayout } from "../layout/AppLayout";
 import { Dashboard } from "../view/Dashboard";
 import { Customer } from "../view/Customer/CustomerCreate";
 import { Account } from "../view/LoanAccount/Account";
-// import { Loan } from '../view/Loan/Loan';
-import { LendingSetup } from "../view/Setup/LendingSetup";
-// import { Operations } from '../view/Operations/Operation';
+import { UserManagement } from "../view/User/UserManagement";
+import { RoleManagement } from "../view/User/RoleManagement";
 
-// TODO: create these view components (placeholders shown for now)
 import { CollateralType } from "../view/Collateral/CollateralType/CollateralType";
 import { Collateral } from "../view/Collateral/Collateral";
 import { LoanApplication } from '../view/Origination/LoanApplication';
@@ -333,6 +331,21 @@ const reportsArrearsRoute = createRoute({
   path: '/arrears',
   component: ArrearReports,
 });
+const userRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/user",
+  component: Outlet,
+});
+const userManagementRoute = createRoute({
+  getParentRoute: () => userRoute,
+  path: "/management",
+  component: UserManagement,
+});
+const userRolesRoute = createRoute({
+  getParentRoute: () => userRoute,
+  path: "/roles",
+  component: RoleManagement,
+});
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -380,7 +393,7 @@ const routeTree = rootRoute.addChildren([
   ]),
 
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute]),
-  
+  userRoute.addChildren([userManagementRoute, userRolesRoute]),
 ]);
 
 export const router = createRouter({ routeTree });
