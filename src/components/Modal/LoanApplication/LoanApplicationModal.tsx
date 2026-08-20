@@ -9,26 +9,31 @@ import {
   ActionIcon,
   ScrollArea,
   ThemeIcon,
-  Divider, 
+  Divider,UnstyledButton
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { 
-  IconX, 
-  IconFileText, 
-  IconChevronRight, 
-  IconUser, 
-  IconBuilding, 
-  IconBriefcase, 
-  IconFileInvoice, 
-  IconUsers, 
-  IconArrowRight, IconMinus
+import {
+  IconX,
+  IconFileText,
+  IconChevronRight,
+  IconUser,
+  IconBuilding,
+  IconBriefcase,
+  IconFileInvoice,
+  IconUsers,
+  IconArrowRight,
+  IconMinus,IconCheck
 } from "@tabler/icons-react";
 
 import { PersonalBusinessInfoStep } from "./PersonalBusinessInfoStep";
 import { ResidenceEmploymentStep } from "./ResidenceEmploymentStep";
 import { DocumentsStep } from "./DocumentsStep";
 import { LoanTermsStep } from "./LoanTermsStep";
-import { createLoanApplication, getLoanApplicationById, updateLoanApplication } from "../../../api/loanApplicationApi";
+import {
+  createLoanApplication,
+  getLoanApplicationById,
+  updateLoanApplication,
+} from "../../../api/loanApplicationApi";
 import type {
   LoanApplicationPayload,
   PersonalLoanApplication,
@@ -37,6 +42,7 @@ import type {
 import { uploadFile } from "../../../api/loanApi";
 import { openCommonModal } from "../AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
+import { ApplicationSummary } from "./ApplicationSummary";
 
 export type LoanType = "Personal" | "Business";
 
@@ -81,9 +87,9 @@ export interface LoanApplicationValues {
   kinPhone: string;
   kinEmail: string;
   kinRelationship: string;
- directors: DirectorEntry[];
+  directors: DirectorEntry[];
   directorsCount: string;
-directorsDocunentCount: string;
+  directorsDocunentCount: string;
   applicantFirstName: string;
   applicantMiddleName: string;
   applicantLastName: string;
@@ -176,7 +182,7 @@ const INITIAL_VALUES: LoanApplicationValues = {
   applicantPassportPhoto: null,
   boardResolution: null,
   directorDocuments: [],
-directorsDocunentCount: "",
+  directorsDocunentCount: "",
   loanAmount: 4000,
   tenureMonths: 6,
 };
@@ -187,8 +193,18 @@ const LOAN_RANGE: Record<LoanType, { min: number; max: number }> = {
 };
 
 const STEP_LABELS: Record<LoanType, string[]> = {
-  Personal: ["Personal information", "Residence & Employment", "Documents", "Loan Terms"],
-  Business: ["Business information", "Directors & Applicant", "Documents", "Loan Terms"],
+  Personal: [
+    "Applicant information",
+    "Residence & Employment",
+    "Documents",
+    "Loan Terms",
+  ],
+  Business: [
+    "Business information",
+    "Directors & Applicant",
+    "Documents",
+    "Loan Terms",
+  ],
 };
 
 const STEP_ICONS: Record<LoanType, React.FC<any>[]> = {
@@ -199,7 +215,7 @@ const STEP_ICONS: Record<LoanType, React.FC<any>[]> = {
 function buildPersonalPayload(
   values: LoanApplicationValues,
   totalRepayable: number,
-  resolvedUrls: Record<string, string | null>
+  resolvedUrls: Record<string, string | null>,
 ): PersonalLoanApplication {
   const documents: PersonalLoanApplication["documents"] = [];
 
@@ -268,7 +284,7 @@ function buildPersonalPayload(
 function buildBusinessPayload(
   values: LoanApplicationValues,
   totalRepayable: number,
-  resolvedUrls: Record<string, string | null>
+  resolvedUrls: Record<string, string | null>,
 ): BusinessLoanApplication {
   const business_documents: BusinessLoanApplication["business_documents"] = [];
 
@@ -388,214 +404,274 @@ interface LoanApplicationModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize: () => void;
-  onExited?: () => void; 
+  onExited?: () => void;
   loanApplicationId?: string | null;
 }
 
-export function LoanApplicationModal({ opened, onClose, onMinimize, onExited,loanApplicationId }: LoanApplicationModalProps) {
+export function LoanApplicationModal({
+  opened,
+  onClose,
+  onMinimize,
+  onExited,
+  loanApplicationId,
+}: LoanApplicationModalProps) {
   const originalDocumentUrls = useRef<Record<string, string>>({});
   const [directorsError, setDirectorsError] = useState<string | null>(null);
-const [isUploadingDocs, setIsUploadingDocs] = useState(false);
+  const [isUploadingDocs, setIsUploadingDocs] = useState(false);
   const queryClient = useQueryClient();
   const [activeStep, setActiveStep] = useState(0);
-  const [directorDocsError, setDirectorDocsError] = useState<string | null>(null);
-const ALLOWED_FILE_TYPES = ["application/pdf", "image/jpeg", "image/jpg"];
-const isAllowedFileType = (file: File | null) => !file || ALLOWED_FILE_TYPES.includes(file.type);
-const [loanTypeSelected, setLoanTypeSelected] = useState(!!loanApplicationId);
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;  
-const showSuccess = (heading: string, body: string) => {
-  openCommonModal({
-    heading,
-    subtitle: '',
-    body,
-    color: 'green',
-    buttons: [{ label: 'Close', color: 'green' }],
-  });
-};
+  const [directorDocsError, setDirectorDocsError] = useState<string | null>(
+    null,
+  );
+  const ALLOWED_FILE_TYPES = ["application/pdf", "image/jpeg", "image/jpg"];
+  const isAllowedFileType = (file: File | null) =>
+    !file || ALLOWED_FILE_TYPES.includes(file.type);
+  const [loanTypeSelected, setLoanTypeSelected] = useState(true);
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
 
-  const form = useForm<LoanApplicationValues>({ 
-  initialValues: INITIAL_VALUES,
-  validate: {
-    firstName: (v, values) => (values.loanType === "Personal" && !v?.trim() ? "Required" : null),
-    surname: (v, values) => (values.loanType === "Personal" && !v?.trim() ? "Required" : null),
-    phone: (v, values) => (values.loanType === "Personal" && !v?.trim() ? "Required" : null),
-      birthDate: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
-    nrc: (v, values) => (values.loanType === "Personal" && !v?.trim() ? "Required" : null),
-    email: (v, values) => {
-      if (values.loanType !== "Personal") return null;
-      if (!v?.trim()) return "Required";
-      if (!EMAIL_REGEX.test(v)) return "Enter a valid email address";
-      return null;
-    },
-    gender: (v, values) => (values.loanType === "Personal" && !v?.trim() ? "Required" : null),
-maritalStatus: (v, values) => values.loanType === "Personal" && !v?.trim() ? "Required" : null,
-    
-    // --- Personal Employment ---
-    residentialAddress: (v, values) => (values.loanType === "Personal" && !v?.trim() ? "Required" : null),
-    occupation: (v, values) => (values.loanType === "Personal" && !v?.trim() ? "Required" : null),
-    employerName: (v, values) => (values.loanType === "Personal" && !v?.trim() ? "Required" : null),
-    principalObjective: (v, values) => (values.loanType === "Personal" && !v?.trim() ? "Required" : null),
-    kinName: (v, values) => (values.loanType === "Personal" && !v?.trim() ? "Required" : null),
-    kinPhone: (v, values) => (values.loanType === "Personal" && !v?.trim() ? "Required" : null),
-    kinRelationship: (v, values) => (values.loanType === "Personal" && !v?.trim() ? "Required" : null),
-    nationality: (v, values) => values.loanType === "Personal" && !v?.trim() ? "Required" : null,
-    kinEmail: (v, values) => {
-      if (values.loanType !== "Personal") return null;
-      if (!v?.trim()) return "Required";
-      if (!EMAIL_REGEX.test(v)) return "Enter a valid email address";
-      return null;
-    },
-    applicantEmail: (v, values) => {
-      if (values.loanType !== "Business") return null;
-      if (!v?.trim()) return "Required";
-      if (!EMAIL_REGEX.test(v)) return "Enter a valid email address";
-      return null;
-    },
-
-    // --- Personal Docs ---
-    // payslips: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
-    // bankStatementsPersonal: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
-    // nrcCopy: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
-    // passportPhotoPersonal: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
-    // tpinCertificate: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
-    payslips: (v, values) => {
-  if (values.loanType !== "Personal") return null;
-  if (!v) return "Required";
-  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-  return null;
-},
-bankStatementsPersonal: (v, values) => {
-  if (values.loanType !== "Personal") return null;
-  if (!v) return "Required";
-  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-  return null;
-},
-nrcCopy: (v, values) => {
-  if (values.loanType !== "Personal") return null;
-  if (!v) return "Required";
-  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-  return null;
-},
-passportPhotoPersonal: (v, values) => {
-  if (values.loanType !== "Personal") return null;
-  if (!v) return "Required";
-  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-  return null;
-},
-tpinCertificate: (v, values) => {
-  if (values.loanType !== "Personal") return null;
-  if (!v) return "Required";
-  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-  return null;
-},
-
-    // --- Business Base ---
-    companyName: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-    establishedDate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    natureOfBusiness: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-    registeredOffice: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-    purposeOfLoan: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-    typeOfBusiness: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-collateralPledged: (v, values) => (values.loanType === "Business" && !String(v ?? "").trim() ? "Required" : null),
-    // --- Business Applicant ---
-    applicantFirstName: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-    applicantLastName: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-    applicantPhone: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-    applicantNrc: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-    applicantBirthDate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    applicantAddress: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-    applicantPosition: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-    applicantGender: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-applicantMaritalStatus: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-applicantNationality: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-    
-    // --- Business Docs ---
-    // pacraCertificate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    // form2: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    // taxClearanceCertificate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    // taxComplianceReturn: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    // bankStatementsBusiness: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    // applicantPassportPhoto: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    // boardResolution: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    pacraCertificate: (v, values) => {
-  if (values.loanType !== "Business") return null;
-  if (!v) return "Required";
-  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-  return null;
-},
-form2: (v, values) => {
-  if (values.loanType !== "Business") return null;
-  if (!v) return "Required";
-  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-  return null;
-},
-taxClearanceCertificate: (v, values) => {
-  if (values.loanType !== "Business") return null;
-  if (!v) return "Required";
-  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-  return null;
-},
-taxComplianceReturn: (v, values) => {
-  if (values.loanType !== "Business") return null;
-  if (!v) return "Required";
-  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-  return null;
-},
-bankStatementsBusiness: (v, values) => {
-  if (values.loanType !== "Business") return null;
-  if (!v) return "Required";
-  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-  return null;
-},
-applicantPassportPhoto: (v, values) => {
-  if (values.loanType !== "Business") return null;
-  if (!v) return "Required";
-  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-  return null;
-},
-boardResolution: (v, values) => {
-  if (values.loanType !== "Business") return null;
-  if (!v) return "Required";
-  if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-  return null;
-},
-
-    // --- Array Validations (Business) ---
-  directors: {
-      name: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
-      phone: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
+  const form = useForm<LoanApplicationValues>({
+    initialValues: INITIAL_VALUES,
+    validate: {
+      firstName: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+      surname: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+      phone: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+      birthDate: (v, values) =>
+        values.loanType === "Personal" && !v ? "Required" : null,
+      nrc: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
       email: (v, values) => {
+        if (values.loanType !== "Personal") return null;
+        if (!v?.trim()) return "Required";
+        if (!EMAIL_REGEX.test(v)) return "Enter a valid email address";
+        return null;
+      },
+      gender: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+      maritalStatus: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+
+      // --- Personal Employment ---
+      residentialAddress: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+      occupation: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+      employerName: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+      principalObjective: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+      kinName: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+      kinPhone: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+      kinRelationship: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+      nationality: (v, values) =>
+        values.loanType === "Personal" && !v?.trim() ? "Required" : null,
+      kinEmail: (v, values) => {
+        if (values.loanType !== "Personal") return null;
+        if (!v?.trim()) return "Required";
+        if (!EMAIL_REGEX.test(v)) return "Enter a valid email address";
+        return null;
+      },
+      applicantEmail: (v, values) => {
         if (values.loanType !== "Business") return null;
         if (!v?.trim()) return "Required";
         if (!EMAIL_REGEX.test(v)) return "Enter a valid email address";
         return null;
       },
-      nrc: (v, values) => (values.loanType === "Business" && !v?.trim() ? "Required" : null),
+
+      // --- Personal Docs ---
+      // payslips: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
+      // bankStatementsPersonal: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
+      // nrcCopy: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
+      // passportPhotoPersonal: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
+      // tpinCertificate: (v, values) => (values.loanType === "Personal" && !v ? "Required" : null),
+      payslips: (v, values) => {
+        if (values.loanType !== "Personal") return null;
+        if (!v) return "Required";
+        if (!isAllowedFileType(v))
+          return "Only PDF, JPEG, or JPG files are allowed";
+        return null;
+      },
+      bankStatementsPersonal: (v, values) => {
+        if (values.loanType !== "Personal") return null;
+        if (!v) return "Required";
+        if (!isAllowedFileType(v))
+          return "Only PDF, JPEG, or JPG files are allowed";
+        return null;
+      },
+      nrcCopy: (v, values) => {
+        if (values.loanType !== "Personal") return null;
+        if (!v) return "Required";
+        if (!isAllowedFileType(v))
+          return "Only PDF, JPEG, or JPG files are allowed";
+        return null;
+      },
+      passportPhotoPersonal: (v, values) => {
+        if (values.loanType !== "Personal") return null;
+        if (!v) return "Required";
+        if (!isAllowedFileType(v))
+          return "Only PDF, JPEG, or JPG files are allowed";
+        return null;
+      },
+      tpinCertificate: (v, values) => {
+        if (values.loanType !== "Personal") return null;
+        if (!v) return "Required";
+        if (!isAllowedFileType(v))
+          return "Only PDF, JPEG, or JPG files are allowed";
+        return null;
+      },
+
+      // --- Business Base ---
+      companyName: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      establishedDate: (v, values) =>
+        values.loanType === "Business" && !v ? "Required" : null,
+      natureOfBusiness: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      registeredOffice: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      purposeOfLoan: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      typeOfBusiness: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      collateralPledged: (v, values) =>
+        values.loanType === "Business" && !String(v ?? "").trim()
+          ? "Required"
+          : null,
+      // --- Business Applicant ---
+      applicantFirstName: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      applicantLastName: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      applicantPhone: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      applicantNrc: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      applicantBirthDate: (v, values) =>
+        values.loanType === "Business" && !v ? "Required" : null,
+      applicantAddress: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      applicantPosition: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      applicantGender: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      applicantMaritalStatus: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      applicantNationality: (v, values) =>
+        values.loanType === "Business" && !v?.trim() ? "Required" : null,
+
+      // --- Business Docs ---
+      // pacraCertificate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+      // form2: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+      // taxClearanceCertificate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+      // taxComplianceReturn: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+      // bankStatementsBusiness: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+      // applicantPassportPhoto: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+      // boardResolution: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+      pacraCertificate: (v, values) => {
+        if (values.loanType !== "Business") return null;
+        if (!v) return "Required";
+        if (!isAllowedFileType(v))
+          return "Only PDF, JPEG, or JPG files are allowed";
+        return null;
+      },
+      form2: (v, values) => {
+        if (values.loanType !== "Business") return null;
+        if (!v) return "Required";
+        if (!isAllowedFileType(v))
+          return "Only PDF, JPEG, or JPG files are allowed";
+        return null;
+      },
+      taxClearanceCertificate: (v, values) => {
+        if (values.loanType !== "Business") return null;
+        if (!v) return "Required";
+        if (!isAllowedFileType(v))
+          return "Only PDF, JPEG, or JPG files are allowed";
+        return null;
+      },
+      taxComplianceReturn: (v, values) => {
+        if (values.loanType !== "Business") return null;
+        if (!v) return "Required";
+        if (!isAllowedFileType(v))
+          return "Only PDF, JPEG, or JPG files are allowed";
+        return null;
+      },
+      bankStatementsBusiness: (v, values) => {
+        if (values.loanType !== "Business") return null;
+        if (!v) return "Required";
+        if (!isAllowedFileType(v))
+          return "Only PDF, JPEG, or JPG files are allowed";
+        return null;
+      },
+      applicantPassportPhoto: (v, values) => {
+        if (values.loanType !== "Business") return null;
+        if (!v) return "Required";
+        if (!isAllowedFileType(v))
+          return "Only PDF, JPEG, or JPG files are allowed";
+        return null;
+      },
+      boardResolution: (v, values) => {
+        if (values.loanType !== "Business") return null;
+        if (!v) return "Required";
+        if (!isAllowedFileType(v))
+          return "Only PDF, JPEG, or JPG files are allowed";
+        return null;
+      },
+
+      // --- Array Validations (Business) ---
+      directors: {
+        name: (v, values) =>
+          values.loanType === "Business" && !v?.trim() ? "Required" : null,
+        phone: (v, values) =>
+          values.loanType === "Business" && !v?.trim() ? "Required" : null,
+        email: (v, values) => {
+          if (values.loanType !== "Business") return null;
+          if (!v?.trim()) return "Required";
+          if (!EMAIL_REGEX.test(v)) return "Enter a valid email address";
+          return null;
+        },
+        nrc: (v, values) =>
+          values.loanType === "Business" && !v?.trim() ? "Required" : null,
+      },
+      directorsCount: (v, values) =>
+        values.loanType === "Business" && values.directors.length === 0
+          ? "Please add at least one director"
+          : null,
+      // directorDocuments: {
+      //   nrcFile: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+      //   photoFile: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
+      // },
+      directorDocuments: {
+        nrcFile: (v, values) => {
+          if (values.loanType !== "Business") return null;
+          if (!v) return "Required";
+          if (!isAllowedFileType(v))
+            return "Only PDF, JPEG, or JPG files are allowed";
+          return null;
+        },
+        photoFile: (v, values) => {
+          if (values.loanType !== "Business") return null;
+          if (!v) return "Required";
+          if (!isAllowedFileType(v))
+            return "Only PDF, JPEG, or JPG files are allowed";
+          return null;
+        },
+      },
     },
-    directorsCount: (v, values) =>
-      values.loanType === "Business" && values.directors.length === 0
-        ? "Please add at least one director"
-        : null,
-    // directorDocuments: {
-    //   nrcFile: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    //   photoFile: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-    // },
-    directorDocuments: {
-  nrcFile: (v, values) => {
-    if (values.loanType !== "Business") return null;
-    if (!v) return "Required";
-    if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-    return null;
-  },
-  photoFile: (v, values) => {
-    if (values.loanType !== "Business") return null;
-    if (!v) return "Required";
-    if (!isAllowedFileType(v)) return "Only PDF, JPEG, or JPG files are allowed";
-    return null;
-  },
-},
-  }
-});
+  });
 
   const loanType = form.values.loanType;
   const stepLabels = STEP_LABELS[loanType];
@@ -619,320 +695,466 @@ boardResolution: (v, values) => {
     setDirectorDocsError(null);
     setDirectorsError(null);
     setActiveStep(0);
-    setLoanTypeSelected(false);
   };
 
-const handleModalClose = () => {
-  handleReset();
-  onClose();
-};
+  const handleModalClose = () => {
+    handleReset();
+    onClose();
+  };
   const handleNext = () => {
-  let hasError = false;
-  let fieldsToValidate: string[] = [];
-  
-  if (loanType === "Personal") {
-    if (activeStep === 0) fieldsToValidate = ["firstName", "surname", "phone", "email", "nrc", "gender", "maritalStatus", "birthDate"];
-    if (activeStep === 1) fieldsToValidate = ["residentialAddress", "occupation", "employerName", "principalObjective", "kinName", "kinPhone", "kinRelationship", "kinEmail", "nationality"];
-    if (activeStep === 2) fieldsToValidate = ["payslips", "bankStatementsPersonal", "nrcCopy", "passportPhotoPersonal", "tpinCertificate"];
-  } else {
-    if (activeStep === 0) fieldsToValidate = ["companyName", "typeOfBusiness", "establishedDate", "natureOfBusiness", "registeredOffice", "collateralPledged", "purposeOfLoan"];
-    if (activeStep === 1) fieldsToValidate = ["applicantFirstName", "applicantLastName", "applicantPhone", "applicantEmail", "applicantNrc", "applicantBirthDate", "applicantAddress", "applicantPosition", "applicantGender", "applicantMaritalStatus", "applicantNationality"];
-    // if (activeStep === 2) fieldsToValidate = ["pacraCertificate", "form2", "taxClearanceCertificate", "taxComplianceReturn", "bankStatementsBusiness", "applicantPassportPhoto", "boardResolution"];
-    if (activeStep === 2) fieldsToValidate = ["pacraCertificate", "form2", "taxClearanceCertificate", "taxComplianceReturn", "bankStatementsBusiness", "applicantPassportPhoto", "boardResolution"];
-  }
+    let hasError = false;
+    let fieldsToValidate: string[] = [];
 
-  if (loanType === "Business" && activeStep === 2) {
-    if (form.values.directorDocuments.length === 0) {
-      hasError = true;
-      setDirectorDocsError("Please add at least one director's documents");
+    if (loanType === "Personal") {
+      if (activeStep === 0)
+        fieldsToValidate = [
+          "firstName",
+          "surname",
+          "phone",
+          "email",
+          "nrc",
+          "gender",
+          "maritalStatus",
+          "birthDate",
+        ];
+      if (activeStep === 1)
+        fieldsToValidate = [
+          "residentialAddress",
+          "occupation",
+          "employerName",
+          "principalObjective",
+          "kinName",
+          "kinPhone",
+          "kinRelationship",
+          "kinEmail",
+          "nationality",
+        ];
+      if (activeStep === 2)
+        fieldsToValidate = [
+          "payslips",
+          "bankStatementsPersonal",
+          "nrcCopy",
+          "passportPhotoPersonal",
+          "tpinCertificate",
+        ];
     } else {
-      setDirectorDocsError(null);
+      if (activeStep === 0)
+        fieldsToValidate = [
+          "companyName",
+          "typeOfBusiness",
+          "establishedDate",
+          "natureOfBusiness",
+          "registeredOffice",
+          "collateralPledged",
+          "purposeOfLoan",
+        ];
+      if (activeStep === 1)
+        fieldsToValidate = [
+          "applicantFirstName",
+          "applicantLastName",
+          "applicantPhone",
+          "applicantEmail",
+          "applicantNrc",
+          "applicantBirthDate",
+          "applicantAddress",
+          "applicantPosition",
+          "applicantGender",
+          "applicantMaritalStatus",
+          "applicantNationality",
+        ];
+      // if (activeStep === 2) fieldsToValidate = ["pacraCertificate", "form2", "taxClearanceCertificate", "taxComplianceReturn", "bankStatementsBusiness", "applicantPassportPhoto", "boardResolution"];
+      if (activeStep === 2)
+        fieldsToValidate = [
+          "pacraCertificate",
+          "form2",
+          "taxClearanceCertificate",
+          "taxComplianceReturn",
+          "bankStatementsBusiness",
+          "applicantPassportPhoto",
+          "boardResolution",
+        ];
     }
-  }
 
-  fieldsToValidate.forEach((field) => {
-    if (form.validateField(field).hasError) hasError = true;
-  });
-
-  if (loanType === "Business") {
-  if (activeStep === 1) {
-      if (form.values.directors.length === 0) {
+    if (loanType === "Business" && activeStep === 2) {
+      if (form.values.directorDocuments.length === 0) {
         hasError = true;
-        setDirectorsError("Please add at least one director");
+        setDirectorDocsError("Please add at least one director's documents");
       } else {
-        setDirectorsError(null);
+        setDirectorDocsError(null);
       }
-      form.values.directors.forEach((_, i) => {
-        if (form.validateField(`directors.${i}.name`).hasError) hasError = true;
-        if (form.validateField(`directors.${i}.phone`).hasError) hasError = true;
-        if (form.validateField(`directors.${i}.email`).hasError) hasError = true;
-        if (form.validateField(`directors.${i}.nrc`).hasError) hasError = true;
-      });
     }
-    if (activeStep === 2) {
-      form.values.directorDocuments.forEach((_, i) => {
-        if (form.validateField(`directorDocuments.${i}.nrcFile`).hasError) hasError = true;
-        if (form.validateField(`directorDocuments.${i}.photoFile`).hasError) hasError = true;
-      });
-    }
-  }
 
-  // Move to next step only if the current step is valid
-  if (!hasError) {
-    setActiveStep((s) => Math.min(s + 1, 3));
-  }
-};
+    fieldsToValidate.forEach((field) => {
+      if (form.validateField(field).hasError) hasError = true;
+    });
+
+    if (loanType === "Business") {
+      if (activeStep === 1) {
+        if (form.values.directors.length === 0) {
+          hasError = true;
+          setDirectorsError("Please add at least one director");
+        } else {
+          setDirectorsError(null);
+        }
+        form.values.directors.forEach((_, i) => {
+          if (form.validateField(`directors.${i}.name`).hasError)
+            hasError = true;
+          if (form.validateField(`directors.${i}.phone`).hasError)
+            hasError = true;
+          if (form.validateField(`directors.${i}.email`).hasError)
+            hasError = true;
+          if (form.validateField(`directors.${i}.nrc`).hasError)
+            hasError = true;
+        });
+      }
+      if (activeStep === 2) {
+        form.values.directorDocuments.forEach((_, i) => {
+          if (form.validateField(`directorDocuments.${i}.nrcFile`).hasError)
+            hasError = true;
+          if (form.validateField(`directorDocuments.${i}.photoFile`).hasError)
+            hasError = true;
+        });
+      }
+    }
+
+    // Move to next step only if the current step is valid
+    if (!hasError) {
+      setActiveStep((s) => Math.min(s + 1, 3));
+    }
+  };
   const handleBack = () => setActiveStep((s) => Math.max(s - 1, 0));
 
   const tenure = Number(form.values.tenureMonths) || 0;
   const facilityFee = Math.round(form.values.loanAmount * 0.02 * 100) / 100;
-  const totalInterest = Math.round(form.values.loanAmount * 0.24 * (tenure / 12) * 100) / 100;
+  const totalInterest =
+    Math.round(form.values.loanAmount * 0.24 * (tenure / 12) * 100) / 100;
   const totalRepayable = form.values.loanAmount + totalInterest + facilityFee;
-  const monthlyRepayment = tenure ? Math.round((totalRepayable / tenure) * 100) / 100 : 0;
+  const monthlyRepayment = tenure
+    ? Math.round((totalRepayable / tenure) * 100) / 100
+    : 0;
 
-  const { data: existingApplicationData, refetch: refetchLoanApplication } = useQuery({
-  queryKey: ["loan-application", loanApplicationId],
-  queryFn: () => getLoanApplicationById(loanApplicationId as string),
-  enabled: !!loanApplicationId && opened === true,
-});
-useEffect(() => {
-  if (opened && loanApplicationId) {
-    refetchLoanApplication();
-  }
-}, [opened, loanApplicationId, refetchLoanApplication]);
-
-const getMimeTypeFromFileName = (fileName: string): string => {
-  const ext = fileName.split(".").pop()?.toLowerCase();
-  if (ext === "pdf") return "application/pdf";
-  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
-  return "";
-};
-
-useEffect(() => {
-  const application = existingApplicationData?.message?.data;
-  if (!application) return;
-
-  const isBusinessType = application.application_type === "Business Loan";
-const getDocFile = (docsArray: any[], documentNames: string[], key?: string) => {
-    if (!docsArray) return null;
-    const doc = docsArray.find((d: any) => documentNames.includes(d.document_name));
-    // if (doc && doc.file) {
-    //   const fileName = doc.file.split('/').pop() || doc.file;
-    //   if (key) originalDocumentUrls.current[key] = doc.file;
-    //   return new File([""], fileName);
-    // }
-    if (doc && doc.file) {
-      const fileName = doc.file.split('/').pop() || doc.file;
-      if (key) originalDocumentUrls.current[key] = doc.file;
-      return new File([""], fileName, { type: getMimeTypeFromFileName(fileName) });
+  const { data: existingApplicationData, refetch: refetchLoanApplication } =
+    useQuery({
+      queryKey: ["loan-application", loanApplicationId],
+      queryFn: () => getLoanApplicationById(loanApplicationId as string),
+      enabled: !!loanApplicationId && opened === true,
+    });
+  useEffect(() => {
+    if (opened && loanApplicationId) {
+      refetchLoanApplication();
     }
-    return null;
+  }, [opened, loanApplicationId, refetchLoanApplication]);
+
+  const getMimeTypeFromFileName = (fileName: string): string => {
+    const ext = fileName.split(".").pop()?.toLowerCase();
+    if (ext === "pdf") return "application/pdf";
+    if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+    return "";
   };
-  const pDocs = application.documents || [];
-  const bDocs = application.business_documents || [];
-  const extractedDirectorDocs: DirectorDocEntry[] = [];
 
-  for (let i = 1; i <= 3; i++) {
-    const nrc = getDocFile(bDocs, [`Director ${i} NRC`], `directorDocuments.${i - 1}.nrcFile`);
-    const photo = getDocFile(bDocs, [`Director ${i} passport photo`], `directorDocuments.${i - 1}.photoFile`);
-        if (nrc || photo) {
-      extractedDirectorDocs.push({
-        id: nextId(),
-        nrcFile: nrc,
-        photoFile: photo
-      });
-    }
-  }
+  useEffect(() => {
+    const application = existingApplicationData?.message?.data;
+    if (!application) return;
 
-  form.setValues({
-    ...INITIAL_VALUES,
-    loanType: isBusinessType ? "Business" : "Personal",
-    firstName: application.first_name || "",
-    middleName: application.middle_name || "",
-    surname: application.last_name || "",
-    phone: application.phone || "",
-    email: application.email || "",
-    nrc: application.national_registration_card || "",
-    gender: application.gender || null,
-    maritalStatus: application.marital_status || null,
-    birthDate: application.birth_date || "",
-    residentialAddress: application.residential_address || "",
-    occupation: application.occupation || "",
-    employerName: application.employer_name || "",
-    nationality: application.nationality || null,
-    principalObjective: application.loan_purpose || "",
-    kinName: application.next_of_kin_name || "",
-    kinPhone: application.next_of_kin_phone || "",
-    kinEmail: application.next_of_kin_email || "",
-    kinRelationship: application.next_of_kin_relationship || "",
+    const isBusinessType = application.application_type === "Business Loan";
+    const getDocFile = (
+      docsArray: any[],
+      documentNames: string[],
+      key?: string,
+    ) => {
+      if (!docsArray) return null;
+      const doc = docsArray.find((d: any) =>
+        documentNames.includes(d.document_name),
+      );
+      // if (doc && doc.file) {
+      //   const fileName = doc.file.split('/').pop() || doc.file;
+      //   if (key) originalDocumentUrls.current[key] = doc.file;
+      //   return new File([""], fileName);
+      // }
+      if (doc && doc.file) {
+        const fileName = doc.file.split("/").pop() || doc.file;
+        if (key) originalDocumentUrls.current[key] = doc.file;
+        return new File([""], fileName, {
+          type: getMimeTypeFromFileName(fileName),
+        });
+      }
+      return null;
+    };
+    const pDocs = application.documents || [];
+    const bDocs = application.business_documents || [];
+    const extractedDirectorDocs: DirectorDocEntry[] = [];
 
-    companyName: application.company_name || "",
-    typeOfBusiness: application.type_of_business || null,
-    establishedDate: application.established_date || "",
-    natureOfBusiness: application.nature_of_business || "",
-    registeredOffice: application.registered_office || "",
-    collateralPledged: application.collateral_pledged || "",
-    purposeOfLoan: application.purpose_of_loan || "",
-   
-    payslips: getDocFile(pDocs, ["Latest three payslips", "Salary Slip"], "payslips"), 
-    bankStatementsPersonal: getDocFile(pDocs, ["Bank statements (3 months)"], "bankStatementsPersonal"),
-    nrcCopy: getDocFile(pDocs, ["NRC copy"], "nrcCopy"),
-    passportPhotoPersonal: getDocFile(pDocs, ["Passport-sized photo"], "passportPhotoPersonal"),
-    tpinCertificate: getDocFile(pDocs, ["TPIN certificate"], "tpinCertificate"),
-
-    // Business Documents
-    pacraCertificate: getDocFile(bDocs, ["PACRA certificate"], "pacraCertificate"),
-    form2: getDocFile(bDocs, ["Form 2"], "form2"),
-    taxClearanceCertificate: getDocFile(bDocs, ["Tax clearance certificate / TPIN"], "taxClearanceCertificate"),
-    taxComplianceReturn: getDocFile(bDocs, ["Latest tax compliance return"], "taxComplianceReturn"),
-    orderInvoice: getDocFile(bDocs, ["Order / Invoice"], "orderInvoice"),
-    bankStatementsBusiness: getDocFile(bDocs, ["Bank statements (6 months)"], "bankStatementsBusiness"),
-    applicantPassportPhoto: getDocFile(bDocs, ["Applicant Passport-sized photo"], "applicantPassportPhoto"),
-    boardResolution: getDocFile(bDocs, ["Board resolution"], "boardResolution"),
-
-    applicantFirstName: application.applicant_first_name || "",
-    applicantMiddleName: application.applicant_middle_name || "",
-    applicantLastName: application.applicant_last_name || "",
-    applicantPhone: application.applicant_phone || "",
-    applicantEmail: application.applicant_email || "",
-    applicantNrc: application.applicant_national_registration_card || "",
-    applicantGender: application.applicant_gender || null,
-    applicantMaritalStatus: application.applicant_marital_status || null,
-    applicantBirthDate: application.applicant_birth_date || "",
-    applicantAddress: application.applicant_address || "",
-    applicantPosition: application.applicant_position || "",
-    applicantNationality: application.applicant_nationality || null,
-    loanAmount: Number(application.amount) || 0,
-    tenureMonths: Number(application.tenure) || "",
-    directors: (application.directors?.length ? application.directors : []).map((d: any) => ({
-      id: d.name || nextId(),
-      name: d.director_name || "",
-      phone: d.director_phone || "",
-      email: d.director_email || "",
-      nrc: d.national_registration_card || "",
-    })),
-    
-    directorDocuments: extractedDirectorDocs,
-  });
-
-  if (!application.directors || application.directors.length === 0) {
-    form.setFieldValue("directors", [{ id: nextId(), name: "", phone: "", email: "", nrc: "" }]);
-  }
-
-  setLoanTypeSelected(true);
-  setActiveStep(0);
-}, [existingApplicationData]);
-
-  const { mutate: submitLoanApplication, isPending: isSubmitting } = useMutation({
-  mutationFn: (payload: LoanApplicationPayload) => createLoanApplication(payload),
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
-    handleModalClose();  
-    showSuccess("Application Submitted", "The new loan application has been created successfully.");
-  },
-  onError: (error: any) => {
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-    
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
-      });
-    },
-});
-
-const { mutate: updateLoanApplicationMutation, isPending: isUpdating } = useMutation({
-  mutationFn: updateLoanApplication,
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
-    handleModalClose(); 
-    showSuccess("Application Updated", `Loan Application ${loanApplicationId} has been updated successfully.`);
-  },
-  onError: (error: any) => {
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-    
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
-      });
-    },
-});
-
-const resolveDocumentUrl = async (file: File | null, fieldPath: string): Promise<string | null> => {
-  if (!file) return null;
-  const isDirty = form.isDirty(fieldPath);
-  const existingUrl = originalDocumentUrls.current[fieldPath];
-  if (!isDirty && existingUrl) {
-    return existingUrl;
-  }
-if ((!isDirty || file.size === 0) && existingUrl) {
-    return existingUrl;
-  }
-
-  const { file_url } = await uploadFile(file);
-  return file_url;
-};
-
-const handleSubmitApplication = async () => {
-  const fieldsToResolve: [string, File | null][] =
-    loanType === "Personal"
-      ? [
-          ["payslips", form.values.payslips],
-          ["bankStatementsPersonal", form.values.bankStatementsPersonal],
-          ["nrcCopy", form.values.nrcCopy],
-          ["passportPhotoPersonal", form.values.passportPhotoPersonal],
-          ["tpinCertificate", form.values.tpinCertificate],
-        ]
-      : [
-          ["pacraCertificate", form.values.pacraCertificate],
-          ["form2", form.values.form2],
-          ["taxClearanceCertificate", form.values.taxClearanceCertificate],
-          ["taxComplianceReturn", form.values.taxComplianceReturn],
-          ["orderInvoice", form.values.orderInvoice],
-          ["bankStatementsBusiness", form.values.bankStatementsBusiness],
-          ["applicantPassportPhoto", form.values.applicantPassportPhoto],
-          ["boardResolution", form.values.boardResolution],
-          ...form.values.directorDocuments.flatMap((doc, index) => [
-            [`directorDocuments.${index}.nrcFile`, doc.nrcFile] as [string, File | null],
-            [`directorDocuments.${index}.photoFile`, doc.photoFile] as [string, File | null],
-          ]),
-        ];
-
-  setIsUploadingDocs(true);
-  try {
-    const resolvedUrls: Record<string, string | null> = {};
-    for (const [key, file] of fieldsToResolve) {
-      resolvedUrls[key] = await resolveDocumentUrl(file, key);
+    for (let i = 1; i <= 3; i++) {
+      const nrc = getDocFile(
+        bDocs,
+        [`Director ${i} NRC`],
+        `directorDocuments.${i - 1}.nrcFile`,
+      );
+      const photo = getDocFile(
+        bDocs,
+        [`Director ${i} passport photo`],
+        `directorDocuments.${i - 1}.photoFile`,
+      );
+      if (nrc || photo) {
+        extractedDirectorDocs.push({
+          id: nextId(),
+          nrcFile: nrc,
+          photoFile: photo,
+        });
+      }
     }
 
-    const payload: LoanApplicationPayload =
+    form.setValues({
+      ...INITIAL_VALUES,
+      loanType: isBusinessType ? "Business" : "Personal",
+      firstName: application.first_name || "",
+      middleName: application.middle_name || "",
+      surname: application.last_name || "",
+      phone: application.phone || "",
+      email: application.email || "",
+      nrc: application.national_registration_card || "",
+      gender: application.gender || null,
+      maritalStatus: application.marital_status || null,
+      birthDate: application.birth_date || "",
+      residentialAddress: application.residential_address || "",
+      occupation: application.occupation || "",
+      employerName: application.employer_name || "",
+      nationality: application.nationality || null,
+      principalObjective: application.loan_purpose || "",
+      kinName: application.next_of_kin_name || "",
+      kinPhone: application.next_of_kin_phone || "",
+      kinEmail: application.next_of_kin_email || "",
+      kinRelationship: application.next_of_kin_relationship || "",
+
+      companyName: application.company_name || "",
+      typeOfBusiness: application.type_of_business || null,
+      establishedDate: application.established_date || "",
+      natureOfBusiness: application.nature_of_business || "",
+      registeredOffice: application.registered_office || "",
+      collateralPledged: application.collateral_pledged || "",
+      purposeOfLoan: application.purpose_of_loan || "",
+
+      payslips: getDocFile(
+        pDocs,
+        ["Latest three payslips", "Salary Slip"],
+        "payslips",
+      ),
+      bankStatementsPersonal: getDocFile(
+        pDocs,
+        ["Bank statements (3 months)"],
+        "bankStatementsPersonal",
+      ),
+      nrcCopy: getDocFile(pDocs, ["NRC copy"], "nrcCopy"),
+      passportPhotoPersonal: getDocFile(
+        pDocs,
+        ["Passport-sized photo"],
+        "passportPhotoPersonal",
+      ),
+      tpinCertificate: getDocFile(
+        pDocs,
+        ["TPIN certificate"],
+        "tpinCertificate",
+      ),
+
+      // Business Documents
+      pacraCertificate: getDocFile(
+        bDocs,
+        ["PACRA certificate"],
+        "pacraCertificate",
+      ),
+      form2: getDocFile(bDocs, ["Form 2"], "form2"),
+      taxClearanceCertificate: getDocFile(
+        bDocs,
+        ["Tax clearance certificate / TPIN"],
+        "taxClearanceCertificate",
+      ),
+      taxComplianceReturn: getDocFile(
+        bDocs,
+        ["Latest tax compliance return"],
+        "taxComplianceReturn",
+      ),
+      orderInvoice: getDocFile(bDocs, ["Order / Invoice"], "orderInvoice"),
+      bankStatementsBusiness: getDocFile(
+        bDocs,
+        ["Bank statements (6 months)"],
+        "bankStatementsBusiness",
+      ),
+      applicantPassportPhoto: getDocFile(
+        bDocs,
+        ["Applicant Passport-sized photo"],
+        "applicantPassportPhoto",
+      ),
+      boardResolution: getDocFile(
+        bDocs,
+        ["Board resolution"],
+        "boardResolution",
+      ),
+
+      applicantFirstName: application.applicant_first_name || "",
+      applicantMiddleName: application.applicant_middle_name || "",
+      applicantLastName: application.applicant_last_name || "",
+      applicantPhone: application.applicant_phone || "",
+      applicantEmail: application.applicant_email || "",
+      applicantNrc: application.applicant_national_registration_card || "",
+      applicantGender: application.applicant_gender || null,
+      applicantMaritalStatus: application.applicant_marital_status || null,
+      applicantBirthDate: application.applicant_birth_date || "",
+      applicantAddress: application.applicant_address || "",
+      applicantPosition: application.applicant_position || "",
+      applicantNationality: application.applicant_nationality || null,
+      loanAmount: Number(application.amount) || 0,
+      tenureMonths: Number(application.tenure) || "",
+      directors: (application.directors?.length
+        ? application.directors
+        : []
+      ).map((d: any) => ({
+        id: d.name || nextId(),
+        name: d.director_name || "",
+        phone: d.director_phone || "",
+        email: d.director_email || "",
+        nrc: d.national_registration_card || "",
+      })),
+
+      directorDocuments: extractedDirectorDocs,
+    });
+
+    if (!application.directors || application.directors.length === 0) {
+      form.setFieldValue("directors", [
+        { id: nextId(), name: "", phone: "", email: "", nrc: "" },
+      ]);
+    }
+
+    setLoanTypeSelected(true);
+    setActiveStep(0);
+  }, [existingApplicationData]);
+
+  const { mutate: submitLoanApplication, isPending: isSubmitting } =
+    useMutation({
+      mutationFn: (payload: LoanApplicationPayload) =>
+        createLoanApplication(payload),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
+        handleModalClose();
+        showSuccess(
+          "Application Submitted",
+          "The new loan application has been created successfully.",
+        );
+      },
+      onError: (error: any) => {
+        openCommonModal({
+          heading: "Action Failed",
+          subtitle: "We couldn't complete your request.",
+          body: parseFrappeError(error),
+          color: "red",
+
+          buttons: [
+            {
+              label: "Close",
+              color: "red",
+            },
+          ],
+        });
+      },
+    });
+
+  const { mutate: updateLoanApplicationMutation, isPending: isUpdating } =
+    useMutation({
+      mutationFn: updateLoanApplication,
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
+        handleModalClose();
+        showSuccess(
+          "Application Updated",
+          `Loan Application ${loanApplicationId} has been updated successfully.`,
+        );
+      },
+      onError: (error: any) => {
+        openCommonModal({
+          heading: "Action Failed",
+          subtitle: "We couldn't complete your request.",
+          body: parseFrappeError(error),
+          color: "red",
+
+          buttons: [
+            {
+              label: "Close",
+              color: "red",
+            },
+          ],
+        });
+      },
+    });
+
+  const resolveDocumentUrl = async (
+    file: File | null,
+    fieldPath: string,
+  ): Promise<string | null> => {
+    if (!file) return null;
+    const isDirty = form.isDirty(fieldPath);
+    const existingUrl = originalDocumentUrls.current[fieldPath];
+    if (!isDirty && existingUrl) {
+      return existingUrl;
+    }
+    if ((!isDirty || file.size === 0) && existingUrl) {
+      return existingUrl;
+    }
+
+    const { file_url } = await uploadFile(file);
+    return file_url;
+  };
+
+  const handleSubmitApplication = async () => {
+    const fieldsToResolve: [string, File | null][] =
       loanType === "Personal"
-        ? buildPersonalPayload(form.values, totalRepayable, resolvedUrls)
-        : buildBusinessPayload(form.values, totalRepayable, resolvedUrls);
+        ? [
+            ["payslips", form.values.payslips],
+            ["bankStatementsPersonal", form.values.bankStatementsPersonal],
+            ["nrcCopy", form.values.nrcCopy],
+            ["passportPhotoPersonal", form.values.passportPhotoPersonal],
+            ["tpinCertificate", form.values.tpinCertificate],
+          ]
+        : [
+            ["pacraCertificate", form.values.pacraCertificate],
+            ["form2", form.values.form2],
+            ["taxClearanceCertificate", form.values.taxClearanceCertificate],
+            ["taxComplianceReturn", form.values.taxComplianceReturn],
+            ["orderInvoice", form.values.orderInvoice],
+            ["bankStatementsBusiness", form.values.bankStatementsBusiness],
+            ["applicantPassportPhoto", form.values.applicantPassportPhoto],
+            ["boardResolution", form.values.boardResolution],
+            ...form.values.directorDocuments.flatMap((doc, index) => [
+              [`directorDocuments.${index}.nrcFile`, doc.nrcFile] as [
+                string,
+                File | null,
+              ],
+              [`directorDocuments.${index}.photoFile`, doc.photoFile] as [
+                string,
+                File | null,
+              ],
+            ]),
+          ];
 
-    if (loanApplicationId) {
-      updateLoanApplicationMutation({ id: loanApplicationId, payload });
-    } else {
-      submitLoanApplication(payload);
+    setIsUploadingDocs(true);
+    try {
+      const resolvedUrls: Record<string, string | null> = {};
+      for (const [key, file] of fieldsToResolve) {
+        resolvedUrls[key] = await resolveDocumentUrl(file, key);
+      }
+
+      const payload: LoanApplicationPayload =
+        loanType === "Personal"
+          ? buildPersonalPayload(form.values, totalRepayable, resolvedUrls)
+          : buildBusinessPayload(form.values, totalRepayable, resolvedUrls);
+
+      if (loanApplicationId) {
+        updateLoanApplicationMutation({ id: loanApplicationId, payload });
+      } else {
+        submitLoanApplication(payload);
+      }
+    } finally {
+      setIsUploadingDocs(false);
     }
-  } finally {
-    setIsUploadingDocs(false);
-  }
-};
-
+  };
 
   const renderStep = () => {
     switch (activeStep) {
@@ -941,14 +1163,26 @@ const handleSubmitApplication = async () => {
       // case 1:
       //   return <ResidenceEmploymentStep form={form} loanType={loanType} />;
       case 1:
-        return <ResidenceEmploymentStep form={form} loanType={loanType} directorsError={directorsError} />;
+        return (
+          <ResidenceEmploymentStep
+            form={form}
+            loanType={loanType}
+            directorsError={directorsError}
+          />
+        );
       // case 2:
       //   return <DocumentsStep form={form} loanType={loanType} />;
       case 2:
-        return <DocumentsStep form={form} loanType={loanType} directorDocsError={directorDocsError} />;
+        return (
+          <DocumentsStep
+            form={form}
+            loanType={loanType}
+            directorDocsError={directorDocsError}
+          />
+        );
       case 3:
-        case 3:
-         return <LoanTermsStep form={form} loanType={loanType} />;
+      case 3:
+        return <LoanTermsStep form={form} loanType={loanType} />;
       default:
         return null;
     }
@@ -957,54 +1191,72 @@ const handleSubmitApplication = async () => {
   return (
     <>
       <Modal
-      opened={opened}
-      onClose={handleModalClose}
-      transitionProps={{
-        onExited: () => {
-          onExited?.();
-        },
-      }}
-      size={1400}
-      padding={0}
-      lockScroll
-      closeOnClickOutside={false}
-      closeOnEscape={false}
-      styles={{
-        content: {
-          height: "88vh",
-          maxHeight: "88vh",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        },
-        header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
-        body: {
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          padding: 0,
-          minHeight: 0,
-          overflow: "hidden",
-        },
-      }}
-    >
-        <Box style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-             <Group
+        opened={opened}
+        onClose={handleModalClose}
+        transitionProps={{
+          onExited: () => {
+            onExited?.();
+          },
+        }}
+        size={1400}
+        padding={0}
+        lockScroll
+        closeOnClickOutside={false}
+        closeOnEscape={false}
+        styles={{
+          content: {
+            height: "92vh",
+            maxHeight: "95vh",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          },
+          header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
+          body: {
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            padding: 0,
+            minHeight: 0,
+            overflow: "hidden",
+          },
+        }}
+      >
+        <Box
+          style={{
+            position: "relative",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+          }}
+        >
+          <Group
             justify="space-between"
             align="center"
             px="xl"
             py="sm"
             bg="brand.6"
-            style={{ borderBottom: "1px solid var(--mantine-color-brand-7)", flexShrink: 0 }}
+            style={{
+              borderBottom: "1px solid var(--mantine-color-brand-7)",
+              flexShrink: 0,
+            }}
           >
             <Group gap="sm">
               <ThemeIcon radius="md" size={34} variant="white" color="brand">
                 <IconFileText size={16} />
               </ThemeIcon>
               <Box>
-                <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
-  {loanApplicationId ? "Update Loan Application" : "New Loan Application"}
-</Text>
+                <Text
+                  size="md"
+                  fw={700}
+                  c="white"
+                  style={{ letterSpacing: "-0.01em" }}
+                >
+                  {loanApplicationId
+                    ? "Update Loan Application"
+                    : "New Loan Application"}
+                </Text>
                 <Text size="xs" fw={500} c="brand.1">
                   Applicant, loan and repayment details
                 </Text>
@@ -1031,7 +1283,7 @@ const handleSubmitApplication = async () => {
               >
                 <IconMinus size={16} color="white" />
               </ActionIcon>
-              
+
               <ActionIcon
                 variant="subtle"
                 color="white"
@@ -1044,70 +1296,89 @@ const handleSubmitApplication = async () => {
               </ActionIcon>
             </Group>
           </Group>
+                    <Box
+            px="md"
+            py={6}
+            style={{
+              borderBottom: "1px solid var(--mantine-color-slate-2)",
+              flexShrink: 0,
+            }}
+            bg="slate.0"
+          >
+            <ScrollArea type="auto" scrollbarSize={4} offsetScrollbars={false}>
+              <Group gap={18} wrap="nowrap">
+                {stepLabels.map((label, idx) => {
+                  const isActive = activeStep === idx;
+                  const isComplete = idx < activeStep;
+                  const StepIcon = STEP_ICONS[loanType][idx];
+                  return (
+                    <Group key={label} gap={18} wrap="nowrap">
+                      <UnstyledButton
+                        type="button"
+                        onClick={() => setActiveStep(idx)}
+                        px={14}
+                        py={7}
+                        style={{
+                          borderRadius: "var(--mantine-radius-sm)",
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
+                          background: isActive ? "var(--mantine-color-white)" : "transparent",
+                          boxShadow: isActive ? "var(--mantine-shadow-sm)" : "none",
+                          border: isActive
+                            ? "1px solid var(--mantine-color-slate-2)"
+                            : "1px solid transparent",
+                          transition: "background-color 120ms ease, box-shadow 120ms ease",
+                        }}
+                      >
+                        <Group gap={6} wrap="nowrap">
+                          <ThemeIcon
+                            radius="xl"
+                            size={20}
+                            variant={isActive || isComplete ? "filled" : "outline"}
+                            color={isActive || isComplete ? "brand" : "slate"}
+                            style={{ flexShrink: 0 }}
+                          >
+                            {isComplete ? <IconCheck size={10} /> : <StepIcon size={10} />}
+                          </ThemeIcon>
+                          <Text
+                            size="xs"
+                            fw={isActive ? 700 : 500}
+                            c={isActive ? "brand.7" : isComplete ? "slate.7" : "slate.5"}
+                            style={{ whiteSpace: "nowrap" }}
+                          >
+                            {label}
+                          </Text>
+                        </Group>
+                      </UnstyledButton>
+                      {idx < stepLabels.length - 1 && (
+                        <IconChevronRight
+                          size={11}
+                          color="var(--mantine-color-slate-3)"
+                          style={{ flexShrink: 0 }}
+                        />
+                      )}
+                    </Group>
+                  );
+                })}
+              </Group>
+            </ScrollArea>
+          </Box>
 
-       <ScrollArea type="auto" scrollbarSize={8} style={{ flex: 1, minHeight: 0 }}>
-            {!loanTypeSelected ? (
-              // --- NEW PRE-SCREEN LOAN TYPE SELECTION ---
-              <Box maw={640} mx="auto" px="xl" py={80}>
-                <Text fz="xl" fw={800} c="slate.9" mb="xl" ta="center">
-                  What type of loan are you applying for?
-                </Text>
-
-                <Group grow align="stretch" gap="lg" mb="xl">
-                  {/* Personal Loan Card */}
-                  <Box
-                    component="button"
-                    onClick={() => handleToggleLoanType("Personal")}
-                    className="text-left p-6 rounded-xl border-2 transition-all cursor-pointer"
-                    style={{
-                      borderColor: loanType === "Personal" ? "var(--mantine-color-brand-6)" : "var(--mantine-color-gray-3)",
-                      backgroundColor: loanType === "Personal" ? "var(--mantine-color-brand-0)" : "white",
-                    }}
-                  >
-                    <Text fz="lg" fw={700} c={loanType === "Personal" ? "brand.8" : "slate.9"} mb="xs">
-                      Personal Loan
-                    </Text>
-                    <Text fz="sm" c={loanType === "Personal" ? "brand.7" : "slate.5"}>
-                      For individual/personal borrowing
-                    </Text>
-                  </Box>
-
-                  {/* Business Loan Card */}
-                  <Box
-                    component="button"
-                    onClick={() => handleToggleLoanType("Business")}
-                    className="text-left p-6 rounded-xl border-2 transition-all cursor-pointer"
-                    style={{
-                      borderColor: loanType === "Business" ? "var(--mantine-color-brand-6)" : "var(--mantine-color-gray-3)",
-                      backgroundColor: loanType === "Business" ? "var(--mantine-color-brand-0)" : "white",
-                    }}
-                  >
-                    <Text fz="lg" fw={700} c={loanType === "Business" ? "brand.8" : "slate.9"} mb="xs">
-                      Business Loan
-                    </Text>
-                    <Text fz="sm" c={loanType === "Business" ? "brand.7" : "slate.5"}>
-                      For business-related borrowing
-                    </Text>
-                  </Box>
-                </Group>
-
-                <Group justify="center" mt="xl">
-                  <Button
-                    color="brand"
-                    radius="md"
-                    size="md"
-                    onClick={() => setLoanTypeSelected(true)}
-                    rightSection={<IconArrowRight size={18} />}
-                  >
-                    Continue
-                  </Button>
-                </Group>
-              </Box>
-            ) : (
-              // --- EXISTING FORM CONTENT ---
-              <Box px="xl" py="xl">
-                {/* Loan type toggle (Optional: you can delete this segment control now if you don't want them to change it mid-way, or keep it as a fallback) */}
-                {/* <Group gap="xs" mb="lg">
+          <Box
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "row",
+              overflow: "hidden",
+            }}
+          >
+          <ScrollArea type="hover" scrollbarSize={6} style={{ flex: 1, minHeight: 0 }}>
+              <Box px="xl" py="xl" style={{ flex: 1, minWidth: 0 }}>
+                {/* Loan type toggle — embedded at top of Step 1 only */}
+            
+                  {/* Loan type toggle (Optional: you can delete this segment control now if you don't want them to change it mid-way, or keep it as a fallback) */}
+                  {/* <Group gap="xs" mb="lg">
                   <Text fz="xs" fw={600} c="slate.6">
                     Loan type:
                   </Text>
@@ -1124,80 +1395,93 @@ const handleSubmitApplication = async () => {
                   />
                 </Group> */}
 
-                {/* Stepper tabs */}
-                <Group gap="sm" wrap="nowrap" mb="lg" style={{ overflowX: "auto" }}>
-                  {stepLabels.map((label, idx) => {
-                    const isActive = activeStep === idx;
-                    const isReached = idx <= activeStep;
-                    const StepIcon = STEP_ICONS[loanType][idx];
+            
 
-                    return (
-                      <Group key={label} gap="sm" wrap="nowrap">
-                        {/* <Group
-                          gap="xs"
-                          wrap="nowrap"
-                          onClick={() => (isReached ? setActiveStep(idx) : undefined)}
-                          px="md"
-                          py={6}
-                          style={{
-                            cursor: isReached ? "pointer" : "default",
-                            backgroundColor: isActive ? "white" : "transparent",
-                            border: isActive ? "1px solid var(--mantine-color-gray-2)" : "1px solid transparent",
-                            borderRadius: "8px",
-                            boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
-                            transition: "all 0.2s ease",
-                          }}
-                        > */}
-                        <Group
-  gap="xs"
-  wrap="nowrap"
-  onClick={() => setActiveStep(idx)}
-  px="md"
-  py={6}
-  style={{
-    cursor: "pointer",
-    backgroundColor: isActive ? "white" : "transparent",
-    border: isActive ? "1px solid var(--mantine-color-gray-2)" : "1px solid transparent",
-    borderRadius: "8px",
-    boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
-    transition: "all 0.2s ease",
-  }}
->
-                          <ThemeIcon
-                            radius="xl"
-                            size={28}
-                            variant={isActive ? "filled" : "outline"}
-                            color={isActive ? "brand" : "gray"}
-                            style={{ borderWidth: isActive ? 0 : 1 }}
-                          >
-                            <StepIcon size={16} />
-                          </ThemeIcon>
-                          <Text
-                            fz="sm"
-                            fw={isActive ? 700 : 500}
-                            c={isActive ? "brand.8" : "gray.6"}
-                            style={{ whiteSpace: "nowrap" }}
-                          >
-                            {label}
+                           {activeStep === 0 && (
+                  <Box mb="xl">
+                    <Text fz="sm" fw={700} c="slate.7" mb="sm">
+                      I'm applying for a
+                    </Text>
+                    <Group grow align="stretch" gap="lg">
+                      <Box
+                        component="button"
+                        onClick={() => handleToggleLoanType("Personal")}
+                        className="text-left p-4 rounded-xl border-2 transition-all cursor-pointer"
+                        style={{
+                          borderColor: loanType === "Personal" ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-3)",
+                          backgroundColor: loanType === "Personal" ? "var(--mantine-color-brand-0)" : "white",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
+                        <ThemeIcon
+                          radius="md"
+                          size={38}
+                          variant={loanType === "Personal" ? "filled" : "light"}
+                          color="brand"
+                        >
+                          <IconUser size={18} />
+                        </ThemeIcon>
+                        <Box>
+                          <Text fz="sm" fw={700} c={loanType === "Personal" ? "brand.8" : "slate.9"} mb={2}>
+                            Personal Loan
                           </Text>
-                        </Group>
+                          <Text fz="xs" c={loanType === "Personal" ? "brand.7" : "slate.5"}>
+                            For individual / personal borrowing
+                          </Text>
+                        </Box>
+                      </Box>
 
-                        {idx < stepLabels.length - 1 && (
-                          <IconChevronRight size={16} color="var(--mantine-color-gray-4)" style={{ flexShrink: 0 }} />
-                        )}
-                      </Group>
-                    );
-                  })}
-                </Group>
+                      <Box
+                        component="button"
+                        onClick={() => handleToggleLoanType("Business")}
+                        className="text-left p-4 rounded-xl border-2 transition-all cursor-pointer"
+                        style={{
+                          borderColor: loanType === "Business" ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-3)",
+                          backgroundColor: loanType === "Business" ? "var(--mantine-color-brand-0)" : "white",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
+                        <ThemeIcon
+                          radius="md"
+                          size={38}
+                          variant={loanType === "Business" ? "filled" : "light"}
+                          color="brand"
+                        >
+                          <IconBuilding size={18} />
+                        </ThemeIcon>
+                        <Box>
+                          <Text fz="sm" fw={700} c={loanType === "Business" ? "brand.8" : "slate.9"} mb={2}>
+                            Business Loan
+                          </Text>
+                          <Text fz="xs" c={loanType === "Business" ? "brand.7" : "slate.5"}>
+                            For business-related borrowing
+                          </Text>
+                        </Box>
+                      </Box>
+                    </Group>
+                  </Box>
+                )}
 
-                {/* Step content card */}
+                  {/* Step content card */}
                 <Box className="bg-white border border-slate-200 rounded-xl p-6 mb-4">
                   {renderStep()}
                 </Box>
               </Box>
-            )}
           </ScrollArea>
 
+            {loanTypeSelected && (
+              <ApplicationSummary
+                values={form.values}
+                totalRepayable={totalRepayable}
+                monthlyRepayment={monthlyRepayment}
+                activeStep={activeStep}
+              />
+            )}
+          </Box>
           {/* New Fixed Footer (Only visible when form is started) */}
           {loanTypeSelected && (
             <Group
@@ -1206,39 +1490,63 @@ const handleSubmitApplication = async () => {
               px="xl"
               py="md"
               bg="white"
-              style={{ borderTop: "1px solid var(--mantine-color-gray-2)", flexShrink: 0 }}
+              style={{
+                borderTop: "1px solid var(--mantine-color-gray-2)",
+                flexShrink: 0,
+              }}
             >
               <Group gap="lg">
-                <Button variant="transparent" c="dark.8" px={0} fw={600} onClick={handleModalClose}>
+                <Button
+                  variant="transparent"
+                  c="dark.8"
+                  px={0}
+                  fw={600}
+                  onClick={handleModalClose}
+                >
                   Cancel
                 </Button>
                 <Divider orientation="vertical" />
-                <Button variant="transparent" color="red.8" px={0} fw={600} onClick={handleReset}>
+                <Button
+                  variant="transparent"
+                  color="red.8"
+                  px={0}
+                  fw={600}
+                  onClick={handleReset}
+                >
                   Reset Form
                 </Button>
               </Group>
 
-           <Group gap="md">
-            {!(loanApplicationId && activeStep === 0) && (
+                  <Group gap="md">
+            {activeStep > 0 && (
   <Button 
     variant="default" 
     radius="md" 
-    onClick={activeStep === 0 ? () => setLoanTypeSelected(false) : handleBack}
+    onClick={handleBack}
   >
     Back
   </Button>
             )}
-  
-  <Button
-    color="brand"
-    radius="md"
-    onClick={activeStep < 3 ? handleNext : handleSubmitApplication}
-    loading={activeStep === 3 && (isUploadingDocs || isSubmitting || isUpdating)}
-    rightSection={<IconArrowRight size={16} />}
-  >
-    {activeStep < 3 ? "Save & Continue" : (loanApplicationId ? "Update Application" : "Submit Application")}
-  </Button>
-</Group>
+
+                <Button
+                  color="brand"
+                  radius="md"
+                  onClick={
+                    activeStep < 3 ? handleNext : handleSubmitApplication
+                  }
+                  loading={
+                    activeStep === 3 &&
+                    (isUploadingDocs || isSubmitting || isUpdating)
+                  }
+                  rightSection={<IconArrowRight size={16} />}
+                >
+                  {activeStep < 3
+                    ? "Save & Continue"
+                    : loanApplicationId
+                      ? "Update Application"
+                      : "Submit Application"}
+                </Button>
+              </Group>
             </Group>
           )}
         </Box>

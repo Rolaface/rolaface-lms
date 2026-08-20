@@ -17,9 +17,9 @@ import { LendingSetup } from "../view/Setup/LendingSetup";
 // TODO: create these view components (placeholders shown for now)
 import { CollateralType } from "../view/Collateral/CollateralType/CollateralType";
 import { Collateral } from "../view/Collateral/Collateral";
-import { LoanApplication } from '../view/Origination/LoanApplication';
+import { LoanApplication } from "../view/Origination/LoanApplication";
 import { LoanStatement } from "../view/Reports/LoanStatement/LoanStatement";
-import { ArrearReports } from '../view/Reports/Arrear/ArrearReports';
+import { ArrearReports } from "../view/Reports/Arrear/ArrearReports";
 
 import { LoanAccount } from "../view/LoanAccount/LoanAccount";
 import { LoanDisbursement } from "../view/Operations/LoanDisbursement/LoanDisbursement";
@@ -51,9 +51,13 @@ import { ProfitLoss } from "../view/Accounting/Profitloss";
 import { BalanceSheet } from "../view/Accounting/balancesheet";
 import { CashFlow } from "../view/Accounting/CashFlow";
 import { AccountingLayout } from "../view/Accounting/AccountingLayout";
-import { IconHierarchy2, IconReceipt2, IconFileText } from "@tabler/icons-react";
+import {
+  IconHierarchy2,
+  IconReceipt2,
+  IconFileText,
+} from "@tabler/icons-react";
 import { RouteTabs, type RouteTabItem } from "../components/ui/RouteTabs";
-import Login from "../view/pages/Login";//yeh mat hantna for me its imp
+
 const rootRoute = createRootRoute({
   component: () => (
     <AppLayout>
@@ -66,12 +70,6 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: Dashboard,
-});
-
-const loginRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/login",                    //yeh bhi
-  component: Login,
 });
 
 const customerRoute = createRoute({
@@ -91,7 +89,6 @@ const loanAccountRoute = createRoute({
 //   path: '/loan',
 //   component: Loan,
 // });
-
 
 /* ---------- Collateral (layout + children) ---------- */
 const collateralRoute = createRoute({
@@ -235,9 +232,21 @@ const reportsRoute = createRoute({
 
 /* ---------- Accounting (layout + children) ---------- */
 const GL_TABS: RouteTabItem[] = [
-  { path: "/accounting/general-ledger/chart-of-accounts", label: "Chart Of Accounts", icon: IconHierarchy2 },
-  { path: "/accounting/general-ledger/journal-entry", label: "Journal Entry", icon: IconReceipt2 },
-  { path: "/accounting/general-ledger/report", label: "General Ledger Report", icon: IconFileText },
+  {
+    path: "/accounting/general-ledger/chart-of-accounts",
+    label: "Chart Of Accounts",
+    icon: IconHierarchy2,
+  },
+  {
+    path: "/accounting/general-ledger/journal-entry",
+    label: "Journal Entry",
+    icon: IconReceipt2,
+  },
+  {
+    path: "/accounting/general-ledger/report",
+    label: "General Ledger Report",
+    icon: IconFileText,
+  },
 ];
 
 function GeneralLedgerTabs() {
@@ -330,16 +339,15 @@ const reportsStatementRoute = createRoute({
 });
 const reportsArrearsRoute = createRoute({
   getParentRoute: () => reportsRoute,
-  path: '/arrears',
+  path: "/arrears",
   component: ArrearReports,
 });
 
 const routeTree = rootRoute.addChildren([
-  loginRoute,
   indexRoute,
   loanAccountRoute,
   customerRoute,
-    // loanRoute,
+  // loanRoute,
   collateralRoute.addChildren([collateralTypeRoute, collateralListRoute]),
   setupRoute.addChildren([
     setupCategoryRoute,
@@ -380,7 +388,6 @@ const routeTree = rootRoute.addChildren([
   ]),
 
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute]),
-  
 ]);
 
 export const router = createRouter({ routeTree });
