@@ -38,6 +38,7 @@ export interface DocumentPreviewModalProps {
   onClose: () => void;
   file: File | null;
   title: string;
+  sourceUrl?: string | null;
 }
 
 export function DocumentPreviewModal({
@@ -45,6 +46,7 @@ export function DocumentPreviewModal({
   onClose,
   file,
   title,
+  sourceUrl,
 }: DocumentPreviewModalProps) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
 
@@ -53,12 +55,16 @@ export function DocumentPreviewModal({
       setObjectUrl(null);
       return;
     }
-    const url = URL.createObjectURL(file);
-    setObjectUrl(url);
+    if (sourceUrl) {
+      setObjectUrl(sourceUrl);
+      return;
+    }
+    const createdUrl = URL.createObjectURL(file);
+    setObjectUrl(createdUrl);
     return () => {
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(createdUrl);
     };
-  }, [opened, file]);
+  }, [opened, file, sourceUrl]);
 
   if (!file) return null;
 

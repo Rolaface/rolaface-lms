@@ -50,6 +50,7 @@ interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
   loanType: LoanType;
   directorDocsError?: string | null;
+  originalDocumentUrls?: Record<string, string>;
 }
 
 type FileFieldKey = Extract<
@@ -82,7 +83,7 @@ const MAX_DIRECTOR_DOCS = 3;
 
 const DEFAULT_GUIDELINES = [
   "File must be clear, legible and unedited",
-  "Accepted formats: PDF, JPG, JPEG",
+  "Accepted formats: PDF, JPG, JPEG, PNG",
   "Maximum file size: 5MB",
 ];
 
@@ -242,40 +243,40 @@ function UploadedDocRow({ file, onPreview, onRemove }: UploadedDocRowProps) {
           </Box>
         </Group>
 
-        <Group gap={6} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant="light"
-            color="brand"
-            radius="md"
-            size="xs"
-            leftSection={<IconEye size={14} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onPreview();
-            }}
-          >
-            Preview
-          </Button>
-          <Button
-            variant="subtle"
-            color="red"
-            radius="md"
-            size="xs"
-            leftSection={<IconTrash size={14} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove();
-            }}
-          >
-            Remove
-          </Button>
-        </Group>
+       <Group gap={6} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+  <ActionIcon
+    variant="light"
+    color="brand"
+    radius="md"
+    size="lg"
+    aria-label="Preview"
+    onClick={(e) => {
+      e.stopPropagation();
+      onPreview();
+    }}
+  >
+    <IconEye size={16} />
+  </ActionIcon>
+  <ActionIcon
+    variant="subtle"
+    color="red"
+    radius="md"
+    size="lg"
+    aria-label="Remove"
+    onClick={(e) => {
+      e.stopPropagation();
+      onRemove();
+    }}
+  >
+    <IconTrash size={16} />
+  </ActionIcon>
+</Group>
       </Group>
     </Paper>
   );
 }
 
-export function DocumentsStep({ form, loanType, directorDocsError }: StepProps) {
+export function DocumentsStep({ form, loanType, directorDocsError, originalDocumentUrls }: StepProps) {
   const tiles = loanType === "Personal" ? PERSONAL_DOC_TILES : BUSINESS_DOC_TILES;
   const [selectedKey, setSelectedKey] = useState<FileFieldKey>(tiles[0].key);
 
@@ -295,9 +296,10 @@ export function DocumentsStep({ form, loanType, directorDocsError }: StepProps) 
   const directorDocs = form.values.directorDocuments || [];
 
   const [directorPreview, setDirectorPreview] = useState<{
-    file: File;
-    title: string;
-  } | null>(null);
+  file: File;
+  title: string;
+  key: string;
+} | null>(null);
 
   const handleAddDirectorDoc = () => {
     if (directorDocs.length >= MAX_DIRECTOR_DOCS) return;
@@ -616,6 +618,7 @@ export function DocumentsStep({ form, loanType, directorDocsError }: StepProps) 
         onClose={() => setPreviewOpened(false)}
         file={file}
         title={selected.label}
+        sourceUrl={originalDocumentUrls?.[selected.key] ?? null}
       />
 
       <Modal
@@ -655,9 +658,9 @@ export function DocumentsStep({ form, loanType, directorDocsError }: StepProps) 
                     {docFile ? (
                       <UploadedDocRow
                         file={docFile}
-                        onPreview={() =>
-                          setDirectorPreview({ file: docFile, title: docLabel })
-                        }
+                       onPreview={() =>
+  setDirectorPreview({ file: docFile, title: docLabel, key: `directorDocuments.${editingIndex}.${docKey}` })
+}
                         onRemove={() =>
                           form.setFieldValue(
                             `directorDocuments.${editingIndex}.${docKey}`,
@@ -674,7 +677,7 @@ export function DocumentsStep({ form, loanType, directorDocsError }: StepProps) 
                             f,
                           )
                         }
-                        accept="application/pdf,image/jpeg,image/jpg,.pdf,.jpg,.jpeg"
+                       accept="application/pdf,image/jpeg,image/jpg,image/png,.pdf,.jpg,.jpeg,.png"
                       >
                         {(fileButtonProps) => (
                           <Paper
@@ -721,12 +724,13 @@ export function DocumentsStep({ form, loanType, directorDocsError }: StepProps) 
         )}
       </Modal>
 
-      <DocumentPreviewModal
-        opened={!!directorPreview}
-        onClose={() => setDirectorPreview(null)}
-        file={directorPreview?.file ?? null}
-        title={directorPreview?.title ?? ""}
-      />
+     <DocumentPreviewModal
+  opened={!!directorPreview}
+  onClose={() => setDirectorPreview(null)}
+  file={directorPreview?.file ?? null}
+  title={directorPreview?.title ?? ""}
+  sourceUrl={directorPreview ? (originalDocumentUrls?.[directorPreview.key] ?? null) : null}
+/>
     </Stack>
   );
 }

@@ -7,8 +7,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
     server: {
     proxy: {
-      '/api': {
-        target: 'https://api.erp.lms.rolaface.com', 
+      // '/api': {
+      '^/(api|private|files)': {
+        target: 'https://api.erp.lms.rolaface.com',  
         changeOrigin: true,
         secure: false,
       }}}
