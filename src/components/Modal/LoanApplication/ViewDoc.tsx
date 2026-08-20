@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { Box, Text, Button, Paper, Stack, ThemeIcon, Group, Modal } from "@mantine/core";
+import { Box, Text, Button, Stack, ThemeIcon, Group, Modal, Loader } from "@mantine/core";
 import {
   IconDownload,
   IconFileText,
   IconPhoto,
   IconX,
 } from "@tabler/icons-react";
+
+const ERP_BASE = (import.meta.env.VITE_API_BASE_URL ?? "") as string;
 
 export function formatFileSize(bytes: number) {
   if (!bytes) return "0 KB";
@@ -32,7 +34,6 @@ export function fileKindIcon(kind: "pdf" | "image" | "other") {
   if (kind === "image") return IconPhoto;
   return IconFileText;
 }
-
 export interface DocumentPreviewModalProps {
   opened: boolean;
   onClose: () => void;
@@ -49,26 +50,75 @@ export function DocumentPreviewModal({
   sourceUrl,
 }: DocumentPreviewModalProps) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!opened || !file) {
+    // Reset state when closed
+    if (!opened) {
       setObjectUrl(null);
+      setErrorMsg(null);
       return;
     }
-    if (sourceUrl) {
-      setObjectUrl(sourceUrl);
-      return;
-    }
-    const createdUrl = URL.createObjectURL(file);
-    setObjectUrl(createdUrl);
+
+    let isMounted = true;
+    let createdUrl: string | null = null;
+
+    const loadPreview = async () => {
+      // 1. Fetching a previously uploaded file from the backend securely
+      if (sourceUrl) {
+        try {
+          setIsLoading(true);
+          setErrorMsg(null);
+          
+          const fileUrl = `${ERP_BASE}${sourceUrl}`;
+          const response = await fetch(fileUrl, { credentials: 'include' });
+
+          if (!response.ok) {
+            throw new Error(`Failed to load: HTTP ${response.status}`);
+          }
+
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('text/html')) {
+            throw new Error("Received HTML instead of a file. Check proxy/auth.");
+          }
+
+          const blob = await response.blob();
+          if (!isMounted) return;
+
+          createdUrl = URL.createObjectURL(blob);
+          setObjectUrl(createdUrl);
+        } catch (err: any) {
+          if (isMounted) {
+            console.error('Preview error:', err);
+            setErrorMsg(err.message || "Failed to load document.");
+          }
+        } finally {
+          if (isMounted) setIsLoading(false);
+        }
+      } 
+      // 2. Generating a local preview for a newly selected File in the form
+      else if (file) {
+        createdUrl = URL.createObjectURL(file);
+        setObjectUrl(createdUrl);
+      }
+    };
+
+    loadPreview();
+
     return () => {
-      URL.revokeObjectURL(createdUrl);
+      isMounted = false;
+      if (createdUrl) {
+        URL.revokeObjectURL(createdUrl);
+      }
     };
   }, [opened, file, sourceUrl]);
 
-  if (!file) return null;
+  if (!file && !sourceUrl) return null;
 
-  const kind = getFileKind(file);
+   const kind = file ? getFileKind(file) : (sourceUrl?.match(/\.(jpeg|jpg|png|gif)$/i) ? 'image' : 'pdf');
+  const displaySize = file ? formatFileSize(file.size) : "Remote file";
+  const displayExt = file ? getFileExtLabel(file) : (sourceUrl?.split('.').pop()?.toUpperCase() || "FILE");
 
   return (
     <Modal
@@ -80,7 +130,7 @@ export function DocumentPreviewModal({
             {title}
           </Text>
           <Text fz="xs" c="slate.5">
-            {getFileExtLabel(file)} • {formatFileSize(file.size)}
+            {displayExt} • {displaySize}
           </Text>
         </Box>
       }
@@ -126,18 +176,29 @@ export function DocumentPreviewModal({
             overflow: "hidden",
           }}
         >
-          {kind === "pdf" && objectUrl && (
+          {isLoading && (
+            <Stack align="center" gap={6}>
+              <Loader color="brand" />
+              <Text fz="sm" c="slate.6">Loading document...</Text>
+            </Stack>
+          )}
+
+          {!isLoading && errorMsg && (
+            <Text c="red" fw={500}>{errorMsg}</Text>
+          )}
+
+          {!isLoading && !errorMsg && objectUrl && kind === "pdf" && (
             <iframe
               src={objectUrl}
-              title={file.name}
+              title={title}
               style={{ width: "100%", height: "100%", border: "none" }}
             />
           )}
 
-          {kind === "image" && objectUrl && (
+          {!isLoading && !errorMsg && objectUrl && kind === "image" && (
             <img
               src={objectUrl}
-              alt={file.name}
+              alt={title}
               style={{
                 maxWidth: "100%",
                 maxHeight: "100%",
@@ -146,7 +207,7 @@ export function DocumentPreviewModal({
             />
           )}
 
-          {kind === "other" && (
+          {!isLoading && !errorMsg && !objectUrl && kind === "other" && (
             <Stack align="center" gap={6} py="xl">
               <ThemeIcon radius="xl" size={56} variant="light" color="slate">
                 <IconFileText size={28} />
@@ -163,14 +224,14 @@ export function DocumentPreviewModal({
 
         <Group justify="space-between" mt="md">
           <Text fz="xs" c="slate.5" truncate style={{ maxWidth: 320 }}>
-            {file.name}
+            {file ? file.name : (sourceUrl?.split('/').pop() || 'document')}
           </Text>
           <Group gap="xs">
-            {objectUrl && (
+            {objectUrl && !errorMsg && (
               <Button
                 component="a"
                 href={objectUrl}
-                download={file.name}
+                download={file ? file.name : (sourceUrl?.split('/').pop() || 'document')}
                 variant="default"
                 radius="md"
                 size="xs"
