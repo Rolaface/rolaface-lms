@@ -2,8 +2,21 @@ import apiClient from "../config/axios";
 import { API } from "../config/api";
 import type { CreateCollateralTypePayload, CreateCollateralTypeResponse } from "../types/collateralTypeForm";
 
-export async function getAllCollateralTypes() {
-  const { data } = await apiClient.get(API.collateralType.getCollateralType);
+export interface GetCollateralTypesParams {
+  search?: string;
+  // 0 = active, 1 = disabled. Omit to fetch all.
+  disabled?: 0 | 1;
+}
+
+export async function getAllCollateralTypes(params?: GetCollateralTypesParams) {
+  // Strip undefined/empty values so we don't send `search=` or `disabled=undefined`
+  const cleanParams: Record<string, string | number> = {};
+  if (params?.search) cleanParams.search = params.search;
+  if (params?.disabled === 0 || params?.disabled === 1) cleanParams.disabled = params.disabled;
+
+  const { data } = await apiClient.get(API.collateralType.getCollateralType, {
+    params: cleanParams,
+  });
   return data;
 }
 

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDebouncedValue } from '@mantine/hooks';
 import {
   Box,
   Button,
@@ -101,18 +102,34 @@ function StatusBadge({ status }: { status: string }) {
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
+// Maps the UI's "all | active | disabled" segmented control to the API's `disabled` param.
+// Returns undefined for "all" so we don't send the param at all.
+function statusToDisabledParam(status: string): 0 | 1 | undefined {
+  if (status === 'active') return 0;
+  if (status === 'disabled') return 1;
+  return undefined;
+}
+
 export function CollateralType() {
   const theme = useMantineTheme();
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebouncedValue(search, 400);
   const [status, setStatus] = useState('all');
 
   const [sorting, setSorting] = useState([{ id: 'type', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  const { data: collateralResponse, isLoading } = useQuery({
-    queryKey: ['collateralTypes'],
-    queryFn: getAllCollateralTypes,
+  const disabledParam = statusToDisabledParam(status);
+
+  const { data: collateralResponse, isLoading, isFetching } = useQuery({
+    queryKey: ['collateralTypes', debouncedSearch, disabledParam],
+    queryFn: () =>
+      getAllCollateralTypes({
+        search: debouncedSearch.trim() || undefined,
+        disabled: disabledParam,
+      }),
+    placeholderData: (previousData) => previousData,
   });
 
   const queryClient = useQueryClient();
@@ -191,6 +208,8 @@ export function CollateralType() {
     });
   };
 
+  // Data now arrives pre-filtered from the API (search + disabled params),
+  // so this only needs to map the response shape into rows — no client-side filtering.
   const data = useMemo(() => {
     const list = collateralResponse?.data || collateralResponse?.message?.data || collateralResponse || [];
     if (!Array.isArray(list)) return [];
@@ -202,18 +221,6 @@ export function CollateralType() {
       status: item.disabled === 1 ? 'DISABLED' : 'ACTIVE',
     }));
   }, [collateralResponse]);
-
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return data.filter((c) => {
-      const matchesSearch = !q || c.type.toLowerCase().includes(q);
-      const matchesStatus =
-        status === 'all' ||
-        (status === 'active' && c.status === 'ACTIVE') ||
-        (status === 'disabled' && c.status === 'DISABLED');
-      return matchesSearch && matchesStatus;
-    });
-  }, [data, search, status]);
 
   const handleToggleStatus = (row: CollateralRow) => {
     const willDisable = row.status === 'ACTIVE';
@@ -245,6 +252,12 @@ export function CollateralType() {
         },
       ],
     });
+  };
+
+  // Shared by the eye icon and the row double-click handler — matches the
+  // ERP's "double-click a row to view" convention (see LoanDisbursement).
+  const handleView = (row: CollateralRow) => {
+    collateralTypeModal.open({ editId: row.id, isView: true });
   };
 
   const columns = useMemo(
@@ -299,8 +312,9 @@ export function CollateralType() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => {
-                    collateralTypeModal.open({ editId: row.id, isView: true });
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleView(row);
                   }}
                 >
                   <IconEye size={14} />
@@ -312,7 +326,8 @@ export function CollateralType() {
                   variant="subtle"
                   color="brand"
                   radius="md"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     collateralTypeModal.open({ editId: row.id, isView: false });
                   }}
                 >
@@ -326,7 +341,10 @@ export function CollateralType() {
                   color="danger"
                   radius="md"
                   loading={isDeleting}
-                  onClick={() => handleDelete(row)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(row);
+                  }}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
@@ -337,6 +355,7 @@ export function CollateralType() {
                   color="success"
                   checked={isActive}
                   disabled={isTogglingStatus}
+                  onClick={(e) => e.stopPropagation()}
                   onChange={() => handleToggleStatus(row)}
                 />
               </Tooltip>
@@ -349,7 +368,7 @@ export function CollateralType() {
   );
 
   const table = useReactTable({
-    data: filteredData,
+    data,
     columns,
     state: { sorting, pagination },
     onSortingChange: setSorting,
@@ -360,7 +379,7 @@ export function CollateralType() {
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
+  const totalRows = data.length;
   const { pageIndex, pageSize } = pagination;
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
@@ -492,7 +511,7 @@ export function CollateralType() {
               horizontalSpacing="sm"
               fz="xs"
               w="100%"
-              style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+              style={{ borderCollapse: 'separate', borderSpacing: '0 8px', opacity: isFetching ? 0.6 : 1 }}
             >
               <Table.Thead>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -559,7 +578,12 @@ export function CollateralType() {
                     const isActive = row.original.status === 'ACTIVE';
                     const cells = row.getVisibleCells();
                     return (
-                      <Table.Tr key={row.id} className="lms-row">
+                      <Table.Tr
+                        key={row.id}
+                        className="lms-row"
+                        onDoubleClick={() => handleView(row.original)}
+                        style={{ cursor: 'pointer' }}
+                      >
                         {cells.map((cell, idx) => (
                           <Table.Td
                             key={cell.id}

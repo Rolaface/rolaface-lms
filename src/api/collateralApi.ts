@@ -2,8 +2,25 @@ import apiClient from "../config/axios";
 import { API } from "../config/api";
 import type { CreateCollateralPayload, CreateCollateralResponse } from "../types/collateralForm";
 
-export async function getAllCollaterals() {
-  const { data } = await apiClient.get(API.collateral.getCollateral);
+export interface GetCollateralsParams {
+  search?: string;
+  // 0 = active, 1 = disabled. Omit to fetch all.
+  disabled?: 0 | 1;
+  // Sent as a JSON-stringified array, e.g. loan_security_type=["House","Vehicle"]
+  loan_security_type?: string[];
+}
+
+export async function getAllCollaterals(params?: GetCollateralsParams) {
+  const cleanParams: Record<string, string | number> = {};
+  if (params?.search) cleanParams.search = params.search;
+  if (params?.disabled === 0 || params?.disabled === 1) cleanParams.disabled = params.disabled;
+  if (params?.loan_security_type && params.loan_security_type.length > 0) {
+    cleanParams.loan_security_type = JSON.stringify(params.loan_security_type);
+  }
+
+  const { data } = await apiClient.get(API.collateral.getCollateral, {
+    params: cleanParams,
+  });
   return data;
 }
 

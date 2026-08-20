@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useDebouncedValue } from '@mantine/hooks';
+import { FilterMultiSelect } from '../../components/shared/FilterMultiSelect';
 import {
   Box,
   Button,
@@ -50,6 +52,7 @@ import {
   disableCollateral,
   deleteCollateral,
 } from '../../api/collateralApi';
+import { getAllCollateralTypes } from '../../api/collateralTypeApi';
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../utils/parseFrappeError';
 import { collateralModal } from '../../components/Modal/collateralModalStore';
@@ -155,22 +158,59 @@ function IconText({ icon, children, mono = false }: { icon: React.ReactNode; chi
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
+// Maps the "All | Active | Disabled" segmented control to the API's `disabled` param.
+// Returns undefined for "all" so we don't send the param at all.
+function statusToDisabledParam(status: string): 0 | 1 | undefined {
+  if (status === 'ACTIVE') return 0;
+  if (status === 'DISABLED') return 1;
+  return undefined;
+}
+
 export function Collateral() {
   const theme = useMantineTheme();
 
   // filter state
   const [search, setSearch] = useState('');
-  const [type, setType] = useState<string | null>(null);
+  const [debouncedSearch] = useDebouncedValue(search, 400);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [status, setStatus] = useState('all');
 
   // table state
   const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  const { data: collateralResponse, isLoading } = useQuery({
-    queryKey: ['collaterals'],
-    queryFn: getAllCollaterals,
+  const disabledParam = statusToDisabledParam(status);
+
+  const { data: collateralResponse, isLoading, isFetching } = useQuery({
+    queryKey: ['collaterals', debouncedSearch, disabledParam, selectedTypes],
+    queryFn: () =>
+      getAllCollaterals({
+        search: debouncedSearch.trim() || undefined,
+        disabled: disabledParam,
+        loan_security_type: selectedTypes.length > 0 ? selectedTypes : undefined,
+      }),
+    placeholderData: (prev) => prev,
   });
+
+  // Collateral Types, for the "Types" multiselect filter — pulled from the
+  // API instead of being hardcoded / derived from the current page of rows.
+  const { data: collateralTypesResponse } = useQuery({
+    queryKey: ['collateralTypesFilter'],
+    queryFn: () => getAllCollateralTypes(),
+  });
+
+  const typeOptions = useMemo(() => {
+    const list =
+      collateralTypesResponse?.data ||
+      collateralTypesResponse?.message?.data ||
+      collateralTypesResponse ||
+      [];
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((item: any) => item.loan_security_type)
+      .filter(Boolean)
+      .map((t: string) => ({ value: t, label: t }));
+  }, [collateralTypesResponse]);
 
   const queryClient = useQueryClient();
 
@@ -248,6 +288,8 @@ export function Collateral() {
     });
   };
 
+  // Data now arrives pre-filtered from the API (search + disabled + loan_security_type),
+  // so this only needs to map the response shape into rows.
   const data = useMemo(() => {
     const list = collateralResponse?.data || collateralResponse?.message?.data || collateralResponse || [];
     if (!Array.isArray(list)) return [];
@@ -262,20 +304,6 @@ export function Collateral() {
       status: item.disabled === 1 ? 'DISABLED' : 'ACTIVE',
     }));
   }, [collateralResponse]);
-
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return data.filter((c) => {
-      const matchesSearch =
-        !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q);
-      const matchesType = !type || c.type === type;
-      const matchesStatus =
-        status === 'all' ||
-        (status === 'ACTIVE' && c.status === 'ACTIVE') ||
-        (status === 'DISABLED' && c.status === 'DISABLED');
-      return matchesSearch && matchesType && matchesStatus;
-    });
-  }, [data, search, type, status]);
 
   const handleToggleStatus = (row: CollateralRow) => {
     const willDisable = row.status === 'ACTIVE';
@@ -307,6 +335,12 @@ export function Collateral() {
         },
       ],
     });
+  };
+
+  // Shared by the eye icon and the row double-click handler — matches the
+  // ERP's "double-click a row to view" convention (see LoanDisbursement / CollateralType).
+  const handleView = (row: CollateralRow) => {
+    collateralModal.open({ editId: row.id, isView: true });
   };
 
   const columns = useMemo(
@@ -367,7 +401,10 @@ export function Collateral() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => collateralModal.open({ editId: row.id, isView: true })}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleView(row);
+                  }}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -378,7 +415,10 @@ export function Collateral() {
                   variant="subtle"
                   color="brand"
                   radius="md"
-                  onClick={() => collateralModal.open({ editId: row.id, isView: false })}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    collateralModal.open({ editId: row.id, isView: false });
+                  }}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -390,7 +430,10 @@ export function Collateral() {
                   color="danger"
                   radius="md"
                   loading={isDeleting}
-                  onClick={() => handleDelete(row)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(row);
+                  }}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
@@ -401,6 +444,7 @@ export function Collateral() {
                   color="success"
                   checked={isActive}
                   disabled={isTogglingStatus}
+                  onClick={(e) => e.stopPropagation()}
                   onChange={() => handleToggleStatus(row)}
                 />
               </Tooltip>
@@ -413,7 +457,7 @@ export function Collateral() {
   );
 
   const table = useReactTable({
-    data: filteredData,
+    data,
     columns,
     state: { sorting, pagination },
     onSortingChange: setSorting,
@@ -424,18 +468,16 @@ export function Collateral() {
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
+  const totalRows = data.length;
   const { pageIndex, pageSize } = pagination;
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   const resetFilters = () => {
     setSearch('');
-    setType(null);
+    setSelectedTypes([]);
     setStatus('all');
   };
-
-  const typeOptions = Array.from(new Set(data.map((c) => c.type).filter(Boolean)));
 
   return (
     <Stack gap="lg" p="lg">
@@ -478,7 +520,7 @@ export function Collateral() {
         </Group>
       </Group>
 
-      {/* Toolbar — pill search + pill filters + segmented status control */}
+      {/* Toolbar — pill search + multiselect type filter + segmented status control */}
       <Paper
         radius="xl"
         p="xs"
@@ -502,20 +544,16 @@ export function Collateral() {
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
-          <Select
-            size="sm"
-            radius="xl"
+
+          <FilterMultiSelect
             placeholder="All Types"
             data={typeOptions}
-            w={180}
-            searchable
-            clearable
-            rightSection={chevronDown}
-            value={type}
+            value={selectedTypes}
             onChange={(v) => {
-              setType(v);
+              setSelectedTypes(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
+            width={180}
           />
 
           <SegmentedControl
@@ -569,7 +607,7 @@ export function Collateral() {
           horizontalSpacing="sm"
           fz="xs"
           w="100%"
-          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+          style={{ borderCollapse: 'separate', borderSpacing: '0 8px', opacity: isFetching ? 0.6 : 1 }}
         >
           <Table.Thead>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -647,7 +685,12 @@ export function Collateral() {
                 const isActive = row.original.status === 'ACTIVE';
                 const cells = row.getVisibleCells();
                 return (
-                  <Table.Tr key={row.id} className="lms-row">
+                  <Table.Tr
+                    key={row.id}
+                    className="lms-row"
+                    onDoubleClick={() => handleView(row.original)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {cells.map((cell, idx) => (
                       <Table.Td
                         key={cell.id}
