@@ -15,17 +15,13 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 
-import {
-  IconUpload,
-  IconCheck,
-  IconAlertCircle,
-  IconInfoCircle,
-} from "@tabler/icons-react";
+import { IconUpload, IconCheck, IconAlertCircle, IconInfoCircle, IconEye, IconTrash } from "@tabler/icons-react";
 
 import { colorVar, formatFileSize } from "../../../../utils/customer/utils";
 
 import { DOC_TILES } from "../../../constants/customer/constants";
 import type { UploadedDoc } from "../../../../types/customer/types";
+import { DocumentPreviewModal, docKindIcon } from "./DocumentPreviewModal";
 
 interface DocumentsStepProps {
   uploadedDocs: Record<string, UploadedDoc>;
@@ -33,6 +29,78 @@ interface DocumentsStepProps {
   removeUpload: (key: string) => void;
   uploadingKey?: string | null;
   isViewMode?: boolean;
+}
+
+interface UploadedDocRowProps {
+  doc: UploadedDoc;
+  onPreview: () => void;
+  onRemove: () => void;
+  isViewMode?: boolean;
+}
+
+function UploadedDocRow({ doc, onPreview, onRemove, isViewMode }: UploadedDocRowProps) {
+  const RowIcon = docKindIcon(doc);
+
+  return (
+    <Paper
+      withBorder
+      radius="md"
+      p="sm"
+      bg="white"
+      onClick={onPreview}
+      style={{
+        cursor: "pointer",
+        borderColor: "var(--mantine-color-slate-2)",
+      }}
+    >
+      <Group justify="space-between" wrap="nowrap" gap="sm">
+        <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+          <ThemeIcon radius="md" size={38} variant="light" color="brand">
+            <RowIcon size={20} />
+          </ThemeIcon>
+          <Box style={{ minWidth: 0 }}>
+            <Text fz="sm" fw={600} c="slate.8" truncate>
+              {doc.name}
+            </Text>
+            <Text fz="xs" c="slate.5">
+              {formatFileSize(doc.size)}
+            </Text>
+          </Box>
+        </Group>
+
+        <Group gap={6} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="light"
+            color="brand"
+            radius="md"
+            size="xs"
+            leftSection={<IconEye size={14} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPreview();
+            }}
+          >
+            Preview
+          </Button>
+          {!isViewMode && (
+            <Button
+              variant="subtle"
+              color="danger"
+              radius="md"
+              size="xs"
+              leftSection={<IconTrash size={14} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+            >
+              Remove
+            </Button>
+          )}
+        </Group>
+      </Group>
+    </Paper>
+  );
 }
 
 export function DocumentsStep({
@@ -47,6 +115,8 @@ export function DocumentsStep({
   const uploaded = uploadedDocs[selectedKey];
   const SelectedIcon = selected.icon;
 
+  const [previewOpened, setPreviewOpened] = useState(false);
+
   return (
     <Group
       align="stretch"
@@ -54,7 +124,6 @@ export function DocumentsStep({
       wrap="nowrap"
       style={{ height: "100%", minHeight: 0 }}
     >
-      {/* Left — document list, own scroll area, compact rows */}
       <Paper
         withBorder
         radius="md"
@@ -146,7 +215,6 @@ export function DocumentsStep({
         </ScrollArea>
       </Paper>
 
-      {/* Right — upload panel for selected document, own scroll area */}
       <ScrollArea
         style={{ flex: 1, minWidth: 0 }}
         type="auto"
@@ -167,62 +235,38 @@ export function DocumentsStep({
             </Box>
           </Group>
 
-          <FileButton
-            onChange={(file) => file && uploadDoc(selected.key, file)}
-            accept={selected.accept}
-            disabled={isViewMode || uploadingKey === selected.key}
-          >
-            {(fileButtonProps) => (
-              <Paper
-                {...fileButtonProps}
-                withBorder
-                radius="lg"
-                p="xl"
-                ta="center"
-                bg={uploaded ? "brand.0" : "slate.0"}
-                style={{
-                  borderStyle: "dashed",
-                  borderColor: uploaded
-                    ? colorVar("brand", 3)
-                    : "var(--mantine-color-slate-3)",
-                  cursor: isViewMode ? "default" : "pointer",
-                }}
-              >
-                {uploaded?.previewUrl ? (
-                  <Stack align="center" gap="sm">
-                    <img
-                      src={uploaded.previewUrl}
-                      alt={uploaded.name}
-                      style={{
-                        maxWidth: 220,
-                        maxHeight: 140,
-                        objectFit: "cover",
-                        borderRadius: 8,
-                        border: `1px solid ${colorVar("brand", 2)}`,
-                      }}
-                    />
-                    <Text size="sm" fw={600} c="slate.8">
-                      {uploaded.name}
-                    </Text>
-                    <Text size="xs" c="slate.5">
-                      {formatFileSize(uploaded.size)}
-                    </Text>
-                    {!isViewMode && (
-                      <Button
-                        variant="subtle"
-                        color="danger"
-                        size="xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          removeUpload(selected.key);
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </Stack>
-                ) : (
+          {uploaded ? (
+            <Stack gap="xs">
+              <Text fz="xs" fw={700} c="slate.5" tt="uppercase">
+                Uploaded Document
+              </Text>
+              <UploadedDocRow
+                doc={uploaded}
+                onPreview={() => setPreviewOpened(true)}
+                onRemove={() => removeUpload(selected.key)}
+                isViewMode={isViewMode}
+              />
+            </Stack>
+          ) : (
+            <FileButton
+              onChange={(file) => file && uploadDoc(selected.key, file)}
+              accept={selected.accept}
+              disabled={isViewMode || uploadingKey === selected.key}
+            >
+              {(fileButtonProps) => (
+                <Paper
+                  {...fileButtonProps}
+                  withBorder
+                  radius="lg"
+                  p="xl"
+                  ta="center"
+                  bg="slate.0"
+                  style={{
+                    borderStyle: "dashed",
+                    borderColor: "var(--mantine-color-slate-3)",
+                    cursor: isViewMode ? "default" : "pointer",
+                  }}
+                >
                   <Stack align="center" gap="sm">
                     <ThemeIcon
                       radius="xl"
@@ -244,10 +288,10 @@ export function DocumentsStep({
                       </Button>
                     )}
                   </Stack>
-                )}
-              </Paper>
-            )}
-          </FileButton>
+                </Paper>
+              )}
+            </FileButton>
+          )}
 
           <Paper
             withBorder
@@ -270,6 +314,13 @@ export function DocumentsStep({
           </Paper>
         </Stack>
       </ScrollArea>
+
+      <DocumentPreviewModal
+        opened={previewOpened}
+        onClose={() => setPreviewOpened(false)}
+        doc={uploaded ?? null}
+        title={selected.label}
+      />
     </Group>
   );
 }

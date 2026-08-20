@@ -1,4 +1,4 @@
-export type ChipColor = "brand" | "accent" | "gold" | "danger" | "indigoAlt";
+export type ChipColor = "brand" | "accent" | "gold" | "danger" | "indigoAlt"|"info";
 
 export type IdDocument = {
   id: string;
