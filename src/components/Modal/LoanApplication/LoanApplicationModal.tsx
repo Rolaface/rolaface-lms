@@ -222,35 +222,35 @@ function buildPersonalPayload(
   if (values.payslips) {
     documents.push({
       document_for: "Personal",
-      document_name: "Latest three payslips",
+      document_name: "Salary Slip",
       file: resolvedUrls.payslips as string,
     });
   }
   if (values.bankStatementsPersonal) {
     documents.push({
       document_for: "Personal",
-      document_name: "Bank statements (3 months)",
+      document_name: "Bank Statement",
       file: resolvedUrls.bankStatementsPersonal as string,
     });
   }
   if (values.nrcCopy) {
     documents.push({
       document_for: "Personal",
-      document_name: "NRC copy",
+      document_name: "NRC Copy",
       file: resolvedUrls.nrcCopy as string,
     });
   }
   if (values.passportPhotoPersonal) {
     documents.push({
       document_for: "Personal",
-      document_name: "Passport-sized photo",
+      document_name: "Passport Photo",
       file: resolvedUrls.passportPhotoPersonal as string,
     });
   }
   if (values.tpinCertificate) {
     documents.push({
       document_for: "Personal",
-      document_name: "TPIN certificate",
+      document_name: "TPIN Certificate",
       file: resolvedUrls.tpinCertificate as string,
     });
   }
@@ -291,7 +291,7 @@ function buildBusinessPayload(
   if (values.pacraCertificate) {
     business_documents.push({
       document_for: "Applicant",
-      document_name: "PACRA certificate",
+      document_name: "PACRA Certificate",
       file: resolvedUrls.pacraCertificate as string,
     });
   }
@@ -305,35 +305,35 @@ function buildBusinessPayload(
   if (values.taxClearanceCertificate) {
     business_documents.push({
       document_for: "Applicant",
-      document_name: "Tax clearance certificate / TPIN",
+      document_name: "Tax Clearance Certificate",
       file: resolvedUrls.taxClearanceCertificate as string,
     });
   }
   if (values.taxComplianceReturn) {
     business_documents.push({
       document_for: "Applicant",
-      document_name: "Latest tax compliance return",
+      document_name: "Latest Tax Compliance Return",
       file: resolvedUrls.taxComplianceReturn as string,
     });
   }
   if (values.orderInvoice) {
     business_documents.push({
       document_for: "Applicant",
-      document_name: "Order / Invoice",
+      document_name: "Order/Invoice",
       file: resolvedUrls.orderInvoice as string,
     });
   }
   if (values.bankStatementsBusiness) {
     business_documents.push({
       document_for: "Applicant",
-      document_name: "Bank statements (6 months)",
+      document_name: "Bank Statements",
       file: resolvedUrls.bankStatementsBusiness as string,
     });
   }
   if (values.applicantPassportPhoto) {
     business_documents.push({
       document_for: "Applicant",
-      document_name: "Applicant Passport-sized photo",
+      document_name: "Passport Photo",
       file: resolvedUrls.applicantPassportPhoto as string,
     });
   }
@@ -356,7 +356,7 @@ function buildBusinessPayload(
     if (doc.photoFile) {
       business_documents.push({
         document_for: "Director",
-        document_name: `Director ${index + 1} passport photo`,
+        document_name: `Director ${index + 1} Passport Photo`,
         file: resolvedUrls[`directorDocuments.${index}.photoFile`] as string,
       });
     }
@@ -423,7 +423,7 @@ export function LoanApplicationModal({
   const [directorDocsError, setDirectorDocsError] = useState<string | null>(
     null,
   );
-  const ALLOWED_FILE_TYPES = ["application/pdf", "image/jpeg", "image/jpg"];
+  const ALLOWED_FILE_TYPES = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
   const isAllowedFileType = (file: File | null) =>
     !file || ALLOWED_FILE_TYPES.includes(file.type);
   const [loanTypeSelected, setLoanTypeSelected] = useState(true);
@@ -573,14 +573,6 @@ export function LoanApplicationModal({
       applicantNationality: (v, values) =>
         values.loanType === "Business" && !v?.trim() ? "Required" : null,
 
-      // --- Business Docs ---
-      // pacraCertificate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-      // form2: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-      // taxClearanceCertificate: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-      // taxComplianceReturn: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-      // bankStatementsBusiness: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-      // applicantPassportPhoto: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
-      // boardResolution: (v, values) => (values.loanType === "Business" && !v ? "Required" : null),
       pacraCertificate: (v, values) => {
         if (values.loanType !== "Business") return null;
         if (!v) return "Required";
@@ -892,7 +884,7 @@ export function LoanApplicationModal({
       );
       const photo = getDocFile(
         bDocs,
-        [`Director ${i} passport photo`],
+        [`Director ${i} Passport Photo`],
         `directorDocuments.${i - 1}.photoFile`,
       );
       if (nrc || photo) {
@@ -941,52 +933,52 @@ export function LoanApplicationModal({
       ),
       bankStatementsPersonal: getDocFile(
         pDocs,
-        ["Bank statements (3 months)"],
+        ["Bank statements (3 months)", "Bank Statement"],
         "bankStatementsPersonal",
       ),
-      nrcCopy: getDocFile(pDocs, ["NRC copy"], "nrcCopy"),
+      nrcCopy: getDocFile(pDocs, ["NRC copy", "NRC Copy"], "nrcCopy"),
       passportPhotoPersonal: getDocFile(
         pDocs,
-        ["Passport-sized photo"],
+        ["Passport-sized photo", "Passport Photo"],
         "passportPhotoPersonal",
       ),
       tpinCertificate: getDocFile(
         pDocs,
-        ["TPIN certificate"],
+         ["TPIN certificate", "TPIN Certificate"],
         "tpinCertificate",
       ),
 
       // Business Documents
       pacraCertificate: getDocFile(
         bDocs,
-        ["PACRA certificate"],
+        ["PACRA certificate", "PACRA Certificate"],
         "pacraCertificate",
       ),
       form2: getDocFile(bDocs, ["Form 2"], "form2"),
       taxClearanceCertificate: getDocFile(
         bDocs,
-        ["Tax clearance certificate / TPIN"],
+        ["Tax clearance certificate / TPIN", "Tax Clearance Certificate"],
         "taxClearanceCertificate",
       ),
       taxComplianceReturn: getDocFile(
         bDocs,
-        ["Latest tax compliance return"],
+         ["Latest tax compliance return", "Latest Tax Compliance Return"],
         "taxComplianceReturn",
       ),
-      orderInvoice: getDocFile(bDocs, ["Order / Invoice"], "orderInvoice"),
+      orderInvoice: getDocFile(bDocs, ["Order / Invoice", "Order/Invoice"], "orderInvoice"),
       bankStatementsBusiness: getDocFile(
         bDocs,
-        ["Bank statements (6 months)"],
+        ["Bank statements (6 months)", "Bank Statements"],
         "bankStatementsBusiness",
       ),
       applicantPassportPhoto: getDocFile(
         bDocs,
-        ["Applicant Passport-sized photo"],
+        ["Applicant Passport-sized photo", "Passport Photo"],
         "applicantPassportPhoto",
       ),
       boardResolution: getDocFile(
         bDocs,
-        ["Board resolution"],
+         ["Board resolution", "Board Resolution"],
         "boardResolution",
       ),
 
@@ -1173,13 +1165,14 @@ export function LoanApplicationModal({
       // case 2:
       //   return <DocumentsStep form={form} loanType={loanType} />;
       case 2:
-        return (
-          <DocumentsStep
-            form={form}
-            loanType={loanType}
-            directorDocsError={directorDocsError}
-          />
-        );
+  return (
+    <DocumentsStep
+      form={form}
+      loanType={loanType}
+      directorDocsError={directorDocsError}
+      originalDocumentUrls={originalDocumentUrls.current}
+    />
+  );
       case 3:
       case 3:
         return <LoanTermsStep form={form} loanType={loanType} />;

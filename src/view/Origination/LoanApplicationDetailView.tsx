@@ -7,14 +7,11 @@ import type { LoanApplicationRow } from './LoanApplication';
 import { getDisplayStatus } from './LoanApplication';
 import { getLoanApplicationById } from '../../api/loanApplicationApi';
 import {
-  brand,
+  themeTokens,
   serif,
   formatCurrency,
   formatDate,
   OverviewField,
-  SectionHeading,
-  DocumentCard,
-  ActivityFeed,
   StageBar,
   ApplicationSidebar,
   ApplicationSearchBar,
@@ -24,6 +21,10 @@ import {
   buildDetailFromApi,
   buildFallbackDetail,
 } from './LoanApplicationDetailParts';
+import { OverviewPanel } from './OverviewPanel';
+import { ApplicantBusinessPanel } from './ApplicantBusinessPanel';
+import { DocumentsPanel } from './Documentspanel';
+import { ActivityPanel } from './Activitypanel';
 
 interface LoanApplicationDetailViewProps {
   application: LoanApplicationRow;
@@ -77,14 +78,14 @@ export function LoanApplicationDetailView({
 
   const accentColor =
     application.status === 'Sanctioned'
-      ? brand.teal
+      ? themeTokens.success
       : application.status === 'Cancelled'
-        ? brand.rose
+        ? themeTokens.danger
         : application.status === 'Closed'
-          ? brand.slate
+          ? themeTokens.slateSoft
           : application.status === 'Submitted'
-            ? brand.teal
-            : brand.sky;
+            ? themeTokens.success
+            : themeTokens.info;
 
   const q = search.trim().toLowerCase();
   const filteredDocuments = useMemo(
@@ -95,7 +96,6 @@ export function LoanApplicationDetailView({
     () => (q ? detail.activity.filter((a) => a.title.toLowerCase().includes(q) || a.description.toLowerCase().includes(q)) : detail.activity),
     [detail.activity, q],
   );
-  const docsUploaded = detail.documents.filter((d) => d.status === 'Uploaded').length;
 
   const rightRail =
     tab === 'documents' ? (
@@ -116,8 +116,8 @@ export function LoanApplicationDetailView({
         onBack={onBack}
       />
 
-      <div className="flex-1 flex flex-col overflow-y-auto" style={{ backgroundColor: brand.cream }}>
-        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-6 py-3">
+      <div className="flex-1 flex flex-col overflow-y-auto" style={{ backgroundColor: 'var(--mantine-color-gray-0)' }}>
+        <div className="sticky top-0 z-40 bg-[var(--mantine-color-white)] border-b border-[var(--mantine-color-slate-2)] px-6 py-3">
           <ApplicationSearchBar value={search} onChange={setSearch} />
         </div>
 
@@ -128,19 +128,24 @@ export function LoanApplicationDetailView({
                 radius="lg"
                 p="md"
                 className="border-l-4"
-                style={{ borderLeftColor: accentColor, border: '1px solid #ECE8DD', borderLeftWidth: 4, boxShadow: '0 6px 20px rgba(36,31,61,0.08)' }}
+                style={{
+                  borderLeftColor: accentColor,
+                  border: '1px solid var(--mantine-color-slate-2)',
+                  borderLeftWidth: 4,
+                  boxShadow: 'var(--mantine-shadow-md)',
+                }}
               >
                 <div className="flex justify-between items-start flex-wrap gap-3 mb-3">
                   <div>
                     <Text fz={10} fw={700} c="dimmed" className="tracking-wider">
                       LOAN APPLICATION · {application.name}
                     </Text>
-                    <Text fz="xl" fw={700} c="gray.9" style={serif}>
+                    <Text fz="xl" fw={700} c="slate.9" style={serif}>
                       {detail.applicant.fullName || 'Unnamed applicant'}
                     </Text>
                     <Text fz="xs" c="dimmed" className="mt-1">
-                      Product: <span className="font-semibold text-gray-700">{application.application_type || '—'}</span>
-                      {'   '}Applied: <span className="font-semibold text-gray-700">{formatDate(application.application_date)}</span>
+                      Product: <span className="font-semibold text-[var(--mantine-color-slate-7)]">{application.application_type || '—'}</span>
+                      {'   '}Applied: <span className="font-semibold text-[var(--mantine-color-slate-7)]">{formatDate(application.application_date)}</span>
                     </Text>
                   </div>
 
@@ -180,7 +185,7 @@ export function LoanApplicationDetailView({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pb-3 border-b border-gray-100">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pb-3 border-b border-[var(--mantine-color-slate-1)]">
                   <OverviewField label="LOAN PRODUCT" value={application.application_type || '—'} />
                   <OverviewField label="AMOUNT REQUESTED" value={formatCurrency(detail.loanTerms.amountRequested)} />
                   <OverviewField label="TENURE REQUESTED" value={`${detail.loanTerms.tenureMonths} months`} />
@@ -191,220 +196,39 @@ export function LoanApplicationDetailView({
                 <StageBar stage={detail.stage} isRejected={isRejected} />
               </Paper>
 
-             <Tabs
-  value={tab}
-  onChange={(v) => v && setTab(v)}
-  variant="default"
-  color="indigo"
-  styles={{
-    tab: {
-      fontWeight: 600,
-      color: '#6B7280',
-    },
-  }}
->
-  <Tabs.List className="mb-5 flex-wrap gap-1 pb-0 border-b border-gray-200">
-    <Tabs.Tab value="overview">Overview</Tabs.Tab>
-    <Tabs.Tab value="applicant">Applicant &amp; Business</Tabs.Tab>
-    <Tabs.Tab value="documents">Documents</Tabs.Tab>
-    <Tabs.Tab value="activity">Activity</Tabs.Tab>
-  </Tabs.List>
+              <Tabs
+                value={tab}
+                onChange={(v) => v && setTab(v)}
+                variant="default"
+                color="indigo"
+                styles={{
+                  tab: {
+                    fontWeight: 600,
+                    color: 'var(--mantine-color-slate-5)',
+                  },
+                }}
+              >
+                <Tabs.List className="mb-5 flex-wrap gap-1 pb-0 border-b border-[var(--mantine-color-slate-2)]">
+                  <Tabs.Tab value="overview">Overview</Tabs.Tab>
+                  <Tabs.Tab value="applicant">Applicant &amp; Business</Tabs.Tab>
+                  <Tabs.Tab value="documents">Documents</Tabs.Tab>
+                  <Tabs.Tab value="activity">Activity</Tabs.Tab>
+                </Tabs.List>
 
                 <Tabs.Panel value="overview">
-                  <div className="flex flex-col gap-5">
-                    <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-                      <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-                        <Text fz="lg" fw={600} c="gray.9" style={serif}>
-                          Requested terms
-                        </Text>
-                        <Text fz="xs" c="dimmed">
-                          What the applicant asked for
-                        </Text>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
-                        <OverviewField label="AMOUNT REQUESTED" value={formatCurrency(detail.loanTerms.amountRequested)} />
-                        <OverviewField label="TENURE REQUESTED" value={`${detail.loanTerms.tenureMonths} months`} />
-                        <OverviewField label="REPAYMENT FREQUENCY" value={detail.loanTerms.proposedRepaymentFrequency} />
-                        <OverviewField label="PURPOSE OF LOAN" value={detail.loanTerms.purpose} />
-                        <OverviewField label="COLLATERAL PLEDGED" value={detail.loanTerms.collateralPledged} />
-                        <OverviewField label="LOAN PRODUCT" value={application.application_type || '—'} />
-                      </div>
-                    </Paper>
-
-                    <SectionHeading title="Applicant summary" aside="Personal details on file" />
-                    <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
-                        <OverviewField label="FULL NAME" value={detail.applicant.fullName} />
-                        <OverviewField label="PHONE" value={detail.applicant.phone} />
-                        <OverviewField label="EMAIL" value={detail.applicant.email} />
-                        <OverviewField label="NRC" value={detail.applicant.nrc} />
-                        <OverviewField label="NATIONALITY" value={detail.applicant.nationality} />
-                        <OverviewField label="OCCUPATION" value={detail.applicant.occupation} />
-                      </div>
-                    </Paper>
-
-                    {/* {detail.business.isBusinessLoan && (
-                      <>
-                        <SectionHeading title="Business summary" aside="Company details on file" />
-                        <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
-                            <OverviewField label="COMPANY NAME" value={detail.business.companyName} />
-                            <OverviewField label="TYPE OF BUSINESS" value={detail.business.typeOfBusiness} />
-                            <OverviewField label="ESTABLISHED" value={detail.business.establishedDate} />
-                            <OverviewField label="REGISTERED OFFICE" value={detail.business.registeredOffice} />
-                            <OverviewField label="NATURE OF BUSINESS" value={detail.business.natureOfBusiness} />
-                          </div>
-                        </Paper>
-                      </>
-                    )} */}
-                    {detail.business.isBusinessLoan && (
-  <>
-    <SectionHeading title="Business summary" aside="Company details on file" />
-    <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
-        <OverviewField label="COMPANY NAME" value={detail.business.companyName} />
-        <OverviewField label="TYPE OF BUSINESS" value={detail.business.typeOfBusiness} />
-        <OverviewField label="ESTABLISHED" value={detail.business.establishedDate} />
-        <OverviewField label="REGISTERED OFFICE" value={detail.business.registeredOffice} />
-        <OverviewField label="NATURE OF BUSINESS" value={detail.business.natureOfBusiness} />
-      </div>
-    </Paper>
-  </>
-)}
-
-{detail.business.isBusinessLoan && detail.directors.length > 0 && (
-  <>
-    <SectionHeading title="Directors" aside={`${detail.directors.length} on file`} />
-    <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
-        {detail.directors.map((dir) => (
-          <div key={dir.name} className="col-span-3 grid grid-cols-1 md:grid-cols-4 gap-4 pb-3 border-b last:border-b-0 border-gray-50">
-            <OverviewField label="NAME" value={dir.fullName} />
-            <OverviewField label="PHONE" value={dir.phone} />
-            <OverviewField label="EMAIL" value={dir.email} />
-            <OverviewField label="NRC" value={dir.nrc} />
-          </div>
-        ))}
-      </div>
-    </Paper>
-  </>
-)}
-
-
-                    <SectionHeading title="Documents" aside={`${docsUploaded} / ${detail.documents.length} on file`} />
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {detail.documents.map((doc) => (
-                        <DocumentCard key={doc.id} doc={doc} />
-                      ))}
-                    </div>
-
-                    <SectionHeading title="Activity" aside="Every touchpoint on this application, in order" />
-                    <ActivityFeed activity={detail.activity} />
-                  </div>
+                  <OverviewPanel application={application} detail={detail} />
                 </Tabs.Panel>
 
                 <Tabs.Panel value="applicant">
-                  <div className="flex flex-col gap-5">
-                    <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-                      <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-                        <Text fz="lg" fw={600} c="gray.9" style={serif}>
-                          Personal information
-                        </Text>
-                        <Text fz="xs" c="dimmed">
-                          As submitted by the applicant
-                        </Text>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
-                        <OverviewField label="FULL NAME" value={detail.applicant.fullName} />
-                        <OverviewField label="GENDER" value={detail.applicant.gender} />
-                        <OverviewField label="MARITAL STATUS" value={detail.applicant.maritalStatus} />
-                        <OverviewField label="DATE OF BIRTH" value={detail.applicant.birthDate} />
-                        <OverviewField label="NRC" value={detail.applicant.nrc} />
-                        <OverviewField label="NATIONALITY" value={detail.applicant.nationality} />
-                        <OverviewField label="PHONE" value={detail.applicant.phone} />
-                        <OverviewField label="EMAIL" value={detail.applicant.email} />
-                        <OverviewField label="RESIDENTIAL ADDRESS" value={detail.applicant.residentialAddress} />
-                        <OverviewField label="OCCUPATION" value={detail.applicant.occupation} />
-                        <OverviewField label="EMPLOYER" value={detail.applicant.employerName} />
-                      </div>
-                    </Paper>
-                    {detail.business.isBusinessLoan && detail.directors.length > 0 && (
-  <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-    <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-      <Text fz="lg" fw={600} c="gray.9" style={serif}>Directors</Text>
-      <Text fz="xs" c="dimmed">{detail.directors.length} on file</Text>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
-      {detail.directors.map((dir) => (
-        <div key={dir.name} className="col-span-3 grid grid-cols-1 md:grid-cols-4 gap-4 pb-3 border-b last:border-b-0 border-gray-50">
-          <OverviewField label="NAME" value={dir.fullName} />
-          <OverviewField label="PHONE" value={dir.phone} />
-          <OverviewField label="EMAIL" value={dir.email} />
-          <OverviewField label="NRC" value={dir.nrc} />
-        </div>
-      ))}
-    </div>
-  </Paper>
-)}
-
-                    {detail.business.isBusinessLoan && (
-                      <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-                        <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-                          <Text fz="lg" fw={600} c="gray.9" style={serif}>
-                            Business information
-                          </Text>
-                          <Text fz="xs" c="dimmed">
-                            Registered entity details
-                          </Text>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
-                          <OverviewField label="COMPANY NAME" value={detail.business.companyName} />
-                          <OverviewField label="TYPE OF BUSINESS" value={detail.business.typeOfBusiness} />
-                          <OverviewField label="ESTABLISHED DATE" value={detail.business.establishedDate} />
-                          <OverviewField label="REGISTERED OFFICE" value={detail.business.registeredOffice} />
-                          <OverviewField label="NATURE OF BUSINESS" value={detail.business.natureOfBusiness} />
-                        </div>
-                      </Paper>
-                    )}
-
-                    <Paper radius="lg" className="overflow-hidden" style={{ border: '1px solid #ECE8DD', boxShadow: '0 3px 14px rgba(36,31,61,0.06)' }}>
-                      <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-                        <Text fz="lg" fw={600} c="gray.9" style={serif}>
-                          Next of kin
-                        </Text>
-                        <Text fz="xs" c="dimmed">
-                          Emergency / guarantor contact
-                        </Text>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
-                        <OverviewField label="NAME" value={detail.nextOfKin.name} />
-                        <OverviewField label="RELATIONSHIP" value={detail.nextOfKin.relationship} />
-                        <OverviewField label="PHONE" value={detail.nextOfKin.phone} />
-                      </div>
-                    </Paper>
-                  </div>
+                  <ApplicantBusinessPanel detail={detail} />
                 </Tabs.Panel>
 
                 <Tabs.Panel value="documents">
-                  <SectionHeading
-                    title="Documents"
-                    aside={`${filteredDocuments.filter((d) => d.status === 'Uploaded').length} / ${filteredDocuments.length} shown`}
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {filteredDocuments.map((doc) => (
-                      <DocumentCard key={doc.id} doc={doc} />
-                    ))}
-                    {filteredDocuments.length === 0 && (
-                      <Text fz="xs" c="dimmed">
-                        No documents match your search.
-                      </Text>
-                    )}
-                  </div>
+                  <DocumentsPanel documents={filteredDocuments} />
                 </Tabs.Panel>
 
                 <Tabs.Panel value="activity">
-                  <SectionHeading title="Activity" aside="Every touchpoint on this application, in order" />
-                  <ActivityFeed activity={filteredActivity} />
+                  <ActivityPanel activity={filteredActivity} />
                 </Tabs.Panel>
               </Tabs>
             </div>
