@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -50,6 +50,8 @@ import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { loanWaiverModal } from './LoanWaiverModalStore';
 import { formatAmount, useCurrencyReady } from '../../../store/currencyStore';
 import { useCompanyStore } from '../../../store/companyStore';
+import { useDebouncedValue } from '@mantine/hooks';
+import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
 
 const WAIVER_TYPES = ['Interest Waiver', 'Penalty Waiver', 'Charges Waiver'];
 
@@ -68,7 +70,7 @@ const columnHelper = createColumnHelper<WaiverRow>();
 
 const STATUS_META: Record<number, { label: string; color: string }> = {
   0: { label: 'DRAFT', color: 'slate' },
-  1: { label: 'SUBMITTED', color: 'info' },
+  1: { label: 'Approved', color: 'info' },
   2: { label: 'CANCELLED', color: 'danger' },
 };
 
@@ -124,14 +126,29 @@ export function LoanWaiver() {
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencyReady = useCurrencyReady();
   const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebouncedValue(search, 400);
   const [loanType, setLoanType] = useState<string | null>(null);
-  const [status, setStatus] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const { data: repaymentsResponse, isLoading } = useQuery({
-    queryKey: ['loanRepayments'],
-    queryFn: getAllLoanRepayment,
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, loanType]);
+
+  const { data: repaymentsResponse, isLoading, isFetching } = useQuery({
+    queryKey: ['loanRepayments', 'waiver', debouncedSearch, statusFilter, loanType, page, pageSize],
+    queryFn: () =>
+      getAllLoanRepayment({
+        search: debouncedSearch || undefined,
+        status: statusFilter.length ? statusFilter : undefined,
+        loan_product: loanType ? [loanType] : undefined,
+        repayment_type: WAIVER_TYPES,
+        page,
+        page_size: pageSize,
+      }),
+    placeholderData: (prev) => prev,
   });
 
   const queryClient = useQueryClient();
@@ -170,45 +187,35 @@ export function LoanWaiver() {
       changeLoanRepaymentStatus(id, action),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-      const isCancel = variables.action === 'cancelled';
+         const isCancel = variables.action === 'cancelled';
       showSuccess(
-        isCancel ? 'Waiver Cancelled' : 'Waiver Submitted',
-        isCancel ? 'Loan waiver cancelled successfully.' : 'Loan waiver submitted successfully.'
+        isCancel ? 'Waiver Cancelled' : 'Waiver Approved',
+        isCancel ? 'Loan waiver cancelled successfully.' : 'Loan waiver approved successfully.'
       );
     },
-    onError: (error: any, variables) => {
+ onError: (error: any, variables) => {
       const isCancel = variables.action === 'cancelled';
-      showError(isCancel ? 'Cancel Failed' : 'Submit Failed', error);
+      showError(isCancel ? 'Cancel Failed' : 'Approve Failed', error);
     },
   });
 
   // Only rows whose repayment_type is one of the waiver types — the shared
   // getAllLoanRepayment endpoint returns every repayment/waiver/etc. record.
-  const rowsData = useMemo(() => {
+ const rowsData = useMemo(() => {
     const list = repaymentsResponse?.message?.data?.repayments ?? [];
-    return list
-      .filter((item: any) => WAIVER_TYPES.includes(item.repayment_type))
-      .map((item: any) => ({
-        id: item.name,
-        loanAc: item.against_loan || '—',
-        customer: item.applicant || '—',
-        loanType: item.loan_product || '—',
-        repaymentType: item.repayment_type,
-        docstatus: item.docstatus,
-        amountPaid: item.amount_paid || 0,
-        valueDate: item.value_date || '—',
-      }));
+    return list.map((item: any) => ({
+      id: item.name,
+      loanAc: item.against_loan || '—',
+      customer: item.applicant || '—',
+      loanType: item.loan_product || '—',
+      repaymentType: item.repayment_type,
+      docstatus: item.docstatus,
+      amountPaid: item.amount_paid || 0,
+      valueDate: item.value_date || '—',
+    }));
   }, [repaymentsResponse]);
 
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rowsData.filter((r) => {
-      const matchesSearch = !q || r.customer.toLowerCase().includes(q) || r.loanAc.toLowerCase().includes(q);
-      const matchesLoanType = !loanType || r.loanType === loanType;
-      const matchesStatus = status === 'all' || String(r.docstatus) === status;
-      return matchesSearch && matchesLoanType && matchesStatus;
-    });
-  }, [rowsData, search, loanType, status]);
+  const filteredData = rowsData;
 
   const handleDelete = (row: WaiverRow) => {
     openCommonModal({
@@ -237,14 +244,14 @@ export function LoanWaiver() {
     });
   };
 
-  const handleStatusChange = (row: WaiverRow, action: 'approved' | 'cancelled') => {
+ const handleStatusChange = (row: WaiverRow, action: 'approved' | 'cancelled') => {
     const isCancel = action === 'cancelled';
     openCommonModal({
-      heading: isCancel ? 'Cancel Waiver' : 'Submit Waiver',
+      heading: isCancel ? 'Cancel Waiver' : 'Approve Waiver',
       subtitle: 'Please confirm this action before continuing.',
       body: (
         <>
-          Are you sure you want to {isCancel ? 'cancel' : 'submit'} waiver{' '}
+          Are you sure you want to {isCancel ? 'cancel' : 'approve'} waiver{' '}
           <Text span fw={600}>
             {row.id}
           </Text>
@@ -255,7 +262,7 @@ export function LoanWaiver() {
       buttons: [
         { label: 'Cancel', variant: 'default' },
         {
-          label: isCancel ? 'Cancel Waiver' : 'Submit',
+          label: isCancel ? 'Cancel Waiver' : 'Approve',
           color: isCancel ? 'red' : 'green',
           onClick: () => {
             updateStatus({ id: row.id, action });
@@ -407,7 +414,7 @@ export function LoanWaiver() {
                   <Menu.Dropdown>
                     {isDraft ? (
                       <Menu.Item onClick={() => handleStatusChange(row, 'approved')}>
-                        Submit
+                        Approve
                       </Menu.Item>
                     ) : (
                       <Menu.Item color="danger" onClick={() => handleStatusChange(row, 'cancelled')}>
@@ -425,27 +432,26 @@ export function LoanWaiver() {
     [isDeleting, companyCurrency]
   );
 
-  const table = useReactTable({
+   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting, pagination },
+    state: { sorting },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+  const totalRows = repaymentsResponse?.message?.data?.total ?? 0;
+  const totalPages = repaymentsResponse?.message?.data?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
 
   const resetFilters = () => {
     setSearch('');
     setLoanType(null);
-    setStatus('all');
+    setStatusFilter([]);
+    setPage(1);
   };
 
   const loanTypeOptions = Array.from(new Set(rowsData.map((r) => r.loanType).filter(Boolean)));
@@ -505,11 +511,8 @@ export function LoanWaiver() {
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+           value={search}
+            onChange={(e) => setSearch(e.currentTarget.value)}
           />
           <Select
             size="sm"
@@ -520,28 +523,20 @@ export function LoanWaiver() {
             searchable
             clearable
             rightSection={chevronDown}
-            value={loanType}
-            onChange={(v) => {
-              setLoanType(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+          value={loanType}
+            onChange={(v) => setLoanType(v)}
           />
 
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+          <FilterMultiSelect
+            placeholder="All Statuses"
             data={[
-              { label: 'All', value: 'all' },
-              { label: 'Draft', value: '0' },
-              { label: 'Submitted', value: '1' },
-              { label: 'Cancelled', value: '2' },
+              { value: '0', label: 'Draft' },
+              { value: '1', label: 'Approved' },
+              { value: '2', label: 'Cancelled' },
             ]}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            width={140}
           />
 
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
@@ -575,8 +570,9 @@ export function LoanWaiver() {
           <Group justify="center" py="xl">
             <Loader size="sm" color="brand" />
           </Group>
-        ) : (
+       ) : (
           <>
+            <Box style={{ height: 'clamp(320px, calc(100vh - 280px), 720px)', overflowY: 'auto', opacity: isFetching ? 0.6 : 1, transition: 'opacity 120ms ease' }}>
             <Table
               verticalSpacing="sm"
               horizontalSpacing="sm"
@@ -676,8 +672,10 @@ export function LoanWaiver() {
                     );
                   })
                 )}
+            
               </Table.Tbody>
             </Table>
+            </Box>
 
             <Group justify="space-between" px="sm" pt="xs">
               <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
@@ -686,10 +684,13 @@ export function LoanWaiver() {
                 </span>
                 <Group gap="xs">
                   <span>Rows:</span>
-                  <Select
+                   <Select
                     data={['10', '20', '50']}
                     value={String(pageSize)}
-                    onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                    onChange={(v) => {
+                      setPageSize(Number(v) || 10);
+                      setPage(1);
+                    }}
                     rightSection={chevronDown}
                     size="xs"
                     radius="xl"
@@ -698,14 +699,14 @@ export function LoanWaiver() {
                 </Group>
               </Group>
               <Pagination
-                total={table.getPageCount() || 1}
-                value={pageIndex + 1}
-                onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+                total={totalPages}
+                value={page}
+                onChange={(p) => setPage(p)}
                 color="brand"
                 size="xs"
                 radius="xl"
                 disabled={totalRows === 0}
-              />
+              />y
             </Group>
           </>
         )}
