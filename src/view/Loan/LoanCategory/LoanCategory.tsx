@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useDebouncedValue } from '@mantine/hooks';
 import {
   Box,
   Button,
@@ -35,11 +36,10 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getPaginationRowModel,
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import type { SortDirection, SortingState, PaginationState } from '@tanstack/react-table';
+import type { SortDirection, SortingState } from '@tanstack/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getAllLoanCategories,
@@ -49,6 +49,7 @@ import {
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { loanCategoryModal } from './loanCategoryModalStore';
+import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
 
 type LoanStatus = 'ACTIVE' | 'INACTIVE';
 
@@ -117,34 +118,55 @@ function IconText({ icon, children, mono = false }: { icon: React.ReactNode; chi
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
+// Maps the "All | Active | Inactive" segmented control to the API's `disabled` param.
+// Returns undefined for "all" so we don't send the param at all.
+
+const STATUS_FILTER_OPTIONS = [
+  { value: '0', label: 'Active' },
+  { value: '1', label: 'Inactive' },
+];
+
 export function LoanCategory() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('all');
-
+  const [debouncedSearch] = useDebouncedValue(search, 400);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }]);
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const {
-    data: res,
-    isLoading,
-    refetch: fetchCategories,
-  } = useQuery({
-    queryKey: ['loanCategories'],
-    queryFn: () => getAllLoanCategories(),
-  });
 
-  const rowsData: LoanCategoryRow[] = useMemo(() => {
-    const list = Array.isArray(res?.data?.categories) ? res.data.categories : [];
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter]);
 
-    return list.map((item: any) => ({
-      id: item.name || '',
-      name: item.loan_category_name || '—',
-      code: item.loan_category_code || '—',
-      status: Number(item.disabled) === 1 ? 'INACTIVE' : 'ACTIVE',
-    }));
-  }, [res]);
+const {
+  data: res,
+  isLoading,
+  isFetching,
+} = useQuery({
+  queryKey: ['loanCategories', debouncedSearch, statusFilter, page, pageSize],
+  queryFn: () =>
+    getAllLoanCategories({
+      search: debouncedSearch.trim() || undefined,
+      disabled: statusFilter.length > 0 ? statusFilter : undefined,
+      page,
+      page_size: pageSize,
+    }),
+  placeholderData: (prev) => prev,
+});
+
+ const rowsData: LoanCategoryRow[] = useMemo(() => {
+  const list = Array.isArray(res?.data?.categories) ? res.data.categories : [];
+
+  return list.map((item: any) => ({
+    id: item.name || '',
+    name: item.loan_category_name || '—',
+    code: item.loan_category_code || '—',
+    status: Number(item.disabled) === 1 ? 'INACTIVE' : 'ACTIVE',
+  }));
+}, [res]);
 
   const showError = (heading: string, error: any) => {
     openCommonModal({
@@ -187,15 +209,6 @@ export function LoanCategory() {
     onError: (error: any) => showError('Status Update Failed', error),
   });
 
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rowsData.filter((c) => {
-      const matchesSearch = !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q);
-      const matchesStatus = status === 'all' || c.status === status;
-      return matchesSearch && matchesStatus;
-    });
-  }, [rowsData, search, status]);
-
   const handleAdd = () => {
     loanCategoryModal.open({ editId: null, initialData: null, isView: false });
   };
@@ -204,6 +217,8 @@ export function LoanCategory() {
     loanCategoryModal.open({ editId: row.id, initialData: { code: row.code, name: row.name }, isView: false });
   };
 
+  // Shared by the eye icon and the row double-click handler — matches the
+  // ERP's "double-click a row to view" convention (see Collateral / CollateralType / LoanDisbursement).
   const handleView = (row: LoanCategoryRow) => {
     loanCategoryModal.open({ editId: row.id, initialData: { code: row.code, name: row.name }, isView: true });
   };
@@ -297,12 +312,30 @@ export function LoanCategory() {
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => handleView(row)}>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="slate"
+                  radius="md"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleView(row);
+                  }}
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="brand" radius="md" onClick={() => handleEdit(row)}>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="brand"
+                  radius="md"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(row);
+                  }}
+                >
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -313,7 +346,10 @@ export function LoanCategory() {
                   color="danger"
                   radius="md"
                   loading={isDeleting}
-                  onClick={() => handleDelete(row)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(row);
+                  }}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
@@ -324,6 +360,7 @@ export function LoanCategory() {
                   color="success"
                   checked={row.status === 'ACTIVE'}
                   disabled={isTogglingStatus}
+                  onClick={(e) => e.stopPropagation()}
                   onChange={() => toggleStatus(row)}
                 />
               </Tooltip>
@@ -334,27 +371,24 @@ export function LoanCategory() {
     ],
     [deleteMutation, enableDisableMutation]
   );
-
   const table = useReactTable<LoanCategoryRow>({
-    data: filteredData,
+    data: rowsData,
     columns,
-    state: { sorting, pagination },
+    state: { sorting },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
-
+  const totalRows = res?.data?.pagination?.total ?? 0;
+  const totalPages = res?.data?.pagination?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
   const resetFilters = () => {
     setSearch('');
-    setStatus('all');
+    setStatusFilter([]);
+    setPage(1);
   };
 
   return (
@@ -413,28 +447,16 @@ export function LoanCategory() {
             style={{ flex: 1, minWidth: 220 }}
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
-            onChange={(e) => {
-              setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            onChange={(e) => setSearch(e.currentTarget.value)}
           />
 
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-            data={[
-              { label: 'All', value: 'all' },
-              { label: 'Active', value: 'ACTIVE' },
-              { label: 'Inactive', value: 'INACTIVE' },
-            ]}
+          <FilterMultiSelect
+            placeholder="All Statuses"
+            data={STATUS_FILTER_OPTIONS}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            width={140}
           />
-
           <Group gap="xs" ml="auto">
             <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>
               Reset
@@ -475,7 +497,7 @@ export function LoanCategory() {
               horizontalSpacing="sm"
               fz="xs"
               w="100%"
-              style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+              style={{ borderCollapse: 'separate', borderSpacing: '0 8px', opacity: isFetching ? 0.6 : 1 }}
             >
               <Table.Thead>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -542,7 +564,12 @@ export function LoanCategory() {
                     const isActive = row.original.status === 'ACTIVE';
                     const cells = row.getVisibleCells();
                     return (
-                      <Table.Tr key={row.id} className="lms-row">
+                      <Table.Tr
+                        key={row.id}
+                        className="lms-row"
+                        onDoubleClick={() => handleView(row.original)}
+                        style={{ cursor: 'pointer' }}
+                      >
                         {cells.map((cell, idx) => (
                           <Table.Td
                             key={cell.id}
@@ -576,7 +603,10 @@ export function LoanCategory() {
                   <Select
                     data={['10', '20', '50']}
                     value={String(pageSize)}
-                    onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                    onChange={(v) => {
+                      setPageSize(Number(v) || 10);
+                      setPage(1);
+                    }}
                     rightSection={chevronDown}
                     size="xs"
                     radius="xl"
@@ -585,12 +615,13 @@ export function LoanCategory() {
                 </Group>
               </Group>
               <Pagination
-                total={table.getPageCount() || 1}
-                value={pageIndex + 1}
-                onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+                total={totalPages}
+                value={page}
+                onChange={(p) => setPage(p)}
                 color="brand"
                 size="xs"
                 radius="xl"
+                disabled={totalRows === 0}
               />
             </Group>
           </>
