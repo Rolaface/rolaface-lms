@@ -75,7 +75,7 @@ export function AssignUserRoleModal() {
       opened={opened}
       onClose={handleClose}
       withCloseButton={false}
-      size={760}
+      size={900}
       radius="lg"
       padding={0}
       centered
@@ -168,8 +168,8 @@ export function AssignUserRoleModal() {
                   shadow="xs"
                   style={{
                     border: `1px solid ${activeCount > 0
-                        ? "var(--mantine-color-brand-3)"
-                        : "var(--mantine-color-slate-2)"
+                      ? "var(--mantine-color-brand-3)"
+                      : "var(--mantine-color-slate-2)"
                       }`,
                     background:
                       activeCount > 0
@@ -177,7 +177,7 @@ export function AssignUserRoleModal() {
                         : "var(--mantine-color-white)",
                   }}
                 >
-                  <Group justify="space-between" wrap="nowrap" mb={activeCount > 0 ? "xs" : 0}>
+                  <Group justify="space-between" wrap="nowrap" mb="sm">
                     <Checkbox
                       label={
                         <Group gap={6} wrap="nowrap">
@@ -216,7 +216,7 @@ export function AssignUserRoleModal() {
                     )}
                   </Group>
 
-                  <Group gap={6} wrap="wrap">
+                  <Group gap={6} wrap="nowrap" mt="sm" style={{ overflowX: "auto", paddingBottom: 2 }}>
                     {PERMISSION_KEYS.map((key) => (
                       <Chip
                         key={key}

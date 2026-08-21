@@ -340,8 +340,13 @@ const reportsArrearsRoute = createRoute({
   path: "/arrears",
   component: ArrearReports,
 });
-const userRoute = createRoute({
+const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
+  path: "/settings",
+  component: Outlet,
+});
+const userRoute = createRoute({
+  getParentRoute: () => settingsRoute,   
   path: "/user",
   component: Outlet,
 });
@@ -401,7 +406,9 @@ const routeTree = rootRoute.addChildren([
   ]),
 
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute]),
+  settingsRoute.addChildren([
   userRoute.addChildren([userManagementRoute, userRolesRoute]),
+]),
 ]);
 
 export const router = createRouter({ routeTree });

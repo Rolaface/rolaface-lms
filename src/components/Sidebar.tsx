@@ -18,8 +18,9 @@ import {
   IconUsers,
   IconSettings,
   IconMenu2,
-  IconLogout,IconDiscount2,
+  IconLogout, IconDiscount2,
   IconMoneybag,
+  IconTool,
   IconChevronDown,
   IconBuildingBank,
   IconListDetails,
@@ -39,7 +40,7 @@ import {
 
 
 interface NavItem {
-  path?: string; 
+  path?: string;
   label: string;
   icon: React.ComponentType<{
     size?: number;
@@ -58,16 +59,6 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     matchPrefix: false,
   },
   { path: "/customer", label: "Customer", icon: IconUsers, matchPrefix: true },
-   {
-    path: "/user",
-    label: "User",
-    icon: IconUserCog,
-    matchPrefix: true,
-    subItems: [
-      { path: "/user/management", label: "User Management", icon: IconUsers },
-      { path: "/user/roles", label: "Role Management", icon: IconShieldCheck },
-    ],
-  },
   {
     path: "/collateral",
     label: "Collateral",
@@ -116,66 +107,66 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/operations/transfer", label: "Loan Transfer", icon: IconBuildingBank },
     ],
   },
-{
-  path: "/accounting",
-  label: "Accounting",
-  icon: IconFileInvoice,
-  matchPrefix: true,
-  subItems: [
-    {
-      path: "/accounting/general-ledger",
-      label: "General Ledger",
-      icon: IconBuildingBank,
-      subItems: [
-        {
-          path: "/accounting/general-ledger/chart-of-accounts",
-          label: "Chart of Accounts",
-          icon: IconHierarchy2,
-        },
-        {
-          path: "/accounting/general-ledger/journal-entry",
-          label: "Journal Entry",
-          icon: IconReceipt2,
-        },
-        {
-          path: "/accounting/general-ledger/report",
-          label: "General Ledger Report",
-          icon: IconFileText,
-        },
-      ],
-    },
-    {
-      path: "/accounting/trial-balance",
-      label: "Trial Balance",
-      icon: IconScale,
-    },
-    {
-      path: "/accounting/receivable",
-      label: "Receivable",
-      icon: IconUsers,
-    },
-    {
-      path: "/accounting/payable",
-      label: "Payable",
-      icon: IconBuildingBank,
-    },
-    {
-      path: "/accounting/profit-loss",
-      label: "Profit & Loss",
-      icon: IconChartBar,
-    },
-    {
-      path: "/accounting/balance-sheet",
-      label: "Balance Sheet",
-      icon: IconReportAnalytics,
-    },
-    {
-      path: "/accounting/cash-flow",
-      label: "Cash Flow",
-      icon: IconArrowsExchange,
-    },
-  ],
-},
+  {
+    path: "/accounting",
+    label: "Accounting",
+    icon: IconFileInvoice,
+    matchPrefix: true,
+    subItems: [
+      {
+        path: "/accounting/general-ledger",
+        label: "General Ledger",
+        icon: IconBuildingBank,
+        subItems: [
+          {
+            path: "/accounting/general-ledger/chart-of-accounts",
+            label: "Chart of Accounts",
+            icon: IconHierarchy2,
+          },
+          {
+            path: "/accounting/general-ledger/journal-entry",
+            label: "Journal Entry",
+            icon: IconReceipt2,
+          },
+          {
+            path: "/accounting/general-ledger/report",
+            label: "General Ledger Report",
+            icon: IconFileText,
+          },
+        ],
+      },
+      {
+        path: "/accounting/trial-balance",
+        label: "Trial Balance",
+        icon: IconScale,
+      },
+      {
+        path: "/accounting/receivable",
+        label: "Receivable",
+        icon: IconUsers,
+      },
+      {
+        path: "/accounting/payable",
+        label: "Payable",
+        icon: IconBuildingBank,
+      },
+      {
+        path: "/accounting/profit-loss",
+        label: "Profit & Loss",
+        icon: IconChartBar,
+      },
+      {
+        path: "/accounting/balance-sheet",
+        label: "Balance Sheet",
+        icon: IconReportAnalytics,
+      },
+      {
+        path: "/accounting/cash-flow",
+        label: "Cash Flow",
+        icon: IconArrowsExchange,
+      },
+    ],
+  },
   {
     path: "/reports",
     label: "Lending Reports",
@@ -184,6 +175,23 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     subItems: [
       { path: "/reports/statement", label: "Loan Statement", icon: IconFileText },
       { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics },
+    ],
+  },
+  {
+    path: "/settings",
+    label: "Settings",
+    icon: IconTool,
+    matchPrefix: true,
+    subItems: [
+      {
+        path: "/settings/user",
+        label: "User",
+        icon: IconUserCog,
+        subItems: [
+          { path: "/settings/user/management", label: "User Management", icon: IconUsers },
+          { path: "/settings/user/roles", label: "Role Management", icon: IconShieldCheck },
+        ],
+      },
     ],
   },
 ];
@@ -270,15 +278,15 @@ function NavNode({
   const isOpen = openMenus[menuKey] === true;
   const Icon = item.icon;
 
-const isActive = item.path
-  ? pathname === item.path || pathname.startsWith(item.path + "/")
-  : hasSubItems
-    ? item.subItems!.some((s) =>
+  const isActive = item.path
+    ? pathname === item.path || pathname.startsWith(item.path + "/")
+    : hasSubItems
+      ? item.subItems!.some((s) =>
         s.path
           ? pathname === s.path || pathname.startsWith(s.path + "/")
           : false
       )
-    : false;
+      : false;
 
   const textSize = depth >= 2 ? SIZES.subSubText : SIZES.subText;
   const iconSize = depth >= 2 ? SIZES.subSubIcon : SIZES.subIcon;
@@ -295,8 +303,8 @@ const isActive = item.path
   if (hasSubItems) {
     return (
       <Box className="w-full">
-      <UnstyledButton
-  onClick={() => toggleMenu(menuKey, depth)}
+        <UnstyledButton
+          onClick={() => toggleMenu(menuKey, depth)}
           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = tk.surfaceHover)}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
           className="flex w-full items-center justify-between"
@@ -371,7 +379,8 @@ function getInitialOpenMenus(pathname: string): Record<string, boolean> {
     "0-Accounting": pathname.startsWith("/accounting"),
     "1-General Ledger": pathname.startsWith("/accounting/general-ledger"),
     "0-Lending Reports": pathname.startsWith("/reports"),
-    "0-User": pathname.startsWith("/user"),
+    "0-Settings": pathname.startsWith("/settings"),
+    "1-User": pathname.startsWith("/settings/user"),
   };
 }
 
@@ -385,24 +394,24 @@ export function Sidebar({
   onLogout?: () => void;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
- const [openMenus, setOpenMenus] = React.useState<Record<string, boolean>>(() =>
-  getInitialOpenMenus(pathname)
-);
+  const [openMenus, setOpenMenus] = React.useState<Record<string, boolean>>(() =>
+    getInitialOpenMenus(pathname)
+  );
 
-const toggleMenu = (key: string, depth: number) => {
-  setOpenMenus((prev) => {
-    const willOpen = !prev[key];
-    const next: Record<string, boolean> = { ...prev };
-    Object.keys(next).forEach((k) => {
-      if (k.startsWith(`${depth}-`)) {
-        next[k] = false;
-      }
+  const toggleMenu = (key: string, depth: number) => {
+    setOpenMenus((prev) => {
+      const willOpen = !prev[key];
+      const next: Record<string, boolean> = { ...prev };
+      Object.keys(next).forEach((k) => {
+        if (k.startsWith(`${depth}-`)) {
+          next[k] = false;
+        }
+      });
+
+      next[key] = willOpen;
+      return next;
     });
-
-    next[key] = willOpen;
-    return next;
-  });
-};
+  };
 
   return (
     <Box
@@ -505,11 +514,11 @@ const toggleMenu = (key: string, depth: number) => {
                 ? { component: "button" as any }
                 : { component: Link, to: item.path })}
               onClick={(e: React.MouseEvent) => {
-  if (hasSubItems && !isCollapsed) {
-    e.preventDefault();
-    toggleMenu(menuKey, 0);
-  }
-}}
+                if (hasSubItems && !isCollapsed) {
+                  e.preventDefault();
+                  toggleMenu(menuKey, 0);
+                }
+              }}
               className={`lms-focusable relative flex w-full items-center justify-between overflow-hidden ${isCollapsed ? "justify-center" : ""}`}
               style={{
                 fontSize: SIZES.rootText,
