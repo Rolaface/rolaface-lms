@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react';
-import { useDebouncedValue } from '@mantine/hooks';
+import { useMemo, useState, useEffect } from 'react';import { useDebouncedValue } from '@mantine/hooks';
 import {
   Box,
   Button,
@@ -50,7 +49,7 @@ import {
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { collateralTypeModal } from '../../../components/Modal/collateralTypeModalStore';
-
+import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
 interface CollateralRow {
   id: string;
   type: string;
@@ -103,35 +102,36 @@ function StatusBadge({ status }: { status: string }) {
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 // Maps the UI's "all | active | disabled" segmented control to the API's `disabled` param.
-// Returns undefined for "all" so we don't send the param at all.
-function statusToDisabledParam(status: string): 0 | 1 | undefined {
-  if (status === 'active') return 0;
-  if (status === 'disabled') return 1;
-  return undefined;
-}
+const STATUS_FILTER_OPTIONS = [
+  { value: '0', label: 'Active' },
+  { value: '1', label: 'Inactive' },
+];
 
 export function CollateralType() {
   const theme = useMantineTheme();
 
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
-  const [status, setStatus] = useState('all');
-
+const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState([{ id: 'type', desc: false }]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const disabledParam = statusToDisabledParam(status);
+useEffect(() => {
+  setPage(1);
+}, [debouncedSearch, statusFilter]);
 
-  const { data: collateralResponse, isLoading, isFetching } = useQuery({
-    queryKey: ['collateralTypes', debouncedSearch, disabledParam],
-    queryFn: () =>
-      getAllCollateralTypes({
-        search: debouncedSearch.trim() || undefined,
-        disabled: disabledParam,
-      }),
-    placeholderData: (previousData) => previousData,
-  });
-
+const { data: collateralResponse, isLoading, isFetching } = useQuery({
+  queryKey: ['collateralTypes', debouncedSearch, statusFilter, page, pageSize],
+  queryFn: () =>
+    getAllCollateralTypes({
+      search: debouncedSearch.trim() || undefined,
+      disabled: statusFilter.length > 0 ? statusFilter : undefined,
+      page,
+      page_size: pageSize,
+    }),
+  placeholderData: (previousData) => previousData,
+});
   const queryClient = useQueryClient();
 
   const showError = (heading: string, error: any) => {
@@ -370,24 +370,22 @@ export function CollateralType() {
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, pagination },
+    state: { sorting },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = data.length;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
-
-  const resetFilters = () => {
-    setSearch('');
-    setStatus('all');
-  };
+  const totalRows = collateralResponse?.pagination?.total ?? 0;
+  const totalPages = collateralResponse?.pagination?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
+ const resetFilters = () => {
+  setSearch('');
+  setStatusFilter([]);
+  setPage(1);
+};
 
   return (
     <Stack gap="lg" p="lg">
@@ -438,7 +436,7 @@ export function CollateralType() {
         }}
       >
         <Group gap="sm" wrap="wrap" align="center">
-          <TextInput
+                  <TextInput
             className="lms-search"
             size="sm"
             radius="xl"
@@ -447,27 +445,16 @@ export function CollateralType() {
             style={{ flex: 1, minWidth: 220 }}
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
-            onChange={(e) => {
-              setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            onChange={(e) => setSearch(e.currentTarget.value)}
           />
 
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-            data={[
-              { label: 'All', value: 'all' },
-              { label: 'Active', value: 'active' },
-              { label: 'Disabled', value: 'disabled' },
-            ]}
-          />
+         <FilterMultiSelect
+  placeholder="All Statuses"
+  data={STATUS_FILTER_OPTIONS}
+  value={statusFilter}
+  onChange={setStatusFilter}
+  width={140}
+/>
 
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
             Reset
@@ -608,6 +595,7 @@ export function CollateralType() {
             </Table>
 
             {/* Pagination Footer */}
+                      {/* Pagination Footer */}
             <Group justify="space-between" px="sm" pt="xs">
               <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
                 <span>
@@ -618,7 +606,10 @@ export function CollateralType() {
                   <Select
                     data={['10', '20', '50']}
                     value={String(pageSize)}
-                    onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                    onChange={(v) => {
+                      setPageSize(Number(v) || 10);
+                      setPage(1);
+                    }}
                     rightSection={chevronDown}
                     size="xs"
                     radius="xl"
@@ -627,12 +618,13 @@ export function CollateralType() {
                 </Group>
               </Group>
               <Pagination
-                total={table.getPageCount() || 1}
-                value={pageIndex + 1}
-                onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+                total={totalPages}
+                value={page}
+                onChange={(p) => setPage(p)}
                 color="brand"
                 size="xs"
                 radius="xl"
+                disabled={totalRows === 0}
               />
             </Group>
           </>
