@@ -75,7 +75,20 @@ Accounting: {
 
 
 
-
+RoleManagement: {
+  createUserRoles: `${ERP_BASE}/api/method/auth_api.role_management.api.role.create`,
+  getUserRoles: `${ERP_BASE}/api/method/auth_api.role_management.api.role.get`,
+  getUserRolesbyId: `${ERP_BASE}/api/method/auth_api.role_management.api.role.get_by_id`,
+  updateUserRoles: `${ERP_BASE}/api/method/auth_api.role_management.api.role.update`,
+  updateUserRolesStatus: `${ERP_BASE}/api/method/auth_api.role_management.api.role.update_status`,
+  createUser: `${ERP_BASE}/api/method/auth_api.user_management.api.auth.signup`,
+  Language: `${ERP_BASE}/api/method/frappe.desk.search.search_link`,
+  getUser: `${ERP_BASE}/api/method/auth_api.user_management.api.auth.get`,
+  getUserbyId: `${ERP_BASE}/api/method/auth_api.user_management.api.auth.get_user_by_id`,
+  updateUser: `${ERP_BASE}/api/method/auth_api.user_management.api.auth.update`,
+  deleteUser: `${ERP_BASE}/api/method/frappe.client.delete`,
+  getGender: `${ERP_BASE}/api/resource/Gender`,
+},
 
 
 
