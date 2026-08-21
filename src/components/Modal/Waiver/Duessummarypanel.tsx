@@ -1,7 +1,8 @@
 import { Button, Text, useMantineTheme } from "@mantine/core";
 import { IconCreditCard } from "@tabler/icons-react";
 import type { LoanWaiverLoanAccount } from "../../../types/loanwaiver";
-import { formatCurrency } from "../../../utils/loanwaiverutils";
+import { formatAmount, useCurrencyReady } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
 interface DuesSummaryPanelProps {
   selectedLoan: LoanWaiverLoanAccount | null;
@@ -9,9 +10,13 @@ interface DuesSummaryPanelProps {
   isDuesLoading: boolean;
   onOpenPaymentEffect: () => void;
 }
+const fmtDate = (iso: string) =>
+  iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaymentEffect }: DuesSummaryPanelProps) {
   const theme = useMantineTheme();
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencyReady = useCurrencyReady();
 
   return (
     <div
@@ -35,7 +40,7 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
               EMI Date
             </Text>
             <Text size="sm" fw={600} c="slate.8">
-              {isDuesLoading ? "Loading..." : dues?.due_date || "—"}
+              {isDuesLoading ? "Loading..." : fmtDate(dues?.due_date)}
             </Text>
           </div>
 
@@ -47,40 +52,40 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
               <Text size="xs" c="dimmed">
                 Principal Due
               </Text>
-              <Text size="xs" c="slate.6" ff="monospace">
-                {formatCurrency(dues?.payable_principal_amount ?? 0)}
+              <Text size="xs" c="slate.6" ff="monospace" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {formatAmount(companyCurrency, dues?.payable_principal_amount ?? 0, { withSymbol: true })}
               </Text>
             </div>
             <div className="flex justify-between">
               <Text size="xs" c="dimmed">
                 Interest Due
               </Text>
-              <Text size="xs" c="slate.6" ff="monospace">
-                {formatCurrency(dues?.interest_amount ?? 0)}
+              <Text size="xs" c="slate.6" ff="monospace" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {formatAmount(companyCurrency, dues?.interest_amount ?? 0, { withSymbol: true })}
               </Text>
             </div>
             <div className="flex justify-between">
               <Text size="xs" c="dimmed">
                 Penalty
               </Text>
-              <Text size="xs" c="slate.6" ff="monospace">
-                {formatCurrency(dues?.penalty_amount ?? 0)}
+              <Text size="xs" c="slate.6" ff="monospace" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {formatAmount(companyCurrency, dues?.penalty_amount ?? 0, { withSymbol: true })}
               </Text>
             </div>
             <div className="flex justify-between">
               <Text size="xs" c="dimmed">
                 Fees/Charges
               </Text>
-              <Text size="xs" c="slate.6" ff="monospace">
-                {formatCurrency(dues?.total_charges_payable ?? 0)}
+              <Text size="xs" c="slate.6" ff="monospace" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {formatAmount(companyCurrency, dues?.total_charges_payable ?? 0, { withSymbol: true })}
               </Text>
             </div>
             <div className="flex justify-between items-center pt-1">
               <Text size="sm" fw={700} c="slate.8">
                 Total Amount Due
               </Text>
-              <Text size="sm" fw={700} c="slate.8" ff="monospace">
-                {formatCurrency(dues?.payable_amount ?? 0)}
+              <Text size="sm" fw={700} c="slate.8" ff="monospace" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {formatAmount(companyCurrency, dues?.payable_amount ?? 0, { withSymbol: true })}
               </Text>
             </div>
           </div>

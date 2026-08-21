@@ -1,7 +1,8 @@
 import { Box, Button, Modal, Table, Text, useMantineTheme } from "@mantine/core";
 import { IconCreditCard, IconX } from "@tabler/icons-react";
 import type { LoanWaiverEffect, LoanWaiverLoanAccount } from "../../../types/loanwaiver";
-import { formatCurrency } from "../../../utils/loanwaiverutils";
+import { formatAmount, useCurrencyReady } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
 interface WaiverEffectModalProps {
   opened: boolean;
@@ -12,6 +13,8 @@ interface WaiverEffectModalProps {
 
 export function WaiverEffectModal({ opened, onClose, selectedLoan, waiverEffect }: WaiverEffectModalProps) {
   const theme = useMantineTheme();
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencyReady = useCurrencyReady();
 
   return (
     <Modal opened={opened} onClose={onClose} size="640px" withCloseButton={false} padding={0} radius="md">
@@ -67,13 +70,13 @@ export function WaiverEffectModal({ opened, onClose, selectedLoan, waiverEffect 
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
-                    <Text size="sm" ff="monospace" c="slate.6">
-                      {formatCurrency(waiverEffect.totalOutstandingBefore)}
+                    <Text size="sm" ff="monospace" c="slate.6" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {formatAmount(companyCurrency, waiverEffect.totalOutstandingBefore, { withSymbol: true })}
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
-                    <Text size="sm" fw={600} ff="monospace" c="success.7">
-                      {formatCurrency(waiverEffect.totalOutstandingAfter)}
+                    <Text size="sm" fw={600} ff="monospace" c="success.7" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {formatAmount(companyCurrency, waiverEffect.totalOutstandingAfter, { withSymbol: true })}
                     </Text>
                   </Table.Td>
                 </Table.Tr>
@@ -84,13 +87,13 @@ export function WaiverEffectModal({ opened, onClose, selectedLoan, waiverEffect 
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
-                    <Text size="sm" ff="monospace" c="slate.6">
-                      {formatCurrency(waiverEffect.principalOutstandingBefore)}
+                    <Text size="sm" ff="monospace" c="slate.6" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {formatAmount(companyCurrency, waiverEffect.principalOutstandingBefore, { withSymbol: true })}
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
-                    <Text size="sm" fw={600} ff="monospace" c="slate.6">
-                      {formatCurrency(waiverEffect.principalOutstandingAfter)}
+                    <Text size="sm" fw={600} ff="monospace" c="slate.6" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {formatAmount(companyCurrency, waiverEffect.principalOutstandingAfter, { withSymbol: true })}
                     </Text>
                   </Table.Td>
                 </Table.Tr>
@@ -101,13 +104,13 @@ export function WaiverEffectModal({ opened, onClose, selectedLoan, waiverEffect 
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
-                    <Text size="sm" ff="monospace" c="slate.6">
-                      {formatCurrency(waiverEffect.arrearsBefore)}
+                    <Text size="sm" ff="monospace" c="slate.6" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {formatAmount(companyCurrency, waiverEffect.arrearsBefore, { withSymbol: true })}
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
-                    <Text size="sm" fw={600} ff="monospace" c="success.7">
-                      {formatCurrency(waiverEffect.arrearsAfter)}
+                    <Text size="sm" fw={600} ff="monospace" c="success.7" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {formatAmount(companyCurrency, waiverEffect.arrearsAfter, { withSymbol: true })}
                     </Text>
                   </Table.Td>
                 </Table.Tr>
@@ -135,13 +138,13 @@ export function WaiverEffectModal({ opened, onClose, selectedLoan, waiverEffect 
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
-                    <Text size="sm" ff="monospace" c="slate.6">
-                      {formatCurrency(waiverEffect.interestPayableBefore)}
+                    <Text size="sm" ff="monospace" c="slate.6" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {formatAmount(companyCurrency, waiverEffect.interestPayableBefore, { withSymbol: true })}
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
-                    <Text size="sm" fw={600} ff="monospace" c="success.7">
-                      {formatCurrency(waiverEffect.interestPayableAfter)}
+                    <Text size="sm" fw={600} ff="monospace" c="success.7" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {formatAmount(companyCurrency, waiverEffect.interestPayableAfter, { withSymbol: true })}
                     </Text>
                   </Table.Td>
                 </Table.Tr>
