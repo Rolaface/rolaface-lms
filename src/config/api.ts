@@ -278,6 +278,7 @@ loanStatement: {
     getAllLoanRepay: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.get_all`,
     updateStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.update_status`,
     deleteLoanRepay: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.api.delete`,
+     modeOfPayment: `${ERP_BASE}/api/resource/Mode of Payment`,
   },
 
 

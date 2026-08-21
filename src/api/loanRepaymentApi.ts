@@ -1,6 +1,6 @@
 import apiClient from "../config/axios"; 
 import { API } from "../config/api";
-import type { LoanRepaymentPayload, LoanRepaymentResponse, LoanRepaymentAccountSearchResponse, LoanDuesPayload, LoanDuesResponse} from "../types/loanRepaymentForm";
+import type { LoanRepaymentPayload, LoanRepaymentResponse, LoanRepaymentAccountSearchResponse, LoanDuesPayload, LoanDuesResponse, ModeOfPaymentResponse} from "../types/loanRepaymentForm";
 
 
 export async function createLoanRepayment(payload: LoanRepaymentPayload) {
@@ -65,5 +65,11 @@ export async function getAllLoanRepayment(params: GetAllLoanRepaymentParams = {}
 
 export async function updateLoanRepayment({ id, payload }: { id: string; payload: Partial<LoanRepaymentPayload> }) {
   const { data } = await apiClient.put(API.loanRepayment.updateLoanRepay, { ...payload, id });
+  return data;
+}
+export async function getModeOfPayment() {
+  const { data } = await apiClient.get<ModeOfPaymentResponse>(
+    API.loanRepayment.modeOfPayment
+  );
   return data;
 }
