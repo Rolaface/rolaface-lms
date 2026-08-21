@@ -134,6 +134,33 @@ export interface CommonApiResponse {
   message: string;
 }
 
+export interface GetLoanProductsParams {
+  search?: string;
+  // 0 = active, 1 = disabled. Omit karo to fetch all.
+  disabled?: 0 | 1;
+  loan_category?: string[];
+  page?: number;
+  page_size?: number;
+}
+
+export const getLoanProducts = async (
+  params?: GetLoanProductsParams
+): Promise<LoanProductApiResponse> => {
+  const cleanParams: Record<string, string | number> = {};
+  if (params?.search) cleanParams.search = params.search;
+  if (params?.disabled === 0 || params?.disabled === 1) cleanParams.disabled = params.disabled;
+  if (params?.loan_category && params.loan_category.length > 0) {
+    cleanParams.loan_category = JSON.stringify(params.loan_category);
+  }
+  if (params?.page) cleanParams.page = params.page;
+  if (params?.page_size) cleanParams.page_size = params.page_size;
+
+  const response: AxiosResponse<LoanProductApiResponse> = await api.get(
+    LoanProductAPI.get,
+    { params: cleanParams }
+  );
+  return response.data;
+};
 /* ===========================================================
    ACCOUNT / LOOKUP TYPES
    For the dropdowns in the Accounting & Collection Sequence
@@ -223,13 +250,6 @@ export interface CreateLoanProductPayload {
 /* ===========================================================
    GET ALL
 =========================================================== */
-
-export const getLoanProducts = async (): Promise<LoanProductApiResponse> => {
-  const response: AxiosResponse<LoanProductApiResponse> = await api.get(
-    LoanProductAPI.get
-  );
-  return response.data;
-};
 
 /* ===========================================================
    GET BY ID

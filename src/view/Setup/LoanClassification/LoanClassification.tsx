@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useDebouncedValue } from '@mantine/hooks';
 import {
   ActionIcon,
   Badge,
@@ -83,15 +84,32 @@ export function LoanClassification() {
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebouncedValue(search, 400);
   const [sorting, setSorting] = useState(DEFAULT_SORTING);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const { data: classifications = EMPTY_CLASSIFICATIONS, isLoading } = useQuery({
-    queryKey: ['loanClassifications'],
-    queryFn: () => getAllLoanClassifications(),
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
+  const {
+    data: response,
+    isLoading,
+    isFetching,
+  } = useQuery({
+    queryKey: ['loanClassifications', debouncedSearch, page, pageSize],
+    queryFn: () =>
+      getAllLoanClassifications({
+        search: debouncedSearch.trim() || undefined,
+        page,
+        page_size: pageSize,
+      }),
     retry: false,
+    placeholderData: (prev) => prev,
   });
 
+  const classifications = response?.data ?? EMPTY_CLASSIFICATIONS;
   const showError = (heading: string, error: any) => {
     openCommonModal({
       heading,
@@ -129,6 +147,8 @@ export function LoanClassification() {
     loanClassificationModal.open({ editId: row.code, initialData: row, isView: false });
   };
 
+  // Shared by the eye icon and the row double-click handler — matches the
+  // ERP's "double-click a row to view" convention used across the other modules.
   const handleView = (row: LoanClassificationData) => {
     loanClassificationModal.open({ editId: row.code, initialData: row, isView: true });
   };
@@ -159,14 +179,6 @@ export function LoanClassification() {
       ],
     });
   };
-
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return classifications.filter((c) => {
-      const matchesSearch = !q || c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q);
-      return matchesSearch;
-    });
-  }, [classifications, search]);
 
   const columns = useMemo(
     () => [
@@ -238,7 +250,10 @@ export function LoanClassification() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => handleView(row)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleView(row);
+                  }}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -249,7 +264,10 @@ export function LoanClassification() {
                   variant="subtle"
                   color="brand"
                   radius="md"
-                  onClick={() => handleEdit(row)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(row);
+                  }}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -261,7 +279,10 @@ export function LoanClassification() {
                   color="danger"
                   radius="md"
                   loading={isDeleting}
-                  onClick={() => handleDelete(row)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(row);
+                  }}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
@@ -276,25 +297,23 @@ export function LoanClassification() {
   );
 
   const table = useReactTable({
-    data: filteredData,
+    data: classifications,
     columns,
-    state: { sorting, pagination },
+    state: { sorting },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+  const totalRows = response?.pagination?.total ?? 0;
+  const totalPages = response?.pagination?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
 
   const resetFilters = () => {
     setSearch('');
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
+    setPage(1);
   };
 
   return (
@@ -348,7 +367,7 @@ export function LoanClassification() {
         }}
       >
         <Group gap="sm" wrap="wrap" align="center">
-          <TextInput
+                    <TextInput
             className="lms-search"
             size="sm"
             radius="xl"
@@ -357,10 +376,7 @@ export function LoanClassification() {
             style={{ flex: 1, minWidth: 220 }}
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
-            onChange={(e) => {
-              setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            onChange={(e) => setSearch(e.currentTarget.value)}
           />
 
           <Group gap="xs" ml="auto">
@@ -398,7 +414,7 @@ export function LoanClassification() {
           horizontalSpacing="sm"
           fz="xs"
           w="100%"
-          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+          style={{ borderCollapse: 'separate', borderSpacing: '0 8px', opacity: isFetching ? 0.6 : 1 }}
         >
           <Table.Thead>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -475,7 +491,12 @@ export function LoanClassification() {
               rows.map((row) => {
                 const cells = row.getVisibleCells();
                 return (
-                  <Table.Tr key={row.id} className="lms-row">
+                  <Table.Tr
+                    key={row.id}
+                    className="lms-row"
+                    onDoubleClick={() => handleView(row.original)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {cells.map((cell, idx) => (
                       <Table.Td
                         key={cell.id}
@@ -497,6 +518,7 @@ export function LoanClassification() {
         </Table>
 
         {/* Pagination Footer */}
+              {/* Pagination Footer */}
         <Group justify="space-between" px="sm" pt="xs">
           <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
             <span>
@@ -507,7 +529,10 @@ export function LoanClassification() {
               <Select
                 data={['10', '20', '50']}
                 value={String(pageSize)}
-                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                onChange={(v) => {
+                  setPageSize(Number(v) || 10);
+                  setPage(1);
+                }}
                 rightSection={chevronDown}
                 size="xs"
                 radius="xl"
@@ -516,9 +541,9 @@ export function LoanClassification() {
             </Group>
           </Group>
           <Pagination
-            total={table.getPageCount() || 1}
-            value={pageIndex + 1}
-            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+            total={totalPages}
+            value={page}
+            onChange={(p) => setPage(p)}
             color="brand"
             size="xs"
             radius="xl"
