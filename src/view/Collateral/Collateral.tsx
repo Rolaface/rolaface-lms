@@ -6,6 +6,7 @@ import {
   Button,
   TextInput,
   Select,
+  SegmentedControl,
   Group,
   Paper,
   Table,
@@ -157,10 +158,13 @@ function IconText({ icon, children, mono = false }: { icon: React.ReactNode; chi
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-const STATUS_FILTER_OPTIONS = [
-  { value: '0', label: 'Active' },
-  { value: '1', label: 'Inactive' },
-];
+// Maps the UI's "all | active | disabled" segmented control to the API's `disabled` param.
+// Returns undefined for "all" so we don't send the param at all.
+function statusToDisabledParam(status: string): 0 | 1 | undefined {
+  if (status === 'active') return 0;
+  if (status === 'disabled') return 1;
+  return undefined;
+}
 
 export function Collateral() {
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
@@ -172,7 +176,9 @@ export function Collateral() {
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [status, setStatus] = useState('all');
+
+  const disabledParam = statusToDisabledParam(status);
 
   // table state
   const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
@@ -181,14 +187,14 @@ export function Collateral() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter, selectedTypes]);
+  }, [debouncedSearch, disabledParam, selectedTypes]);
 
   const { data: collateralResponse, isLoading, isFetching } = useQuery({
-    queryKey: ['collaterals', debouncedSearch, statusFilter, selectedTypes, page, pageSize],
+    queryKey: ['collaterals', debouncedSearch, disabledParam, selectedTypes, page, pageSize],
     queryFn: () =>
       getAllCollaterals({
         search: debouncedSearch.trim() || undefined,
-        disabled: statusFilter.length > 0 ? statusFilter : undefined,
+        disabled: disabledParam,
         loan_security_type: selectedTypes.length > 0 ? selectedTypes : undefined,
         page,
         page_size: pageSize,
@@ -242,7 +248,7 @@ export function Collateral() {
     mutationFn: (id: string) => enableCollateral(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collaterals'] });
-      showSuccess('Collateral Activated', 'Collateral has been activated successfully.');
+      showSuccess('Collateral Activated', 'Collateral has been marked active successfully.');
     },
     onError: (error: any) => showError('Status Update Failed', error),
   });
@@ -251,7 +257,7 @@ export function Collateral() {
     mutationFn: (id: string) => disableCollateral(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collaterals'] });
-      showSuccess('Collateral Deactivated', 'Collateral has been deactivated successfully.');
+      showSuccess('Collateral Marked Inactive', 'Collateral has been marked inactive successfully.');
     },
     onError: (error: any) => showError('Status Update Failed', error),
   });
@@ -312,22 +318,22 @@ export function Collateral() {
   const handleToggleStatus = (row: CollateralRow) => {
     const willDeactivate = row.status === 'ACTIVE';
     openCommonModal({
-      heading: willDeactivate ? 'Deactivate Collateral' : 'Activate Collateral',
+      heading: willDeactivate ? 'Mark as Inactive' : 'Mark as Active',
       subtitle: 'Please confirm this action before continuing.',
       body: (
         <>
-          Are you sure you want to {willDeactivate ? 'deactivate' : 'activate'} collateral{' '}
+          Are you sure you want to mark collateral{' '}
           <Text span fw={600}>
             {row.name}
-          </Text>
-          ?
+          </Text>{' '}
+          as {willDeactivate ? 'inactive' : 'active'}?
         </>
       ),
       color: willDeactivate ? 'red' : 'green',
       buttons: [
         { label: 'Cancel', variant: 'default' },
         {
-          label: willDeactivate ? 'Deactivate' : 'Activate',
+          label: willDeactivate ? 'Inactive' : 'Active',
           color: willDeactivate ? 'red' : 'green',
           onClick: () => {
             if (willDeactivate) {
@@ -437,7 +443,7 @@ export function Collateral() {
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={isActive ? 'Deactivate' : 'Activate'} withArrow>
+              <Tooltip label={isActive ? 'Inactive' : 'Active'} withArrow>
                 <Switch
                   size="xs"
                   color="success"
@@ -473,7 +479,7 @@ export function Collateral() {
   const resetFilters = () => {
     setSearch('');
     setSelectedTypes([]);
-    setStatusFilter([]);
+    setStatus('all');
     setPage(1);
   };
 
@@ -519,7 +525,7 @@ export function Collateral() {
         </Group>
       </Group>
 
-      {/* Toolbar — pill search + multiselect type filter + multiselect status filter */}
+      {/* Toolbar — pill search + multiselect type filter + segmented status filter */}
       <Paper
         radius="xl"
         p="xs"
@@ -549,12 +555,17 @@ export function Collateral() {
             width={180}
           />
 
-          <FilterMultiSelect
-            placeholder="All Statuses"
-            data={STATUS_FILTER_OPTIONS}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            width={140}
+          <SegmentedControl
+            size="xs"
+            radius="xl"
+            color="brand"
+            value={status}
+            onChange={setStatus}
+            data={[
+              { label: 'All', value: 'all' },
+              { label: 'Active', value: 'active' },
+              { label: 'Inactive', value: 'disabled' },
+            ]}
           />
 
           <Group gap="xs" ml="auto">
