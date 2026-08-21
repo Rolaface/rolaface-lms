@@ -649,8 +649,13 @@ export function LoanWaiver() {
                     const rowMeta =
                       STATUS_META[row.original.docstatus] || { label: String(row.original.docstatus), color: 'slate' };
                     const cells = row.getVisibleCells();
-                    return (
-                      <Table.Tr key={row.id} className="lms-row">
+                                       return (
+                      <Table.Tr
+                        key={row.id}
+                        className="lms-row"
+                        onDoubleClick={() => loanWaiverModal.open({ editId: row.original.id, isView: true })}
+                        style={{ cursor: 'pointer' }}
+                      >
                         {cells.map((cell, idx) => (
                           <Table.Td
                             key={cell.id}
