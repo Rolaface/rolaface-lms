@@ -93,6 +93,9 @@ function SortIcon({ sorted }: { sorted: string | boolean }) {
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
+const fmtDate = (iso: string) =>
+  iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+
 export function LoanTransfer() {
   const theme = useMantineTheme();
 
@@ -190,14 +193,15 @@ export function LoanTransfer() {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor('transferDate', {
-        header: 'Transfer Date',
-        cell: (info) => (
-          <Text fz="sm" fw={700} c="slate.8">
-            {info.getValue()}
-          </Text>
-        ),
-      }),
+   columnHelper.accessor('transferDate', {
+  header: 'Transfer Date',
+  cell: (info) => (
+    <Text fz="sm" fw={700} c="slate.8">
+      {fmtDate(info.getValue())}
+    </Text>
+  ),
+  sortingFn: 'basic',
+}),
       columnHelper.accessor('fromBranch', {
         header: 'From Branch',
         cell: (info) => (

@@ -50,6 +50,8 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { loanWriteOffModal } from './LoanWriteOffModalStore';
+import { formatAmount, useCurrencyReady } from '../../../store/currencyStore';
+import { useCompanyStore } from '../../../store/companyStore';
 const columnHelper = createColumnHelper<LoanWriteOffListItem>();
 
 function SortIcon({ sorted }: { sorted: string | boolean }) {
@@ -61,10 +63,14 @@ function SortIcon({ sorted }: { sorted: string | boolean }) {
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
+const fmtDate = (iso: string) =>
+  iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+
 export function LoanWriteOff() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
-
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencyReady = useCurrencyReady();
 
   const [editData, setEditData] = useState<LoanWriteOffDetail | null>(null);
   const [search, setSearch] = useState('');
@@ -240,22 +246,28 @@ export function LoanWriteOff() {
           </Text>
         ),
       }),
-      columnHelper.accessor('write_off_amount', {
-        header: 'Write-off Amount',
-        cell: (info) => (
-          <Text fz="xs" fw={700} c="slate.8">
-            ₹{Number(info.getValue()).toLocaleString('en-IN')}
-          </Text>
-        ),
-      }),
+     columnHelper.accessor('write_off_amount', {
+  header: 'Write-off Amount',
+  cell: (info) => (
+    <Text
+      fz="xs"
+      fw={700}
+      c="slate.8"
+      style={{ fontVariantNumeric: 'tabular-nums' }}
+    >
+      {formatAmount(companyCurrency, Number(info.getValue()), { withSymbol: true })}
+    </Text>
+  ),
+}),
       columnHelper.accessor('posting_date', {
-        header: 'Posting Date',
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {info.getValue()}
-          </Text>
-        ),
-      }),
+  header: 'Posting Date',
+  cell: (info) => (
+    <Text fz="xs" c="slate.6">
+      {fmtDate(info.getValue())}
+    </Text>
+  ),
+  sortingFn: 'basic',
+}),
       columnHelper.display({
         id: 'actions',
         header: () => (
@@ -333,7 +345,7 @@ export function LoanWriteOff() {
         },
       }),
     ],
-    [deleteMutation.isPending, deleteMutation.variables, statusMutation.isPending, statusMutation.variables]
+    [deleteMutation.isPending, deleteMutation.variables, statusMutation.isPending, statusMutation.variables, companyCurrency]
   );
 
   const table = useReactTable({

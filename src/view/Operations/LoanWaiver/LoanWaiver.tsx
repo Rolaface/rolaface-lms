@@ -48,6 +48,8 @@ import {
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { loanWaiverModal } from './LoanWaiverModalStore';
+import { formatAmount, useCurrencyReady } from '../../../store/currencyStore';
+import { useCompanyStore } from '../../../store/companyStore';
 
 const WAIVER_TYPES = ['Interest Waiver', 'Penalty Waiver', 'Charges Waiver'];
 
@@ -114,8 +116,13 @@ function natureColor(type: string) {
   if (type === 'Penalty Waiver') return 'gold';
   return 'accent';
 }
+
+const fmtDate = (iso: string) =>
+  iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 export function LoanWaiver() {
   const theme = useMantineTheme();
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencyReady = useCurrencyReady();
   const [search, setSearch] = useState('');
   const [loanType, setLoanType] = useState<string | null>(null);
   const [status, setStatus] = useState('all');
@@ -309,22 +316,30 @@ export function LoanWaiver() {
           </Badge>
         ),
       }),
-      columnHelper.accessor('amountPaid', {
-        header: 'Waiver Amount',
-        cell: (info) => (
-          <Text fz="xs" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-            ${info.getValue().toLocaleString('en-US', { minimumFractionDigits: 2 })}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor('valueDate', {
-        header: 'Value Date',
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {info.getValue()}
-          </Text>
-        ),
-      }),
+     columnHelper.accessor('amountPaid', {
+  header: 'Waiver Amount',
+  cell: (info) => (
+    <Text
+      fz="xs"
+      c="slate.6"
+      style={{
+        fontFamily: 'var(--mantine-font-family-monospace)',
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
+    </Text>
+  ),
+}),
+     columnHelper.accessor('valueDate', {
+  header: 'Value Date',
+  cell: (info) => (
+    <Text fz="xs" c="slate.6">
+      {fmtDate(info.getValue())}
+    </Text>
+  ),
+  sortingFn: 'basic',
+}),
       columnHelper.accessor('docstatus', {
         header: 'Status',
         cell: (info) => {
@@ -407,7 +422,7 @@ export function LoanWaiver() {
         },
       }),
     ],
-    [isDeleting]
+    [isDeleting, companyCurrency]
   );
 
   const table = useReactTable({
