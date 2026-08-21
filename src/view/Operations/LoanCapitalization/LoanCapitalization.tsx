@@ -53,6 +53,8 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { keepPreviousData } from '@tanstack/react-query';
 import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
 import { getAllLoanProducts } from '../../../api/productApi';
+import { formatAmount, useCurrencyReady } from '../../../store/currencyStore';
+import { useCompanyStore } from '../../../store/companyStore';
 
 const CAPITALIZATION_TYPES = ['Interest Capitalization', 'Principal Capitalization', 'Charges Capitalization'];
 interface CapitalizationRow {
@@ -89,6 +91,11 @@ function natureColor(type: string) {
   return 'slate';
 }
 
+const fmtDate = (iso: string) =>
+  iso && iso !== '—'
+    ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    : '-';
+
 function StatusBadge({ docstatus }: { docstatus: number }) {
   const meta = STATUS_META[docstatus] || { label: String(docstatus), scale: 'gray' };
   const color = meta.scale === 'gray' ? 'slate' : meta.scale;
@@ -117,16 +124,26 @@ function StatusBadge({ docstatus }: { docstatus: number }) {
   );
 }
 
-function AmountCell({ value }: { value: number }) {
+function AmountCell({ value, currency }: { value: number; currency: string | undefined }) {
   return (
-    <Text fz="xs" fw={700} c="slate.8" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-      {value.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+    <Text
+      fz="xs"
+      fw={700}
+      c="slate.8"
+      style={{
+        fontFamily: 'var(--mantine-font-family-monospace)',
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {formatAmount(currency, value, { withSymbol: true })}
     </Text>
   );
 }
 
 export function LoanCapitalization() {
   const theme = useMantineTheme();
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencyReady = useCurrencyReady();
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch] = useDebouncedValue(searchInput, 400);
   const [productSearchInput, setProductSearchInput] = useState('');
@@ -343,17 +360,18 @@ export function LoanCapitalization() {
         ),
       }),
       columnHelper.accessor('amountPaid', {
-        header: 'Capitalized Amount',
-        cell: (info) => <AmountCell value={info.getValue()} />,
-      }),
+  header: 'Capitalized Amount',
+  cell: (info) => <AmountCell value={info.getValue()} currency={companyCurrency} />,
+}),
       columnHelper.accessor('valueDate', {
-        header: 'Value Date',
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {info.getValue()}
-          </Text>
-        ),
-      }),
+  header: 'Value Date',
+  cell: (info) => (
+    <Text fz="xs" c="slate.6">
+      {fmtDate(info.getValue())}
+    </Text>
+  ),
+  sortingFn: 'basic',
+}),
       columnHelper.accessor('docstatus', {
         header: 'Status',
         cell: (info) => <StatusBadge docstatus={info.getValue()} />,
@@ -433,7 +451,7 @@ export function LoanCapitalization() {
         },
       }),
     ],
-    [isDeleting]
+    [isDeleting, companyCurrency]
   );
 
   const table = useReactTable({

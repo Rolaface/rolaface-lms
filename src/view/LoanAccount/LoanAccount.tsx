@@ -48,6 +48,7 @@ import { getAllLoanProducts } from "../../api/productApi";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { openCommonModal } from "../../components/Modal/AlertModal";
 import { getSymbol } from "../../store/currencyStore";
+import { formatAmount, useCurrencyReady } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 
@@ -116,13 +117,7 @@ function StatusBadge({ label, color }: { label: string; color: string }) {
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-const fmtAmount = (n: number) =>
-  n
-    ? n.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-    : "0.00";
+
 
 const fmtDate = (iso: string) =>
   iso
@@ -133,8 +128,7 @@ const fmtDate = (iso: string) =>
     })
     : "-";
 
-/** Minimal shape we hand off to LoanDetailView when the user opens a loan
- *  straight from the Loan Booking list (no customer context here yet). */
+
 interface SelectedLoan {
   id: string;
   customerId: string;
@@ -297,8 +291,8 @@ export function LoanAccount() {
     return data.filter((a) => a.branch === branch);
   }, [data, branch]);
 
-  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
-  const currencySymbol = getSymbol(companyCurrency);
+const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+const currencyReady = useCurrencyReady();
 
   const columns = useMemo(
     () => [
@@ -345,19 +339,22 @@ export function LoanAccount() {
           </Text>
         ),
       }),
-      columnHelper.accessor("amount", {
-        header: "Amount",
-        cell: (info) => (
-          <Text
-            fz="xs"
-            c="slate.6"
-            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
-          >
-            {currencySymbol} {fmtAmount(info.getValue())}
-          </Text>
-        ),
-        sortingFn: "basic",
-      }),
+    columnHelper.accessor("amount", {
+  header: "Amount",
+  cell: (info) => (
+    <Text
+      fz="xs"
+      c="slate.6"
+      style={{
+        fontFamily: "var(--mantine-font-family-monospace)",
+        fontVariantNumeric: "tabular-nums",
+      }}
+    >
+      {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
+    </Text>
+  ),
+  sortingFn: "basic",
+}),
       columnHelper.accessor("rate", {
         header: "Rate",
         cell: (info) => (
@@ -547,7 +544,7 @@ export function LoanAccount() {
         },
       }),
     ],
-    [isDeleting],
+    [isDeleting, companyCurrency],
   );
 
   const table = useReactTable({
