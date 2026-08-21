@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState ,useEffect} from 'react';
 import { useDebouncedValue } from '@mantine/hooks';
 import {
   Box,
@@ -49,7 +49,6 @@ import {
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { loanCategoryModal } from './loanCategoryModalStore';
-import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
 
 type LoanStatus = 'ACTIVE' | 'INACTIVE';
 
@@ -120,53 +119,55 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 // Maps the "All | Active | Inactive" segmented control to the API's `disabled` param.
 // Returns undefined for "all" so we don't send the param at all.
-
-const STATUS_FILTER_OPTIONS = [
-  { value: '0', label: 'Active' },
-  { value: '1', label: 'Inactive' },
-];
+function statusToDisabledParam(status: string): 0 | 1 | undefined {
+  if (status === 'ACTIVE') return 0;
+  if (status === 'INACTIVE') return 1;
+  return undefined;
+}
 
 export function LoanCategory() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [status, setStatus] = useState('all');
+
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const disabledParam = statusToDisabledParam(status);
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter]);
+  }, [debouncedSearch, disabledParam]);
 
-const {
-  data: res,
-  isLoading,
-  isFetching,
-} = useQuery({
-  queryKey: ['loanCategories', debouncedSearch, statusFilter, page, pageSize],
-  queryFn: () =>
-    getAllLoanCategories({
-      search: debouncedSearch.trim() || undefined,
-      disabled: statusFilter.length > 0 ? statusFilter : undefined,
-      page,
-      page_size: pageSize,
-    }),
-  placeholderData: (prev) => prev,
-});
+  const {
+    data: res,
+    isLoading,
+    isFetching,
+  } = useQuery({
+    queryKey: ['loanCategories', debouncedSearch, disabledParam, page, pageSize],
+    queryFn: () =>
+      getAllLoanCategories({
+        search: debouncedSearch.trim() || undefined,
+        disabled: disabledParam,
+        page,
+        page_size: pageSize,
+      }),
+    placeholderData: (prev) => prev,
+  });
 
- const rowsData: LoanCategoryRow[] = useMemo(() => {
-  const list = Array.isArray(res?.data?.categories) ? res.data.categories : [];
+  const rowsData: LoanCategoryRow[] = useMemo(() => {
+    const list = Array.isArray(res?.data?.categories) ? res.data.categories : [];
 
-  return list.map((item: any) => ({
-    id: item.name || '',
-    name: item.loan_category_name || '—',
-    code: item.loan_category_code || '—',
-    status: Number(item.disabled) === 1 ? 'INACTIVE' : 'ACTIVE',
-  }));
-}, [res]);
+    return list.map((item: any) => ({
+      id: item.name || '',
+      name: item.loan_category_name || '—',
+      code: item.loan_category_code || '—',
+      status: Number(item.disabled) === 1 ? 'INACTIVE' : 'ACTIVE',
+    }));
+  }, [res]);
 
   const showError = (heading: string, error: any) => {
     openCommonModal({
@@ -387,7 +388,7 @@ const {
   const lastRow = Math.min(totalRows, page * pageSize);
   const resetFilters = () => {
     setSearch('');
-    setStatusFilter([]);
+    setStatus('all');
     setPage(1);
   };
 
@@ -438,7 +439,7 @@ const {
         }}
       >
         <Group gap="sm" wrap="wrap" align="center">
-          <TextInput
+               <TextInput
             className="lms-search"
             size="sm"
             radius="xl"
@@ -450,12 +451,17 @@ const {
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
 
-          <FilterMultiSelect
-            placeholder="All Statuses"
-            data={STATUS_FILTER_OPTIONS}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            width={140}
+          <SegmentedControl
+            size="xs"
+            radius="xl"
+            color="brand"
+            value={status}
+            onChange={setStatus}
+            data={[
+              { label: 'All', value: 'all' },
+              { label: 'Active', value: 'ACTIVE' },
+              { label: 'Inactive', value: 'INACTIVE' },
+            ]}
           />
           <Group gap="xs" ml="auto">
             <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>
@@ -593,7 +599,7 @@ const {
               </Table.Tbody>
             </Table>
 
-            <Group justify="space-between" px="sm" pt="xs">
+                      <Group justify="space-between" px="sm" pt="xs">
               <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
                 <span>
                   {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
