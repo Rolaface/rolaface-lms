@@ -4,19 +4,24 @@ import type { CreateCollateralPayload, CreateCollateralResponse } from "../types
 
 export interface GetCollateralsParams {
   search?: string;
-  // 0 = active, 1 = disabled. Omit to fetch all.
-  disabled?: 0 | 1;
-  // Sent as a JSON-stringified array, e.g. loan_security_type=["House","Vehicle"]
+  // Multiple values allowed — "0" = active, "1" = disabled.
+  disabled?: string[];
   loan_security_type?: string[];
+  page?: number;
+  page_size?: number;
 }
 
 export async function getAllCollaterals(params?: GetCollateralsParams) {
   const cleanParams: Record<string, string | number> = {};
   if (params?.search) cleanParams.search = params.search;
-  if (params?.disabled === 0 || params?.disabled === 1) cleanParams.disabled = params.disabled;
+  if (params?.disabled && params.disabled.length > 0) {
+    cleanParams.disabled = JSON.stringify(params.disabled.map(Number));
+  }
   if (params?.loan_security_type && params.loan_security_type.length > 0) {
     cleanParams.loan_security_type = JSON.stringify(params.loan_security_type);
   }
+  if (params?.page) cleanParams.page = params.page;
+  if (params?.page_size) cleanParams.page_size = params.page_size;
 
   const { data } = await apiClient.get(API.collateral.getCollateral, {
     params: cleanParams,
