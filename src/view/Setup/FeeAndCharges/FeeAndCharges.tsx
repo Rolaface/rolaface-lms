@@ -54,12 +54,6 @@ function SortIcon({ sorted }: { sorted: string | boolean }) {
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-const STATUS_OPTIONS = [
-  { value: '', label: 'All Status' },
-  { value: '0', label: 'Active' },
-  { value: '1', label: 'Inactive' },
-];
-
 export function FeeAndCharges() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
@@ -70,7 +64,6 @@ export function FeeAndCharges() {
 
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
-  const [statusFilter, setStatusFilter] = useState<string | null>('');
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -80,16 +73,15 @@ export function FeeAndCharges() {
   // Reset to page 1 whenever a backend filter actually changes — same as LoanAccount.
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter]);
+  }, [debouncedSearch]);
 
   const { data: chargesResponse, isLoading, isFetching, isError } = useQuery({
-    queryKey: ['fee-and-charges', page, pageSize, debouncedSearch, statusFilter],
+    queryKey: ['fee-and-charges', page, pageSize, debouncedSearch],
     queryFn: () =>
       getFeeAndCharges({
         page,
         page_size: pageSize,
         search: debouncedSearch.trim() || undefined,
-        disabled: statusFilter === '1' ? 1 : statusFilter === '0' ? 0 : undefined,
       }),
     placeholderData: (prev) => prev,
   });
@@ -152,7 +144,6 @@ export function FeeAndCharges() {
 
   const resetFilters = () => {
     setSearch('');
-    setStatusFilter('');
     setPage(1);
   };
 
@@ -317,17 +308,6 @@ export function FeeAndCharges() {
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
-          />
-
-          <Select
-            data={STATUS_OPTIONS}
-            value={statusFilter}
-            onChange={(v) => setStatusFilter(v ?? '')}
-            placeholder="Status"
-            size="sm"
-            radius="xl"
-            w={140}
-            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
           />
 
           <Group gap="xs" ml="auto">
