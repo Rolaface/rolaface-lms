@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { useDebouncedValue } from '@mantine/hooks';
 import dayjs from 'dayjs';
 import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
-import { CurrencySymbol } from '../../../components/shared/CurrencyIcon';
+import { formatAmount, useCurrencyReady } from '../../../store/currencyStore';
+import { useCompanyStore } from '../../../store/companyStore';
 import {
   Box,
   Button,
@@ -60,6 +61,7 @@ interface DisbursementRow {
   status: string;
 }
 
+
 const columnHelper = createColumnHelper<DisbursementRow>();
 const STATUS_FILTER_OPTIONS = [
   { value: 'Draft', label: 'Draft' },
@@ -108,6 +110,8 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function LoanDisbursement() {
   const theme = useMantineTheme();
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+ const currencyReady = useCurrencyReady();
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
  const [applicantType, setApplicantType] = useState<string | null>(null);
@@ -307,12 +311,19 @@ export function LoanDisbursement() {
     </Text>
   ),
 }),
-      columnHelper.accessor('disbursedAmount', {
+     columnHelper.accessor('disbursedAmount', {
   header: 'Disbursed Amount',
   cell: (info) => (
-    <Text fz="xs" fw={600} c="slate.8" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-      <CurrencySymbol size="xs" fw={600} />{' '}
-        {info.getValue().toLocaleString('en-IN')}
+    <Text
+      fz="xs"
+      fw={600}
+      c="slate.8"
+      style={{
+        fontFamily: 'var(--mantine-font-family-monospace)',
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
     </Text>
   ),
 }),
@@ -459,7 +470,7 @@ export function LoanDisbursement() {
         },
       }),
     ],
-    [deleteMutation, statusMutation]
+    [deleteMutation, statusMutation, companyCurrency]
   );
 
   const table = useReactTable({

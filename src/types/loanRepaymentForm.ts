@@ -65,3 +65,11 @@ export interface LoanDuesPayload {
   posting_date: string;
   against_loan: string;
 }
+export interface ModeOfPaymentOption {
+  name: string;
+  default_account: string | null;
+}
+
+export interface ModeOfPaymentResponse {
+  data: ModeOfPaymentOption[];
+}

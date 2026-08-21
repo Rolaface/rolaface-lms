@@ -11,6 +11,7 @@ import {
   getLoanDues,
   getLoanRepaymentById,
   updateLoanRepayment,
+   getModeOfPayment,
 } from "../../api/loanRepaymentApi";
 import type { Borrower, LoanAccount, LoanRepaymentFormData, LoanRepaymentFormValues } from "../../types/loanRepayment";
 import { computePaymentEffect, toRepaymentType,fromRepaymentType  } from "../../utils/Loanrepaymentutils";
@@ -53,6 +54,20 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView, 
     queryFn: () => getLoanRepaymentAccount(search),
     enabled: opened && search.trim().length > 0,
   });
+  const { data: modeOfPaymentResponse, isLoading: isModeOfPaymentLoading } = useQuery({
+  queryKey: ["modeOfPayment"],
+  queryFn: () => getModeOfPayment(),
+  enabled: opened,
+  staleTime: 5 * 60 * 1000, // rarely changes, avoid refetching every open
+});
+
+const modeOfPaymentOptions = useMemo(() => {
+  const items = modeOfPaymentResponse?.data ?? [];
+  return items.map((item) => ({
+    value: item.name,
+    label: item.name,
+  }));
+}, [modeOfPaymentResponse]);
 
   const matches: Borrower[] = useMemo(() => {
     const items = searchResponse?.message?.data ?? [];
@@ -327,13 +342,15 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView, 
             isView={isView}
           />
 
-          <PaymentExecutionPanel
-            form={form}
-            selectedLoan={selectedLoan}
-            selectedBorrower={selectedBorrower}
-            isView={isView}
-            onNatureChange={handleNatureChange}
-          />
+         <PaymentExecutionPanel
+  form={form}
+  selectedLoan={selectedLoan}
+  selectedBorrower={selectedBorrower}
+  isView={isView}
+  onNatureChange={handleNatureChange}
+  modeOfPaymentOptions={modeOfPaymentOptions}
+  isModeOfPaymentLoading={isModeOfPaymentLoading}
+/>
 
           <DuesSummaryPanel
             selectedLoan={selectedLoan}

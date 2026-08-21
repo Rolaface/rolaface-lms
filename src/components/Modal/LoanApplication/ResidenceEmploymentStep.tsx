@@ -64,82 +64,121 @@ const countryOptions = useMemo(() => {
   return countries.map((c: any) => ({ value: c.value, label: c.label }));
 }, [countryResponse]);
 
-  if (loanType === "Personal") {
-    return (
-     <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" verticalSpacing="md">
-  <TextInput
-    radius="md"
-    label={<Label text="Residential address" required />}
-    placeholder="e.g. Plot 12, Kabulonga, Lusaka"
-    {...form.getInputProps("residentialAddress")}
-  />
-  <TextInput
-    radius="md"
-    label={<Label text="Occupation" required />}
-    placeholder="e.g. Software Engineer"
-    {...form.getInputProps("occupation")}
-  />
-  <TextInput
-    radius="md"
-    label={<Label text="Employer name" required />}
-    placeholder="e.g. ABC Enterprises Ltd"
-    {...form.getInputProps("employerName")}
-  />
-
-     <Select
-  radius="md"
-  label={<Label text="Nationality" required />}
-  placeholder={isCountriesLoading ? "Loading..." : "Select nationality"}
-  searchable
-  clearable
-  data={countryOptions}
-  disabled={isCountriesLoading}
-  {...form.getInputProps("nationality")}
-/>
+if (loanType === "Personal") {
+  return (
+    <Stack gap="sm">
+      <SimpleGrid
+        cols={{ base: 1, sm: 3 }}
+        spacing="md"
+        verticalSpacing="sm"
+      >
         <TextInput
-    radius="md"
-    label={<Label text="Principal objective of loan" required />}
-    placeholder="e.g. Home renovation"
-    {...form.getInputProps("principalObjective")}
-  />
-  <TextInput
-    radius="md"
-    label={<Label text="Next of kin name" required />}
-    placeholder="e.g. John Doe"
-    {...form.getInputProps("kinName")}
-  />
+          radius="md"
+          label={<Label text="Residential address" required />}
+          placeholder="e.g. Plot 12, Kabulonga, Lusaka"
+          {...form.getInputProps("residentialAddress")}
+          style={{ gridColumn: "1 / -1" }}
+        />
 
-  <TextInput
-    radius="md"
-    type="tel"
-    label={<Label text="Next of kin phone" required />}
-    placeholder="e.g. 0971234567"
-    value={form.values.kinPhone}
-    onChange={(e) => form.setFieldValue("kinPhone", e.currentTarget.value.replace(/\D/g, ""))}
-    error={form.errors.kinPhone}
-  />
-  <TextInput
-    radius="md"
-    type="email"
-    label={<Label text="Next of kin email" required />}
-    placeholder="e.g. john.doe@example.com"
-    value={form.values.kinEmail}
-    onChange={(e) => {
-      form.setFieldValue("kinEmail", e.currentTarget.value);
-      form.validateField("kinEmail");
-    }}
-    error={form.errors.kinEmail}
-  />
+        <TextInput
+          radius="md"
+          label={<Label text="Occupation" required />}
+          placeholder="e.g. Software Engineer"
+          {...form.getInputProps("occupation")}
+        />
+
+        <TextInput
+          radius="md"
+          label={<Label text="Employer name" required />}
+          placeholder="e.g. ABC Enterprises Ltd"
+          {...form.getInputProps("employerName")}
+        />
+
         <Select
-  radius="md"
-  label={<Label text="Relationship" required />}
-  placeholder="Select"
-  data={RELATIONSHIPS}
-  {...form.getInputProps("kinRelationship")}
-/>
+          radius="md"
+          label={<Label text="Nationality" required />}
+          placeholder={isCountriesLoading ? "Loading..." : "Select nationality"}
+          searchable
+          clearable
+          data={countryOptions}
+          disabled={isCountriesLoading}
+          {...form.getInputProps("nationality")}
+        />
+
+        <TextInput
+          radius="md"
+          label={<Label text="Principal objective of loan" required />}
+          placeholder="e.g. Home renovation"
+          {...form.getInputProps("principalObjective")}
+          style={{ gridColumn: "1 / -1" }}
+        />
       </SimpleGrid>
-    );
-  }
+
+      <Group gap="xs" mt={2} mb={0} wrap="nowrap">
+        <Text fz="sm" fw={700} c="slate.8" style={{ whiteSpace: "nowrap" }}>
+          Next of Kin Details
+        </Text>
+        <Box
+          style={{
+            height: 1,
+            flex: 1,
+            backgroundColor: "var(--mantine-color-slate-2)",
+          }}
+        />
+      </Group>
+
+      <SimpleGrid
+        cols={{ base: 1, sm: 3 }}
+        spacing="md"
+        verticalSpacing="sm"
+      >
+        <TextInput
+          radius="md"
+          label={<Label text="Next of kin name" required />}
+          placeholder="e.g. John Doe"
+          {...form.getInputProps("kinName")}
+        />
+
+        <TextInput
+          radius="md"
+          type="tel"
+          label={<Label text="Next of kin phone" required />}
+          placeholder="e.g. 0971234567"
+          value={form.values.kinPhone}
+          onChange={(e) =>
+            form.setFieldValue(
+              "kinPhone",
+              e.currentTarget.value.replace(/\D/g, "")
+            )
+          }
+          error={form.errors.kinPhone}
+        />
+
+        <TextInput
+          radius="md"
+          type="email"
+          label={<Label text="Next of kin email" required />}
+          placeholder="e.g. john.doe@example.com"
+          value={form.values.kinEmail}
+          onChange={(e) => {
+            form.setFieldValue("kinEmail", e.currentTarget.value);
+            form.validateField("kinEmail");
+          }}
+          error={form.errors.kinEmail}
+        />
+
+        <Select
+          radius="md"
+          label={<Label text="Relationship" required />}
+          placeholder="Select relationship"
+          data={RELATIONSHIPS}
+          {...form.getInputProps("kinRelationship")}
+          style={{ gridColumn: "1 / -1" }}
+        />
+      </SimpleGrid>
+    </Stack>
+  );
+}
 
   // --- Business: Directors & Applicant ---
   const directors = form.values.directors || [];

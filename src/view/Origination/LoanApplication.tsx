@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { modals } from '@mantine/modals';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from "react";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Box,
   Button,
@@ -20,7 +20,7 @@ import {
   Loader,
   useMantineTheme,
   Menu,
-} from '@mantine/core';
+} from "@mantine/core";
 import {
   IconPencil,
   IconPlus,
@@ -33,8 +33,8 @@ import {
   IconAlertTriangle,
   IconDotsVertical,
   IconEye,
-} from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
+} from "@tabler/icons-react";
+import { useDisclosure } from "@mantine/hooks";
 import {
   useReactTable,
   getCoreRowModel,
@@ -42,23 +42,23 @@ import {
   getPaginationRowModel,
   flexRender,
   createColumnHelper,
-} from '@tanstack/react-table';
+} from "@tanstack/react-table";
 
-import { LoanApplicationModal } from '../../components/Modal/LoanApplication/LoanApplicationModal';
-import { loanApplicationModal } from '../../components/Modal/LoanApplication/loanApplicationModalStore'; 
-import { LoanApplicationDetailView } from './LoanApplicationDetailView';
+
+import { loanApplicationModal } from "../../components/Modal/LoanApplication/loanApplicationModalStore";
+import { LoanApplicationDetailView } from "./LoanApplicationDetailView";
 import {
   getAllLoanApplications,
   deleteLoanApplication,
   updateLoanApplicationStatus,
   convertCustomLoanApplicationToLoan,
-} from '../../api/loanApplicationApi';
-import { parseFrappeError } from '../../utils/parseFrappeError';
-import { useCompanyStore } from '../../store/companyStore';
-import { openCommonModal } from '../../components/Modal/AlertModal';
-import { CreateLoanBookingModal } from '../../components/Modal/CreateLoanBookingModal';
-import { getSymbol } from '../../store/currencyStore';
-import { loanAccountModal } from '../../components/Modal/LoanBooking/loanAccountModalStore';
+} from "../../api/loanApplicationApi";
+import { parseFrappeError } from "../../utils/parseFrappeError";
+import { useCompanyStore } from "../../store/companyStore";
+import { openCommonModal } from "../../components/Modal/AlertModal";
+import { CreateLoanBookingModal } from "../../components/Modal/CreateLoanBookingModal";
+import { getSymbol } from "../../store/currencyStore";
+import { loanAccountModal } from "../../components/Modal/LoanBooking/loanAccountModalStore";
 export interface LoanApplicationRow {
   name: string;
   application_type: string;
@@ -73,29 +73,31 @@ export interface LoanApplicationRow {
 }
 const columnHelper = createColumnHelper<LoanApplicationRow>();
 
- const STATUS_OPTIONS = ['Pending', 'Approved', 'Created', 'Rejected'];
+const STATUS_OPTIONS = ["Pending", "Approved", "Created", "Rejected"];
 
 export const STATUS_COLOR: Record<string, string> = {
-  Pending: 'warning',  
-  Approved: 'info',
-  Created: 'success',
-  Rejected: 'danger',
+  Pending: "warning",
+  Approved: "info",
+  Created: "success",
+  Rejected: "danger",
 };
 export function getDisplayStatus(status: string) {
-  if (status === 'Cancelled') return 'Rejected';
-  if (status === 'Submitted') return 'Approved';
+  if (status === "Cancelled") return "Rejected";
+  if (status === "Submitted") return "Approved";
   return status;
 }
 
-function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
-  const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
-  if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
-  if (sorted === 'desc') return <IconChevronDown size={12} color={color} />;
+function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
+  const color = sorted
+    ? "var(--mantine-color-brand-6)"
+    : "var(--mantine-color-slate-4)";
+  if (sorted === "asc") return <IconChevronUp size={12} color={color} />;
+  if (sorted === "desc") return <IconChevronDown size={12} color={color} />;
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const scale = STATUS_COLOR[status] ?? 'slate';
+  const scale = STATUS_COLOR[status] ?? "slate";
   return (
     <Badge
       variant="light"
@@ -104,7 +106,7 @@ function StatusBadge({ status }: { status: string }) {
       size="sm"
       styles={{
         root: {
-          textTransform: 'none',
+          textTransform: "none",
           fontWeight: 700,
           letterSpacing: 0.2,
           paddingLeft: 8,
@@ -113,7 +115,14 @@ function StatusBadge({ status }: { status: string }) {
         },
       }}
       leftSection={
-        <Box w={6} h={6} style={{ borderRadius: '50%', background: `var(--mantine-color-${scale}-6)` }} />
+        <Box
+          w={6}
+          h={6}
+          style={{
+            borderRadius: "50%",
+            background: `var(--mantine-color-${scale}-6)`,
+          }}
+        />
       }
     >
       {status}
@@ -128,17 +137,22 @@ function ApplicationIdCell({ name }: { name: string }) {
         style={{
           width: 30,
           height: 30,
-          borderRadius: 'var(--mantine-radius-md)',
-          background: 'var(--mantine-color-brand-0)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          borderRadius: "var(--mantine-radius-md)",
+          background: "var(--mantine-color-brand-0)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           flexShrink: 0,
         }}
       >
         <IconFileText size={14} color="var(--mantine-color-brand-6)" />
       </Box>
-      <Text fz="xs" fw={700} c="slate.8" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+      <Text
+        fz="xs"
+        fw={700}
+        c="slate.8"
+        style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+      >
         {name}
       </Text>
     </Group>
@@ -146,124 +160,133 @@ function ApplicationIdCell({ name }: { name: string }) {
 }
 
 function getApplicantDisplayName(row: LoanApplicationRow) {
-  if (row.application_type === 'Business Loan') {
-    return row.company_name || '—';
+  if (row.application_type === "Business Loan") {
+    return row.company_name || "—";
   }
-  const fullName = [row.first_name, row.last_name].filter(Boolean).join(' ');
-  return fullName || '—';
+  const fullName = [row.first_name, row.last_name].filter(Boolean).join(" ");
+  return fullName || "—";
 }
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 function formatDate(date: string) {
-  if (!date) return '—';
+  if (!date) return "—";
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return date;
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export function LoanApplication() {
-  const [bookingOpened, { open: openBooking, close: closeBooking }] = useDisclosure(false);
-const [bookingApplicationId, setBookingApplicationId] = useState<string | null>(null);
+  const [bookingOpened, { open: openBooking, close: closeBooking }] =
+    useDisclosure(false);
+  const [bookingApplicationId, setBookingApplicationId] = useState<
+    string | null
+  >(null);
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
   const companyName = useCompanyStore((state) => state.companyName);
- const companyCurrency = useCompanyStore((state) => state.baseCurrency);
-      const currencySymbol = getSymbol(companyCurrency);
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencySymbol = getSymbol(companyCurrency);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [viewingApplicationId, setViewingApplicationId] = useState<string | null>(null);
+  const [viewingApplicationId, setViewingApplicationId] = useState<
+    string | null
+  >(null);
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [company, setCompany] = useState<string | null>(null);
   const [applicationType, setApplicationType] = useState<string | null>(null);
-  const [status, setStatus] = useState('all');
+  const [status, setStatus] = useState("all");
 
-  const [sorting, setSorting] = useState([{ id: 'application_date', desc: true }]);
+  const [sorting, setSorting] = useState([
+    { id: "application_date", desc: true },
+  ]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
   const showSuccess = (heading: string, body: string) => {
-      openCommonModal({
-        heading,
-        subtitle: '',
-        body,
-        color: 'green',
-        buttons: [{ label: 'Close', color: 'green' }],
-      });
-    };
-
-const statusMutation = useMutation({
-  mutationFn: ({ 
-    id, 
-    status, 
-    loan_application_status 
-  }: { 
-    id: string; 
-    status: string; 
-    loan_application_status: string; 
-  }) => updateLoanApplicationStatus({ id, status, loan_application_status }),
-  
-  onSuccess: (_, variables) => {
-    queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
-    showSuccess(
-      'Status Updated', 
-      `Loan Application ${variables.id} was ${variables.loan_application_status} successfully.`
-    );
-  },
-  onError: (error: any) => {
     openCommonModal({
-      heading: "Action Failed",
-      subtitle: "We couldn't complete your request.",
-      body: parseFrappeError(error),
-      color: "red",
-      buttons: [{ label: "Close", color: "red" }],
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
     });
-  },
-});
+  };
 
-const convertToLoanMutation = useMutation({
-  mutationFn: ({
-    id,
-    loan_product,
-  }: {
-    id: string;
-    loan_product: string;
-  }) => convertCustomLoanApplicationToLoan({ id, loan_product }),
+  const statusMutation = useMutation({
+    mutationFn: ({
+      id,
+      status,
+      loan_application_status,
+    }: {
+      id: string;
+      status: string;
+      loan_application_status: string;
+    }) => updateLoanApplicationStatus({ id, status, loan_application_status }),
 
- onSuccess: async (data, variables) => {
-    try {
-      await updateLoanApplicationStatus({
-        id: variables.id,
-        status: "Submitted", 
-        loan_application_status: "Created", 
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
+      showSuccess(
+        "Status Updated",
+        `Loan Application ${variables.id} was ${variables.loan_application_status} successfully.`,
+      );
+    },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
       });
-    } catch (error) {
-      console.error("Failed to update application status to Created", error);
-    }
-    queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
-    closeBooking();
-    showSuccess("Loan Created", `Application ${variables.id} was successfully converted to a loan.`);
+    },
+  });
 
-    const newLoanId = data?.message?.data?.name;
-    if (newLoanId) {
-      loanAccountModal.open({ loanId: newLoanId });
-    }
-  },
-     onError: (error: any) => {
-     openCommonModal({
-       heading: "Action Failed",
-       subtitle: "We couldn't complete your request.",
-       body: parseFrappeError(error),
-       color: "red",
-   
-       buttons: [
-         {
-           label: "Close",
-           color: "red",
-         },
-       ],
-     });
-   },
+  const convertToLoanMutation = useMutation({
+    mutationFn: ({ id, loan_product }: { id: string; loan_product: string }) =>
+      convertCustomLoanApplicationToLoan({ id, loan_product }),
+
+    onSuccess: async (data, variables) => {
+      try {
+        await updateLoanApplicationStatus({
+          id: variables.id,
+          status: "Submitted",
+          loan_application_status: "Created",
+        });
+      } catch (error) {
+        console.error("Failed to update application status to Created", error);
+      }
+      queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
+      closeBooking();
+      showSuccess(
+        "Loan Created",
+        `Application ${variables.id} was successfully converted to a loan.`,
+      );
+
+      const newLoanId = data?.message?.data?.name;
+      if (newLoanId) {
+        loanAccountModal.open({ loanId: newLoanId });
+      }
+    },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
   });
 
   const {
@@ -271,7 +294,7 @@ const convertToLoanMutation = useMutation({
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['loan-applications'],
+    queryKey: ["loan-applications"],
     queryFn: getAllLoanApplications,
   });
 
@@ -284,28 +307,32 @@ const convertToLoanMutation = useMutation({
     mutationFn: deleteLoanApplication,
     // onSuccess: () => {
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
-      showSuccess('Application Deleted', `Loan Application ${variables} deleted successfully.`);
+      queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
+      showSuccess(
+        "Application Deleted",
+        `Loan Application ${variables} deleted successfully.`,
+      );
     },
-     onError: (error: any) => {
-     openCommonModal({
-       heading: "Action Failed",
-       subtitle: "We couldn't complete your request.",
-       body: parseFrappeError(error),
-       color: "red",
-   
-       buttons: [
-         {
-           label: "Close",
-           color: "red",
-         },
-       ],
-     });
-   },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
   });
 
   const applicationTypeOptions = useMemo(
-    () => Array.from(new Set(data.map((d) => d.application_type).filter(Boolean))),
+    () =>
+      Array.from(new Set(data.map((d) => d.application_type).filter(Boolean))),
     [data],
   );
 
@@ -317,22 +344,27 @@ const convertToLoanMutation = useMutation({
         !q ||
         a.name.toLowerCase().includes(q) ||
         applicantName.includes(q) ||
-        (a.customer ?? '').toLowerCase().includes(q) ||
-        (a.application_type ?? '').toLowerCase().includes(q);
-      const matchesType = !applicationType || a.application_type === applicationType;
+        (a.customer ?? "").toLowerCase().includes(q) ||
+        (a.application_type ?? "").toLowerCase().includes(q);
+      const matchesType =
+        !applicationType || a.application_type === applicationType;
       // const matchesStatus = status === 'all' || a.status === status;
-      const matchesStatus = status === 'all' || a.loan_application_status === status;
+      const matchesStatus =
+        status === "all" || a.loan_application_status === status;
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [data, search, company, applicationType, status]);
 
-   useEffect(() => {
-    if (viewingApplicationId !== null && !data.some((a) => a.name === viewingApplicationId)) {
+  useEffect(() => {
+    if (
+      viewingApplicationId !== null &&
+      !data.some((a) => a.name === viewingApplicationId)
+    ) {
       setViewingApplicationId(null);
     }
   }, [viewingApplicationId, data]);
 
-const handleAdd = () => {
+  const handleAdd = () => {
     loanApplicationModal.open({ loanApplicationId: null });
   };
 
@@ -341,256 +373,324 @@ const handleAdd = () => {
   };
 
   const handleView = (id: string) => {
-    queryClient.invalidateQueries({ queryKey: ['loan-application-detail', id] });
+    queryClient.invalidateQueries({
+      queryKey: ["loan-application-detail", id],
+    });
     setViewingApplicationId(id);
   };
 
- const confirmApprove = (id: string) => {
-  openCommonModal({
-    heading: "Approve Loan Application",
-    subtitle: "Please confirm this action before continuing.",
-    body: (
-      <>
-        Are you sure you want to approve loan application <Text span fw={600}>{id}</Text>?
-      </>
-    ),
-    color: "green",
-    buttons: [
-      { label: "Cancel", variant: "default" },
-      {
-        label: "Approve",
-        color: "green",
-        onClick: () => statusMutation.mutate({ 
-          id, 
-          status: "Submitted", // Updates system state
-          loan_application_status: "Approved" // Updates your custom state
-        }),
-      },
-    ],
-  });
-};
+  const confirmApprove = (id: string) => {
+    openCommonModal({
+      heading: "Approve Loan Application",
+      subtitle: "Please confirm this action before continuing.",
+      body: (
+        <>
+          Are you sure you want to approve loan application{" "}
+          <Text span fw={600}>
+            {id}
+          </Text>
+          ?
+        </>
+      ),
+      color: "green",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        {
+          label: "Approve",
+          color: "green",
+          onClick: () =>
+            statusMutation.mutate({
+              id,
+              status: "Submitted", // Updates system state
+              loan_application_status: "Approved", // Updates your custom state
+            }),
+        },
+      ],
+    });
+  };
 
-const confirmReject = (id: string) => {
-  openCommonModal({
-    heading: "Reject Loan Application",
-    subtitle: "This action cannot be undone.",
-    body: (
-      <>
-        Are you sure you want to reject loan application <Text span fw={600}>{id}</Text>?
-      </>
-    ),
-    color: "red",
-    buttons: [
-      { label: "Cancel", variant: "default" },
-      {
-        label: "Reject",
-        color: "red",
-        onClick: () => statusMutation.mutate({ 
-          id, 
-          status: "Cancelled", // Updates system state
-          loan_application_status: "Rejected" // Updates your custom state
-        }),
-      },
-    ],
-  });
-};
+  const confirmReject = (id: string) => {
+    openCommonModal({
+      heading: "Reject Loan Application",
+      subtitle: "This action cannot be undone.",
+      body: (
+        <>
+          Are you sure you want to reject loan application{" "}
+          <Text span fw={600}>
+            {id}
+          </Text>
+          ?
+        </>
+      ),
+      color: "red",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        {
+          label: "Reject",
+          color: "red",
+          onClick: () =>
+            statusMutation.mutate({
+              id,
+              status: "Cancelled", // Updates system state
+              loan_application_status: "Rejected", // Updates your custom state
+            }),
+        },
+      ],
+    });
+  };
 
- const confirmDelete = (id: string) => {
-  openCommonModal({
-    heading: "Delete Loan Application",
-    subtitle: "This action cannot be undone.",
-    body: (
-      <>
-        Are you sure you want to delete{" "}
-        <Text span fw={600}>
-          {id}
-        </Text>
-        ?
-      </>
-    ),
-    color: "red",
-    buttons: [
-      { label: "Cancel", variant: "default" },
-      {
-        label: "Delete",
-        color: "red",
-        onClick: () => deleteMutation.mutate(id),
-      },
-    ],
-  });
-};
+  const confirmDelete = (id: string) => {
+    openCommonModal({
+      heading: "Delete Loan Application",
+      subtitle: "This action cannot be undone.",
+      body: (
+        <>
+          Are you sure you want to delete{" "}
+          <Text span fw={600}>
+            {id}
+          </Text>
+          ?
+        </>
+      ),
+      color: "red",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        {
+          label: "Delete",
+          color: "red",
+          onClick: () => deleteMutation.mutate(id),
+        },
+      ],
+    });
+  };
 
-const bookingApplications = data.find((a) => a.name === bookingApplicationId);
-const bookingApplicantName = bookingApplications ? getApplicantDisplayName(bookingApplications) : null;
+  const bookingApplications = data.find((a) => a.name === bookingApplicationId);
+  const bookingApplicantName = bookingApplications
+    ? getApplicantDisplayName(bookingApplications)
+    : null;
 
-const confirmCreateLoanBooking = (id: string) => {
-  setBookingApplicationId(id);
-  openBooking();
-};
+  const confirmCreateLoanBooking = (id: string) => {
+    setBookingApplicationId(id);
+    openBooking();
+  };
 
-const handleConfirmCreateBooking = (loanProduct: string) => {
-  if (!bookingApplicationId) return;
-  convertToLoanMutation.mutate({ id: bookingApplicationId, loan_product: loanProduct });
-};
+  const handleConfirmCreateBooking = (loanProduct: string) => {
+    if (!bookingApplicationId) return;
+    convertToLoanMutation.mutate({
+      id: bookingApplicationId,
+      loan_product: loanProduct,
+    });
+  };
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor('name', {
-        header: 'Application',
+      columnHelper.accessor("name", {
+        header: "Application",
         cell: (info) => <ApplicationIdCell name={info.getValue()} />,
       }),
-       columnHelper.display({
-        id: 'applicant',
-        header: 'Applicant',
+      columnHelper.display({
+        id: "applicant",
+        header: "Applicant",
         cell: (info) => (
-          <Text fz="xs" fw={600} c="slate.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+          <Text
+            fz="xs"
+            fw={600}
+            c="slate.7"
+            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+          >
             {getApplicantDisplayName(info.row.original)}
           </Text>
         ),
       }),
-columnHelper.accessor('amount', {
-  header: 'Amount',
-  cell: (info) => {
-    const value = info.getValue();
-    
-    if (value === null || value === undefined) {
-      return (
-        <Text fz="xs" c="slate.6">
-          —
-        </Text>
-      );
-    }
+      columnHelper.accessor("amount", {
+        header: "Amount",
+        cell: (info) => {
+          const value = info.getValue();
 
-    const formattedNumber = new Intl.NumberFormat('en-IN', {
-      maximumFractionDigits: 2, 
-    }).format(Number(value));
+          if (value === null || value === undefined) {
+            return (
+              <Text fz="xs" c="slate.6">
+                —
+              </Text>
+            );
+          }
 
-    return (
-      <Text 
-        fz="xs" 
-        c="slate.8" 
-        fw={600}
-        style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}
-      >
-        {currencySymbol}{formattedNumber}
-      </Text>
-    );
-  },
-}),
-      columnHelper.accessor('application_type', {
-        header: 'Type',
+          const formattedNumber = new Intl.NumberFormat("en-IN", {
+            maximumFractionDigits: 2,
+          }).format(Number(value));
+
+          return (
+            <Text
+              fz="xs"
+              c="slate.8"
+              fw={600}
+              style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+            >
+              {currencySymbol}
+              {formattedNumber}
+            </Text>
+          );
+        },
+      }),
+      columnHelper.accessor("application_type", {
+        header: "Type",
         cell: (info) => (
           <Badge
             variant="light"
             size="sm"
             radius="sm"
             color="brand"
-            styles={{ root: { fontSize: 10, padding: '0 8px' } }}
+            styles={{ root: { fontSize: 10, padding: "0 8px" } }}
           >
             {info.getValue()}
           </Badge>
         ),
       }),
-      columnHelper.accessor('customer', {
-        header: 'Customer',
+      columnHelper.accessor("customer", {
+        header: "Customer",
         cell: (info) => (
-          <Text fz="xs" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-            {info.getValue() || '—'}
+          <Text
+            fz="xs"
+            c="slate.6"
+            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+          >
+            {info.getValue() || "—"}
           </Text>
         ),
       }),
-// columnHelper.accessor('status', {
-//   header: 'Status',
-//   cell: (info) => <StatusBadge status={getDisplayStatus(info.getValue())} />,
-// }),
-//       columnHelper.accessor('application_date', {
-//         header: 'Application Date',
-//         cell: (info) => (
-//           <Text fz="xs" c="slate.6">
-//             {formatDate(info.getValue())}
-//           </Text>
-//         ),
-//       }),
-columnHelper.accessor('loan_application_status', {
-  header: 'Status',
-  cell: (info) => <StatusBadge status={info.getValue()} />,
-}),
+      // columnHelper.accessor('status', {
+      //   header: 'Status',
+      //   cell: (info) => <StatusBadge status={getDisplayStatus(info.getValue())} />,
+      // }),
+      //       columnHelper.accessor('application_date', {
+      //         header: 'Application Date',
+      //         cell: (info) => (
+      //           <Text fz="xs" c="slate.6">
+      //             {formatDate(info.getValue())}
+      //           </Text>
+      //         ),
+      //       }),
+      columnHelper.accessor("loan_application_status", {
+        header: "Status",
+        cell: (info) => <StatusBadge status={info.getValue()} />,
+      }),
       columnHelper.display({
-  id: 'actions',
-  header: () => (
-    <Text fz="xs" fw={600} ta="right" w="100%">
-      Actions
-    </Text>
-  ),
-  cell: (info) => {
-    const row = info.row.original;
-    const currentStatus = row.loan_application_status;
-    
-    const isPending = currentStatus === 'Pending';
-    const isApproved = currentStatus === 'Approved';
-    const isCreated = currentStatus === 'Created';
-    const isRejected = currentStatus === 'Rejected';
-    
-    const menuDisabled = isCreated || isRejected;
+        id: "actions",
+        header: () => (
+          <Text fz="xs" fw={600} ta="right" w="100%">
+            Actions
+          </Text>
+        ),
+        cell: (info) => {
+          const row = info.row.original;
+          const currentStatus = row.loan_application_status;
 
-    return (
-      <Group justify="flex-end" gap={6} wrap="nowrap" className="lms-row-actions">
-        <Tooltip label="View" withArrow>
-          <ActionIcon size="sm" variant="subtle" color="gray" onClick={() => handleView(row.name)}>
-            <IconEye size={14} />
-          </ActionIcon>
-        </Tooltip>
-        
-        <Tooltip label={isPending ? 'Edit' : 'Only Pending applications can be edited'} withArrow>
-          <ActionIcon
-            size="sm"
-            variant="subtle"
-            color={isPending ? 'brand' : 'gray'}
-            disabled={!isPending}
-            onClick={() => handleEdit(row.name)}
-          >
-            <IconPencil size={14} />
-          </ActionIcon>
-        </Tooltip>
-        
-        <Tooltip label={isPending || isRejected ? 'Delete' : 'Only Pending/Rejected applications can be deleted'} withArrow>
-          <ActionIcon
-            size="sm"
-            variant="subtle"
-            color={isPending || isRejected ? 'danger' : 'gray'}
-            disabled={(!isPending && !isRejected) || deleteMutation.isPending}
-            onClick={() => confirmDelete(row.name)}
-          >
-            <IconTrash size={14} />
-          </ActionIcon>
-        </Tooltip>
-        
-        <Menu shadow="md" width={180} position="bottom-end" disabled={menuDisabled}>
-          <Menu.Target>
-            <ActionIcon size="sm" variant="subtle" color="gray" disabled={menuDisabled}>
-              <IconDotsVertical size={14} />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            {isPending && (
-              <>
-                <Menu.Item onClick={() => confirmApprove(row.name)}>Approve</Menu.Item>
-                <Menu.Item color="red" onClick={() => confirmReject(row.name)}>
-                  Reject
-                </Menu.Item>
-              </>
-            )}
-            {isApproved && (
-              <Menu.Item onClick={() => confirmCreateLoanBooking(row.name)}>
-                Create Loan
-              </Menu.Item>
-            )}
-          </Menu.Dropdown>
-        </Menu>
-      </Group>
-    );
-  },
-}),
+          const isPending = currentStatus === "Pending";
+          const isApproved = currentStatus === "Approved";
+          const isCreated = currentStatus === "Created";
+          const isRejected = currentStatus === "Rejected";
+
+          const menuDisabled = isCreated || isRejected;
+
+          return (
+            <Group
+              justify="flex-end"
+              gap={6}
+              wrap="nowrap"
+              className="lms-row-actions"
+            >
+              <Tooltip label="View" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="gray"
+                  onClick={() => handleView(row.name)}
+                >
+                  <IconEye size={14} />
+                </ActionIcon>
+              </Tooltip>
+
+              <Tooltip
+                label={
+                  isPending ? "Edit" : "Only Pending applications can be edited"
+                }
+                withArrow
+              >
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color={isPending ? "brand" : "gray"}
+                  disabled={!isPending}
+                  onClick={() => handleEdit(row.name)}
+                >
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+
+              <Tooltip
+                label={
+                  isPending || isRejected
+                    ? "Delete"
+                    : "Only Pending/Rejected applications can be deleted"
+                }
+                withArrow
+              >
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color={isPending || isRejected ? "danger" : "gray"}
+                  disabled={
+                    (!isPending && !isRejected) || deleteMutation.isPending
+                  }
+                  onClick={() => confirmDelete(row.name)}
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
+              </Tooltip>
+
+              <Menu
+                shadow="md"
+                width={180}
+                position="bottom-end"
+                disabled={menuDisabled}
+              >
+                <Menu.Target>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="gray"
+                    disabled={menuDisabled}
+                  >
+                    <IconDotsVertical size={14} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {isPending && (
+                    <>
+                      <Menu.Item onClick={() => confirmApprove(row.name)}>
+                        Approve
+                      </Menu.Item>
+                      <Menu.Item
+                        color="red"
+                        onClick={() => confirmReject(row.name)}
+                      >
+                        Reject
+                      </Menu.Item>
+                    </>
+                  )}
+                  {isApproved && (
+                    <Menu.Item
+                      onClick={() => confirmCreateLoanBooking(row.name)}
+                    >
+                      Create Loan
+                    </Menu.Item>
+                  )}
+                </Menu.Dropdown>
+              </Menu>
+            </Group>
+          );
+        },
+      }),
     ],
     [],
   );
@@ -613,10 +713,10 @@ columnHelper.accessor('loan_application_status', {
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   const resetFilters = () => {
-    setSearch('');
+    setSearch("");
     setCompany(null);
     setApplicationType(null);
-    setStatus('all');
+    setStatus("all");
   };
 
   // --- View swap: same pattern as Customer.tsx / Borrower360 ---
@@ -632,13 +732,15 @@ columnHelper.accessor('loan_application_status', {
               setViewingApplicationId(null);
               handleEdit(application.name);
             }} */}
-            <LoanApplicationDetailView
-          application={application}
-          onBack={() => setViewingApplicationId(null)}
-          onEdit={() => {
-            setViewingApplicationId(null);
-            loanApplicationModal.open({ loanApplicationId: application.name });
-          }}
+          <LoanApplicationDetailView
+            application={application}
+            onBack={() => setViewingApplicationId(null)}
+            onEdit={() => {
+              setViewingApplicationId(null);
+              loanApplicationModal.open({
+                loanApplicationId: application.name,
+              });
+            }}
             onApprove={() => confirmApprove(application.name)}
             onReject={() => confirmReject(application.name)}
             isActionPending={statusMutation.isPending}
@@ -653,22 +755,23 @@ columnHelper.accessor('loan_application_status', {
     <Stack gap="lg" p="lg">
       {/* <LoanApplicationModal opened={opened} onClose={handleModalClose} loanApplicationId={editingId} /> */}
       <CreateLoanBookingModal
-  opened={bookingOpened}
-  applicationId={bookingApplicationId}
-  customerName={bookingApplicantName}
-  onClose={closeBooking}
-  onConfirm={handleConfirmCreateBooking}
-  isSubmitting={convertToLoanMutation.isPending}
-/>
+        opened={bookingOpened}
+        applicationId={bookingApplicationId}
+        customerName={bookingApplicantName}
+        onClose={closeBooking}
+        onConfirm={handleConfirmCreateBooking}
+        isSubmitting={convertToLoanMutation.isPending}
+      />
 
       <style>{`
-        .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
-        .lms-row-actions { opacity: 1; }
-        .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
-        .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
-        .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
-        .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
-      `}</style>
+  .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
+  .lms-row-actions { opacity: 1; }
+  .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+  .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
+  .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+  .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+  .lms-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
+`}</style>
 
       {/* Header */}
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
@@ -677,15 +780,19 @@ columnHelper.accessor('loan_application_status', {
             style={{
               width: 40,
               height: 40,
-              borderRadius: 'var(--mantine-radius-md)',
+              borderRadius: "var(--mantine-radius-md)",
               background: theme.other.brandGradient,
               boxShadow: theme.other.brandGlowShadow,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            <IconFileText size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconFileText
+              size={20}
+              color="var(--mantine-color-white)"
+              stroke={1.8}
+            />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
@@ -702,7 +809,10 @@ columnHelper.accessor('loan_application_status', {
       <Paper
         radius="xl"
         p="xs"
-        style={{ background: 'var(--mantine-color-slate-0)', border: '1px solid var(--mantine-color-slate-2)' }}
+        style={{
+          background: "var(--mantine-color-slate-0)",
+          border: "1px solid var(--mantine-color-slate-2)",
+        }}
       >
         <Group gap="sm" wrap="wrap" align="center">
           <TextInput
@@ -712,7 +822,9 @@ columnHelper.accessor('loan_application_status', {
             placeholder="Application / Applicant / Type / Customer"
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 260 }}
-            styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+            styles={{
+              input: { border: "1px solid var(--mantine-color-slate-2)" },
+            }}
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
@@ -744,11 +856,20 @@ columnHelper.accessor('loan_application_status', {
               setStatus(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
-            data={[{ label: 'All', value: 'all' }, ...STATUS_OPTIONS.map((s) => ({ label: s, value: s }))]}
+            data={[
+              { label: "All", value: "all" },
+              ...STATUS_OPTIONS.map((s) => ({ label: s, value: s })),
+            ]}
           />
 
           <Group gap="xs" ml="auto">
-            <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>
+            <Button
+              size="sm"
+              radius="xl"
+              variant="default"
+              px="md"
+              onClick={resetFilters}
+            >
               Reset
             </Button>
             <Button
@@ -757,7 +878,10 @@ columnHelper.accessor('loan_application_status', {
               color="brand"
               onClick={handleAdd}
               leftSection={<IconPlus size={14} />}
-              style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
+              style={{
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
+              }}
             >
               New Application
             </Button>
@@ -769,7 +893,10 @@ columnHelper.accessor('loan_application_status', {
       <Paper
         radius="lg"
         p="sm"
-        style={{ background: 'var(--mantine-color-slate-0)', border: '1px solid var(--mantine-color-slate-2)' }}
+        style={{
+          background: "var(--mantine-color-slate-0)",
+          border: "1px solid var(--mantine-color-slate-2)",
+        }}
       >
         {isLoading ? (
           <Stack align="center" gap="xs" py="xl">
@@ -780,115 +907,165 @@ columnHelper.accessor('loan_application_status', {
           </Stack>
         ) : isError ? (
           <Stack align="center" gap="xs" py="xl">
-            <IconAlertTriangle size={26} color="var(--mantine-color-danger-5)" />
+            <IconAlertTriangle
+              size={26}
+              color="var(--mantine-color-danger-5)"
+            />
             <Text ta="center" c="danger.6" fz="xs">
               Couldn't load loan applications. Please try again.
             </Text>
           </Stack>
         ) : (
           <>
-            <Table
-              verticalSpacing="sm"
-              horizontalSpacing="sm"
-              fz="xs"
-              w="100%"
-              style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+            <Box
+              style={{
+                height: "clamp(320px, calc(100vh - 280px), 720px)",
+                overflowY: "auto",
+              }}
             >
-              <Table.Thead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <Table.Tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      const canSort = header.column.getCanSort();
-                      return (
-                        <Table.Th
-                          key={header.id}
-                          c="slate.5"
-                          fw={700}
-                          style={{
-                            fontSize: 'var(--mantine-font-size-xs)',
-                            padding: '0 10px 6px',
-                            userSelect: 'none',
-                            cursor: canSort ? 'pointer' : 'default',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
-                            border: 'none',
-                          }}
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          <Group gap="xs" wrap="nowrap" justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}>
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
-                          </Group>
-                        </Table.Th>
-                      );
-                    })}
-                  </Table.Tr>
-                ))}
-              </Table.Thead>
-              <Table.Tbody>
-                {rows.length === 0 ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
-                      <Stack align="center" gap="xs" py="xl">
-                        <Box
-                          style={{
-                            width: 52,
-                            height: 52,
-                            borderRadius: '50%',
-                            background: 'var(--mantine-color-white)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: '1px solid var(--mantine-color-slate-2)',
-                          }}
-                        >
-                          <IconFileText size={26} color="var(--mantine-color-slate-4)" />
-                        </Box>
-                        <Text ta="center" c="slate.5" fz="xs">
-                          No loan applications match your filters.
-                        </Text>
-                      </Stack>
-                    </Table.Td>
-                  </Table.Tr>
-                ) : (
-                  rows.map((row) => {
-                    const scale = STATUS_COLOR[row.original.status] ?? 'slate';
-                    const cells = row.getVisibleCells();
-                    return (
-                      <Table.Tr key={row.id} className="lms-row" onDoubleClick={() => handleView(row.original.name)}
-           style={{ cursor: 'pointer' }}>
-                        {cells.map((cell, idx) => (
-                          <Table.Td
-                            key={cell.id}
+              <Table
+                verticalSpacing="sm"
+                horizontalSpacing="sm"
+                fz="xs"
+                w="100%"
+                style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+              >
+                <Table.Thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <Table.Tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        const canSort = header.column.getCanSort();
+                        return (
+                          <Table.Th
+                            key={header.id}
+                            className="lms-thead-cell"
+                            c="slate.5"
+                            fw={700}
                             style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              boxShadow: 'var(--mantine-shadow-xs)',
-                              borderLeft: idx === 0 ? `3px solid var(--mantine-color-${scale}-4)` : undefined,
+                              fontSize: "var(--mantine-font-size-xs)",
+                              padding: "0 10px 6px",
+                              userSelect: "none",
+                              cursor: canSort ? "pointer" : "default",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                              border: "none",
+                            }}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            <Group
+                              gap="xs"
+                              wrap="nowrap"
+                              justify={
+                                header.id === "actions"
+                                  ? "flex-end"
+                                  : "flex-start"
+                              }
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                              {canSort && (
+                                <SortIcon
+                                  sorted={header.column.getIsSorted()}
+                                />
+                              )}
+                            </Group>
+                          </Table.Th>
+                        );
+                      })}
+                    </Table.Tr>
+                  ))}
+                </Table.Thead>
+                <Table.Tbody>
+                  {rows.length === 0 ? (
+                    <Table.Tr>
+                      <Table.Td
+                        colSpan={columns.length}
+                        style={{ border: "none" }}
+                      >
+                        <Stack align="center" gap="xs" py="xl">
+                          <Box
+                            style={{
+                              width: 52,
+                              height: 52,
+                              borderRadius: "50%",
+                              background: "var(--mantine-color-white)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              border: "1px solid var(--mantine-color-slate-2)",
                             }}
                           >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </Table.Td>
-                        ))}
-                      </Table.Tr>
-                    );
-                  })
-                )}
-              </Table.Tbody>
-            </Table>
-
+                            <IconFileText
+                              size={26}
+                              color="var(--mantine-color-slate-4)"
+                            />
+                          </Box>
+                          <Text ta="center" c="slate.5" fz="xs">
+                            No loan applications match your filters.
+                          </Text>
+                        </Stack>
+                      </Table.Td>
+                    </Table.Tr>
+                  ) : (
+                    rows.map((row) => {
+                      const scale =
+                        STATUS_COLOR[row.original.status] ?? "slate";
+                      const cells = row.getVisibleCells();
+                      return (
+                        <Table.Tr
+                          key={row.id}
+                          className="lms-row"
+                          onDoubleClick={() => handleView(row.original.name)}
+                          style={{ cursor: "pointer" }}
+                        >
+                          {cells.map((cell, idx) => (
+                            <Table.Td
+                              key={cell.id}
+                              style={{
+                                padding: "10px 10px",
+                                border: "none",
+                                boxShadow: "var(--mantine-shadow-xs)",
+                                borderLeft:
+                                  idx === 0
+                                    ? `3px solid var(--mantine-color-${scale}-4)`
+                                    : undefined,
+                              }}
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                              )}
+                            </Table.Td>
+                          ))}
+                        </Table.Tr>
+                      );
+                    })
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Box>
             {/* Pagination Footer */}
             <Group justify="space-between" px="sm" pt="xs">
-              <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
+              <Group
+                gap="sm"
+                c="slate.6"
+                style={{ fontSize: "var(--mantine-font-size-xs)" }}
+              >
                 <span>
-                  {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+                  {totalRows === 0
+                    ? "Showing 0 of 0"
+                    : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
                 </span>
                 <Group gap="xs">
                   <span>Rows:</span>
                   <Select
-                    data={['10', '20', '50']}
+                    data={["10", "20", "50"]}
                     value={String(pageSize)}
-                    onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                    onChange={(v) =>
+                      setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
+                    }
                     rightSection={chevronDown}
                     size="xs"
                     radius="xl"
@@ -899,7 +1076,9 @@ columnHelper.accessor('loan_application_status', {
               <Pagination
                 total={table.getPageCount() || 1}
                 value={pageIndex + 1}
-                onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+                onChange={(p) =>
+                  setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
+                }
                 color="brand"
                 size="xs"
                 radius="xl"

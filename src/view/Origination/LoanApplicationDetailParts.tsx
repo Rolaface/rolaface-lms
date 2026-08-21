@@ -1,8 +1,10 @@
-import { Badge, Button, Paper, RingProgress, Text, TextInput } from '@mantine/core';
+import { ActionIcon, Avatar, Badge, Button, Loader, Modal, Paper, RingProgress, Text, TextInput } from '@mantine/core';
 import {
   IconArrowLeft,
   IconChevronLeft,
   IconChevronRight,
+  IconDownload,
+  IconEye,
   IconFileCertificate,
   IconFileText,
   IconId,
@@ -15,25 +17,13 @@ import {
 
 import type { LoanApplicationRow } from './LoanApplication';
 import { STATUS_COLOR, getDisplayStatus } from './LoanApplication';
+import { themeTokens, serif, OverviewField, SectionHeading } from '../LoanAccount/LoanView/SharedUI';
+import { useState } from 'react';
 
-export const brand = {
-  cream: '#FAF8F3',
-  ink: '#241F3D',
-  primary: '#4F46E5',
-  primarySoft: '#EEF0FE',
-  teal: '#3F8B61',
-  tealSoft: '#E9F4EC',
-  gold: '#C89A3C',
-  goldSoft: '#FBF3E1',
-  rose: '#B8533A',
-  roseSoft: '#F9EAE6',
-  sky: '#2E7BB8',
-  skySoft: '#E9F2FA',
-  slate: '#6B7280',
-  slateSoft: '#F1F1EF',
-};
-
-export const serif = { fontFamily: 'Georgia, "Times New Roman", serif' };
+// Re-exported so anywhere else in the app that was importing these from
+// this file (brand/serif/OverviewField/SectionHeading previously lived
+// here) keeps working without changes.
+export { themeTokens, serif, OverviewField, SectionHeading };
 
 export function formatCurrency(amount: number) {
   if (!amount && amount !== 0) return '—';
@@ -57,10 +47,6 @@ function initialsOf(name: string) {
     .toUpperCase();
 }
 
-/* ============================================================================
-   TYPES
-============================================================================ */
-
 type DocumentIcon = 'id' | 'photo' | 'file' | 'certificate';
 type DocumentStatus = 'Uploaded' | 'Missing';
 
@@ -83,13 +69,13 @@ export interface ApplicationActivityItem {
   description: string;
   actor: string;
 }
- export interface DirectorInfo {
-   name: string;
-   fullName: string;
-   phone: string;
-   email: string;
-   nrc: string;
- }
+export interface DirectorInfo {
+  name: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  nrc: string;
+}
 
 export interface LoanApplicationDetail {
   applicant: {
@@ -113,7 +99,7 @@ export interface LoanApplicationDetail {
     registeredOffice: string;
     natureOfBusiness: string;
   };
-   directors: DirectorInfo[];
+  directors: DirectorInfo[];
   nextOfKin: {
     name: string;
     relationship: string;
@@ -192,14 +178,14 @@ function mapDocuments(data: any): ApplicationDocument[] {
   // 1. Loop for Personal Loan Documents
   (data.documents || []).forEach((d: any) => {
     if (!d.document_name && !d.file) return;
-    
+
     const fileName = d.file ? d.file.split('/').pop() : '—';
 
     docs.push({
       id: d.name,
       name: d.document_name || 'Document',
       status: d.file ? 'Uploaded' : 'Missing',
-      size: fileName, 
+      size: fileName,
       icon: 'file',
       file: d.file,
     });
@@ -209,14 +195,13 @@ function mapDocuments(data: any): ApplicationDocument[] {
   (data.business_documents || []).forEach((d: any) => {
     if (!d.document_name && !d.file) return;
 
-    // This is the crucial line for the JSON you just shared
     const fileName = d.file ? d.file.split('/').pop() : '—';
 
     docs.push({
       id: d.name,
       name: d.document_name || 'Document',
       status: d.file ? 'Uploaded' : 'Missing',
-      size: fileName, 
+      size: fileName,
       icon: 'certificate',
       file: d.file,
     });
@@ -279,12 +264,12 @@ export function buildDetailFromApi(data: any): LoanApplicationDetail {
       natureOfBusiness: data.nature_of_business || '—',
     },
     directors: (data.directors || []).map((d: any) => ({
-       name: d.name,
-       fullName: d.director_name || '—',
-       phone: d.director_phone || '—',
-       email: d.director_email || '—',
-       nrc: d.national_registration_card || '—',
-     })),
+      name: d.name,
+      fullName: d.director_name || '—',
+      phone: d.director_phone || '—',
+      email: d.director_email || '—',
+      nrc: d.national_registration_card || '—',
+    })),
     nextOfKin: {
       name: data.next_of_kin_name || '—',
       relationship: data.next_of_kin_relationship || '—',
@@ -343,38 +328,6 @@ export function buildFallbackDetail(row: LoanApplicationRow): LoanApplicationDet
   };
 }
 
-/* ============================================================================
-   SHARED UI BITS
-============================================================================ */
-
-export function OverviewField({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <Text fz={10} fw={700} c="dimmed" className="tracking-wider mb-1">
-        {label}
-      </Text>
-      <Text fz="sm" fw={600} c="gray.9" className="font-mono">
-        {value}
-      </Text>
-    </div>
-  );
-}
-
-export function SectionHeading({ title, aside }: { title: string; aside?: React.ReactNode }) {
-  return (
-    <div className="flex justify-between items-baseline mb-3">
-      <Text fz="lg" fw={600} c="gray.9" style={serif}>
-        {title}
-      </Text>
-      {aside && (
-        <Text fz="xs" c="dimmed">
-          {aside}
-        </Text>
-      )}
-    </div>
-  );
-}
-
 const documentIconMap: Record<DocumentIcon, React.ReactNode> = {
   id: <IconId size={16} />,
   photo: <IconPhoto size={16} />,
@@ -384,30 +337,159 @@ const documentIconMap: Record<DocumentIcon, React.ReactNode> = {
 
 export function DocumentCard({ doc }: { doc: ApplicationDocument }) {
   const missing = doc.status === 'Missing';
-  const accent = missing ? { bg: brand.roseSoft, fg: brand.rose } : { bg: brand.skySoft, fg: brand.sky };
+  const accent = missing
+    ? { bg: themeTokens.dangerSoft, fg: themeTokens.danger }
+    : { bg: themeTokens.infoSoft, fg: themeTokens.info };
+  
+  const ERP_BASE = (import.meta.env.VITE_API_BASE_URL ?? "") as string;
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isImage, setIsImage] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handlePreview = async () => {
+    if (!doc.file) return;
+
+    try {
+      setIsLoading(true);
+      setErrorMsg(null);
+      const fileUrl = `${ERP_BASE}${doc.file}`;
+
+      const response = await fetch(fileUrl, { credentials: 'include' });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load: HTTP ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      
+      if (contentType.includes('text/html')) {
+        throw new Error("Received HTML instead of a file. Check Vite proxy config.");
+      }
+
+      setIsImage(contentType.includes('image'));
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      setPreviewUrl(objectUrl);
+    } catch (error: any) {
+      console.error('Preview error:', error);
+      setErrorMsg(error.message || "Failed to load document.");
+      setPreviewUrl("error"); 
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const closePreview = () => {
+    if (previewUrl && previewUrl !== "error") {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setErrorMsg(null);
+  };
+
+  const handleDownload = () => {
+    if (!previewUrl || previewUrl === "error") return;
+    const a = document.createElement('a');
+    a.href = previewUrl;
+    a.download = doc.name || 'document';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   return (
-    <Paper
-      withBorder
-      radius="lg"
-      p="sm"
-      className="flex items-center gap-3 transition-shadow hover:shadow-md"
-      style={{ borderColor: '#EDEAE0', boxShadow: '0 1px 2px rgba(36,31,61,0.06)' }}
-    >
-      <div
-        className="w-9 h-9 rounded-md flex items-center justify-center shrink-0"
-        style={{ backgroundColor: accent.bg, color: accent.fg }}
+    <>
+      <Paper
+        withBorder
+        radius="lg"
+        p="sm"
+        className="flex flex-col gap-2 transition-shadow hover:shadow-md"
+        style={{ borderColor: 'var(--mantine-color-slate-2)', boxShadow: 'var(--mantine-shadow-xs)' }}
       >
-        {documentIconMap[doc.icon]}
-      </div>
-      <div className="min-w-0">
-        <Text fz="xs" fw={700} c="gray.9" truncate>
-          {doc.name}
-        </Text>
-        <Text fz={11} fw={600} c={missing ? undefined : 'dimmed'} style={missing ? { color: brand.rose } : undefined}>
-          {doc.status} · {doc.file ? doc.file.split('/').pop() : doc.size}
-        </Text>
-      </div>
-    </Paper>
+        <div className="flex flex-row items-center justify-between w-full">
+          <div
+            className="w-9 h-9 rounded-md flex items-center justify-center shrink-0"
+            style={{ backgroundColor: accent.bg, color: accent.fg }}
+          >
+            {documentIconMap[doc.icon]}
+          </div>
+
+          {!missing && doc.file && (
+            <ActionIcon
+              variant="light"
+              color="info"
+              size="md"
+              radius="md"
+              className="shrink-0"
+              onClick={handlePreview}
+              disabled={isLoading}
+              aria-label={`Preview ${doc.name}`}
+              title="Preview document"
+            >
+              {isLoading ? <Loader size={16} /> : <IconEye size={16} />}
+            </ActionIcon>
+          )}
+        </div>
+
+        <div className="min-w-0 w-full mt-1">
+          <Text fz="sm" fw={700} c="slate.9" truncate>
+            {doc.name}
+          </Text>
+          <Text fz={11} fw={600} c={missing ? undefined : 'dimmed'} style={missing ? { color: themeTokens.danger } : undefined} truncate>
+            {doc.status} · {doc.file ? doc.file.split('/').pop() : doc.size}
+          </Text>
+        </div>
+      </Paper>
+
+      <Modal
+        opened={!!previewUrl}
+        onClose={closePreview}
+        title={<Text fw={700} c="slate.9">{doc.name}</Text>}
+        size="xl"
+        centered
+        withCloseButton
+        overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}
+      >
+        <div className="flex flex-col gap-4">
+          <div className="w-full bg-[var(--mantine-color-slate-0)] rounded-md overflow-hidden flex items-center justify-center min-h-[50vh]">
+            
+            {errorMsg ? (
+              <Text c="red" fw={500}>{errorMsg}</Text>
+            ) : isImage ? (
+              <img 
+                src={previewUrl!} 
+                alt={doc.name} 
+                className="max-w-full max-h-[70vh] object-contain"
+              />
+            ) : (
+              <iframe
+                src={previewUrl!}
+                className="w-full h-[70vh] border-0"
+                title={`Preview of ${doc.name}`}
+              />
+            )}
+
+          </div>
+
+          <div className="flex justify-end gap-3 pt-3 mt-1 border-t border-[var(--mantine-color-slate-2)]">
+            <Button variant="default" onClick={closePreview}>
+              Close
+            </Button>
+            <Button 
+              leftSection={<IconDownload size={16} />} 
+              onClick={handleDownload}
+              disabled={!!errorMsg}
+              styles={{ root: { backgroundColor: themeTokens.primary } }}
+            >
+              Download
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }
 const activityKindIcon: Record<ActivityKind, React.ReactNode> = {
@@ -417,22 +499,25 @@ const activityKindIcon: Record<ActivityKind, React.ReactNode> = {
 };
 const activityKindLabel: Record<ActivityKind, string> = { note: 'Note', call: 'Call', decision: 'Decision' };
 const activityKindTone: Record<ActivityKind, { bg: string; fg: string }> = {
-  note: { bg: brand.skySoft, fg: brand.sky },
-  call: { bg: brand.goldSoft, fg: '#8A5A0F' },
-  decision: { bg: brand.tealSoft, fg: brand.teal },
+  note: { bg: themeTokens.infoSoft, fg: themeTokens.info },
+  call: { bg: themeTokens.warningSoft, fg: 'var(--mantine-color-warning-8)' },
+  decision: { bg: themeTokens.successSoft, fg: themeTokens.success },
 };
 
 export function ActivityFeed({ activity }: { activity: ApplicationActivityItem[] }) {
   return (
-    <Paper radius="lg" className="p-4" style={{ boxShadow: '0 4px 16px rgba(36,31,61,0.07)', border: '1px solid #ECE8DD' }}>
+    <Paper radius="lg" className="p-4" style={{ boxShadow: 'var(--mantine-shadow-md)', border: '1px solid var(--mantine-color-slate-2)' }}>
       <div className="flex flex-col">
         {activity.map((a, idx) => {
           const tone = activityKindTone[a.kind];
           return (
             <div key={a.id} className="flex gap-3">
               <div className="flex flex-col items-center">
-                <span className="w-2.5 h-2.5 rounded-full border-2 shrink-0 mt-1" style={{ borderColor: tone.fg, backgroundColor: '#fff' }} />
-                {idx < activity.length - 1 && <span className="w-px flex-1 bg-gray-200" />}
+                <span
+                  className="w-2.5 h-2.5 rounded-full border-2 shrink-0 mt-1"
+                  style={{ borderColor: tone.fg, backgroundColor: 'var(--mantine-color-white)' }}
+                />
+                {idx < activity.length - 1 && <span className="w-px flex-1 bg-[var(--mantine-color-slate-2)]" />}
               </div>
               <div className="pb-5 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -446,7 +531,7 @@ export function ActivityFeed({ activity }: { activity: ApplicationActivityItem[]
                     </Text>
                   </span>
                 </div>
-                <Text fz="xs" fw={600} c="gray.9">
+                <Text fz="xs" fw={600} c="slate.9">
                   {a.title}
                 </Text>
                 <Text fz={11} c="dimmed" className="mt-0.5">
@@ -472,16 +557,16 @@ export function ActivityFeed({ activity }: { activity: ApplicationActivityItem[]
 export function StageBar({ stage, isRejected }: { stage: LoanApplicationDetail['stage']; isRejected: boolean }) {
   const currentIndex = APPLICATION_STAGES.indexOf(stage);
   return (
-    <div className="pt-3 border-t border-gray-100">
+    <div className="pt-3 border-t border-[var(--mantine-color-slate-1)]">
       <div className="flex items-center gap-2">
         {APPLICATION_STAGES.map((s, idx) => {
           const done = idx < currentIndex || (idx === currentIndex && s !== 'Decision');
           const isCurrent = idx === currentIndex;
-          const color = isRejected && isCurrent ? brand.rose : done || isCurrent ? brand.teal : '#E5E1D6';
+          const color = isRejected && isCurrent ? themeTokens.danger : done || isCurrent ? themeTokens.success : themeTokens.slateSoft;
           return (
             <div key={s} className="flex-1 flex flex-col gap-1.5">
               <div className="h-1.5 rounded-full" style={{ backgroundColor: color }} />
-              <Text fz={10} c={isCurrent ? 'gray.9' : 'dimmed'} fw={isCurrent ? 700 : 500}>
+              <Text fz={10} c={isCurrent ? 'slate.9' : 'dimmed'} fw={isCurrent ? 700 : 500}>
                 {s}
               </Text>
             </div>
@@ -514,41 +599,53 @@ export function ApplicationSidebar({
 
   if (collapsed) {
     return (
-      <div className="flex flex-col items-center gap-3 w-12 shrink-0 border-r border-gray-200 bg-white py-3">
+      <div className="flex flex-col items-center gap-3 w-12 shrink-0 border-r border-[var(--mantine-color-slate-2)] bg-[var(--mantine-color-white)] py-3">
         <Button variant="subtle" color="gray" size="xs" px={4} onClick={onToggleCollapsed}>
           <IconChevronRight size={16} />
         </Button>
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
-          style={{ background: `linear-gradient(135deg, ${brand.primary}, ${brand.sky})` }}
+        <Avatar
+          radius="xl"
+          size={32}
+          style={{
+            background: `linear-gradient(135deg, ${themeTokens.primary}, ${themeTokens.info})`,
+            color: 'var(--mantine-color-white)',
+            fontSize: 11,
+            fontWeight: 700,
+          }}
         >
           {initialsOf(detail.applicant.fullName)}
-        </div>
+        </Avatar>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col w-full lg:w-80 shrink-0 h-screen sticky top-0 border-r border-gray-200 bg-white">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
-        <Button variant="subtle" color="gray" size="xs" px={4} onClick={onBack}>
+    <div className="flex flex-col w-full lg:w-80 shrink-0 h-screen sticky top-0 border-r border-[var(--mantine-color-slate-2)] bg-[var(--mantine-color-white)]">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--mantine-color-slate-1)]">
+        <Button variant="subtle" color="slate" size="xs" px={4} onClick={onBack}>
           <IconArrowLeft size={16} />
         </Button>
-        <Button variant="subtle" color="gray" size="xs" px={4} className="ml-auto" onClick={onToggleCollapsed}>
+        <Button variant="subtle" color="slate" size="xs" px={4} className="ml-auto" onClick={onToggleCollapsed}>
           <IconChevronLeft size={16} />
         </Button>
       </div>
 
-      <div className="px-4 py-4 border-b border-gray-100">
+      <div className="px-4 py-4 border-b border-[var(--mantine-color-slate-1)]">
         <div className="flex items-center gap-3 mb-3">
-          <div
-            className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
-            style={{ background: `linear-gradient(135deg, ${brand.primary}, ${brand.sky})` }}
+          <Avatar
+            radius="xl"
+            size={44}
+            style={{
+              background: `linear-gradient(135deg, ${themeTokens.primary}, ${themeTokens.info})`,
+              color: 'var(--mantine-color-white)',
+              fontSize: 15,
+              fontWeight: 700,
+            }}
           >
             {initialsOf(detail.applicant.fullName)}
-          </div>
+          </Avatar>
           <div>
-            <Text fz="sm" fw={700} c="gray.9">
+            <Text fz="sm" fw={700} c="slate.9">
               {detail.applicant.fullName || 'Unnamed applicant'}
             </Text>
             <Text fz="xs" c="dimmed">
@@ -573,7 +670,7 @@ export function ApplicationSidebar({
             <Text fz="xs" c="dimmed">
               Phone
             </Text>
-            <Text fz="xs" c="gray.7" className="font-mono">
+            <Text fz="xs" c="slate.7" className="font-mono">
               {detail.applicant.phone}
             </Text>
           </div>
@@ -581,7 +678,7 @@ export function ApplicationSidebar({
             <Text fz="xs" c="dimmed">
               NRC
             </Text>
-            <Text fz="xs" c="gray.7">
+            <Text fz="xs" c="slate.7">
               {detail.applicant.nrc}
             </Text>
           </div>
@@ -589,26 +686,26 @@ export function ApplicationSidebar({
             <Text fz="xs" c="dimmed">
               Email
             </Text>
-            <Text fz="xs" c="gray.7" className="truncate max-w-[140px]">
+            <Text fz="xs" c="slate.7" className="truncate max-w-[140px]">
               {detail.applicant.email}
             </Text>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg p-2.5" style={{ backgroundColor: brand.primarySoft }}>
+          <div className="rounded-lg p-2.5" style={{ backgroundColor: themeTokens.primarySoft }}>
             <Text fz={9} fw={700} c="dimmed" className="tracking-wider">
               AMOUNT REQUESTED
             </Text>
-            <Text fz="sm" fw={700} style={{ color: brand.primary }}>
+            <Text fz="sm" fw={700} style={{ color: themeTokens.primary }}>
               {formatCurrency(detail.loanTerms.amountRequested)}
             </Text>
           </div>
-          <div className="rounded-lg p-2.5" style={{ backgroundColor: brand.tealSoft }}>
+          <div className="rounded-lg p-2.5" style={{ backgroundColor: themeTokens.successSoft }}>
             <Text fz={9} fw={700} c="dimmed" className="tracking-wider">
               TENURE REQUESTED
             </Text>
-            <Text fz="sm" fw={700} style={{ color: brand.teal }}>
+            <Text fz="sm" fw={700} style={{ color: themeTokens.success }}>
               {detail.loanTerms.tenureMonths} months
             </Text>
           </div>
@@ -616,16 +713,16 @@ export function ApplicationSidebar({
       </div>
 
       <div className="px-4 py-4">
-        <Text fz="xs" fw={700} c="gray.5" className="tracking-wide mb-2">
+        <Text fz="xs" fw={700} c="slate.5" className="tracking-wide mb-2">
           THIS APPLICATION
         </Text>
         <div
           className="rounded-lg border-l-[3px] border p-2.5"
-          style={{ borderColor: '#e5e7eb', borderLeftColor: brand.sky, backgroundColor: brand.skySoft }}
+          style={{ borderColor: 'var(--mantine-color-slate-2)', borderLeftColor: themeTokens.info, backgroundColor: themeTokens.infoSoft }}
         >
           <div className="flex justify-between items-start mb-1">
             <div>
-              <Text fz="xs" fw={700} c="gray.9">
+              <Text fz="xs" fw={700} c="slate.9">
                 {application.name}
               </Text>
               <Text fz={10} c="dimmed">
@@ -640,7 +737,7 @@ export function ApplicationSidebar({
             Applied {formatDate(application.application_date)}
           </Text>
           <Text fz={10} c="dimmed">
-            Stage: <span className="font-semibold text-gray-700">{detail.stage}</span>
+            Stage: <span className="font-semibold text-[var(--mantine-color-slate-7)]">{detail.stage}</span>
           </Text>
         </div>
       </div>
@@ -676,9 +773,14 @@ export function ApplicationSnapshotPanel({ detail }: { detail: LoanApplicationDe
 
   return (
     <div className="flex flex-col gap-4 w-full lg:w-72 shrink-0">
-      <Paper radius="lg" p="md" style={{ boxShadow: '0 4px 16px rgba(36,31,61,0.07)', border: '1px solid #ECE8DD' }}>
+      <Paper radius="lg" p="md" style={{ boxShadow: 'var(--mantine-shadow-md)', border: '1px solid var(--mantine-color-slate-2)' }}>
         <div className="flex items-center gap-4 mb-4">
-          <RingProgress size={88} thickness={8} sections={[{ value: pct, color: brand.gold }]} rootColor="#ECE8DD" />
+          <RingProgress
+            size={88}
+            thickness={8}
+            sections={[{ value: pct, color: themeTokens.warning }]}
+            rootColor="var(--mantine-color-slate-2)"
+          />
           <div>
             <Text fz={18} fw={700}>
               {pct}%
@@ -694,7 +796,7 @@ export function ApplicationSnapshotPanel({ detail }: { detail: LoanApplicationDe
             <Text fz="xs" c="dimmed">
               Review stage
             </Text>
-            <Text fz="xs" fw={700} c="gray.9">
+            <Text fz="xs" fw={700} c="slate.9">
               {detail.stage}
             </Text>
           </div>
@@ -702,7 +804,7 @@ export function ApplicationSnapshotPanel({ detail }: { detail: LoanApplicationDe
             <Text fz="xs" c="dimmed">
               Loan product
             </Text>
-            <Text fz="xs" fw={700} c="gray.9">
+            <Text fz="xs" fw={700} c="slate.9">
               {detail.loanTerms.purpose}
             </Text>
           </div>
@@ -710,26 +812,30 @@ export function ApplicationSnapshotPanel({ detail }: { detail: LoanApplicationDe
             <Text fz="xs" c="dimmed">
               Documents on file
             </Text>
-            <Text fz="xs" fw={700} c="gray.9" className="font-mono">
+            <Text fz="xs" fw={700} c="slate.9" className="font-mono">
               {uploaded} / {detail.documents.length}
             </Text>
           </div>
         </div>
       </Paper>
 
-      <Paper radius="lg" p="md" style={{ boxShadow: '0 4px 16px rgba(36,31,61,0.07)', border: '1px solid #ECE8DD' }}>
-        <Text fz="xs" fw={700} c="gray.9" className="mb-3">
+      <Paper radius="lg" p="md" style={{ boxShadow: 'var(--mantine-shadow-md)', border: '1px solid var(--mantine-color-slate-2)' }}>
+        <Text fz="xs" fw={700} c="slate.9" className="mb-3">
           Assigned loan officer
         </Text>
         <div className="flex items-center gap-3 mb-3">
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white"
-            style={{ background: `linear-gradient(135deg, ${brand.primary}, ${brand.sky})` }}
+          <Avatar
+            radius="xl"
+            size={36}
+            style={{
+              background: `linear-gradient(135deg, ${themeTokens.primary}, ${themeTokens.info})`,
+              color: 'var(--mantine-color-white)',
+            }}
           >
             {detail.reviewer.initials}
-          </div>
+          </Avatar>
           <div>
-            <Text fz="xs" fw={700} c="gray.9">
+            <Text fz="xs" fw={700} c="slate.9">
               {detail.reviewer.name}
             </Text>
             <Text fz="xs" c="dimmed">
@@ -741,7 +847,7 @@ export function ApplicationSnapshotPanel({ detail }: { detail: LoanApplicationDe
           fullWidth
           size="xs"
           variant="light"
-          styles={{ root: { backgroundColor: brand.primarySoft, color: brand.primary } }}
+          styles={{ root: { backgroundColor: themeTokens.primarySoft, color: themeTokens.primary } }}
           leftSection={<IconMessage size={14} />}
         >
           Message officer
@@ -758,19 +864,22 @@ export function DocumentStatusPanel({ detail }: { detail: LoanApplicationDetail 
 
   return (
     <div className="flex flex-col gap-4 w-full lg:w-72 shrink-0">
-      <Paper radius="lg" p="md" style={{ boxShadow: '0 4px 16px rgba(36,31,61,0.07)', border: '1px solid #ECE8DD' }}>
-        <Text fz="xs" fw={700} c="gray.5" className="tracking-wider mb-3">
+      <Paper radius="lg" p="md" style={{ boxShadow: 'var(--mantine-shadow-md)', border: '1px solid var(--mantine-color-slate-2)' }}>
+        <Text fz="xs" fw={700} c="slate.5" className="tracking-wider mb-3">
           DOCUMENT STATUS
         </Text>
-        <div className="h-1.5 w-full rounded-full overflow-hidden mb-3" style={{ backgroundColor: brand.slateSoft }}>
-          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: missing.length ? brand.gold : brand.teal }} />
+        <div className="h-1.5 w-full rounded-full overflow-hidden mb-3" style={{ backgroundColor: themeTokens.slateSoft }}>
+          <div
+            className="h-full rounded-full"
+            style={{ width: `${pct}%`, backgroundColor: missing.length ? themeTokens.warning : themeTokens.success }}
+          />
         </div>
         <div className="flex flex-col gap-2.5 mb-4">
           <div className="flex justify-between items-center">
             <Text fz="xs" c="dimmed">
               Complete
             </Text>
-            <Text fz="xs" fw={700} c="gray.9" className="font-mono">
+            <Text fz="xs" fw={700} c="slate.9" className="font-mono">
               {uploaded} / {detail.documents.length}
             </Text>
           </div>
@@ -778,12 +887,12 @@ export function DocumentStatusPanel({ detail }: { detail: LoanApplicationDetail 
             <Text fz="xs" c="dimmed">
               Missing
             </Text>
-            <Text fz="xs" fw={700} style={{ color: missing.length ? brand.gold : undefined }} c={missing.length ? undefined : 'gray.9'}>
+            <Text fz="xs" fw={700} style={{ color: missing.length ? themeTokens.warning : undefined }} c={missing.length ? undefined : 'slate.9'}>
               {missing.length ? missing.map((m) => m.name).join(', ') : 'None'}
             </Text>
           </div>
         </div>
-        <Button fullWidth size="xs" styles={{ root: { backgroundColor: brand.primary } }} disabled={!missing.length}>
+        <Button fullWidth size="xs" styles={{ root: { backgroundColor: themeTokens.primary } }} disabled={!missing.length}>
           Request from applicant
         </Button>
       </Paper>
@@ -794,19 +903,19 @@ export function DocumentStatusPanel({ detail }: { detail: LoanApplicationDetail 
 export function QuickLogPanel() {
   return (
     <div className="flex flex-col gap-4 w-full lg:w-72 shrink-0">
-      <Paper radius="lg" p="md" style={{ boxShadow: '0 4px 16px rgba(36,31,61,0.07)', border: '1px solid #ECE8DD' }}>
-        <Text fz="xs" fw={700} c="gray.5" className="tracking-wider mb-3">
+      <Paper radius="lg" p="md" style={{ boxShadow: 'var(--mantine-shadow-md)', border: '1px solid var(--mantine-color-slate-2)' }}>
+        <Text fz="xs" fw={700} c="slate.5" className="tracking-wider mb-3">
           QUICK LOG
         </Text>
         <div className="flex flex-col gap-2">
-          <Button fullWidth size="xs" styles={{ root: { backgroundColor: brand.primary } }} leftSection={<IconNote size={14} />}>
+          <Button fullWidth size="xs" styles={{ root: { backgroundColor: themeTokens.primary } }} leftSection={<IconNote size={14} />}>
             Add note
           </Button>
           <Button
             fullWidth
             size="xs"
             variant="light"
-            styles={{ root: { backgroundColor: brand.skySoft, color: brand.sky } }}
+            styles={{ root: { backgroundColor: themeTokens.infoSoft, color: themeTokens.info } }}
             leftSection={<IconPhoneCall size={14} />}
           >
             Log a call

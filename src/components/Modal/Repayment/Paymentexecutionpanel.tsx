@@ -24,6 +24,8 @@ interface PaymentExecutionPanelProps {
   selectedBorrower: Borrower | null;
   isView?: boolean;
   onNatureChange: (value: string) => void;
+  modeOfPaymentOptions: { value: string; label: string }[];
+  isModeOfPaymentLoading?: boolean;
 }
 
 export function PaymentExecutionPanel({
@@ -32,6 +34,8 @@ export function PaymentExecutionPanel({
   selectedBorrower,
   isView,
   onNatureChange,
+  modeOfPaymentOptions,
+  isModeOfPaymentLoading,
 }: PaymentExecutionPanelProps) {
   const theme = useMantineTheme();
 
@@ -136,16 +140,16 @@ export function PaymentExecutionPanel({
               {...form.getInputProps("amountToPay")}
             />
             <Select
-              size="sm"
-              withAsterisk
-              label="Payment Mode"
-              disabled={isView}
-              placeholder="Select payment mode"
-              data={PAYMENT_MODES}
-              leftSection={<IconCreditCard size={14} style={{ color: "var(--mantine-color-brand-6)" }} />}
-              rightSection={chevronDown}
-              {...form.getInputProps("paymentMode")}
-            />
+  size="sm"
+  withAsterisk
+  label="Payment Mode"
+  disabled={isView || isModeOfPaymentLoading}
+  placeholder={isModeOfPaymentLoading ? "Loading..." : "Select payment mode"}
+  data={modeOfPaymentOptions}
+  leftSection={<IconCreditCard size={14} style={{ color: "var(--mantine-color-brand-6)" }} />}
+  rightSection={chevronDown}
+  {...form.getInputProps("paymentMode")}
+/>
             <TextInput
               size="sm"
               label="Account Number"

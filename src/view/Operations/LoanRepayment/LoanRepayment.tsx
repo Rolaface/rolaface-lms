@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { CurrencySymbol } from "../../../components/shared/CurrencyIcon";
+import { formatAmount, useCurrencyReady } from '../../../store/currencyStore';
+import { useCompanyStore } from '../../../store/companyStore';
 import {
   Box,
   Button,
@@ -130,14 +131,15 @@ function natureLabel(nature: string) {
   return nature || '—';
 }
 
-const fmtAmount = (n: number) =>
-  n ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
+
 
 const fmtDate = (iso: string) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
 export function LoanRepayment() {
   const theme = useMantineTheme();
+    const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencyReady = useCurrencyReady();
 
   const [search, setSearch] = useState('');
    const [debouncedSearch] = useDebouncedValue(search, 400);
@@ -309,14 +311,21 @@ return matchesLoanType;
         ),
       }),
       columnHelper.accessor('amountPaid', {
-        header: 'Amount Paid',
-        cell: (info) => (
-          <Text fz="xs" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-             <CurrencySymbol size="sm" fw={700} />{" "}{fmtAmount(info.getValue())}
-          </Text>
-        ),
-        sortingFn: 'basic',
-      }),
+  header: 'Amount Paid',
+  cell: (info) => (
+    <Text
+      fz="xs"
+      c="slate.6"
+      style={{
+        fontFamily: 'var(--mantine-font-family-monospace)',
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
+    </Text>
+  ),
+  sortingFn: 'basic',
+}),
       columnHelper.accessor('paymentMode', {
         header: 'Payment Mode',
         cell: (info) => (
@@ -467,7 +476,7 @@ return matchesLoanType;
         },
       }),
     ],
-    [isDeleting]
+    [isDeleting, companyCurrency]
   );
 
   const table = useReactTable({
@@ -699,8 +708,13 @@ return matchesLoanType;
                       const rowMeta =
                         STATUS_META[row.original.docstatus] || { label: String(row.original.docstatus), color: 'slate' };
                       const cells = row.getVisibleCells();
-                      return (
-                        <Table.Tr key={row.id} className="lms-row">
+                                           return (
+                        <Table.Tr
+                          key={row.id}
+                          className="lms-row"
+                          onDoubleClick={() => loanRepaymentModal.open({ editId: row.original.id, isView: true })}
+                          style={{ cursor: 'pointer' }}
+                        >
                           {cells.map((cell, idx) => (
                             <Table.Td
                               key={cell.id}

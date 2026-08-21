@@ -25,7 +25,7 @@ import {
 } from "@tabler/icons-react";
 import { getAllIPAccounts } from "../../../api/productApi";
 import { useQuery } from "@tanstack/react-query";
-
+import { getAllItems } from "../../../api/productApi";
 export interface ChargeRow {
   id: string;
   feeName: string;
@@ -102,6 +102,19 @@ const accountOptions = useMemo(() => {
     const nextTotalPages = Math.max(1, Math.ceil((charges.length + 1) / ROWS_PER_PAGE));
     setPage(nextTotalPages);
   };
+
+  const { data: itemsResponse, isFetching: isFetchingItems } = useQuery({
+      queryKey: ["allItems"],
+      queryFn: getAllItems,
+    });
+
+   const itemOptions = useMemo(() => {
+    const items = itemsResponse?.data;
+    if (!Array.isArray(items)) return [];
+    return items
+      .map((i: any) => (typeof i === "string" ? i : i?.name ?? i?.value))
+      .filter((v): v is string => typeof v === "string" && v.length > 0);
+  }, [itemsResponse]);
 
   return (
     <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
@@ -203,12 +216,24 @@ const accountOptions = useMemo(() => {
                     />
                   </Table.Td> */}
                     <Table.Td>
-                    <TextInput
+                    {/* <TextInput
                       size="sm"
                       value={c.feeName}
                       onChange={(val) => onUpdate(c.id, "feeName", val.currentTarget.value)}
                       placeholder="Select type"
-                    />
+                    /> */}
+                    <Table.Td>
+  <Select
+    size="sm"
+    data={itemOptions}
+    value={c.feeName}
+    onChange={(val) => onUpdate(c.id, "feeName", val || "")}
+    placeholder="Select type"
+    searchable
+    clearable={!!c.feeName}
+    disabled={isFetchingItems}
+  />
+</Table.Td>
                   </Table.Td>
                   <Table.Td>
                     <NumberInput
