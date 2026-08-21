@@ -10,6 +10,8 @@ import type { WriteOffAccountItem, LoanAccountItem, LoanWriteOffDetail } from '.
 import { parseFrappeError } from '../../utils/parseFrappeError';
 import { openCommonModal } from './AlertModal';
 import { ModalFooter } from '../shared/ModalFooter';
+import { formatAmount, useCurrencyReady } from '../../store/currencyStore';
+import { useCompanyStore } from '../../store/companyStore';
 
 import {
   Box,
@@ -52,12 +54,10 @@ const ACCOUNT_SUMMARY = {
   outstanding: 486250,
 };
 
-function formatCurrency(amount: number) {
-  return `₹${amount.toLocaleString('en-IN')}`;
-}
-
 export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editData, isView }: LoanWriteOffModalProps) {
   const theme = useMantineTheme();
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencyReady = useCurrencyReady();
   const isEdit = !!editData;
 
   const title = isView ? 'View Write Off' : isEdit ? 'Update Write Off' : 'Write Off Loan';
@@ -471,7 +471,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
                   <SummaryRow label="NPA" value={ACCOUNT_SUMMARY.npa ? 'Yes' : 'No'} />
                   <SummaryRow label="Classification" value={ACCOUNT_SUMMARY.classification} />
                   <SummaryRow label="DPD" value={`${ACCOUNT_SUMMARY.dpd} days`} />
-                  <SummaryRow label="Outstanding" value={formatCurrency(ACCOUNT_SUMMARY.outstanding)} bold />
+                  <SummaryRow label="Outstanding" value={formatAmount(companyCurrency, ACCOUNT_SUMMARY.outstanding, { withSymbol: true })} bold />
                 </Stack>
               </SummaryCard>
 
@@ -486,9 +486,9 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
                 <Text size="xxs" fw={700} c="brand.1" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
                   Write-off Amount
                 </Text>
-                <Text fw={800} c="white" ff="monospace" style={{ fontSize: 22, lineHeight: 1.25, marginTop: 4 }}>
-                  {writeOffAmount !== '' ? formatCurrency(Number(writeOffAmount)) : '—'}
-                </Text>
+             <Text fw={800} c="white" ff="monospace" style={{ fontSize: 22, lineHeight: 1.25, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+  {writeOffAmount !== '' ? formatAmount(companyCurrency, Number(writeOffAmount), { withSymbol: true }) : '—'}
+</Text>
               </div>
             </Stack>
           </Box>

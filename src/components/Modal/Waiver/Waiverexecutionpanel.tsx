@@ -8,7 +8,8 @@ import {
   IconNotes,
 } from "@tabler/icons-react";
 import type { LoanWaiverBorrower, LoanWaiverLoanAccount } from "../../../types/loanwaiver";
-import { formatCurrency } from "../../../utils/loanwaiverutils";
+import { formatAmount, useCurrencyReady } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
 interface WaiverExecutionPanelProps {
   selectedLoan: LoanWaiverLoanAccount | null;
@@ -50,6 +51,8 @@ export function WaiverExecutionPanel({
   onRemarkChange,
 }: WaiverExecutionPanelProps) {
   const theme = useMantineTheme();
+    const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencyReady = useCurrencyReady();
 
   return (
     <div className="relative flex-1 overflow-y-auto p-6">
@@ -124,9 +127,9 @@ export function WaiverExecutionPanel({
                   </div>
                 </Table.Td>
                 <Table.Td style={{ textAlign: "right" }}>
-                  <Text size="sm" ff="monospace" c="slate.6">
-                    {isDuesLoading ? "..." : formatCurrency(dues?.interest_amount ?? 0)}
-                  </Text>
+                  <Text size="sm" ff="monospace" c="slate.6" style={{ fontVariantNumeric: "tabular-nums" }}>
+  {isDuesLoading ? "..." : formatAmount(companyCurrency, dues?.interest_amount ?? 0, { withSymbol: true })}
+</Text>
                 </Table.Td>
                 <Table.Td>
                   <NumberInput
@@ -152,9 +155,9 @@ export function WaiverExecutionPanel({
                   </div>
                 </Table.Td>
                 <Table.Td style={{ textAlign: "right" }}>
-                  <Text size="sm" ff="monospace" c="slate.6">
-                    {isDuesLoading ? "..." : formatCurrency(dues?.penalty_amount ?? 0)}
-                  </Text>
+                 <Text size="sm" ff="monospace" c="slate.6" style={{ fontVariantNumeric: "tabular-nums" }}>
+  {isDuesLoading ? "..." : formatAmount(companyCurrency, dues?.penalty_amount ?? 0, { withSymbol: true })}
+</Text>
                 </Table.Td>
                 <Table.Td>
                   <NumberInput
@@ -180,9 +183,9 @@ export function WaiverExecutionPanel({
                   </div>
                 </Table.Td>
                 <Table.Td style={{ textAlign: "right" }}>
-                  <Text size="sm" ff="monospace" c="slate.6">
-                    {isDuesLoading ? "..." : formatCurrency(dues?.total_charges_payable ?? 0)}
-                  </Text>
+                  <Text size="sm" ff="monospace" c="slate.6" style={{ fontVariantNumeric: "tabular-nums" }}>
+  {isDuesLoading ? "..." : formatAmount(companyCurrency, dues?.total_charges_payable ?? 0, { withSymbol: true })}
+</Text>
                 </Table.Td>
                 <Table.Td>
                   <NumberInput
