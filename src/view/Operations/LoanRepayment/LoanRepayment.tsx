@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react';
-import { formatAmount, useCurrencyReady } from '../../../store/currencyStore';
-import { useCompanyStore } from '../../../store/companyStore';
+import { useEffect, useMemo, useState } from 'react';
+import { CurrencySymbol } from "../../../components/shared/CurrencyIcon";
 import {
   Box,
   Button,
@@ -40,7 +39,6 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getPaginationRowModel,
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
@@ -131,15 +129,14 @@ function natureLabel(nature: string) {
   return nature || '—';
 }
 
-
+const fmtAmount = (n: number) =>
+  n ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
 
 const fmtDate = (iso: string) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
 export function LoanRepayment() {
   const theme = useMantineTheme();
-    const companyCurrency = useCompanyStore((state) => state.baseCurrency);
-  const currencyReady = useCurrencyReady();
 
   const [search, setSearch] = useState('');
    const [debouncedSearch] = useDebouncedValue(search, 400);
@@ -147,21 +144,25 @@ export function LoanRepayment() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
 
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-const { data: repaymentsResponse, isLoading } = useQuery({
-  queryKey: ['loanRepayments', debouncedSearch, statusFilter, loanType, pagination.pageIndex, pagination.pageSize],
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, loanType]);
+
+const { data: repaymentsResponse, isLoading, isFetching } = useQuery({
+  queryKey: ['loanRepayments', debouncedSearch, statusFilter, loanType, page, pageSize],
   queryFn: () =>
     getAllLoanRepayment({
-      page: pagination.pageIndex + 1,
-      page_size: pagination.pageSize,
+      page,
+      page_size: pageSize,
       search: debouncedSearch || undefined,
       status: statusFilter.length > 0 ? statusFilter : undefined,
       loan_product: loanType ? [loanType] : undefined,
     }),
   placeholderData: (prev) => prev,
-});
+}); 
 
   const queryClient = useQueryClient();
 
@@ -311,21 +312,14 @@ return matchesLoanType;
         ),
       }),
       columnHelper.accessor('amountPaid', {
-  header: 'Amount Paid',
-  cell: (info) => (
-    <Text
-      fz="xs"
-      c="slate.6"
-      style={{
-        fontFamily: 'var(--mantine-font-family-monospace)',
-        fontVariantNumeric: 'tabular-nums',
-      }}
-    >
-      {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
-    </Text>
-  ),
-  sortingFn: 'basic',
-}),
+        header: 'Amount Paid',
+        cell: (info) => (
+          <Text fz="xs" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+             <CurrencySymbol size="sm" fw={700} />{" "}{fmtAmount(info.getValue())}
+          </Text>
+        ),
+        sortingFn: 'basic',
+      }),
       columnHelper.accessor('paymentMode', {
         header: 'Payment Mode',
         cell: (info) => (
@@ -476,25 +470,22 @@ return matchesLoanType;
         },
       }),
     ],
-    [isDeleting, companyCurrency]
+    [isDeleting]
   );
-
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting, pagination },
+    state: { sorting },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+   const totalRows = repaymentsResponse?.message?.data?.total ?? 0;
+  const totalPages = repaymentsResponse?.message?.data?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
 
   const resetFilters = () => {
     setSearch('');
@@ -566,10 +557,9 @@ return matchesLoanType;
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
-            value={search}
+           value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
           <Select
@@ -584,17 +574,15 @@ return matchesLoanType;
             value={loanType}
             onChange={(v) => {
               setLoanType(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
 
          <FilterMultiSelect
            placeholder="All Statuses"
             data={STATUS_FILTER_OPTIONS}
-            value={statusFilter}
+          value={statusFilter}
             onChange={(v) => {
               setStatusFilter(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
             width={140}
           />
@@ -634,7 +622,7 @@ return matchesLoanType;
           </Group>
         ) : (
           <>
-           <Box style={{ height: 'clamp(320px, calc(100vh - 280px), 720px)', overflowY: 'auto' }}>
+              <Box style={{ height: 'clamp(320px, calc(100vh - 280px), 720px)', overflowY: 'auto', opacity: isFetching ? 0.6 : 1, transition: 'opacity 120ms ease' }}>
               <Table
                 verticalSpacing="sm"
                 horizontalSpacing="sm"
@@ -708,11 +696,13 @@ return matchesLoanType;
                       const rowMeta =
                         STATUS_META[row.original.docstatus] || { label: String(row.original.docstatus), color: 'slate' };
                       const cells = row.getVisibleCells();
-                                           return (
+                      return (
                         <Table.Tr
                           key={row.id}
                           className="lms-row"
-                          onDoubleClick={() => loanRepaymentModal.open({ editId: row.original.id, isView: true })}
+                          onDoubleClick={() =>
+                            loanRepaymentModal.open({ editId: row.original.id, isView: true })
+                          }
                           style={{ cursor: 'pointer' }}
                         >
                           {cells.map((cell, idx) => (
@@ -747,10 +737,13 @@ return matchesLoanType;
                 </span>
                 <Group gap="xs">
                   <span>Rows:</span>
-                  <Select
+                   <Select
                     data={['10', '20', '50']}
                     value={String(pageSize)}
-                    onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                    onChange={(v) => {
+                      setPageSize(Number(v) || 10);
+                      setPage(1);
+                    }}
                     rightSection={chevronDown}
                     size="xs"
                     radius="xl"
@@ -759,9 +752,9 @@ return matchesLoanType;
                 </Group>
               </Group>
               <Pagination
-                total={table.getPageCount() || 1}
-                value={pageIndex + 1}
-                onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+                total={totalPages}
+                value={page}
+                onChange={(p) => setPage(p)}
                 color="brand"
                 size="xs"
                 radius="xl"

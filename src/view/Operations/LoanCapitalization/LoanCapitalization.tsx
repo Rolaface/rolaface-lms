@@ -464,8 +464,8 @@ export function LoanCapitalization() {
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = repaymentsResponse?.message?.data?.pagination?.total ?? 0;
-  const totalPages = repaymentsResponse?.message?.data?.pagination?.total_pages ?? 1;
+const totalRows = repaymentsResponse?.message?.data?.total ?? 0;
+  const totalPages = repaymentsResponse?.message?.data?.total_pages ?? 1;
   const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
   const lastRow = Math.min(totalRows, page * pageSize);
 

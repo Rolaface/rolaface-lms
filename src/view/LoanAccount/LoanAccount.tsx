@@ -470,23 +470,23 @@ const currencyReady = useCurrencyReady();
                     <Menu.Item
                       onClick={() => {
                         openCommonModal({
-                          heading: "Submit Loan Booking",
+                          heading: "Approve Loan Booking",
                           subtitle:
                             "Please confirm this action before continuing.",
                           body: (
                             <>
-                              Are you sure you want to submit loan booking{" "}
+                              Are you sure you want to approve loan booking{" "}
                               <Text span fw={600}>
                                 {loanIdentifier}
                               </Text>{" "}
-                              for submission?
+                              for approval?
                             </>
                           ),
                           color: "green",
                           buttons: [
                             { label: "Cancel", variant: "default" },
                             {
-                              label: "Submit",
+                              label: "Approve",
                               color: "green",
                               onClick: () => {
                                 updateStatus({
@@ -499,7 +499,7 @@ const currencyReady = useCurrencyReady();
                         });
                       }}
                     >
-                      Submit
+                      Approve
                     </Menu.Item>
                   ) : !isCancelled ? (
                     <Menu.Item
