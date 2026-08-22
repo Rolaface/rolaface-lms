@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useDebouncedValue } from "@mantine/hooks";
+import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
 import {
   Box,
   Button,
@@ -115,7 +116,7 @@ export function LoanProduct() {
   // filter state
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebouncedValue(search, 400);
-  const [category, setCategory] = useState<string | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [status, setStatus] = useState("all");
 
   // table state
@@ -126,7 +127,7 @@ export function LoanProduct() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, disabledParam, category]);
+  }, [debouncedSearch, disabledParam, selectedCategories]);
 
   const queryClient = useQueryClient();
 
@@ -145,25 +146,23 @@ export function LoanProduct() {
   };
 
   const { data: productsResponse, isLoading, isFetching } = useQuery({
-    queryKey: ["loanProducts", debouncedSearch, disabledParam, category, page, pageSize],
+    queryKey: ["loanProducts", debouncedSearch, disabledParam, selectedCategories, page, pageSize],
     queryFn: () =>
       getLoanProducts({
         search: debouncedSearch.trim() || undefined,
         disabled: disabledParam,
-        loan_category: category ? [category] : undefined,
+        loan_category: selectedCategories.length > 0 ? selectedCategories : undefined,
         page,
         page_size: pageSize,
       }),
     placeholderData: (prev) => prev,
   });
 
-  // NOTE: koi standalone "loan category" lookup endpoint provided code me nahi tha,
-  // isliye category dropdown filhaal current page ki data se hi derive ho raha hai.
-  // Agar backend me collateral-types jaisa hi ek `getLoanCategories()` endpoint ho,
-  // to ye options wahan se fetch karna better rahega (jaise Collateral.tsx me).
+
   const categoryOptions = useMemo(() => {
     const list = productsResponse?.data || [];
-    return Array.from(new Set(list.map((p) => p.loan_category?.trim()).filter(Boolean))).sort();
+    const unique = Array.from(new Set(list.map((p) => p.loan_category?.trim()).filter(Boolean))).sort();
+    return unique.map((c) => ({ value: c as string, label: c as string }));
   }, [productsResponse]);
 
   const { mutate: enableItem, isPending: isEnabling } = useMutation({
@@ -287,12 +286,9 @@ export function LoanProduct() {
           const isTogglingStatus = isEnabling || isDisabling;
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-                           <Tooltip label="View" withArrow>
+              <Tooltip label="View" withArrow>
                 <ActionIcon size="sm" variant="subtle" color="slate" radius="md"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    loanProductModal.open({ loanProductId: row.id, isViewMode: true });
-                  }}>
+                  onClick={() => loanProductModal.open({ loanProductId: row.id, isViewMode: true })}>
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -342,7 +338,7 @@ export function LoanProduct() {
 
   const resetFilters = () => {
     setSearch("");
-    setCategory(null);
+    setSelectedCategories([]);
     setStatus("all");
     setPage(1);
   };
@@ -383,18 +379,15 @@ export function LoanProduct() {
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
-          <Select
-            size="sm"
-            radius="xl"
+
+          <FilterMultiSelect
             placeholder="All Categories"
             data={categoryOptions}
-            w={166}
-            searchable
-            clearable
-            rightSection={chevronDown}
-            value={category}
-            onChange={setCategory}
+            value={selectedCategories}
+            onChange={setSelectedCategories}
+            width={180}
           />
+
           <SegmentedControl
             size="xs"
             radius="xl"
@@ -466,17 +459,10 @@ export function LoanProduct() {
                       </Table.Td>
                     </Table.Tr>
                   ) : (
-                                       rows.map((row) => {
+                    rows.map((row) => {
                       const isActive = row.original.status === "ACTIVE";
                       return (
-                        <Table.Tr
-                          key={row.id}
-                          className="lms-row"
-                          onDoubleClick={() =>
-                            loanProductModal.open({ loanProductId: row.original.id, isViewMode: true })
-                          }
-                          style={{ cursor: "pointer" }}
-                        >
+                        <Table.Tr key={row.id} className="lms-row">
                           {row.getVisibleCells().map((cell, idx) => (
                             <Table.Td
                               key={cell.id}

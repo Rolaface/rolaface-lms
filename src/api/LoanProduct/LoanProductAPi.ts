@@ -367,3 +367,25 @@ export const getItems = async (): Promise<any[]> => {
   const response: AxiosResponse<LookupListResponse<any>> = await api.get(API.search.getItems);
   return unwrapList(response.data);
 };
+
+
+
+export const LoanCategoryAPI = API.loanCategory;
+
+export interface LoanCategoryRaw {
+  name: string;
+  loan_category?: string;
+  [key: string]: any;
+}
+
+export interface LoanCategoryApiResponse {
+  status_code?: number;
+  status?: string;
+  message?: string | LoanCategoryRaw[] | { data?: LoanCategoryRaw[] };
+  data?: LoanCategoryRaw[];
+}
+
+export const getAllLoanCategories = async (): Promise<LoanCategoryApiResponse> => {
+  const response: AxiosResponse<LoanCategoryApiResponse> = await api.get(LoanCategoryAPI.getAll);
+  return response.data;
+};
