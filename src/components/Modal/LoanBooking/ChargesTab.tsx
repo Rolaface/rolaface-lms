@@ -77,16 +77,47 @@ const { data: accountsResponse, isLoading: isAccountsLoading } = useQuery({
   queryFn: () => getAllIPAccounts(accountSearch),
 });
 
+// const accountOptions = useMemo(() => {
+//    const accounts = accountsResponse?.data || [];
+
+//    if (!Array.isArray(accounts)) return [];
+
+//   return accounts.map((a: any) => ({
+//     value: String(a.value),
+//     label: String(a.label),
+//   }));
+// }, [accountsResponse]);
+const selectedAccountValues = useMemo(
+  () => Array.from(new Set(charges.map((c) => c.account).filter(Boolean))),
+  [charges]
+);
+
+const { data: selectedAccountsResponse } = useQuery({
+  queryKey: ["ipAccounts", "selected", selectedAccountValues],
+  queryFn: async () => {
+    const results = await Promise.all(
+      selectedAccountValues.map((v) => getAllIPAccounts(v))
+    );
+    return results.flatMap((r) => r?.data || []);
+  },
+  enabled: selectedAccountValues.length > 0,
+});
+
 const accountOptions = useMemo(() => {
-   const accounts = accountsResponse?.data || [];
-
-   if (!Array.isArray(accounts)) return [];
-
-  return accounts.map((a: any) => ({
+  const accounts = accountsResponse?.data || [];
+  const merged = Array.isArray(accounts) ? [...accounts] : [];
+  const selected = selectedAccountsResponse || [];
+  selected.forEach((a: any) => {
+    if (!merged.some((m: any) => String(m.value) === String(a.value))) {
+      merged.push(a);
+    }
+  });
+  return merged.map((a: any) => ({
     value: String(a.value),
     label: String(a.label),
   }));
-}, [accountsResponse]);
+}, [accountsResponse, selectedAccountsResponse]);
+
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);

@@ -35,13 +35,13 @@ const chevronDown = (
 interface BasicDetailsTabProps {
   form: UseFormReturnType<any>;
   maturityDate: string;
-  loanAcNumber: string;
+  // loanAcNumber: string;
 }
 
 export function BasicDetailsTab({
   form,
   maturityDate,
-  loanAcNumber,
+  // loanAcNumber,
 }: BasicDetailsTabProps) {
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencySymbol = getSymbol(companyCurrency);
@@ -62,17 +62,46 @@ export function BasicDetailsTab({
     queryFn: () => getAllCustomers({ search: debouncedCustomerSearch || undefined }),
   });
 
-  const customerOptions = useMemo(() => {
-    const customers = customerResponse?.data || [];
-    return customers.map((c: any) => ({
-      value: c.value,
-      label: `${c.value} - ${c.label}`,
-    }));
-  }, [customerResponse]);
+  // const customerOptions = useMemo(() => {
+  //   const customers = customerResponse?.data || [];
+  //   return customers.map((c: any) => ({
+  //     value: c.value,
+  //     label: `${c.value} - ${c.label}`,
+  //   }));
+  // }, [customerResponse]);
 
-  // Cache value->label pairs across searches so a previously selected
-  // customer's name doesn't disappear once the search text changes
-  // (since results are now backend-filtered and no longer a static full list).
+ const { data: selectedCustomerResponse } = useQuery({
+  queryKey: ["customers", "selected", form.values.customerNumber],
+  queryFn: () =>
+    getAllCustomers({ search: form.values.customerNumber as string }),
+  enabled: !!form.values.customerNumber,
+});
+
+useEffect(() => {
+  const customers = selectedCustomerResponse?.data || [];
+  if (customers.length === 0) return;
+  setCustomerLabelMap((prev) => {
+    const next = { ...prev };
+    customers.forEach((c: any) => {
+      next[c.value] = c.label;
+    });
+    return next;
+  });
+}, [selectedCustomerResponse]);
+
+const customerOptions = useMemo(() => {
+  const customers = customerResponse?.data || [];
+  const merged = [...customers];
+  const selected = selectedCustomerResponse?.data || [];
+  selected.forEach((c: any) => {
+    if (!merged.some((m: any) => m.value === c.value)) merged.push(c);
+  });
+  return merged.map((c: any) => ({
+    value: c.value,
+    label: `${c.value} - ${c.label}`,
+  }));
+}, [customerResponse, selectedCustomerResponse]);
+ 
   const [customerLabelMap, setCustomerLabelMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -90,11 +119,6 @@ export function BasicDetailsTab({
   const selectedCustomerName = form.values.customerNumber
     ? customerLabelMap[form.values.customerNumber] || ""
     : "";
-  // NOTE: in edit mode, if the loan's existing customer never appears in a
-  // fetched search result (e.g. a large customer base and the default/empty
-  // search doesn't include them), this will show blank until searched by
-  // name/code. There's no getCustomerById endpoint in what was shared — if
-  // one exists, tell me and I'll wire a direct lookup here instead.
 
   const { data: productResponse, isLoading: isProductsLoading, refetch: refetchProducts } = useQuery({
     queryKey: ["loanProducts"],
@@ -167,7 +191,7 @@ export function BasicDetailsTab({
           <TextInput
             label="Loan Account Number"
             placeholder="Auto-generated on save"
-            value={loanAcNumber}
+            {...form.getInputProps("loanAcNumber")}
             disabled
           />
           <TextInput
