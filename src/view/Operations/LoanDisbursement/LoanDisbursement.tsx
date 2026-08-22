@@ -408,16 +408,70 @@ export function LoanDisbursement() {
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    {isDraft ? (
-                      <Menu.Item onClick={() => { }}>
-                        Approve
-                      </Menu.Item>
-                    ) : !isCancelled ? (
-                      <Menu.Item color="danger" onClick={() => { }}>
-                        Cancel
-                      </Menu.Item>
-                    ) : null}
-                  </Menu.Dropdown>
+  {isDraft ? (
+    <Menu.Item
+      onClick={() => {
+        openCommonModal({
+          heading: 'Approve Loan Disbursement',
+          subtitle: 'Please confirm this action before continuing.',
+          body: (
+            <>
+              Are you sure you want to approve loan disbursement{' '}
+              <Text span fw={600}>
+                {row.id}
+              </Text>{' '}
+            </>
+          ),
+          color: 'success',
+          buttons: [
+            { label: 'Cancel', variant: 'default' },
+            {
+              label: 'Approve',
+              color: 'success',
+              onClick: () => {
+                statusMutation.mutate({ id: row.id, action: 'approved' });
+              },
+            },
+          ],
+        });
+      }}
+    >
+      Approve
+    </Menu.Item>
+  ) : !isCancelled ? (
+    <Menu.Item
+      color="danger"
+      onClick={() => {
+        openCommonModal({
+          heading: 'Cancel Loan Disbursement',
+          subtitle: 'This action cannot be undone.',
+          body: (
+            <>
+              Are you sure you want to cancel loan disbursement{' '}
+              <Text span fw={600}>
+                {row.id}
+              </Text>
+              ?
+            </>
+          ),
+          color: 'danger',
+          buttons: [
+            { label: 'Back', variant: 'default' },
+            {
+              label: 'Cancel Disbursement',
+              color: 'danger',
+              onClick: () => {
+                statusMutation.mutate({ id: row.id, action: 'cancelled' });
+              },
+            },
+          ],
+        });
+      }}
+    >
+      Cancel
+    </Menu.Item>
+  ) : null}
+</Menu.Dropdown>
                 </Menu>
               )}
             </Group>

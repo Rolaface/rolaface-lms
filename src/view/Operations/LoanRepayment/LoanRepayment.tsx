@@ -145,8 +145,8 @@ export function LoanRepayment() {
   const canDeleteLoan = can("Loan Repayment", "delete");
 
   const [search, setSearch] = useState('');
-   const [debouncedSearch] = useDebouncedValue(search, 400);
-    const [loanType, setLoanType] = useState<string[]>([]);
+  const [debouncedSearch] = useDebouncedValue(search, 400);
+  const [loanType, setLoanType] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
 
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
@@ -157,18 +157,18 @@ export function LoanRepayment() {
     setPage(1);
   }, [debouncedSearch, statusFilter, loanType]);
 
-const { data: repaymentsResponse, isLoading, isFetching } = useQuery({
-  queryKey: ['loanRepayments', debouncedSearch, statusFilter, loanType, page, pageSize],
-  queryFn: () =>
-    getAllLoanRepayment({
-      page,
-      page_size: pageSize,
-      search: debouncedSearch || undefined,
-      status: statusFilter.length > 0 ? statusFilter : undefined,
-            loan_product: loanType.length ? loanType : undefined,
-    }),
-  placeholderData: (prev) => prev,
-}); 
+  const { data: repaymentsResponse, isLoading, isFetching } = useQuery({
+    queryKey: ['loanRepayments', debouncedSearch, statusFilter, loanType, page, pageSize],
+    queryFn: () =>
+      getAllLoanRepayment({
+        page,
+        page_size: pageSize,
+        search: debouncedSearch || undefined,
+        status: statusFilter.length > 0 ? statusFilter : undefined,
+        loan_product: loanType.length ? loanType : undefined,
+      }),
+    placeholderData: (prev) => prev,
+  });
 
   const queryClient = useQueryClient();
 
@@ -233,9 +233,9 @@ const { data: repaymentsResponse, isLoading, isFetching } = useQuery({
   const filteredData = useMemo(() => {
 
     return rowsData.filter((r) => {
-      
-            const matchesLoanType = !loanType.length || loanType.includes(r.loanType);
-return matchesLoanType;
+
+      const matchesLoanType = !loanType.length || loanType.includes(r.loanType);
+      return matchesLoanType;
     });
   }, [rowsData, loanType]);
 
@@ -416,11 +416,61 @@ return matchesLoanType;
                   </Menu.Target>
                   <Menu.Dropdown>
                     {isDraft ? (
-                      <Menu.Item onClick={() => { /* approve modal - unchanged */ }}>
+                      <Menu.Item
+                        onClick={() => {
+                          openCommonModal({
+                            heading: 'Approve Loan',
+                            subtitle: '',
+                            body: (
+                              <>
+                                Are you sure you want to approve loan{' '}
+                                <Text span fw={600}>
+                                  {row.id}
+                                </Text>{' '}
+                              </>
+                            ),
+                            color: 'green',
+                            buttons: [
+                              { label: 'Cancel', variant: 'default' },
+                              {
+                                label: 'Approve',
+                                color: 'green',
+                                onClick: () => updateStatus({ id: row.id, action: 'approved' }),
+                              },
+                            ],
+                          });
+                        }}
+                      >
                         Approve
                       </Menu.Item>
                     ) : (
-                      <Menu.Item color="danger" onClick={() => { /* cancel modal - unchanged */ }}>
+                      <Menu.Item
+                        color="danger"
+                        onClick={() => {
+                          openCommonModal({
+                            heading: 'Cancel Loan',
+                            subtitle: 'This action cannot be undone.',
+                            body: (
+                              <>
+                                Are you sure you want to cancel loan{' '}
+                                <Text span fw={600}>
+                                  {row.id}
+                                </Text>
+                                ?
+                              </>
+                            ),
+                            color: 'red',
+                            buttons: [
+                              { label: 'Back', variant: 'default' },
+                              {
+                                label: 'Cancel Loan',
+                                color: 'red',
+                                onClick: () => updateStatus({ id: row.id, action: 'cancelled' }),
+                              },
+                            ],
+                          });
+                        }}
+                      >
                         Cancel
                       </Menu.Item>
                     )}
@@ -456,7 +506,7 @@ return matchesLoanType;
   };
 
   // Generate loan type options dynamically from loaded data (like LoanAccount)
-    const loanTypeOptions = Array.from(new Set(rowsData.map((r) => r.loanType).filter(Boolean))).map((v) => ({
+  const loanTypeOptions = Array.from(new Set(rowsData.map((r) => r.loanType).filter(Boolean))).map((v) => ({
     value: v,
     label: v,
   }));
@@ -527,7 +577,7 @@ return matchesLoanType;
               setSearch(e.currentTarget.value);
             }}
           />
-                  <FilterMultiSelect
+          <FilterMultiSelect
             placeholder="All Loan Types"
             data={loanTypeOptions}
             value={loanType}
