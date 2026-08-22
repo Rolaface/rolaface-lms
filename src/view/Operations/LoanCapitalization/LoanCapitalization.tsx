@@ -219,13 +219,13 @@ export function LoanCapitalization() {
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
       const isCancel = variables.action === 'cancelled';
       showSuccess(
-        isCancel ? 'Capitalization Cancelled' : 'Capitalization Submitted',
-        isCancel ? 'Loan capitalization cancelled successfully.' : 'Loan capitalization submitted successfully.'
+        isCancel ? 'Capitalization Cancelled' : 'Capitalization Approved',
+        isCancel ? 'Loan capitalization cancelled successfully.' : 'Loan capitalization approved successfully.'
       );
     },
     onError: (error: any, variables) => {
       const isCancel = variables.action === 'cancelled';
-      showError(isCancel ? 'Cancel Failed' : 'Submit Failed', error);
+      showError(isCancel ? 'Cancel Failed' : 'Approve Failed', error);
     },
   });
 
@@ -290,7 +290,7 @@ export function LoanCapitalization() {
 
  const handleStatusChange = (
   row: CapitalizationRow,
-  action: 'submit' | 'cancelled'
+  action: 'approved' | 'cancelled'
 ) => {
     const isCancel = action === 'cancelled';
     openCommonModal({
@@ -435,7 +435,7 @@ export function LoanCapitalization() {
                   </Menu.Target>
                   <Menu.Dropdown>
                     {isDraft ? (
-                    <Menu.Item onClick={() => handleStatusChange(row, 'submit')}>
+                    <Menu.Item onClick={() => handleStatusChange(row, 'approved')}>
   Approve
 </Menu.Item>
                     ) : (
@@ -464,8 +464,8 @@ export function LoanCapitalization() {
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = repaymentsResponse?.message?.data?.pagination?.total ?? 0;
-  const totalPages = repaymentsResponse?.message?.data?.pagination?.total_pages ?? 1;
+const totalRows = repaymentsResponse?.message?.data?.total ?? 0;
+  const totalPages = repaymentsResponse?.message?.data?.total_pages ?? 1;
   const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
   const lastRow = Math.min(totalRows, page * pageSize);
 

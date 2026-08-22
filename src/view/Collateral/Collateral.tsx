@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useDebouncedValue } from '@mantine/hooks';
+import { FilterMultiSelect } from '../../components/shared/FilterMultiSelect';
 import {
   Box,
   Button,
   TextInput,
   Select,
-  SegmentedControl,
   Group,
   Paper,
   Table,
@@ -30,7 +31,6 @@ import {
   IconSearch,
   IconShieldLock,
   IconTrash,
-  IconCoin,
   IconPercentage,
   IconGauge,
   IconCoins,
@@ -39,7 +39,6 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getPaginationRowModel,
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
@@ -50,9 +49,12 @@ import {
   disableCollateral,
   deleteCollateral,
 } from '../../api/collateralApi';
+import { getAllCollateralTypes } from '../../api/collateralTypeApi';
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../utils/parseFrappeError';
 import { collateralModal } from '../../components/Modal/collateralModalStore';
+import { formatAmount, useCurrencyReady } from '../../store/currencyStore';
+import { useCompanyStore } from '../../store/companyStore';
 
 interface CollateralRow {
   id: string;
@@ -155,22 +157,64 @@ function IconText({ icon, children, mono = false }: { icon: React.ReactNode; chi
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
+const STATUS_FILTER_OPTIONS = [
+  { value: '0', label: 'Active' },
+  { value: '1', label: 'Inactive' },
+];
+
 export function Collateral() {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencyReady = useCurrencyReady();
+
   const theme = useMantineTheme();
 
   // filter state
   const [search, setSearch] = useState('');
-  const [type, setType] = useState<string | null>(null);
-  const [status, setStatus] = useState('all');
+  const [debouncedSearch] = useDebouncedValue(search, 400);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
 
   // table state
   const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const { data: collateralResponse, isLoading } = useQuery({
-    queryKey: ['collaterals'],
-    queryFn: getAllCollaterals,
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, selectedTypes]);
+
+  const { data: collateralResponse, isLoading, isFetching } = useQuery({
+    queryKey: ['collaterals', debouncedSearch, statusFilter, selectedTypes, page, pageSize],
+    queryFn: () =>
+      getAllCollaterals({
+        search: debouncedSearch.trim() || undefined,
+        disabled: statusFilter.length > 0 ? statusFilter : undefined,
+        loan_security_type: selectedTypes.length > 0 ? selectedTypes : undefined,
+        page,
+        page_size: pageSize,
+      }),
+    placeholderData: (prev) => prev,
   });
+
+  // Collateral Types, for the "Types" multiselect filter — pulled from the
+  // API instead of being hardcoded / derived from the current page of rows.
+  const { data: collateralTypesResponse } = useQuery({
+    queryKey: ['collateralTypesFilter'],
+    queryFn: () => getAllCollateralTypes(),
+  });
+
+  const typeOptions = useMemo(() => {
+    const list =
+      collateralTypesResponse?.data ||
+      collateralTypesResponse?.message?.data ||
+      collateralTypesResponse ||
+      [];
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((item: any) => item.loan_security_type)
+      .filter(Boolean)
+      .map((t: string) => ({ value: t, label: t }));
+  }, [collateralTypesResponse]);
 
   const queryClient = useQueryClient();
 
@@ -207,7 +251,7 @@ export function Collateral() {
     mutationFn: (id: string) => disableCollateral(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collaterals'] });
-      showSuccess('Collateral Disabled', 'Collateral has been disabled successfully.');
+      showSuccess('Collateral Deactivated', 'Collateral has been deactivated successfully.');
     },
     onError: (error: any) => showError('Status Update Failed', error),
   });
@@ -248,6 +292,8 @@ export function Collateral() {
     });
   };
 
+  // Data now arrives pre-filtered from the API (search + disabled + loan_security_type),
+  // so this only needs to map the response shape into rows.
   const data = useMemo(() => {
     const list = collateralResponse?.data || collateralResponse?.message?.data || collateralResponse || [];
     if (!Array.isArray(list)) return [];
@@ -259,46 +305,32 @@ export function Collateral() {
       value: item.original_security_value ?? 0,
       haircut: item.haircut ?? 0,
       ltv: item.loan_to_value_ratio ?? 0,
-      status: item.disabled === 1 ? 'DISABLED' : 'ACTIVE',
+      status: item.disabled === 1 ? 'INACTIVE' : 'ACTIVE',
     }));
   }, [collateralResponse]);
 
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return data.filter((c) => {
-      const matchesSearch =
-        !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q);
-      const matchesType = !type || c.type === type;
-      const matchesStatus =
-        status === 'all' ||
-        (status === 'ACTIVE' && c.status === 'ACTIVE') ||
-        (status === 'DISABLED' && c.status === 'DISABLED');
-      return matchesSearch && matchesType && matchesStatus;
-    });
-  }, [data, search, type, status]);
-
   const handleToggleStatus = (row: CollateralRow) => {
-    const willDisable = row.status === 'ACTIVE';
+    const willDeactivate = row.status === 'ACTIVE';
     openCommonModal({
-      heading: willDisable ? 'Disable Collateral' : 'Activate Collateral',
+      heading: willDeactivate ? 'Deactivate Collateral' : 'Activate Collateral',
       subtitle: 'Please confirm this action before continuing.',
       body: (
         <>
-          Are you sure you want to {willDisable ? 'disable' : 'activate'} collateral{' '}
+          Are you sure you want to {willDeactivate ? 'deactivate' : 'activate'} collateral{' '}
           <Text span fw={600}>
             {row.name}
           </Text>
           ?
         </>
       ),
-      color: willDisable ? 'red' : 'green',
+      color: willDeactivate ? 'red' : 'green',
       buttons: [
         { label: 'Cancel', variant: 'default' },
         {
-          label: willDisable ? 'Disable' : 'Activate',
-          color: willDisable ? 'red' : 'green',
+          label: willDeactivate ? 'Deactivate' : 'Activate',
+          color: willDeactivate ? 'red' : 'green',
           onClick: () => {
-            if (willDisable) {
+            if (willDeactivate) {
               disableItem(row.id);
             } else {
               enableItem(row.id);
@@ -307,6 +339,12 @@ export function Collateral() {
         },
       ],
     });
+  };
+
+  // Shared by the eye icon and the row double-click handler — matches the
+  // ERP's "double-click a row to view" convention (see LoanDisbursement / CollateralType).
+  const handleView = (row: CollateralRow) => {
+    collateralModal.open({ editId: row.id, isView: true });
   };
 
   const columns = useMemo(
@@ -326,14 +364,9 @@ export function Collateral() {
       columnHelper.accessor('value', {
         header: 'Orig. Value',
         cell: (info) => (
-          <IconText icon={<IconCoin size={13} />}>${info.getValue().toLocaleString()}</IconText>
-        ),
-        sortingFn: 'basic',
-      }),
-      columnHelper.accessor('haircut', {
-        header: 'Haircut %',
-        cell: (info) => (
-          <IconText icon={<IconPercentage size={13} />}>{info.getValue().toFixed(3)}</IconText>
+          <Text fz="xs" c="slate.6" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
+          </Text>
         ),
         sortingFn: 'basic',
       }),
@@ -367,7 +400,10 @@ export function Collateral() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => collateralModal.open({ editId: row.id, isView: true })}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleView(row);
+                  }}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -378,7 +414,10 @@ export function Collateral() {
                   variant="subtle"
                   color="brand"
                   radius="md"
-                  onClick={() => collateralModal.open({ editId: row.id, isView: false })}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    collateralModal.open({ editId: row.id, isView: false });
+                  }}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -390,17 +429,21 @@ export function Collateral() {
                   color="danger"
                   radius="md"
                   loading={isDeleting}
-                  onClick={() => handleDelete(row)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(row);
+                  }}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={isActive ? 'Disable' : 'Activate'} withArrow>
+              <Tooltip label={isActive ? 'Deactivate' : 'Activate'} withArrow>
                 <Switch
                   size="xs"
                   color="success"
                   checked={isActive}
                   disabled={isTogglingStatus}
+                  onClick={(e) => e.stopPropagation()}
                   onChange={() => handleToggleStatus(row)}
                 />
               </Tooltip>
@@ -409,33 +452,30 @@ export function Collateral() {
         },
       }),
     ],
-    [isDeleting, isEnabling, isDisabling]
+    [isDeleting, isEnabling, isDisabling, companyCurrency]
   );
 
   const table = useReactTable({
-    data: filteredData,
+    data,
     columns,
-    state: { sorting, pagination },
+    state: { sorting },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+  const totalRows = collateralResponse?.pagination?.total ?? 0;
+  const totalPages = collateralResponse?.pagination?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
 
   const resetFilters = () => {
     setSearch('');
-    setType(null);
-    setStatus('all');
+    setSelectedTypes([]);
+    setStatusFilter([]);
+    setPage(1);
   };
-
-  const typeOptions = Array.from(new Set(data.map((c) => c.type).filter(Boolean)));
 
   return (
     <Stack gap="lg" p="lg">
@@ -448,6 +488,7 @@ export function Collateral() {
         .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
         .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
         .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+        .lms-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
       `}</style>
 
       {/* Header — icon tile + title on the left */}
@@ -478,7 +519,7 @@ export function Collateral() {
         </Group>
       </Group>
 
-      {/* Toolbar — pill search + pill filters + segmented status control */}
+      {/* Toolbar — pill search + multiselect type filter + multiselect status filter */}
       <Paper
         radius="xl"
         p="xs"
@@ -497,41 +538,23 @@ export function Collateral() {
             style={{ flex: 1, minWidth: 220 }}
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
-            onChange={(e) => {
-              setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          />
-          <Select
-            size="sm"
-            radius="xl"
-            placeholder="All Types"
-            data={typeOptions}
-            w={180}
-            searchable
-            clearable
-            rightSection={chevronDown}
-            value={type}
-            onChange={(v) => {
-              setType(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            onChange={(e) => setSearch(e.currentTarget.value)}
           />
 
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-            data={[
-              { label: 'All', value: 'all' },
-              { label: 'Active', value: 'ACTIVE' },
-              { label: 'Disabled', value: 'DISABLED' },
-            ]}
+          <FilterMultiSelect
+            placeholder="All Types"
+            data={typeOptions}
+            value={selectedTypes}
+            onChange={setSelectedTypes}
+            width={180}
+          />
+
+          <FilterMultiSelect
+            placeholder="All Statuses"
+            data={STATUS_FILTER_OPTIONS}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            width={140}
           />
 
           <Group gap="xs" ml="auto">
@@ -559,146 +582,163 @@ export function Collateral() {
       <Paper
         radius="lg"
         p="sm"
+        pos="relative"
         style={{
           background: 'var(--mantine-color-slate-0)',
           border: '1px solid var(--mantine-color-slate-2)',
         }}
       >
-        <Table
-          verticalSpacing="sm"
-          horizontalSpacing="sm"
-          fz="xs"
-          w="100%"
-          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
-        >
-          <Table.Thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <Table.Tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  const canSort = header.column.getCanSort();
-                  return (
-                    <Table.Th
-                      key={header.id}
-                      c="slate.5"
-                      fw={700}
-                      style={{
-                        fontSize: 'var(--mantine-font-size-xs)',
-                        padding: '0 10px 6px',
-                        userSelect: 'none',
-                        cursor: canSort ? 'pointer' : 'default',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        border: 'none',
-                      }}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      <Group
-                        gap="xs"
-                        wrap="nowrap"
-                        justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
-                      </Group>
-                    </Table.Th>
-                  );
-                })}
-              </Table.Tr>
-            ))}
-          </Table.Thead>
-          <Table.Tbody>
-            {isLoading ? (
-              <Table.Tr>
-                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
-                  <Stack align="center" gap="xs" py="xl">
-                    <Loader size="sm" color="brand" />
-                    <Text ta="center" c="slate.5" fz="xs">
-                      Loading collaterals...
-                    </Text>
-                  </Stack>
-                </Table.Td>
-              </Table.Tr>
-            ) : rows.length === 0 ? (
-              <Table.Tr>
-                <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
-                  <Stack align="center" gap="xs" py="xl">
-                    <Box
-                      style={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: '50%',
-                        background: 'var(--mantine-color-white)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '1px solid var(--mantine-color-slate-2)',
-                      }}
-                    >
-                      <IconShieldLock size={26} color="var(--mantine-color-slate-4)" />
-                    </Box>
-                    <Text ta="center" c="slate.5" fz="xs">
-                      No collaterals match your filters.
-                    </Text>
-                  </Stack>
-                </Table.Td>
-              </Table.Tr>
-            ) : (
-              rows.map((row) => {
-                const isActive = row.original.status === 'ACTIVE';
-                const cells = row.getVisibleCells();
-                return (
-                  <Table.Tr key={row.id} className="lms-row">
-                    {cells.map((cell, idx) => (
-                      <Table.Td
-                        key={cell.id}
-                        style={{
-                          padding: '10px 10px',
-                          border: 'none',
-                          boxShadow: 'var(--mantine-shadow-xs)',
-                          borderLeft:
-                            idx === 0
-                              ? `3px solid var(--mantine-color-${isActive ? 'success' : 'danger'}-4)`
-                              : undefined,
-                        }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        {isLoading ? (
+          <Group justify="center" py="xl">
+            <Loader size="sm" color="brand" />
+          </Group>
+        ) : (
+          <>
+            <Box
+              style={{
+                height: 'clamp(320px, calc(100vh - 280px), 720px)',
+                overflowY: 'auto',
+                opacity: isFetching ? 0.6 : 1,
+                transition: 'opacity 120ms ease',
+              }}
+            >
+              <Table
+                verticalSpacing="sm"
+                horizontalSpacing="sm"
+                fz="xs"
+                w="100%"
+                style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+              >
+                <Table.Thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <Table.Tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        const canSort = header.column.getCanSort();
+                        return (
+                          <Table.Th
+                            key={header.id}
+                            className="lms-thead-cell"
+                            c="slate.5"
+                            fw={700}
+                            style={{
+                              fontSize: 'var(--mantine-font-size-xs)',
+                              padding: '0 10px 6px',
+                              userSelect: 'none',
+                              cursor: canSort ? 'pointer' : 'default',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                              border: 'none',
+                            }}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            <Group
+                              gap="xs"
+                              wrap="nowrap"
+                              justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
+                            >
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
+                            </Group>
+                          </Table.Th>
+                        );
+                      })}
+                    </Table.Tr>
+                  ))}
+                </Table.Thead>
+                <Table.Tbody>
+                  {rows.length === 0 ? (
+                    <Table.Tr>
+                      <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                        <Stack align="center" gap="xs" py="xl">
+                          <Box
+                            style={{
+                              width: 52,
+                              height: 52,
+                              borderRadius: '50%',
+                              background: 'var(--mantine-color-white)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              border: '1px solid var(--mantine-color-slate-2)',
+                            }}
+                          >
+                            <IconShieldLock size={26} color="var(--mantine-color-slate-4)" />
+                          </Box>
+                          <Text ta="center" c="slate.5" fz="xs">
+                            No collaterals match your filters.
+                          </Text>
+                        </Stack>
                       </Table.Td>
-                    ))}
-                  </Table.Tr>
-                );
-              })
-            )}
-          </Table.Tbody>
-        </Table>
+                    </Table.Tr>
+                  ) : (
+                    rows.map((row) => {
+                      const isActive = row.original.status === 'ACTIVE';
+                      const cells = row.getVisibleCells();
+                      return (
+                        <Table.Tr
+                          key={row.id}
+                          className="lms-row"
+                          onDoubleClick={() => handleView(row.original)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {cells.map((cell, idx) => (
+                            <Table.Td
+                              key={cell.id}
+                              style={{
+                                padding: '10px 10px',
+                                border: 'none',
+                                boxShadow: 'var(--mantine-shadow-xs)',
+                                borderLeft:
+                                  idx === 0
+                                    ? `3px solid var(--mantine-color-${isActive ? 'success' : 'danger'}-4)`
+                                    : undefined,
+                              }}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </Table.Td>
+                          ))}
+                        </Table.Tr>
+                      );
+                    })
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Box>
 
-        {/* Pagination Footer */}
-        <Group justify="space-between" px="sm" pt="xs">
-          <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
-            <span>
-              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-            </span>
-            <Group gap="xs">
-              <span>Rows:</span>
-              <Select
-                data={['10', '20', '50']}
-                value={String(pageSize)}
-                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
-                rightSection={chevronDown}
+            {/* Pagination Footer */}
+            <Group justify="space-between" px="sm" pt="xs">
+              <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
+                <span>
+                  {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+                </span>
+                <Group gap="xs">
+                  <span>Rows:</span>
+                  <Select
+                    data={['10', '20', '50']}
+                    value={String(pageSize)}
+                    onChange={(v) => {
+                      setPageSize(Number(v) || 10);
+                      setPage(1);
+                    }}
+                    rightSection={chevronDown}
+                    size="xs"
+                    radius="xl"
+                    w={60}
+                  />
+                </Group>
+              </Group>
+              <Pagination
+                total={totalPages}
+                value={page}
+                onChange={(p) => setPage(p)}
+                color="brand"
                 size="xs"
                 radius="xl"
-                w={60}
+                disabled={totalRows === 0}
               />
             </Group>
-          </Group>
-          <Pagination
-            total={table.getPageCount() || 1}
-            value={pageIndex + 1}
-            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-            color="brand"
-            size="xs"
-            radius="xl"
-          />
-        </Group>
+          </>
+        )}
       </Paper>
     </Stack>
   );

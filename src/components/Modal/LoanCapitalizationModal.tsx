@@ -41,6 +41,8 @@ import {
 import { ModalFooter } from '../shared/ModalFooter';
 import { openCommonModal } from './AlertModal';
 import { IconMinus } from '@tabler/icons-react';
+import { formatAmount, useCurrencyReady } from '../../store/currencyStore';
+import { useCompanyStore } from '../../store/companyStore';
 
 export interface LoanCapitalizationModalProps {
   opened: boolean;
@@ -79,10 +81,8 @@ interface Borrower {
   loans: LoanAccount[];
 }
 
-function formatCurrency(amount: number) {
-  return `${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-}
-
+const fmtDate = (iso: string) =>
+  iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 function toCapitalizationType(field: 'interest' | 'penalty' | 'fee') {
   if (field === 'interest') return 'Interest Capitalization';
   if (field === 'penalty') return 'Penalty Capitalization';
@@ -101,9 +101,10 @@ interface PaymentEffectModalProps {
   loanId: string;
   customerName: string;
   rows: PaymentEffectRow[];
+  currency: string | undefined;
 }
 
-function PaymentEffectModal({ opened, onClose, loanId, customerName, rows }: PaymentEffectModalProps) {
+function PaymentEffectModal({ opened, onClose, loanId, customerName, rows, currency }: PaymentEffectModalProps) {
   const theme = useMantineTheme();
   return (
     <Modal opened={opened} onClose={onClose} size={640} withCloseButton={false} padding={0} radius="lg">
@@ -154,15 +155,15 @@ function PaymentEffectModal({ opened, onClose, loanId, customerName, rows }: Pay
               {rows.map((row) => (
                 <Table.Tr key={row.component}>
                   <Table.Td fz="sm" fw={600} c="slate.7">{row.component}</Table.Td>
-                  <Table.Td ta="right" fz="sm" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-                    {formatCurrency(row.before)}
-                  </Table.Td>
-                  <Table.Td ta="right" fz="sm" fw={700} c="success.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-                    0.0
-                  </Table.Td>
-                  <Table.Td ta="right" fz="sm" fw={700} c="success.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-                    {formatCurrency(row.after)}
-                  </Table.Td>
+                <Table.Td ta="right" fz="sm" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)', fontVariantNumeric: 'tabular-nums' }}>
+  {formatAmount(currency, row.before, { withSymbol: true })}
+</Table.Td>
+<Table.Td ta="right" fz="sm" fw={700} c="success.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+  0.0
+</Table.Td>
+<Table.Td ta="right" fz="sm" fw={700} c="success.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)', fontVariantNumeric: 'tabular-nums' }}>
+  {formatAmount(currency, row.after, { withSymbol: true })}
+</Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -182,6 +183,8 @@ function PaymentEffectModal({ opened, onClose, loanId, customerName, rows }: Pay
 
 export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit, editId, isView }: LoanCapitalizationModalProps) {
   const theme = useMantineTheme();
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencyReady = useCurrencyReady();
   const [search, setSearch] = useState('');
   const [selectedBorrower, setSelectedBorrower] = useState<Borrower | null>(null);
   const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
@@ -785,9 +788,9 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                   <Table.Tbody>
                     <Table.Tr>
                       <Table.Td fw={600} c="slate.7">Interest</Table.Td>
-                      <Table.Td ta="right" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-                        {isDuesLoading ? '...' : formatCurrency(dues?.interest_amount ?? 0)}
-                      </Table.Td>
+                      <Table.Td ta="right" style={{ fontFamily: 'var(--mantine-font-family-monospace)', fontVariantNumeric: 'tabular-nums' }}>
+  {isDuesLoading ? '...' : formatAmount(companyCurrency, dues?.interest_amount ?? 0, { withSymbol: true })}
+</Table.Td>
                       <Table.Td>
                         <NumberInput
                           hideControls
@@ -804,9 +807,9 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                     </Table.Tr>
                     <Table.Tr>
                       <Table.Td fw={600} c="slate.7">Penalty</Table.Td>
-                      <Table.Td ta="right" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-                        {isDuesLoading ? '...' : formatCurrency(dues?.penalty_amount ?? 0)}
-                      </Table.Td>
+                      <Table.Td ta="right" style={{ fontFamily: 'var(--mantine-font-family-monospace)', fontVariantNumeric: 'tabular-nums' }}>
+  {isDuesLoading ? '...' : formatAmount(companyCurrency, dues?.penalty_amount ?? 0, { withSymbol: true })}
+</Table.Td>
                       <Table.Td>
                         <NumberInput
                           hideControls
@@ -823,9 +826,9 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                     </Table.Tr>
                     <Table.Tr>
                       <Table.Td fw={600} c="slate.7">Charge / Fee</Table.Td>
-                      <Table.Td ta="right" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-                        {isDuesLoading ? '...' : formatCurrency(dues?.total_charges_payable ?? 0)}
-                      </Table.Td>
+                     <Table.Td ta="right" style={{ fontFamily: 'var(--mantine-font-family-monospace)', fontVariantNumeric: 'tabular-nums' }}>
+  {isDuesLoading ? '...' : formatAmount(companyCurrency, dues?.total_charges_payable ?? 0, { withSymbol: true })}
+</Table.Td>
                       <Table.Td>
                         <NumberInput
                           hideControls
@@ -943,9 +946,9 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                   </div>
                   <div>
                     <Text size="xs" c="dimmed">EMI Date</Text>
-                    <Text size="sm" fw={700} c="slate.8">
-                      {isDuesLoading ? 'Loading...' : dues?.due_date || '—'}
-                    </Text>
+                   <Text size="sm" fw={700} c="slate.8">
+  {isDuesLoading ? 'Loading...' : fmtDate(dues?.due_date)}
+</Text>
                   </div>
                 </div>
 
@@ -955,34 +958,34 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                 >
                   <div className="flex justify-between">
                     <Text size="xs" c="dimmed">Principal Due</Text>
-                    <Text size="xs" c="slate.7" className="font-mono">
-                      {formatCurrency(dues?.payable_principal_amount ?? 0)}
-                    </Text>
+                    <Text size="xs" c="slate.7" className="font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>
+  {formatAmount(companyCurrency, dues?.payable_principal_amount ?? 0, { withSymbol: true })}
+</Text>
                   </div>
                   <div className="flex justify-between">
                     <Text size="xs" c="dimmed">Interest Due</Text>
-                    <Text size="xs" c="slate.7" className="font-mono">
-                      {formatCurrency(dues?.interest_amount ?? 0)}
-                    </Text>
+                    <Text size="xs" c="slate.7" className="font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>
+  {formatAmount(companyCurrency, dues?.interest_amount ?? 0, { withSymbol: true })}
+</Text>
                   </div>
                   <div className="flex justify-between">
                     <Text size="xs" c="dimmed">Penalty</Text>
-                    <Text size="xs" c="slate.7" className="font-mono">
-                      {formatCurrency(dues?.penalty_amount ?? 0)}
-                    </Text>
+                    <Text size="xs" c="slate.7" className="font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>
+  {formatAmount(companyCurrency, dues?.penalty_amount ?? 0, { withSymbol: true })}
+</Text>
                   </div>
                   <div className="flex justify-between">
                     <Text size="xs" c="dimmed">Fees/Charges</Text>
-                    <Text size="xs" c="slate.7" className="font-mono">
-                      {formatCurrency(dues?.total_charges_payable ?? 0)}
-                    </Text>
+                    <Text size="xs" c="slate.7" className="font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>
+  {formatAmount(companyCurrency, dues?.total_charges_payable ?? 0, { withSymbol: true })}
+</Text>
                   </div>
                   <div className="border-t border-gray-100 my-0.5" />
                   <div className="flex justify-between items-center">
                     <Text size="sm" fw={700} c="slate.8">Total Amount Due</Text>
-                    <Text size="sm" fw={700} c="slate.8" className="font-mono">
-                      {formatCurrency(dues?.payable_amount ?? 0)}
-                    </Text>
+                    <Text size="sm" fw={700} c="slate.8" className="font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>
+  {formatAmount(companyCurrency, dues?.payable_amount ?? 0, { withSymbol: true })}
+</Text>
                   </div>
                 </div>
               </div>
@@ -1015,13 +1018,14 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
         />
       </Box>
 
-      <PaymentEffectModal
-        opened={paymentEffectOpened}
-        onClose={() => setPaymentEffectOpened(false)}
-        loanId={selectedLoan?.id ?? ''}
-        customerName={selectedBorrower?.name ?? ''}
-        rows={paymentEffectRows}
-      />
+     <PaymentEffectModal
+  opened={paymentEffectOpened}
+  onClose={() => setPaymentEffectOpened(false)}
+  loanId={selectedLoan?.id ?? ''}
+  customerName={selectedBorrower?.name ?? ''}
+  rows={paymentEffectRows}
+  currency={companyCurrency}
+/>
     </Modal>
   );
 }
