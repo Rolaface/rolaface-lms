@@ -188,9 +188,9 @@ export function LoanDisbursement() {
     onSuccess: (_data, variables) => {
       fetchDisbursements();
       showSuccess(
-        variables.action === 'approved' ? 'Disbursement Submitted' : 'Disbursement Cancelled',
+        variables.action === 'approved' ? 'Disbursement Approved' : 'Disbursement Cancelled',
         variables.action === 'approved'
-          ? `Disbursement ${variables.id} has been submitted for approval.`
+          ? `Disbursement ${variables.id} has been approved.`
           : `Disbursement ${variables.id} has been cancelled.`
       );
     },
@@ -400,7 +400,7 @@ export function LoanDisbursement() {
                     <Menu.Item
                       onClick={() => {
                         openCommonModal({
-                          heading: 'Submit Loan Disbursement',
+                          heading: 'Approve Loan Disbursement',
                           subtitle: 'Please confirm this action before continuing.',
                           body: (
                             <>
@@ -408,14 +408,13 @@ export function LoanDisbursement() {
                               <Text span fw={600}>
                                 {row.id}
                               </Text>{' '}
-                              for approval?
                             </>
                           ),
                           color: 'success',
                           buttons: [
                             { label: 'Cancel', variant: 'default' },
                             {
-                              label: 'Submit',
+                              label: 'Approve',
                               color: 'success',
                               onClick: () => {
                                 statusMutation.mutate({ id: row.id, action: 'approved' });
