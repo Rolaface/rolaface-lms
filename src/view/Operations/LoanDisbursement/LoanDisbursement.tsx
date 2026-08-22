@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDebouncedValue } from '@mantine/hooks';
 import dayjs from 'dayjs';
 import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
@@ -9,20 +9,11 @@ import {
   Button,
   TextInput,
   Select,
-  SegmentedControl,
   Group,
   Paper,
   Table,
   Badge,
-  ActionIcon,
-  Text,
-  Pagination,
-  Tooltip,
-  Title,
-  Stack,
-  Loader,
-  Menu,
-  useMantineTheme,
+  ActionIcon, Text, Pagination, Tooltip, Title, Stack, Loader, Menu, useMantineTheme,
 } from '@mantine/core';
 import {
   IconEye,
@@ -37,16 +28,9 @@ import {
   IconDotsVertical,
 } from '@tabler/icons-react';
 
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
-  flexRender,
-  createColumnHelper,
-} from '@tanstack/react-table';
+import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
 import { getAllLoansDisbursement, deleteLoanDisbursement, changeLoanDsbrStatus } from '../../../api/loanDisbursementAPi';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { loanDisbursementModal } from './LoanDisbursementModalStore';
 
@@ -111,26 +95,39 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function LoanDisbursement() {
   const theme = useMantineTheme();
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
- const currencyReady = useCurrencyReady();
+  const currencyReady = useCurrencyReady();
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
- const [applicantType, setApplicantType] = useState<string | null>(null);
+  const [applicantType, setApplicantType] = useState<string | null>(null);
   const [debouncedApplicantType] = useDebouncedValue(applicantType, 400);
   const [company, setCompany] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
 
   // Table state
   const [sorting, setSorting] = useState([{ id: 'disbursementDate', desc: true }]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, debouncedApplicantType, statusFilter]);
   const {
     data: res,
     isLoading,
+    isFetching,
     error: queryError,
     refetch: fetchDisbursements,
   } = useQuery({
-  queryKey: ['loanDisbursements', debouncedSearch, debouncedApplicantType, statusFilter],
-    queryFn: () => getAllLoansDisbursement(debouncedSearch, debouncedApplicantType, statusFilter),
-    placeholderData: (prev) => prev,
+    queryKey: ['loanDisbursements', debouncedSearch, debouncedApplicantType, statusFilter, page, pageSize],
+    queryFn: () =>
+      getAllLoansDisbursement({
+        search: debouncedSearch || undefined,
+        applicant_type: debouncedApplicantType || undefined,
+        status: statusFilter.length ? statusFilter : undefined,
+        page,
+        page_size: pageSize,
+      }),
+    placeholderData: keepPreviousData,
   });
 
   const error = queryError ? (queryError as any)?.message || 'Failed to fetch loan disbursements.' : null;
@@ -146,7 +143,7 @@ export function LoanDisbursement() {
       postingDate: item.posting_date || '—',
       disbursedAmount: Number(item.disbursed_amount) || 0,
       status: item.status || 'Pending',
-      topUp: item.top_up ===1,
+      topUp: item.top_up === 1,
     }));
   }, [res]);
 
@@ -191,9 +188,9 @@ export function LoanDisbursement() {
     onSuccess: (_data, variables) => {
       fetchDisbursements();
       showSuccess(
-        variables.action === 'approved' ? 'Disbursement Submitted' : 'Disbursement Cancelled',
+        variables.action === 'approved' ? 'Disbursement Approved' : 'Disbursement Cancelled',
         variables.action === 'approved'
-          ? `Disbursement ${variables.id} has been submitted for approval.`
+          ? `Disbursement ${variables.id} has been approved.`
           : `Disbursement ${variables.id} has been cancelled.`
       );
     },
@@ -201,9 +198,9 @@ export function LoanDisbursement() {
   });
 
   const filteredData = useMemo(() => {
-    
-       return rowsData;
- }, [rowsData]);
+
+    return rowsData;
+  }, [rowsData]);
   const queryClient = useQueryClient();
 
   const handleAdd = () => {
@@ -248,29 +245,29 @@ export function LoanDisbursement() {
   const columns = useMemo(
     () => [
       columnHelper.accessor('id', {
-  header: 'Disbursement Ref.',
-  cell: (info) => {
-    const row = info.row.original;
-    return (
-      <Group gap={6} wrap="nowrap">
-        <Text fz="sm" fw={700} c="slate.8" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-          {info.getValue()}
-        </Text>
-        {row.topUp && (
-          <Badge
-            variant="light"
-            color="violet"
-            radius="sm"
-            size="xs"
-            styles={{ root: { textTransform: 'none', fontWeight: 700, padding: '0 6px' } }}
-          >
-            Top Up
-          </Badge>
-        )}
-      </Group>
-    );
-  },
-}),
+        header: 'Disbursement Ref.',
+        cell: (info) => {
+          const row = info.row.original;
+          return (
+            <Group gap={6} wrap="nowrap">
+              <Text fz="sm" fw={700} c="slate.8" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
+                {info.getValue()}
+              </Text>
+              {row.topUp && (
+                <Badge
+                  variant="light"
+                  color="violet"
+                  radius="sm"
+                  size="xs"
+                  styles={{ root: { textTransform: 'none', fontWeight: 700, padding: '0 6px' } }}
+                >
+                  Top Up
+                </Badge>
+              )}
+            </Group>
+          );
+        },
+      }),
       columnHelper.accessor('againstLoan', {
         header: 'Loan Ref.',
         cell: (info) => (
@@ -302,37 +299,37 @@ export function LoanDisbursement() {
         ),
       }),
       columnHelper.accessor('postingDate', {
-  header: 'Posting Date',
-  cell: (info) => (
-    <Text fz="xs" c="slate.6">
-      {info.getValue() && info.getValue() !== '—'
-        ? dayjs(info.getValue()).format('DD-MMM-YYYY')
-        : '—'}
-    </Text>
-  ),
-}),
-     columnHelper.accessor('disbursedAmount', {
-  header: 'Disbursed Amount',
-  cell: (info) => (
-    <Text
-      fz="xs"
-      fw={600}
-      c="slate.8"
-      style={{
-        fontFamily: 'var(--mantine-font-family-monospace)',
-        fontVariantNumeric: 'tabular-nums',
-      }}
-    >
-      {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
-    </Text>
-  ),
-}),
+        header: 'Posting Date',
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {info.getValue() && info.getValue() !== '—'
+              ? dayjs(info.getValue()).format('DD-MMM-YYYY')
+              : '—'}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor('disbursedAmount', {
+        header: 'Disbursed Amount',
+        cell: (info) => (
+          <Text
+            fz="xs"
+            fw={600}
+            c="slate.8"
+            style={{
+              fontFamily: 'var(--mantine-font-family-monospace)',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
+          </Text>
+        ),
+      }),
       columnHelper.accessor('status', {
         header: 'Status',
         cell: (info) => {
           const val = info.getValue();
           const color = val === 'Submitted' || val === 'Disbursed' ? 'success' : 'warning';
-           const label = val === 'Submitted' ? 'Approved' : val;
+          const label = val === 'Submitted' ? 'Approved' : val;
           return <StatusBadge label={label} color={color} />;
         },
       }),
@@ -403,7 +400,7 @@ export function LoanDisbursement() {
                     <Menu.Item
                       onClick={() => {
                         openCommonModal({
-                          heading: 'Submit Loan Disbursement',
+                          heading: 'Approve Loan Disbursement',
                           subtitle: 'Please confirm this action before continuing.',
                           body: (
                             <>
@@ -411,14 +408,13 @@ export function LoanDisbursement() {
                               <Text span fw={600}>
                                 {row.id}
                               </Text>{' '}
-                              for approval?
                             </>
                           ),
                           color: 'success',
                           buttons: [
                             { label: 'Cancel', variant: 'default' },
                             {
-                              label: 'Submit',
+                              label: 'Approve',
                               color: 'success',
                               onClick: () => {
                                 statusMutation.mutate({ id: row.id, action: 'approved' });
@@ -476,25 +472,24 @@ export function LoanDisbursement() {
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting, pagination },
+    state: { sorting },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+  const totalRows = res?.pagination?.total ?? 0;
+  const totalPages = res?.pagination?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
 
   const resetFilters = () => {
     setSearch('');
-     setApplicantType(null);
+    setApplicantType(null);
     setCompany(null);
-     setStatusFilter([]);
+    setStatusFilter([]);
+    setPage(1);
   };
 
   return (
@@ -557,14 +552,13 @@ export function LoanDisbursement() {
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
-           <Select
+          <Select
             size="sm"
             radius="xl"
             placeholder="All Applicant Types"
-             data={['Customer', 'Employee', 'Member']}
+            data={['Customer', 'Employee', 'Member']}
             style={{ flexGrow: 1, flexShrink: 1, minWidth: 130, maxWidth: 170 }}
             searchable
             clearable
@@ -572,17 +566,15 @@ export function LoanDisbursement() {
             value={applicantType}
             onChange={(v) => {
               setApplicantType(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
 
           <FilterMultiSelect
-           placeholder="All Statuses"
+            placeholder="All Statuses"
             data={STATUS_FILTER_OPTIONS}
             value={statusFilter}
             onChange={(v) => {
               setStatusFilter(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
             width={140}
           />
@@ -622,6 +614,7 @@ export function LoanDisbursement() {
           </Group>
         ) : (
           <>
+            <Box style={{ opacity: isFetching ? 0.6 : 1, transition: 'opacity 120ms ease' }}>
             <Table
               verticalSpacing="sm"
               horizontalSpacing="sm"
@@ -694,14 +687,14 @@ export function LoanDisbursement() {
                     const st = row.original.status;
                     const rowColor = st === 'Submitted' || st === 'Disbursed' ? 'success' : 'warning';
                     const cells = row.getVisibleCells();
-                 return (
-  <Table.Tr
-    key={row.id}
-    className="lms-row"
-    onDoubleClick={() => handleView(row.original)}
-    style={{ cursor: 'pointer' }}
-  >
-    {cells.map((cell, idx) => (
+                    return (
+                      <Table.Tr
+                        key={row.id}
+                        className="lms-row"
+                        onDoubleClick={() => handleView(row.original)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {cells.map((cell, idx) => (
                           <Table.Td
                             key={cell.id}
                             style={{
@@ -720,39 +713,40 @@ export function LoanDisbursement() {
                 )}
               </Table.Tbody>
             </Table>
+          </Box>
 
-            {/* Pagination Footer */}
-            <Group justify="space-between" px="sm" pt="xs">
-              <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
-                <span>
-                  {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-                </span>
-                <Group gap="xs">
-                  <span>Rows:</span>
-                  <Select
-                    data={['10', '20', '50']}
-                    value={String(pageSize)}
-                    onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
-                    rightSection={chevronDown}
-                    size="xs"
-                    radius="xl"
-                    w={60}
-                  />
-                </Group>
-              </Group>
-              <Pagination
-                total={table.getPageCount() || 1}
-                value={pageIndex + 1}
-                onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
-                color="brand"
+        {/* Pagination Footer */}
+        <Group justify="space-between" px="sm" pt="xs">
+          <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
+            <span>
+              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+            </span>
+            <Group gap="xs">
+              <span>Rows:</span>
+              <Select
+                data={['10', '20', '50']}
+                value={String(pageSize)}
+                onChange={(v) => { setPageSize(Number(v) || 10); setPage(1); }}
+                rightSection={chevronDown}
                 size="xs"
                 radius="xl"
-                disabled={totalRows === 0}
+                w={60}
               />
             </Group>
-          </>
+          </Group>
+          <Pagination
+            total={totalPages}
+            value={page}
+            onChange={(p) => setPage(p)}
+            color="brand"
+            size="xs"
+            radius="xl"
+            disabled={totalRows === 0}
+          />
+        </Group>
+      </>
         )}
-      </Paper>
-    </Stack>
+    </Paper>
+    </Stack >
   );
 }

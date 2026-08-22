@@ -40,7 +40,6 @@ import {
   IconFileOff,
   IconDotsVertical,
   IconCheck,
-  IconSend,
 } from '@tabler/icons-react';
 import {
   useReactTable,
@@ -127,21 +126,15 @@ export function LoanWriteOff() {
     onError: (error: any) => showError('Delete Failed', error),
   });
 
-  const statusMutation = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: 'approved' | 'submitted' }) =>
+ const statusMutation = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'approved' }) =>
       updateLoanWriteOffStatus(id, action),
-    onSuccess: (_data, { action }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loan-write-offs'] });
-      showSuccess(
-        action === 'approved' ? 'Write-off Approved' : 'Write-off Submitted',
-        action === 'approved' ? 'Write-off approved successfully.' : 'Write-off submitted successfully.'
-      );
+      showSuccess('Write-off Approved', 'Write-off approved successfully.');
     },
-    onError: (error: any, { action }) => {
-      showError(
-        action === 'approved' ? 'Approval Failed' : 'Submission Failed',
-        error
-      );
+    onError: (error: any) => {
+      showError('Approval Failed', error);
     },
   });
 
@@ -196,8 +189,7 @@ export function LoanWriteOff() {
       ],
     });
   };
-
-  const handleStatusChange = (id: string, action: 'approved' | 'submitted') => {
+ const handleStatusChange = (id: string, action: 'approved') => {
     statusMutation.mutate({ id, action });
   };
 
@@ -326,12 +318,6 @@ export function LoanWriteOff() {
                   </ActionIcon>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Item
-                    leftSection={<IconSend size={14} />}
-                    onClick={() => handleStatusChange(row.name, 'submitted')}
-                  >
-                    Submit
-                  </Menu.Item>
                   <Menu.Item
                     leftSection={<IconCheck size={14} />}
                     onClick={() => handleStatusChange(row.name, 'approved')}
