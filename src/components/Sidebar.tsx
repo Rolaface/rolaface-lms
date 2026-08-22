@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { IconMail, IconUserCog } from "@tabler/icons-react";
+import { IconCalendarClock, IconMail, IconTimelineEvent, IconUserCog } from "@tabler/icons-react";
 import {
   Box,
   Text,
@@ -206,6 +206,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         path: "/settings/emailTemplate",
         label: "Email Template",
         icon: IconMail,
+      },
+      {
+        path: "/settings/scheduler",
+        label: "Scheduler",
+        icon: IconCalendarClock,
       },
     ], 
   },

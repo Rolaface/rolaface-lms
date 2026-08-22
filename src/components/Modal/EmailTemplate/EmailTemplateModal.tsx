@@ -21,12 +21,13 @@ import { openCommonModal } from "../AlertModal";
 const INSTALLMENT_TABLE_VARIABLE = "{{ installment_table }}";
 
 const DOC_TYPE_OPTIONS = [
-    { label: "Loan Approval", value: "Loan Approval" },
-    { label: "Loan Disbursement", value: "Loan Disbursement" },
-    { label: "Loan Statement", value: "Loan Statement" },
-    { label: "Payment Reminder", value: "Payment Reminder" },
-    { label: "Loan Closure", value: "Loan Closure" },
-    { label: "Loan Rejection", value: "Loan Rejection" },
+    // { label: "Loan Approval", value: "Loan Approval" },
+    // { label: "Loan Disbursement", value: "Loan Disbursement" },
+    // { label: "Loan Statement", value: "Loan Statement" },
+    // { label: "Payment Reminder", value: "Payment Reminder" },
+    { label: "Payment Reminder", value: "Repayment Reminder" },
+    // { label: "Loan Closure", value: "Loan Closure" },
+    // { label: "Loan Rejection", value: "Loan Rejection" },
 ] as const;
 
 type DocType = (typeof DOC_TYPE_OPTIONS)[number]["value"];
@@ -513,13 +514,6 @@ export function EmailTemplateModal({
         </Modal>
     );
 }
-
-// ─────────────────────────────────────────────
-// RichTextEditorWithInsert
-// Exposes the Tiptap editor instance via onEditorReady so the variable
-// chip handler can insert content directly via insertContent().
-// ─────────────────────────────────────────────
-
 interface RichTextEditorWithInsertProps {
     value: string;
     onChange: (html: string) => void;

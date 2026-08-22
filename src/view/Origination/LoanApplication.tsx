@@ -57,7 +57,7 @@ import { parseFrappeError } from "../../utils/parseFrappeError";
 import { useCompanyStore } from "../../store/companyStore";
 import { openCommonModal } from "../../components/Modal/AlertModal";
 import { CreateLoanBookingModal } from "../../components/Modal/CreateLoanBookingModal";
-import { getSymbol } from "../../store/currencyStore";
+import { getSymbol, formatAmount } from "../../store/currencyStore";
 import { loanAccountModal } from "../../components/Modal/LoanBooking/loanAccountModalStore";
 export interface LoanApplicationRow {
   name: string;
@@ -515,10 +515,9 @@ export function LoanApplication() {
             );
           }
 
-          const formattedNumber = new Intl.NumberFormat("en-IN", {
-            maximumFractionDigits: 2,
-          }).format(Number(value));
-
+          const formattedWithSymbol = formatAmount(companyCurrency, value, {
+      withSymbol: true,
+    });
           return (
             <Text
               fz="xs"
@@ -526,8 +525,7 @@ export function LoanApplication() {
               fw={600}
               style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
             >
-              {currencySymbol}
-              {formattedNumber}
+             {formattedWithSymbol}
             </Text>
           );
         },
