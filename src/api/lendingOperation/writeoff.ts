@@ -70,7 +70,7 @@ export async function deleteLoanWriteOff(id: string) {
 }
 
 export async function updateLoanWriteOffStatus(id: string, action: "approved" | "submitted") {
-  const { data } = await apiClient.get<UpdateLoanWriteOffStatusResponse>(
+  const { data } = await apiClient.put<UpdateLoanWriteOffStatusResponse>(
     API.loanWriteoff.updateStatus,
     { params: { id, action } }
   );

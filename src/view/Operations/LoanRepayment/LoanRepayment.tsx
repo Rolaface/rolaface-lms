@@ -202,9 +202,9 @@ const { data: repaymentsResponse, isLoading, isFetching } = useQuery({
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
       const message =
         variables.action === 'approved'
-          ? 'Loan repayment submitted successfully.'
+          ? 'Loan repayment approved successfully.'
           : 'Loan repayment cancelled successfully.';
-      showSuccess(variables.action === 'approved' ? 'Repayment Submitted' : 'Repayment Cancelled', message);
+      showSuccess(variables.action === 'approved' ? 'Repayment Approved' : 'Repayment Cancelled', message);
     },
     onError: (error: any) => showError('Action Failed', error),
   });
@@ -406,22 +406,21 @@ return matchesLoanType;
                       <Menu.Item
                         onClick={() => {
                           openCommonModal({
-                            heading: 'Submit Loan',
+                            heading: 'Approve Loan',
                             subtitle: '',
                             body: (
                               <>
-                                Are you sure you want to submit loan{' '}
+                                Are you sure you want to approve loan{' '}
                                 <Text span fw={600}>
                                   {row.id}
                                 </Text>{' '}
-                                for approval?
                               </>
                             ),
                             color: 'green',
                             buttons: [
                               { label: 'Cancel', variant: 'default' },
                               {
-                                label: 'Submit',
+                                label: 'Approve',
                                 color: 'green',
                                 onClick: () => updateStatus({ id: row.id, action: 'approved' }),
                               },
