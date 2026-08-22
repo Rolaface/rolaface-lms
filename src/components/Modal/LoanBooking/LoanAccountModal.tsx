@@ -72,7 +72,7 @@ export function LoanAccountModal({
   const theme = useMantineTheme();
   const [activeTab, setActiveTab] = useState<string | null>("basic");
   const loadedLoanProductCode = useRef<string | null>(null);
-  const [loanAcNumber] = useState("");
+  // const [loanAcNumber] = useState("");
   const [simulatorModalOpened, setSimulatorModalOpened] = useState(false);
   const [coApplicantSearch, setCoApplicantSearch] = useState("");
 
@@ -104,6 +104,7 @@ export function LoanAccountModal({
   // Initialize Mantine Form
   const form = useForm({
     initialValues: {
+      loanAcNumber: "",
       customerNumber: "",
       rateOfInterest: "" as number | "",
       productCode: "",
@@ -515,6 +516,7 @@ export function LoanAccountModal({
 
     if (loan) {
       form.setValues({
+        loanAcNumber: loan.name || "",
         customerNumber: loan.applicant || "",
         productCode: loan.loan_product || "",
         isImport: !!loan.migration_date,
@@ -892,7 +894,7 @@ try {
               {activeTab === "basic" && (
                 <BasicDetailsTab
                   form={form}
-                  loanAcNumber={loanAcNumber}
+                  // loanAcNumber={loanAcNumber}
                   maturityDate={finalMaturityDate}
                 />
               )}
