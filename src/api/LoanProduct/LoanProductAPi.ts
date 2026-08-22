@@ -134,6 +134,33 @@ export interface CommonApiResponse {
   message: string;
 }
 
+export interface GetLoanProductsParams {
+  search?: string;
+  // 0 = active, 1 = disabled. Omit karo to fetch all.
+  disabled?: 0 | 1;
+  loan_category?: string[];
+  page?: number;
+  page_size?: number;
+}
+
+export const getLoanProducts = async (
+  params?: GetLoanProductsParams
+): Promise<LoanProductApiResponse> => {
+  const cleanParams: Record<string, string | number> = {};
+  if (params?.search) cleanParams.search = params.search;
+  if (params?.disabled === 0 || params?.disabled === 1) cleanParams.disabled = params.disabled;
+  if (params?.loan_category && params.loan_category.length > 0) {
+    cleanParams.loan_category = JSON.stringify(params.loan_category);
+  }
+  if (params?.page) cleanParams.page = params.page;
+  if (params?.page_size) cleanParams.page_size = params.page_size;
+
+  const response: AxiosResponse<LoanProductApiResponse> = await api.get(
+    LoanProductAPI.get,
+    { params: cleanParams }
+  );
+  return response.data;
+};
 /* ===========================================================
    ACCOUNT / LOOKUP TYPES
    For the dropdowns in the Accounting & Collection Sequence
@@ -223,13 +250,6 @@ export interface CreateLoanProductPayload {
 /* ===========================================================
    GET ALL
 =========================================================== */
-
-export const getLoanProducts = async (): Promise<LoanProductApiResponse> => {
-  const response: AxiosResponse<LoanProductApiResponse> = await api.get(
-    LoanProductAPI.get
-  );
-  return response.data;
-};
 
 /* ===========================================================
    GET BY ID
@@ -346,4 +366,26 @@ export const getLoanDemandOffsetOrders = async (): Promise<OffsetOrderOption[]> 
 export const getItems = async (): Promise<any[]> => {
   const response: AxiosResponse<LookupListResponse<any>> = await api.get(API.search.getItems);
   return unwrapList(response.data);
+};
+
+
+
+export const LoanCategoryAPI = API.loanCategory;
+
+export interface LoanCategoryRaw {
+  name: string;
+  loan_category?: string;
+  [key: string]: any;
+}
+
+export interface LoanCategoryApiResponse {
+  status_code?: number;
+  status?: string;
+  message?: string | LoanCategoryRaw[] | { data?: LoanCategoryRaw[] };
+  data?: LoanCategoryRaw[];
+}
+
+export const getAllLoanCategories = async (): Promise<LoanCategoryApiResponse> => {
+  const response: AxiosResponse<LoanCategoryApiResponse> = await api.get(LoanCategoryAPI.getAll);
+  return response.data;
 };

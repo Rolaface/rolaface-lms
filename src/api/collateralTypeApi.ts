@@ -4,19 +4,17 @@ import type { CreateCollateralTypePayload, CreateCollateralTypeResponse } from "
 
 export interface GetCollateralTypesParams {
   search?: string;
-  disabled?: string[]; 
+  // 0 = active, 1 = disabled. Omit to fetch all.
+  disabled?: 0 | 1;
   page?: number;
   page_size?: number;
 }
 
 export async function getAllCollateralTypes(params?: GetCollateralTypesParams) {
+  // Strip undefined/empty values so we don't send `search=` or `disabled=undefined`
   const cleanParams: Record<string, string | number> = {};
   if (params?.search) cleanParams.search = params.search;
-  
-  if (params?.disabled && params.disabled.length === 1) {
-    cleanParams.disabled = Number(params.disabled[0]);
-  }
-  
+  if (params?.disabled === 0 || params?.disabled === 1) cleanParams.disabled = params.disabled;
   if (params?.page) cleanParams.page = params.page;
   if (params?.page_size) cleanParams.page_size = params.page_size;
 
@@ -25,6 +23,7 @@ export async function getAllCollateralTypes(params?: GetCollateralTypesParams) {
   });
   return data;
 }
+
 export async function createCollateralType(payload: CreateCollateralTypePayload) {
   const { data } = await apiClient.post<CreateCollateralTypeResponse>(API.collateralType.createCollateralType, payload);
   return data;

@@ -1,4 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { useDebouncedValue } from '@mantine/hooks';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
+import { parseFrappeError } from '../../../utils/parseFrappeError';
+import { getAllCollectionOrders, deleteCollectionOrder } from '../../../api/collectionOrderApi';
 import {
   Box,
   Button,
@@ -28,47 +33,92 @@ import {
   IconListNumbers,
   IconTrash,
 } from '@tabler/icons-react';
-import { useReactTable, getCoreRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
-import { useCollectionOrders } from '../../../hooks/CollectionOrder/useCollectionOrders';
-import { openCommonModal } from '../../../components/Modal/AlertModal';
-import type { CollectionOrderListItem, CollectionOrderSort } from '../../../types/collectionOrder';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  createColumnHelper,
+} from '@tanstack/react-table';
+import type { CollectionOrderListItem } from '../../../types/collectionOrder';
 import { collectionSequenceOrderModal } from './LoanCollectionSequenceOrderStore';
 
 const columnHelper = createColumnHelper<CollectionOrderListItem>();
 
-function SortIcon({ active, direction }: { active: boolean; direction: CollectionOrderSort['direction'] }) {
-  const color = active ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
-  if (!active) return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
-  return direction === 'asc' ? <IconChevronUp size={12} color={color} /> : <IconChevronDown size={12} color={color} />;
+function SortIcon({ sorted }: { sorted: string | boolean }) {
+  const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
+  if (sorted === 'asc') return <IconChevronUp size={12} color={color} />;
+  if (sorted === 'desc') return <IconChevronDown size={12} color={color} />;
+  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function LoanCollectionSequenceOrder() {
   const theme = useMantineTheme();
-
-  const {
-    rows,
-    pagination,
-    loading,
-    error,
-    search,
-    setSearch,
-    page,
-    setPage,
-    pageSize,
-    setPageSize,
-    sort,
-    toggleSort,
-    resetFilters,
-    refetch,
-    removeCollectionOrder,
-    deletingName,
-  } = useCollectionOrders();
+  const queryClient = useQueryClient();
 
   const handleOpenModal = (mode: 'add' | 'edit' | 'view', data: CollectionOrderListItem | null = null) => {
-    collectionSequenceOrderModal.open({ mode, data, onSaved: refetch });
+    collectionSequenceOrderModal.open({ mode, data, onSaved: () => queryClient.invalidateQueries({ queryKey: ['collection-orders'] }) });
   };
+
+  const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebouncedValue(search, 400);
+
+  const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([{ id: 'title', desc: false }]);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+
+  const orderBy = useMemo(() => {
+    const s = sorting[0];
+    if (!s) return 'creation desc';
+    return `${s.id} ${s.desc ? 'desc' : 'asc'}`;
+  }, [sorting]);
+
+  const {
+    data: ordersResponse,
+    isLoading,
+    isFetching,
+    isError,
+  } = useQuery({
+    queryKey: ['collection-orders', pagination.pageIndex, pagination.pageSize, debouncedSearch, orderBy],
+    queryFn: () =>
+      getAllCollectionOrders({
+        search: debouncedSearch.trim() || undefined,
+        page: pagination.pageIndex + 1,
+        page_size: pagination.pageSize,
+        order_by: orderBy,
+      }),
+    placeholderData: (prev) => prev,
+  });
+
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: 'red',
+      buttons: [{ label: 'Close', color: 'red' }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteCollectionOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collection-orders'] });
+      showSuccess('Sequence Deleted', 'Collection sequence deleted successfully.');
+    },
+    onError: (error: any) => showError('Delete Failed', error),
+  });
 
   const handleDelete = (row: CollectionOrderListItem) => {
     openCommonModal({
@@ -90,12 +140,24 @@ export function LoanCollectionSequenceOrder() {
           label: 'Delete',
           color: 'red',
           onClick: () => {
-            removeCollectionOrder(row.name);
+            deleteMutation.mutate(row.name);
           },
         },
       ],
     });
   };
+
+  // Shared by the eye icon and the row double-click handler — matches the
+  // ERP's "double-click a row to view" convention used across the other modules.
+  const handleView = (row: CollectionOrderListItem) => {
+    handleOpenModal('view', row);
+  };
+
+  const rowsData: CollectionOrderListItem[] = useMemo(
+    () => Object.values(ordersResponse?.data?.collection_orders ?? {}),
+    [ordersResponse]
+  );
+  const serverPagination = ordersResponse?.data?.pagination;
 
   const columns = useMemo(
     () => [
@@ -153,7 +215,10 @@ export function LoanCollectionSequenceOrder() {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => handleOpenModal('view', row)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleView(row);
+                  }}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -164,7 +229,10 @@ export function LoanCollectionSequenceOrder() {
                   variant="subtle"
                   color="brand"
                   radius="md"
-                  onClick={() => handleOpenModal('edit', row)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenModal('edit', row);
+                  }}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -175,8 +243,11 @@ export function LoanCollectionSequenceOrder() {
                   variant="subtle"
                   color="danger"
                   radius="md"
-                  loading={deletingName === row.name}
-                  onClick={() => handleDelete(row)}
+                  loading={deleteMutation.isPending && deleteMutation.variables === row.name}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(row);
+                  }}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
@@ -187,22 +258,34 @@ export function LoanCollectionSequenceOrder() {
       }),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [deletingName]
+    [deleteMutation.isPending, deleteMutation.variables]
   );
 
   const table = useReactTable({
-    data: rows,
+    data: rowsData,
     columns,
+    state: { sorting, pagination },
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     getRowId: (row) => row.name,
     manualSorting: true,
     manualPagination: true,
+    pageCount: serverPagination?.total_pages ?? 1,
   });
 
-  const totalRows = pagination?.total ?? 0;
-  const totalPages = pagination?.total_pages ?? 1;
-  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
-  const lastRow = Math.min(totalRows, page * pageSize);
+  const rows = table.getRowModel().rows;
+  const totalRows = serverPagination?.total ?? 0;
+  const { pageIndex, pageSize } = pagination;
+  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
+  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+
+  const resetFilters = () => {
+    setSearch('');
+    setSorting([{ id: 'title', desc: false }]);
+    setPagination({ pageIndex: 0, pageSize: 10 });
+  };
 
   return (
     <Stack gap="lg" p="lg">
@@ -257,7 +340,10 @@ export function LoanCollectionSequenceOrder() {
             style={{ flex: 1, minWidth: 220 }}
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
+            onChange={(e) => {
+              setSearch(e.currentTarget.value);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
           />
 
           <Group gap="xs" ml="auto">
@@ -288,14 +374,13 @@ export function LoanCollectionSequenceOrder() {
           horizontalSpacing="sm"
           fz="xs"
           w="100%"
-          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+          style={{ borderCollapse: 'separate', borderSpacing: '0 8px', opacity: isFetching ? 0.6 : 1 }}
         >
           <Table.Thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <Table.Tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
-                  const canSort = header.column.id === 'title';
-                  const isActive = sort.field === 'title' && canSort;
+                  const canSort = header.column.getCanSort();
                   return (
                     <Table.Th
                       key={header.id}
@@ -310,11 +395,11 @@ export function LoanCollectionSequenceOrder() {
                         letterSpacing: '0.04em',
                         border: 'none',
                       }}
-                      onClick={canSort ? () => toggleSort('title') : undefined}
+                      onClick={header.column.getToggleSortingHandler()}
                     >
                       <Group gap="xs" wrap="nowrap" justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}>
                         {flexRender(header.column.columnDef.header, header.getContext())}
-                        {canSort && <SortIcon active={isActive} direction={sort.direction} />}
+                        {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
                       </Group>
                     </Table.Th>
                   );
@@ -323,7 +408,7 @@ export function LoanCollectionSequenceOrder() {
             ))}
           </Table.Thead>
           <Table.Tbody>
-            {loading ? (
+            {isLoading ? (
               <Table.Tr>
                 <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
                   <Stack align="center" gap="xs" py="xl">
@@ -334,17 +419,12 @@ export function LoanCollectionSequenceOrder() {
                   </Stack>
                 </Table.Td>
               </Table.Tr>
-            ) : error ? (
+            ) : isError ? (
               <Table.Tr>
                 <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
-                  <Stack align="center" gap="xs" py="xl">
-                    <Text ta="center" c="danger.6" fz="xs">
-                      {error}
-                    </Text>
-                    <Button size="xs" variant="light" radius="xl" onClick={refetch}>
-                      Retry
-                    </Button>
-                  </Stack>
+                  <Text ta="center" c="danger" fz="xs" py="xl">
+                    Failed to load collection sequences.
+                  </Text>
                 </Table.Td>
               </Table.Tr>
             ) : rows.length === 0 ? (
@@ -372,23 +452,31 @@ export function LoanCollectionSequenceOrder() {
                 </Table.Td>
               </Table.Tr>
             ) : (
-              table.getRowModel().rows.map((row) => (
-                <Table.Tr key={row.id} className="lms-row">
-                  {row.getVisibleCells().map((cell, idx) => (
-                    <Table.Td
-                      key={cell.id}
-                      style={{
-                        padding: '10px 10px',
-                        border: 'none',
-                        boxShadow: 'var(--mantine-shadow-xs)',
-                        borderLeft: idx === 0 ? '3px solid var(--mantine-color-brand-4)' : undefined,
-                      }}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </Table.Td>
-                  ))}
-                </Table.Tr>
-              ))
+              rows.map((row) => {
+                const cells = row.getVisibleCells();
+                return (
+                  <Table.Tr
+                    key={row.id}
+                    className="lms-row"
+                    onDoubleClick={() => handleView(row.original)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {cells.map((cell, idx) => (
+                      <Table.Td
+                        key={cell.id}
+                        style={{
+                          padding: '10px 10px',
+                          border: 'none',
+                          boxShadow: 'var(--mantine-shadow-xs)',
+                          borderLeft: idx === 0 ? '3px solid var(--mantine-color-brand-4)' : undefined,
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </Table.Td>
+                    ))}
+                  </Table.Tr>
+                );
+              })
             )}
           </Table.Tbody>
         </Table>
@@ -401,7 +489,7 @@ export function LoanCollectionSequenceOrder() {
               <Select
                 data={['10', '20', '50']}
                 value={String(pageSize)}
-                onChange={(v) => setPageSize(Number(v) || 10)}
+                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
                 rightSection={chevronDown}
                 size="xs"
                 radius="xl"
@@ -409,7 +497,15 @@ export function LoanCollectionSequenceOrder() {
               />
             </Group>
           </Group>
-          <Pagination total={totalPages || 1} value={page} onChange={setPage} color="brand" size="xs" radius="xl" />
+          <Pagination
+            total={table.getPageCount() || 1}
+            value={pageIndex + 1}
+            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+            color="brand"
+            size="xs"
+            radius="xl"
+            disabled={totalRows === 0}
+          />
         </Group>
       </Paper>
     </Stack>

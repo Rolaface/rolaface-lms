@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useDebouncedValue } from "@mantine/hooks";
+import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
 import {
   Box,
   Button,
@@ -30,26 +32,23 @@ import {
   IconTrash,
   IconBriefcase,
 } from "@tabler/icons-react";
-import { useDisclosure } from "@mantine/hooks";
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getPaginationRowModel,
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LoanProductModal } from "../../../components/Modal/LoanProduct/LoanProductModal";
 import {
   getLoanProducts,
-  type LoanProductRaw,
-} from "../../../api/LoanProduct/LoanProductAPi";
-import { parseFrappeError } from "../../../utils/parseFrappeError";
-import {
   deleteLoanProduct,
   enableLoanProduct,
   disableLoanProduct,
-} from "../../../api/productApi";
+  type LoanProductRaw,
+} from "../../../api/LoanProduct/LoanProductAPi";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { loanProductModal } from "../../../components/Modal/LoanProduct/loanProductModalstore";
 
@@ -67,9 +66,7 @@ interface NormalizedProduct {
 const columnHelper = createColumnHelper<NormalizedProduct>();
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
-  const color = sorted
-    ? "var(--mantine-color-brand-6)"
-    : "var(--mantine-color-slate-4)";
+  const color = sorted ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-4)";
   if (sorted === "asc") return <IconChevronUp size={12} color={color} />;
   if (sorted === "desc") return <IconChevronDown size={12} color={color} />;
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
@@ -95,14 +92,7 @@ function StatusBadge({ status }: { status: string }) {
         },
       }}
       leftSection={
-        <Box
-          w={6}
-          h={6}
-          style={{
-            borderRadius: "50%",
-            background: `var(--mantine-color-${scale}-6)`,
-          }}
-        />
+        <Box w={6} h={6} style={{ borderRadius: "50%", background: `var(--mantine-color-${scale}-6)` }} />
       }
     >
       {status}
@@ -112,23 +102,34 @@ function StatusBadge({ status }: { status: string }) {
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
+// Collateral module ke statusToDisabledParam jaisa hi — "All | Active | Inactive"
+// ko API ke `disabled` param me map karta hai.
+function statusToDisabledParam(status: string): 0 | 1 | undefined {
+  if (status === "active") return 0;
+  if (status === "inactive") return 1;
+  return undefined;
+}
+
 export function LoanProduct() {
   const theme = useMantineTheme();
 
   // filter state
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<string | null>(null);
+  const [debouncedSearch] = useDebouncedValue(search, 400);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [status, setStatus] = useState("all");
 
   // table state
   const [sorting, setSorting] = useState([{ id: "name", desc: false }]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const disabledParam = statusToDisabledParam(status);
 
-  // server data state
-  const [products, setProducts] = useState<NormalizedProduct[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, disabledParam, selectedCategories]);
+
+  const queryClient = useQueryClient();
 
   const showError = (heading: string, error: any) => {
     openCommonModal({
@@ -141,78 +142,79 @@ export function LoanProduct() {
   };
 
   const showSuccess = (heading: string, body: string) => {
-    openCommonModal({
-      heading,
-      subtitle: "",
-      body,
-      color: "green",
-      buttons: [{ label: "Close", color: "green" }],
-    });
+    openCommonModal({ heading, subtitle: "", body, color: "green", buttons: [{ label: "Close", color: "green" }] });
   };
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await getLoanProducts();
-      const list: LoanProductRaw[] = Array.isArray(res?.data) ? res.data : [];
-      const normalized: NormalizedProduct[] = list.map((p) => ({
-        id: p.name,
-        name: p.product_name || "—",
-        code: p.product_code || "—",
-        category: p.loan_category?.trim() || "Uncategorized",
-        rate: Number(p.rate_of_interest) || 0,
-        max: Number(p.maximum_loan_amount) || 0,
-        disabled: p.disabled === 1 ? 1 : 0,
-        status: p.disabled === 1 ? "INACTIVE" : "ACTIVE",
-      }));
-      setProducts(normalized);
-    } catch (err: any) {
-      showError("Failed to Load Products", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data: productsResponse, isLoading, isFetching } = useQuery({
+    queryKey: ["loanProducts", debouncedSearch, disabledParam, selectedCategories, page, pageSize],
+    queryFn: () =>
+      getLoanProducts({
+        search: debouncedSearch.trim() || undefined,
+        disabled: disabledParam,
+        loan_category: selectedCategories.length > 0 ? selectedCategories : undefined,
+        page,
+        page_size: pageSize,
+      }),
+    placeholderData: (prev) => prev,
+  });
 
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
 
-  const categoryOptions = useMemo(
-    () => Array.from(new Set(products.map((p) => p.category))).sort(),
-    [products],
-  );
+  const categoryOptions = useMemo(() => {
+    const list = productsResponse?.data || [];
+    const unique = Array.from(new Set(list.map((p) => p.loan_category?.trim()).filter(Boolean))).sort();
+    return unique.map((c) => ({ value: c as string, label: c as string }));
+  }, [productsResponse]);
 
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return products.filter((p) => {
-      const matchesSearch =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.code.toLowerCase().includes(q);
-      const matchesCategory = !category || p.category === category;
-      const matchesStatus =
-        status === "all" ||
-        (status === "active" && p.status === "ACTIVE") ||
-        (status === "inactive" && p.status === "INACTIVE");
-      return matchesSearch && matchesCategory && matchesStatus;
-    });
-  }, [products, search, category, status]);
+  const { mutate: enableItem, isPending: isEnabling } = useMutation({
+    mutationFn: (id: string) => enableLoanProduct(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanProducts"] });
+      showSuccess("Product Activated", "Loan product has been activated successfully.");
+    },
+    onError: (error: any) => showError("Status Update Failed", error),
+  });
+
+  const { mutate: disableItem, isPending: isDisabling } = useMutation({
+    mutationFn: (id: string) => disableLoanProduct(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanProducts"] });
+      showSuccess("Product Deactivated", "Loan product has been deactivated successfully.");
+    },
+    onError: (error: any) => showError("Status Update Failed", error),
+  });
+
+  const { mutate: removeItem, isPending: isDeleting } = useMutation({
+    mutationFn: (id: string) => deleteLoanProduct(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanProducts"] });
+      showSuccess("Product Deleted", "Loan product deleted successfully.");
+    },
+    onError: (error: any) => showError("Delete Failed", error),
+  });
+
+  const data: NormalizedProduct[] = useMemo(() => {
+    const list: LoanProductRaw[] = productsResponse?.data || [];
+    return list.map((p) => ({
+      id: p.name,
+      name: p.product_name || "—",
+      code: p.product_code || "—",
+      category: p.loan_category?.trim() || "Uncategorized",
+      rate: Number(p.rate_of_interest) || 0,
+      max: Number(p.maximum_loan_amount) || 0,
+      disabled: p.disabled === 1 ? 1 : 0,
+      status: p.disabled === 1 ? "INACTIVE" : "ACTIVE",
+    }));
+  }, [productsResponse]);
 
   const toggleStatus = (row: NormalizedProduct) => {
     const willDeactivate = row.status === "ACTIVE";
     openCommonModal({
-      heading: willDeactivate
-        ? "Deactivate Loan Product"
-        : "Activate Loan Product",
+      heading: willDeactivate ? "Deactivate Loan Product" : "Activate Loan Product",
       subtitle: "Please confirm this action before continuing.",
       body: (
         <>
-          Are you sure you want to {willDeactivate ? "deactivate" : "activate"}{" "}
-          loan product{" "}
-          <Text span fw={600}>
-            {row.name}
-          </Text>
-          ?
+          Are you sure you want to {willDeactivate ? "deactivate" : "activate"} loan product{" "}
+          <Text span fw={600}>{row.name}</Text>?
         </>
       ),
       color: willDeactivate ? "red" : "green",
@@ -221,25 +223,7 @@ export function LoanProduct() {
         {
           label: willDeactivate ? "Deactivate" : "Activate",
           color: willDeactivate ? "red" : "green",
-          onClick: async () => {
-            setTogglingId(row.id);
-            try {
-              if (willDeactivate) {
-                await disableLoanProduct(row.id);
-              } else {
-                await enableLoanProduct(row.id);
-              }
-              await fetchProducts();
-              showSuccess(
-                willDeactivate ? "Product Deactivated" : "Product Activated",
-                `Loan product has been ${willDeactivate ? "deactivated" : "activated"} successfully.`,
-              );
-            } catch (err: any) {
-              showError("Status Update Failed", err);
-            } finally {
-              setTogglingId(null);
-            }
-          },
+          onClick: () => (willDeactivate ? disableItem(row.id) : enableItem(row.id)),
         },
       ],
     });
@@ -252,34 +236,13 @@ export function LoanProduct() {
       body: (
         <>
           Are you sure you want to delete loan product{" "}
-          <Text span fw={600}>
-            {row.name}
-          </Text>
-          ?
+          <Text span fw={600}>{row.name}</Text>?
         </>
       ),
       color: "red",
       buttons: [
         { label: "Cancel", variant: "default" },
-        {
-          label: "Delete",
-          color: "red",
-          onClick: async () => {
-            setDeletingId(row.id);
-            try {
-              await deleteLoanProduct(row.id);
-              await fetchProducts();
-              showSuccess(
-                "Product Deleted",
-                "Loan product deleted successfully.",
-              );
-            } catch (err: any) {
-              showError("Delete Failed", err);
-            } finally {
-              setDeletingId(null);
-            }
-          },
-        },
+        { label: "Delete", color: "red", onClick: () => removeItem(row.id) },
       ],
     });
   };
@@ -288,20 +251,12 @@ export function LoanProduct() {
     () => [
       columnHelper.accessor("name", {
         header: "Product Name",
-        cell: (info) => (
-          <Text fz="sm" fw={700} c="slate.8">
-            {info.getValue()}
-          </Text>
-        ),
+        cell: (info) => <Text fz="sm" fw={700} c="slate.8">{info.getValue()}</Text>,
       }),
       columnHelper.accessor("code", {
         header: "Code",
         cell: (info) => (
-          <Text
-            fz="xs"
-            c="slate.6"
-            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
-          >
+          <Text fz="xs" c="slate.6" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
             {info.getValue()}
           </Text>
         ),
@@ -309,24 +264,14 @@ export function LoanProduct() {
       columnHelper.accessor("category", {
         header: "Category",
         cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            radius="sm"
-            color="brand"
-            styles={{ root: { fontSize: 10, padding: "0 8px" } }}
-          >
+          <Badge variant="light" size="sm" radius="sm" color="brand" styles={{ root: { fontSize: 10, padding: "0 8px" } }}>
             {info.getValue()}
           </Badge>
         ),
       }),
       columnHelper.accessor("rate", {
         header: "Base Rate",
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {Number(info.getValue()).toFixed(2)}%
-          </Text>
-        ),
+        cell: (info) => <Text fz="xs" c="slate.6">{Number(info.getValue()).toFixed(2)}%</Text>,
         sortingFn: "basic",
       }),
       columnHelper.accessor("status", {
@@ -335,78 +280,36 @@ export function LoanProduct() {
       }),
       columnHelper.display({
         id: "actions",
-        header: () => (
-          <Text fz="xs" fw={600} ta="right" w="100%">
-            Actions
-          </Text>
-        ),
+        header: () => <Text fz="xs" fw={600} ta="right" w="100%">Actions</Text>,
         cell: (info) => {
           const row = info.row.original;
-          const isDeleting = deletingId === row.id;
-          const isToggling = togglingId === row.id;
-
+          const isTogglingStatus = isEnabling || isDisabling;
           return (
-            <Group
-              justify="flex-end"
-              gap={4}
-              wrap="nowrap"
-              className="lms-row-actions"
-            >
+            <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="slate"
-                  radius="md"
-                  onClick={() => {
-                    loanProductModal.open({
-                      loanProductId: row.id,
-                      isViewMode: true,
-                      onSaved: fetchProducts,
-                    });
-                  }}
-                >
+                <ActionIcon size="sm" variant="subtle" color="slate" radius="md"
+                  onClick={() => loanProductModal.open({ loanProductId: row.id, isViewMode: true })}>
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="brand"
-                  radius="md"
-                  onClick={() => {
-                    loanProductModal.open({
-                      loanProductId: row.id,
-                      isViewMode: false,
-                      onSaved: fetchProducts,
-                    });
-                  }}
-                >
+                <ActionIcon size="sm" variant="subtle" color="brand" radius="md"
+                  onClick={() => loanProductModal.open({ loanProductId: row.id, isViewMode: false })}>
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Delete" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="danger"
-                  radius="md"
-                  loading={isDeleting}
-                  onClick={() => handleDelete(row)}
-                >
+                <ActionIcon size="sm" variant="subtle" color="danger" radius="md" loading={isDeleting}
+                  onClick={() => handleDelete(row)}>
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip
-                label={row.status === "ACTIVE" ? "Deactivate" : "Activate"}
-                withArrow
-              >
+              <Tooltip label={row.status === "ACTIVE" ? "Deactivate" : "Activate"} withArrow>
                 <Switch
                   size="xs"
                   color="success"
                   checked={row.status === "ACTIVE"}
-                  disabled={isToggling}
+                  disabled={isTogglingStatus}
                   onChange={() => toggleStatus(row)}
                 />
               </Tooltip>
@@ -415,36 +318,33 @@ export function LoanProduct() {
         },
       }),
     ],
-    [deletingId, togglingId],
+    [isDeleting, isEnabling, isDisabling]
   );
 
   const table = useReactTable({
-    data: filteredData,
+    data,
     columns,
-    state: { sorting, pagination },
+    state: { sorting },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+  const totalRows = productsResponse?.pagination?.total ?? 0;
+  const totalPages = productsResponse?.pagination?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
 
   const resetFilters = () => {
     setSearch("");
-    setCategory(null);
+    setSelectedCategories([]);
     setStatus("all");
+    setPage(1);
   };
 
   return (
     <Stack gap="lg" p="lg">
-      {/* Scoped, purely visual — pulls from theme.other so it stays in sync
-          with the brand color everywhere else, same as Customer module. */}
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
         .lms-row-actions { opacity: 1; }
@@ -454,47 +354,19 @@ export function LoanProduct() {
         .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
       `}</style>
 
-      {/* Header — icon tile + title on the left, same pattern as Customers */}
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
         <Group gap="sm" align="center">
-          <Box
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: "var(--mantine-radius-md)",
-              background: theme.other.brandGradient,
-              boxShadow: theme.other.brandGlowShadow,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <IconBriefcase
-              size={20}
-              color="var(--mantine-color-white)"
-              stroke={1.8}
-            />
+          <Box style={{ width: 40, height: 40, borderRadius: "var(--mantine-radius-md)", background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadow, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <IconBriefcase size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
-            <Title order={2} c="slate.8" fw={700}>
-              Loan Products
-            </Title>
-            <Text fz="sm" c="slate.5">
-              Configure and manage loan products
-            </Text>
+            <Title order={2} c="slate.8" fw={700}>Loan Products</Title>
+            <Text fz="sm" c="slate.5">Configure and manage loan products</Text>
           </Stack>
         </Group>
       </Group>
 
-      {/* Toolbar — pill search + pill filter + segmented status control */}
-      <Paper
-        radius="xl"
-        p="xs"
-        style={{
-          background: "var(--mantine-color-slate-0)",
-          border: "1px solid var(--mantine-color-slate-2)",
-        }}
-      >
+      <Paper radius="xl" p="xs" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}>
         <Group gap="sm" wrap="wrap" align="center">
           <TextInput
             className="lms-search"
@@ -503,29 +375,17 @@ export function LoanProduct() {
             placeholder="Product Name / Code"
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
-            styles={{
-              input: { border: "1px solid var(--mantine-color-slate-2)" },
-            }}
+            styles={{ input: { border: "1px solid var(--mantine-color-slate-2)" } }}
             value={search}
-            onChange={(e) => {
-              setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            onChange={(e) => setSearch(e.currentTarget.value)}
           />
-          <Select
-            size="sm"
-            radius="xl"
+
+          <FilterMultiSelect
             placeholder="All Categories"
             data={categoryOptions}
-            w={166}
-            searchable
-            clearable
-            rightSection={chevronDown}
-            value={category}
-            onChange={(v) => {
-              setCategory(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            value={selectedCategories}
+            onChange={setSelectedCategories}
+            width={180}
           />
 
           <SegmentedControl
@@ -533,194 +393,101 @@ export function LoanProduct() {
             radius="xl"
             color="brand"
             value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            onChange={setStatus}
             data={[
               { label: "All", value: "all" },
               { label: "Active", value: "active" },
               { label: "Inactive", value: "inactive" },
             ]}
           />
-
-          <Button
-            size="sm"
-            radius="xl"
-            variant="default"
-            px="md"
-            ml="auto"
-            onClick={resetFilters}
-          >
-            Reset
-          </Button>
-          <Button
-            size="sm"
-            radius="xl"
-            color="brand"
-            onClick={() => {
-              loanProductModal.open({ onSaved: fetchProducts });
-            }}
-            leftSection={<IconPlus size={14} />}
-            style={{
-              background: theme.other.brandGradient,
-              boxShadow: theme.other.brandGlowShadowSm,
-            }}
-          >
-            Add Product
-          </Button>
+          <Group gap="xs" ml="auto">
+            <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>Reset</Button>
+            <Button
+              size="sm"
+              radius="xl"
+              color="brand"
+              onClick={() => loanProductModal.open({})}
+              leftSection={<IconPlus size={14} />}
+              style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
+            >
+              Add Product
+            </Button>
+          </Group>
         </Group>
       </Paper>
 
-      {/* Data Table — floating rounded row-cards on a soft canvas */}
-      <Paper
-        radius="lg"
-        p="sm"
-        style={{
-          background: "var(--mantine-color-slate-0)",
-          border: "1px solid var(--mantine-color-slate-2)",
-        }}
-      >
-        {loading ? (
-          <Group justify="center" py="xl">
-            <Loader size="sm" color="brand" />
-          </Group>
+      <Paper radius="lg" p="sm" pos="relative" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}>
+        {isLoading ? (
+          <Group justify="center" py="xl"><Loader size="sm" color="brand" /></Group>
         ) : (
           <>
-            <Table
-              verticalSpacing="sm"
-              horizontalSpacing="sm"
-              fz="xs"
-              w="100%"
-              style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
-            >
-              <Table.Thead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <Table.Tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      const canSort = header.column.getCanSort();
+            <Box style={{ opacity: isFetching ? 0.6 : 1, transition: "opacity 120ms ease" }}>
+              <Table verticalSpacing="sm" horizontalSpacing="sm" fz="xs" w="100%" style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}>
+                <Table.Thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <Table.Tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        const canSort = header.column.getCanSort();
+                        return (
+                          <Table.Th
+                            key={header.id}
+                            c="slate.5"
+                            fw={700}
+                            style={{ fontSize: "var(--mantine-font-size-xs)", padding: "0 10px 6px", userSelect: "none", cursor: canSort ? "pointer" : "default", textTransform: "uppercase", letterSpacing: "0.04em", border: "none" }}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            <Group gap="xs" wrap="nowrap" justify={header.id === "actions" ? "flex-end" : "flex-start"}>
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
+                            </Group>
+                          </Table.Th>
+                        );
+                      })}
+                    </Table.Tr>
+                  ))}
+                </Table.Thead>
+                <Table.Tbody>
+                  {rows.length === 0 ? (
+                    <Table.Tr>
+                      <Table.Td colSpan={columns.length} style={{ border: "none" }}>
+                        <Stack align="center" gap="xs" py="xl">
+                          <Box style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--mantine-color-white)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--mantine-color-slate-2)" }}>
+                            <IconBriefcase size={24} color="var(--mantine-color-slate-4)" />
+                          </Box>
+                          <Text ta="center" c="slate.5" fz="xs">No products match your filters.</Text>
+                        </Stack>
+                      </Table.Td>
+                    </Table.Tr>
+                  ) : (
+                    rows.map((row) => {
+                      const isActive = row.original.status === "ACTIVE";
                       return (
-                        <Table.Th
-                          key={header.id}
-                          c="slate.5"
-                          fw={700}
-                          style={{
-                            fontSize: "var(--mantine-font-size-xs)",
-                            padding: "0 10px 6px",
-                            userSelect: "none",
-                            cursor: canSort ? "pointer" : "default",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.04em",
-                            border: "none",
-                          }}
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          <Group
-                            gap="xs"
-                            wrap="nowrap"
-                            justify={
-                              header.id === "actions"
-                                ? "flex-end"
-                                : "flex-start"
-                            }
-                          >
-                            {flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                            {canSort && (
-                              <SortIcon sorted={header.column.getIsSorted()} />
-                            )}
-                          </Group>
-                        </Table.Th>
+                        <Table.Tr key={row.id} className="lms-row">
+                          {row.getVisibleCells().map((cell, idx) => (
+                            <Table.Td
+                              key={cell.id}
+                              style={{ padding: "10px 10px", border: "none", boxShadow: "var(--mantine-shadow-xs)", borderLeft: idx === 0 ? `3px solid var(--mantine-color-${isActive ? "success" : "danger"}-4)` : undefined }}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </Table.Td>
+                          ))}
+                        </Table.Tr>
                       );
-                    })}
-                  </Table.Tr>
-                ))}
-              </Table.Thead>
-              <Table.Tbody>
-                {rows.length === 0 ? (
-                  <Table.Tr>
-                    <Table.Td
-                      colSpan={columns.length}
-                      style={{ border: "none" }}
-                    >
-                      <Stack align="center" gap="xs" py="xl">
-                        <Box
-                          style={{
-                            width: 52,
-                            height: 52,
-                            borderRadius: "50%",
-                            background: "var(--mantine-color-white)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            border: "1px solid var(--mantine-color-slate-2)",
-                          }}
-                        >
-                          <IconBriefcase
-                            size={24}
-                            color="var(--mantine-color-slate-4)"
-                          />
-                        </Box>
-                        <Text ta="center" c="slate.5" fz="xs">
-                          No products match your filters.
-                        </Text>
-                      </Stack>
-                    </Table.Td>
-                  </Table.Tr>
-                ) : (
-                  rows.map((row) => {
-                    const isActive = row.original.status === "ACTIVE";
-                    const cells = row.getVisibleCells();
-                    return (
-                      <Table.Tr key={row.id} className="lms-row">
-                        {cells.map((cell, idx) => (
-                          <Table.Td
-                            key={cell.id}
-                            style={{
-                              padding: "10px 10px",
-                              border: "none",
-                              boxShadow: "var(--mantine-shadow-xs)",
-                              borderLeft:
-                                idx === 0
-                                  ? `3px solid var(--mantine-color-${isActive ? "success" : "danger"}-4)`
-                                  : undefined,
-                            }}
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </Table.Td>
-                        ))}
-                      </Table.Tr>
-                    );
-                  })
-                )}
-              </Table.Tbody>
-            </Table>
+                    })
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Box>
 
-            {/* Pagination Footer */}
             <Group justify="space-between" px="sm" pt="xs">
-              <Group
-                gap="sm"
-                c="slate.6"
-                style={{ fontSize: "var(--mantine-font-size-xs)" }}
-              >
-                <span>
-                  {totalRows === 0
-                    ? "Showing 0 of 0"
-                    : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-                </span>
+              <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
+                <span>{totalRows === 0 ? "Showing 0 of 0" : `Showing ${firstRow}-${lastRow} of ${totalRows}`}</span>
                 <Group gap="xs">
                   <span>Rows:</span>
                   <Select
                     data={["10", "20", "50"]}
                     value={String(pageSize)}
-                    onChange={(v) =>
-                      setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
-                    }
+                    onChange={(v) => { setPageSize(Number(v) || 10); setPage(1); }}
                     rightSection={chevronDown}
                     size="xs"
                     radius="xl"
@@ -728,16 +495,7 @@ export function LoanProduct() {
                   />
                 </Group>
               </Group>
-              <Pagination
-                total={table.getPageCount() || 1}
-                value={pageIndex + 1}
-                onChange={(p) =>
-                  setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
-                }
-                color="brand"
-                size="xs"
-                radius="xl"
-              />
+              <Pagination total={totalPages} value={page} onChange={setPage} color="brand" size="xs" radius="xl" disabled={totalRows === 0} />
             </Group>
           </>
         )}

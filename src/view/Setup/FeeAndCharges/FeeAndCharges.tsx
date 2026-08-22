@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useDebouncedValue } from '@mantine/hooks';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
-import { parseFrappeError } from '../../../utils/parseFrappeError'; import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { parseFrappeError } from '../../../utils/parseFrappeError';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getFeeAndCharges, deleteFeeAndCharge } from '../../../api/loanChargesApi';
 import {
   Box,
@@ -61,20 +63,29 @@ export function FeeAndCharges() {
   };
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebouncedValue(search, 400);
+
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([{ id: 'name', desc: false }]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  const { data: chargesResponse, isLoading, isError } = useQuery({
-    queryKey: ['fee-and-charges', pagination.pageIndex, pagination.pageSize, search],
+  // Reset to page 1 whenever a backend filter actually changes — same as LoanAccount.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
+  const { data: chargesResponse, isLoading, isFetching, isError } = useQuery({
+    queryKey: ['fee-and-charges', page, pageSize, debouncedSearch],
     queryFn: () =>
       getFeeAndCharges({
-        page: pagination.pageIndex + 1,
-        page_size: pagination.pageSize,
-        search: search || undefined,
+        page,
+        page_size: pageSize,
+        search: debouncedSearch.trim() || undefined,
       }),
     placeholderData: (prev) => prev,
   });
+
   const showError = (heading: string, error: any) => {
     openCommonModal({
       heading,
@@ -130,6 +141,12 @@ export function FeeAndCharges() {
       ],
     });
   };
+
+  const resetFilters = () => {
+    setSearch('');
+    setPage(1);
+  };
+
   const filteredData: FeeAndCharge[] = useMemo(() => {
     const list = chargesResponse?.data ?? [];
     return list.map((item) => ({
@@ -141,6 +158,12 @@ export function FeeAndCharges() {
   }, [chargesResponse]);
 
   const serverPagination = chargesResponse?.pagination;
+
+  // Shared by the eye icon and the row double-click handler — matches the
+  // ERP's "double-click a row to view" convention used across the other modules.
+  const handleView = (row: FeeAndCharge) => {
+    handleOpenModal('view', row);
+  };
 
   const columns = useMemo(
     () => [
@@ -167,7 +190,10 @@ export function FeeAndCharges() {
                 variant="subtle"
                 color="slate"
                 radius="md"
-                onClick={() => handleOpenModal('view', info.row.original)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleView(info.row.original);
+                }}
               >
                 <IconEye size={14} />
               </ActionIcon>
@@ -178,7 +204,10 @@ export function FeeAndCharges() {
                 variant="subtle"
                 color="brand"
                 radius="md"
-                onClick={() => handleOpenModal('edit', info.row.original)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenModal('edit', info.row.original);
+                }}
               >
                 <IconPencil size={14} />
               </ActionIcon>
@@ -190,7 +219,10 @@ export function FeeAndCharges() {
                 color="danger"
                 radius="md"
                 loading={deleteMutation.isPending && deleteMutation.variables === info.row.original.name}
-                onClick={() => handleDelete(info.row.original)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(info.row.original);
+                }}
               >
                 <IconTrash size={14} />
               </ActionIcon>
@@ -202,23 +234,22 @@ export function FeeAndCharges() {
     [deleteMutation.isPending, deleteMutation.variables]
   );
 
+  // No pagination state on the table itself — backend already paginates,
+  // same as LoanAccount. Table only owns sorting.
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting, pagination },
+    state: { sorting },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    manualPagination: true,
-    pageCount: serverPagination?.total_pages ?? 1,
   });
 
   const rows = table.getRowModel().rows;
   const totalRows = serverPagination?.total ?? 0;
-  const { pageIndex, pageSize } = pagination;
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+  const totalPages = serverPagination?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
 
   return (
     <Stack gap="lg" p="lg">
@@ -276,13 +307,13 @@ export function FeeAndCharges() {
             style={{ flex: 1, minWidth: 220 }}
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
             value={search}
-            onChange={(e) => {
-              setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
+            onChange={(e) => setSearch(e.currentTarget.value)}
           />
 
           <Group gap="xs" ml="auto">
+            <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>
+              Reset
+            </Button>
             <Button
               size="sm"
               radius="xl"
@@ -313,7 +344,7 @@ export function FeeAndCharges() {
           horizontalSpacing="sm"
           fz="xs"
           w="100%"
-          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+          style={{ borderCollapse: 'separate', borderSpacing: '0 8px', opacity: isFetching ? 0.6 : 1 }}
         >
           <Table.Thead>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -336,11 +367,7 @@ export function FeeAndCharges() {
                       }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
-                      <Group
-                        gap="xs"
-                        wrap="nowrap"
-                        justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
-                      >
+                      <Group gap="xs" wrap="nowrap" justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}>
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
                       </Group>
@@ -398,7 +425,12 @@ export function FeeAndCharges() {
               rows.map((row) => {
                 const cells = row.getVisibleCells();
                 return (
-                  <Table.Tr key={row.id} className="lms-row">
+                  <Table.Tr
+                    key={row.id}
+                    className="lms-row"
+                    onDoubleClick={() => handleView(row.original)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {cells.map((cell, idx) => (
                       <Table.Td
                         key={cell.id}
@@ -429,7 +461,10 @@ export function FeeAndCharges() {
               <Select
                 data={['10', '20', '50']}
                 value={String(pageSize)}
-                onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })}
+                onChange={(v) => {
+                  setPageSize(Number(v) || 10);
+                  setPage(1);
+                }}
                 rightSection={chevronDown}
                 size="xs"
                 radius="xl"
@@ -438,9 +473,9 @@ export function FeeAndCharges() {
             </Group>
           </Group>
           <Pagination
-            total={table.getPageCount() || 1}
-            value={pageIndex + 1}
-            onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+            total={totalPages}
+            value={page}
+            onChange={(p) => setPage(p)}
             color="brand"
             size="xs"
             radius="xl"

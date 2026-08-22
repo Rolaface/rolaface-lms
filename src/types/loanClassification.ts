@@ -12,6 +12,10 @@ export interface LoanClassificationApiResponse<T = any> {
   status: "success" | "error";
   message?: string;
   data?: T;
+  pagination?: {
+    total: number;
+    total_pages: number;
+  };
 }
 
 export interface LoanClassificationApiPayload {

@@ -3,7 +3,6 @@ import { API } from "../config/api";
 import type {
   CreateFeeAndChargePayload,
   CreateFeeAndChargeResponse,
-  GetFeeAndChargesResponse,
   FeeAndChargeItem,
 } from "../types/loanCharges.ts";
 
@@ -15,17 +14,27 @@ export async function createFeeAndCharge(payload: CreateFeeAndChargePayload) {
   return data;
 }
 
+export interface GetFeeAndChargesParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  disabled?: 0 | 1;
+}
+export interface GetFeeAndChargesResponse {
+  data: FeeAndChargeItem[];
+  pagination?: {
+    total: number;
+    total_pages: number;
+  };
+}
 
-export async function getFeeAndCharges(params: {
- page?: number;
- page_size?: number;
- search?: string;
-}) {
- const { data } = await apiClient.get<GetFeeAndChargesResponse>(API.loanCharges.getAll, {
-   params,
- });
-   return data;
- }
+export async function getFeeAndCharges(params?: GetFeeAndChargesParams) {
+  const { data } = await apiClient.get<GetFeeAndChargesResponse>(API.loanCharges.getAll, {
+    params,
+  });
+  return data;
+}
+
 export async function updateFeeAndCharge(payload: CreateFeeAndChargePayload & { id: string }) {
   const { id, ...body } = payload;
   const { data } = await apiClient.put<CreateFeeAndChargeResponse>(

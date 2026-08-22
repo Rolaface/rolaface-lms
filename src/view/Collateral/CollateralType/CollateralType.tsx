@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';import { useDebouncedValue } from '@mantine/hooks';
+import { useMemo, useState, useEffect } from 'react'; import { useDebouncedValue } from '@mantine/hooks';
 import {
   Box,
   Button,
@@ -49,7 +49,7 @@ import {
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { collateralTypeModal } from '../../../components/Modal/collateralTypeModalStore';
-import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
+
 interface CollateralRow {
   id: string;
   type: string;
@@ -102,36 +102,42 @@ function StatusBadge({ status }: { status: string }) {
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 // Maps the UI's "all | active | disabled" segmented control to the API's `disabled` param.
-const STATUS_FILTER_OPTIONS = [
-  { value: '0', label: 'Active' },
-  { value: '1', label: 'Inactive' },
-];
+// Returns undefined for "all" so we don't send the param at all.
+function statusToDisabledParam(status: string): 0 | 1 | undefined {
+  if (status === 'active') return 0;
+  if (status === 'disabled') return 1;
+  return undefined;
+}
 
 export function CollateralType() {
   const theme = useMantineTheme();
 
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
-const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [status, setStatus] = useState('all');
+
   const [sorting, setSorting] = useState([{ id: 'type', desc: false }]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-useEffect(() => {
-  setPage(1);
-}, [debouncedSearch, statusFilter]);
+  const disabledParam = statusToDisabledParam(status);
 
-const { data: collateralResponse, isLoading, isFetching } = useQuery({
-  queryKey: ['collateralTypes', debouncedSearch, statusFilter, page, pageSize],
-  queryFn: () =>
-    getAllCollateralTypes({
-      search: debouncedSearch.trim() || undefined,
-      disabled: statusFilter.length > 0 ? statusFilter : undefined,
-      page,
-      page_size: pageSize,
-    }),
-  placeholderData: (previousData) => previousData,
-});
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, disabledParam]);
+
+  const { data: collateralResponse, isLoading, isFetching } = useQuery({
+    queryKey: ['collateralTypes', debouncedSearch, disabledParam, page, pageSize],
+    queryFn: () =>
+      getAllCollateralTypes({
+        search: debouncedSearch.trim() || undefined,
+        disabled: disabledParam,
+        page,
+        page_size: pageSize,
+      }),
+    placeholderData: (previousData) => previousData,
+  });
+
   const queryClient = useQueryClient();
 
   const showError = (heading: string, error: any) => {
@@ -158,7 +164,7 @@ const { data: collateralResponse, isLoading, isFetching } = useQuery({
     mutationFn: (id: string) => enableCollateralType(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collateralTypes'] });
-      showSuccess('Collateral Type Activated', 'Collateral type has been activated successfully.');
+      showSuccess('Collateral Type Activated', 'Collateral type has been marked active successfully.');
     },
     onError: (error: any) => showError('Status Update Failed', error),
   });
@@ -167,11 +173,10 @@ const { data: collateralResponse, isLoading, isFetching } = useQuery({
     mutationFn: (id: string) => disableCollateralType(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collateralTypes'] });
-      showSuccess('Collateral Type Deactivated', 'Collateral type has been deactivated successfully.');
+      showSuccess('Collateral Type Inactivated', 'Collateral type has been marked inactive successfully.');
     },
     onError: (error: any) => showError('Status Update Failed', error),
   });
-
   const { mutate: removeType, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteCollateralType(id),
     onSuccess: () => {
@@ -225,22 +230,22 @@ const { data: collateralResponse, isLoading, isFetching } = useQuery({
   const handleToggleStatus = (row: CollateralRow) => {
     const willDisable = row.status === 'ACTIVE';
     openCommonModal({
-      heading: willDisable ? 'Disable Collateral Type' : 'Activate Collateral Type',
+      heading: willDisable ? 'Mark as Inactive' : 'Mark as Active',
       subtitle: 'Please confirm this action before continuing.',
       body: (
         <>
-          Are you sure you want to {willDisable ? 'disable' : 'activate'} collateral type{' '}
+          Are you sure you want to mark collateral type{' '}
           <Text span fw={600}>
             {row.type}
-          </Text>
-          ?
+          </Text>{' '}
+          as {willDisable ? 'inactive' : 'active'}?
         </>
       ),
       color: willDisable ? 'red' : 'green',
       buttons: [
         { label: 'Cancel', variant: 'default' },
         {
-          label: willDisable ? 'Disable' : 'Activate',
+          label: willDisable ? 'Inactive' : 'Active',
           color: willDisable ? 'red' : 'green',
           onClick: () => {
             if (willDisable) {
@@ -349,7 +354,7 @@ const { data: collateralResponse, isLoading, isFetching } = useQuery({
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={isActive ? 'Deactivate' : 'Activate'} withArrow>
+              <Tooltip label={isActive ? 'Inactive' : 'Active'} withArrow>
                 <Switch
                   size="xs"
                   color="success"
@@ -381,11 +386,11 @@ const { data: collateralResponse, isLoading, isFetching } = useQuery({
   const totalPages = collateralResponse?.pagination?.total_pages ?? 1;
   const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
   const lastRow = Math.min(totalRows, page * pageSize);
- const resetFilters = () => {
-  setSearch('');
-  setStatusFilter([]);
-  setPage(1);
-};
+  const resetFilters = () => {
+    setSearch('');
+    setStatus('all');
+    setPage(1);
+  };
 
   return (
     <Stack gap="lg" p="lg">
@@ -436,7 +441,7 @@ const { data: collateralResponse, isLoading, isFetching } = useQuery({
         }}
       >
         <Group gap="sm" wrap="wrap" align="center">
-                  <TextInput
+          <TextInput
             className="lms-search"
             size="sm"
             radius="xl"
@@ -448,13 +453,18 @@ const { data: collateralResponse, isLoading, isFetching } = useQuery({
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
 
-         <FilterMultiSelect
-  placeholder="All Statuses"
-  data={STATUS_FILTER_OPTIONS}
-  value={statusFilter}
-  onChange={setStatusFilter}
-  width={140}
-/>
+          <SegmentedControl
+            size="xs"
+            radius="xl"
+            color="brand"
+            value={status}
+            onChange={setStatus}
+            data={[
+              { label: 'All', value: 'all' },
+              { label: 'Active', value: 'active' },
+              { label: 'Inactive', value: 'disabled' },
+            ]}
+          />
 
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
             Reset
@@ -595,7 +605,6 @@ const { data: collateralResponse, isLoading, isFetching } = useQuery({
             </Table>
 
             {/* Pagination Footer */}
-                      {/* Pagination Footer */}
             <Group justify="space-between" px="sm" pt="xs">
               <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
                 <span>

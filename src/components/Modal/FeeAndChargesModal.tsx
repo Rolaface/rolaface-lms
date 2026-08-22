@@ -24,7 +24,7 @@ import { ModalFooter } from '../shared/ModalFooter';
 import type { CreateFeeAndChargePayload } from '../../types/loanCharges';
 
 export interface FeeAndCharge {
-  id?: number;
+  id?: string;
   name: string;
   item_code?: string;
   item_group?: string;
