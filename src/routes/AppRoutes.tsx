@@ -11,6 +11,7 @@ import { PermissionGuard } from "../view/Permissionguard";
 import { Dashboard } from "../view/Dashboard";
 import { Customer } from "../view/Customer/CustomerCreate";
 import { Account } from "../view/LoanAccount/Account";
+import {EmailTemplate} from "../view/Template/EmailTemplate";
 import { UserManagement } from "../view/User/UserManagement";
 import { RoleManagement } from "../view/User/RoleManagement";
 
@@ -367,6 +368,11 @@ const userRoute = createRoute({
   path: "/user",
   component: Outlet,
 });
+const emailTemplateRoute = createRoute({
+  getParentRoute: () => settingsRoute,   
+  path: "/emailTemplate",
+  component: EmailTemplate,
+});
 const userManagementRoute = createRoute({
   getParentRoute: () => userRoute,
   path: "/management",
@@ -424,6 +430,7 @@ const routeTree = rootRoute.addChildren([
 
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute]),
   settingsRoute.addChildren([
+  emailTemplateRoute,
   userRoute.addChildren([userManagementRoute, userRolesRoute]),
 ]),
 ]);

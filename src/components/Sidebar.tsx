@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { IconUserCog } from "@tabler/icons-react";
+import { IconMail, IconUserCog } from "@tabler/icons-react";
 import {
   Box,
   Text,
@@ -202,7 +202,12 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
           { path: "/settings/user/roles", label: "Role Management", icon: IconShieldCheck },
         ],
       },
-    ],
+       {
+        path: "/settings/emailTemplate",
+        label: "Email Template",
+        icon: IconMail,
+      },
+    ], 
   },
 ];
 
