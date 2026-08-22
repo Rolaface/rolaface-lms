@@ -9,7 +9,7 @@ import { AppLayout } from "../layout/AppLayout";
 import { PermissionGuard } from "../view/Permissionguard";
 
 import { Dashboard } from "../view/Dashboard";
-import { Customer } from "../view/Customer/CustomerCreate";
+import { Customer } from "../view/Customer/Customer";
 import { Account } from "../view/LoanAccount/Account";
 import {EmailTemplate} from "../view/Template/EmailTemplate";
 import { UserManagement } from "../view/User/UserManagement";

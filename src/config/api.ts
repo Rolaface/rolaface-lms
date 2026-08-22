@@ -137,6 +137,7 @@ RoleManagement: {
   // =========================
   customer: {
     getAllCustomers: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_customers`,
+    list: `${ERP_BASE}/api/method/rolaface_lms_app.modules.customer.api.get_customers`,
   },
 
   // =========================

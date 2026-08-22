@@ -1,13 +1,77 @@
 import type { AxiosResponse } from "axios";
 import apiClient from "../../config/axios";
-import { getCustomerList } from "../lookup api/lookUpApi"; // list/search already exists — reused, not duplicated
+import { API } from "../../config/api";
+
 
 const api = apiClient;
 
-/* ───────────────── Types ───────────────── */
-// TODO: refine against real backend response once available.
+const CUSTOMER_ENDPOINTS = {
+
+  get: API.customer.list,
+  // Not confirmed yet — backend not ready.
+  create: "TODO_ADD_API_CUSTOMER_CREATE",
+  update: "TODO_ADD_API_CUSTOMER_UPDATE",
+  delete: "TODO_ADD_API_CUSTOMER_DELETE",
+  getById: "TODO_ADD_API_CUSTOMER_GET_BY_ID",
+};
+
+/* ───────────────── Types — matches the confirmed Postman response exactly ───────────────── */
+
+export interface CustomerRaw {
+  name: string; // Frappe doc name / customer number, e.g. "Ackim Chisha - 1"
+  customer_name: string;
+  customer_type: "Individual" | "Company";
+  customer_group: string;
+  territory: string;
+  email_id: string;
+  mobile_no: string;
+  status: string; // e.g. "active"
+}
+
+export interface CustomerPagination {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+export interface CustomerApiResponse {
+  status_code: number;
+  status: string;
+  message: string;
+  data: CustomerRaw[];
+  pagination: CustomerPagination;
+}
+
+export interface GetCustomersParams {
+  search?: string;
+ status?: string;
+  page?: number;
+  page_size?: number;
+  customer_type?: string;
+}
+
+/* ───────────────── GET LIST ───────────────── */
+export const getCustomers = async (
+  params?: GetCustomersParams
+): Promise<CustomerApiResponse> => {
+  const cleanParams: Record<string, string | number> = {};
+  if (params?.search) cleanParams.search = params.search;
+  if (params?.page) cleanParams.page = params.page;
+  if (params?.page_size) cleanParams.page_size = params.page_size;
+  if (params?.status) cleanParams.status = params.status; 
+ if (params?.customer_type) cleanParams.customer_type = params.customer_type;
+  const response: AxiosResponse<CustomerApiResponse> = await api.get(
+    CUSTOMER_ENDPOINTS.get,
+    { params: cleanParams }
+  );
+  return response.data;
+};
+
 export interface CustomerPayload {
-  customer_type: "Individual" | "Business";
+  customer_type: "Individual" | "Company";
   first_name?: string;
   middle_name?: string;
   last_name?: string;
@@ -23,37 +87,20 @@ export interface CustomerPayload {
 }
 
 export interface CustomerRecord extends CustomerPayload {
-  name: string; // Frappe doc name / customer number
+  name: string;
 }
 
-/* ───────────────────────────────────────────────────────────────
-   API.customer currently only has `getAllCustomers`. create / update /
-   delete / getById DON'T exist in api.ts yet — backend not ready.
-   Placeholder strings below just so TS doesn't break. Swap for the
-   real API.customer.xxx key once it's added there.
-   ─────────────────────────────────────────────────────────────── */
-const CUSTOMER_ENDPOINTS = {
-  create: "TODO_ADD_API_CUSTOMER_CREATE",
-  update: "TODO_ADD_API_CUSTOMER_UPDATE",
-  delete: "TODO_ADD_API_CUSTOMER_DELETE",
-  getById: "TODO_ADD_API_CUSTOMER_GET_BY_ID",
-};
-
-/* ───────────────── CRUD (backend not ready — scaffold only) ───────────────── */
-
 export async function createCustomer(
-  payload: CustomerPayload,
+  payload: CustomerPayload
 ): Promise<CustomerRecord> {
-  // TODO: backend endpoint not ready — confirm path + verb once added to api.ts
   const response: AxiosResponse = await api.post(CUSTOMER_ENDPOINTS.create, payload);
   return response.data;
 }
 
 export async function updateCustomer(
   customerId: string,
-  payload: Partial<CustomerPayload>,
+  payload: Partial<CustomerPayload>
 ): Promise<CustomerRecord> {
-  // TODO: backend endpoint not ready
   const response: AxiosResponse = await api.post(CUSTOMER_ENDPOINTS.update, {
     name: customerId,
     ...payload,
@@ -62,28 +109,14 @@ export async function updateCustomer(
 }
 
 export async function deleteCustomer(customerId: string): Promise<void> {
-  // TODO: backend endpoint not ready
   await api.post(CUSTOMER_ENDPOINTS.delete, { name: customerId });
 }
 
 export async function getCustomerById(
-  customerId: string,
+  customerId: string
 ): Promise<CustomerRecord | null> {
-  // TODO: backend endpoint not ready
   const response: AxiosResponse = await api.get(CUSTOMER_ENDPOINTS.getById, {
     params: { name: customerId },
   });
   return response.data ?? null;
-}
-
-/* ───────────────── Duplicate checks — reuse existing getCustomerList, no new endpoint ───────────────── */
-
-export async function checkDuplicateMobile(mobile: string): Promise<any> {
-  // TODO: confirm backend supports `mobile` as a filter param on get_customers
-  return getCustomerList({ mobile });
-}
-
-export async function checkDuplicateDocument(docNumber: string): Promise<any> {
-  // TODO: confirm backend supports `doc_number` as a filter param
-  return getCustomerList({ doc_number: docNumber });
 }
