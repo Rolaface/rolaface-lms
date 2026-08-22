@@ -25,7 +25,7 @@ const DOC_TYPE_OPTIONS = [
     // { label: "Loan Disbursement", value: "Loan Disbursement" },
     // { label: "Loan Statement", value: "Loan Statement" },
     // { label: "Payment Reminder", value: "Payment Reminder" },
-    { label: "Payment Reminder", value: "Repayment Reminder" },
+    { label: "Repayment Reminder", value: "Repayment Reminder" },
     // { label: "Loan Closure", value: "Loan Closure" },
     // { label: "Loan Rejection", value: "Loan Rejection" },
 ] as const;
