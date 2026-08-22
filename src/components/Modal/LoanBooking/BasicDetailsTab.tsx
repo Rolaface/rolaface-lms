@@ -149,6 +149,7 @@ export function BasicDetailsTab({
             value={form.values.productCode}
             error={form.errors.productCode}
             onClick={() => refetchProducts()}
+            required
             onChange={(value) => {
               form.setFieldValue("productCode", value);
               const products = productResponse?.data || [];
@@ -249,6 +250,7 @@ export function BasicDetailsTab({
               placeholder="0"
               thousandSeparator=","
               {...form.getInputProps("loanAmount")}
+              required
             />
           </SimpleGrid>
 
