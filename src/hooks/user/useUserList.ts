@@ -16,7 +16,7 @@ export function useUserList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null); // edit/view fetch
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -52,8 +52,8 @@ export function useUserList() {
     }
   };
 
-  const openEdit = async (row: UserRow) => {
-    setLoadingEditId(row.id);
+  const loadAndOpen = async (row: UserRow, isView: boolean) => {
+    setLoadingId(row.id);
     try {
       const res = await getUserById(row.id);
       const d = res.message.data;
@@ -71,7 +71,7 @@ export function useUserList() {
         timezone: d.timezone ?? "",
         mobile_no: d.mobile_no ?? "",
       };
-      userModal.open({ editId: row.id, initialData });
+      userModal.open({ editId: row.id, isView, initialData });
     } catch (error) {
       openCommonModal({
         heading: "Error",
@@ -80,9 +80,12 @@ export function useUserList() {
         buttons: [{ label: "OK" }],
       });
     } finally {
-      setLoadingEditId(null);
+      setLoadingId(null);
     }
   };
+
+  const openEdit = (row: UserRow) => loadAndOpen(row, false);
+  const openView = (row: UserRow) => loadAndOpen(row, true);
 
   return {
     searchInput, setSearchInput,
@@ -92,6 +95,6 @@ export function useUserList() {
     loading: isLoading || isFetching,
     refetch,
     handleDelete, deletingId,
-    openEdit, loadingEditId,
+    openEdit, openView, loadingId,
   };
 }

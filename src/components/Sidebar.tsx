@@ -37,6 +37,9 @@ import {
   IconCoins,
 } from "@tabler/icons-react";
 
+import { usePermission } from "../hooks/Usepermission";
+import type { LmsModule } from "../types/User/userRole";
+
 
 
 interface NavItem {
@@ -49,6 +52,7 @@ interface NavItem {
   }>;
   matchPrefix?: boolean;
   subItems?: NavItem[];
+  modules?: LmsModule[];
 }
 
 const LOCAL_NAV_ITEMS: NavItem[] = [
@@ -58,7 +62,13 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconLayoutDashboard,
     matchPrefix: false,
   },
-  { path: "/customer", label: "Customer", icon: IconUsers, matchPrefix: true },
+  {
+    path: "/customer",
+    label: "Customer",
+    icon: IconUsers,
+    matchPrefix: true,
+    modules: ["Customer"],
+  },
   {
     path: "/collateral",
     label: "Collateral",
@@ -97,9 +107,9 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconMoneybag,
     matchPrefix: true,
     subItems: [
-      { path: "/operations/booking", label: "Loan Booking", icon: IconFileInvoice },
-      { path: "/operations/disbursement", label: "Loan Disbursement", icon: IconCreditCard },
-      { path: "/operations/repayment", label: "Loan Repayment", icon: IconCash },
+      { path: "/operations/booking", label: "Loan Booking", icon: IconFileInvoice, modules: ["Loan"] },
+      { path: "/operations/disbursement", label: "Loan Disbursement", icon: IconCreditCard, modules: ["Loan Disbursement"] },
+      { path: "/operations/repayment", label: "Loan Repayment", icon: IconCash, modules: ["Loan Repayment"] },
       { path: "/operations/waiver", label: "Loan Waiver", icon: IconDiscount2 },
       { path: "/operations/capitalization", label: "Loan Capitalization", icon: IconFileText },
       { path: "/operations/restructure", label: "Loan Restructure", icon: IconSettings },
@@ -196,6 +206,25 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
   },
 ];
 
+
+function filterNavItems(
+  items: NavItem[],
+  canAccessAnyOf: (modules: LmsModule[]) => boolean
+): NavItem[] {
+  const result: NavItem[] = [];
+  for (const item of items) {
+    if (item.subItems && item.subItems.length > 0) {
+      const filteredChildren = filterNavItems(item.subItems, canAccessAnyOf);
+      if (filteredChildren.length > 0) {
+        result.push({ ...item, subItems: filteredChildren });
+      }
+      continue;
+    }
+    const allowed = !item.modules || item.modules.length === 0 || canAccessAnyOf(item.modules);
+    if (allowed) result.push(item);
+  }
+  return result;
+}
 
 const SIZES = {
   rootIcon: 19,
@@ -398,6 +427,12 @@ export function Sidebar({
     getInitialOpenMenus(pathname)
   );
 
+ const { canAccessAnyOf, isAdmin, permissions } = usePermission();
+const visibleNavItems = React.useMemo(
+  () => filterNavItems(LOCAL_NAV_ITEMS, canAccessAnyOf),
+  [canAccessAnyOf, isAdmin, permissions]
+);
+
   const toggleMenu = (key: string, depth: number) => {
     setOpenMenus((prev) => {
       const willOpen = !prev[key];
@@ -497,7 +532,7 @@ export function Sidebar({
         gap={4}
         className={`lms-nav-scroll flex-1 py-4 overflow-y-auto ${isCollapsed ? "px-3 items-center" : "px-4"}`}
       >
-        {LOCAL_NAV_ITEMS.map((item) => {
+        {visibleNavItems.map((item) => {
           const isRootActive = item.matchPrefix
             ? (pathname.startsWith(item.path!) && item.path !== "/") || pathname === item.path
             : pathname === item.path;

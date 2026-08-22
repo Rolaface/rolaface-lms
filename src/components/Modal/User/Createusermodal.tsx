@@ -71,9 +71,9 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 export function CreateUserModal() {
-  const { opened, editId, initialData } = useUserModal();
+  const { opened, editId, isView, initialData } = useUserModal();
   const queryClient = useQueryClient();
-  const isEdit = !!editId;
+  const isEdit = !!editId && !isView;
 
   const {
     form,
@@ -191,7 +191,7 @@ export function CreateUserModal() {
               <IconUserPlus size={18} stroke={2} color="var(--mantine-color-brand-6)" />
             </Box>
             <Text fw={700} size="md" c="white">
-              {isEdit ? "Edit User" : "Add User"}
+              {isView ? "View User" : isEdit ? "Edit User" : "Add User"}
             </Text>
           </Group>
 
@@ -232,6 +232,7 @@ export function CreateUserModal() {
                     value={form.email}
                     onChange={(e) => handleFieldChange("email", e.currentTarget.value)}
                     error={errors.email}
+                    disabled={isView}
                   />
                 </Grid.Col>
                 <Grid.Col span={colSpan}>
@@ -240,6 +241,7 @@ export function CreateUserModal() {
                     value={form.username}
                     onChange={(e) => handleFieldChange("username", e.currentTarget.value)}
                     error={errors.username}
+                    disabled={isView}
                   />
                 </Grid.Col>
                 <Grid.Col span={colSpan}>
@@ -251,6 +253,7 @@ export function CreateUserModal() {
                     value={form.language || null}
                     onChange={(v) => handleFieldChange("language", v ?? "")}
                     onSearchChange={(q) => fetchLanguages(q).then(setLanguageOptions)}
+                    disabled={isView}
                   />
                 </Grid.Col>
                 <Grid.Col span={colSpan}>
@@ -262,6 +265,7 @@ export function CreateUserModal() {
                     value={form.timezone || null}
                     onChange={(v) => handleFieldChange("timezone", v ?? "")}
                     onSearchChange={(q) => setTimezoneOptions(filterTimezones(q))}
+                    disabled={isView}
                   />
                 </Grid.Col>
               </Grid>
@@ -277,6 +281,7 @@ export function CreateUserModal() {
                 value={form.roleIds}
                 onSearchChange={(q) => fetchRoles(q).then(setRoleOptions)}
                 onChange={handleRolesChange}
+                disabled={isView}
               />
             </Box>
 
@@ -293,6 +298,7 @@ export function CreateUserModal() {
                     value={form.firstName}
                     onChange={(e) => handleFieldChange("firstName", e.currentTarget.value)}
                     error={errors.firstName}
+                    disabled={isView}
                   />
                 </Grid.Col>
                 <Grid.Col span={colSpan}>
@@ -301,6 +307,7 @@ export function CreateUserModal() {
                     placeholder="Middle name"
                     value={form.middleName}
                     onChange={(e) => handleFieldChange("middleName", e.currentTarget.value)}
+                    disabled={isView}
                   />
                 </Grid.Col>
                 <Grid.Col span={colSpan}>
@@ -309,6 +316,7 @@ export function CreateUserModal() {
                     placeholder="Last name"
                     value={form.lastName}
                     onChange={(e) => handleFieldChange("lastName", e.currentTarget.value)}
+                    disabled={isView}
                   />
                 </Grid.Col>
                 <Grid.Col span={colSpan}>
@@ -318,6 +326,7 @@ export function CreateUserModal() {
                     data={genderOptions}
                     value={form.gender || null}
                     onChange={(v) => handleFieldChange("gender", v ?? "")}
+                    disabled={isView}
                   />
                 </Grid.Col>
 
@@ -329,6 +338,7 @@ export function CreateUserModal() {
                     value={toDateValue(form.dob)}
                     onChange={(d) => handleFieldChange("dob", d ? dayjs(d).format("YYYY-MM-DD") : "")}
                     maxDate={TODAY}
+                    disabled={isView}
                   />
                 </Grid.Col>
                 <Grid.Col span={colSpan}>
@@ -337,6 +347,7 @@ export function CreateUserModal() {
                     placeholder="Phone number"
                     value={form.phone}
                     onChange={(e) => handleFieldChange("phone", e.currentTarget.value)}
+                    disabled={isView}
                   />
                 </Grid.Col>
                 <Grid.Col span={colSpan}>
@@ -345,6 +356,7 @@ export function CreateUserModal() {
                     placeholder="Mobile number"
                     value={form.mobile_no}
                     onChange={(e) => handleFieldChange("mobile_no", e.currentTarget.value)}
+                    disabled={isView}
                   />
                 </Grid.Col>
               </Grid>
@@ -354,13 +366,23 @@ export function CreateUserModal() {
       </Box>
 
       {/* ── Footer ─────────────────────────────────────────── */}
-      <ModalFooter
-        variant="theme"
-        onClose={handleClose}
-        submitLabel={isEdit ? "Update" : "Create"}
-        submitLoading={isSubmitting}
-        onSubmit={handleSubmit}
-      />
+      {!isView && (
+        <ModalFooter
+          variant="theme"
+          onClose={handleClose}
+          submitLabel={isEdit ? "Update" : "Create"}
+          submitLoading={isSubmitting}
+          onSubmit={handleSubmit}
+        />
+      )}
+      {isView && (
+        <ModalFooter
+          variant="theme"
+          isViewMode
+          onClose={handleClose}
+          submitLabel=""
+        />
+      )}
     </Modal>
   );
 }

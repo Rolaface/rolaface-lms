@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { modals } from "@mantine/modals";
 import {
   Box,
   Button,
@@ -51,11 +50,9 @@ import { getSymbol } from "../../store/currencyStore";
 import { formatAmount, useCurrencyReady } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { parseFrappeError } from "../../utils/parseFrappeError";
+import { usePermission } from "../../hooks/Usepermission";
 
-// NOTE: adjust these paths if your folder layout differs — this assumes
-// LoanAccount.tsx lives in a folder that is a sibling of the Customer/
-// folder, same as how CustomerView.tsx imports LoanDetailView via
-// '../LoanAccount/LoanView/LoanDetailView'.
+
 import { Borrower360 } from "../Customer/CustomerView";
 import { getBorrowerProfile } from "../Customer/mockdata";
 
@@ -139,9 +136,12 @@ export function LoanAccount() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
 
-  // Replaces the old "open a modal" flow — clicking View now swaps the
-  // table out for LoanDetailView in place, same pattern as Customer.tsx's
-  // borrower360CustomerId -> Borrower360 swap.
+  const { can } = usePermission();
+  const canCreateLoan = can("Loan", "create");
+  const canWriteLoan = can("Loan", "write");   
+  const canDeleteLoan = can("Loan", "delete");
+
+
   const [selectedLoan, setSelectedLoan] = useState<SelectedLoan | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
@@ -152,14 +152,13 @@ export function LoanAccount() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [productFilter, setProductFilter] = useState<string[]>([]);
 
-  // Branch filter is intentionally left as a frontend-only filter over the
-  // current page's rows, per explicit instruction — not wired to backend.
+
   const [branch, setBranch] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Reset to page 1 whenever a backend filter actually changes.
+  
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, statusFilter, productFilter]);
@@ -414,137 +413,141 @@ const currencyReady = useCurrencyReady();
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip
-                label={isDraft ? "Edit" : "Only Drafts can be edited"}
-                withArrow
-              >
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={isDraft ? "brand" : "slate"}
-                  radius="md"
-                  disabled={!isDraft}
-                  onClick={() =>
-                    loanAccountModal.open({
-                      loanId: loanIdentifier,
-                      isViewMode: false,
-                    })
-                  }
+
+              {canWriteLoan && (
+                <Tooltip
+                  label={isDraft ? "Edit" : "Only Drafts can be edited"}
+                  withArrow
                 >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip
-                label={isDraft ? "Delete" : "Only Drafts can be deleted"}
-                withArrow
-              >
-               <Tooltip
-                label={isDraft ? "Delete" : "Only Drafts can be deleted"}
-                withArrow
-              >
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={isDraft ? "danger" : "slate"}
-                  radius="md"
-                  disabled={!isDraft || isDeleting}
-                  onClick={() => confirmDelete(loanIdentifier)}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
-              </Tooltip>
-              <Menu shadow="md" width={140} position="bottom-end" radius="md">
-                <Menu.Target>
                   <ActionIcon
                     size="sm"
                     variant="subtle"
-                    color="slate"
+                    color={isDraft ? "brand" : "slate"}
                     radius="md"
+                    disabled={!isDraft}
+                    onClick={() =>
+                      loanAccountModal.open({
+                        loanId: loanIdentifier,
+                        isViewMode: false,
+                      })
+                    }
                   >
-                    <IconDotsVertical size={14} />
+                    <IconPencil size={14} />
                   </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  {isDraft ? (
-                    <Menu.Item
-                      onClick={() => {
-                        openCommonModal({
-                          heading: "Approve Loan Booking",
-                          subtitle:
-                            "Please confirm this action before continuing.",
-                          body: (
-                            <>
-                              Are you sure you want to approve loan booking{" "}
-                              <Text span fw={600}>
-                                {loanIdentifier}
-                              </Text>{" "}
-                              for approval?
-                            </>
-                          ),
-                          color: "green",
-                          buttons: [
-                            { label: "Cancel", variant: "default" },
-                            {
-                              label: "Approve",
-                              color: "green",
-                              onClick: () => {
-                                updateStatus({
-                                  id: loanIdentifier,
-                                  action: "approved",
-                                });
-                              },
-                            },
-                          ],
-                        });
-                      }}
+                </Tooltip>
+              )}
+
+              {canDeleteLoan && (
+                <Tooltip
+                  label={isDraft ? "Delete" : "Only Drafts can be deleted"}
+                  withArrow
+                >
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color={isDraft ? "danger" : "slate"}
+                    radius="md"
+                    disabled={!isDraft || isDeleting}
+                    onClick={() => confirmDelete(loanIdentifier)}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+
+              {canWriteLoan && (
+                <Menu shadow="md" width={140} position="bottom-end" radius="md">
+                  <Menu.Target>
+                    <ActionIcon
+                      size="sm"
+                      variant="subtle"
+                      color="slate"
+                      radius="md"
                     >
-                      Approve
-                    </Menu.Item>
-                  ) : !isCancelled ? (
-                    <Menu.Item
-                      color="danger"
-                      onClick={() => {
-                        openCommonModal({
-                          heading: "Cancel Loan Booking",
-                          subtitle: "This action cannot be undone.",
-                          body: (
-                            <>
-                              Are you sure you want to cancel loan booking{" "}
-                              <Text span fw={600}>
-                                {loanIdentifier}
-                              </Text>
-                              ?
-                            </>
-                          ),
-                          color: "red",
-                          buttons: [
-                            { label: "Back", variant: "default" },
-                            {
-                              label: "Cancel Booking",
-                              color: "red",
-                              onClick: () => {
-                                updateStatus({
-                                  id: loanIdentifier,
-                                  action: "cancelled",
-                                });
+                      <IconDotsVertical size={14} />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    {isDraft ? (
+                      <Menu.Item
+                        onClick={() => {
+                          openCommonModal({
+                            heading: "Approve Loan Booking",
+                            subtitle:
+                              "Please confirm this action before continuing.",
+                            body: (
+                              <>
+                                Are you sure you want to approve loan booking{" "}
+                                <Text span fw={600}>
+                                  {loanIdentifier}
+                                </Text>{" "}
+                                for approval?
+                              </>
+                            ),
+                            color: "green",
+                            buttons: [
+                              { label: "Cancel", variant: "default" },
+                              {
+                                label: "Approve",
+                                color: "green",
+                                onClick: () => {
+                                  updateStatus({
+                                    id: loanIdentifier,
+                                    action: "approved",
+                                  });
+                                },
                               },
-                            },
-                          ],
-                        });
-                      }}
-                    >
-                      Cancel
-                    </Menu.Item>
-                  ) : null}
-                </Menu.Dropdown>
-              </Menu>
+                            ],
+                          });
+                        }}
+                      >
+                        Approve
+                      </Menu.Item>
+                    ) : !isCancelled ? (
+                      <Menu.Item
+                        color="danger"
+                        onClick={() => {
+                          openCommonModal({
+                            heading: "Cancel Loan Booking",
+                            subtitle: "This action cannot be undone.",
+                            body: (
+                              <>
+                                Are you sure you want to cancel loan booking{" "}
+                                <Text span fw={600}>
+                                  {loanIdentifier}
+                                </Text>
+                                ?
+                              </>
+                            ),
+                            color: "red",
+                            buttons: [
+                              { label: "Back", variant: "default" },
+                              {
+                                label: "Cancel Booking",
+                                color: "red",
+                                onClick: () => {
+                                  updateStatus({
+                                    id: loanIdentifier,
+                                    action: "cancelled",
+                                  });
+                                },
+                              },
+                            ],
+                          });
+                        }}
+                      >
+                        Cancel
+                      </Menu.Item>
+                    ) : null}
+                  </Menu.Dropdown>
+                </Menu>
+              )}
             </Group>
           );
         },
       }),
     ],
-    [isDeleting, companyCurrency],
+    [isDeleting, companyCurrency, canWriteLoan, canDeleteLoan],
   );
 
   const table = useReactTable({
@@ -558,10 +561,7 @@ const currencyReady = useCurrencyReady();
 
   const rows = table.getRowModel().rows;
 
-  // Total/page counts come from the backend. Note: since the Branch filter
-  // stays frontend-only (per instruction), "Showing X-Y of Z" reflects the
-  // backend total for the applied search/status/product filters, not the
-  // branch-narrowed subset visible on this page.
+
   const totalRows = loansResponse?.pagination?.total ?? 0;
   const totalPages = loansResponse?.pagination?.total_pages ?? 1;
   const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -590,12 +590,7 @@ const currencyReady = useCurrencyReady();
     customerName: rowData.customer,
   });
 };
-  // ---- Detail view swap: same idea as Customer.tsx's borrower360CustomerId
-  // check — while a loan is selected, render the full Borrower360 (sidebar +
-  // profile/loans/investments/savings/FDs) instead of the table, deep-linked
-  // straight into this loan. getBorrowerProfile is the same mock generator
-  // Customer.tsx uses, seeded with whatever identifying info the loan row
-  // gives us. ----
+
   if (selectedLoan) {
     const borrower = getBorrowerProfile({
       id: selectedLoan.customerId,
@@ -723,23 +718,25 @@ const currencyReady = useCurrencyReady();
             Reset
           </Button>
 
-          <Button
-            size="sm"
-            radius="xl"
-            color="brand"
-            px="sm"
-            style={{
-              flexShrink: 0,
-              background: theme.other.brandGradient,
-              boxShadow: theme.other.brandGlowShadowSm,
-            }}
-            onClick={() =>
-              loanAccountModal.open({ loanId: null, isViewMode: false })
-            }
-            leftSection={<IconPlus size={14} />}
-          >
-            Add Loan
-          </Button>
+          {canCreateLoan && (
+            <Button
+              size="sm"
+              radius="xl"
+              color="brand"
+              px="sm"
+              style={{
+                flexShrink: 0,
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
+              }}
+              onClick={() =>
+                loanAccountModal.open({ loanId: null, isViewMode: false })
+              }
+              leftSection={<IconPlus size={14} />}
+            >
+              Add Loan
+            </Button>
+          )}
         </Group>
       </Paper>
 
