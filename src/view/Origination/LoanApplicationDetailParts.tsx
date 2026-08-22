@@ -19,6 +19,8 @@ import type { LoanApplicationRow } from './LoanApplication';
 import { STATUS_COLOR, getDisplayStatus } from './LoanApplication';
 import { themeTokens, serif, OverviewField, SectionHeading } from '../LoanAccount/LoanView/SharedUI';
 import { useState } from 'react';
+import { useCompanyStore } from '../../store/companyStore';
+import { getSymbol } from '../../store/currencyStore';
 
 // Re-exported so anywhere else in the app that was importing these from
 // this file (brand/serif/OverviewField/SectionHeading previously lived
@@ -26,8 +28,10 @@ import { useState } from 'react';
 export { themeTokens, serif, OverviewField, SectionHeading };
 
 export function formatCurrency(amount: number) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+    const currencySymbol = getSymbol(companyCurrency);
   if (!amount && amount !== 0) return '—';
-  return `K ${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  return `${currencySymbol} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 }
 
 export function formatDate(date: string) {
@@ -147,11 +151,6 @@ export function stageForStatus(status: string): LoanApplicationDetail['stage'] {
       return 'Submitted';
   }
 }
-
-/* ============================================================================
-   REAL-DATA MAPPING — sourced from GET get_custom_loan_application_by_id.
-   Nothing here is invented: fields with no backend source render as '—'.
-============================================================================ */
 
 function applicantNameFromRow(row: LoanApplicationRow) {
   if (row.application_type === 'Business Loan') {

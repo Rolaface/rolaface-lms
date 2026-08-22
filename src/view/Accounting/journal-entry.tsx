@@ -50,7 +50,7 @@ import {
 
 
 function statusInfo(docstatus: JournalEntry["docstatus"]) {
-  if (docstatus === 1) return { label: "Submitted", scale: "success" as const };
+  if (docstatus === 1) return { label: "Approved", scale: "success" as const };
   if (docstatus === 2) return { label: "Cancelled", scale: "danger" as const };
   return { label: "Draft", scale: "slate" as const };
 }
@@ -243,7 +243,7 @@ function useColumns(
                       }
                       onClick={() => onSubmit(row.name)}
                     >
-                      Submit
+                      Approve
                     </Menu.Item>
                   )}
                   {isSubmitted ? (
@@ -551,7 +551,13 @@ const openEdit = (name: string) => {
                   const { scale } = statusInfo(row.original.docstatus);
                   const cells = row.getVisibleCells();
                   return (
-                    <Table.Tr key={row.id} className="je-row">
+                    // <Table.Tr key={row.id} className="je-row">
+                    <Table.Tr 
+  key={row.id} 
+  className="je-row"
+  onDoubleClick={() => openView(row.original.name)}
+  style={{ cursor: "pointer" }}  
+>
                       {cells.map((cell, idx) => (
                         <Table.Td
                           key={cell.id}
