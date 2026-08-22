@@ -271,6 +271,7 @@ export function BasicDetailsTab({
               min={0}
               disabled={form.values.fixedRepaymentsIn === "EMI"}
               {...form.getInputProps("tenureValue")}
+              required
             />
             <NumberInput
               label="Repayment Amount"
