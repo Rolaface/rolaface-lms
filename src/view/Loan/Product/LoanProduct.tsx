@@ -43,11 +43,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LoanProductModal } from "../../../components/Modal/LoanProduct/LoanProductModal";
 import {
   getLoanProducts,
+  getAllLoanCategories,
   deleteLoanProduct,
   enableLoanProduct,
   disableLoanProduct,
   type LoanProductRaw,
 } from "../../../api/LoanProduct/LoanProductAPi";
+
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { loanProductModal } from "../../../components/Modal/LoanProduct/loanProductModalstore";
@@ -66,7 +68,9 @@ interface NormalizedProduct {
 const columnHelper = createColumnHelper<NormalizedProduct>();
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
-  const color = sorted ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-4)";
+  const color = sorted
+    ? "var(--mantine-color-brand-6)"
+    : "var(--mantine-color-slate-4)";
   if (sorted === "asc") return <IconChevronUp size={12} color={color} />;
   if (sorted === "desc") return <IconChevronDown size={12} color={color} />;
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
@@ -92,7 +96,14 @@ function StatusBadge({ status }: { status: string }) {
         },
       }}
       leftSection={
-        <Box w={6} h={6} style={{ borderRadius: "50%", background: `var(--mantine-color-${scale}-6)` }} />
+        <Box
+          w={6}
+          h={6}
+          style={{
+            borderRadius: "50%",
+            background: `var(--mantine-color-${scale}-6)`,
+          }}
+        />
       }
     >
       {status}
@@ -118,6 +129,7 @@ export function LoanProduct() {
   const [debouncedSearch] = useDebouncedValue(search, 400);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [status, setStatus] = useState("all");
+  const [categorySearch, setCategorySearch] = useState("");
 
   // table state
   const [sorting, setSorting] = useState([{ id: "name", desc: false }]);
@@ -142,34 +154,63 @@ export function LoanProduct() {
   };
 
   const showSuccess = (heading: string, body: string) => {
-    openCommonModal({ heading, subtitle: "", body, color: "green", buttons: [{ label: "Close", color: "green" }] });
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
   };
 
-  const { data: productsResponse, isLoading, isFetching } = useQuery({
-    queryKey: ["loanProducts", debouncedSearch, disabledParam, selectedCategories, page, pageSize],
+  const {
+    data: productsResponse,
+    isLoading,
+    isFetching,
+  } = useQuery({
+    queryKey: [
+      "loanProducts",
+      debouncedSearch,
+      disabledParam,
+      selectedCategories,
+      page,
+      pageSize,
+    ],
     queryFn: () =>
       getLoanProducts({
         search: debouncedSearch.trim() || undefined,
         disabled: disabledParam,
-        loan_category: selectedCategories.length > 0 ? selectedCategories : undefined,
+        loan_category:
+          selectedCategories.length > 0 ? selectedCategories : undefined,
         page,
         page_size: pageSize,
       }),
     placeholderData: (prev) => prev,
   });
+  const [debouncedCategorySearch] = useDebouncedValue(categorySearch, 400);
 
+  const { data: categoriesResponse, isLoading: isCategoriesLoading } = useQuery(
+    {
+      queryKey: ["loanCategories", debouncedCategorySearch],
+      queryFn: () => getAllLoanCategories(debouncedCategorySearch),
+    },
+  );
+const categoryOptions = useMemo(() => {
+  const categories = categoriesResponse?.data?.categories || [];
 
-  const categoryOptions = useMemo(() => {
-    const list = productsResponse?.data || [];
-    const unique = Array.from(new Set(list.map((p) => p.loan_category?.trim()).filter(Boolean))).sort();
-    return unique.map((c) => ({ value: c as string, label: c as string }));
-  }, [productsResponse]);
-
+  return categories.map((category) => ({
+    value: category.loan_category_code,
+    label: category.loan_category_name,
+  }));
+}, [categoriesResponse]);
   const { mutate: enableItem, isPending: isEnabling } = useMutation({
     mutationFn: (id: string) => enableLoanProduct(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanProducts"] });
-      showSuccess("Product Activated", "Loan product has been activated successfully.");
+      showSuccess(
+        "Product Activated",
+        "Loan product has been activated successfully.",
+      );
     },
     onError: (error: any) => showError("Status Update Failed", error),
   });
@@ -178,7 +219,10 @@ export function LoanProduct() {
     mutationFn: (id: string) => disableLoanProduct(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanProducts"] });
-      showSuccess("Product Deactivated", "Loan product has been deactivated successfully.");
+      showSuccess(
+        "Product Deactivated",
+        "Loan product has been deactivated successfully.",
+      );
     },
     onError: (error: any) => showError("Status Update Failed", error),
   });
@@ -209,12 +253,18 @@ export function LoanProduct() {
   const toggleStatus = (row: NormalizedProduct) => {
     const willDeactivate = row.status === "ACTIVE";
     openCommonModal({
-      heading: willDeactivate ? "Deactivate Loan Product" : "Activate Loan Product",
+      heading: willDeactivate
+        ? "Deactivate Loan Product"
+        : "Activate Loan Product",
       subtitle: "Please confirm this action before continuing.",
       body: (
         <>
-          Are you sure you want to {willDeactivate ? "deactivate" : "activate"} loan product{" "}
-          <Text span fw={600}>{row.name}</Text>?
+          Are you sure you want to {willDeactivate ? "deactivate" : "activate"}{" "}
+          loan product{" "}
+          <Text span fw={600}>
+            {row.name}
+          </Text>
+          ?
         </>
       ),
       color: willDeactivate ? "red" : "green",
@@ -223,7 +273,8 @@ export function LoanProduct() {
         {
           label: willDeactivate ? "Deactivate" : "Activate",
           color: willDeactivate ? "red" : "green",
-          onClick: () => (willDeactivate ? disableItem(row.id) : enableItem(row.id)),
+          onClick: () =>
+            willDeactivate ? disableItem(row.id) : enableItem(row.id),
         },
       ],
     });
@@ -236,7 +287,10 @@ export function LoanProduct() {
       body: (
         <>
           Are you sure you want to delete loan product{" "}
-          <Text span fw={600}>{row.name}</Text>?
+          <Text span fw={600}>
+            {row.name}
+          </Text>
+          ?
         </>
       ),
       color: "red",
@@ -251,12 +305,20 @@ export function LoanProduct() {
     () => [
       columnHelper.accessor("name", {
         header: "Product Name",
-        cell: (info) => <Text fz="sm" fw={700} c="slate.8">{info.getValue()}</Text>,
+        cell: (info) => (
+          <Text fz="sm" fw={700} c="slate.8">
+            {info.getValue()}
+          </Text>
+        ),
       }),
       columnHelper.accessor("code", {
         header: "Code",
         cell: (info) => (
-          <Text fz="xs" c="slate.6" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
+          <Text
+            fz="xs"
+            c="slate.6"
+            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+          >
             {info.getValue()}
           </Text>
         ),
@@ -264,14 +326,24 @@ export function LoanProduct() {
       columnHelper.accessor("category", {
         header: "Category",
         cell: (info) => (
-          <Badge variant="light" size="sm" radius="sm" color="brand" styles={{ root: { fontSize: 10, padding: "0 8px" } }}>
+          <Badge
+            variant="light"
+            size="sm"
+            radius="sm"
+            color="brand"
+            styles={{ root: { fontSize: 10, padding: "0 8px" } }}
+          >
             {info.getValue()}
           </Badge>
         ),
       }),
       columnHelper.accessor("rate", {
         header: "Base Rate",
-        cell: (info) => <Text fz="xs" c="slate.6">{Number(info.getValue()).toFixed(2)}%</Text>,
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {Number(info.getValue()).toFixed(2)}%
+          </Text>
+        ),
         sortingFn: "basic",
       }),
       columnHelper.accessor("status", {
@@ -280,31 +352,69 @@ export function LoanProduct() {
       }),
       columnHelper.display({
         id: "actions",
-        header: () => <Text fz="xs" fw={600} ta="right" w="100%">Actions</Text>,
+        header: () => (
+          <Text fz="xs" fw={600} ta="right" w="100%">
+            Actions
+          </Text>
+        ),
         cell: (info) => {
           const row = info.row.original;
           const isTogglingStatus = isEnabling || isDisabling;
           return (
-            <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
+            <Group
+              justify="flex-end"
+              gap={4}
+              wrap="nowrap"
+              className="lms-row-actions"
+            >
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="slate" radius="md"
-                  onClick={() => loanProductModal.open({ loanProductId: row.id, isViewMode: true })}>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="slate"
+                  radius="md"
+                  onClick={() =>
+                    loanProductModal.open({
+                      loanProductId: row.id,
+                      isViewMode: true,
+                    })
+                  }
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="brand" radius="md"
-                  onClick={() => loanProductModal.open({ loanProductId: row.id, isViewMode: false })}>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="brand"
+                  radius="md"
+                  onClick={() =>
+                    loanProductModal.open({
+                      loanProductId: row.id,
+                      isViewMode: false,
+                    })
+                  }
+                >
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Delete" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="danger" radius="md" loading={isDeleting}
-                  onClick={() => handleDelete(row)}>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="danger"
+                  radius="md"
+                  loading={isDeleting}
+                  onClick={() => handleDelete(row)}
+                >
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={row.status === "ACTIVE" ? "Deactivate" : "Activate"} withArrow>
+              <Tooltip
+                label={row.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                withArrow
+              >
                 <Switch
                   size="xs"
                   color="success"
@@ -318,7 +428,7 @@ export function LoanProduct() {
         },
       }),
     ],
-    [isDeleting, isEnabling, isDisabling]
+    [isDeleting, isEnabling, isDisabling],
   );
 
   const table = useReactTable({
@@ -356,17 +466,43 @@ export function LoanProduct() {
 
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
         <Group gap="sm" align="center">
-          <Box style={{ width: 40, height: 40, borderRadius: "var(--mantine-radius-md)", background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadow, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <IconBriefcase size={20} color="var(--mantine-color-white)" stroke={1.8} />
+          <Box
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "var(--mantine-radius-md)",
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadow,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <IconBriefcase
+              size={20}
+              color="var(--mantine-color-white)"
+              stroke={1.8}
+            />
           </Box>
           <Stack gap={2}>
-            <Title order={2} c="slate.8" fw={700}>Loan Products</Title>
-            <Text fz="sm" c="slate.5">Configure and manage loan products</Text>
+            <Title order={2} c="slate.8" fw={700}>
+              Loan Products
+            </Title>
+            <Text fz="sm" c="slate.5">
+              Configure and manage loan products
+            </Text>
           </Stack>
         </Group>
       </Group>
 
-      <Paper radius="xl" p="xs" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}>
+      <Paper
+        radius="xl"
+        p="xs"
+        style={{
+          background: "var(--mantine-color-slate-0)",
+          border: "1px solid var(--mantine-color-slate-2)",
+        }}
+      >
         <Group gap="sm" wrap="wrap" align="center">
           <TextInput
             className="lms-search"
@@ -375,7 +511,9 @@ export function LoanProduct() {
             placeholder="Product Name / Code"
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
-            styles={{ input: { border: "1px solid var(--mantine-color-slate-2)" } }}
+            styles={{
+              input: { border: "1px solid var(--mantine-color-slate-2)" },
+            }}
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
@@ -385,9 +523,12 @@ export function LoanProduct() {
             data={categoryOptions}
             value={selectedCategories}
             onChange={setSelectedCategories}
+            searchable
+            searchValue={categorySearch}
+            onSearchChange={setCategorySearch}
+            loading={isCategoriesLoading}
             width={180}
           />
-
           <SegmentedControl
             size="xs"
             radius="xl"
@@ -401,14 +542,25 @@ export function LoanProduct() {
             ]}
           />
           <Group gap="xs" ml="auto">
-            <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>Reset</Button>
+            <Button
+              size="sm"
+              radius="xl"
+              variant="default"
+              px="md"
+              onClick={resetFilters}
+            >
+              Reset
+            </Button>
             <Button
               size="sm"
               radius="xl"
               color="brand"
               onClick={() => loanProductModal.open({})}
               leftSection={<IconPlus size={14} />}
-              style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
+              style={{
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
+              }}
             >
               Add Product
             </Button>
@@ -416,13 +568,34 @@ export function LoanProduct() {
         </Group>
       </Paper>
 
-      <Paper radius="lg" p="sm" pos="relative" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}>
+      <Paper
+        radius="lg"
+        p="sm"
+        pos="relative"
+        style={{
+          background: "var(--mantine-color-slate-0)",
+          border: "1px solid var(--mantine-color-slate-2)",
+        }}
+      >
         {isLoading ? (
-          <Group justify="center" py="xl"><Loader size="sm" color="brand" /></Group>
+          <Group justify="center" py="xl">
+            <Loader size="sm" color="brand" />
+          </Group>
         ) : (
           <>
-            <Box style={{ opacity: isFetching ? 0.6 : 1, transition: "opacity 120ms ease" }}>
-              <Table verticalSpacing="sm" horizontalSpacing="sm" fz="xs" w="100%" style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}>
+            <Box
+              style={{
+                opacity: isFetching ? 0.6 : 1,
+                transition: "opacity 120ms ease",
+              }}
+            >
+              <Table
+                verticalSpacing="sm"
+                horizontalSpacing="sm"
+                fz="xs"
+                w="100%"
+                style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+              >
                 <Table.Thead>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <Table.Tr key={headerGroup.id}>
@@ -433,12 +606,35 @@ export function LoanProduct() {
                             key={header.id}
                             c="slate.5"
                             fw={700}
-                            style={{ fontSize: "var(--mantine-font-size-xs)", padding: "0 10px 6px", userSelect: "none", cursor: canSort ? "pointer" : "default", textTransform: "uppercase", letterSpacing: "0.04em", border: "none" }}
+                            style={{
+                              fontSize: "var(--mantine-font-size-xs)",
+                              padding: "0 10px 6px",
+                              userSelect: "none",
+                              cursor: canSort ? "pointer" : "default",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                              border: "none",
+                            }}
                             onClick={header.column.getToggleSortingHandler()}
                           >
-                            <Group gap="xs" wrap="nowrap" justify={header.id === "actions" ? "flex-end" : "flex-start"}>
-                              {flexRender(header.column.columnDef.header, header.getContext())}
-                              {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
+                            <Group
+                              gap="xs"
+                              wrap="nowrap"
+                              justify={
+                                header.id === "actions"
+                                  ? "flex-end"
+                                  : "flex-start"
+                              }
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                              {canSort && (
+                                <SortIcon
+                                  sorted={header.column.getIsSorted()}
+                                />
+                              )}
                             </Group>
                           </Table.Th>
                         );
@@ -449,12 +645,31 @@ export function LoanProduct() {
                 <Table.Tbody>
                   {rows.length === 0 ? (
                     <Table.Tr>
-                      <Table.Td colSpan={columns.length} style={{ border: "none" }}>
+                      <Table.Td
+                        colSpan={columns.length}
+                        style={{ border: "none" }}
+                      >
                         <Stack align="center" gap="xs" py="xl">
-                          <Box style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--mantine-color-white)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--mantine-color-slate-2)" }}>
-                            <IconBriefcase size={24} color="var(--mantine-color-slate-4)" />
+                          <Box
+                            style={{
+                              width: 52,
+                              height: 52,
+                              borderRadius: "50%",
+                              background: "var(--mantine-color-white)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              border: "1px solid var(--mantine-color-slate-2)",
+                            }}
+                          >
+                            <IconBriefcase
+                              size={24}
+                              color="var(--mantine-color-slate-4)"
+                            />
                           </Box>
-                          <Text ta="center" c="slate.5" fz="xs">No products match your filters.</Text>
+                          <Text ta="center" c="slate.5" fz="xs">
+                            No products match your filters.
+                          </Text>
                         </Stack>
                       </Table.Td>
                     </Table.Tr>
@@ -466,9 +681,20 @@ export function LoanProduct() {
                           {row.getVisibleCells().map((cell, idx) => (
                             <Table.Td
                               key={cell.id}
-                              style={{ padding: "10px 10px", border: "none", boxShadow: "var(--mantine-shadow-xs)", borderLeft: idx === 0 ? `3px solid var(--mantine-color-${isActive ? "success" : "danger"}-4)` : undefined }}
+                              style={{
+                                padding: "10px 10px",
+                                border: "none",
+                                boxShadow: "var(--mantine-shadow-xs)",
+                                borderLeft:
+                                  idx === 0
+                                    ? `3px solid var(--mantine-color-${isActive ? "success" : "danger"}-4)`
+                                    : undefined,
+                              }}
                             >
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                              )}
                             </Table.Td>
                           ))}
                         </Table.Tr>
@@ -480,14 +706,25 @@ export function LoanProduct() {
             </Box>
 
             <Group justify="space-between" px="sm" pt="xs">
-              <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
-                <span>{totalRows === 0 ? "Showing 0 of 0" : `Showing ${firstRow}-${lastRow} of ${totalRows}`}</span>
+              <Group
+                gap="sm"
+                c="slate.6"
+                style={{ fontSize: "var(--mantine-font-size-xs)" }}
+              >
+                <span>
+                  {totalRows === 0
+                    ? "Showing 0 of 0"
+                    : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+                </span>
                 <Group gap="xs">
                   <span>Rows:</span>
                   <Select
                     data={["10", "20", "50"]}
                     value={String(pageSize)}
-                    onChange={(v) => { setPageSize(Number(v) || 10); setPage(1); }}
+                    onChange={(v) => {
+                      setPageSize(Number(v) || 10);
+                      setPage(1);
+                    }}
                     rightSection={chevronDown}
                     size="xs"
                     radius="xl"
@@ -495,7 +732,15 @@ export function LoanProduct() {
                   />
                 </Group>
               </Group>
-              <Pagination total={totalPages} value={page} onChange={setPage} color="brand" size="xs" radius="xl" disabled={totalRows === 0} />
+              <Pagination
+                total={totalPages}
+                value={page}
+                onChange={setPage}
+                color="brand"
+                size="xs"
+                radius="xl"
+                disabled={totalRows === 0}
+              />
             </Group>
           </>
         )}

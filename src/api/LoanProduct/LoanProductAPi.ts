@@ -374,18 +374,38 @@ export const LoanCategoryAPI = API.loanCategory;
 
 export interface LoanCategoryRaw {
   name: string;
-  loan_category?: string;
-  [key: string]: any;
+  loan_category_code: string;
+  loan_category_name: string;
+  disabled: 0 | 1;
+}
+export interface LoanCategoryPagination {
+  page: string;
+  page_size: string;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
 }
 
 export interface LoanCategoryApiResponse {
-  status_code?: number;
-  status?: string;
-  message?: string | LoanCategoryRaw[] | { data?: LoanCategoryRaw[] };
-  data?: LoanCategoryRaw[];
+  status_code: number;
+  status: string;
+  message: string;
+  data: {
+    categories: LoanCategoryRaw[];
+    pagination: LoanCategoryPagination;
+  };
 }
 
-export const getAllLoanCategories = async (): Promise<LoanCategoryApiResponse> => {
-  const response: AxiosResponse<LoanCategoryApiResponse> = await api.get(LoanCategoryAPI.getAll);
+export const getAllLoanCategories = async (
+  search?: string
+): Promise<LoanCategoryApiResponse> => {
+  const response: AxiosResponse<LoanCategoryApiResponse> = await api.get(
+    LoanCategoryAPI.getAll,
+    {
+      params: search?.trim() ? { search: search.trim() } : undefined,
+    }
+  );
+
   return response.data;
 };
