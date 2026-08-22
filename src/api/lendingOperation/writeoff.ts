@@ -38,10 +38,18 @@ export async function getLoanWriteOffs(params: {
   page?: number;
   page_size?: number;
   search?: string;
+  status?: string[];
 }) {
+  const cleanParams: Record<string, any> = { ...params };
+  if (params.status && params.status.length > 0) {
+    cleanParams.status = JSON.stringify(params.status);
+  } else {
+    delete cleanParams.status;
+  }
+
   const { data } = await apiClient.get<GetLoanWriteOffsResponse>(
     API.loanWriteoff.getAll,
-    { params }
+    { params: cleanParams }
   );
   return data;
 }
@@ -69,11 +77,12 @@ export async function deleteLoanWriteOff(id: string) {
   return data;
 }
 
-export async function updateLoanWriteOffStatus(id: string, action: 'approved' | 'submitted') {
+export async function updateLoanWriteOffStatus(id: string, action: string) {
+  // Traceback proves the backend endpoint expects a PUT request (is_valid_http_method).
+  // We send the arguments at the top level of the JSON body.
   const { data } = await apiClient.put<UpdateLoanWriteOffStatusResponse>(
     API.loanWriteoff.updateStatus,
-    {},
-    { params: { id, action } }
+    { id, loan_write_off: id, action }
   );
   return data;
 }

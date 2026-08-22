@@ -36,7 +36,7 @@ import { createLoanDisbursement, getAllDsbrAccount, updateLoanDisbursement, getL
 import { getAllApplicationDsbr, getLoanById } from "../../api/loanApi";
 import type { LoanDisbursementPayload, } from "../../types/loanDisbursementForm";
 import { parseFrappeError } from "../../utils/parseFrappeError";
-import { getSymbol } from "../../store/currencyStore";
+import { getSymbol, formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { openCommonModal } from "./AlertModal";
 import { ModalFooter } from "../shared/ModalFooter";
@@ -685,7 +685,7 @@ export function LoanDisbursementModal({
           </Box>
 
           {/* Body: main form + summary sidebar */}
-          <div className="flex overflow-hidden" style={{ height: 460 }}>
+          <div className="flex overflow-hidden" style={{ height: 540 }}>
             {/* Main form column */}
             <div className="flex-1 overflow-y-auto p-4">
               <fieldset disabled={isView} className="border-0 p-0 m-0">
@@ -1110,12 +1110,12 @@ export function LoanDisbursementModal({
                     <SummaryRow label="Currency" value={companyCurrency || "—"} />
                     <SummaryRow
                       label="Sanctioned Amount"
-                      value={selectedLoanApp ? `${currencySymbol}${selectedLoanApp.loan_amount}` : `${currencySymbol}0`}
+                      value={selectedLoanApp ? formatAmount(companyCurrency, selectedLoanApp.loan_amount, { withSymbol: true }) : formatAmount(companyCurrency, 0, { withSymbol: true })}
                       bold
                     />
                     <SummaryRow
                       label="Disbursement till Date"
-                      value={`${currencySymbol}${selectedLoanDisbursedAmount}`}
+                      value={formatAmount(companyCurrency, selectedLoanDisbursedAmount, { withSymbol: true })}
                       bold
                     />
                     <SummaryRow
