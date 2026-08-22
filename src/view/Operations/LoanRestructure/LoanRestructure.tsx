@@ -13,6 +13,7 @@ import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { RESTRUCTURE_STATUSES, type LoanRestructureListItem, type LoanRestructureStatus } from '../../../api/loanRestructureApi';
 import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
 import { loanRestructureModal } from './LoanRestructureModalStore';
+import { usePermission } from '../../../hooks/Usepermission';
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   Initiated: { label: 'INITIATED', color: 'gold' },
@@ -28,7 +29,10 @@ const fmtDate = (iso: string) => (iso ? dayjs(iso).format('DD-MMM-YYYY') : '—'
 export function LoanRestructure() {
   const theme = useMantineTheme();
 
-
+  const { can } = usePermission();
+  const canCreateLoan = can("Loan Restructure", "create");
+  const canWriteLoan = can("Loan Restructure", "write");
+  const canDeleteLoan = can("Loan Restructure", "delete");
 
   const {
     search, setSearch,
@@ -103,7 +107,7 @@ export function LoanRestructure() {
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
-         <FilterMultiSelect
+          <FilterMultiSelect
             placeholder="All Statuses"
             data={RESTRUCTURE_STATUSES.map((s) => ({ value: s, label: s }))}
             value={status}
@@ -111,13 +115,15 @@ export function LoanRestructure() {
             width={180}
           />
           <Group gap="xs" ml="auto">
-            <Button
-              size="sm" radius="xl" color="brand" onClick={() => loanRestructureModal.open({ editName: null, viewName: null })}
-              leftSection={<IconPlus size={14} />}
-              style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
-            >
-              Restructure Loan
-            </Button>
+            {canCreateLoan && (
+              <Button
+                size="sm" radius="xl" color="brand" onClick={() => loanRestructureModal.open({ editName: null, viewName: null })}
+                leftSection={<IconPlus size={14} />}
+                style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
+              >
+                Restructure Loan
+              </Button>
+            )}
           </Group>
         </Group>
       </Paper>
@@ -180,42 +186,39 @@ export function LoanRestructure() {
                             <IconEye size={14} />
                           </ActionIcon>
                         </Tooltip>
-                        <Tooltip label={isDraft ? 'Edit' : 'Only Draft can be edited'} withArrow>
-                          <ActionIcon size="sm" variant="subtle" color={isDraft ? 'brand' : 'slate'} radius="md" disabled={!isDraft} onClick={() => loanRestructureModal.open({ editName: row.name, viewName: null })}>
-                            <IconPencil size={14} />
-                          </ActionIcon>
-                        </Tooltip>
-                        <Tooltip label={isDraft ? 'Delete' : 'Only Draft can be deleted'} withArrow>
-                          <ActionIcon size="sm" variant="subtle" color={isDraft ? 'danger' : 'slate'} radius="md" disabled={!isDraft} onClick={() => confirmDelete(row)}>
-                            <IconTrash size={14} />
-                          </ActionIcon>
-                        </Tooltip>
 
-                        <Menu shadow="md" width={170} radius="md" position="bottom-end" withArrow disabled={!isDraft || isApproving}>
-                          <Menu.Target>
-                            <Tooltip label={isDraft ? 'More actions' : 'No actions available'} withArrow>
-                              <ActionIcon
-                                size="sm"
-                                variant="subtle"
-                                color="slate"
-                                radius="md"
-                                disabled={!isDraft || isApproving}
-                                aria-label="More actions"
-                              >
-                                {isApproving ? <Loader size={14} /> : <IconDotsVertical size={14} />}
-                              </ActionIcon>
-                            </Tooltip>
-                          </Menu.Target>
-                          <Menu.Dropdown>
-                            <Menu.Item
-                              leftSection={<IconCircleCheck size={14} />}
-                              color="success"
-                              onClick={() => confirmApprove(row)}
-                            >
-                              Approve
-                            </Menu.Item>
-                          </Menu.Dropdown>
-                        </Menu>
+                        {canWriteLoan && (
+                          <Tooltip label={isDraft ? 'Edit' : 'Only Draft can be edited'} withArrow>
+                            <ActionIcon size="sm" variant="subtle" color={isDraft ? 'brand' : 'slate'} radius="md" disabled={!isDraft} onClick={() => loanRestructureModal.open({ editName: row.name, viewName: null })}>
+                              <IconPencil size={14} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+
+                        {canDeleteLoan && (
+                          <Tooltip label={isDraft ? 'Delete' : 'Only Draft can be deleted'} withArrow>
+                            <ActionIcon size="sm" variant="subtle" color={isDraft ? 'danger' : 'slate'} radius="md" disabled={!isDraft} onClick={() => confirmDelete(row)}>
+                              <IconTrash size={14} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+
+                        {canWriteLoan && (
+                          <Menu shadow="md" width={170} radius="md" position="bottom-end" withArrow disabled={!isDraft || isApproving}>
+                            <Menu.Target>
+                              <Tooltip label={isDraft ? 'More actions' : 'No actions available'} withArrow>
+                                <ActionIcon size="sm" variant="subtle" color="slate" radius="md" disabled={!isDraft || isApproving} aria-label="More actions">
+                                  {isApproving ? <Loader size={14} /> : <IconDotsVertical size={14} />}
+                                </ActionIcon>
+                              </Tooltip>
+                            </Menu.Target>
+                            <Menu.Dropdown>
+                              <Menu.Item leftSection={<IconCircleCheck size={14} />} color="success" onClick={() => confirmApprove(row)}>
+                                Approve
+                              </Menu.Item>
+                            </Menu.Dropdown>
+                          </Menu>
+                        )}
                       </Group>
                     </Table.Td>
                   </Table.Tr>

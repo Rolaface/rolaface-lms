@@ -27,7 +27,7 @@ import {
   IconTrash,
   IconDotsVertical,
 } from '@tabler/icons-react';
-
+import { usePermission } from '../../../hooks/Usepermission';
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
 import { getAllLoansDisbursement, deleteLoanDisbursement, changeLoanDsbrStatus } from '../../../api/loanDisbursementAPi';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -66,9 +66,7 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-// Same visual pattern as LoanAccount's StatusBadge — dot + label, colors
-// resolved from the theme's semantic palette (success / warning) rather
-// than raw color names.
+
 function StatusBadge({ label, color }: { label: string; color: string }) {
   return (
     <Badge
@@ -101,6 +99,10 @@ export function LoanDisbursement() {
   const theme = useMantineTheme();
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencyReady = useCurrencyReady();
+  const { can } = usePermission();
+  const canCreateLoan = can("Loan Disbursement", "create");
+  const canWriteLoan = can("Loan Disbursement", "write");
+  const canDeleteLoan = can("Loan Disbursement", "delete");
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
     const [applicantType, setApplicantType] = useState<string[]>([]);
@@ -350,8 +352,6 @@ export function LoanDisbursement() {
           const isDraft = row.status === 'Draft';
           const isCancelled = row.status === 'Cancelled';
           const isDeleting = deleteMutation.isPending && deleteMutation.variables === row.id;
-
-          // Allow deletion if it's Draft OR Cancelled
           const canDelete = isDraft || isCancelled;
 
           return (
@@ -361,117 +361,71 @@ export function LoanDisbursement() {
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={isDraft ? 'Edit' : 'Only Drafts can be edited'} withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={isDraft ? 'brand' : 'slate'}
-                  radius="md"
-                  disabled={!isDraft}
-                  onClick={() => handleEdit(row)}
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={canDelete ? 'Delete' : 'Only Draft or Cancelled can be deleted'} withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={canDelete ? 'danger' : 'slate'}
-                  radius="md"
-                  disabled={!canDelete || isDeleting}
-                  loading={isDeleting}
-                  onClick={() => confirmDelete(row)}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
 
-              <Menu shadow="md" width={140} position="bottom-end" radius="md">
-                <Menu.Target>
+              {canWriteLoan && (
+                <Tooltip label={isDraft ? 'Edit' : 'Only Drafts can be edited'} withArrow>
                   <ActionIcon
                     size="sm"
                     variant="subtle"
-                    color="slate"
+                    color={isDraft ? 'brand' : 'slate'}
                     radius="md"
-                    disabled={isCancelled}
-                    loading={statusMutation.isPending && statusMutation.variables?.id === row.id}
+                    disabled={!isDraft}
+                    onClick={() => handleEdit(row)}
                   >
-                    <IconDotsVertical size={14} />
+                    <IconPencil size={14} />
                   </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  {isDraft ? (
-                    <Menu.Item
-                      onClick={() => {
-                        openCommonModal({
-                          heading: 'Approve Loan Disbursement',
-                          subtitle: 'Please confirm this action before continuing.',
-                          body: (
-                            <>
-                              Are you sure you want to approve loan disbursement{' '}
-                              <Text span fw={600}>
-                                {row.id}
-                              </Text>{' '}
-                            </>
-                          ),
-                          color: 'success',
-                          buttons: [
-                            { label: 'Cancel', variant: 'default' },
-                            {
-                              label: 'Approve',
-                              color: 'success',
-                              onClick: () => {
-                                statusMutation.mutate({ id: row.id, action: 'approved' });
-                              },
-                            },
-                          ],
-                        });
-                      }}
+                </Tooltip>
+              )}
+
+              {canDeleteLoan && (
+                <Tooltip label={canDelete ? 'Delete' : 'Only Draft or Cancelled can be deleted'} withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color={canDelete ? 'danger' : 'slate'}
+                    radius="md"
+                    disabled={!canDelete || isDeleting}
+                    loading={isDeleting}
+                    onClick={() => confirmDelete(row)}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+
+              {canWriteLoan && (
+                <Menu shadow="md" width={140} position="bottom-end" radius="md">
+                  <Menu.Target>
+                    <ActionIcon
+                      size="sm"
+                      variant="subtle"
+                      color="slate"
+                      radius="md"
+                      disabled={isCancelled}
+                      loading={statusMutation.isPending && statusMutation.variables?.id === row.id}
                     >
-                      Approve
-                    </Menu.Item>
-                  ) : !isCancelled ? (
-                    <Menu.Item
-                      color="danger"
-                      onClick={() => {
-                        openCommonModal({
-                          heading: 'Cancel Loan Disbursement',
-                          subtitle: 'This action cannot be undone.',
-                          body: (
-                            <>
-                              Are you sure you want to cancel loan disbursement{' '}
-                              <Text span fw={600}>
-                                {row.id}
-                              </Text>
-                              ?
-                            </>
-                          ),
-                          color: 'danger',
-                          buttons: [
-                            { label: 'Back', variant: 'default' },
-                            {
-                              label: 'Cancel Disbursement',
-                              color: 'danger',
-                              onClick: () => {
-                                statusMutation.mutate({ id: row.id, action: 'cancelled' });
-                              },
-                            },
-                          ],
-                        });
-                      }}
-                    >
-                      Cancel
-                    </Menu.Item>
-                  ) : null}
-                </Menu.Dropdown>
-              </Menu>
+                      <IconDotsVertical size={14} />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    {isDraft ? (
+                      <Menu.Item onClick={() => { }}>
+                        Approve
+                      </Menu.Item>
+                    ) : !isCancelled ? (
+                      <Menu.Item color="danger" onClick={() => { }}>
+                        Cancel
+                      </Menu.Item>
+                    ) : null}
+                  </Menu.Dropdown>
+                </Menu>
+              )}
             </Group>
           );
         },
       }),
     ],
-    [deleteMutation, statusMutation, companyCurrency]
+    [deleteMutation, statusMutation, companyCurrency, canWriteLoan, canDeleteLoan]
   );
 
   const table = useReactTable({
@@ -582,21 +536,23 @@ export function LoanDisbursement() {
           <Button size="sm" radius="xl" variant="default" px="sm" style={{ flexShrink: 0 }} onClick={resetFilters}>
             Reset
           </Button>
-          <Button
-            size="sm"
-            radius="xl"
-            color="brand"
-            px="sm"
-            style={{
-              flexShrink: 0,
-              background: theme.other.brandGradient,
-              boxShadow: theme.other.brandGlowShadowSm,
-            }}
-            onClick={handleAdd}
-            leftSection={<IconPlus size={14} />}
-          >
-            Add Disbursement
-          </Button>
+          {canCreateLoan && (
+            <Button
+              size="sm"
+              radius="xl"
+              color="brand"
+              px="sm"
+              style={{
+                flexShrink: 0,
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
+              }}
+              onClick={handleAdd}
+              leftSection={<IconPlus size={14} />}
+            >
+              Add Disbursement
+            </Button>
+          )}
         </Group>
       </Paper>
 
@@ -615,138 +571,138 @@ export function LoanDisbursement() {
         ) : (
           <>
             <Box style={{ opacity: isFetching ? 0.6 : 1, transition: 'opacity 120ms ease' }}>
-            <Table
-              verticalSpacing="sm"
-              horizontalSpacing="sm"
-              fz="xs"
-              w="100%"
-              style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
-            >
-              <Table.Thead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <Table.Tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      const canSort = header.column.getCanSort();
-                      return (
-                        <Table.Th
-                          key={header.id}
-                          c="slate.5"
-                          fw={700}
-                          style={{
-                            fontSize: 'var(--mantine-font-size-xs)',
-                            padding: '0 10px 6px',
-                            userSelect: 'none',
-                            cursor: canSort ? 'pointer' : 'default',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
-                            border: 'none',
-                          }}
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          <Group
-                            gap="xs"
-                            wrap="nowrap"
-                            justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
-                          >
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
-                          </Group>
-                        </Table.Th>
-                      );
-                    })}
-                  </Table.Tr>
-                ))}
-              </Table.Thead>
-              <Table.Tbody>
-                {rows.length === 0 ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
-                      <Stack align="center" gap="xs" py="xl">
-                        <Box
-                          style={{
-                            width: 52,
-                            height: 52,
-                            borderRadius: '50%',
-                            background: 'var(--mantine-color-white)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: '1px solid var(--mantine-color-slate-2)',
-                          }}
-                        >
-                          <IconCashBanknote size={24} color="var(--mantine-color-slate-4)" />
-                        </Box>
-                        <Text ta="center" c="slate.5" fz="xs">
-                          No disbursements match your filters.
-                        </Text>
-                      </Stack>
-                    </Table.Td>
-                  </Table.Tr>
-                ) : (
-                  rows.map((row) => {
-                    const st = row.original.status;
-                    const rowColor = st === 'Submitted' || st === 'Disbursed' ? 'success' : 'warning';
-                    const cells = row.getVisibleCells();
-                    return (
-                      <Table.Tr
-                        key={row.id}
-                        className="lms-row"
-                        onDoubleClick={() => handleView(row.original)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        {cells.map((cell, idx) => (
-                          <Table.Td
-                            key={cell.id}
+              <Table
+                verticalSpacing="sm"
+                horizontalSpacing="sm"
+                fz="xs"
+                w="100%"
+                style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+              >
+                <Table.Thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <Table.Tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        const canSort = header.column.getCanSort();
+                        return (
+                          <Table.Th
+                            key={header.id}
+                            c="slate.5"
+                            fw={700}
                             style={{
-                              padding: '10px 10px',
+                              fontSize: 'var(--mantine-font-size-xs)',
+                              padding: '0 10px 6px',
+                              userSelect: 'none',
+                              cursor: canSort ? 'pointer' : 'default',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
                               border: 'none',
-                              boxShadow: 'var(--mantine-shadow-xs)',
-                              borderLeft: idx === 0 ? `3px solid var(--mantine-color-${rowColor}-4)` : undefined,
+                            }}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            <Group
+                              gap="xs"
+                              wrap="nowrap"
+                              justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
+                            >
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
+                            </Group>
+                          </Table.Th>
+                        );
+                      })}
+                    </Table.Tr>
+                  ))}
+                </Table.Thead>
+                <Table.Tbody>
+                  {rows.length === 0 ? (
+                    <Table.Tr>
+                      <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                        <Stack align="center" gap="xs" py="xl">
+                          <Box
+                            style={{
+                              width: 52,
+                              height: 52,
+                              borderRadius: '50%',
+                              background: 'var(--mantine-color-white)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              border: '1px solid var(--mantine-color-slate-2)',
                             }}
                           >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </Table.Td>
-                        ))}
-                      </Table.Tr>
-                    );
-                  })
-                )}
-              </Table.Tbody>
-            </Table>
-          </Box>
+                            <IconCashBanknote size={24} color="var(--mantine-color-slate-4)" />
+                          </Box>
+                          <Text ta="center" c="slate.5" fz="xs">
+                            No disbursements match your filters.
+                          </Text>
+                        </Stack>
+                      </Table.Td>
+                    </Table.Tr>
+                  ) : (
+                    rows.map((row) => {
+                      const st = row.original.status;
+                      const rowColor = st === 'Submitted' || st === 'Disbursed' ? 'success' : 'warning';
+                      const cells = row.getVisibleCells();
+                      return (
+                        <Table.Tr
+                          key={row.id}
+                          className="lms-row"
+                          onDoubleClick={() => handleView(row.original)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {cells.map((cell, idx) => (
+                            <Table.Td
+                              key={cell.id}
+                              style={{
+                                padding: '10px 10px',
+                                border: 'none',
+                                boxShadow: 'var(--mantine-shadow-xs)',
+                                borderLeft: idx === 0 ? `3px solid var(--mantine-color-${rowColor}-4)` : undefined,
+                              }}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </Table.Td>
+                          ))}
+                        </Table.Tr>
+                      );
+                    })
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Box>
 
-        {/* Pagination Footer */}
-        <Group justify="space-between" px="sm" pt="xs">
-          <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
-            <span>
-              {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-            </span>
-            <Group gap="xs">
-              <span>Rows:</span>
-              <Select
-                data={['10', '20', '50']}
-                value={String(pageSize)}
-                onChange={(v) => { setPageSize(Number(v) || 10); setPage(1); }}
-                rightSection={chevronDown}
+            {/* Pagination Footer */}
+            <Group justify="space-between" px="sm" pt="xs">
+              <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
+                <span>
+                  {totalRows === 0 ? 'Showing 0 of 0' : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+                </span>
+                <Group gap="xs">
+                  <span>Rows:</span>
+                  <Select
+                    data={['10', '20', '50']}
+                    value={String(pageSize)}
+                    onChange={(v) => { setPageSize(Number(v) || 10); setPage(1); }}
+                    rightSection={chevronDown}
+                    size="xs"
+                    radius="xl"
+                    w={60}
+                  />
+                </Group>
+              </Group>
+              <Pagination
+                total={totalPages}
+                value={page}
+                onChange={(p) => setPage(p)}
+                color="brand"
                 size="xs"
                 radius="xl"
-                w={60}
+                disabled={totalRows === 0}
               />
             </Group>
-          </Group>
-          <Pagination
-            total={totalPages}
-            value={page}
-            onChange={(p) => setPage(p)}
-            color="brand"
-            size="xs"
-            radius="xl"
-            disabled={totalRows === 0}
-          />
-        </Group>
-      </>
+          </>
         )}
-    </Paper>
+      </Paper>
     </Stack >
   );
 }
