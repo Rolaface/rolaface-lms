@@ -1,5 +1,5 @@
-import { Box, Button, TextInput, Group, Paper, Table, Badge, ActionIcon, Text, Pagination, Tooltip, Title, Stack, useMantineTheme, Loader, Select } from '@mantine/core';
-import { IconEye, IconPencil, IconPlus, IconSearch, IconFileOff, IconShieldCheck, IconPower } from '@tabler/icons-react';
+import { Box, Button, TextInput, Group, Paper, Table, Badge, ActionIcon, Switch, Text, Pagination, Tooltip, Title, Stack, useMantineTheme, Loader, Select } from '@mantine/core';
+import { IconEye, IconPencil, IconPlus, IconSearch, IconFileOff, IconShieldCheck } from '@tabler/icons-react';
 import { useUserRoleList } from '../../hooks/user/useUserRoleList';
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { roleModal } from '../../components/Modal/User/Rolemodalstore';
@@ -103,7 +103,15 @@ export function RoleManagement() {
                 const isLoadingRow = loadingId === row.Id;
                 const isToggling = togglingId === row.Id;
                 return (
-                  <Table.Tr key={row.Id} className="lms-row">
+                  <Table.Tr
+                    key={row.Id}
+                    className="lms-row"
+                    style={{ cursor: 'pointer' }}
+                    onDoubleClick={() => {
+                      if (isLoadingRow) return;
+                      openView(row.Id);
+                    }}
+                  >
                     <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)', borderLeft: '3px solid var(--mantine-color-brand-4)' }}>
                       <Text fz="sm" fw={700} c="slate.8">{row.roleName}</Text>
                     </Table.Td>
@@ -113,7 +121,7 @@ export function RoleManagement() {
                       </Badge>
                     </Table.Td>
                     <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)' }}>
-                      <Group justify="flex-end" gap={4} wrap="nowrap">
+                      <Group justify="flex-end" gap={4} wrap="nowrap" onDoubleClick={(e) => e.stopPropagation()}>
                         <Tooltip label="View" withArrow>
                           <ActionIcon size="sm" variant="subtle" color="slate" radius="md" disabled={isLoadingRow} onClick={() => openView(row.Id)}>
                             {isLoadingRow ? <Loader size={14} /> : <IconEye size={14} />}
@@ -125,9 +133,13 @@ export function RoleManagement() {
                           </ActionIcon>
                         </Tooltip>
                         <Tooltip label={row.disabled ? 'Enable' : 'Disable'} withArrow>
-                          <ActionIcon size="sm" variant="subtle" color={row.disabled ? 'success' : 'danger'} radius="md" disabled={isToggling} onClick={() => confirmToggle(row)}>
-                            {isToggling ? <Loader size={14} /> : <IconPower size={14} />}
-                          </ActionIcon>
+                          <Switch
+                            size="xs"
+                            color="success"
+                            checked={!row.disabled}
+                            disabled={isToggling}
+                            onChange={() => confirmToggle(row)}
+                          />
                         </Tooltip>
                       </Group>
                     </Table.Td>

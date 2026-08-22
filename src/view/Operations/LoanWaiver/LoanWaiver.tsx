@@ -25,7 +25,7 @@ import {
   IconPlus,
   IconChevronUp,
   IconChevronDown,
-  IconSelector,IconDiscount2,
+  IconSelector, IconDiscount2,
   IconSearch,
   IconTrash,
   IconDotsVertical,
@@ -127,7 +127,7 @@ export function LoanWaiver() {
   const currencyReady = useCurrencyReady();
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
-  const [loanType, setLoanType] = useState<string | null>(null);
+  const [loanType, setLoanType] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
   const [page, setPage] = useState(1);
@@ -143,7 +143,7 @@ export function LoanWaiver() {
       getAllLoanRepayment({
         search: debouncedSearch || undefined,
         status: statusFilter.length ? statusFilter : undefined,
-        loan_product: loanType ? [loanType] : undefined,
+        loan_product: loanType.length ? loanType : undefined,
         repayment_type: WAIVER_TYPES,
         page,
         page_size: pageSize,
@@ -187,13 +187,13 @@ export function LoanWaiver() {
       changeLoanRepaymentStatus(id, action),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
-         const isCancel = variables.action === 'cancelled';
+      const isCancel = variables.action === 'cancelled';
       showSuccess(
         isCancel ? 'Waiver Cancelled' : 'Waiver Approved',
         isCancel ? 'Loan waiver cancelled successfully.' : 'Loan waiver approved successfully.'
       );
     },
- onError: (error: any, variables) => {
+    onError: (error: any, variables) => {
       const isCancel = variables.action === 'cancelled';
       showError(isCancel ? 'Cancel Failed' : 'Approve Failed', error);
     },
@@ -201,7 +201,7 @@ export function LoanWaiver() {
 
   // Only rows whose repayment_type is one of the waiver types — the shared
   // getAllLoanRepayment endpoint returns every repayment/waiver/etc. record.
- const rowsData = useMemo(() => {
+  const rowsData = useMemo(() => {
     const list = repaymentsResponse?.message?.data?.repayments ?? [];
     return list.map((item: any) => ({
       id: item.name,
@@ -244,7 +244,7 @@ export function LoanWaiver() {
     });
   };
 
- const handleStatusChange = (row: WaiverRow, action: 'approved' | 'cancelled') => {
+  const handleStatusChange = (row: WaiverRow, action: 'approved' | 'cancelled') => {
     const isCancel = action === 'cancelled';
     openCommonModal({
       heading: isCancel ? 'Cancel Waiver' : 'Approve Waiver',
@@ -323,30 +323,30 @@ export function LoanWaiver() {
           </Badge>
         ),
       }),
-     columnHelper.accessor('amountPaid', {
-  header: 'Waiver Amount',
-  cell: (info) => (
-    <Text
-      fz="xs"
-      c="slate.6"
-      style={{
-        fontFamily: 'var(--mantine-font-family-monospace)',
-        fontVariantNumeric: 'tabular-nums',
-      }}
-    >
-      {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
-    </Text>
-  ),
-}),
-     columnHelper.accessor('valueDate', {
-  header: 'Value Date',
-  cell: (info) => (
-    <Text fz="xs" c="slate.6">
-      {fmtDate(info.getValue())}
-    </Text>
-  ),
-  sortingFn: 'basic',
-}),
+      columnHelper.accessor('amountPaid', {
+        header: 'Waiver Amount',
+        cell: (info) => (
+          <Text
+            fz="xs"
+            c="slate.6"
+            style={{
+              fontFamily: 'var(--mantine-font-family-monospace)',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor('valueDate', {
+        header: 'Value Date',
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {fmtDate(info.getValue())}
+          </Text>
+        ),
+        sortingFn: 'basic',
+      }),
       columnHelper.accessor('docstatus', {
         header: 'Status',
         cell: (info) => {
@@ -432,7 +432,7 @@ export function LoanWaiver() {
     [isDeleting, companyCurrency]
   );
 
-   const table = useReactTable({
+  const table = useReactTable({
     data: filteredData,
     columns,
     state: { sorting },
@@ -449,12 +449,15 @@ export function LoanWaiver() {
 
   const resetFilters = () => {
     setSearch('');
-    setLoanType(null);
+    setLoanType([]);
     setStatusFilter([]);
     setPage(1);
   };
 
-  const loanTypeOptions = Array.from(new Set(rowsData.map((r) => r.loanType).filter(Boolean)));
+  const loanTypeOptions = Array.from(new Set(rowsData.map((r) => r.loanType).filter(Boolean))).map((v) => ({
+    value: v,
+    label: v,
+  }));
 
   return (
     <Stack gap="lg" p="lg">
@@ -511,20 +514,15 @@ export function LoanWaiver() {
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
             styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
-           value={search}
+            value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
-          <Select
-            size="sm"
-            radius="xl"
+          <FilterMultiSelect
             placeholder="All Loan Types"
             data={loanTypeOptions}
-            w={166}
-            searchable
-            clearable
-            rightSection={chevronDown}
-          value={loanType}
-            onChange={(v) => setLoanType(v)}
+            value={loanType}
+            onChange={setLoanType}
+            width={166}
           />
 
           <FilterMultiSelect
@@ -542,7 +540,7 @@ export function LoanWaiver() {
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
             Reset
           </Button>
-     <Button
+          <Button
             size="sm"
             radius="xl"
             color="brand"
@@ -570,111 +568,111 @@ export function LoanWaiver() {
           <Group justify="center" py="xl">
             <Loader size="sm" color="brand" />
           </Group>
-       ) : (
+        ) : (
           <>
             <Box style={{ height: 'clamp(320px, calc(100vh - 280px), 720px)', overflowY: 'auto', opacity: isFetching ? 0.6 : 1, transition: 'opacity 120ms ease' }}>
-            <Table
-              verticalSpacing="sm"
-              horizontalSpacing="sm"
-              fz="xs"
-              w="100%"
-              style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
-            >
-              <Table.Thead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <Table.Tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      const canSort = header.column.getCanSort();
-                      return (
-                        <Table.Th
-                          key={header.id}
-                          c="slate.5"
-                          fw={700}
-                          style={{
-                            fontSize: 'var(--mantine-font-size-xs)',
-                            padding: '0 10px 6px',
-                            userSelect: 'none',
-                            cursor: canSort ? 'pointer' : 'default',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
-                            border: 'none',
-                          }}
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          <Group
-                            gap="xs"
-                            wrap="nowrap"
-                            justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
-                          >
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
-                          </Group>
-                        </Table.Th>
-                      );
-                    })}
-                  </Table.Tr>
-                ))}
-              </Table.Thead>
-              <Table.Tbody>
-                {rows.length === 0 ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
-                      <Stack align="center" gap="xs" py="xl">
-                        <Box
-                          style={{
-                            width: 52,
-                            height: 52,
-                            borderRadius: '50%',
-                            background: 'var(--mantine-color-white)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: '1px solid var(--mantine-color-slate-2)',
-                          }}
-                        >
-                          <IconFileOff size={24} color="var(--mantine-color-slate-4)" />
-                        </Box>
-                        <Text ta="center" c="slate.5" fz="xs">
-                          No waivers match your filters.
-                        </Text>
-                      </Stack>
-                    </Table.Td>
-                  </Table.Tr>
-                ) : (
-                  rows.map((row) => {
-                    const rowMeta =
-                      STATUS_META[row.original.docstatus] || { label: String(row.original.docstatus), color: 'slate' };
-                    const cells = row.getVisibleCells();
-                                       return (
-                      <Table.Tr
-                        key={row.id}
-                        className="lms-row"
-                        onDoubleClick={() => loanWaiverModal.open({ editId: row.original.id, isView: true })}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        {cells.map((cell, idx) => (
-                          <Table.Td
-                            key={cell.id}
+              <Table
+                verticalSpacing="sm"
+                horizontalSpacing="sm"
+                fz="xs"
+                w="100%"
+                style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+              >
+                <Table.Thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <Table.Tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        const canSort = header.column.getCanSort();
+                        return (
+                          <Table.Th
+                            key={header.id}
+                            c="slate.5"
+                            fw={700}
                             style={{
-                              padding: '10px 10px',
+                              fontSize: 'var(--mantine-font-size-xs)',
+                              padding: '0 10px 6px',
+                              userSelect: 'none',
+                              cursor: canSort ? 'pointer' : 'default',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
                               border: 'none',
-                              boxShadow: 'var(--mantine-shadow-xs)',
-                              borderLeft:
-                                idx === 0
-                                  ? `3px solid var(--mantine-color-${rowMeta.color}-4)`
-                                  : undefined,
+                            }}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            <Group
+                              gap="xs"
+                              wrap="nowrap"
+                              justify={header.id === 'actions' ? 'flex-end' : 'flex-start'}
+                            >
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
+                            </Group>
+                          </Table.Th>
+                        );
+                      })}
+                    </Table.Tr>
+                  ))}
+                </Table.Thead>
+                <Table.Tbody>
+                  {rows.length === 0 ? (
+                    <Table.Tr>
+                      <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
+                        <Stack align="center" gap="xs" py="xl">
+                          <Box
+                            style={{
+                              width: 52,
+                              height: 52,
+                              borderRadius: '50%',
+                              background: 'var(--mantine-color-white)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              border: '1px solid var(--mantine-color-slate-2)',
                             }}
                           >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </Table.Td>
-                        ))}
-                      </Table.Tr>
-                    );
-                  })
-                )}
-            
-              </Table.Tbody>
-            </Table>
+                            <IconFileOff size={24} color="var(--mantine-color-slate-4)" />
+                          </Box>
+                          <Text ta="center" c="slate.5" fz="xs">
+                            No waivers match your filters.
+                          </Text>
+                        </Stack>
+                      </Table.Td>
+                    </Table.Tr>
+                  ) : (
+                    rows.map((row) => {
+                      const rowMeta =
+                        STATUS_META[row.original.docstatus] || { label: String(row.original.docstatus), color: 'slate' };
+                      const cells = row.getVisibleCells();
+                      return (
+                        <Table.Tr
+                          key={row.id}
+                          className="lms-row"
+                          onDoubleClick={() => loanWaiverModal.open({ editId: row.original.id, isView: true })}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {cells.map((cell, idx) => (
+                            <Table.Td
+                              key={cell.id}
+                              style={{
+                                padding: '10px 10px',
+                                border: 'none',
+                                boxShadow: 'var(--mantine-shadow-xs)',
+                                borderLeft:
+                                  idx === 0
+                                    ? `3px solid var(--mantine-color-${rowMeta.color}-4)`
+                                    : undefined,
+                              }}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </Table.Td>
+                          ))}
+                        </Table.Tr>
+                      );
+                    })
+                  )}
+
+                </Table.Tbody>
+              </Table>
             </Box>
 
             <Group justify="space-between" px="sm" pt="xs">
@@ -684,7 +682,7 @@ export function LoanWaiver() {
                 </span>
                 <Group gap="xs">
                   <span>Rows:</span>
-                   <Select
+                  <Select
                     data={['10', '20', '50']}
                     value={String(pageSize)}
                     onChange={(v) => {
@@ -706,7 +704,7 @@ export function LoanWaiver() {
                 size="xs"
                 radius="xl"
                 disabled={totalRows === 0}
-              />y
+              />
             </Group>
           </>
         )}

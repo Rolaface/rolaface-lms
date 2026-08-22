@@ -140,7 +140,7 @@ export function LoanRepayment() {
 
   const [search, setSearch] = useState('');
    const [debouncedSearch] = useDebouncedValue(search, 400);
-  const [loanType, setLoanType] = useState<string | null>(null);
+    const [loanType, setLoanType] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
 
   const [sorting, setSorting] = useState([{ id: 'valueDate', desc: true }]);
@@ -159,7 +159,7 @@ const { data: repaymentsResponse, isLoading, isFetching } = useQuery({
       page_size: pageSize,
       search: debouncedSearch || undefined,
       status: statusFilter.length > 0 ? statusFilter : undefined,
-      loan_product: loanType ? [loanType] : undefined,
+            loan_product: loanType.length ? loanType : undefined,
     }),
   placeholderData: (prev) => prev,
 }); 
@@ -228,7 +228,7 @@ const { data: repaymentsResponse, isLoading, isFetching } = useQuery({
     
     return rowsData.filter((r) => {
       
-      const matchesLoanType = !loanType || r.loanType === loanType;
+            const matchesLoanType = !loanType.length || loanType.includes(r.loanType);
 return matchesLoanType;
     });
 }, [rowsData, loanType]);
@@ -488,12 +488,15 @@ return matchesLoanType;
 
   const resetFilters = () => {
     setSearch('');
-    setLoanType(null);
+    setLoanType([]);
     setStatusFilter([]);
   };
 
   // Generate loan type options dynamically from loaded data (like LoanAccount)
-  const loanTypeOptions = Array.from(new Set(rowsData.map((r) => r.loanType).filter(Boolean)));
+    const loanTypeOptions = Array.from(new Set(rowsData.map((r) => r.loanType).filter(Boolean))).map((v) => ({
+    value: v,
+    label: v,
+  }));
 
   return (
     <Stack gap="lg" p="lg">
@@ -561,19 +564,14 @@ return matchesLoanType;
               setSearch(e.currentTarget.value);
             }}
           />
-          <Select
-            size="sm"
-            radius="xl"
+                  <FilterMultiSelect
             placeholder="All Loan Types"
-            data={loanTypeOptions as string[]}
-            w={166}
-            searchable
-            clearable
-            rightSection={chevronDown}
+            data={loanTypeOptions}
             value={loanType}
             onChange={(v) => {
               setLoanType(v);
             }}
+            width={166}
           />
 
          <FilterMultiSelect

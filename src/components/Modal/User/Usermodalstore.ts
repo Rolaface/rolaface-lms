@@ -3,6 +3,7 @@ import type { CreateUserFormData } from "../../../types/User/createUser";
 
 interface UserModalOpenOptions {
   editId?: string | null;
+  isView?: boolean;
   initialData?: CreateUserFormData | null;
 }
 
@@ -13,6 +14,7 @@ interface UserModalStoreState extends UserModalOpenOptions {
 const useUserModalStore = create<UserModalStoreState>(() => ({
   opened: false,
   editId: null,
+  isView: false,
   initialData: null,
 }));
 
@@ -21,10 +23,16 @@ export const userModal = {
     useUserModalStore.setState({
       opened: true,
       editId: opts.editId ?? null,
+      isView: opts.isView ?? false,
       initialData: opts.initialData ?? null,
     }),
   close: () =>
-    useUserModalStore.setState({ opened: false, editId: null, initialData: null }),
+    useUserModalStore.setState({
+      opened: false,
+      editId: null,
+      isView: false,
+      initialData: null,
+    }),
 };
 
 export const useUserModal = () => useUserModalStore();

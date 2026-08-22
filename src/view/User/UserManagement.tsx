@@ -1,5 +1,5 @@
 import { Box, Button, TextInput, Group, Paper, Table, Badge, ActionIcon, Text, Pagination, Tooltip, Title, Stack, useMantineTheme, Loader, Select } from '@mantine/core';
-import { IconPencil, IconPlus, IconSearch, IconFileOff, IconTrash, IconUsers } from '@tabler/icons-react';
+import { IconEye, IconPencil, IconPlus, IconSearch, IconFileOff, IconTrash, IconUsers } from '@tabler/icons-react';
 import { useUserList } from '../../hooks/user/useUserList';
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { userModal } from '../../components/Modal/User/Usermodalstore';
@@ -14,7 +14,7 @@ export function UserManagement() {
     pageSize, setPageSize,
     rows, pagination, loading,
     handleDelete, deletingId,
-    openEdit, loadingEditId,
+    openEdit, openView, loadingId,
   } = useUserList();
 
   const confirmDelete = (row: UserRow) => {
@@ -102,10 +102,18 @@ export function UserManagement() {
               </Table.Tr>
             ) : (
               rows.map((row) => {
-                const isEditLoading = loadingEditId === row.id;
+                const isRowLoading = loadingId === row.id;
                 const isDeleting = deletingId === row.id;
                 return (
-                  <Table.Tr key={row.id} className="lms-row">
+                  <Table.Tr
+                    key={row.id}
+                    className="lms-row"
+                    style={{ cursor: 'pointer' }}
+                    onDoubleClick={() => {
+                      if (isRowLoading || isDeleting) return;
+                      openView(row);
+                    }}
+                  >
                     <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)', borderLeft: '3px solid var(--mantine-color-brand-4)' }}>
                       <Text fz="sm" fw={700} c="slate.8">{row.name}</Text>
                     </Table.Td>
@@ -121,10 +129,15 @@ export function UserManagement() {
                       </Badge>
                     </Table.Td>
                     <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)' }}>
-                      <Group justify="flex-end" gap={4} wrap="nowrap">
+                      <Group justify="flex-end" gap={4} wrap="nowrap" onDoubleClick={(e) => e.stopPropagation()}>
+                        <Tooltip label="View" withArrow>
+                          <ActionIcon size="sm" variant="subtle" color="slate" radius="md" disabled={isRowLoading} onClick={() => openView(row)}>
+                            {isRowLoading ? <Loader size={14} /> : <IconEye size={14} />}
+                          </ActionIcon>
+                        </Tooltip>
                         <Tooltip label="Edit" withArrow>
-                          <ActionIcon size="sm" variant="subtle" color="brand" radius="md" disabled={isEditLoading} onClick={() => openEdit(row)}>
-                            {isEditLoading ? <Loader size={14} /> : <IconPencil size={14} />}
+                          <ActionIcon size="sm" variant="subtle" color="brand" radius="md" disabled={isRowLoading} onClick={() => openEdit(row)}>
+                            <IconPencil size={14} />
                           </ActionIcon>
                         </Tooltip>
                         <Tooltip label="Delete" withArrow>

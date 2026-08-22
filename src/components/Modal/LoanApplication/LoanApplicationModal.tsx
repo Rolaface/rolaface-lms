@@ -1537,7 +1537,7 @@ export function LoanApplicationModal({
                     ? "Save & Continue"
                     : loanApplicationId
                       ? "Update Application"
-                      : "Submit Application"}
+                      : "Save Application"}
                 </Button>
               </Group>
             </Group>
