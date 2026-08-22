@@ -247,11 +247,15 @@ export function LoanAccount() {
     });
   };
 
-  const { mutate: updateStatus } = useMutation({
+const { mutate: updateStatus } = useMutation({
     mutationFn: ({ id, action }: { id: string; action: string }) =>
       changeLoanStatus(id, action),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["loans"] });
+      showSuccess(
+        variables.action === "approved" ? "Loan Booking Approved" : "Loan Booking Cancelled",
+        `Loan Booking ${variables.id} ${variables.action === "approved" ? "approved" : "cancelled"} successfully.`
+      );
     },
     onError: (error: any) => {
       openCommonModal({
