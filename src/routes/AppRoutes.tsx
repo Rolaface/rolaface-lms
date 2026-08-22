@@ -6,6 +6,7 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import { AppLayout } from "../layout/AppLayout";
+import { PermissionGuard } from "../view/Permissionguard";
 
 import { Dashboard } from "../view/Dashboard";
 import { Customer } from "../view/Customer/CustomerCreate";
@@ -73,7 +74,11 @@ const indexRoute = createRoute({
 const customerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/customer",
-  component: Customer,
+  component: () => (
+    <PermissionGuard modules={["Customer"]}>
+      <Customer />
+    </PermissionGuard>
+  ),
 });
 
 const loanAccountRoute = createRoute({
@@ -105,7 +110,7 @@ const collateralListRoute = createRoute({
   component: Collateral,
 });
 
-/* ---------- Lending Setup (layout + children) ---------- */
+/* ---------- Lending Setup (layout + children) — ungated ---------- */
 const setupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup",
@@ -147,7 +152,7 @@ const setupProductRoute = createRoute({
   component: LoanProduct,
 });
 
-/* ---------- Origination (layout + children) ---------- */
+/* ---------- Origination (layout + children) — ungated ---------- */
 const originationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/origination",
@@ -164,7 +169,7 @@ const originationLoanApplicationRoute = createRoute({
 //   component: LoanApplication,
 // });
 
-/* ---------- Lending Operations (layout + children) ---------- */
+
 const operationsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/operations",
@@ -173,17 +178,29 @@ const operationsRoute = createRoute({
 const operationsBookingRoute = createRoute({
   getParentRoute: () => operationsRoute,
   path: "/booking",
-  component: LoanAccount,
+  component: () => (
+    <PermissionGuard modules={["Loan"]}>
+      <LoanAccount />
+    </PermissionGuard>
+  ),
 });
 const operationsDisbursementRoute = createRoute({
   getParentRoute: () => operationsRoute,
   path: "/disbursement",
-  component: LoanDisbursement,
+  component: () => (
+    <PermissionGuard modules={["Loan Disbursement"]}>
+      <LoanDisbursement />
+    </PermissionGuard>
+  ),
 });
 const operationsRepaymentRoute = createRoute({
   getParentRoute: () => operationsRoute,
   path: "/repayment",
-  component: LoanRepayment,
+  component: () => (
+    <PermissionGuard modules={["Loan Repayment"]}>
+      <LoanRepayment />
+    </PermissionGuard>
+  ),
 });
 const operationsPrepaymentRoute = createRoute({
   getParentRoute: () => operationsRoute,
