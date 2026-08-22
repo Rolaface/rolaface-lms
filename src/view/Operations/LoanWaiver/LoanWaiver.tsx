@@ -704,7 +704,7 @@ export function LoanWaiver() {
                 size="xs"
                 radius="xl"
                 disabled={totalRows === 0}
-              />y
+              />
             </Group>
           </>
         )}
