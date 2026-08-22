@@ -53,6 +53,11 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'Cancelled', label: 'Cancelled' },
   { value: 'Closed', label: 'Closed' },
 ];
+const APPLICANT_TYPE_FILTER_OPTIONS = [
+  { value: 'Customer', label: 'Customer' },
+  { value: 'Employee', label: 'Employee' },
+  { value: 'Member', label: 'Member' },
+];
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   const color = sorted ? 'var(--mantine-color-brand-6)' : 'var(--mantine-color-slate-4)';
@@ -98,7 +103,7 @@ export function LoanDisbursement() {
   const currencyReady = useCurrencyReady();
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
-  const [applicantType, setApplicantType] = useState<string | null>(null);
+    const [applicantType, setApplicantType] = useState<string[]>([]);
   const [debouncedApplicantType] = useDebouncedValue(applicantType, 400);
   const [company, setCompany] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -122,7 +127,7 @@ export function LoanDisbursement() {
     queryFn: () =>
       getAllLoansDisbursement({
         search: debouncedSearch || undefined,
-        applicant_type: debouncedApplicantType || undefined,
+           applicant_type: debouncedApplicantType.length ? debouncedApplicantType : undefined,
         status: statusFilter.length ? statusFilter : undefined,
         page,
         page_size: pageSize,
@@ -486,7 +491,7 @@ export function LoanDisbursement() {
 
   const resetFilters = () => {
     setSearch('');
-    setApplicantType(null);
+        setApplicantType([]);
     setCompany(null);
     setStatusFilter([]);
     setPage(1);
@@ -554,19 +559,14 @@ export function LoanDisbursement() {
               setSearch(e.currentTarget.value);
             }}
           />
-          <Select
-            size="sm"
-            radius="xl"
+                   <FilterMultiSelect
             placeholder="All Applicant Types"
-            data={['Customer', 'Employee', 'Member']}
-            style={{ flexGrow: 1, flexShrink: 1, minWidth: 130, maxWidth: 170 }}
-            searchable
-            clearable
-            rightSection={chevronDown}
+            data={APPLICANT_TYPE_FILTER_OPTIONS}
             value={applicantType}
             onChange={(v) => {
               setApplicantType(v);
             }}
+            width={140}
           />
 
           <FilterMultiSelect
