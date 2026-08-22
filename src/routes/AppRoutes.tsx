@@ -57,6 +57,7 @@ import {
   IconFileText,
 } from "@tabler/icons-react";
 import { RouteTabs, type RouteTabItem } from "../components/ui/RouteTabs";
+import SchedulerPage from "../view/Schedular";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -373,6 +374,11 @@ const emailTemplateRoute = createRoute({
   path: "/emailTemplate",
   component: EmailTemplate,
 });
+const schedulerRoute = createRoute({
+  getParentRoute: () => settingsRoute,   
+  path: "/scheduler",
+  component: SchedulerPage,
+});
 const userManagementRoute = createRoute({
   getParentRoute: () => userRoute,
   path: "/management",
@@ -431,6 +437,7 @@ const routeTree = rootRoute.addChildren([
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute]),
   settingsRoute.addChildren([
   emailTemplateRoute,
+  schedulerRoute,
   userRoute.addChildren([userManagementRoute, userRolesRoute]),
 ]),
 ]);
