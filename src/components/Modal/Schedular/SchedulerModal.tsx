@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Box,
     Text,
@@ -11,23 +11,35 @@ import {
     ActionIcon,
     ThemeIcon,
     useMantineTheme,
+    NumberInput,
 } from "@mantine/core";
 import { IconX, IconCalendarClock, IconMinus } from "@tabler/icons-react";
 import { openCommonModal } from "../AlertModal";
+import { DateInput } from "@mantine/dates";
+import { getAllEmailTemplates } from "../../../api/emailTemplateApi";
+import { useQuery } from "@tanstack/react-query";
 
 const FREQUENCY_OPTIONS = ["Daily", "Weekly", "Monthly", "Yearly"];
-const SCHEDULER_NAME_OPTIONS = ["Repayment Reminder"];
+const SCHEDULER_NAME_OPTIONS = ["Repayment Reminder", "Loan Statement", "Over Due Reminder"];
 
 export interface SchedulerFormValues {
     schedulerName: string;
     frequency: string;
     enabled: boolean;
+    daysBeforeDue: number | ""; 
+    startDate: Date | null;
+    channel: string;
+    template: string;
 }
 
 const DEFAULT_VALUES: SchedulerFormValues = {
     schedulerName: "",
     frequency: "Monthly",
     enabled: true,
+    daysBeforeDue: "",
+    startDate: null,
+    channel: "",
+    template: "",
 };
 
 interface SchedulerModalProps {
@@ -58,15 +70,29 @@ export function SchedulerModal({
     const [values, setValues] = useState<SchedulerFormValues>(initialData ?? DEFAULT_VALUES);
     const [saving, setSaving] = useState(false);
 
-    // ── Reset the form whenever the modal opens ──
+    const { data: templatesResponse, isLoading: isLoadingTemplates } = useQuery({
+        queryKey: ["emailTemplates"],
+        queryFn: getAllEmailTemplates,
+    });
+
+    const templateOptions = useMemo(() => {
+        if (templatesResponse?.data) {
+            return templatesResponse.data.map((t: any) => ({
+                value: t.name,
+                label: t.name,
+            }));
+        }
+        return [];
+    }, [templatesResponse]);
+    
     useEffect(() => {
         if (opened) {
             setValues(initialData ?? DEFAULT_VALUES);
         }
     }, [opened, initialData]);
 
-    const handleChange = useCallback(
-        (field: keyof SchedulerFormValues, value: string | boolean) => {
+   const handleChange = useCallback(
+        (field: keyof SchedulerFormValues, value: string | boolean | number | Date | null) => {
             setValues((prev) => ({ ...prev, [field]: value }));
         },
         [],
@@ -109,8 +135,10 @@ export function SchedulerModal({
         <Modal
             opened={opened}
             onClose={onClose}
-            size="560px"
+            size={720}
             padding={0}
+            closeOnClickOutside={false}
+            closeOnEscape={false}
             lockScroll
             styles={{
                 content: { display: "flex", flexDirection: "column", overflow: "hidden" },
@@ -168,7 +196,7 @@ export function SchedulerModal({
                 {/* Body */}
                 <Box className="flex-1 overflow-y-auto" px="xl" py="lg" bg="slate.0">
                     <Stack gap="md">
-                        <div className="grid gap-x-6 gap-y-4" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                       <div className="grid gap-x-6 gap-y-4" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
                             <Select
                                 size="sm"
                                 withAsterisk
@@ -189,6 +217,50 @@ export function SchedulerModal({
                                 value={values.frequency || null}
                                 onChange={(value) => handleChange("frequency", value ?? "")}
                                 disabled={isView}
+                            />
+                             <NumberInput
+                                size="sm"
+                                label="Days Before Due"
+                                hideControls
+                                placeholder="e.g., 5"
+                                value={values.daysBeforeDue}
+                                onChange={(val) => handleChange("daysBeforeDue", val)}
+                                disabled={isView}
+                                min={0}
+                            />
+
+                            <DateInput
+                                size="sm"
+                                label="Start Date"
+                                valueFormat="DD-MMM-YYYY"
+                                placeholder="DD-MMM-YYYY"
+                                value={values.startDate}
+                                onChange={(date) => handleChange("startDate", date)}
+                                disabled={isView}
+                                clearable
+                            />
+                            <Select
+                                size="sm"
+                                withAsterisk
+                                label="Channel"
+                                placeholder="Select channel"
+                                data={["Email", "SMS", "Whatsapp"]}
+                                value={values.channel || null}
+                                onChange={(value) => handleChange("channel", value ?? "")}
+                                disabled={isView}
+                            />
+
+                            <Select
+                                size="sm"
+                                withAsterisk
+                                label="Template"
+                                placeholder="Select template"
+                                data={templateOptions}
+                                value={values.template || null}
+                                onChange={(value) => handleChange("template", value ?? "")}
+                                disabled={isView || isLoadingTemplates}
+                                searchable
+                                clearable
                             />
                         </div>
 

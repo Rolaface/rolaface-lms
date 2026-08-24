@@ -160,7 +160,7 @@ export function LoanAccount() {
   const [branch, setBranch] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
 
   
   useEffect(() => {
@@ -465,14 +465,21 @@ export function LoanAccount() {
                 </Tooltip>
               )}
 
-              {(canSubmitLoan || canCancelLoan) && (
-                <Menu shadow="md" width={140} position="bottom-end" radius="md">
+             {(canSubmitLoan || canCancelLoan) && (
+                <Menu 
+                  shadow="md" 
+                  width={140} 
+                  position="bottom-end" 
+                  radius="md"
+                  disabled={isCancelled}
+                >
                   <Menu.Target>
                     <ActionIcon
                       size="sm"
                       variant="subtle"
                       color="slate"
                       radius="md"
+                      disabled={isCancelled}
                     >
                       <IconDotsVertical size={14} />
                     </ActionIcon>
@@ -782,7 +789,7 @@ export function LoanAccount() {
                 horizontalSpacing="sm"
                 fz="xs"
                 w="100%"
-                style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+                style={{ borderCollapse: "separate", borderSpacing: "0 8px", height: "100%"}}
               >
                 <Table.Thead>
                   {table.getHeaderGroups().map((headerGroup) => (

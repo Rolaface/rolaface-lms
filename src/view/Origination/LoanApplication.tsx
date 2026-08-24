@@ -205,7 +205,7 @@ export function LoanApplication() {
   const [sorting, setSorting] = useState([
     { id: "application_date", desc: true },
   ]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
 
   const showSuccess = (heading: string, body: string) => {
     openCommonModal({
@@ -1008,8 +1008,8 @@ export function LoanApplication() {
                     </Table.Tr>
                   ) : (
                     rows.map((row) => {
-                      const scale =
-                        STATUS_COLOR[row.original.status] ?? "slate";
+                       const scale =
+                        STATUS_COLOR[row.original.loan_application_status] ?? "slate";
                       const cells = row.getVisibleCells();
                       return (
                         <Table.Tr
