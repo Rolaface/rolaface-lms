@@ -16,7 +16,7 @@ export function useUserRoleList() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null); // edit/view fetch
 

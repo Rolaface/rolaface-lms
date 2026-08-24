@@ -12,9 +12,20 @@ function validateForm(form: CreateUserFormData): FormErrors {
   const errors: FormErrors = {};
   // required-field checks removed per earlier request; format check stays
   // only if the person actually typed something in Email
-  if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+  if (!form.email.trim()) {
+    errors.email = "Email is required";
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
     errors.email = "Enter a valid email address";
   }
+
+  if (!form.username.trim()) {
+    errors.username = "Username is required";
+  }
+
+  if (!form.firstName.trim()) {
+    errors.firstName = "First name is required";
+  }
+
   return errors;
 }
 
