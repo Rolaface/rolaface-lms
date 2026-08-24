@@ -256,12 +256,23 @@ export function LoanTransfer() {
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
+                <ActionIcon 
+                  size="sm" 
+                  variant="subtle" 
+                  color="slate" 
+                  radius="md"
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Edit" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="brand" radius="md">
+                <ActionIcon 
+                  size="sm" 
+                  variant="subtle" 
+                  color="brand" 
+                  radius="md"
+                  onClick={() => loanTransferModal.open({ onSubmit: handleAddTransfer })}
+                >
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>

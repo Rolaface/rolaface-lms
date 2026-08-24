@@ -107,14 +107,16 @@ export function BorrowerSelectionPanel({
           Search by A/C no, phone or name
         </Text>
 
-        <TextInput
-          size="sm"
-          placeholder="Search by loan A/C, applicant or phone"
-          value={search}
-          disabled={isView}
-          onChange={(e) => onSearchChange(e.currentTarget.value)}
-          leftSection={<IconSearch size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
-        />
+        {!selectedBorrower && !isView && (
+          <TextInput
+            size="sm"
+            placeholder="Search by loan A/C, applicant or phone"
+            value={search}
+            disabled={isView}
+            onChange={(e) => onSearchChange(e.currentTarget.value)}
+            leftSection={<IconSearch size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+          />
+        )}
       </div>
 
       <ScrollArea className="flex-1 px-5 pb-5" scrollbarSize={6} type="hover">

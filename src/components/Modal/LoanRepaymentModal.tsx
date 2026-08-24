@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Box, Button, Modal, Text, useMantineTheme } from "@mantine/core";
+import { Box, Button, Group, Modal, Text, ThemeIcon, useMantineTheme } from "@mantine/core";
 import { IconArrowRight, IconCash, IconMinus, IconX } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@mantine/form";
@@ -299,29 +299,57 @@ const modeOfPaymentOptions = useMemo(() => {
       {/* <Box className="flex flex-col max-h-[90vh]"> */}
       <Box className="flex flex-col h-[700px] max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl flex items-center justify-center" style={{ background: theme.other.brandGradient }}>
-              <IconCash size={20} style={{ color: "var(--mantine-color-white)" }} />
-            </div>
-            <div>
-              <Text size="md" fw={700} c="slate.8" className="leading-tight">
-                Loan Repayment
+        <Box
+          className="px-6 py-3 flex justify-between items-center rounded-t-md shrink-0"
+          style={{
+            background: theme.other.brandGradient,
+            borderBottom: "1px solid var(--mantine-color-brand-7)",
+          }}
+        >
+          <Group gap="sm" className="min-w-0" wrap="nowrap">
+            <ThemeIcon
+              size={38}
+              radius="xl"
+              style={{
+                background: theme.other.headerIconOverlayBg,
+                color: "var(--mantine-color-white)",
+              }}
+            >
+              <IconCash size={19} />
+            </ThemeIcon>
+            <div className="min-w-0">
+              <Text size="md" fw={700} c="white" className="leading-tight truncate">
+                {isView ? "View Loan Repayment" : editId ? "Edit Loan Repayment" : "Loan Repayment"}
               </Text>
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="brand.1" className="leading-tight truncate">
                 Search a borrower and process a repayment against their loan account.
               </Text>
             </div>
-          </div>
-             <div className="flex items-center gap-1 shrink-0">
-          <Button variant="subtle" color="slate" onClick={onMinimize} className="px-2" size="xs">
+          </Group>
+          <Group gap="xs" className="shrink-0" wrap="nowrap">
+            <Button
+              variant="subtle"
+              size="xs"
+              px={8}
+              onClick={onMinimize}
+              style={{ color: "var(--mantine-color-white)" }}
+              styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+            >
               <IconMinus size={18} />
             </Button>
-            <Button variant="subtle" color="slate" onClick={onClose} className="px-2" size="xs">
+            <Button
+              variant="subtle"
+              size="xs"
+              px={8}
+              onClick={onClose}
+              style={{ color: "var(--mantine-color-white)" }}
+              styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+            >
               <IconX size={18} />
             </Button>
-          </div>
-        </div>
+          </Group>
+        </Box>
+        <div style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }} />
 
         <div style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }} />
 
