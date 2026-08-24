@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback } from "react";
 import {
   getLoanOverview,
   getRepaymentScheduleTimeline,
@@ -32,7 +32,7 @@ export function useLoanView(loanId: string) {
   const [timeline, setTimeline] = useState<TimelineStatusRow[]>([]);
   const [activeInstallment, setActiveInstallment] = useState<InstallmentDetail | null>(null);
   const [schedule, setSchedule] = useState<any | null>(null);
-  
+
   const [history, setHistory] = useState<RepaymentHistoryRow[]>([]);
   const [disbursements, setDisbursements] = useState<DisbursementRow[]>([]);
   const [accounting, setAccounting] = useState<AccountingLedgerRow[]>([]);
@@ -117,17 +117,17 @@ export function useLoanView(loanId: string) {
   }, [loanId]);
 
   const fetchSchedule = useCallback(async () => {
-  if (!loanId) return;
-  setLoading((prev) => ({ ...prev, schedule: true }));
-  try {
-    const res = await getRepaymentSchedule({ id: loanId });
-    setSchedule(res.data);
-  } catch (error) {
-    console.error("Failed to fetch schedule", error);
-  } finally {
-    setLoading((prev) => ({ ...prev, schedule: false }));
-  }
-}, [loanId]);
+    if (!loanId) return;
+    setLoading((prev) => ({ ...prev, schedule: true }));
+    try {
+      const res = await getRepaymentSchedule({ id: loanId });
+      setSchedule(res.data);
+    } catch (error) {
+      console.error("Failed to fetch schedule", error);
+    } finally {
+      setLoading((prev) => ({ ...prev, schedule: false }));
+    }
+  }, [loanId]);
 
   const fetchHistory = useCallback(async (page = 1) => {
     if (!loanId) return;
@@ -217,6 +217,52 @@ export function useLoanView(loanId: string) {
     } finally {
       setLoading((prev) => ({ ...prev, activity: false }));
     }
+  }, [loanId]);
+
+  // Reset all tab data & pagination whenever the selected loan changes.
+  // Without this, switching loans only updates `overview` (which fetches
+  // unconditionally), while every other tab keeps showing the previously
+  // selected loan's data because their lazy-load guards (`xxx.length === 0`)
+  // stay false — the stale arrays are still populated.
+  //
+  // IMPORTANT: this is a useLayoutEffect, not useEffect. useEffect runs
+  // AFTER the browser paints, which means React would paint one frame with
+  // the new loanId but the OLD loan's overview/tab data still in state —
+  // a visible flash of stale data before the reset kicks in. useLayoutEffect
+  // runs synchronously right after render but BEFORE paint, so the state is
+  // already cleared (and the skeleton/loading UI shows) in the very first
+  // frame rendered for the new loan.
+  useLayoutEffect(() => {
+    setActiveTab("overview");
+
+    setOverview(null);
+    setTimeline([]);
+    setActiveInstallment(null);
+    setSchedule(null);
+    setHistory([]);
+    setDisbursements([]);
+    setAccounting([]);
+    setCollateral([]);
+    setDocuments([]);
+    setActivity([]);
+
+    setHistoryPage(1);
+    setHistoryMeta(null);
+    setDisbursementPage(1);
+    setDisbursementMeta(null);
+    setAccountingPage(1);
+    setAccountingMeta(null);
+    setCollateralPage(1);
+    setCollateralMeta(null);
+    setDocumentPage(1);
+    setDocumentMeta(null);
+    setActivityPage(1);
+    setActivityMeta(null);
+
+    // Also mark overview as loading right away, in the same synchronous
+    // pass, so the Skeleton in LoanDetailView shows immediately instead of
+    // a stale "false" loading flag causing a "Loan not found" flash.
+    setLoading((prev) => ({ ...prev, overview: true }));
   }, [loanId]);
 
   // Initial Load (Overview)

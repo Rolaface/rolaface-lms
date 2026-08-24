@@ -30,10 +30,15 @@ import { customerModal } from "../../components/Modal/customer/CustomerModalStor
 import { Borrower360 } from "./CustomerView";
 import { useCustomerList } from "../../hooks/customer/table/useCustomerList";
 import { useCustomerById } from "../../hooks/customer/Detail/useCustomerById";
-import { mapCustomerDetailToBorrowerProfile } from "./mapCustomerDetail";
+import { useCustomerLoans } from "../../hooks/customer/Detail/useCustomerLoans";
+import {
+  mapCustomerDetailToBorrowerProfile,
+  mapLoanRawToLoanSummary,
+} from "./mapCustomerDetail";
 import { buildCustomerColumns, type CustomerRow } from "./customerColumns";
 import { SortIcon } from "./CustomerTableCells";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
+import type { BorrowerProfile } from "../../types/customerview";
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
@@ -78,6 +83,8 @@ export function Customer() {
     isError: isCustomerError,
   } = useCustomerById(borrower360CustomerId);
 
+  const { data: loansData } = useCustomerLoans(borrower360CustomerId);
+
   if (borrower360CustomerId !== null) {
     if (isCustomerLoading) {
       return (
@@ -92,9 +99,14 @@ export function Customer() {
       return null;
     }
 
+    const borrower: BorrowerProfile = {
+      ...mapCustomerDetailToBorrowerProfile(customerDetail),
+      loans: (loansData ?? []).map(mapLoanRawToLoanSummary),
+    };
+
     return (
       <Borrower360
-        borrower={mapCustomerDetailToBorrowerProfile(customerDetail)}
+        borrower={borrower}
         onBack={() => setBorrower360CustomerId(null)}
       />
     );

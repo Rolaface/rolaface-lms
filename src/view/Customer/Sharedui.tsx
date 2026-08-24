@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Accordion,
   ActionIcon,
@@ -12,7 +12,8 @@ import {
   RingProgress,
   Table,
   Text,
-  TextInput,Tooltip
+  TextInput,
+  Tooltip,
 } from "@mantine/core";
 import { useClickOutside } from "@mantine/hooks";
 import {
@@ -30,6 +31,7 @@ import {
   IconPigMoney,
   IconSearch,
   IconUser,
+  IconX,
 } from "@tabler/icons-react";
 import type {
   ActivityItem,
@@ -57,6 +59,9 @@ import {
   loanStatusColor,
   serif,
 } from "./mockdata";
+import { ScrollArea, Loader } from "@mantine/core";
+import { getLoanList } from "../../api/lookup api/lookUpApi";
+import { useDebouncedValue } from "@mantine/hooks";
 
 /* ============================================================================
    SMALL SHARED BITS
@@ -74,7 +79,13 @@ export function OverviewField({
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-1">
-        {icon && <span style={{ color: "var(--mantine-color-slate-4)", display: "flex" }}>{icon}</span>}
+        {icon && (
+          <span
+            style={{ color: "var(--mantine-color-slate-4)", display: "flex" }}
+          >
+            {icon}
+          </span>
+        )}
         <Text fz={10} fw={700} c="dimmed" className="tracking-wider">
           {label}
         </Text>
@@ -114,9 +125,21 @@ export function StatusPill({
   tone: "active" | "warn" | "neutral";
 }) {
   const tones = {
-    active: { dot: themeTokens.success, bg: themeTokens.successSoft, text: "var(--mantine-color-success-7)" },
-    warn: { dot: themeTokens.warning, bg: themeTokens.warningSoft, text: "var(--mantine-color-warning-8)" },
-    neutral: { dot: themeTokens.slate, bg: themeTokens.slateSoft, text: "var(--mantine-color-slate-6)" },
+    active: {
+      dot: themeTokens.success,
+      bg: themeTokens.successSoft,
+      text: "var(--mantine-color-success-7)",
+    },
+    warn: {
+      dot: themeTokens.warning,
+      bg: themeTokens.warningSoft,
+      text: "var(--mantine-color-warning-8)",
+    },
+    neutral: {
+      dot: themeTokens.slate,
+      bg: themeTokens.slateSoft,
+      text: "var(--mantine-color-slate-6)",
+    },
   } as const;
   const t = tones[tone];
   return (
@@ -419,7 +442,10 @@ export function RiskSnapshotPanel({ borrower }: { borrower: BorrowerProfile }) {
           size="xs"
           variant="light"
           styles={{
-            root: { backgroundColor: themeTokens.primarySoft, color: themeTokens.primary },
+            root: {
+              backgroundColor: themeTokens.primarySoft,
+              color: themeTokens.primary,
+            },
           }}
           leftSection={<IconMessage size={14} />}
           disabled={!borrower.relationshipManager}
@@ -461,7 +487,9 @@ export function DocumentStatusPanel({
             className="h-full rounded-full"
             style={{
               width: `${pct}%`,
-              backgroundColor: checklist.missingLabel ? themeTokens.warning : themeTokens.success,
+              backgroundColor: checklist.missingLabel
+                ? themeTokens.warning
+                : themeTokens.success,
             }}
           />
         </div>
@@ -481,7 +509,9 @@ export function DocumentStatusPanel({
             <Text
               fz="xs"
               fw={700}
-              style={{ color: checklist.missingLabel ? themeTokens.warning : undefined }}
+              style={{
+                color: checklist.missingLabel ? themeTokens.warning : undefined,
+              }}
               c={checklist.missingLabel ? undefined : "slate.9"}
             >
               {checklist.missingLabel ?? "None"}
@@ -529,7 +559,10 @@ export function QuickLogPanel() {
             size="xs"
             variant="light"
             styles={{
-              root: { backgroundColor: themeTokens.infoSoft, color: themeTokens.info },
+              root: {
+                backgroundColor: themeTokens.infoSoft,
+                color: themeTokens.info,
+              },
             }}
             leftSection={<IconPhoneCall size={14} />}
           >
@@ -655,7 +688,9 @@ export function RepaymentSchedule({
                 height: 56,
                 borderRadius: 8,
                 background:
-                  item.status === "Upcoming" ? "var(--mantine-color-slate-1)" : colors[item.status],
+                  item.status === "Upcoming"
+                    ? "var(--mantine-color-slate-1)"
+                    : colors[item.status],
                 border: isSelected
                   ? `2px solid ${themeTokens.ink}`
                   : item.status === "Upcoming"
@@ -664,7 +699,10 @@ export function RepaymentSchedule({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: item.status === "Upcoming" ? "var(--mantine-color-slate-4)" : "var(--mantine-color-white)",
+                color:
+                  item.status === "Upcoming"
+                    ? "var(--mantine-color-slate-4)"
+                    : "var(--mantine-color-white)",
                 fontWeight: 700,
                 fontSize: 13,
                 padding: 0,
@@ -681,7 +719,10 @@ export function RepaymentSchedule({
       {selected && (
         <div
           className="rounded-xl p-4"
-          style={{ backgroundColor: themeTokens.surface, border: "1px solid var(--mantine-color-slate-2)" }}
+          style={{
+            backgroundColor: themeTokens.surface,
+            border: "1px solid var(--mantine-color-slate-2)",
+          }}
         >
           <Text fz="sm" fw={700} c="slate.9" className="mb-3">
             Installment {selected.no} · due {selected.dueDate}
@@ -870,7 +911,10 @@ export function ActivityFeed({ activity }: { activity: ActivityItem[] }) {
               <div className="flex flex-col items-center">
                 <span
                   className="w-2.5 h-2.5 rounded-full border-2 shrink-0 mt-1"
-                  style={{ borderColor: tone.fg, backgroundColor: "var(--mantine-color-white)" }}
+                  style={{
+                    borderColor: tone.fg,
+                    backgroundColor: "var(--mantine-color-white)",
+                  }}
                 />
                 {idx < filtered.length - 1 && (
                   <span className="w-px flex-1 bg-[var(--mantine-color-slate-2)]" />
@@ -934,6 +978,11 @@ export function BorrowerSidebar({
   onSelect: (item: SelectedItem) => void;
   hideProfile?: boolean;
 }) {
+  const [loanSearch, setLoanSearch] = useState("");
+  const [debouncedLoanSearch] = useDebouncedValue(loanSearch, 300);
+  const [loanResults, setLoanResults] = useState<typeof loans | null>(null);
+  const [loanSearchLoading, setLoanSearchLoading] = useState(false);
+
   const isSelected = (
     type: "loan" | "investment" | "savings" | "fixedDeposit",
     id: string,
@@ -943,109 +992,170 @@ export function BorrowerSidebar({
   const investments = borrower.investments ?? [];
   const savings = borrower.savings ?? [];
   const fixedDeposits = borrower.fixedDeposits ?? [];
+  const displayedLoans = loanResults ?? loans;
 
-if (collapsed) {
-  return (
-    <div className="flex flex-col items-center w-14 shrink-0 h-screen sticky top-0 border-r border-[var(--mantine-color-slate-2)] bg-white py-3 gap-1">
-      <ActionIcon
-        variant="subtle"
-        color="gray"
-        radius="xl"
-        size={34}
-        onClick={onToggleCollapsed}
-        aria-label="Expand sidebar"
-        className="mb-2"
-      >
-        <IconChevronRight size={17} />
-      </ActionIcon>
+  useEffect(() => {
+    const q = debouncedLoanSearch.trim();
+    if (!q) {
+      setLoanResults(null);
+      return;
+    }
+    setLoanSearchLoading(true);
+    getLoanList({ search: q })
+      .then((data) => {
+        const raw = data?.data ?? [];
 
-      <Avatar
-        radius="xl"
-        size={32}
-        style={{
-          background: `linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-info-5))`,
-          color: "#fff",
-          fontSize: 11,
-          fontWeight: 700,
-        }}
-        className="mb-2"
-      >
-        {initialsOf(borrower.name)}
-      </Avatar>
-{!hideProfile && (
-      <Tooltip label="Profile" position="right" withArrow>
+        setLoanResults(
+          raw.map((r: any) => ({
+            id: r.name,
+            loanNumber: r.name,
+            outstanding: r.pending_principal_amount ?? 0,
+            repaidPercent:
+              r.loan_amount > 0
+                ? Math.min(
+                    100,
+                    Math.max(0, (r.total_principal_paid / r.loan_amount) * 100),
+                  )
+                : 0,
+            status: r.status ?? "",
+            nextInstallment: r.total_payment ?? 0,
+            dpd: r.dpd,
+          })),
+        );
+      })
+      .catch(() => setLoanResults([]))
+      .finally(() => setLoanSearchLoading(false));
+  }, [debouncedLoanSearch]);
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center w-14 shrink-0 h-screen sticky top-0 border-r border-[var(--mantine-color-slate-2)] bg-white py-3 gap-1">
         <ActionIcon
-          variant={selected?.type === "profile" ? "light" : "subtle"}
-          color={selected?.type === "profile" ? "brand" : "gray"}
-          radius="md"
-          size={38}
-          onClick={() => onSelect({ type: "profile" })}
+          variant="subtle"
+          color="gray"
+          radius="xl"
+          size={34}
+          onClick={onToggleCollapsed}
+          aria-label="Expand sidebar"
+          className="mb-2"
         >
-          <IconUser size={16} />
+          <IconChevronRight size={17} />
         </ActionIcon>
-      </Tooltip>
-      )}
 
-      <Tooltip label={`Loans (${loans.length})`} position="right" withArrow>
+        <Avatar
+          radius="xl"
+          size={32}
+          style={{
+            background: `linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-info-5))`,
+            color: "#fff",
+            fontSize: 11,
+            fontWeight: 700,
+          }}
+          className="mb-2"
+        >
+          {initialsOf(borrower.name)}
+        </Avatar>
+        {!hideProfile && (
+          <Tooltip label="Profile" position="right" withArrow>
+            <ActionIcon
+              variant={selected?.type === "profile" ? "light" : "subtle"}
+              color={selected?.type === "profile" ? "brand" : "gray"}
+              radius="md"
+              size={38}
+              onClick={() => onSelect({ type: "profile" })}
+            >
+              <IconUser size={16} />
+            </ActionIcon>
+          </Tooltip>
+        )}
+
+        <Tooltip label={`Loans (${loans.length})`} position="right" withArrow>
+          <ActionIcon
+            variant={selected?.type === "loan" ? "light" : "subtle"}
+            color={selected?.type === "loan" ? "brand" : "gray"}
+            radius="md"
+            size={38}
+            onClick={() =>
+              loans[0] && onSelect({ type: "loan", id: loans[0].id })
+            }
+          >
+            <IconCreditCard size={16} />
+          </ActionIcon>
+        </Tooltip>
+
+        <Tooltip
+          label={`Investments (${investments.length})`}
+          position="right"
+          withArrow
+        >
+          <ActionIcon
+            variant={selected?.type === "investment" ? "light" : "subtle"}
+            color={selected?.type === "investment" ? "brand" : "gray"}
+            radius="md"
+            size={38}
+            onClick={() =>
+              investments[0] &&
+              onSelect({ type: "investment", id: investments[0].id })
+            }
+          >
+            <IconChartLine size={16} />
+          </ActionIcon>
+        </Tooltip>
+
+        <Tooltip
+          label={`Savings (${savings.length})`}
+          position="right"
+          withArrow
+        >
+          <ActionIcon
+            variant={selected?.type === "savings" ? "light" : "subtle"}
+            color={selected?.type === "savings" ? "brand" : "gray"}
+            radius="md"
+            size={38}
+            onClick={() =>
+              savings[0] && onSelect({ type: "savings", id: savings[0].id })
+            }
+          >
+            <IconPigMoney size={16} />
+          </ActionIcon>
+        </Tooltip>
+
+        <Tooltip
+          label={`Fixed Deposits (${fixedDeposits.length})`}
+          position="right"
+          withArrow
+        >
+          <ActionIcon
+            variant={selected?.type === "fixedDeposit" ? "light" : "subtle"}
+            color={selected?.type === "fixedDeposit" ? "brand" : "gray"}
+            radius="md"
+            size={38}
+            onClick={() =>
+              fixedDeposits[0] &&
+              onSelect({ type: "fixedDeposit", id: fixedDeposits[0].id })
+            }
+          >
+            <IconClockHour4 size={16} />
+          </ActionIcon>
+        </Tooltip>
+
+        <div className="flex-1" />
+
         <ActionIcon
-          variant={selected?.type === "loan" ? "light" : "subtle"}
-          color={selected?.type === "loan" ? "brand" : "gray"}
-          radius="md"
-          size={38}
-          onClick={() => loans[0] && onSelect({ type: "loan", id: loans[0].id })}
+          variant="subtle"
+          color="gray"
+          radius="xl"
+          size={32}
+          onClick={onBack}
         >
-          <IconCreditCard size={16} />
+          <IconArrowLeft size={14} />
         </ActionIcon>
-      </Tooltip>
-
-      <Tooltip label={`Investments (${investments.length})`} position="right" withArrow>
-        <ActionIcon
-          variant={selected?.type === "investment" ? "light" : "subtle"}
-          color={selected?.type === "investment" ? "brand" : "gray"}
-          radius="md"
-          size={38}
-          onClick={() => investments[0] && onSelect({ type: "investment", id: investments[0].id })}
-        >
-          <IconChartLine size={16} />
-        </ActionIcon>
-      </Tooltip>
-
-      <Tooltip label={`Savings (${savings.length})`} position="right" withArrow>
-        <ActionIcon
-          variant={selected?.type === "savings" ? "light" : "subtle"}
-          color={selected?.type === "savings" ? "brand" : "gray"}
-          radius="md"
-          size={38}
-          onClick={() => savings[0] && onSelect({ type: "savings", id: savings[0].id })}
-        >
-          <IconPigMoney size={16} />
-        </ActionIcon>
-      </Tooltip>
-
-      <Tooltip label={`Fixed Deposits (${fixedDeposits.length})`} position="right" withArrow>
-        <ActionIcon
-          variant={selected?.type === "fixedDeposit" ? "light" : "subtle"}
-          color={selected?.type === "fixedDeposit" ? "brand" : "gray"}
-          radius="md"
-          size={38}
-          onClick={() => fixedDeposits[0] && onSelect({ type: "fixedDeposit", id: fixedDeposits[0].id })}
-        >
-          <IconClockHour4 size={16} />
-        </ActionIcon>
-      </Tooltip>
-
-      <div className="flex-1" />
-
-      <ActionIcon variant="subtle" color="gray" radius="xl" size={32} onClick={onBack}>
-        <IconArrowLeft size={14} />
-      </ActionIcon>
-    </div>
-  );
-}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col w-full lg:w-60 shrink-0 h-screen sticky top-0 border-r border-[var(--mantine-color-slate-2)] bg-white">
-      {/* Breadcrumb */}
+      {/* Breadcrumb — fixed */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--mantine-color-slate-1)]">
         <ActionIcon variant="subtle" color="slate" size="sm" onClick={onBack}>
           <IconArrowLeft size={14} />
@@ -1062,7 +1172,7 @@ if (collapsed) {
         </ActionIcon>
       </div>
 
-      {/* Customer identity */}
+      {/* Customer identity — fixed */}
       <div className="px-3 py-3 border-b border-[var(--mantine-color-slate-1)]">
         <div className="flex items-center gap-2.5">
           <Avatar
@@ -1121,352 +1231,461 @@ if (collapsed) {
           </div>
         </div>
       </div>
-{!hideProfile && (
+      {!hideProfile && (
+        <div className="px-2 py-2 border-b border-[var(--mantine-color-slate-1)]">
+          <button
+            type="button"
+            onClick={() => onSelect({ type: "profile" })}
+            className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all"
+            style={
+              selected?.type === "profile"
+                ? {
+                    backgroundColor: themeTokens.primarySoft,
+                    color: themeTokens.primary,
+                  }
+                : {
+                    backgroundColor: "var(--mantine-color-white)",
+                    color: "var(--mantine-color-slate-6)",
+                  }
+            }
+          >
+            <IconUser size={14} />
 
-      <div className="px-2 py-2 border-b border-[var(--mantine-color-slate-1)]">
-        <button
-          type="button"
-          onClick={() => onSelect({ type: "profile" })}
-          className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all"
-          style={
-            selected?.type === "profile"
-              ? {
-                  backgroundColor: themeTokens.primarySoft,
-                  color: themeTokens.primary,
-                }
-              : {
-                  backgroundColor: "var(--mantine-color-white)",
-                  color: "var(--mantine-color-slate-6)",
-                }
-          }
-        >
-          <IconUser size={14} />
-
-          <div className="flex-1">
-            <Text fz={11} fw={700}>
-              Profile
-            </Text>
-            <Text fz={9} c="dimmed">
-              Customer information
-            </Text>
-          </div>
-        </button>
-      </div>
+            <div className="flex-1">
+              <Text fz={11} fw={700}>
+                Profile
+              </Text>
+              <Text fz={9} c="dimmed">
+                Customer information
+              </Text>
+            </div>
+          </button>
+        </div>
       )}
 
-      {/* Sections */}
-      <Accordion
-  multiple
-  defaultValue={selected?.type === "loan" ? ["loans"] : []}
-  chevron={<IconChevronUp size={12} />}
-        styles={{
-          control: { paddingLeft: 10, paddingRight: 10, paddingTop: 8, paddingBottom: 8 },
-          panel: { paddingLeft: 8, paddingRight: 8 },
-          label: { fontSize: 11 },
-        }}
+      {/* Sections — SCROLLABLE AREA.
+          flex-1 -> takes all remaining vertical space below the fixed header blocks above.
+          min-h-0 -> required so a flex child can actually shrink and scroll instead of
+                     growing to fit all content (classic flexbox overflow gotcha).
+          overflow-y-auto -> only this region scrolls; the outer sidebar (h-screen sticky)
+                     stays put, so the page itself never scrolls because of long lists.
+          Loans, Investments, Savings and Fixed Deposits are all inside this one Accordion,
+          so wrapping the Accordion here fixes the scroll behaviour for all four sections
+          at once — no matter how many loans/investments/savings/FDs a customer has. */}
+      <ScrollArea
+        className="flex-1"
+        type="hover"
+        scrollbarSize={5}
+        offsetScrollbars
       >
-<Accordion.Item value="loans">
-  <Accordion.Control
-    icon={<IconCreditCard size={13} color={themeTokens.primary} />}
-  >
-    <div className="flex items-center gap-2">
-      <Text fz={10} fw={700} className="tracking-wide">
-        LOANS
-      </Text>
-      <Badge
-        size="xs"
-        variant="light"
-        styles={{
-          root: { backgroundColor: themeTokens.infoSoft, color: themeTokens.info },
-        }}
-        circle
-      >
-        {loans.length}
-      </Badge>
-    </div>
-  </Accordion.Control>
-  <Accordion.Panel>
-    <div className="flex flex-col">
-      {loans.map((loan, idx) => {
-        const selected = isSelected("loan", loan.id);
-        return (
-          <button
-            key={loan.id}
-            onClick={() => onSelect({ type: "loan", id: loan.id })}
-            title={loan.loanNumber}
-            className="text-left w-full transition-colors"
-            style={{
-              backgroundColor: selected ? themeTokens.primarySoft : "transparent",
-              borderLeft: selected
-                ? `2px solid ${themeTokens.primary}`
-                : "2px solid transparent",
-              borderTop: idx === 0 ? "none" : "1px solid var(--mantine-color-slate-1)",
-              padding: "8px 8px 8px 10px",
-            }}
-          >
-            {/* row 1: loan number + status */}
-            <div className="flex items-center justify-between gap-2">
-              <Text
-                fz={11}
-                fw={selected ? 700 : 600}
-                c={selected ? "slate.9" : "slate.7"}
-                truncate
-                className="min-w-0 font-mono"
-              >
-                {loan.loanNumber}
-              </Text>
-              <Badge
-                size="xs"
-                variant="light"
-                color={loanStatusColor[loan.status]}
-                styles={{
-                  root: { fontSize: 8, flexShrink: 0, height: 16, padding: "0 6px" },
-                }}
-              >
-                {loan.status}
-              </Badge>
-            </div>
-
-            {/* row 2: outstanding amount + progress, single compact line */}
-            <div className="flex items-center gap-2 mt-1">
-              <Text fz={12} fw={700} c="slate.9" className="font-mono shrink-0">
-                {formatK(loan.outstanding)}
-              </Text>
-              <div
-                className="flex-1 h-1 rounded-full overflow-hidden"
-                style={{ backgroundColor: "var(--mantine-color-slate-1)" }}
-              >
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${loan.repaidPercent}%`,
-                    backgroundColor:
-                      loan.status === "Delinquent"
-                        ? themeTokens.danger
-                        : loan.status === "Closed"
-                          ? "var(--mantine-color-slate-4)"
-                          : themeTokens.success,
-                  }}
-                />
-              </div>
-              <Text fz={9} c="dimmed" className="shrink-0">
-                {loan.repaidPercent}%
-              </Text>
-            </div>
-
-            {/* row 3: next due / dpd — only shown if relevant, kept minimal */}
-            {(loan.nextInstallment || loan.dpd) && (
-              <div className="flex items-center justify-between mt-1">
-                <Text fz={9} c="dimmed">
-                  {loan.nextInstallment ? `Next: ${formatK(loan.nextInstallment)}` : ""}
+        <Accordion
+          multiple
+          defaultValue={selected?.type === "loan" ? ["loans"] : []}
+          chevron={<IconChevronUp size={12} />}
+          styles={{
+            control: {
+              paddingLeft: 10,
+              paddingRight: 10,
+              paddingTop: 8,
+              paddingBottom: 8,
+            },
+            panel: { paddingLeft: 8, paddingRight: 8 },
+            label: { fontSize: 11 },
+          }}
+        >
+          <Accordion.Item value="loans">
+            <Accordion.Control
+              icon={<IconCreditCard size={13} color={themeTokens.primary} />}
+            >
+              <div className="flex items-center gap-2">
+                <Text fz={10} fw={700} className="tracking-wide">
+                  LOANS
                 </Text>
-                {loan.dpd ? (
-                  <Text fz={9} fw={700} style={{ color: themeTokens.danger }}>
-                    DPD {loan.dpd}
-                  </Text>
-                ) : null}
-              </div>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  </Accordion.Panel>
-</Accordion.Item>
-        <Accordion.Item value="investments">
-          <Accordion.Control
-            icon={<IconChartLine size={13} color={themeTokens.primary} />}
-          >
-            <div className="flex items-center gap-2">
-              <Text fz={10} fw={700} className="tracking-wide">
-                INVESTMENTS
-              </Text>
-              <Badge
-                size="xs"
-                variant="light"
-                styles={{
-                  root: { backgroundColor: themeTokens.infoSoft, color: themeTokens.info },
-                }}
-                circle
-              >
-                {investments.length}
-              </Badge>
-            </div>
-          </Accordion.Control>
-          <Accordion.Panel>
-            <div className="flex flex-col gap-1.5">
-              {investments.map((inv) => (
-                <button
-                  key={inv.id}
-                  onClick={() => onSelect({ type: "investment", id: inv.id })}
-                  className="text-left rounded-lg border-l-[3px] border p-2 transition-all hover:shadow-sm"
-                  style={
-                    isSelected("investment", inv.id)
-                      ? {
-                          borderColor: "var(--mantine-color-slate-2)",
-                          borderLeftColor: themeTokens.info,
-                          backgroundColor: themeTokens.infoSoft,
-                        }
-                      : {
-                          borderColor: "var(--mantine-color-slate-2)",
-                          borderLeftColor: themeTokens.info,
-                          backgroundColor: "var(--mantine-color-white)",
-                        }
-                  }
+                <Badge
+                  size="xs"
+                  variant="light"
+                  styles={{
+                    root: {
+                      backgroundColor: themeTokens.infoSoft,
+                      color: themeTokens.info,
+                    },
+                  }}
+                  circle
                 >
-                  <div className="flex justify-between items-start mb-1 gap-1">
+                  {loans.length}
+                </Badge>
+              </div>
+            </Accordion.Control>
+            <Accordion.Panel>
+              <TextInput
+                placeholder="Search loan number..."
+                size="xs"
+                radius="md"
+                value={loanSearch}
+                onChange={(e) => setLoanSearch(e.currentTarget.value)}
+                leftSection={<IconSearch size={11} />}
+                styles={{
+                  input: {
+                    height: 30,
+                    minHeight: 30,
+                    fontSize: 11,
+                    paddingLeft: 30,
+                    paddingRight: 28,
+                  },
+                }}
+                rightSection={
+                  loanSearchLoading ? (
+                    <Loader size={11} />
+                  ) : loanSearch ? (
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      color="gray"
+                      onClick={() => setLoanSearch("")}
+                    >
+                      <IconX size={11} />
+                    </ActionIcon>
+                  ) : null
+                }
+                mb={8}
+              />
+
+              <ScrollArea
+                h={3 * 72}
+                type="hover"
+                scrollbarSize={4}
+                offsetScrollbars
+              >
+                <div className="flex flex-col pr-0.5">
+                  {displayedLoans.length === 0 ? (
+                    <Text fz={11} c="dimmed" className="text-center py-4">
+                      No loans found
+                    </Text>
+                  ) : (
+                    displayedLoans.map((loan, idx) => {
+                      const selected = isSelected("loan", loan.id);
+                      return (
+                        <button
+                          key={loan.id}
+                          onClick={() =>
+                            onSelect({ type: "loan", id: loan.id })
+                          }
+                          title={loan.loanNumber}
+                          className="text-left w-full transition-colors"
+                          style={{
+                            backgroundColor: selected
+                              ? themeTokens.primarySoft
+                              : "transparent",
+                            borderLeft: selected
+                              ? `2px solid ${themeTokens.primary}`
+                              : "2px solid transparent",
+                            borderTop:
+                              idx === 0
+                                ? "none"
+                                : "1px solid var(--mantine-color-slate-1)",
+                            padding: "8px 8px 8px 10px",
+                          }}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Text
+                              fz={10}
+                              fw={selected ? 700 : 600}
+                              c={selected ? "slate.9" : "slate.7"}
+                              className="font-mono"
+                              style={{
+                                whiteSpace: "nowrap",
+                                overflow: "visible",
+                                textOverflow: "clip",
+                                flexShrink: 1,
+                                minWidth: 0,
+                              }}
+                            >
+                              {loan.loanNumber}
+                            </Text>
+                            {loan.status && (
+                              <Badge
+                                size="xs"
+                                variant="light"
+                                color={loanStatusColor[loan.status]}
+                                styles={{
+                                  root: {
+                                    fontSize: 8,
+                                    flexShrink: 0,
+                                    height: 16,
+                                    padding: "0 6px",
+                                  },
+                                }}
+                              >
+                                {loan.status}
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 mt-1">
+                            <Text
+                              fz={12}
+                              fw={700}
+                              c="slate.9"
+                              className="font-mono shrink-0"
+                            >
+                              {formatK(loan.outstanding)}
+                            </Text>
+                            <div
+                              className="flex-1 h-1 rounded-full overflow-hidden"
+                              style={{
+                                backgroundColor: "var(--mantine-color-slate-1)",
+                              }}
+                            >
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: `${loan.repaidPercent}%`,
+                                  backgroundColor:
+                                    loan.status === "Delinquent"
+                                      ? themeTokens.danger
+                                      : loan.status === "Closed"
+                                        ? "var(--mantine-color-slate-4)"
+                                        : themeTokens.success,
+                                }}
+                              />
+                            </div>
+                            <Text fz={9} c="dimmed" className="shrink-0">
+                              {loan.repaidPercent}%
+                            </Text>
+                          </div>
+
+                          {(loan.nextInstallment || loan.dpd) && (
+                            <div className="flex items-center justify-between mt-1">
+                              <Text fz={9} c="dimmed">
+                                {loan.nextInstallment
+                                  ? `Next: ${formatK(loan.nextInstallment)}`
+                                  : ""}
+                              </Text>
+                              {loan.dpd ? (
+                                <Text
+                                  fz={9}
+                                  fw={700}
+                                  style={{ color: themeTokens.danger }}
+                                >
+                                  DPD {loan.dpd}
+                                </Text>
+                              ) : null}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </ScrollArea>
+            </Accordion.Panel>
+          </Accordion.Item>
+          <Accordion.Item value="investments">
+            <Accordion.Control
+              icon={<IconChartLine size={13} color={themeTokens.primary} />}
+            >
+              <div className="flex items-center gap-2">
+                <Text fz={10} fw={700} className="tracking-wide">
+                  INVESTMENTS
+                </Text>
+                <Badge
+                  size="xs"
+                  variant="light"
+                  styles={{
+                    root: {
+                      backgroundColor: themeTokens.infoSoft,
+                      color: themeTokens.info,
+                    },
+                  }}
+                  circle
+                >
+                  {investments.length}
+                </Badge>
+              </div>
+            </Accordion.Control>
+            <Accordion.Panel>
+              <div className="flex flex-col gap-1.5">
+                {investments.map((inv) => (
+                  <button
+                    key={inv.id}
+                    onClick={() => onSelect({ type: "investment", id: inv.id })}
+                    className="text-left rounded-lg border-l-[3px] border p-2 transition-all hover:shadow-sm"
+                    style={
+                      isSelected("investment", inv.id)
+                        ? {
+                            borderColor: "var(--mantine-color-slate-2)",
+                            borderLeftColor: themeTokens.info,
+                            backgroundColor: themeTokens.infoSoft,
+                          }
+                        : {
+                            borderColor: "var(--mantine-color-slate-2)",
+                            borderLeftColor: themeTokens.info,
+                            backgroundColor: "var(--mantine-color-white)",
+                          }
+                    }
+                  >
+                    <div className="flex justify-between items-start mb-1 gap-1">
+                      <div className="min-w-0">
+                        <Text fz={11} fw={700} c="slate.9" truncate>
+                          {inv.refNumber}
+                        </Text>
+                        <Text fz={9} c="dimmed" truncate>
+                          {inv.product}
+                        </Text>
+                      </div>
+                      <Badge
+                        size="xs"
+                        variant="light"
+                        color={accountStatusColor[inv.status]}
+                        styles={{ root: { fontSize: 8, flexShrink: 0 } }}
+                      >
+                        {inv.status}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <Text fz={12} fw={700} c="slate.9">
+                          {formatK(inv.currentBalance)}
+                        </Text>
+                        <Text fz={8} c="dimmed" className="tracking-wide">
+                          CURRENT BALANCE
+                        </Text>
+                      </div>
+                      <Text fz={10} c="dimmed">
+                        {inv.maturity}
+                      </Text>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </Accordion.Panel>
+          </Accordion.Item>
+
+          <Accordion.Item value="savings">
+            <Accordion.Control
+              icon={<IconPigMoney size={13} color={themeTokens.primary} />}
+            >
+              <div className="flex items-center gap-2">
+                <Text fz={10} fw={700} className="tracking-wide">
+                  SAVINGS
+                </Text>
+                <Badge
+                  size="xs"
+                  variant="light"
+                  styles={{
+                    root: {
+                      backgroundColor: themeTokens.infoSoft,
+                      color: themeTokens.info,
+                    },
+                  }}
+                  circle
+                >
+                  {savings.length}
+                </Badge>
+              </div>
+            </Accordion.Control>
+            <Accordion.Panel>
+              <div className="flex flex-col gap-1.5">
+                {savings.map((sav) => (
+                  <button
+                    key={sav.id}
+                    onClick={() => onSelect({ type: "savings", id: sav.id })}
+                    className="text-left rounded-lg border-l-[3px] border p-2 flex justify-between items-center transition-all hover:shadow-sm"
+                    style={
+                      isSelected("savings", sav.id)
+                        ? {
+                            borderColor: "var(--mantine-color-slate-2)",
+                            borderLeftColor: themeTokens.success,
+                            backgroundColor: themeTokens.successSoft,
+                          }
+                        : {
+                            borderColor: "var(--mantine-color-slate-2)",
+                            borderLeftColor: themeTokens.success,
+                            backgroundColor: "var(--mantine-color-white)",
+                          }
+                    }
+                  >
                     <div className="min-w-0">
                       <Text fz={11} fw={700} c="slate.9" truncate>
-                        {inv.refNumber}
+                        {sav.accountNumber}
                       </Text>
-                      <Text fz={9} c="dimmed" truncate>
-                        {inv.product}
-                      </Text>
-                    </div>
-                    <Badge
-                      size="xs"
-                      variant="light"
-                      color={accountStatusColor[inv.status]}
-                      styles={{ root: { fontSize: 8, flexShrink: 0 } }}
-                    >
-                      {inv.status}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <Text fz={12} fw={700} c="slate.9">
-                        {formatK(inv.currentBalance)}
-                      </Text>
-                      <Text fz={8} c="dimmed" className="tracking-wide">
-                        CURRENT BALANCE
+                      <Text fz={9} c="dimmed">
+                        Available
                       </Text>
                     </div>
-                    <Text fz={10} c="dimmed">
-                      {inv.maturity}
+                    <Text fz={12} fw={700} c="slate.9">
+                      {formatK(sav.available, 2)}
                     </Text>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </Accordion.Panel>
-        </Accordion.Item>
+                  </button>
+                ))}
+              </div>
+            </Accordion.Panel>
+          </Accordion.Item>
 
-        <Accordion.Item value="savings">
-          <Accordion.Control
-            icon={<IconPigMoney size={13} color={themeTokens.primary} />}
-          >
-            <div className="flex items-center gap-2">
-              <Text fz={10} fw={700} className="tracking-wide">
-                SAVINGS
-              </Text>
-              <Badge
-                size="xs"
-                variant="light"
-                styles={{
-                  root: { backgroundColor: themeTokens.infoSoft, color: themeTokens.info },
-                }}
-                circle
-              >
-                {savings.length}
-              </Badge>
-            </div>
-          </Accordion.Control>
-          <Accordion.Panel>
-            <div className="flex flex-col gap-1.5">
-              {savings.map((sav) => (
-                <button
-                  key={sav.id}
-                  onClick={() => onSelect({ type: "savings", id: sav.id })}
-                  className="text-left rounded-lg border-l-[3px] border p-2 flex justify-between items-center transition-all hover:shadow-sm"
-                  style={
-                    isSelected("savings", sav.id)
-                      ? {
-                          borderColor: "var(--mantine-color-slate-2)",
-                          borderLeftColor: themeTokens.success,
-                          backgroundColor: themeTokens.successSoft,
-                        }
-                      : {
-                          borderColor: "var(--mantine-color-slate-2)",
-                          borderLeftColor: themeTokens.success,
-                          backgroundColor: "var(--mantine-color-white)",
-                        }
-                  }
+          <Accordion.Item value="fixedDeposits">
+            <Accordion.Control
+              icon={<IconClockHour4 size={13} color={themeTokens.primary} />}
+            >
+              <div className="flex items-center gap-2">
+                <Text fz={10} fw={700} className="tracking-wide">
+                  FIXED DEPOSITS
+                </Text>
+                <Badge
+                  size="xs"
+                  variant="light"
+                  styles={{
+                    root: {
+                      backgroundColor: themeTokens.infoSoft,
+                      color: themeTokens.info,
+                    },
+                  }}
+                  circle
                 >
-                  <div className="min-w-0">
-                    <Text fz={11} fw={700} c="slate.9" truncate>
-                      {sav.accountNumber}
+                  {fixedDeposits.length}
+                </Badge>
+              </div>
+            </Accordion.Control>
+            <Accordion.Panel>
+              <div className="flex flex-col gap-1.5">
+                {fixedDeposits.map((fd) => (
+                  <button
+                    key={fd.id}
+                    onClick={() =>
+                      onSelect({ type: "fixedDeposit", id: fd.id })
+                    }
+                    className="text-left rounded-lg border-l-[3px] border p-2 flex justify-between items-center transition-all hover:shadow-sm"
+                    style={
+                      isSelected("fixedDeposit", fd.id)
+                        ? {
+                            borderColor: "var(--mantine-color-slate-2)",
+                            borderLeftColor: themeTokens.warning,
+                            backgroundColor: themeTokens.warningSoft,
+                          }
+                        : {
+                            borderColor: "var(--mantine-color-slate-2)",
+                            borderLeftColor: themeTokens.warning,
+                            backgroundColor: "var(--mantine-color-white)",
+                          }
+                    }
+                  >
+                    <div className="min-w-0">
+                      <Text fz={11} fw={700} c="slate.9" truncate>
+                        {fd.refNumber}
+                      </Text>
+                      <Text fz={9} c="dimmed">
+                        Matures {fd.maturity}
+                      </Text>
+                    </div>
+                    <Text fz={12} fw={700} c="slate.9">
+                      {formatK(fd.amount)}
                     </Text>
-                    <Text fz={9} c="dimmed">
-                      Available
-                    </Text>
-                  </div>
-                  <Text fz={12} fw={700} c="slate.9">
-                    {formatK(sav.available, 2)}
-                  </Text>
-                </button>
-              ))}
-            </div>
-          </Accordion.Panel>
-        </Accordion.Item>
-
-        <Accordion.Item value="fixedDeposits">
-          <Accordion.Control
-            icon={<IconClockHour4 size={13} color={themeTokens.primary} />}
-          >
-            <div className="flex items-center gap-2">
-              <Text fz={10} fw={700} className="tracking-wide">
-                FIXED DEPOSITS
-              </Text>
-              <Badge
-                size="xs"
-                variant="light"
-                styles={{
-                  root: { backgroundColor: themeTokens.infoSoft, color: themeTokens.info },
-                }}
-                circle
-              >
-                {fixedDeposits.length}
-              </Badge>
-            </div>
-          </Accordion.Control>
-          <Accordion.Panel>
-            <div className="flex flex-col gap-1.5">
-              {fixedDeposits.map((fd) => (
-                <button
-                  key={fd.id}
-                  onClick={() => onSelect({ type: "fixedDeposit", id: fd.id })}
-                  className="text-left rounded-lg border-l-[3px] border p-2 flex justify-between items-center transition-all hover:shadow-sm"
-                  style={
-                    isSelected("fixedDeposit", fd.id)
-                      ? {
-                          borderColor: "var(--mantine-color-slate-2)",
-                          borderLeftColor: themeTokens.warning,
-                          backgroundColor: themeTokens.warningSoft,
-                        }
-                      : {
-                          borderColor: "var(--mantine-color-slate-2)",
-                          borderLeftColor: themeTokens.warning,
-                          backgroundColor: "var(--mantine-color-white)",
-                        }
-                  }
-                >
-                  <div className="min-w-0">
-                    <Text fz={11} fw={700} c="slate.9" truncate>
-                      {fd.refNumber}
-                    </Text>
-                    <Text fz={9} c="dimmed">
-                      Matures {fd.maturity}
-                    </Text>
-                  </div>
-                  <Text fz={12} fw={700} c="slate.9">
-                    {formatK(fd.amount)}
-                  </Text>
-                </button>
-              ))}
-            </div>
-          </Accordion.Panel>
-        </Accordion.Item>
-      </Accordion>
+                  </button>
+                ))}
+              </div>
+            </Accordion.Panel>
+          </Accordion.Item>
+        </Accordion>
+      </ScrollArea>
     </div>
   );
 }
