@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Box, Button, TextInput, Group, Paper, Table, Text, Pagination, Tooltip, Title, Stack, useMantineTheme, Loader, Select, ActionIcon } from '@mantine/core';
 import { IconEye, IconPencil, IconPlus, IconSearch, IconTrash, IconUsers, IconChevronDown, IconChevronUp, IconSelector } from '@tabler/icons-react';
-import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, createColumnHelper, SortingState } from '@tanstack/react-table';
+import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, createColumnHelper, type SortingState } from '@tanstack/react-table';
 import { useUserList } from '../../hooks/user/useUserList';
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { userModal } from '../../components/Modal/User/Usermodalstore';
