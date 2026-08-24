@@ -404,26 +404,31 @@ export function LoanWaiver() {
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-              {!isCancelled && (
-                <Menu shadow="md" width={140} position="bottom-end" radius="md">
-                  <Menu.Target>
-                    <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
-                      <IconDotsVertical size={14} />
-                    </ActionIcon>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    {isDraft ? (
-                      <Menu.Item onClick={() => handleStatusChange(row, 'approved')}>
-                        Approve
-                      </Menu.Item>
-                    ) : (
-                      <Menu.Item color="danger" onClick={() => handleStatusChange(row, 'cancelled')}>
-                        Cancel
-                      </Menu.Item>
-                    )}
-                  </Menu.Dropdown>
-                </Menu>
-              )}
+              <Menu shadow="md" width={140} position="bottom-end" radius="md">
+                <Menu.Target>
+                  <ActionIcon 
+                    size="sm" 
+                    variant="subtle" 
+                    color="slate" 
+                    radius="md"
+                    disabled={isCancelled}
+                    style={{ opacity: isCancelled ? 0.5 : 1 }}
+                  >
+                    <IconDotsVertical size={14} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {isDraft ? (
+                    <Menu.Item onClick={() => handleStatusChange(row, 'approved')}>
+                      Approve
+                    </Menu.Item>
+                  ) : (
+                    <Menu.Item color="danger" onClick={() => handleStatusChange(row, 'cancelled')}>
+                      Cancel
+                    </Menu.Item>
+                  )}
+                </Menu.Dropdown>
+              </Menu>
             </Group>
           );
         },

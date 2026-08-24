@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Box, Button, Group, Modal, Select, Stack, Text, ActionIcon } from "@mantine/core";
 import { IconBuildingBank, IconX, IconAlertCircle } from "@tabler/icons-react";
 import { getAllLoanProducts } from "../../api/productApi";
+import { ModalFooter } from "../shared/ModalFooter";
 
 const hex = "#1971C2";
 
@@ -136,20 +137,16 @@ export function CreateLoanBookingModal({
             required
           />
 
-          <Group justify="flex-end" w="100%" mt="sm">
-            <Button variant="default" radius="md" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              color="blue"
-              radius="md"
-              disabled={!selectedProduct}
-              loading={isSubmitting}
-              onClick={() => selectedProduct && onConfirm(selectedProduct)}
-            >
-              Create Loan
-            </Button>
-          </Group>
+          <Box mt="md" mx="-lg" mb="-lg">
+            <ModalFooter
+              variant="theme"
+              onClose={onClose}
+              submitLabel="Create Loan"
+              submitDisabled={!selectedProduct}
+              submitLoading={isSubmitting}
+              onSubmit={() => selectedProduct && onConfirm(selectedProduct)}
+            />
+          </Box>
         </Stack>
       </Stack>
     </Modal>
