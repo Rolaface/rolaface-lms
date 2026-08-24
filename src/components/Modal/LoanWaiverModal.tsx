@@ -296,7 +296,7 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
       <Modal
         opened={opened}
         onClose={onClose}
-        size={borrowerPanelCollapsed ? "1100px" : "1300px"}
+        size="1300px"
         withCloseButton={false}
         padding={0}
         radius="md"

@@ -41,7 +41,7 @@ import {
   IconSearch,
   IconFileOff,
   IconDotsVertical,
-  IconCheck,
+  IconCircleCheck,
 } from '@tabler/icons-react';
 import {
   useReactTable,
@@ -362,7 +362,7 @@ export function LoanWriteOff() {
           const canDelete = isDraft || isCancelled;
 
           return (
-            <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
+            <Group justify="flex-end" gap={4} wrap="nowrap">
               <Tooltip label="View" withArrow>
                 <ActionIcon
                   size="sm"
@@ -399,7 +399,7 @@ export function LoanWriteOff() {
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Menu shadow="md" width={140} position="bottom-end" withinPortal radius="md">
+              <Menu shadow="md" width={140} position="bottom-end" withinPortal radius="md" withArrow>
                 <Menu.Target>
                   <ActionIcon
                     size="sm"
@@ -415,7 +415,11 @@ export function LoanWriteOff() {
                 </Menu.Target>
                 <Menu.Dropdown>
                   {isDraft ? (
-                    <Menu.Item onClick={() => handleStatusChange(row.name, 'approved')}>
+                    <Menu.Item 
+                      color="success" 
+                      leftSection={<IconCircleCheck size={14} />}
+                      onClick={() => handleStatusChange(row.name, 'approved')}
+                    >
                       Approve
                     </Menu.Item>
                   ) : (

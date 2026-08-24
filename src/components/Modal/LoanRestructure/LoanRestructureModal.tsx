@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import {
   ActionIcon, Anchor, Box, Text, Group, Button, TextInput, Select, Badge,
-  ScrollArea, ThemeIcon, UnstyledButton, useMantineTheme, Loader,
+  ScrollArea, ThemeIcon, UnstyledButton, useMantineTheme, Loader, Tooltip,
 } from "@mantine/core";
 import {
   IconX, IconRestore, IconSearch, IconCalendarDue, IconCar, IconClipboardList,
-  IconChevronDown, IconUserSearch, IconBuildingBank, IconMinus
+  IconChevronDown, IconUserSearch, IconBuildingBank, IconMinus,
+  IconChevronRight,
+  IconChevronLeft
 } from "@tabler/icons-react";
 import { DateInput } from "@mantine/dates";
 import { Modal } from "@mantine/core";
@@ -78,10 +80,20 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
 
   const [scheduleOpened, setScheduleOpened] = useState(false);
   const [activeTab, setActiveTab] = useState<CenterTab>("DETAILS");
+  const [borrowerPanelCollapsed, setBorrowerPanelCollapsed] = useState(false);
 
   useEffect(() => {
-    if (opened) setActiveTab("DETAILS");
+    if (opened) {
+      setActiveTab("DETAILS");
+      setBorrowerPanelCollapsed(false);
+    }
   }, [opened]);
+
+  useEffect(() => {
+    if (selectedLoanId) {
+      setBorrowerPanelCollapsed(true);
+    }
+  }, [selectedLoanId]);
 
  
   const scheduleLoanAmount: number | "" =
@@ -98,6 +110,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
   const handleModalClose = () => {
     resetAll();
     setActiveTab("DETAILS");
+    setBorrowerPanelCollapsed(false);
     onClose();
   };
 
@@ -130,12 +143,10 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
-                {isViewMode ? "View Loan Restructure" : editName ? "Edit Loan Restructure" : "Loan Restructure"}
+                {viewName ? "View Loan Restructure" : editName ? "Edit Loan Restructure" : "Loan Restructure"}
               </Text>
               <Text size="xs" fw={500} c="brand.1">
-                {isViewMode
-                  ? "Viewing restructure request details."
-                  : "Search a borrower and restructure the terms of their loan account."}
+                Search a borrower and restructure the terms of their loan account.
               </Text>
             </Box>
           </Group>
@@ -165,18 +176,61 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
               <div className="flex h-full overflow-hidden">
                 {/* Borrower Selection */}
                 <div
-                  className="w-[300px] shrink-0 flex flex-col"
+                  className={`shrink-0 flex flex-col transition-all duration-300 ${
+                    borrowerPanelCollapsed ? 'w-14' : 'w-[300px]'
+                  }`}
                   style={{ borderRight: "1px solid var(--mantine-color-slate-2)" }}
                 >
-                  <div className="p-5 pb-4">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
-                      <IconUserSearch size={15} style={{ color: "var(--mantine-color-brand-6)" }} />
-                      <Text size="sm" fw={700} c="slate.8">Borrower Selection</Text>
+                  {borrowerPanelCollapsed ? (
+                    <div className="flex flex-col items-center p-3 gap-4">
+                      <Tooltip label="Expand borrower selection" withArrow position="right">
+                        <ActionIcon 
+                          variant="light" 
+                          color="brand" 
+                          size="md"
+                          onClick={() => setBorrowerPanelCollapsed(false)}
+                        >
+                          <IconChevronRight size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                      {selectedBorrower && (
+                        <Tooltip label={selectedBorrower.name} withArrow position="right">
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center"
+                            style={{
+                              background: "var(--mantine-color-brand-0)",
+                              border: "1px solid var(--mantine-color-brand-2)",
+                            }}
+                          >
+                            <Text size="xs" fw={700} c="brand.6">
+                              {selectedBorrower.name
+                                .split(" ")
+                                .map((n: string) => n[0])
+                                .slice(0, 2)
+                                .join("")}
+                            </Text>
+                          </div>
+                        </Tooltip>
+                      )}
                     </div>
-                    <Text size="xs" c="dimmed" className="ml-5 mb-4">
-                      Search by A/C no, phone or name
-                    </Text>
+                  ) : (
+                    <>
+                      <div className="p-5 pb-4">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
+                            <IconUserSearch size={15} style={{ color: "var(--mantine-color-brand-6)" }} />
+                            <Text size="sm" fw={700} c="slate.8">Borrower Selection</Text>
+                          </div>
+                          {selectedBorrower && (
+                            <ActionIcon variant="subtle" color="slate" size="sm" onClick={() => setBorrowerPanelCollapsed(true)}>
+                              <IconChevronLeft size={16} />
+                            </ActionIcon>
+                          )}
+                        </div>
+                        <Text size="xs" c="dimmed" className="ml-5 mb-4">
+                          Search by A/C no, phone or name
+                        </Text>
 
                     {!selectedBorrower && !isViewMode && (
                       <TextInput
@@ -275,7 +329,12 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                                 key={loan.id}
                                 type="button"
                                 disabled={loanLocked}
-                                onClick={() => !loanLocked && handleSelectLoan(loan)}
+                                onClick={() => {
+                                  if (!loanLocked) {
+                                    handleSelectLoan(loan);
+                                    setBorrowerPanelCollapsed(true);
+                                  }
+                                }}
                                 className="text-left rounded-md transition-colors w-full"
                                 style={{
                                   border: isSelected
@@ -303,6 +362,8 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                       </div>
                     )}
                   </ScrollArea>
+                  </>
+                  )}
                 </div>
 
                 {/* Center */}
