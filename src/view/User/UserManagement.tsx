@@ -3,7 +3,6 @@ import { IconEye, IconPencil, IconPlus, IconSearch, IconFileOff, IconTrash, Icon
 import { useUserList } from '../../hooks/user/useUserList';
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { userModal } from '../../components/Modal/User/Usermodalstore';
-import { CreateUserModal } from '../../components/Modal/User/Createusermodal';
 import type { UserRow } from '../../api/User/userApi';
 
 export function UserManagement() {
@@ -67,7 +66,7 @@ export function UserManagement() {
           />
           <Group gap="xs" ml="auto">
             <Button
-              size="sm" radius="xl" color="brand" onClick={() => userModal.open()}
+              size="sm" radius="xl" color="brand" onClick={() => userModal.open({})}
               leftSection={<IconPlus size={14} />}
               style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
             >
@@ -165,8 +164,6 @@ export function UserManagement() {
           <Pagination total={pagination?.total_pages || 1} value={page} onChange={setPage} color="brand" size="xs" radius="xl" disabled={totalRows === 0} />
         </Group>
       </Paper>
-
-      <CreateUserModal />
     </Stack>
   );
 }

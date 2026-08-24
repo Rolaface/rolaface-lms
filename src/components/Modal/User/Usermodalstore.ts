@@ -1,38 +1,39 @@
-import { create } from "zustand";
-import type { CreateUserFormData } from "../../../types/User/createUser";
+import { IconUserPlus } from '@tabler/icons-react';
+import { createModal } from '../../../store/modal store/createModal';
+import { CreateUserModal } from './Createusermodal';
+import type { CreateUserFormData } from '../../../types/User/createUser';
 
-interface UserModalOpenOptions {
+export interface UserModalParams {
   editId?: string | null;
   isView?: boolean;
   initialData?: CreateUserFormData | null;
 }
 
-interface UserModalStoreState extends UserModalOpenOptions {
+interface UserModalProps {
   opened: boolean;
+  onClose: () => void;
+  onMinimize: () => void;
+  editId?: string | null;
+  isView?: boolean;
+  initialData?: CreateUserFormData | null;
 }
 
-const useUserModalStore = create<UserModalStoreState>(() => ({
-  opened: false,
-  editId: null,
-  isView: false,
-  initialData: null,
-}));
+function getTitle(params: UserModalParams) {
+  if (params.isView) return 'View User';
+  if (params.editId) return 'Edit User';
+  return 'Add User';
+}
 
-export const userModal = {
-  open: (opts: UserModalOpenOptions = {}) =>
-    useUserModalStore.setState({
-      opened: true,
-      editId: opts.editId ?? null,
-      isView: opts.isView ?? false,
-      initialData: opts.initialData ?? null,
+export const userModal = createModal<UserModalParams, UserModalProps>(
+  'user-form',
+  CreateUserModal,
+  {
+    icon: IconUserPlus,
+    getTitle,
+    buildProps: (params) => ({
+      editId: params.editId,
+      isView: params.isView,
+      initialData: params.initialData,
     }),
-  close: () =>
-    useUserModalStore.setState({
-      opened: false,
-      editId: null,
-      isView: false,
-      initialData: null,
-    }),
-};
-
-export const useUserModal = () => useUserModalStore();
+  },
+);
