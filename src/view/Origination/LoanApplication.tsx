@@ -33,6 +33,8 @@ import {
   IconAlertTriangle,
   IconDotsVertical,
   IconEye,
+  IconSend,
+  IconGavel,
 } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -52,6 +54,8 @@ import {
   deleteLoanApplication,
   updateLoanApplicationStatus,
   convertCustomLoanApplicationToLoan,
+  sendLoanApplicationForReview,
+  loanApplicationReviewOutcome
 } from "../../api/loanApplicationApi";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 import { useCompanyStore } from "../../store/companyStore";
@@ -59,6 +63,9 @@ import { openCommonModal } from "../../components/Modal/AlertModal";
 import { CreateLoanBookingModal } from "../../components/Modal/CreateLoanBookingModal";
 import { getSymbol, formatAmount } from "../../store/currencyStore";
 import { loanAccountModal } from "../../components/Modal/LoanBooking/loanAccountModalStore";
+import { ReviewModal } from "../../components/Modal/ReviewModal";
+import { useUserStore } from "../../store/userStore";
+import { OutcomeModal } from "../../components/Modal/OutcomeModal";
 export interface LoanApplicationRow {
   name: string;
   application_type: string;
@@ -70,6 +77,7 @@ export interface LoanApplicationRow {
   first_name: string | null;
   last_name: string | null;
   company_name: string | null;
+   _assign?: string | null;
 }
 const columnHelper = createColumnHelper<LoanApplicationRow>();
 
@@ -80,12 +88,31 @@ export const STATUS_COLOR: Record<string, string> = {
   Approved: "info",
   Created: "success",
   Rejected: "danger",
+  "Under Review": "grape", 
+    "Ready for Approval": "info",
+  "Additional Information Required": "orange",
+  Rejection: "danger",
 };
 export function getDisplayStatus(status: string) {
   if (status === "Cancelled") return "Rejected";
   if (status === "Submitted") return "Approved";
   return status;
 }
+const OUTCOME_STATUSES = [
+  "Under Review",
+  "Ready for Approval",
+  "Additional Information Required",
+  "Rejection",
+];
+
+function getEffectiveStatus(row: LoanApplicationRow) {
+  return OUTCOME_STATUSES.includes(row.status)
+    ? row.status
+    : row.loan_application_status;
+}
+// function getEffectiveStatus(row: LoanApplicationRow) {
+//   return row.status === "Under Review" ? "Under Review" : row.loan_application_status;
+// }
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   const color = sorted
@@ -94,6 +121,20 @@ function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   if (sorted === "asc") return <IconChevronUp size={12} color={color} />;
   if (sorted === "desc") return <IconChevronDown size={12} color={color} />;
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
+}
+
+function getAssignedUsers(row: LoanApplicationRow): string[] {
+  if (!row._assign) return [];
+  try {
+    return JSON.parse(row._assign);
+  } catch {
+    return [];
+  }
+}
+
+function isAssignedToUser(row: LoanApplicationRow, email?: string | null) {
+  if (!email) return false;
+  return getAssignedUsers(row).includes(email);
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -183,6 +224,15 @@ function formatDate(date: string) {
 export function LoanApplication() {
   const [bookingOpened, { open: openBooking, close: closeBooking }] =
     useDisclosure(false);
+  const [reviewOpened, { open: openReview, close: closeReview }] =
+  useDisclosure(false);
+  const [outcomeOpened, { open: openOutcome, close: closeOutcome }] =
+  useDisclosure(false);
+const [outcomeApplicationId, setOutcomeApplicationId] = useState
+  <string | null>(null);
+const [reviewApplicationId, setReviewApplicationId] = useState<string | null>(
+  null,
+);
   const [bookingApplicationId, setBookingApplicationId] = useState<
     string | null
   >(null);
@@ -192,6 +242,10 @@ export function LoanApplication() {
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencySymbol = getSymbol(companyCurrency);
   const [editingId, setEditingId] = useState<string | null>(null);
+const user = useUserStore((s) => s.user);
+const email = useUserStore((s) => s.user?.email);
+const firstName = useUserStore((s)=> s.user?.firstName);
+ console.log("firstName",firstName);
 
   const [viewingApplicationId, setViewingApplicationId] = useState<
     string | null
@@ -245,6 +299,54 @@ export function LoanApplication() {
       });
     },
   });
+  
+  const reviewMutation = useMutation({
+  mutationFn: (payload: { application_id: string; assign_to_user: string; comment: string }) =>
+    sendLoanApplicationForReview(payload),
+  onSuccess: (_, variables) => {
+    queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
+    closeReview();
+    showSuccess(
+      "Sent for Review",
+      `Loan Application ${variables.application_id} was sent for review successfully.`,
+    );
+  },
+  onError: (error: any) => {
+    openCommonModal({
+      heading: "Action Failed",
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  },
+});
+
+const outcomeMutation = useMutation({
+  mutationFn: (payload: {
+    application_id: string;
+    action: string;
+    assign_to_user: string;
+    comment: string;
+  }) => loanApplicationReviewOutcome(payload),
+  onSuccess: (_, variables) => {
+    queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
+    closeOutcome();
+    showSuccess(
+      "Outcome Recorded",
+      `Loan Application ${variables.application_id} outcome (${variables.action}) was recorded successfully.`,
+    );
+  },
+  onError: (error: any) => {
+    openCommonModal({
+      heading: "Action Failed",
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  },
+});
 
   const convertToLoanMutation = useMutation({
     mutationFn: ({ id, loan_product }: { id: string; loan_product: string }) =>
@@ -474,6 +576,43 @@ export function LoanApplication() {
     openBooking();
   };
 
+  const reviewApplication = data.find((a) => a.name === reviewApplicationId);
+const reviewApplicantName = reviewApplication
+  ? getApplicantDisplayName(reviewApplication)
+  : null;
+
+const handleSendForReview = (id: string) => {
+  setReviewApplicationId(id);
+  openReview();
+};
+
+const handleConfirmReview = (payload: { assign_to_user: string; comment: string }) => {
+  if (!reviewApplicationId) return;
+  reviewMutation.mutate({ application_id: reviewApplicationId, ...payload });
+};
+
+const outcomeApplication = data.find((a) => a.name === outcomeApplicationId);
+const outcomeApplicantName = outcomeApplication
+  ? getApplicantDisplayName(outcomeApplication)
+  : null;
+
+const handleOutcome = (id: string) => {
+  setOutcomeApplicationId(id);
+  openOutcome();
+};
+
+const handleConfirmOutcome = (payload: {
+  action: string;
+  assign_to_user: string;
+  comment: string;
+}) => {
+  if (!outcomeApplicationId) return;
+  outcomeMutation.mutate({
+    application_id: outcomeApplicationId,
+    ...payload,
+  });
+};
+
   const handleConfirmCreateBooking = (loanProduct: string) => {
     if (!bookingApplicationId) return;
     convertToLoanMutation.mutate({
@@ -568,10 +707,54 @@ export function LoanApplication() {
       //           </Text>
       //         ),
       //       }),
+      // columnHelper.accessor("loan_application_status", {
+      //   header: "Status",
+      //   cell: (info) => <StatusBadge status={info.getValue()} />,
+      // }),
       columnHelper.accessor("loan_application_status", {
-        header: "Status",
-        cell: (info) => <StatusBadge status={info.getValue()} />,
-      }),
+  header: "Status",
+  cell: (info) => <StatusBadge status={getEffectiveStatus(info.row.original)} />,
+}),
+  columnHelper.display({
+  id: "review",
+  header: "",
+  cell: (info) => {
+    const row = info.row.original;
+    const effectiveStatus = getEffectiveStatus(row);
+
+    if (effectiveStatus === "Pending" && firstName === "Administrator") {
+      return (
+        <Button
+          size="xs"
+          radius="xl"
+          variant="light"
+          color="violet"
+          leftSection={<IconSend size={12} />}
+          onClick={() => handleSendForReview(row.name)}
+        >
+          Send for Review
+        </Button>
+      );
+    }
+
+    if (effectiveStatus === "Under Review" && isAssignedToUser(row, email)) {
+      return (
+        <Button
+          size="xs"
+          radius="xl"
+          variant="light"
+          color="orange"
+          leftSection={<IconGavel size={12} />}
+          onClick={() => handleOutcome(row.name)}
+        >
+          Outcome
+        </Button>
+      );
+    }
+
+    return null;
+  },
+}),
       columnHelper.display({
         id: "actions",
         header: () => (
@@ -582,11 +765,12 @@ export function LoanApplication() {
         cell: (info) => {
           const row = info.row.original;
           const currentStatus = row.loan_application_status;
-
+const effectiveStatus = getEffectiveStatus(row);
           const isPending = currentStatus === "Pending";
           const isApproved = currentStatus === "Approved";
           const isCreated = currentStatus === "Created";
           const isRejected = currentStatus === "Rejected";
+  const isUnderReview = effectiveStatus === "Under Review";
 
           const menuDisabled = isCreated || isRejected;
 
@@ -690,7 +874,7 @@ export function LoanApplication() {
         },
       }),
     ],
-    [],
+    [firstName],
   );
 
   const table = useReactTable({
@@ -760,7 +944,24 @@ export function LoanApplication() {
         onConfirm={handleConfirmCreateBooking}
         isSubmitting={convertToLoanMutation.isPending}
       />
-
+      <ReviewModal
+  opened={reviewOpened}
+  applicationId={reviewApplicationId}
+  applicantName={reviewApplicantName}
+   currentUserEmail={email}
+  onClose={closeReview}
+  onConfirm={handleConfirmReview}
+  isSubmitting={reviewMutation.isPending}
+/>
+<OutcomeModal
+  opened={outcomeOpened}
+  applicationId={outcomeApplicationId}
+  applicantName={outcomeApplicantName}
+  currentUserEmail={email}
+  onClose={closeOutcome}
+  onConfirm={handleConfirmOutcome}
+  isSubmitting={outcomeMutation.isPending}
+/>
       <style>{`
   .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
   .lms-row-actions { opacity: 1; }
@@ -1008,8 +1209,8 @@ export function LoanApplication() {
                     </Table.Tr>
                   ) : (
                     rows.map((row) => {
-                       const scale =
-                        STATUS_COLOR[row.original.loan_application_status] ?? "slate";
+                      //  const scale = STATUS_COLOR[row.original.loan_application_status] ?? "slate";
+                      const scale = STATUS_COLOR[getEffectiveStatus(row.original)] ?? "slate";
                       const cells = row.getVisibleCells();
                       return (
                         <Table.Tr
