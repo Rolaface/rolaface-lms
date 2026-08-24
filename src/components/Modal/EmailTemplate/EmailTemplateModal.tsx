@@ -14,9 +14,12 @@ import {
     useMantineTheme,
 } from "@mantine/core";
 import { IconX, IconMail, IconMinus } from "@tabler/icons-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import RichTextEditor from "./TextEditor";
 import { openCommonModal } from "../AlertModal";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+import { createEmailTemplate, updateEmailTemplate, getEmailTemplateById } from "../../../api/emailTemplateApi";
 
 const INSTALLMENT_TABLE_VARIABLE = "{{ installment_table }}";
 
@@ -32,9 +35,6 @@ const DOC_TYPE_OPTIONS = [
 
 type DocType = (typeof DOC_TYPE_OPTIONS)[number]["value"];
 
-// ─────────────────────────────────────────────
-// Variable chips per template category
-// ─────────────────────────────────────────────
 
 function getVariableChips(category: string): {
     label: string;
@@ -65,7 +65,7 @@ function getVariableChips(category: string): {
                 { label: "{{ customer_name }}", value: " {{ customer_name }} " },
                 { label: "{{ PERIOD }}", value: " {{ PERIOD }} " },
             ];
-        case "Payment Reminder":
+        case "Repayment Reminder":
             return [
                 { label: "{{ customer_name }}", value: " {{ customer_name }} " },
                 { label: "{{ due_date }}", value: " {{ due_date }} " },
@@ -94,48 +94,35 @@ function getVariableChips(category: string): {
         default:
             return [];
     }
-}
-
-// ─────────────────────────────────────────────
-// Form types
-// ─────────────────────────────────────────────
+} 
 
 export interface EmailTemplateForm {
     name: string;
     subject: string;
-    message: string;
+    response: string;
 }
 
 const DEFAULT_FORM: EmailTemplateForm = {
     name: "",
     subject: "",
-    message: "",
-};
-
-// ─────────────────────────────────────────────
-// Props
-// ─────────────────────────────────────────────
-
+    response: "",
+}; 
 interface EmailTemplateModalProps {
     opened: boolean;
     onClose: () => void;
     onMinimize?: () => void;
-    /** No API call happens inside the modal — the parent decides what to do with the form data. */
+    onSaved?: (data: EmailTemplateForm) => void;
     onSubmit?: (data: EmailTemplateForm) => void;
-    /** Pass existing values to prefill the form when editing/viewing. Omit for create mode. */
     initialData?: EmailTemplateForm;
     isView?: boolean;
-}
-
-// ─────────────────────────────────────────────
-// Component
-// ─────────────────────────────────────────────
+} 
 
 export function EmailTemplateModal({
     opened,
     onClose,
     onMinimize,
     onSubmit,
+    onSaved,
     initialData,
     isView = false,
 }: EmailTemplateModalProps) {
@@ -150,17 +137,64 @@ export function EmailTemplateModal({
             : "Create a new email template";
 
     const [form, setForm] = useState<EmailTemplateForm>(initialData ?? DEFAULT_FORM);
-    const [saving, setSaving] = useState(false);
     const [editorReady, setEditorReady] = useState(false);
 
-    const focusedField = useRef<"subject" | "message">("message");
+    const focusedField = useRef<"subject" | "response">("response");
     const subjectRef = useRef<HTMLInputElement>(null);
 
-    /**
-     * Ref to the Tiptap editor instance so the chip click handler can
-     * insert content directly via insertContent().
-     */
     const editorInstanceRef = useRef<ReturnType<typeof useEditor> | null>(null);
+
+     const showSuccess = (heading: string, body: string) => {
+          openCommonModal({
+            heading,
+            subtitle: '',
+            body,
+            color: 'green',
+            buttons: [{ label: 'Close', color: 'green' }],
+          });
+        };
+    const queryClient = useQueryClient();
+
+    const { mutate: createTemplate, isPending: isCreating } = useMutation({
+        mutationFn: createEmailTemplate,
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
+           onSaved?.(variables as unknown as EmailTemplateForm);
+            onClose();
+            showSuccess('Email Template Created', `Email Template ${variables} Created successfully.`);
+        },
+        onError: (error) => {
+            openCommonModal({
+                heading: "Action Failed",
+                subtitle: "We couldn't complete your request.",
+                body: parseFrappeError(error),
+                color: "red",
+                buttons: [{ label: "Close", color: "red" }],
+            });
+        },
+    });
+
+    const { mutate: editTemplate, isPending: isUpdating } = useMutation({
+        mutationFn: ({ name, payload }: { name: string; payload: any }) =>
+            updateEmailTemplate({ name, payload }),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
+            onSaved?.(variables.payload as EmailTemplateForm);
+            onClose();
+            showSuccess('Email Template Updated', `Email Template ${variables} Updated successfully.`);
+        },
+        onError: (error) => {
+            openCommonModal({
+                heading: "Action Failed",
+                subtitle: "We couldn't complete your request.",
+                body: parseFrappeError(error),
+                color: "red",
+                buttons: [{ label: "Close", color: "red" }],
+            });
+        },
+    });
+
+    const saving = isCreating || isUpdating;
 
     // ── Reset the form whenever the modal opens ──
     // (prefills from initialData in edit/view mode, blank otherwise)
@@ -180,19 +214,16 @@ export function EmailTemplateModal({
         return () => cancelAnimationFrame(id);
     }, [opened]);
 
-    // ── Chip click handler ──
-
+ 
     const handleChipClick = useCallback((chipValue: string, bodyOnly?: boolean) => {
         const isInstallmentTable = chipValue.trim() === INSTALLMENT_TABLE_VARIABLE;
 
-        // Guard: installment_table (and any bodyOnly chip) cannot go into subject
         if ((bodyOnly || isInstallmentTable) && focusedField.current === "subject") {
-            focusedField.current = "message";
+            focusedField.current = "response"; 
         }
 
         if (focusedField.current === "subject" && !bodyOnly && !isInstallmentTable) {
-            // Insert at cursor position in the subject <input>
-            const input = subjectRef.current;
+             const input = subjectRef.current;
             if (!input) return;
 
             const start = input.selectionStart ?? input.value.length;
@@ -240,7 +271,7 @@ export function EmailTemplateModal({
         setForm(initialData ?? DEFAULT_FORM);
     }, [initialData]);
 
-    // ── Submit (no API call — just hands the form back to the parent) ──
+    // ── Submit logic triggering API calls ──
 
     const handleSubmit = useCallback(() => {
         if (!form.subject.trim()) {
@@ -253,7 +284,7 @@ export function EmailTemplateModal({
             });
             return;
         }
-        if (!form.message.trim() || form.message === "<p></p>") {
+        if (!form.response.trim() || form.response === "<p></p>") {
             openCommonModal({
                 heading: "Validation Error",
                 subtitle: "",
@@ -274,11 +305,12 @@ export function EmailTemplateModal({
             return;
         }
 
-        setSaving(true);
-        onSubmit?.(form);
-        setSaving(false);
-        onClose();
-    }, [form, isEdit, onSubmit, onClose]);
+        if (isEdit && initialData) {
+            editTemplate({ name: initialData.name, payload: form as any });
+        } else {
+            createTemplate(form as any);
+        }
+    }, [form, isEdit, initialData, createTemplate, editTemplate]);
 
     const variableChips = useMemo(() => getVariableChips(form.name), [form.name]);
 
@@ -395,13 +427,13 @@ export function EmailTemplateModal({
                                 </Text>
                                 <div
                                     onFocus={() => {
-                                        focusedField.current = "message";
+                                        focusedField.current = "response";
                                     }}
                                 >
                                     {editorReady && (
                                         <RichTextEditorWithInsert
-                                            value={form.message}
-                                            onChange={(html) => handleFieldChange("message", html)}
+                                            value={form.response}
+                                            onChange={(html) => handleFieldChange("response", html)}
                                             onEditorReady={(editorInstance) => {
                                                 editorInstanceRef.current = editorInstance;
                                             }}
@@ -514,6 +546,7 @@ export function EmailTemplateModal({
         </Modal>
     );
 }
+
 interface RichTextEditorWithInsertProps {
     value: string;
     onChange: (html: string) => void;
@@ -540,5 +573,4 @@ const RichTextEditorWithInsert: React.FC<RichTextEditorWithInsertProps> = ({
         />
     );
 };
-
 export default EmailTemplateModal;

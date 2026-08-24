@@ -8,9 +8,11 @@ import type { LoanWriteOffDetail } from "../../../types/loanWriteOff"
 export interface LoanWriteOffModalParams {
   editData?: LoanWriteOffDetail | null;
   onSubmit?: (data: LoanWriteOffFormData) => void;
+  isView?: boolean;
 }
 
 function getTitle(params: LoanWriteOffModalParams) {
+  if (params.isView) return "View Write Off";
   return params.editData ? "Update Write Off" : "Write Off Loan";
 }
 
@@ -23,6 +25,7 @@ export const loanWriteOffModal = createModal(
     buildProps: (params: LoanWriteOffModalParams) => ({
       editData: params.editData ?? null,
       onSubmit: params.onSubmit,
+      isView: params.isView,
     }),
   },
 );

@@ -596,16 +596,18 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                   Search by A/C no, phone or name
                 </Text>
 
-                <TextInput
-                  size="sm"
-                  radius="xl"
-                  placeholder="Search by loan A/C, applicant or phone"
-                  value={search}
-                  disabled={isView}
-                  onChange={(e) => setSearch(e.currentTarget.value)}
-                  leftSection={<IconSearch size={14} color="var(--mantine-color-slate-4)" />}
-                  styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
-                />
+                {!selectedBorrower && !isView && (
+                  <TextInput
+                    size="sm"
+                    radius="xl"
+                    placeholder="Search by loan A/C, applicant or phone"
+                    value={search}
+                    disabled={isView}
+                    onChange={(e) => setSearch(e.currentTarget.value)}
+                    leftSection={<IconSearch size={14} color="var(--mantine-color-slate-4)" />}
+                    styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+                  />
+                )}
 
                 {selectedBorrower ? (
                   <Box mt="md">

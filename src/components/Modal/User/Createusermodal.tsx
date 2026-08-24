@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { CreateUserFormData } from "../../../types/User/createUser";
 import {
   Modal,
   TextInput,
@@ -15,9 +16,8 @@ import {
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import dayjs from "dayjs";
-import { IconUserPlus, IconX } from "@tabler/icons-react";
+import { IconUserPlus, IconMinus, IconX } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { userModal, useUserModal } from "./Usermodalstore";
 import { useCreateUser, type SelectOption } from "../../../hooks/user/useCreateUser";
 import { createUser, updateUser, getAllGenders } from "../../../api/User/userApi";
 import { ModalFooter } from "../../../components/shared/ModalFooter";
@@ -70,8 +70,16 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-export function CreateUserModal() {
-  const { opened, editId, isView, initialData } = useUserModal();
+interface CreateUserModalProps {
+  opened: boolean;
+  onClose: () => void;
+  onMinimize: () => void;
+  editId?: string | null;
+  isView?: boolean;
+  initialData?: CreateUserFormData | null;
+}
+
+export function CreateUserModal({ opened, onClose, onMinimize, editId, isView, initialData }: CreateUserModalProps) {
   const queryClient = useQueryClient();
   const isEdit = !!editId && !isView;
 
@@ -94,9 +102,9 @@ export function CreateUserModal() {
         : await createUser(data);
 
       queryClient.invalidateQueries({ queryKey: ["lmsUsers"] });
-      userModal.close();
+       onClose();
 
-      // backend puts the success text in `data` here (message.message is null)
+      
       openCommonModal({
         heading: "Success",
         body:
@@ -114,10 +122,7 @@ export function CreateUserModal() {
   const [genderOptions, setGenderOptions] = useState<SelectOption[]>([]);
 
   useEffect(() => {
-    if (!opened) {
-      handleReset();
-      return;
-    }
+    if (!opened) return;
     fetchLanguages("").then(setLanguageOptions);
     fetchRoles("").then(setRoleOptions);
     setTimezoneOptions(filterTimezones(""));
@@ -147,7 +152,10 @@ export function CreateUserModal() {
     removed.forEach((id) => removeRole(id));
   };
 
-  const handleClose = () => userModal.close();
+    const handleClose = () => {
+    handleReset();
+    onClose();
+  };
 
   const colSpan = { base: 12, sm: 6, md: 3 };
 
@@ -161,6 +169,22 @@ export function CreateUserModal() {
       padding={0}
       centered
       shadow="xl"
+      styles={{
+        content: {
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: '90vh',
+          overflow: 'hidden',
+        },
+        body: {
+          padding: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+          flex: 1,
+          overflow: 'hidden',
+        },
+      }}
     >
       {/* ── Header ─────────────────────────────────────────── */}
       <Box
@@ -195,26 +219,43 @@ export function CreateUserModal() {
             </Text>
           </Group>
 
-          <ActionIcon
-            variant="subtle"
-            radius="md"
-            onClick={handleClose}
-            style={{ color: "var(--mantine-color-white)" }}
-            styles={{
-              root: {
-                "&:hover": {
-                  backgroundColor: "color-mix(in srgb, var(--mantine-color-white) 15%, transparent)",
+ <Group gap={4} wrap="nowrap">
+            <ActionIcon
+              variant="subtle"
+              radius="md"
+              onClick={onMinimize}
+              style={{ color: "var(--mantine-color-white)" }}
+              styles={{
+                root: {
+                  "&:hover": {
+                    backgroundColor: "color-mix(in srgb, var(--mantine-color-white) 15%, transparent)",
+                  },
                 },
-              },
-            }}
-          >
-            <IconX size={18} />
-          </ActionIcon>
+              }}
+            >
+              <IconMinus size={18} />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              radius="md"
+              onClick={handleClose}
+              style={{ color: "var(--mantine-color-white)" }}
+              styles={{
+                root: {
+                  "&:hover": {
+                    backgroundColor: "color-mix(in srgb, var(--mantine-color-white) 15%, transparent)",
+                  },
+                },
+              }}
+            >
+              <IconX size={18} />
+            </ActionIcon>
+          </Group>
         </Group>
       </Box>
 
       {/* ── Body ───────────────────────────────────────────── */}
-      <Box px="xl" py="lg" style={{ maxHeight: "72vh", overflowY: "auto", background: "var(--mantine-color-slate-0)" }}>
+            <Box px="xl" py="lg" style={{ background: "var(--mantine-color-slate-0)" }}>
         <Paper
           radius="lg"
           p="lg"
@@ -225,7 +266,7 @@ export function CreateUserModal() {
             {/* ── Account Information ─────────────────────────── */}
             <Box>
               <SectionHeader title="Account Information" />
-              <Grid gutter="md">
+              <Grid gap="md">
                 <Grid.Col span={colSpan}>
                   <TextInput
                     label="Email"
