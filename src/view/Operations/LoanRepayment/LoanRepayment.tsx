@@ -49,6 +49,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { usePermission } from '../../../hooks/Usepermission';
 
+const REPAYMENT_TYPES = ["Pre Payment", "Normal Repayment", "Full Settlement"]
 
 interface RepaymentRow {
   id: string;
@@ -168,6 +169,7 @@ export function LoanRepayment() {
         page_size: pageSize,
         search: debouncedSearch || undefined,
         status: statusFilter.length > 0 ? statusFilter : undefined,
+        repayment_type: REPAYMENT_TYPES,
         loan_product: loanType.length ? loanType : undefined,
       }),
     placeholderData: (prev) => prev,
