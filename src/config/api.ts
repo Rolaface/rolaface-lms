@@ -15,6 +15,9 @@ Company:{
   getUserDetails: `${ERP_BASE}/api/method/auth_api.user_management.api.auth.get_login_user`,
   getCurrency: `${ERP_BASE}/api/method/custom_api.api.search.get_currencies`,
 },
+logout:{
+  logout: `${ERP_BASE}/api/method/auth_api.user_management.api.auth.logout`,
+},
 Accounting: {
   chartOfAccounts: {
     createCOA: `${ERP_BASE}/api/method/erpnext.accounts.utils.add_ac`,

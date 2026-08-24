@@ -99,13 +99,18 @@ export function LoanDisbursement() {
   const theme = useMantineTheme();
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencyReady = useCurrencyReady();
+
   const { can } = usePermission();
   const canCreateLoan = can("Loan Disbursement", "create");
+  const canReadLoan = can("Loan Disbursement", "read");
   const canWriteLoan = can("Loan Disbursement", "write");
   const canDeleteLoan = can("Loan Disbursement", "delete");
+  const canSubmitLoan = can("Loan Disbursement", "submit");
+  const canCancelLoan = can("Loan Disbursement", "cancel");
+
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
-    const [applicantType, setApplicantType] = useState<string[]>([]);
+  const [applicantType, setApplicantType] = useState<string[]>([]);
   const [debouncedApplicantType] = useDebouncedValue(applicantType, 400);
   const [company, setCompany] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -129,7 +134,7 @@ export function LoanDisbursement() {
     queryFn: () =>
       getAllLoansDisbursement({
         search: debouncedSearch || undefined,
-           applicant_type: debouncedApplicantType.length ? debouncedApplicantType : undefined,
+        applicant_type: debouncedApplicantType.length ? debouncedApplicantType : undefined,
         status: statusFilter.length ? statusFilter : undefined,
         page,
         page_size: pageSize,
@@ -356,11 +361,13 @@ export function LoanDisbursement() {
 
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-              <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => handleView(row)}>
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
+              {canReadLoan && (
+                <Tooltip label="View" withArrow>
+                  <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => handleView(row)}>
+                    <IconEye size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
 
               {canWriteLoan && (
                 <Tooltip label={isDraft ? 'Edit' : 'Only Drafts can be edited'} withArrow>
@@ -393,7 +400,7 @@ export function LoanDisbursement() {
                 </Tooltip>
               )}
 
-              {canWriteLoan && (
+              {(canSubmitLoan || canCancelLoan) && (
                 <Menu shadow="md" width={140} position="bottom-end" radius="md">
                   <Menu.Target>
                     <ActionIcon
@@ -408,70 +415,72 @@ export function LoanDisbursement() {
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-  {isDraft ? (
-    <Menu.Item
-      onClick={() => {
-        openCommonModal({
-          heading: 'Approve Loan Disbursement',
-          subtitle: 'Please confirm this action before continuing.',
-          body: (
-            <>
-              Are you sure you want to approve loan disbursement{' '}
-              <Text span fw={600}>
-                {row.id}
-              </Text>{' '}
-            </>
-          ),
-          color: 'success',
-          buttons: [
-            { label: 'Cancel', variant: 'default' },
-            {
-              label: 'Approve',
-              color: 'success',
-              onClick: () => {
-                statusMutation.mutate({ id: row.id, action: 'approved' });
-              },
-            },
-          ],
-        });
-      }}
-    >
-      Approve
-    </Menu.Item>
-  ) : !isCancelled ? (
-    <Menu.Item
-      color="danger"
-      onClick={() => {
-        openCommonModal({
-          heading: 'Cancel Loan Disbursement',
-          subtitle: 'This action cannot be undone.',
-          body: (
-            <>
-              Are you sure you want to cancel loan disbursement{' '}
-              <Text span fw={600}>
-                {row.id}
-              </Text>
-              ?
-            </>
-          ),
-          color: 'danger',
-          buttons: [
-            { label: 'Back', variant: 'default' },
-            {
-              label: 'Cancel Disbursement',
-              color: 'danger',
-              onClick: () => {
-                statusMutation.mutate({ id: row.id, action: 'cancelled' });
-              },
-            },
-          ],
-        });
-      }}
-    >
-      Cancel
-    </Menu.Item>
-  ) : null}
-</Menu.Dropdown>
+                    {isDraft && canSubmitLoan && (
+                      <Menu.Item
+                        onClick={() => {
+                          openCommonModal({
+                            heading: 'Approve Loan Disbursement',
+                            subtitle: 'Please confirm this action before continuing.',
+                            body: (
+                              <>
+                                Are you sure you want to approve loan disbursement{' '}
+                                <Text span fw={600}>
+                                  {row.id}
+                                </Text>{' '}
+                              </>
+                            ),
+                            color: 'success',
+                            buttons: [
+                              { label: 'Cancel', variant: 'default' },
+                              {
+                                label: 'Approve',
+                                color: 'success',
+                                onClick: () => {
+                                  statusMutation.mutate({ id: row.id, action: 'approved' });
+                                },
+                              },
+                            ],
+                          });
+                        }}
+                      >
+                        Approve
+                      </Menu.Item>
+                    )}
+
+                    {!isDraft && !isCancelled && canCancelLoan && (
+                      <Menu.Item
+                        color="danger"
+                        onClick={() => {
+                          openCommonModal({
+                            heading: 'Cancel Loan Disbursement',
+                            subtitle: 'This action cannot be undone.',
+                            body: (
+                              <>
+                                Are you sure you want to cancel loan disbursement{' '}
+                                <Text span fw={600}>
+                                  {row.id}
+                                </Text>
+                                ?
+                              </>
+                            ),
+                            color: 'danger',
+                            buttons: [
+                              { label: 'Back', variant: 'default' },
+                              {
+                                label: 'Cancel Disbursement',
+                                color: 'danger',
+                                onClick: () => {
+                                  statusMutation.mutate({ id: row.id, action: 'cancelled' });
+                                },
+                              },
+                            ],
+                          });
+                        }}
+                      >
+                        Cancel
+                      </Menu.Item>
+                    )}
+                  </Menu.Dropdown>
                 </Menu>
               )}
             </Group>
@@ -479,7 +488,7 @@ export function LoanDisbursement() {
         },
       }),
     ],
-    [deleteMutation, statusMutation, companyCurrency, canWriteLoan, canDeleteLoan]
+    [deleteMutation, statusMutation, companyCurrency, canReadLoan, canWriteLoan, canDeleteLoan, canSubmitLoan, canCancelLoan]
   );
 
   const table = useReactTable({
@@ -499,7 +508,7 @@ export function LoanDisbursement() {
 
   const resetFilters = () => {
     setSearch('');
-        setApplicantType([]);
+    setApplicantType([]);
     setCompany(null);
     setStatusFilter([]);
     setPage(1);
@@ -567,7 +576,7 @@ export function LoanDisbursement() {
               setSearch(e.currentTarget.value);
             }}
           />
-                   <FilterMultiSelect
+          <FilterMultiSelect
             placeholder="All Applicant Types"
             data={APPLICANT_TYPE_FILTER_OPTIONS}
             value={applicantType}

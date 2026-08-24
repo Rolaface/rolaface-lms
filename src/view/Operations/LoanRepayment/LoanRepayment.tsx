@@ -141,8 +141,11 @@ export function LoanRepayment() {
 
   const { can } = usePermission();
   const canCreateLoan = can("Loan Repayment", "create");
+  const canReadLoan = can("Loan Repayment", "read");
   const canWriteLoan = can("Loan Repayment", "write");
   const canDeleteLoan = can("Loan Repayment", "delete");
+  const canSubmitLoan = can("Loan Repayment", "submit");
+  const canCancelLoan = can("Loan Repayment", "cancel");
 
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
@@ -365,17 +368,19 @@ export function LoanRepayment() {
 
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-              <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="slate"
-                  radius="md"
-                  onClick={() => loanRepaymentModal.open({ editId: row.id, isView: true })}
-                >
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
+              {canReadLoan && (
+                <Tooltip label="View" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="slate"
+                    radius="md"
+                    onClick={() => loanRepaymentModal.open({ editId: row.id, isView: true })}
+                  >
+                    <IconEye size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
 
               {canWriteLoan && (
                 <Tooltip label={isDraft ? 'Edit' : 'Only Drafts can be edited'} withArrow>
@@ -407,7 +412,7 @@ export function LoanRepayment() {
                 </Tooltip>
               )}
 
-              {canWriteLoan && !isCancelled && (
+              {(canSubmitLoan || canCancelLoan) && !isCancelled && (
                 <Menu shadow="md" width={140} position="bottom-end" radius="md">
                   <Menu.Target>
                     <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
@@ -415,7 +420,7 @@ export function LoanRepayment() {
                     </ActionIcon>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    {isDraft ? (
+                    {isDraft && canSubmitLoan && (
                       <Menu.Item
                         onClick={() => {
                           openCommonModal({
@@ -443,7 +448,8 @@ export function LoanRepayment() {
                       >
                         Approve
                       </Menu.Item>
-                    ) : (
+                    )}
+                    {!isDraft && canCancelLoan && (
                       <Menu.Item
                         color="danger"
                         onClick={() => {
@@ -482,7 +488,7 @@ export function LoanRepayment() {
         },
       }),
     ],
-    [isDeleting, canWriteLoan, canDeleteLoan]
+    [isDeleting, canReadLoan, canWriteLoan, canDeleteLoan, canSubmitLoan, canCancelLoan]
   );
   const table = useReactTable({
     data: filteredData,

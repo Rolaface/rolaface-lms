@@ -30,9 +30,13 @@ export function LoanRestructure() {
   const theme = useMantineTheme();
 
   const { can } = usePermission();
+
+  const canReadLoan = can("Loan Restructure", "read");
   const canCreateLoan = can("Loan Restructure", "create");
   const canWriteLoan = can("Loan Restructure", "write");
   const canDeleteLoan = can("Loan Restructure", "delete");
+  const canSubmitLoan = can("Loan Restructure", "submit");
+  const canCancelLoan = can("Loan Restructure", "cancel");
 
   const {
     search, setSearch,
@@ -181,11 +185,24 @@ export function LoanRestructure() {
                     </Table.Td>
                     <Table.Td style={{ padding: '10px', border: 'none', boxShadow: 'var(--mantine-shadow-xs)' }}>
                       <Group justify="flex-end" gap={4} wrap="nowrap">
-                        <Tooltip label="View" withArrow>
-                          <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => loanRestructureModal.open({ editName: null, viewName: row.name })}>
-                            <IconEye size={14} />
-                          </ActionIcon>
-                        </Tooltip>
+                        {canReadLoan && (
+                          <Tooltip label="View" withArrow>
+                            <ActionIcon
+                              size="sm"
+                              variant="subtle"
+                              color="slate"
+                              radius="md"
+                              onClick={() =>
+                                loanRestructureModal.open({
+                                  editName: null,
+                                  viewName: row.name,
+                                })
+                              }
+                            >
+                              <IconEye size={14} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
 
                         {canWriteLoan && (
                           <Tooltip label={isDraft ? 'Edit' : 'Only Draft can be edited'} withArrow>
@@ -203,7 +220,7 @@ export function LoanRestructure() {
                           </Tooltip>
                         )}
 
-                        {canWriteLoan && (
+                        {canSubmitLoan && (
                           <Menu shadow="md" width={170} radius="md" position="bottom-end" withArrow disabled={!isDraft || isApproving}>
                             <Menu.Target>
                               <Tooltip label={isDraft ? 'More actions' : 'No actions available'} withArrow>
