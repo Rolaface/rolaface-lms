@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { Paper, Tabs, Text, Button, Skeleton, Menu } from "@mantine/core";
+import { Paper, Tabs, Text, Button, Menu } from "@mantine/core";
 import {
   IconActivity,
   IconBell,
@@ -20,6 +20,7 @@ import { useLoanView } from "../../../hooks/Loan/useLoanView";
 import { useCompanyStore } from "../../../store/companyStore";
 import { formatAmount } from "../../../store/currencyStore";
 import { OverviewField, StatusPill, TenureBar, themeTokens, serif } from "./SharedUI";
+import { LoanDetailSkeleton } from "./LoanDetailSkeleton";
 import {
   RiskSnapshotPanel,
   DocumentStatusPanel,
@@ -76,8 +77,9 @@ export function LoanDetailView({
       />
     );
 
+  // Modern, layout-matching loading state instead of a single generic block.
   if (status.overview && !overview) {
-    return <Skeleton height={400} radius="lg" />;
+    return <LoanDetailSkeleton />;
   }
 
   if (!overview) return <Text>Loan not found.</Text>;

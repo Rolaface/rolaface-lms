@@ -12,14 +12,18 @@ import { KycCompliancePanel } from './sectiontab/KycCompliancePanel';
 import { FinancialLendingPanel } from './sectiontab/FinancialLendingPanel';
 
 export function CustomerProfileView({ borrower }: { borrower: BorrowerProfile }) {
-  const totalFacilities =
-    borrower.loans.length + borrower.investments.length + borrower.savings.length + borrower.fixedDeposits.length;
+  const loans = borrower.loans ?? [];
+  const investments = borrower.investments ?? [];
+  const savings = borrower.savings ?? [];
+  const fixedDeposits = borrower.fixedDeposits ?? [];
+
+  const totalFacilities = loans.length + investments.length + savings.length + fixedDeposits.length;
 
   const activeFacilities =
-    borrower.loans.filter((loan) => loan.status === 'Active').length +
-    borrower.investments.filter((item) => item.status === 'Active').length +
-    borrower.savings.filter((item) => item.status === 'Active').length +
-    borrower.fixedDeposits.filter((item) => item.status === 'Active').length;
+    loans.filter((loan) => loan.status === 'Active').length +
+    investments.filter((item) => item.status === 'Active').length +
+    savings.filter((item) => item.status === 'Active').length +
+    fixedDeposits.filter((item) => item.status === 'Active').length;
 
   const initials = borrower.name
     .split(' ')

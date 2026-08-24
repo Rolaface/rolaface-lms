@@ -12,7 +12,7 @@ const CUSTOMER_ENDPOINTS = {
   create: "TODO_ADD_API_CUSTOMER_CREATE",
   update: "TODO_ADD_API_CUSTOMER_UPDATE",
   delete: "TODO_ADD_API_CUSTOMER_DELETE",
-  getById: "TODO_ADD_API_CUSTOMER_GET_BY_ID",
+   getById: API.customer.getById, 
 };
 
 /* ───────────────── Types — matches the confirmed Postman response exactly ───────────────── */
@@ -51,6 +51,40 @@ export interface GetCustomersParams {
   page?: number;
   page_size?: number;
   customer_type?: string;
+}
+
+export interface CustomerContact {
+  name: string;
+  first_name: string;
+  last_name: string;
+  email_id: string;
+  mobile_no: string;
+  is_primary_contact: 0 | 1;
+  is_billing_contact: 0 | 1;
+}
+
+export interface CustomerDetailRaw {
+  name: string;
+  customer_name: string;
+  customer_type: "Individual" | "Company";
+  customer_group: string;
+  territory: string;
+  email_id: string;
+  mobile_no: string;
+  status: string;
+  gender: string | null;
+  industry: string | null;
+  primary_address: string | null;
+  contacts: CustomerContact[];
+}
+
+interface GetCustomerByIdEnvelope {
+  message: {
+    status_code: number;
+    status: string;
+    message: string;
+    data: CustomerDetailRaw;
+  };
 }
 
 /* ───────────────── GET LIST ───────────────── */
@@ -112,11 +146,11 @@ export async function deleteCustomer(customerId: string): Promise<void> {
   await api.post(CUSTOMER_ENDPOINTS.delete, { name: customerId });
 }
 
-export async function getCustomerById(
-  customerId: string
-): Promise<CustomerRecord | null> {
-  const response: AxiosResponse = await api.get(CUSTOMER_ENDPOINTS.getById, {
-    params: { name: customerId },
-  });
-  return response.data ?? null;
+
+export async function getCustomerById(id: string): Promise<CustomerDetailRaw> {
+  const response: AxiosResponse<GetCustomerByIdEnvelope> = await api.get(
+    CUSTOMER_ENDPOINTS.getById,
+    { params: { id } }
+  );
+  return response.data.message.data;
 }
