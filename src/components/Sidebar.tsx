@@ -112,7 +112,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/operations/repayment", label: "Loan Repayment", icon: IconCash, modules: ["Loan Repayment"] },
       { path: "/operations/waiver", label: "Loan Waiver", icon: IconDiscount2 },
       { path: "/operations/capitalization", label: "Loan Capitalization", icon: IconFileText },
-      { path: "/operations/restructure", label: "Loan Restructure", icon: IconSettings },
+      { path: "/operations/restructure", label: "Loan Restructure", icon: IconSettings, modules: ["Loan Restructure"] },
       { path: "/operations/writeoff", label: "Loan Write-Off", icon: IconFileText },
       { path: "/operations/transfer", label: "Loan Transfer", icon: IconBuildingBank },
     ],
