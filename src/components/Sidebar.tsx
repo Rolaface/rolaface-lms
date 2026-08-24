@@ -38,6 +38,10 @@ import {
 } from "@tabler/icons-react";
 
 import { usePermission } from "../hooks/Usepermission";
+import { useUserStore } from "../store/userStore";
+import { logoutUser } from "../api/authApi";
+import { openCommonModal } from "./Modal/AlertModal";
+import { parseFrappeError } from "../utils/parseFrappeError";
 import type { LmsModule } from "../types/User/userRole";
 
 
@@ -437,11 +441,56 @@ export function Sidebar({
     getInitialOpenMenus(pathname)
   );
 
- const { canAccessAnyOf, isAdmin, permissions } = usePermission();
+  const { canAccessAnyOf, isAdmin, permissions } = usePermission();
 const visibleNavItems = React.useMemo(
   () => filterNavItems(LOCAL_NAV_ITEMS, canAccessAnyOf),
   [canAccessAnyOf, isAdmin, permissions]
 );
+
+const user = useUserStore((s) => s.user);
+const clearUser = useUserStore((s) => s.clearUser);
+const [loggingOut, setLoggingOut] = React.useState(false);
+
+const displayName =
+  [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+  user?.userId ||
+  "User";
+const initial = (user?.firstName?.[0] || user?.userId?.[0] || "U").toUpperCase();
+const roleLabel = isAdmin ? "ADMINISTRATOR" : (user?.roles?.[0]?.toUpperCase() || "USER");
+
+const performLogout = async () => {
+  if (loggingOut) return;
+  setLoggingOut(true);
+  try {
+    await logoutUser();
+    localStorage.clear();
+    clearUser();
+    window.location.href = `${import.meta.env.VITE_ERP_URL}/login`;
+  } catch (err: any) {
+    openCommonModal({
+      heading: "Sign Out Failed",
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(err),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  } finally {
+    setLoggingOut(false);
+  }
+};
+
+const handleLogoutClick = () => {
+  openCommonModal({
+    heading: "Sign Out",
+    subtitle: "Are you sure you want to sign out?",
+    body: "You will need to sign in again to access your account.",
+    color: "blue",
+    buttons: [
+      { label: "Cancel", variant: "default" },
+      { label: "Sign Out", color: "blue", onClick: () => performLogout() },
+    ],
+  });
+};
 
   const toggleMenu = (key: string, depth: number) => {
     setOpenMenus((prev) => {
@@ -676,18 +725,18 @@ const visibleNavItems = React.useMemo(
                 background: `linear-gradient(135deg, var(--mantine-color-brand-4), var(--mantine-color-brand-7))`,
               }}
             >
-              <Avatar color="brand" radius="xl" size={isCollapsed ? "sm" : "md"} style={{ border: `2px solid ${tk.surface}` }}>
-                A
+                           <Avatar color="brand" radius="xl" size={isCollapsed ? "sm" : "md"} style={{ border: `2px solid ${tk.surface}` }}>
+                {initial}
               </Avatar>
             </Box>
 
             {!isCollapsed && (
               <Box className="min-w-0">
                 <Text size="sm" fw={700} style={{ color: tk.textHeading, lineHeight: 1.2 }} truncate>
-                  Administrator
+                  {displayName}
                 </Text>
                 <Text size="xs" style={{ color: tk.textMuted, letterSpacing: "0.03em", marginTop: 2 }}>
-                  ADMINISTRATOR
+                  {roleLabel}
                 </Text>
               </Box>
             )}
@@ -699,7 +748,9 @@ const visibleNavItems = React.useMemo(
                 variant="subtle"
                 radius="md"
                 className="lms-focusable shrink-0"
-                onClick={onLogout}
+                onClick={handleLogoutClick}
+                loading={loggingOut}
+                disabled={loggingOut}
                 style={{ color: tk.iconDefault }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "var(--mantine-color-danger-6)")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = tk.iconDefault)}

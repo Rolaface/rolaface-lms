@@ -3,6 +3,7 @@ import { getCompanyInfo, getLoginUser } from "../../api/erpDataApi";
 import { useCompanyStore } from "../../store/companyStore";
 import { ensureCurrencies } from "../../store/currencyStore";
 import { usePermissionStore } from "../../store/Permissionstore";
+import { useUserStore } from "../../store/userStore";
 import type { PermissionEntry } from "../../types/User/userRole";
 
 export function useBootstrapFromERP() {
@@ -13,10 +14,14 @@ export function useBootstrapFromERP() {
   const setLoading        = usePermissionStore((s) => s.setLoading);
   const clearPermissions  = usePermissionStore((s) => s.clearPermissions);
 
+  const setUser   = useUserStore((s) => s.setUser);
+  const clearUser = useUserStore((s) => s.clearUser);
+
   useEffect(() => {
     const sid = localStorage.getItem("session_id");
     if (!sid) {
       clearPermissions();
+      clearUser();
       return;
     }
 
@@ -26,6 +31,7 @@ export function useBootstrapFromERP() {
 
         if (userData) {
           localStorage.setItem("auth_user", JSON.stringify(userData));
+          setUser(userData);
 
           const roles: string[] = Array.isArray(userData.roles) ? userData.roles : [];
           const permission: PermissionEntry[] = Array.isArray(userData.permission)
@@ -64,6 +70,6 @@ export function useBootstrapFromERP() {
       }
     };
 
-    bootstrap();
-  }, [setCompany, setPermissions, setAdmin, setLoading, clearPermissions]);
+       bootstrap();
+  }, [setCompany, setPermissions, setAdmin, setLoading, clearPermissions, setUser, clearUser]);
 }
