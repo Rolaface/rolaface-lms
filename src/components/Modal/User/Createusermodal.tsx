@@ -270,6 +270,7 @@ export function CreateUserModal({ opened, onClose, onMinimize, editId, isView, i
                 <Grid.Col span={colSpan}>
                   <TextInput
                     label="Email"
+                    withAsterisk
                     value={form.email}
                     onChange={(e) => handleFieldChange("email", e.currentTarget.value)}
                     error={errors.email}
@@ -279,6 +280,7 @@ export function CreateUserModal({ opened, onClose, onMinimize, editId, isView, i
                 <Grid.Col span={colSpan}>
                   <TextInput
                     label="Username"
+                    withAsterisk
                     value={form.username}
                     onChange={(e) => handleFieldChange("username", e.currentTarget.value)}
                     error={errors.username}
@@ -335,6 +337,7 @@ export function CreateUserModal({ opened, onClose, onMinimize, editId, isView, i
                 <Grid.Col span={colSpan}>
                   <TextInput
                     label="First Name"
+                    withAsterisk
                     placeholder="First name"
                     value={form.firstName}
                     onChange={(e) => handleFieldChange("firstName", e.currentTarget.value)}
