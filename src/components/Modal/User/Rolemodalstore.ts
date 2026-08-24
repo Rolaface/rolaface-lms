@@ -1,40 +1,39 @@
-import { create } from "zustand";
-import type { UserRoleFormData } from "../../../types/User/userRole";
+import { IconShieldCheck } from '@tabler/icons-react';
+import { createModal } from '../../../store/modal store/createModal';
+import { AssignUserRoleModal } from './Assignuserrolemodal';
+import type { UserRoleFormData } from '../../../types/User/userRole';
 
-interface RoleModalOpenOptions {
+export interface RoleModalParams {
   editId?: string | null;
   isView?: boolean;
   initialData?: UserRoleFormData | null;
 }
 
-interface RoleModalStoreState extends RoleModalOpenOptions {
+interface RoleModalProps {
   opened: boolean;
+  onClose: () => void;
+  onMinimize: () => void;
+  editId?: string | null;
+  isView?: boolean;
+  initialData?: UserRoleFormData | null;
 }
 
-const useRoleModalStore = create<RoleModalStoreState>(() => ({
-  opened: false,
-  editId: null,
-  isView: false,
-  initialData: null,
-}));
+function getTitle(params: RoleModalParams) {
+  if (params.isView) return 'View Role';
+  if (params.editId) return 'Edit Role';
+  return 'Add Role';
+}
 
-
-export const roleModal = {
-  open: (opts: RoleModalOpenOptions = {}) =>
-    useRoleModalStore.setState({
-      opened: true,
-      editId: opts.editId ?? null,
-      isView: opts.isView ?? false,
-      initialData: opts.initialData ?? null,
+export const roleModal = createModal<RoleModalParams, RoleModalProps>(
+  'role-form',
+  AssignUserRoleModal,
+  {
+    icon: IconShieldCheck,
+    getTitle,
+    buildProps: (params) => ({
+      editId: params.editId,
+      isView: params.isView,
+      initialData: params.initialData,
     }),
-  close: () =>
-    useRoleModalStore.setState({
-      opened: false,
-      editId: null,
-      isView: false,
-      initialData: null,
-    }),
-};
-
-
-export const useRoleModal = () => useRoleModalStore();
+  },
+);

@@ -5,7 +5,6 @@ import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, createCo
 import { useUserRoleList } from '../../hooks/user/useUserRoleList';
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { roleModal } from '../../components/Modal/User/Rolemodalstore';
-import { AssignUserRoleModal } from '../../components/Modal/User/Assignuserrolemodal';
 import { StatusBadge } from '../Customer/CustomerTableCells';
 
 interface RoleRow {
@@ -145,7 +144,7 @@ export function RoleManagement() {
           />
           <Group gap="xs" ml="auto">
             <Button
-              size="sm" radius="xl" color="brand" onClick={() => roleModal.open()}
+               size="sm" radius="xl" color="brand" onClick={() => roleModal.open({})}
               leftSection={<IconPlus size={14} />}
               style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
             >
@@ -253,7 +252,6 @@ export function RoleManagement() {
         </Group>
       </Paper>
 
-      <AssignUserRoleModal />
     </Stack>
   );
 }
