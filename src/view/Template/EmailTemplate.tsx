@@ -14,6 +14,7 @@ import {
   Stack,
   Menu,
   Select,
+  Loader,
   useMantineTheme,
 } from "@mantine/core";
 import {
@@ -37,15 +38,18 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { openCommonModal } from "../../components/Modal/AlertModal";
 import { usePermission } from "../../hooks/Usepermission";
 import { emailTemplateModal } from "../../components/Modal/EmailTemplate/emailTemplateModalStore";
 import type { EmailTemplateForm } from "../../components/Modal/EmailTemplate/EmailTemplateModal";
+import { parseFrappeError } from "../../utils/parseFrappeError";
 
-// ─────────────────────────────────────────────
-// Local row type
-// (id is a client-side key only — no backend yet)
-// ─────────────────────────────────────────────
+import {
+  deleteEmailTemplate,
+  getAllEmailTemplates,
+  getEmailTemplateById,
+} from "../../api/emailTemplateApi"; 
 
 interface EmailTemplateRow extends EmailTemplateForm {
   id: string;
@@ -68,6 +72,7 @@ const ET_MODULE = "Email Template";
 
 export function EmailTemplate() {
   const theme = useMantineTheme();
+  const queryClient = useQueryClient();
 
   const { can } = usePermission();
   const canCreateTemplate = can(ET_MODULE, "create");
@@ -81,8 +86,23 @@ export function EmailTemplate() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // ── Local in-memory list (no backend for now) ──
-  const [templates, setTemplates] = useState<EmailTemplateRow[]>([]);
+  // ─── API Queries & Mutations ──────────────────────────────────────────────
+
+  const { data: response, isLoading, isFetching } = useQuery({
+    queryKey: ["emailTemplates"],
+    queryFn: () => getAllEmailTemplates(),
+  });
+
+  const templates = useMemo<EmailTemplateRow[]>(() => {
+    if (response?.data) {
+      return response.data.map((item: any) => ({
+        ...item,
+        message: item.message || item.response || "",
+        id: item.name, 
+      }));
+    }
+    return [];
+  }, [response]);
 
   const showSuccess = (heading: string, body: string) => {
     openCommonModal({
@@ -94,10 +114,24 @@ export function EmailTemplate() {
     });
   };
 
-  const removeTemplate = (id: string) => {
-    setTemplates((prev) => prev.filter((t) => t.id !== id));
-    showSuccess("Email Template Deleted", `Email Template "${id}" deleted successfully.`);
+  const showError = (error: any) => {
+    openCommonModal({
+      heading: "Action Failed",
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
   };
+
+  const { mutate: removeTemplate, isPending: isDeleting } = useMutation({
+    mutationFn: (id: string) => deleteEmailTemplate(id),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
+      showSuccess("Email Template Deleted", `Email Template "${variables}" deleted successfully.`);
+    },
+    onError: showError,
+  });
 
   const confirmDelete = (id: string) => {
     openCommonModal({
@@ -126,15 +160,15 @@ export function EmailTemplate() {
 
   const [sorting, setSorting] = useState([{ id: "name", desc: false }]);
 
-  // ── Client-side search + pagination over the local list ──
+  // ── Client-side search + pagination over fetched data ──
 
   const filteredTemplates = useMemo(() => {
     const term = debouncedSearch.trim().toLowerCase();
     if (!term) return templates;
     return templates.filter(
       (t) =>
-        t.name.toLowerCase().includes(term) ||
-        t.subject.toLowerCase().includes(term),
+        (t.name && t.name.toLowerCase().includes(term)) ||
+        (t.subject && t.subject.toLowerCase().includes(term)),
     );
   }, [templates, debouncedSearch]);
 
@@ -148,37 +182,56 @@ export function EmailTemplate() {
     return filteredTemplates.slice(start, start + pageSize);
   }, [filteredTemplates, page, pageSize]);
 
-  // ── Modal handlers ──
-
-  const handleAddClick = () => {
+ const handleAddClick = () => {
     emailTemplateModal.open({
-      onSaved: (form) => {
-        const id = form.name || `template-${Date.now()}`;
-        setTemplates((prev) => [...prev, { ...form, id }]);
+      onSaved: () => { // Changed back to onSaved
+        queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
         showSuccess("Email Template Created", "Email template created successfully.");
       },
     });
   };
 
-  const handleView = (row: EmailTemplateRow) => {
-    emailTemplateModal.open({
-      initialData: { name: row.name, subject: row.subject, message: row.message },
-      isView: true,
-    });
+ const handleView = async (row: EmailTemplateRow) => {
+    try {
+      // 1. Fetch full data before opening
+      const response = await getEmailTemplateById(row.id);
+      const fullData = response?.data || {};
+
+       emailTemplateModal.open({
+        initialData: { 
+          name: fullData.name || row.name || "", 
+          subject: fullData.subject || row.subject || "", 
+          response: (fullData.response || fullData.message || row.response || "") as string
+        },
+        isView: true,
+      });
+    } catch (error) {
+      showError(error);
+    }
   };
 
-  const handleEdit = (row: EmailTemplateRow) => {
-    emailTemplateModal.open({
-      initialData: { name: row.name, subject: row.subject, message: row.message },
-      onSaved: (form) => {
-        setTemplates((prev) =>
-          prev.map((t) => (t.id === row.id ? { ...t, ...form } : t)),
-        );
-        showSuccess("Email Template Updated", "Email template updated successfully.");
-      },
-    });
-  };
+  const handleEdit = async (row: EmailTemplateRow) => {
+    try {
+      // 1. Fetch full data before opening
+      const response = await getEmailTemplateById(row.id);
+      const fullData = response?.data || {};
 
+      // 2. Open modal with the fetched data mapped safely
+      emailTemplateModal.open({
+        initialData: { 
+          name: fullData.name || row.name || "", 
+          subject: fullData.subject || row.subject || "", 
+          response: (fullData.response || fullData.message || row.response || "") as string
+        },
+        onSaved: () => { 
+          queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
+          showSuccess("Email Template Updated", "Email Template updated successfully.");
+        },
+      });
+    } catch (error) {
+      showError(error);
+    }
+  };
   const columns = useMemo(
     () => [
       columnHelper.accessor("name", {
@@ -221,7 +274,10 @@ export function EmailTemplate() {
                     variant="subtle"
                     color="slate"
                     radius="md"
-                    onClick={() => handleView(rowData)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleView(rowData);
+                    }}
                   >
                     <IconEye size={14} />
                   </ActionIcon>
@@ -235,7 +291,10 @@ export function EmailTemplate() {
                     variant="subtle"
                     color="brand"
                     radius="md"
-                    onClick={() => handleEdit(rowData)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(rowData);
+                    }}
                   >
                     <IconPencil size={14} />
                   </ActionIcon>
@@ -243,34 +302,28 @@ export function EmailTemplate() {
               )}
 
               {canDeleteTemplate && (
-                <Menu shadow="md" width={140} position="bottom-end" radius="md">
-                  <Menu.Target>
-                    <ActionIcon
-                      size="sm"
-                      variant="subtle"
-                      color="slate"
-                      radius="md"
-                    >
-                      <IconDotsVertical size={14} />
-                    </ActionIcon>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Item
-                      color="danger"
-                      leftSection={<IconTrash size={14} />}
-                      onClick={() => confirmDelete(rowData.id)}
-                    >
-                      Delete
-                    </Menu.Item>
-                  </Menu.Dropdown>
-                </Menu>
+                <Tooltip label="Delete" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="danger" // Makes the icon red like your image
+                    radius="md"
+                    disabled={isDeleting}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      confirmDelete(rowData.id);
+                    }}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Tooltip>
               )}
             </Group>
           );
         },
       }),
     ],
-    [canReadTemplate, canWriteTemplate, canDeleteTemplate],
+    [canReadTemplate, canWriteTemplate, canDeleteTemplate, isDeleting],
   );
 
   const table = useReactTable({
@@ -394,151 +447,161 @@ export function EmailTemplate() {
           border: "1px solid var(--mantine-color-slate-2)",
         }}
       >
-        <Box
-          style={{
-            height: "clamp(320px, calc(100vh - 280px), 720px)",
-            overflowY: "auto",
-          }}
-        >
-          <Table
-            verticalSpacing="sm"
-            horizontalSpacing="sm"
-            fz="xs"
-            w="100%"
-            style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
-          >
-            <Table.Thead>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <Table.Tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    const canSort = header.column.getCanSort();
-                    return (
-                      <Table.Th
-                        key={header.id}
-                        className="et-thead-cell"
-                        c="slate.5"
-                        fw={700}
-                        style={{
-                          fontSize: "var(--mantine-font-size-xs)",
-                          padding: "0 10px 6px",
-                          userSelect: "none",
-                          cursor: canSort ? "pointer" : "default",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.04em",
-                          border: "none",
-                        }}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        <Group
-                          gap="xs"
-                          wrap="nowrap"
-                          justify={
-                            header.id === "actions" ? "flex-end" : "flex-start"
-                          }
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                          {canSort && (
-                            <SortIcon sorted={header.column.getIsSorted()} />
-                          )}
-                        </Group>
-                      </Table.Th>
-                    );
-                  })}
-                </Table.Tr>
-              ))}
-            </Table.Thead>
-            <Table.Tbody>
-              {rows.length === 0 ? (
-                <Table.Tr>
-                  <Table.Td colSpan={columns.length} style={{ border: "none" }}>
-                    <Stack align="center" gap="xs" py="xl">
-                      <Box
-                        style={{
-                          width: 52,
-                          height: 52,
-                          borderRadius: "50%",
-                          background: "var(--mantine-color-white)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          border: "1px solid var(--mantine-color-slate-2)",
-                        }}
-                      >
-                        <IconFileText size={24} color="var(--mantine-color-slate-4)" />
-                      </Box>
-                      <Text ta="center" c="slate.5" fz="xs">
-                        No email templates match your search.
-                      </Text>
-                    </Stack>
-                  </Table.Td>
-                </Table.Tr>
-              ) : (
-                rows.map((row) => (
-                  <Table.Tr
-                    key={row.id}
-                    className="et-row"
-                    onDoubleClick={() => handleView(row.original)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    {row.getVisibleCells().map((cell, idx) => (
-                      <Table.Td
-                        key={cell.id}
-                        style={{
-                          padding: "10px 10px",
-                          border: "none",
-                          boxShadow: "var(--mantine-shadow-xs)",
-                          borderLeft:
-                            idx === 0
-                              ? `3px solid var(--mantine-color-brand-4)`
-                              : undefined,
-                        }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        {isLoading ? (
+          <Group justify="center" py="xl">
+            <Loader size="sm" color="brand" />
+          </Group>
+        ) : (
+          <>
+            <Box
+              style={{
+                height: "clamp(320px, calc(100vh - 280px), 720px)",
+                overflowY: "auto",
+                opacity: isFetching ? 0.6 : 1,
+                transition: "opacity 120ms ease",
+              }}
+            >
+              <Table
+                verticalSpacing="sm"
+                horizontalSpacing="sm"
+                fz="xs"
+                w="100%"
+                style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+              >
+                <Table.Thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <Table.Tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        const canSort = header.column.getCanSort();
+                        return (
+                          <Table.Th
+                            key={header.id}
+                            className="et-thead-cell"
+                            c="slate.5"
+                            fw={700}
+                            style={{
+                              fontSize: "var(--mantine-font-size-xs)",
+                              padding: "0 10px 6px",
+                              userSelect: "none",
+                              cursor: canSort ? "pointer" : "default",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                              border: "none",
+                            }}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            <Group
+                              gap="xs"
+                              wrap="nowrap"
+                              justify={
+                                header.id === "actions" ? "flex-end" : "flex-start"
+                              }
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                              {canSort && (
+                                <SortIcon sorted={header.column.getIsSorted()} />
+                              )}
+                            </Group>
+                          </Table.Th>
+                        );
+                      })}
+                    </Table.Tr>
+                  ))}
+                </Table.Thead>
+                <Table.Tbody>
+                  {rows.length === 0 ? (
+                    <Table.Tr>
+                      <Table.Td colSpan={columns.length} style={{ border: "none" }}>
+                        <Stack align="center" gap="xs" py="xl">
+                          <Box
+                            style={{
+                              width: 52,
+                              height: 52,
+                              borderRadius: "50%",
+                              background: "var(--mantine-color-white)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              border: "1px solid var(--mantine-color-slate-2)",
+                            }}
+                          >
+                            <IconFileText size={24} color="var(--mantine-color-slate-4)" />
+                          </Box>
+                          <Text ta="center" c="slate.5" fz="xs">
+                            No email templates match your search.
+                          </Text>
+                        </Stack>
                       </Table.Td>
-                    ))}
-                  </Table.Tr>
-                ))
-              )}
-            </Table.Tbody>
-          </Table>
-        </Box>
+                    </Table.Tr>
+                  ) : (
+                    rows.map((row) => (
+                      <Table.Tr
+                        key={row.id}
+                        className="et-row"
+                        onDoubleClick={() => handleView(row.original)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        {row.getVisibleCells().map((cell, idx) => (
+                          <Table.Td
+                            key={cell.id}
+                            style={{
+                              padding: "10px 10px",
+                              border: "none",
+                              boxShadow: "var(--mantine-shadow-xs)",
+                              borderLeft:
+                                idx === 0
+                                  ? `3px solid var(--mantine-color-brand-4)`
+                                  : undefined,
+                            }}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </Table.Td>
+                        ))}
+                      </Table.Tr>
+                    ))
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Box>
 
-        <Group justify="space-between" px="sm" pt="xs">
-          <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
-            <span>
-              {totalRows === 0
-                ? "Showing 0 of 0"
-                : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-            </span>
-            <Group gap="xs">
-              <span>Rows:</span>
-              <Select
-                data={["10", "20", "50"]}
-                value={String(pageSize)}
-                onChange={(v) => {
-                  setPageSize(Number(v) || 10);
-                  setPage(1);
-                }}
-                rightSection={chevronDown}
+            <Group justify="space-between" px="sm" pt="xs">
+              <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
+                <span>
+                  {totalRows === 0
+                    ? "Showing 0 of 0"
+                    : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+                </span>
+                <Group gap="xs">
+                  <span>Rows:</span>
+                  <Select
+                    data={["10", "20", "50"]}
+                    value={String(pageSize)}
+                    onChange={(v) => {
+                      setPageSize(Number(v) || 10);
+                      setPage(1);
+                    }}
+                    rightSection={chevronDown}
+                    size="xs"
+                    radius="xl"
+                    w={60}
+                  />
+                </Group>
+              </Group>
+              <Pagination
+                total={totalPages}
+                value={page}
+                onChange={(p) => setPage(p)}
+                color="brand"
                 size="xs"
                 radius="xl"
-                w={60}
+                disabled={totalRows === 0}
               />
             </Group>
-          </Group>
-          <Pagination
-            total={totalPages}
-            value={page}
-            onChange={(p) => setPage(p)}
-            color="brand"
-            size="xs"
-            radius="xl"
-            disabled={totalRows === 0}
-          />
-        </Group>
+          </>
+        )}
       </Paper>
     </Stack>
   );

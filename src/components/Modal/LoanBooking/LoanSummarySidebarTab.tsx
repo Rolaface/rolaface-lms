@@ -144,10 +144,13 @@ export function LoanSummarySidebar({
             <Stack gap={2}> {/* was 4 */}
               <SummaryRow
                 label="Total Interest"
+                // value={
+                //   totalInterest
+                //     ? ` ${currencySymbol} ${totalInterest}`
+                //     : "—"
+                // }
                 value={
-                  totalInterest
-                    ? ` ${currencySymbol} ${totalInterest}`
-                    : "—"
+                 "—"
                 }
               />
               <div style={{ paddingBottom: 0 }}>
