@@ -261,6 +261,15 @@ loanStatement: {
   // =========================
   loanApproval: {},
 
+   // =========================
+  // EMAIL TEMPLATE
+  // =========================
+  emailTemplate: {
+    base: `${ERP_BASE}/api/resource/Email Template`,
+    // update: `${ERP_BASE}/api.erp.lms.rolaface.com/api/resource/Email Template`,
+    // getById: `${ERP_BASE}/api.erp.lms.rolaface.com/api/resource/Email Template`,
+   },
+
   // =========================
   // LOAN DISBURSEMENT
   // =========================

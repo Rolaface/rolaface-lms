@@ -180,7 +180,7 @@ function serializeToStorageHTML(html: string): string {
 }
 
 function parseStoredHTML(html: string): string {
-  // invoice_table first (may be wrapped in <p>)
+ if (!html) return "";
   let result = html.replace(
     /(<p[^>]*>)?\s*\{\{\s*invoice_table\s*\}\}\s*(<\/p>)?/g,
     "<div data-invoice-table=\"true\"></div>",

@@ -14,3 +14,4 @@ import '../../components/Modal/loanRepaymentModalStore'
 import "../../view/Operations/LoanWaiver/LoanWaiverModalStore"
 import "../../components/Modal/customer/CustomerModalStore";
 import '../../components/Modal/User/Usermodalstore';
+import "../../components/Modal/EmailTemplate/emailTemplateModalStore";
