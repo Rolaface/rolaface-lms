@@ -38,14 +38,15 @@ export function CreateLoanBookingModal({
     label: `${p.product_name} (${p.product_code})`,
   }));
 
-  useEffect(() => {
-    if (!opened) setSelectedProduct(null);
-  }, [opened]);
+  const handleModalClose = () => {
+    setSelectedProduct(null);
+    onClose();
+  };
 
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleModalClose}
       centered
       withCloseButton={false}
       size="md"

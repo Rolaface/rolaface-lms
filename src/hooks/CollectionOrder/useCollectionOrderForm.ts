@@ -36,12 +36,14 @@ export function useCollectionOrderForm({ opened, mode, data, onSaved, onClose }:
 
   const isNameEditable = mode === 'add';
 
-  useEffect(() => {
-    if (!opened) return;
+  const resetForm = () => {
+    setSequenceName('');
+    setComponents(DEFAULT_COMPONENTS);
+  };
 
+  useEffect(() => {
     if (mode === 'add') {
-      setSequenceName('');
-      setComponents(DEFAULT_COMPONENTS);
+      resetForm();
       return;
     }
 
@@ -72,7 +74,7 @@ export function useCollectionOrderForm({ opened, mode, data, onSaved, onClose }:
         if (currentRequest !== requestId.current) return;
         setLoadingDetail(false);
       });
-  }, [opened, mode, data]);
+  }, [mode, data]);
 
   const reorder = (from: number, to: number) => {
     setComponents((prev) => {
@@ -116,5 +118,5 @@ export function useCollectionOrderForm({ opened, mode, data, onSaved, onClose }:
     }
   };
 
-  return { sequenceName, setSequenceName, components, reorder, loadingDetail, isSaving, handleSave, isNameEditable };
+  return { sequenceName, setSequenceName, components, reorder, loadingDetail, isSaving, handleSave, isNameEditable, resetForm };
 }

@@ -52,15 +52,19 @@ export function AddLoanCategoryModal({
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (opened) {
-      if (editId && initialData) {
-        setForm(initialData);
-      } else {
-        setForm(initialState);
-      }
-      setErrors({});
+    if (editId && initialData) {
+      setForm(initialData);
+    } else if (!editId) {
+      setForm(initialState);
     }
-  }, [opened, editId, initialData]);
+    setErrors({});
+  }, [editId, initialData]);
+
+  const handleModalClose = () => {
+    setForm(initialState);
+    setErrors({});
+    onClose();
+  };
 
   const handleChange = (field: keyof LoanCategoryFormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));

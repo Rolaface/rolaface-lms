@@ -220,7 +220,6 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
 
   // Load record for edit/view
   useEffect(() => {
-    if (!opened) { resetAll(); return; }
     const name = editName || viewName;
     if (!name) return;
 
@@ -271,7 +270,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
         setIsLoadingRecord(false);
       }
     })();
-  }, [opened, editName, viewName]);
+  }, [editName, viewName]);
 
   // new
   const handleTopupAmountChange = (value: number | "") => {

@@ -17,15 +17,15 @@ export function LoanProvisionModal({ opened, onClose, mode = 'add', data = null 
     rate: ''
   });
 
-  // Update form when modal opens or data changes
+  // Update form when data changes
   useEffect(() => {
-    if (opened && data) {
+    if (data) {
       setFormData({
         classificationCode: data.classificationCode || '',
         securityType: data.securityType || 'Secured',
         rate: data.rate || ''
       });
-    } else if (opened && mode === 'add') {
+    } else if (mode === 'add') {
       // Reset form for adding
       setFormData({
         classificationCode: '',
@@ -33,12 +33,21 @@ export function LoanProvisionModal({ opened, onClose, mode = 'add', data = null 
         rate: ''
       });
     }
-  }, [opened, data, mode]);
+  }, [data, mode]);
+
+  const handleModalClose = () => {
+    setFormData({
+      classificationCode: '',
+      securityType: 'Secured',
+      rate: ''
+    });
+    onClose();
+  };
 
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleModalClose}
       title={title}
       size="lg"
       radius="md"
@@ -83,7 +92,7 @@ export function LoanProvisionModal({ opened, onClose, mode = 'add', data = null 
 
       {/* Footer Actions */}
       <Group justify="flex-end" mt="xl" pt="md" className="border-t border-gray-100">
-        <Button variant="default" onClick={onClose} size="sm">
+        <Button variant="default" onClick={handleModalClose} size="sm">
           {isView ? 'Close' : 'Cancel'}
         </Button>
         {!isView && (
@@ -91,7 +100,7 @@ export function LoanProvisionModal({ opened, onClose, mode = 'add', data = null 
             size="sm" 
             bg="indigoAlt.4"
             className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-            onClick={onClose}
+            onClick={handleModalClose}
           >
             Save
           </Button>

@@ -99,7 +99,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
   };
 
   useEffect(() => {
-    if (!opened) return;
+    
 
     let active = true;
     setAccountsLoading(true);
@@ -118,10 +118,10 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
     return () => {
       active = false;
     };
-  }, [opened, accountSearch]);
+  }, [accountSearch]);
 
   useEffect(() => {
-    if (!opened) return;
+    
 
     let active = true;
     setLoanAccountsLoading(true);
@@ -140,11 +140,9 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
     return () => {
       active = false;
     };
-  }, [opened, loanAcSearch]);
+  }, [loanAcSearch]);
 
   useEffect(() => {
-    if (!opened) return;
-
     if (editData) {
       setLoanAc(editData.loan);
       setValueDate(editData.value_date);
@@ -159,7 +157,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
       setWriteOffAccount(null);
       setErrors({});
     }
-  }, [editData, opened]);
+  }, [editData]);
 
   useEffect(() => {
     if (editData && loanAccountOptions.length > 0) {
@@ -212,6 +210,11 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
     setErrors({});
   };
 
+  const handleModalClose = () => {
+    handleReset();
+    handleModalClose();
+  };
+
   const validate = () => {
     const next: Record<string, string> = {};
     if (!loanAc) next.loanAc = 'Loan A/c is required';
@@ -247,7 +250,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
         writeOffAmount,
         writeOffAccount,
       });
-      onClose();
+      handleModalClose();
     },
     onError: (err) => showError(isEdit ? 'Update Failed' : 'Create Failed', err),
   });
@@ -271,7 +274,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleModalClose}
       size="1000px"
       padding={0}
       lockScroll
@@ -320,7 +323,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
               color="white"
               radius="xl"
               size="md"
-              onClick={onClose}
+              onClick={handleModalClose}
               aria-label="Close"
             >
               <IconX size={16} color="white" />
@@ -498,7 +501,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
         <ModalFooter
           variant="theme"
           isViewMode={isView}
-          onClose={onClose}
+          onClose={handleModalClose}
           onSubmit={handleSubmit}
           submitLabel={isEdit ? 'Update' : 'Save'}
           submitLoading={saveWriteOffMutation.isPending}

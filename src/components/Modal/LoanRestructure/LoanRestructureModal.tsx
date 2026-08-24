@@ -82,12 +82,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
   const [activeTab, setActiveTab] = useState<CenterTab>("DETAILS");
   const [borrowerPanelCollapsed, setBorrowerPanelCollapsed] = useState(false);
 
-  useEffect(() => {
-    if (opened) {
-      setActiveTab("DETAILS");
-      setBorrowerPanelCollapsed(false);
-    }
-  }, [opened]);
+
 
   useEffect(() => {
     if (selectedLoanId) {

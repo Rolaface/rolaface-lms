@@ -61,12 +61,8 @@ export function AssignUserRoleModal() {
     },
   });
 
-  useEffect(() => {
-    if (!opened) handleReset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened]);
-
   const handleClose = () => {
+    handleReset();
     roleModal.close();
   };
 

@@ -137,21 +137,21 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
   const { data: incomeAccountsData } = useQuery({
     queryKey: ["accounts", "Income"],
     queryFn: () => getAllIncomeAccounts(),
-    enabled: opened,
+    
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: principalAccountsData } = useQuery({
     queryKey: ["accounts", "Asset,Liability"],
     queryFn: () => getAllPrincipalAccounts(),
-    enabled: opened,
+    
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: allAccountsData } = useQuery({
     queryKey: ["accounts", "all"],
     queryFn: () => getAllIPAccounts(),
-    enabled: opened,
+    
     staleTime: 5 * 60 * 1000,
   });
 
@@ -163,8 +163,8 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
   const { data: existingProductData, isLoading: isFetchingProduct } = useQuery({
     queryKey: ["loanProduct", loanProductId],
     queryFn: async () => await getLoanProductById(loanProductId as string),
-    enabled: !!loanProductId && opened === true,
-    refetchOnMount: "always",
+    enabled: !!loanProductId,
+    refetchOnMount: false,
   });
 
   useEffect(() => {

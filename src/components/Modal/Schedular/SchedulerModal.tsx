@@ -58,12 +58,9 @@ export function SchedulerModal({
     const [values, setValues] = useState<SchedulerFormValues>(initialData ?? DEFAULT_VALUES);
     const [saving, setSaving] = useState(false);
 
-    // ── Reset the form whenever the modal opens ──
     useEffect(() => {
-        if (opened) {
-            setValues(initialData ?? DEFAULT_VALUES);
-        }
-    }, [opened, initialData]);
+        setValues(initialData ?? DEFAULT_VALUES);
+    }, [initialData]);
 
     const handleChange = useCallback(
         (field: keyof SchedulerFormValues, value: string | boolean) => {
@@ -75,6 +72,11 @@ export function SchedulerModal({
     const handleReset = useCallback(() => {
         setValues(initialData ?? DEFAULT_VALUES);
     }, [initialData]);
+
+    const handleModalClose = useCallback(() => {
+        handleReset();
+        onClose();
+    }, [handleReset, onClose]);
 
 
     const handleSubmit = useCallback(() => {
@@ -108,7 +110,7 @@ export function SchedulerModal({
     return (
         <Modal
             opened={opened}
-            onClose={onClose}
+            onClose={handleModalClose}
             size="560px"
             padding={0}
             lockScroll
@@ -157,7 +159,7 @@ export function SchedulerModal({
                             color="white"
                             radius="xl"
                             size="md"
-                            onClick={onClose}
+                            onClick={handleModalClose}
                             aria-label="Close"
                         >
                             <IconX size={16} color="white" />
@@ -218,7 +220,7 @@ export function SchedulerModal({
                     )}
 
                     <Group gap="xs">
-                        <Button variant="default" radius="xl" onClick={onClose}>
+                        <Button variant="default" radius="xl" onClick={handleModalClose}>
                             {isView ? "Close" : "Cancel"}
                         </Button>
                         {!isView && (

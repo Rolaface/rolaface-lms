@@ -99,7 +99,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
   });
 
   useEffect(() => {
-    if (opened && editId && editDetailsResponse) {
+    if (editId && editDetailsResponse) {
       const item = editDetailsResponse.message?.data || editDetailsResponse.message || editDetailsResponse;
 
       setSelectedBorrower({
@@ -121,11 +121,11 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
       if (item.repayment_type === "Interest Waiver") setWaivedInterest(item.amount_paid ?? "");
       else if (item.repayment_type === "Penalty Waiver") setWaivedPenalty(item.amount_paid ?? "");
       else if (item.repayment_type === "Charges Waiver") setWaivedFee(item.amount_paid ?? "");
-    } else if (opened && !editId) {
+    } else if (!editId) {
       handleReset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, editId, editDetailsResponse]);
+  }, [editId, editDetailsResponse]);
 
   const waiverEffect = useMemo(() => {
     if (!selectedLoan) return null;

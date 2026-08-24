@@ -251,7 +251,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
   });
 
   useEffect(() => {
-    if (opened && editId && editDetailsResponse) {
+    if (editId && editDetailsResponse) {
       const item = editDetailsResponse.message?.data || editDetailsResponse.message || editDetailsResponse;
 
       setSelectedBorrower({
@@ -273,11 +273,11 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
       if (item.repayment_type === 'Interest Capitalization') setCapitalizedInterest(item.amount_paid ?? '');
       else if (item.repayment_type === 'Penalty Capitalization') setCapitalizedPenalty(item.amount_paid ?? '');
       else if (item.repayment_type === 'Charges Capitalization') setCapitalizedFee(item.amount_paid ?? '');
-    } else if (opened && !editId) {
+    } else if (!editId) {
       handleReset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, editId, editDetailsResponse]);
+  }, [editId, editDetailsResponse]);
 
   const totalDue = dues
     ? (dues.payable_principal_amount ?? 0) + (dues.interest_amount ?? 0) + (dues.penalty_amount ?? 0) + (dues.total_charges_payable ?? 0)
@@ -377,6 +377,11 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
   const handleMinimize = () => {
     onMinimize?.();
   };
+  const handleClose = () => {
+    handleReset();
+    onClose();
+  };
+
   const createCapitalizationMutation = useMutation({
     mutationFn: createLoanRepayment,
   });
@@ -483,7 +488,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleClose}
       size={1300}
       withCloseButton={false}
       padding={0}

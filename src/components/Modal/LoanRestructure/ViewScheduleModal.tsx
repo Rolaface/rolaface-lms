@@ -56,12 +56,6 @@ export function RestructureSchedulePreviewModal({
   }, [loanProduct, loanAmount, rateOfInterest, tenure, repaymentFrequency, repaymentStartDate]);
 
   useEffect(() => {
-    if (!opened) {
-      setSchedule(null);
-      setError(null);
-      return;
-    }
-
     if (missingFields.length > 0) {
       setSchedule(null);
       setError(null);
@@ -93,7 +87,7 @@ export function RestructureSchedulePreviewModal({
     return () => {
       cancelled = true;
     };
-  }, [opened]);
+  }, [missingFields, loanProduct, loanAmount, rateOfInterest, tenure, repaymentFrequency, repaymentStartDate]);
 
   return (
     <Modal opened={opened} onClose={onClose} withCloseButton={false} size="900px" radius="md" padding={0}>

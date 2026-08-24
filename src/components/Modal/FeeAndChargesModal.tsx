@@ -71,14 +71,14 @@ export function FeeAndChargesModal({
   });
 
   useEffect(() => {
-    if (opened && mode !== 'add' && data) {
+    if (mode !== 'add' && data) {
       // show existing row data immediately so the modal isn't blank while fetching
       form.setValues({ name: data.name || '' });
-    } else if (opened && mode === 'add') {
+    } else if (mode === 'add') {
       form.reset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, data, mode]);
+  }, [data, mode]);
 
   // once the fresh get_charge_by_id response arrives, overwrite with the real data
   useEffect(() => {
@@ -112,6 +112,11 @@ export function FeeAndChargesModal({
     onMinimize?.();
   };
 
+  const handleModalClose = () => {
+    form.reset();
+    onClose();
+  };
+
   const saveChargeMutation = useMutation({
     mutationFn: (payload: CreateFeeAndChargePayload & { id?: string }) =>
       payload.id ? updateFeeAndCharge(payload as CreateFeeAndChargePayload & { id: string }) : createFeeAndCharge(payload),
@@ -120,7 +125,7 @@ export function FeeAndChargesModal({
         mode === 'edit' ? 'Fee/Charge Updated' : 'Fee/Charge Created',
         mode === 'edit' ? 'Fee/Charge updated successfully.' : 'Fee/Charge created successfully.'
       );
-      onClose();
+      handleModalClose();
     },
     onError: (err: any) => showError(mode === 'edit' ? 'Update Failed' : 'Create Failed', err),
   });
@@ -143,7 +148,7 @@ export function FeeAndChargesModal({
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleModalClose}
       size={480}
       padding={0}
       lockScroll
@@ -192,7 +197,7 @@ export function FeeAndChargesModal({
               color="white"
               radius="xl"
               size="md"
-              onClick={onClose}
+              onClick={handleModalClose}
               aria-label="Close"
             >
               <IconX size={16} color="white" />
@@ -227,7 +232,7 @@ export function FeeAndChargesModal({
           <ModalFooter
             variant="theme"
             isViewMode={isView}
-            onClose={onClose}
+            onClose={handleModalClose}
             submitLabel="Save"
             submitLoading={saveChargeMutation.isPending}
           />
