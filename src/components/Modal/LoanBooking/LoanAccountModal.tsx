@@ -76,15 +76,16 @@ export function LoanAccountModal({
   const [simulatorModalOpened, setSimulatorModalOpened] = useState(false);
   const [coApplicantSearch, setCoApplicantSearch] = useState("");
 
-  const [charges, setCharges] = useState<ChargeRow[]>([
-    {
-      id: Date.now().toString(),
-      feeName: "",
-      amount: "",
-      account: "",
-      treatment: "",
-    },
-  ]);
+  // const [charges, setCharges] = useState<ChargeRow[]>([
+  //   {
+  //     id: Date.now().toString(),
+  //     feeName: "",
+  //     amount: "",
+  //     account: "",
+  //     treatment: "",
+  //   },
+  // ]);
+  const [charges, setCharges] = useState<ChargeRow[]>([]);
   const [coApplicants, setCoApplicants] = useState<CoApplicant[]>([
     { id: Date.now().toString(), name: "", email: "", mobile: "" },
   ]);
