@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   Button,
   TextInput,
   Select,
-  SegmentedControl,
   Group,
   Paper,
   Table,
@@ -28,14 +27,13 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { customerModal } from "../../components/Modal/customer/CustomerModalStore";
-import { getBorrowerProfile } from "./mockdata";
 import { Borrower360 } from "./CustomerView";
 import { useCustomerList } from "../../hooks/customer/table/useCustomerList";
+import { useCustomerById } from "../../hooks/customer/Detail/useCustomerById";
+import { mapCustomerDetailToBorrowerProfile } from "./mapCustomerDetail";
 import { buildCustomerColumns, type CustomerRow } from "./customerColumns";
 import { SortIcon } from "./CustomerTableCells";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
-
-export { getBorrowerProfile } from "./mockdata";
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
@@ -48,23 +46,10 @@ export function Customer() {
     string | null
   >(null);
 
-  useEffect(() => {
-    if (
-      borrower360CustomerId !== null &&
-      !list.allRows.some((c) => c.id === borrower360CustomerId)
-    ) {
-      setBorrower360CustomerId(null);
-    }
-  }, [borrower360CustomerId, list.allRows]);
-
   const handleViewCustomer = (customer: CustomerRow) =>
     setBorrower360CustomerId(customer.id);
 
-  const handleDeleteCustomer = (id: string) => {
-    // TODO: backend delete endpoint isn't live yet (see CustomerApi.ts ->
-    // CUSTOMER_ENDPOINTS.delete). Wire this to deleteCustomer() + a
-    // react-query mutation + invalidateQueries(['customers']) once it is.
-  };
+  const handleDeleteCustomer = (id: string) => {};
 
   const columns = useMemo(
     () =>
@@ -87,22 +72,32 @@ export function Customer() {
 
   const rows = table.getRowModel().rows;
 
+  const {
+    data: customerDetail,
+    isLoading: isCustomerLoading,
+    isError: isCustomerError,
+  } = useCustomerById(borrower360CustomerId);
+
   if (borrower360CustomerId !== null) {
-    const customer = list.allRows.find((c) => c.id === borrower360CustomerId);
-    if (customer) {
-      const borrower = getBorrowerProfile({
-        id: customer.id,
-        name: customer.name,
-        mobile: customer.mobile,
-      });
+    if (isCustomerLoading) {
       return (
-        <Borrower360
-          borrower={borrower}
-          onBack={() => setBorrower360CustomerId(null)}
-        />
+        <Group justify="center" py="xl">
+          <Loader size="sm" color="brand" />
+        </Group>
       );
     }
-    return null;
+
+    if (isCustomerError || !customerDetail) {
+      setBorrower360CustomerId(null);
+      return null;
+    }
+
+    return (
+      <Borrower360
+        borrower={mapCustomerDetailToBorrowerProfile(customerDetail)}
+        onBack={() => setBorrower360CustomerId(null)}
+      />
+    );
   }
 
   return (
@@ -117,7 +112,6 @@ export function Customer() {
         .lms-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
       `}</style>
 
-      {/* Header */}
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
         <Group gap="sm" align="center">
           <Box
@@ -149,7 +143,6 @@ export function Customer() {
         </Group>
       </Group>
 
-      {/* Toolbar */}
       <Paper
         radius="xl"
         p="xs"
@@ -233,7 +226,6 @@ export function Customer() {
         </Group>
       </Paper>
 
-      {/* Table */}
       <Paper
         radius="lg"
         p="sm"
@@ -379,7 +371,6 @@ export function Customer() {
               </Table>
             </Box>
 
-            {/* Pagination Footer */}
             <Group justify="space-between" px="sm" pt="xs">
               <Group
                 gap="sm"

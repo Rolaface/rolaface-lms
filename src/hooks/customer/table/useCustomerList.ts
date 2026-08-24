@@ -29,7 +29,7 @@ export function useCustomerList() {
         search: debouncedSearch.trim() || undefined,
         page,
         page_size: pageSize,
-        customer_type: type ?? undefined, // 👈 backend
+        customer_type: type ?? undefined, 
       }),
     placeholderData: (prev) => prev,
   });

@@ -297,13 +297,17 @@ export function RiskSnapshotPanel({ borrower }: { borrower: BorrowerProfile }) {
       ? themeTokens.success
       : borrower.kycStatus === "Pending"
         ? themeTokens.warning
-        : themeTokens.danger;
+        : borrower.kycStatus === "Rejected"
+          ? themeTokens.danger
+          : themeTokens.slate;
   const riskTone =
     borrower.riskRating === "Low"
       ? themeTokens.success
       : borrower.riskRating === "Medium"
         ? themeTokens.warning
-        : themeTokens.danger;
+        : borrower.riskRating === "High"
+          ? themeTokens.danger
+          : themeTokens.slate;
 
   return (
     <div className="flex flex-col gap-4 w-full lg:w-72 shrink-0">
@@ -321,7 +325,7 @@ export function RiskSnapshotPanel({ borrower }: { borrower: BorrowerProfile }) {
             thickness={8}
             sections={[
               {
-                value: borrower.creditScore / 8.5,
+                value: (borrower.creditScore ?? 0) / 8.5,
                 color: themeTokens.warning,
               },
             ]}
@@ -330,7 +334,7 @@ export function RiskSnapshotPanel({ borrower }: { borrower: BorrowerProfile }) {
 
           <div>
             <Text fz={18} fw={700}>
-              {borrower.creditScore}
+              {borrower.creditScore ?? "Not available"}
             </Text>
 
             <Text fz="sm" c="dimmed">
@@ -350,7 +354,7 @@ export function RiskSnapshotPanel({ borrower }: { borrower: BorrowerProfile }) {
                 style={{ backgroundColor: kycTone }}
               />
               <Text fz="xs" fw={700} c="slate.9">
-                {borrower.kycStatus}
+                {borrower.kycStatus ?? "Not available"}
               </Text>
             </span>
           </div>
@@ -364,7 +368,7 @@ export function RiskSnapshotPanel({ borrower }: { borrower: BorrowerProfile }) {
                 style={{ backgroundColor: riskTone }}
               />
               <Text fz="xs" fw={700} c="slate.9">
-                {borrower.riskRating}
+                {borrower.riskRating ?? "Not available"}
               </Text>
             </span>
           </div>
@@ -373,7 +377,7 @@ export function RiskSnapshotPanel({ borrower }: { borrower: BorrowerProfile }) {
               Relationship since
             </Text>
             <Text fz="xs" fw={700} c="slate.9">
-              {borrower.relationshipSince}
+              {borrower.relationshipSince ?? "Not available"}
             </Text>
           </div>
         </div>
@@ -399,14 +403,14 @@ export function RiskSnapshotPanel({ borrower }: { borrower: BorrowerProfile }) {
               color: "var(--mantine-color-white)",
             }}
           >
-            {borrower.relationshipManager.initials}
+            {borrower.relationshipManager?.initials ?? "—"}
           </Avatar>
           <div>
             <Text fz="xs" fw={700} c="slate.9">
-              {borrower.relationshipManager.name}
+              {borrower.relationshipManager?.name ?? "Not available"}
             </Text>
             <Text fz="xs" c="dimmed">
-              {borrower.relationshipManager.branch}
+              {borrower.relationshipManager?.branch ?? ""}
             </Text>
           </div>
         </div>
@@ -418,6 +422,7 @@ export function RiskSnapshotPanel({ borrower }: { borrower: BorrowerProfile }) {
             root: { backgroundColor: themeTokens.primarySoft, color: themeTokens.primary },
           }}
           leftSection={<IconMessage size={14} />}
+          disabled={!borrower.relationshipManager}
         >
           Message RM
         </Button>
@@ -934,6 +939,11 @@ export function BorrowerSidebar({
     id: string,
   ) => selected?.type === type && selected.id === id;
 
+  const loans = borrower.loans ?? [];
+  const investments = borrower.investments ?? [];
+  const savings = borrower.savings ?? [];
+  const fixedDeposits = borrower.fixedDeposits ?? [];
+
 if (collapsed) {
   return (
     <div className="flex flex-col items-center w-14 shrink-0 h-screen sticky top-0 border-r border-[var(--mantine-color-slate-2)] bg-white py-3 gap-1">
@@ -976,49 +986,49 @@ if (collapsed) {
       </Tooltip>
       )}
 
-      <Tooltip label={`Loans (${borrower.loans.length})`} position="right" withArrow>
+      <Tooltip label={`Loans (${loans.length})`} position="right" withArrow>
         <ActionIcon
           variant={selected?.type === "loan" ? "light" : "subtle"}
           color={selected?.type === "loan" ? "brand" : "gray"}
           radius="md"
           size={38}
-          onClick={() => borrower.loans[0] && onSelect({ type: "loan", id: borrower.loans[0].id })}
+          onClick={() => loans[0] && onSelect({ type: "loan", id: loans[0].id })}
         >
           <IconCreditCard size={16} />
         </ActionIcon>
       </Tooltip>
 
-      <Tooltip label={`Investments (${borrower.investments.length})`} position="right" withArrow>
+      <Tooltip label={`Investments (${investments.length})`} position="right" withArrow>
         <ActionIcon
           variant={selected?.type === "investment" ? "light" : "subtle"}
           color={selected?.type === "investment" ? "brand" : "gray"}
           radius="md"
           size={38}
-          onClick={() => borrower.investments[0] && onSelect({ type: "investment", id: borrower.investments[0].id })}
+          onClick={() => investments[0] && onSelect({ type: "investment", id: investments[0].id })}
         >
           <IconChartLine size={16} />
         </ActionIcon>
       </Tooltip>
 
-      <Tooltip label={`Savings (${borrower.savings.length})`} position="right" withArrow>
+      <Tooltip label={`Savings (${savings.length})`} position="right" withArrow>
         <ActionIcon
           variant={selected?.type === "savings" ? "light" : "subtle"}
           color={selected?.type === "savings" ? "brand" : "gray"}
           radius="md"
           size={38}
-          onClick={() => borrower.savings[0] && onSelect({ type: "savings", id: borrower.savings[0].id })}
+          onClick={() => savings[0] && onSelect({ type: "savings", id: savings[0].id })}
         >
           <IconPigMoney size={16} />
         </ActionIcon>
       </Tooltip>
 
-      <Tooltip label={`Fixed Deposits (${borrower.fixedDeposits.length})`} position="right" withArrow>
+      <Tooltip label={`Fixed Deposits (${fixedDeposits.length})`} position="right" withArrow>
         <ActionIcon
           variant={selected?.type === "fixedDeposit" ? "light" : "subtle"}
           color={selected?.type === "fixedDeposit" ? "brand" : "gray"}
           radius="md"
           size={38}
-          onClick={() => borrower.fixedDeposits[0] && onSelect({ type: "fixedDeposit", id: borrower.fixedDeposits[0].id })}
+          onClick={() => fixedDeposits[0] && onSelect({ type: "fixedDeposit", id: fixedDeposits[0].id })}
         >
           <IconClockHour4 size={16} />
         </ActionIcon>
@@ -1106,7 +1116,7 @@ if (collapsed) {
               Branch
             </Text>
             <Text fz={10} fw={600} c="slate.7" truncate>
-              {borrower.branch}
+              {borrower.branch ?? "Not available"}
             </Text>
           </div>
         </div>
@@ -1171,13 +1181,13 @@ if (collapsed) {
         }}
         circle
       >
-        {borrower.loans.length}
+        {loans.length}
       </Badge>
     </div>
   </Accordion.Control>
   <Accordion.Panel>
     <div className="flex flex-col">
-      {borrower.loans.map((loan, idx) => {
+      {loans.map((loan, idx) => {
         const selected = isSelected("loan", loan.id);
         return (
           <button
@@ -1279,13 +1289,13 @@ if (collapsed) {
                 }}
                 circle
               >
-                {borrower.investments.length}
+                {investments.length}
               </Badge>
             </div>
           </Accordion.Control>
           <Accordion.Panel>
             <div className="flex flex-col gap-1.5">
-              {borrower.investments.map((inv) => (
+              {investments.map((inv) => (
                 <button
                   key={inv.id}
                   onClick={() => onSelect({ type: "investment", id: inv.id })}
@@ -1357,13 +1367,13 @@ if (collapsed) {
                 }}
                 circle
               >
-                {borrower.savings.length}
+                {savings.length}
               </Badge>
             </div>
           </Accordion.Control>
           <Accordion.Panel>
             <div className="flex flex-col gap-1.5">
-              {borrower.savings.map((sav) => (
+              {savings.map((sav) => (
                 <button
                   key={sav.id}
                   onClick={() => onSelect({ type: "savings", id: sav.id })}
@@ -1415,13 +1425,13 @@ if (collapsed) {
                 }}
                 circle
               >
-                {borrower.fixedDeposits.length}
+                {fixedDeposits.length}
               </Badge>
             </div>
           </Accordion.Control>
           <Accordion.Panel>
             <div className="flex flex-col gap-1.5">
-              {borrower.fixedDeposits.map((fd) => (
+              {fixedDeposits.map((fd) => (
                 <button
                   key={fd.id}
                   onClick={() => onSelect({ type: "fixedDeposit", id: fd.id })}
@@ -1490,7 +1500,7 @@ export function GlobalSearchBar({
         subtitle: `${borrower.custId} · ${borrower.mobile}`,
         onClick: () => setOpen(false),
       },
-      ...borrower.loans.map((loan) => ({
+      ...(borrower.loans ?? []).map((loan) => ({
         section: "LOANS",
         icon: <IconFileText size={15} />,
         title: loan.loanNumber,
@@ -1500,7 +1510,7 @@ export function GlobalSearchBar({
           setOpen(false);
         },
       })),
-      ...borrower.investments.map((inv) => ({
+      ...(borrower.investments ?? []).map((inv) => ({
         section: "INVESTMENTS",
         icon: <IconFileText size={15} />,
         title: inv.refNumber,
@@ -1510,7 +1520,7 @@ export function GlobalSearchBar({
           setOpen(false);
         },
       })),
-      ...borrower.savings.map((sav) => ({
+      ...(borrower.savings ?? []).map((sav) => ({
         section: "SAVINGS",
         icon: <IconFileText size={15} />,
         title: sav.accountNumber,
