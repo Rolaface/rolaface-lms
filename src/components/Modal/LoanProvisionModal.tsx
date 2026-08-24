@@ -2,7 +2,18 @@ import { Modal, TextInput, Select, Button, Group, Stack } from '@mantine/core';
 import { IconChevronDown } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
-export function LoanProvisionModal({ opened, onClose, mode = 'add', data = null }) {
+interface LoanProvisionModalProps {
+  opened: boolean;
+  onClose: () => void;
+  mode?: 'add' | 'edit' | 'view';
+  data?: {
+    classificationCode?: string;
+    securityType?: string;
+    rate?: string | number;
+  } | null;
+}
+
+export function LoanProvisionModal({ opened, onClose, mode = 'add', data = null }: LoanProvisionModalProps) {
   const isView = mode === 'view';
   
   const title = 
@@ -20,13 +31,15 @@ export function LoanProvisionModal({ opened, onClose, mode = 'add', data = null 
   // Update form when data changes
   useEffect(() => {
     if (data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         classificationCode: data.classificationCode || '',
         securityType: data.securityType || 'Secured',
-        rate: data.rate || ''
+        rate: String(data.rate || '')
       });
     } else if (mode === 'add') {
       // Reset form for adding
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         classificationCode: '',
         securityType: 'Secured',
@@ -70,7 +83,7 @@ export function LoanProvisionModal({ opened, onClose, mode = 'add', data = null 
           placeholder="Select security type"
           data={['Secured', 'Unsecured', 'Partially Secured']}
           value={formData.securityType}
-          onChange={(val) => setFormData({ ...formData, securityType: val })}
+          onChange={(val) => setFormData({ ...formData, securityType: val || '' })}
           size="sm"
           className="w-full"
           rightSection={!isView && <IconChevronDown size={14} className="opacity-60" />}

@@ -212,7 +212,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
 
   const handleModalClose = () => {
     handleReset();
-    handleModalClose();
+    onClose();
   };
 
   const validate = () => {
@@ -386,7 +386,6 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
                   onChange={(v) => setPrincipalOutstanding(v as number | '')}
                   thousandSeparator=","
                   readOnly
-                  hideControls
                 />
               </div>
 
@@ -431,7 +430,6 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
                     onChange={(v) => handleAmountChange(v as number | '')}
                     thousandSeparator=","
                     error={errors.writeOffAmount}
-                    hideControls
                   />
                   <Text size="xs" c="dimmed" mt={4}>
                     Linked to percentage
