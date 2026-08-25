@@ -88,6 +88,7 @@ export function LoanStatementCharts({ dashboardData, loadingDashboard, renderCur
             ["Loan Amount", renderCurrency(dashboardData?.snapshot?.loan_amount)],
             ["Disbursed Amount", renderCurrency(dashboardData?.snapshot?.disbursed_amount)],
             ["ROI (%)", `${dashboardData?.snapshot?.roi || 0}%`],
+            ["Maturity Date", dashboardData?.snapshot?.maturity_date || "-"],
             ["EMI Amount", renderCurrency(dashboardData?.snapshot?.emi_amount)],
             ["EMI Start Date", dashboardData?.snapshot?.emi_start_date || "-"],
             ["Next Due Date", dashboardData?.snapshot?.next_due_date || "-"],
