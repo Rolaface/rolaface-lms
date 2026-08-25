@@ -209,6 +209,51 @@ function mapDocuments(data: any): ApplicationDocument[] {
   return docs;
 }
 
+// function mapActivity(data: any): ApplicationActivityItem[] {
+//   const activity: ApplicationActivityItem[] = [
+//     {
+//       id: 'created',
+//       date: data.application_date,
+//       kind: 'note',
+//       title: 'Application created',
+//       description: `Loan application ${data.name} was created.`,
+//       actor: 'Applicant',
+//     },
+//   ];
+
+//   if (data.status === 'Submitted' || data.status === 'Cancelled' || data.status === 'Sanctioned') {
+//     activity.push({
+//       id: 'decision',
+//       date: data.modified,
+//       kind: 'decision',
+//       title: `Application ${getDisplayStatus(data.status).toLowerCase()}`,
+//       description: data.status === 'Cancelled' ? 'Application was rejected.' : 'Application was approved.',
+//       actor: 'Loan Officer',
+//     });
+//   }
+
+//   return activity;
+// }
+function mapComments(data: any): ApplicationActivityItem[] {
+  if (!data._comments) return [];
+
+  let parsed: { comment: string; by: string; name: string }[] = [];
+  try {
+    parsed = JSON.parse(data._comments);
+  } catch {
+    return [];
+  }
+
+  return parsed.map((c) => ({
+    id: c.name,
+    date: data.modified,
+    kind: 'note',
+    title: c.by,
+    description: c.comment,
+    actor: c.by,
+  }));
+}
+
 function mapActivity(data: any): ApplicationActivityItem[] {
   const activity: ApplicationActivityItem[] = [
     {
@@ -220,6 +265,8 @@ function mapActivity(data: any): ApplicationActivityItem[] {
       actor: 'Applicant',
     },
   ];
+
+  activity.push(...mapComments(data));
 
   if (data.status === 'Submitted' || data.status === 'Cancelled' || data.status === 'Sanctioned') {
     activity.push({

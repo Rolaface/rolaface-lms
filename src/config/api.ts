@@ -258,6 +258,8 @@ loanStatement: {
     updateLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.update_custom_loan_application`,
     deleteLoanApplication: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.delete_custom_loan_application`,
     getCountries: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loanApplication.api.get_countries`,
+    sendForReview: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.assign_loan_application`,
+    applicationReview: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.loanApplication.api.process_loan_application_review`,
   },
 
   // =========================
