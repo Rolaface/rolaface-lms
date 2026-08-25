@@ -42,3 +42,15 @@ export async function exportLoanStatementExcel(params: BaseStatementParams) {
   });
   return response.data;
 }
+
+export interface SendLoanStatementPayload {
+  customer_id: string;
+  loan_id: string;
+  from_date: string;
+  to_date: string;
+}
+
+export async function sendLoanStatementEmail(payload: SendLoanStatementPayload) {
+  const { data } = await apiClient.post(API.loanStatement.sendStatement, payload);
+  return data;
+}
