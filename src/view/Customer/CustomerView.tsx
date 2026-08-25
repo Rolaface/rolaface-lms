@@ -1,20 +1,25 @@
-import { useMemo, useState } from 'react';
-import { Text } from '@mantine/core';
-import type { BorrowerProfile, SelectedItem } from '../../types/customerview';
+import { useMemo, useState, useEffect } from "react";
+import { Text } from "@mantine/core";
+import type { BorrowerProfile, SelectedItem } from "../../types/customerview";
 
 // Assuming you are keeping mock data for savings/investments/FDs for now
-import { getFixedDepositDetail, getInvestmentDetail, getSavingsDetail } from './mockdata';
+import {
+  getFixedDepositDetail,
+  getInvestmentDetail,
+  getSavingsDetail,
+} from "./mockdata";
 
 // Import your existing Sidebar and SearchBar
-import { BorrowerSidebar, GlobalSearchBar } from './Sharedui'; 
-import { AccountDetailView } from './DetailViews';
+import { BorrowerSidebar, GlobalSearchBar } from "./Sharedui";
+import { AccountDetailView } from "./DetailViews";
 
 // Import the brand colors from your new SharedUI file
 import { themeTokens } from "../LoanAccount/LoanView/SharedUI";
 
 // Import your newly integrated API-driven Loan Detail View
-import { LoanDetailView } from '../LoanAccount/LoanView/LoanDetailView';
-import { CustomerProfileView } from './Veiw-tabs/CustomerProfileView';
+import { LoanDetailView } from "../LoanAccount/LoanView/LoanDetailView";
+import { CustomerProfileView } from "./Veiw-tabs/CustomerProfileView";
+import { getLoanList } from "../../api/lookup api/lookUpApi";
 
 /* ============================================================================
    MAIN EXPORT — Borrower360
@@ -42,20 +47,39 @@ export function Borrower360({
   hideProfile?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-
+  const [selectedLoanData, setSelectedLoanData] = useState<any>(null);
   // Default to the first loan if it exists
-  const [selected, setSelected] = useState<SelectedItem>(initialSelected ?? { type: 'profile' });
+  const [selected, setSelected] = useState<SelectedItem>(
+    initialSelected ?? { type: "profile" },
+  );
+  useEffect(() => {
+    if (selected?.type !== "loan") {
+      setSelectedLoanData(null);
+      return;
+    }
+
+    getLoanList({
+      search: selected.id,
+    })
+      .then((response) => {
+        const loans = response?.data?.data ?? response?.data ?? [];
+        setSelectedLoanData(loans[0] ?? null);
+      })
+      .catch(() => {
+        setSelectedLoanData(null);
+      });
+  }, [selected]);
   const activeContent = useMemo(() => {
     if (!selected) return null;
-    if (selected.type === 'profile') {
+    if (selected.type === "profile") {
       return {
         node: <CustomerProfileView borrower={borrower} />,
-        label: 'Customer Profile',
+        label: "Customer Profile",
       };
     }
 
     // 1. REAL API-INTEGRATED LOAN VIEW
-    if (selected.type === 'loan') {
+    if (selected.type === "loan") {
       // Try to enrich the label from the mock loans list, but don't require
       // a match — the id here is often a real API loan id (e.g. coming from
       // Loan Booking's "View" action) that won't exist in the mock array.
@@ -70,29 +94,47 @@ export function Borrower360({
     }
 
     // 2. MOCK VIEWS (Investments, Savings, Fixed Deposits)
-    if (selected.type === 'investment') {
+    if (selected.type === "investment") {
       const inv = borrower.investments.find((i) => i.id === selected.id);
       if (!inv) return null;
       return {
-        node: <AccountDetailView title={inv.product} detail={getInvestmentDetail(inv)} borrower={borrower} />,
+        node: (
+          <AccountDetailView
+            title={inv.product}
+            detail={getInvestmentDetail(inv)}
+            borrower={borrower}
+          />
+        ),
         label: `${inv.refNumber} — ${inv.product}`,
       };
     }
 
-    if (selected.type === 'savings') {
+    if (selected.type === "savings") {
       const sav = borrower.savings.find((s) => s.id === selected.id);
       if (!sav) return null;
       return {
-        node: <AccountDetailView title="Flexi Save Account" detail={getSavingsDetail(sav)} borrower={borrower} />,
+        node: (
+          <AccountDetailView
+            title="Flexi Save Account"
+            detail={getSavingsDetail(sav)}
+            borrower={borrower}
+          />
+        ),
         label: `${sav.accountNumber} — Savings account`,
       };
     }
 
-    if (selected.type === 'fixedDeposit') {
+    if (selected.type === "fixedDeposit") {
       const fd = borrower.fixedDeposits.find((f) => f.id === selected.id);
       if (!fd) return null;
       return {
-        node: <AccountDetailView title="Fixed Deposit" detail={getFixedDepositDetail(fd)} borrower={borrower} />,
+        node: (
+          <AccountDetailView
+            title="Fixed Deposit"
+            detail={getFixedDepositDetail(fd)}
+            borrower={borrower}
+          />
+        ),
         label: `${fd.refNumber} — Fixed deposit`,
       };
     }
@@ -103,7 +145,38 @@ export function Borrower360({
   return (
     <div className="flex h-full min-h-screen">
       <BorrowerSidebar
-        borrower={borrower}
+        borrower={{
+          ...borrower,
+          loans:
+            selected?.type === "loan"
+              ? [
+                  {
+                    id: selected.id,
+                    loanNumber: selected.id,
+                    product: "",
+                    outstanding:
+                      selectedLoanData?.pending_principal_amount ?? 0,
+                    repaidPercent:
+                      selectedLoanData?.loan_amount > 0
+                        ? Math.round(
+                            Math.min(
+                              100,
+                              Math.max(
+                                0,
+                                (selectedLoanData.total_principal_paid /
+                                  selectedLoanData.loan_amount) *
+                                  100,
+                              ),
+                            ),
+                          )
+                        : 0,
+                    status: selectedLoanData?.status ?? "",
+                    nextInstallment: selectedLoanData?.total_payment ?? 0,
+                    dpd: selectedLoanData?.dpd ?? 0,
+                  },
+                ]
+              : borrower.loans,
+        }}
         collapsed={collapsed}
         onToggleCollapsed={() => setCollapsed((c) => !c)}
         onBack={onBack}
@@ -112,15 +185,17 @@ export function Borrower360({
         hideProfile={hideProfile}
       />
 
-      <div className="flex-1 flex flex-col overflow-y-auto" style={{ backgroundColor: themeTokens.surface }}>
+      <div
+        className="flex-1 flex flex-col overflow-y-auto"
+        style={{ backgroundColor: themeTokens.surface }}
+      >
         <div className="p-3">
           {activeContent ? (
-            <div className="flex flex-col gap-3">
-              {activeContent.node}
-            </div>
+            <div className="flex flex-col gap-3">{activeContent.node}</div>
           ) : (
             <Text c="dimmed" fz="sm">
-              Select a loan, investment, or account from the panel to view details.
+              Select a loan, investment, or account from the panel to view
+              details.
             </Text>
           )}
         </div>

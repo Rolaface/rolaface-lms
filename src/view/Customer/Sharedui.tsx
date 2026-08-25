@@ -996,12 +996,18 @@ export function BorrowerSidebar({
 
   useEffect(() => {
     const q = debouncedLoanSearch.trim();
+
     if (!q) {
       setLoanResults(null);
       return;
     }
+
     setLoanSearchLoading(true);
-    getLoanList({ search: q })
+
+    getLoanList({
+      search: q,
+      applicant: [borrower.custId],
+    })
       .then((data) => {
         const raw = data?.data ?? [];
 
@@ -1025,7 +1031,7 @@ export function BorrowerSidebar({
       })
       .catch(() => setLoanResults([]))
       .finally(() => setLoanSearchLoading(false));
-  }, [debouncedLoanSearch]);
+  }, [debouncedLoanSearch, borrower.custId]);
   if (collapsed) {
     return (
       <div className="flex flex-col items-center w-14 shrink-0 h-screen sticky top-0 border-r border-[var(--mantine-color-slate-2)] bg-white py-3 gap-1">
