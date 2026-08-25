@@ -800,7 +800,7 @@ const effectiveStatus = getEffectiveStatus(row);
             isRejectionOutcome ||
             isApproved;
 const underReview = (isUnderReview && firstName === "Administrator") || (isApproved  && firstName != "Administrator") 
-|| (isReadyForApproval && firstName != "Administrator")
+|| (isReadyForApproval && firstName != "Administrator") || (isPending && firstName != "Administrator" && !isUnderReview)
           const menuDisabled = isCreated || isRejected || underReview;
 
           return (
