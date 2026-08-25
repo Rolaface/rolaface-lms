@@ -19,7 +19,7 @@ import {
   Stack,
   Loader,
   useMantineTheme,
-  Menu,
+  Menu, Popover, ScrollArea, Divider
 } from "@mantine/core";
 import {
   IconPencil,
@@ -34,7 +34,7 @@ import {
   IconDotsVertical,
   IconEye,
   IconSend,
-  IconGavel,
+  IconGavel, IconMessageCircle2
 } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -78,6 +78,54 @@ export interface LoanApplicationRow {
   last_name: string | null;
   company_name: string | null;
    _assign?: string | null;
+   _comments?: string | null;
+}
+interface ParsedComment {
+  comment: string;
+  by: string;
+  name: string;
+}
+
+function getComments(row: LoanApplicationRow): ParsedComment[] {
+  if (!row._comments) return [];
+  try {
+    return JSON.parse(row._comments);
+  } catch {
+    return [];
+  }
+}
+function CommentsPopover({ row }: { row: LoanApplicationRow }) {
+  const comments = getComments(row);
+  if (comments.length === 0) return null;
+
+  return (
+    <Popover width={320} position="bottom-start" shadow="md" withArrow>
+      <Popover.Target>
+        <ActionIcon size="sm" variant="subtle" color="gray">
+          <IconMessageCircle2 size={14} />
+        </ActionIcon>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <ScrollArea.Autosize mah={260}>
+          <Stack gap="xs">
+            {comments.map((c, idx) => (
+              <Box key={c.name}>
+                <Group gap={6} justify="space-between">
+                  <Text fz="xs" fw={700} c="slate.7">
+                    {c.by}
+                  </Text>
+                </Group>
+                <Text fz="xs" c="slate.6" style={{ whiteSpace: "pre-wrap" }}>
+                  {c.comment}
+                </Text>
+                {idx < comments.length - 1 && <Divider my={6} />}
+              </Box>
+            ))}
+          </Stack>
+        </ScrollArea.Autosize>
+      </Popover.Dropdown>
+    </Popover>
+  );
 }
 const columnHelper = createColumnHelper<LoanApplicationRow>();
 
@@ -695,67 +743,18 @@ const handleConfirmOutcome = (payload: {
           </Text>
         ),
       }),
-      // columnHelper.accessor('status', {
-      //   header: 'Status',
-      //   cell: (info) => <StatusBadge status={getDisplayStatus(info.getValue())} />,
-      // }),
-      //       columnHelper.accessor('application_date', {
-      //         header: 'Application Date',
-      //         cell: (info) => (
-      //           <Text fz="xs" c="slate.6">
-      //             {formatDate(info.getValue())}
-      //           </Text>
-      //         ),
-      //       }),
-      // columnHelper.accessor("loan_application_status", {
-      //   header: "Status",
-      //   cell: (info) => <StatusBadge status={info.getValue()} />,
-      // }),
-      columnHelper.accessor("loan_application_status", {
+      
+ columnHelper.accessor("loan_application_status", {
   header: "Status",
-  cell: (info) => <StatusBadge status={getEffectiveStatus(info.row.original)} />,
+  cell: (info) => (
+    <Group gap={4} wrap="nowrap">
+      <StatusBadge status={getEffectiveStatus(info.row.original)} />
+      <CommentsPopover row={info.row.original} />
+    </Group>
+  ),
 }),
-  columnHelper.display({
-  id: "review",
-  header: "",
-  cell: (info) => {
-    const row = info.row.original;
-    const effectiveStatus = getEffectiveStatus(row);
 
-    if (effectiveStatus === "Pending" && firstName === "Administrator") {
-      return (
-        <Button
-          size="xs"
-          radius="xl"
-          variant="light"
-          color="violet"
-          leftSection={<IconSend size={12} />}
-          onClick={() => handleSendForReview(row.name)}
-        >
-          Send for Review
-        </Button>
-      );
-    }
-
-    if (effectiveStatus === "Under Review" && isAssignedToUser(row, email)) {
-      return (
-        <Button
-          size="xs"
-          radius="xl"
-          variant="light"
-          color="orange"
-          leftSection={<IconGavel size={12} />}
-          onClick={() => handleOutcome(row.name)}
-        >
-          Outcome
-        </Button>
-      );
-    }
-
-    return null;
-  },
-}),
-      columnHelper.display({
+ columnHelper.display({
         id: "actions",
         header: () => (
           <Text fz="xs" fw={600} ta="right" w="100%">
@@ -766,11 +765,20 @@ const handleConfirmOutcome = (payload: {
           const row = info.row.original;
           const currentStatus = row.loan_application_status;
 const effectiveStatus = getEffectiveStatus(row);
-          const isPending = currentStatus === "Pending";
+                const isPending = currentStatus === "Pending";
           const isApproved = currentStatus === "Approved";
           const isCreated = currentStatus === "Created";
           const isRejected = currentStatus === "Rejected";
   const isUnderReview = effectiveStatus === "Under Review";
+  const isReadyForApproval = effectiveStatus === "Ready for Approval";
+  const isRejectionOutcome = effectiveStatus === "Rejection";
+
+                   const hasMenuItems =
+            (effectiveStatus === "Pending" && firstName === "Administrator") ||
+            (isUnderReview && isAssignedToUser(row, email)) ||
+            isReadyForApproval ||
+            isRejectionOutcome ||
+            isApproved;
 
           const menuDisabled = isCreated || isRejected;
 
@@ -846,7 +854,7 @@ const effectiveStatus = getEffectiveStatus(row);
                     <IconDotsVertical size={14} />
                   </ActionIcon>
                 </Menu.Target>
-                <Menu.Dropdown>
+                {/* <Menu.Dropdown>
                   {isPending && (
                     <>
                       <Menu.Item onClick={() => confirmApprove(row.name)}>
@@ -859,6 +867,43 @@ const effectiveStatus = getEffectiveStatus(row);
                         Reject
                       </Menu.Item>
                     </>
+                  )}
+                  {isApproved && (
+                    <Menu.Item
+                      onClick={() => confirmCreateLoanBooking(row.name)}
+                    >
+                      Create Loan
+                    </Menu.Item>
+                  )}
+                </Menu.Dropdown> */}
+                                <Menu.Dropdown>
+                  {effectiveStatus === "Pending" && firstName === "Administrator" && (
+                    <Menu.Item onClick={() => handleSendForReview(row.name)}>
+                      Send for Review
+                    </Menu.Item>
+                  )}
+                    {effectiveStatus === "Additional Information Required" && (
+                    <Menu.Item onClick={() => handleSendForReview(row.name)}>
+                      Send for Review
+                    </Menu.Item>
+                  )}
+                  {isUnderReview && isAssignedToUser(row, email) && (
+                    <Menu.Item onClick={() => handleOutcome(row.name)}>
+                      Outcome
+                    </Menu.Item>
+                  )}
+                  {isReadyForApproval && (
+                    <Menu.Item onClick={() => confirmApprove(row.name)}>
+                      Approve
+                    </Menu.Item>
+                  )}
+                  {isRejectionOutcome && (
+                    <Menu.Item
+                      color="red"
+                      onClick={() => confirmReject(row.name)}
+                    >
+                      Reject
+                    </Menu.Item>
                   )}
                   {isApproved && (
                     <Menu.Item
