@@ -52,6 +52,11 @@ import { LoanSimulatorModal } from "../LoanSimulatorModal";
 import { ModalFooter } from "../../shared/ModalFooter";
 import { getLoanProductById } from "../../../api/productApi";
 import { openCommonModal } from "../AlertModal";
+import {
+  getRepaymentSchedule,
+  type RepaymentScheduleResponse,
+} from "../../../api/loanRestructureApi";
+import dayjs from "dayjs";
 
 interface LoanAccountModalProps {
   opened: boolean;
@@ -350,7 +355,7 @@ export function LoanAccountModal({
       }
       showSuccess(
         "Loan Booking Created",
-        newLoanId 
+        newLoanId
           ? `Loan Booking ${newLoanId} created successfully.`
           : "Loan Booking created successfully."
       );
@@ -499,18 +504,104 @@ export function LoanAccountModal({
     refetchOnMount: "always",
   });
 
-  const { data: scheduleData, isLoading: isFetchingSchedule } = useQuery({
-    queryKey: ["loan-repayment-schedule", loanId],
-    queryFn: async () => await getReapymentScheduleById(loanId as string),
-    enabled: !!loanId && opened === true,
-    refetchOnMount: "always",
-  });
+  const scheduleParams = useMemo(
+    () => ({
+      loan_product: form.values.productCode,
+      loan_amount: Number(form.values.loanAmount) || 0,
+      rate_of_interest:
+        chargeSectionDefaults.interestRate === ""
+          ? 0
+          : Number(chargeSectionDefaults.interestRate),
+      tenure: tenureMonths,
+      repayment_frequency: form.values.frequency,
+      repayment_start_date: form.values.repaymentStartDate,
+    }),
+    [
+      form.values.productCode,
+      form.values.loanAmount,
+      chargeSectionDefaults.interestRate,
+      tenureMonths,
+      form.values.frequency,
+      form.values.repaymentStartDate,
+    ],
+  );
 
-  const fetchedRepaymentSchedule =
-    scheduleData?.message?.data?.repayment_schedule ?? [];
+  const scheduleMissingFields = useMemo(() => {
+    const missing: string[] = [];
+    if (!scheduleParams.loan_product) missing.push("Product Code");
+    if (scheduleParams.loan_amount <= 0) missing.push("Loan Amount");
+    if (scheduleParams.rate_of_interest < 0) missing.push("Interest Rate");
+    if (scheduleParams.tenure <= 0) missing.push("Tenure");
+    if (!scheduleParams.repayment_frequency) missing.push("Frequency");
+    if (!scheduleParams.repayment_start_date)
+      missing.push("Repayment Start Date");
+    return missing;
+  }, [scheduleParams]);
 
-  const fetchedMaturityDate = scheduleData?.message?.data?.maturity_date;
-  const finalMaturityDate = fetchedMaturityDate;
+  const [schedulePreview, setSchedulePreview] =
+    useState<RepaymentScheduleResponse | null>(null);
+  const [isFetchingSchedule, setIsFetchingSchedule] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!opened) return;
+
+    if (scheduleMissingFields.length > 0) {
+      setSchedulePreview(null);
+      setScheduleError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsFetchingSchedule(true);
+    setScheduleError(null);
+
+    getRepaymentSchedule({
+      loan_product: scheduleParams.loan_product,
+      loan_amount: scheduleParams.loan_amount,
+      rate_of_interest: scheduleParams.rate_of_interest,
+      tenure: scheduleParams.tenure,
+      repayment_frequency: scheduleParams.repayment_frequency,
+      repayment_start_date: dayjs(scheduleParams.repayment_start_date).format(
+        "DD-MM-YYYY",
+      ),
+    })
+      .then((res) => {
+        if (!cancelled) setSchedulePreview(res);
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setScheduleError(
+            err?.message || "Failed to load repayment schedule.",
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setIsFetchingSchedule(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [opened, scheduleMissingFields, scheduleParams]);
+
+  const fetchedRepaymentSchedule = useMemo(
+    () =>
+      (schedulePreview?.repayment_periods ?? []).map((row, idx) => ({
+        no: idx + 1,
+        payment_date: row.payment_date,
+        principal_amount: row.principal_amount,
+        interest_amount: row.interest_amount,
+        total_payment: row.total_payment,
+        balance_loan_amount: row.balance_loan_amount,
+      })),
+    [schedulePreview],
+  );
+
+  const finalMaturityDate = schedulePreview?.repayment_periods?.length
+    ? schedulePreview.repayment_periods[
+      schedulePreview.repayment_periods.length - 1
+    ].payment_date
+    : "";
 
   useEffect(() => {
     const loan = existingLoanData?.message?.data;
@@ -602,18 +693,19 @@ export function LoanAccountModal({
     }
   }, [existingLoanData]);
 
-const updateLoanMutation = useMutation({mutationFn: updateLoan,onSuccess: async (data, variables) => {
-queryClient.invalidateQueries({ queryKey: ["loans"] });
-queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
-try {
-  const documentsToAttach = await resolveDocumentsPayload(documents);
-  if (documentsToAttach.length > 0) {
-    attachDocumentsMutation.mutate({ id: variables.id, documents: documentsToAttach });
-  }
-} catch (err) {
-  console.error("Document attach failed:", err);
-}
-   showSuccess(
+  const updateLoanMutation = useMutation({
+    mutationFn: updateLoan, onSuccess: async (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: ["loan", variables.id] });
+      try {
+        const documentsToAttach = await resolveDocumentsPayload(documents);
+        if (documentsToAttach.length > 0) {
+          attachDocumentsMutation.mutate({ id: variables.id, documents: documentsToAttach });
+        }
+      } catch (err) {
+        console.error("Document attach failed:", err);
+      }
+      showSuccess(
         "Loan Booking Updated",
         `Loan Booking ${variables.id} updated successfully.`
       );
@@ -668,9 +760,6 @@ try {
   const handleModalClose = () => {
     if (loanId) {
       queryClient.removeQueries({ queryKey: ["loan", loanId] });
-      queryClient.removeQueries({
-        queryKey: ["loan-repayment-schedule", loanId],
-      });
     }
     handleReset();
     onClose();
@@ -903,6 +992,8 @@ try {
                 <RepaymentScheduleTab
                   repaymentSchedule={fetchedRepaymentSchedule}
                   isFetchingSchedule={isFetchingSchedule}
+                  missingFields={scheduleMissingFields}
+                  error={scheduleError}
                 />
               )}
               {activeTab === "charges" && (
