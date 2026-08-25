@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { DateInput } from '@mantine/dates';
+import dayjs from 'dayjs';
 import {
   getWriteOffAccounts,
   getLoanAccounts,
@@ -54,6 +56,7 @@ const ACCOUNT_SUMMARY = {
   outstanding: 486250,
 };
 
+
 export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editData, isView }: LoanWriteOffModalProps) {
   const theme = useMantineTheme();
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
@@ -78,6 +81,8 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // ---------- ALERT HELPERS (same pattern as AddLoanCategoryModal) ----------
+  const toDateValue = (iso: string | null | undefined): Date | null =>
+    iso && dayjs(iso).isValid() ? dayjs(iso).toDate() : null;
   const showError = (heading: string, error: any) => {
     openCommonModal({
       heading,
@@ -99,7 +104,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
   };
 
   useEffect(() => {
-    
+
 
     let active = true;
     setAccountsLoading(true);
@@ -121,7 +126,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
   }, [accountSearch]);
 
   useEffect(() => {
-    
+
 
     let active = true;
     setLoanAccountsLoading(true);
@@ -363,17 +368,20 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
                   error={errors.loanAc}
                 />
 
-                <TextInput
+                <DateInput
                   size="sm"
                   withAsterisk
-                  type="date"
                   label="Value Date"
-                  value={valueDate}
-                  onChange={(e) => {
-                    setValueDate(e.currentTarget.value);
-                    if (e.currentTarget.value) setErrors((er) => ({ ...er, valueDate: '' }));
+                  placeholder="Select value date"
+                  valueFormat="DD-MMM-YYYY"
+                  value={toDateValue(valueDate)}
+                  onChange={(d) => {
+                    const formatted = d ? dayjs(d).format('YYYY-MM-DD') : '';
+                    setValueDate(formatted);
+                    if (formatted) setErrors((er) => ({ ...er, valueDate: '' }));
                   }}
                   error={errors.valueDate}
+                  disabled={isView}
                 />
 
                 <NumberInput
@@ -487,9 +495,9 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
                 <Text size="xxs" fw={700} c="brand.1" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
                   Write-off Amount
                 </Text>
-             <Text fw={800} c="white" ff="monospace" style={{ fontSize: 22, lineHeight: 1.25, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
-  {writeOffAmount !== '' ? formatAmount(companyCurrency, Number(writeOffAmount), { withSymbol: true }) : '—'}
-</Text>
+                <Text fw={800} c="white" ff="monospace" style={{ fontSize: 22, lineHeight: 1.25, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+                  {writeOffAmount !== '' ? formatAmount(companyCurrency, Number(writeOffAmount), { withSymbol: true }) : '—'}
+                </Text>
               </div>
             </Stack>
           </Box>

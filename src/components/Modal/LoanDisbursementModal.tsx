@@ -31,6 +31,8 @@ import {
   IconNote,
   IconNotes,
 } from "@tabler/icons-react";
+import { DateInput } from "@mantine/dates";
+import dayjs from "dayjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createLoanDisbursement, getAllDsbrAccount, updateLoanDisbursement, getLoanDisbursementById, getAllModeOfPayments } from "../../api/loanDisbursementAPi";
 import { getAllApplicationDsbr, getLoanById } from "../../api/loanApi";
@@ -97,6 +99,13 @@ const normalizeDateValue = (value?: string | null): string => {
 
   return value;
 };
+const formatDate = (value: string | null | undefined): string => {
+  if (!value) return "—";
+  const d = dayjs(value);
+  return d.isValid() ? d.format("DD-MMM-YYYY") : String(value);
+};
+const toDateValue = (iso: string | null | undefined): Date | null =>
+  iso && dayjs(iso).isValid() ? dayjs(iso).toDate() : null;
 
 const chevronDown = <IconChevronDown size={14} color="var(--mantine-color-slate-4)" />;
 
@@ -697,7 +706,7 @@ export function LoanDisbursementModal({
                     data={loanAppOptions}
                     disabled={isLoanAppsLoading}
                     leftSection={<IconSearch size={14} color="var(--mantine-color-slate-4)" />}
-                                       onClick={() => refetchLoanApps()}
+                    onClick={() => refetchLoanApps()}
                     {...form.getInputProps("acNo")}
                     onChange={(value) => {
                       form.setValues({
@@ -722,13 +731,16 @@ export function LoanDisbursementModal({
                       setActiveTab("settlement");
                     }}
                   />
-                  <TextInput
+                  <DateInput
                     size="sm"
                     withAsterisk
                     maw={190}
-                    type="date"
                     label="Value Date"
-                    {...form.getInputProps("valueDate")}
+                    valueFormat="DD-MMM-YYYY"
+                    disabled={isView}
+                    value={toDateValue(form.values.valueDate)}
+                    onChange={(d) => form.setFieldValue("valueDate", d ? dayjs(d).format("YYYY-MM-DD") : "")}
+                    error={form.errors.valueDate}
                     leftSection={<IconCalendar size={14} color="var(--mantine-color-success-6)" />}
                   />
                   <NumberInput
@@ -826,14 +838,16 @@ export function LoanDisbursementModal({
                         </Text>
                       </div>
                       <div className="flex flex-col gap-2 mt-3">
-                        <TextInput
+                        <DateInput
                           size="sm"
                           withAsterisk
                           maw={180}
-                          type="date"
                           label="Ref Date"
+                          valueFormat="DD-MMM-YYYY"
                           disabled={isView}
-                          {...form.getInputProps("refDate")}
+                          value={toDateValue(form.values.refDate)}
+                          onChange={(d) => form.setFieldValue("refDate", d ? dayjs(d).format("YYYY-MM-DD") : "")}
+                          error={form.errors.refDate}
                           leftSection={<IconCalendar size={14} color="var(--mantine-color-success-6)" />}
                         />
                         <TextInput
@@ -1116,7 +1130,7 @@ export function LoanDisbursementModal({
                     />
                     <SummaryRow
                       label="Repayment Start Date"
-                      value={selectedLoanApp?.repayment_start_date || "—"}
+                      value={formatDate(selectedLoanApp?.repayment_start_date)}
                       bold
                     />
                   </Stack>

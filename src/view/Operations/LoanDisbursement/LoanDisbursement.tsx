@@ -524,6 +524,7 @@ export function LoanDisbursement() {
         .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
         .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
         .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+         .lms-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
       `}</style>
 
       {/* Header — icon tile + title, same pattern as Loan Booking */}
@@ -633,7 +634,15 @@ export function LoanDisbursement() {
           </Group>
         ) : (
           <>
-            <Box style={{ opacity: isFetching ? 0.6 : 1, transition: 'opacity 120ms ease' }}>
+            
+             <Box
+   style={{
+     height: 'clamp(320px, calc(100vh - 280px), 720px)',
+     overflowY: 'auto',
+     opacity: isFetching ? 0.6 : 1,
+     transition: 'opacity 120ms ease',
+   }}
+ >
               <Table
                 verticalSpacing="sm"
                 horizontalSpacing="sm"
@@ -649,6 +658,7 @@ export function LoanDisbursement() {
                         return (
                           <Table.Th
                             key={header.id}
+                             className="lms-thead-cell"
                             c="slate.5"
                             fw={700}
                             style={{
