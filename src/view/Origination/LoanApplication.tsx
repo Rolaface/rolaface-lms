@@ -440,7 +440,7 @@ const outcomeMutation = useMutation({
   } = useQuery({
     queryKey: ["loan-applications"],
     queryFn: getAllLoanApplications,
-    refetchInterval: 150,
+    refetchInterval: 2000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
