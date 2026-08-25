@@ -70,14 +70,9 @@ export function AssignUserRoleModal({ opened, onClose, onMinimize, editId, isVie
     },
   });
 
-  useEffect(() => {
-  
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened]);
-
   const handleClose = () => {
-   handleReset();
-   onClose();
+    handleReset();
+    onClose();
   };
 
   return (

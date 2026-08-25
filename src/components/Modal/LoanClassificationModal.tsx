@@ -74,7 +74,7 @@ export function LoanClassificationModal({
   const [formData, setFormData] = useState<LoanClassificationFormState>(EMPTY_FORM_STATE);
 
   useEffect(() => {
-    if (opened && data) {
+    if (data) {
       setFormData({
         level: data.level !== undefined && data.level !== null ? String(data.level) : "",
         code: data.code || "",
@@ -84,10 +84,10 @@ export function LoanClassificationModal({
         provision_rate: data.provision_rate !== null ? String(data.provision_rate) : "",
         is_written_off: data.is_written_off || false,
       });
-    } else if (opened && mode === "add") {
+    } else if (mode === "add") {
       setFormData(EMPTY_FORM_STATE);
     }
-  }, [opened, data, mode]);
+  }, [data, mode]);
 
   const updateField = <K extends keyof LoanClassificationFormState>(
     field: K,
@@ -127,12 +127,17 @@ export function LoanClassificationModal({
     });
   };
 
+  const handleModalClose = () => {
+    setFormData(EMPTY_FORM_STATE);
+    onClose();
+  };
+
   const createMutation = useMutation({
     mutationFn: (payload: LoanClassificationData) => createLoanClassification(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanClassifications"] });
       showSuccess("Classification Created", "Loan classification created successfully.");
-      onClose();
+      handleModalClose();
     },
     onError: (err) => showError("Create Failed", err),
   });
@@ -143,7 +148,7 @@ export function LoanClassificationModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanClassifications"] });
       showSuccess("Classification Updated", "Loan classification updated successfully.");
-      onClose();
+      handleModalClose();
     },
     onError: (err) => showError("Update Failed", err),
   });
@@ -196,7 +201,7 @@ export function LoanClassificationModal({
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleModalClose}
       size={640}
       padding={0}
       lockScroll
@@ -245,7 +250,7 @@ export function LoanClassificationModal({
               color="white"
               radius="xl"
               size="md"
-              onClick={onClose}
+              onClick={handleModalClose}
               aria-label="Close"
             >
               <IconX size={16} color="white" />
@@ -348,7 +353,7 @@ export function LoanClassificationModal({
         <ModalFooter
           variant="theme"
           isViewMode={isView}
-          onClose={onClose}
+          onClose={handleModalClose}
           onSubmit={handleSave}
           submitLabel="Save"
           submitLoading={isSaving}

@@ -829,13 +829,13 @@ export function LoanApplicationModal({
     useQuery({
       queryKey: ["loan-application", loanApplicationId],
       queryFn: () => getLoanApplicationById(loanApplicationId as string),
-      enabled: !!loanApplicationId && opened === true,
+      enabled: !!loanApplicationId,
     });
   useEffect(() => {
-    if (opened && loanApplicationId) {
+    if (loanApplicationId) {
       refetchLoanApplication();
     }
-  }, [opened, loanApplicationId, refetchLoanApplication]);
+  }, [loanApplicationId, refetchLoanApplication]);
 
   const getMimeTypeFromFileName = (fileName: string): string => {
     const ext = fileName.split(".").pop()?.toLowerCase();

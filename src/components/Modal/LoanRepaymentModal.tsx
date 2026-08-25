@@ -152,7 +152,7 @@ const modeOfPaymentOptions = useMemo(() => {
   });
 
   useEffect(() => {
-    if (opened && editId && editDetailsResponse) {
+    if (editId && editDetailsResponse) {
       const item = editDetailsResponse.message?.data || editDetailsResponse.message || editDetailsResponse;
 
       setSelectedBorrower({
@@ -186,11 +186,11 @@ const modeOfPaymentOptions = useMemo(() => {
         accountNumber: item.account_number || "",
         remark: item.manual_remarks || "", 
       });
-    } else if (opened && !editId) {
+    } else if (!editId) {
       handleReset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, editId, editDetailsResponse]);
+  }, [editId, editDetailsResponse]);
 
   const { data: duesResponse, isFetching: isDuesLoading } = useQuery({
     queryKey: ["loanDues", selectedLoanId, form.values.valueDate, form.values.natureOfPayment],

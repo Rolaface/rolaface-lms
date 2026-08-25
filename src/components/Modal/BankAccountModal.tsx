@@ -66,23 +66,21 @@ export function BankAccountModal({
   const [isDefault, setIsDefault] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Re-sync defaults whenever the modal is (re)opened for a different party
+  // Re-sync defaults whenever the party changes
   useEffect(() => {
-    if (opened) {
-      setDateOfAddition(today());
-      setAccountFor(defaultAccountFor);
-      setName(defaultName);
-      setAccountHolderName(defaultName);
-      setBank("");
-      setSwiftCode("");
-      setCurrency("");
-      setAccountNumber("");
-      setIban("");
-      setIfsc("");
-      setIsDefault(false);
-      setErrors({});
-    }
-  }, [opened, defaultName, defaultAccountFor]);
+    setDateOfAddition(today());
+    setAccountFor(defaultAccountFor);
+    setName(defaultName);
+    setAccountHolderName(defaultName);
+    setBank("");
+    setSwiftCode("");
+    setCurrency("");
+    setAccountNumber("");
+    setIban("");
+    setIfsc("");
+    setIsDefault(false);
+    setErrors({});
+  }, [defaultName, defaultAccountFor]);
 
   const handleReset = () => {
     setDateOfAddition(today());
@@ -97,6 +95,11 @@ export function BankAccountModal({
     setIfsc("");
     setIsDefault(false);
     setErrors({});
+  };
+
+  const handleModalClose = () => {
+    handleReset();
+    onClose();
   };
 
   const validate = () => {
@@ -126,7 +129,7 @@ export function BankAccountModal({
       ifsc,
       isDefault,
     });
-    onClose();
+    handleModalClose();
   };
 
   if (!opened) return null;
@@ -134,7 +137,7 @@ export function BankAccountModal({
   return (
     <Box className="fixed inset-0 z-[1000] flex items-center justify-center">
       {/* backdrop */}
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40" onClick={handleModalClose} />
 
       <Box className="relative w-full max-w-[1133px] bg-white rounded-t-md shadow-2xl flex flex-col max-h-[90vh] mb-0">
         {/* Header */}
@@ -158,7 +161,7 @@ export function BankAccountModal({
             </Button>
             <Button
               variant="subtle"
-              onClick={onClose}
+              onClick={handleModalClose}
               className="text-white hover:bg-white/10 px-2"
               size="xs"
             >
@@ -272,7 +275,7 @@ export function BankAccountModal({
 
         {/* Footer */}
         <div className="bg-gray-50 border-t border-gray-200 p-4 px-6 flex justify-between items-center shrink-0 rounded-b-md">
-          <Button size="sm" variant="default" onClick={onClose} className="font-semibold px-5">
+          <Button size="sm" variant="default" onClick={handleModalClose} className="font-semibold px-5">
             Cancel
           </Button>
           <div className="flex gap-2">

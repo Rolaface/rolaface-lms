@@ -323,25 +323,23 @@ export function LoanDisbursementModal({
     enabled: opened && !!editId,
   });
 
-
   useEffect(() => {
-    if (opened && editId && editDetailsResponse) {
-      const item = editDetailsResponse.message?.data || editDetailsResponse.data || editDetailsResponse.message || editDetailsResponse;
+    if (editId && editDetailsResponse) {
+      const respData = (editDetailsResponse as any).message || editDetailsResponse;
+      const item = respData.data || respData;
+      let topupDetails = null;
 
-      let topupDetails: any = null;
-      if (item.top_up_details) {
-        if (typeof item.top_up_details === "string") {
+      if (item.top_up && item.against_loan) {
+        if (typeof item.top_up_details === 'string') {
           try {
             topupDetails = JSON.parse(item.top_up_details);
-          } catch {
-            topupDetails = null;
+          } catch (e) {
+            console.error('Failed to parse top_up_details', e);
           }
         } else {
           topupDetails = item.top_up_details;
         }
       }
-
-      const isTopupValue = Boolean(item.top_up);
 
       form.setValues({
         acNo: item.against_loan || "",
@@ -352,7 +350,7 @@ export function LoanDisbursementModal({
         refDate: normalizeDateValue(item.reference_date || getTodayDate()),
         refNo: item.reference_number || "",
         beneficiaryAcNo: item.loan_account || "",
-        isTopup: isTopupValue,
+        isTopup: Boolean(item.top_up),
         topupSanctionedCurrent: topupDetails?.old_sanctioned_amount ?? "",
         topupSanctionedNew: topupDetails?.new_sanctioned_amount ?? "",
         topupOutstandingCurrent: topupDetails?.old_outstanding_amount ?? "",
@@ -363,7 +361,7 @@ export function LoanDisbursementModal({
       form.setFieldValue("charges", existingCharges);
       setHasUserChangedLoanAccount(false);
       setHasUserChangedMode(false);
-    } else if (opened && !editId) {
+    } else if (!editId) {
       form.reset();
       form.setValues({
         valueDate: getTodayDate(),
@@ -372,10 +370,9 @@ export function LoanDisbursementModal({
       setActiveTab("settlement");
       setHasUserChangedLoanAccount(false);
       setHasUserChangedMode(false);
-
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, editId, editDetailsResponse]);
+  }, [editId, editDetailsResponse]);
 
   const loanAppOptions = useMemo(() => {
     if (loanAppsResponse?.data) {
@@ -500,11 +497,11 @@ export function LoanDisbursementModal({
 
     const chargeDefaults = normalizeLoanCharges(loanAccountDetailsData);
     form.setFieldValue("charges", chargeDefaults);
-  }, [opened, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
+  }, [form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
 
   // CREATE mode: current sanctioned/outstanding always derived live from getLoanById.
   useEffect(() => {
-    if (!opened || editId || !form.values.acNo) return;
+    if (editId || !form.values.acNo) return;
     if (isLoanAccountChargesLoading) return;
 
     const loanData =
@@ -522,12 +519,12 @@ export function LoanDisbursementModal({
     form.setFieldValue("topupSanctionedCurrent", sanctioned);
     form.setFieldValue("topupOutstandingCurrent", outstanding);
     form.setFieldValue("disburseAmount", outstanding);
-  }, [opened, editId, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
+  }, [editId, form.values.acNo, loanAccountDetailsData, isLoanAccountChargesLoading]);
 
   // EDIT mode: current sanctioned/outstanding derived from API — getLoanById
   // once the user changes the loan account, otherwise from the disbursement record itself.
   useEffect(() => {
-    if (!opened || !editId) return;
+    if (!editId) return;
     if (!hasUserChangedLoanAccount) return;
     if (isLoanAccountChargesLoading) return;
 
@@ -543,17 +540,16 @@ export function LoanDisbursementModal({
     const disbursed = Number(loanData.disbursed_amount || 0);
     form.setFieldValue("topupSanctionedCurrent", sanctioned);
     form.setFieldValue("topupOutstandingCurrent", sanctioned - disbursed);
-  }, [opened, editId, hasUserChangedLoanAccount, loanAccountDetailsData, isLoanAccountChargesLoading, editDetailsResponse]);
+  }, [editId, hasUserChangedLoanAccount, loanAccountDetailsData, isLoanAccountChargesLoading, editDetailsResponse]);
 
   useEffect(() => {
-    if (!opened) return;
     if (editId && !hasUserChangedLoanAccount && !hasUserChangedMode) return;
 
     const modeAccount = form.values.modeOfPayment ? modeOfPaymentAccounts[form.values.modeOfPayment] : null;
     const loanFallback = form.values.acNo ? loanDataDisbursementAccount : null;
     form.setFieldValue("disbursementAc", modeAccount || loanFallback || null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, form.values.acNo, form.values.modeOfPayment, modeOfPaymentAccounts, loanDataDisbursementAccount, hasUserChangedMode]);
+  }, [form.values.acNo, form.values.modeOfPayment, modeOfPaymentAccounts, loanDataDisbursementAccount, hasUserChangedMode]);
 
   useEffect(() => {
     if (skipTopupRecalc) return;

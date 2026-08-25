@@ -196,13 +196,15 @@ export function EmailTemplateModal({
 
     const saving = isCreating || isUpdating;
 
-    // ── Reset the form whenever the modal opens ──
-    // (prefills from initialData in edit/view mode, blank otherwise)
+    // ── Update the form if initialData changes ──
     useEffect(() => {
-        if (opened) {
-            setForm(initialData ?? DEFAULT_FORM);
-        }
-    }, [opened, initialData]);
+        setForm(initialData ?? DEFAULT_FORM);
+    }, [initialData]);
+
+    const handleModalClose = () => {
+        setForm(DEFAULT_FORM);
+        onClose();
+    };
 
     // ── Mount the rich text editor a frame after open ──
     useEffect(() => {
@@ -317,7 +319,7 @@ export function EmailTemplateModal({
     return (
         <Modal
             opened={opened}
-            onClose={onClose}
+            onClose={handleModalClose}
             size="1000px"
             padding={0}
             closeOnClickOutside={false}
@@ -368,7 +370,7 @@ export function EmailTemplateModal({
                             color="white"
                             radius="xl"
                             size="md"
-                            onClick={onClose}
+                            onClick={handleModalClose}
                             aria-label="Close"
                         >
                             <IconX size={16} color="white" />
@@ -524,7 +526,7 @@ export function EmailTemplateModal({
                         <Button
                             variant="default"
                             radius="xl"
-                            onClick={onClose}
+                            onClick={handleModalClose}
                         >
                             {isView ? "Close" : "Cancel"}
                         </Button>

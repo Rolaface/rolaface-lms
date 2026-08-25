@@ -76,7 +76,7 @@ export function CollateralModal({ opened, onClose, onMinimize, editId, isView }:
   });
 
   useEffect(() => {
-    if (opened && editId && editDetailsResponse) {
+    if (editId && editDetailsResponse) {
       const item = editDetailsResponse.data || editDetailsResponse.message?.data || editDetailsResponse;
 
       form.setValues({
@@ -88,11 +88,11 @@ export function CollateralModal({ opened, onClose, onMinimize, editId, isView }:
         ltv: item.loan_to_value_ratio ?? "",
         disabled: item.disabled === 1,
       });
-    } else if (opened && !editId) {
+    } else if (!editId) {
       handleReset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, editId, editDetailsResponse]);
+  }, [editId, editDetailsResponse]);
 
   // ---------- ALERT HELPERS (same pattern as AddLoanCategoryModal) ----------
   const showError = (heading: string, error: any) => {
@@ -139,11 +139,11 @@ export function CollateralModal({ opened, onClose, onMinimize, editId, isView }:
   });
 
   useEffect(() => {
-    if (opened && editId) {
+    if (editId) {
       refetch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, editId]);
+  }, [editId]);
 
   const handleReset = () => {
     form.reset();

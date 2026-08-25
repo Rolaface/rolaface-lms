@@ -122,12 +122,11 @@ export function CreateUserModal({ opened, onClose, onMinimize, editId, isView, i
   const [genderOptions, setGenderOptions] = useState<SelectOption[]>([]);
 
   useEffect(() => {
-    if (!opened) return;
     fetchLanguages("").then(setLanguageOptions);
     fetchRoles("").then(setRoleOptions);
     setTimezoneOptions(filterTimezones(""));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened]);
+  }, []);
 
   useEffect(() => {
     getAllGenders()

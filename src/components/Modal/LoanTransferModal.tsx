@@ -109,10 +109,20 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
     setRows((prev) => prev.filter((r) => r.rowId !== rowId));
   };
 
+  const handleModalClose = () => {
+    setTransferDate('');
+    setFromBranch('');
+    setToBranch('');
+    setRows([{ rowId: 1, loanId: 'ACC-LOAN-2026-00001', applicant: 'Mwansa Chileshe' }]);
+    setRowSeq(2);
+    setPage(1);
+    onClose();
+  };
+
   const handleSubmit = () => {
     const filledRows = rows.filter((r) => r.loanId);
     onSubmit?.({ transferDate, fromBranch, toBranch, loans: filledRows });
-    onClose();
+    handleModalClose();
   };
 
   const filledRows = rows.filter((r) => r.loanId);
@@ -199,7 +209,7 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleModalClose}
       size="850px"
       padding={0}
       lockScroll
@@ -248,7 +258,7 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
               color="white"
               radius="xl"
               size="md"
-              onClick={onClose}
+              onClick={handleModalClose}
               aria-label="Close"
             >
               <IconX size={16} color="white" />
@@ -401,7 +411,7 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
         <ModalFooter
           variant="theme"
           isViewMode={false}
-          onClose={onClose}
+          onClose={handleModalClose}
           onSubmit={handleSubmit}
           submitLabel="Save"
           submitDisabled={!canSave}

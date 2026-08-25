@@ -1,7 +1,19 @@
 import { Modal, TextInput, Checkbox, Button, Group, Stack } from '@mantine/core';
 import { useEffect, useState } from 'react';
 
-export function LoanClassificationRangesModal({ opened, onClose, mode = 'add', data = null }) {
+interface LoanClassificationRangesModalProps {
+  opened: boolean;
+  onClose: () => void;
+  mode?: 'add' | 'edit' | 'view';
+  data?: {
+    classificationCode?: string;
+    minDpd?: string | number;
+    maxDpd?: string | number;
+    isWrittenOff?: boolean;
+  } | null;
+}
+
+export function LoanClassificationRangesModal({ opened, onClose, mode = 'add', data = null }: LoanClassificationRangesModalProps) {
   const isView = mode === 'view';
   
   const title = 
@@ -17,17 +29,19 @@ export function LoanClassificationRangesModal({ opened, onClose, mode = 'add', d
     isWrittenOff: false,
   });
 
-  // Update form when modal opens or data changes
+  // Update form when data changes
   useEffect(() => {
-    if (opened && data) {
+    if (data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         classificationCode: data.classificationCode || '',
-        minDpd: data.minDpd || '',
-        maxDpd: data.maxDpd || '',
+        minDpd: String(data.minDpd || ''),
+        maxDpd: String(data.maxDpd || ''),
         isWrittenOff: data.isWrittenOff || false,
       });
-    } else if (opened && mode === 'add') {
+    } else if (mode === 'add') {
       // Reset form for adding
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         classificationCode: '',
         minDpd: '',
@@ -35,12 +49,22 @@ export function LoanClassificationRangesModal({ opened, onClose, mode = 'add', d
         isWrittenOff: false,
       });
     }
-  }, [opened, data, mode]);
+  }, [data, mode]);
+
+  const handleModalClose = () => {
+    setFormData({
+      classificationCode: '',
+      minDpd: '',
+      maxDpd: '',
+      isWrittenOff: false,
+    });
+    onClose();
+  };
 
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleModalClose}
       title={title}
       size="lg"
       radius="md"
@@ -93,7 +117,7 @@ export function LoanClassificationRangesModal({ opened, onClose, mode = 'add', d
 
       {/* Footer Actions */}
       <Group justify="flex-end" mt="xl" pt="md" className="border-t border-gray-100">
-        <Button variant="default" onClick={onClose} size="sm">
+        <Button variant="default" onClick={handleModalClose} size="sm">
           {isView ? 'Close' : 'Cancel'}
         </Button>
         {!isView && (
@@ -101,7 +125,7 @@ export function LoanClassificationRangesModal({ opened, onClose, mode = 'add', d
             size="sm" 
             bg="indigoAlt.4"
             className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-            onClick={onClose}
+            onClick={handleModalClose}
           >
             Save
           </Button>

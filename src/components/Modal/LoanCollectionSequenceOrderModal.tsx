@@ -52,6 +52,7 @@ export function LoanCollectionSequenceOrderModal({
     isSaving,
     handleSave,
     isNameEditable,
+    resetForm,
   } = useCollectionOrderForm({ opened, mode, data, onSaved, onClose });
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -59,6 +60,7 @@ export function LoanCollectionSequenceOrderModal({
   const dragOverItem = useRef<number | null>(null);
 
   const handleClose = () => {
+    resetForm();
     onClose();
     setTimeout(() => setDraggedIndex(null), 200);
   };
