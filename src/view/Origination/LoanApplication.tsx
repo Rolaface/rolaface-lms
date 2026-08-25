@@ -440,6 +440,9 @@ const outcomeMutation = useMutation({
   } = useQuery({
     queryKey: ["loan-applications"],
     queryFn: getAllLoanApplications,
+    refetchInterval: 2000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   const data: LoanApplicationRow[] = useMemo(
