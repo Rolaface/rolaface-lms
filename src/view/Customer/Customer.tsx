@@ -46,7 +46,7 @@ export function Customer() {
   const theme = useMantineTheme();
   const list = useCustomerList();
 
-  const [sorting, setSorting] = useState([{ id: "name", desc: false }]);
+  const [sorting, setSorting] = useState([{ id: "id", desc: true }]);
   const [borrower360CustomerId, setBorrower360CustomerId] = useState<
     string | null
   >(null);
