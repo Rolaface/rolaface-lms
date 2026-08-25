@@ -92,3 +92,22 @@ export async function updateLoanApplicationStatus({
 
   return data;
 }
+
+export async function sendLoanApplicationForReview(payload: {
+  application_id: string;
+  assign_to_user: string;
+  comment: string;
+}) {
+  const { data } = await apiClient.post(API.loanApplication.sendForReview, payload);
+  return data;
+}
+
+export async function loanApplicationReviewOutcome(payload: {
+  application_id: string;
+  action: string;
+  assign_to_user: string;
+  comment: string;
+}) {
+  const { data } = await apiClient.post(API.loanApplication.applicationReview, payload);
+  return data;
+}
