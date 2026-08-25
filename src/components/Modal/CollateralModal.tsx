@@ -138,12 +138,11 @@ export function CollateralModal({ opened, onClose, onMinimize, editId, isView }:
     onError: (error: any) => showError("Update Failed", error),
   });
 
-  useEffect(() => {
-    if (editId) {
-      refetch();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editId]);
+ useEffect(() => {
+  if (editId && opened) {
+    refetch();
+  }
+}, [editId, opened]);
 
   const handleReset = () => {
     form.reset();
@@ -345,6 +344,7 @@ export function CollateralModal({ opened, onClose, onMinimize, editId, isView }:
                   placeholder="0.000"
                   decimalScale={3}
                   fixedDecimalScale
+                  disabled={!!editId}
                   hideControls
                   rightSection={<IconPercentage size={13} color="var(--mantine-color-slate-4)" />}
                   {...form.getInputProps("haircut")}
