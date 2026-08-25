@@ -39,17 +39,40 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 import { schedulerModal } from "../components/Modal/Schedular/schedulerModalStore";
- 
+
 interface SchedulerRow {
   id: string;
   schedulerName: string;
   frequency: string;
+  startDate: string;
+  daysBeforeDue: number; 
+  channel: string; 
+  template: string;
   enabled: boolean;
 }
 
 const DUMMY_DATA: SchedulerRow[] = [
-  { id: "1", schedulerName: "Repayment Reminder", frequency: "Monthly", enabled: true },
-  ];
+  { 
+    id: "1", 
+    schedulerName: "Repayment Reminder", 
+    frequency: "Monthly", 
+    startDate: "2026-07-01",
+    daysBeforeDue: 2,
+    channel: "Email",
+    template: "Standard Reminder Template",
+    enabled: true 
+  },
+  { 
+    id: "2", 
+    schedulerName: "Overdue Alert", 
+    frequency: "Daily", 
+    startDate: "2026-08-01",
+    daysBeforeDue: 0,
+    channel: "SMS",
+    template: "Urgent Overdue Notice",
+    enabled: true 
+  },
+];
 
 const columnHelper = createColumnHelper<SchedulerRow>();
 
@@ -82,7 +105,9 @@ export function SchedulerPage() {
     return schedulers.filter(
       (s) =>
         s.schedulerName.toLowerCase().includes(term) ||
-        s.frequency.toLowerCase().includes(term)
+        s.frequency.toLowerCase().includes(term) ||
+        s.channel.toLowerCase().includes(term) ||      
+        s.template.toLowerCase().includes(term)
     );
   }, [schedulers, debouncedSearch]);
 
@@ -96,8 +121,7 @@ export function SchedulerPage() {
     return filteredSchedulers.slice(start, start + pageSize);
   }, [filteredSchedulers, page, pageSize]);
 
-
-   const handleAddClick = () => {
+  const handleAddClick = () => {
     schedulerModal.open({
       onSaved: (form) => {
         const id = `scheduler-${Date.now()}`;
@@ -111,6 +135,10 @@ export function SchedulerPage() {
       initialData: {
         schedulerName: row.schedulerName,
         frequency: row.frequency,
+        startDate: row.startDate,
+        daysBeforeDue: row.daysBeforeDue,
+        channel: row.channel,
+        template: row.template,
         enabled: row.enabled,
       },
       isView: true,
@@ -122,6 +150,10 @@ export function SchedulerPage() {
       initialData: {
         schedulerName: row.schedulerName,
         frequency: row.frequency,
+        startDate: row.startDate,
+        daysBeforeDue: row.daysBeforeDue,
+        channel: row.channel,    
+        template: row.template,
         enabled: row.enabled,
       },
       onSaved: (form) => {
@@ -132,7 +164,7 @@ export function SchedulerPage() {
     });
   };
 
-  // ── Table Columns ──
+  // 3. Table Columns Definition
   const columns = useMemo(
     () => [
       columnHelper.accessor("schedulerName", {
@@ -145,6 +177,38 @@ export function SchedulerPage() {
       }),
       columnHelper.accessor("frequency", {
         header: "Frequency",
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {info.getValue() || "—"}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor("startDate", {
+        header: "Start Date",
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {info.getValue() || "—"}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor("daysBeforeDue", {
+        header: "Days Before Due",
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {info.getValue() ?? "—"} 
+          </Text>
+        ),
+      }),
+      columnHelper.accessor("channel", {
+        header: "Channel",
+        cell: (info) => (
+          <Badge variant="dot" size="sm" radius="sm" color={info.getValue() === "Email" ? "blue" : "teal"}>
+            {info.getValue() || "—"}
+          </Badge>
+        ),
+      }),
+      columnHelper.accessor("template", {
+        header: "Template",
         cell: (info) => (
           <Text fz="xs" c="slate.6">
             {info.getValue() || "—"}
@@ -189,7 +253,7 @@ export function SchedulerPage() {
                   radius="md"
                   onClick={(e) => {
                     e.stopPropagation();
-                    console.log("View", rowData);
+                    handleView(rowData);
                   }}
                 >
                   <IconEye size={14} />
@@ -204,7 +268,7 @@ export function SchedulerPage() {
                   radius="md"
                   onClick={(e) => {
                     e.stopPropagation();
-                    console.log("Edit", rowData);
+                    handleEdit(rowData);
                   }}
                 >
                   <IconPencil size={14} />
@@ -229,7 +293,6 @@ export function SchedulerPage() {
                     color={rowData.enabled ? "orange" : "green"}
                     onClick={(e) => {
                       e.stopPropagation();
-                    //   handleToggleEnable(rowData.id, rowData.enabled);
                     }}
                   >
                     {rowData.enabled ? "Disable" : "Enable"}
@@ -239,7 +302,6 @@ export function SchedulerPage() {
                     leftSection={<IconTrash size={14} />}
                     onClick={(e) => {
                       e.stopPropagation();
-                    //   handleDelete(rowData.id);
                     }}
                   >
                     Delete
@@ -319,7 +381,7 @@ export function SchedulerPage() {
             className="scheduler-search"
             size="sm"
             radius="xl"
-            placeholder="Search by name or frequency"
+            placeholder="Search by name, channel, or template..."
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
             styles={{
