@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { Box, Button, Group, Modal, Text, ThemeIcon, useMantineTheme } from "@mantine/core";
-import { IconArrowRight, IconCash, IconMinus, IconX } from "@tabler/icons-react";
+import {
+  Box,
+  Button,
+  Group,
+  Modal,
+  Text,
+  ThemeIcon,
+  useMantineTheme,
+} from "@mantine/core";
+import {
+  IconArrowRight,
+  IconCash,
+  IconMinus,
+  IconX,
+} from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@mantine/form";
 
@@ -11,18 +24,26 @@ import {
   getLoanDues,
   getLoanRepaymentById,
   updateLoanRepayment,
-   getModeOfPayment,
+  getModeOfPayment,
 } from "../../api/loanRepaymentApi";
-import type { Borrower, LoanAccount, LoanRepaymentFormData, LoanRepaymentFormValues } from "../../types/loanRepayment";
-import { computePaymentEffect, toRepaymentType,fromRepaymentType  } from "../../utils/Loanrepaymentutils";
+import type {
+  Borrower,
+  LoanAccount,
+  LoanRepaymentFormData,
+  LoanRepaymentFormValues,
+} from "../../types/loanRepayment";
+import {
+  computePaymentEffect,
+  toRepaymentType,
+  fromRepaymentType,
+} from "../../utils/Loanrepaymentutils";
 import { BorrowerSelectionPanel } from "./Repayment/Borrowerselectionpanel";
 import { PaymentExecutionPanel } from "./Repayment/Paymentexecutionpanel";
 import { DuesSummaryPanel } from "./Repayment/Duessummarypanel";
 import { PaymentEffectModal } from "./Repayment/Paymenteffectmodal";
-import { ModalFooter } from "../../components/shared/ModalFooter"
+import { ModalFooter } from "../../components/shared/ModalFooter";
 import { openCommonModal } from "./AlertModal";
 import { parseFrappeError } from "../../utils/parseFrappeError";
-
 
 export type { LoanRepaymentFormData };
 
@@ -33,18 +54,34 @@ interface LoanRepaymentModalProps {
   editId?: string | null;
   isView?: boolean;
   onMinimize: () => void;
+  initialLoanId?: string;
+  initialBorrower?: Borrower | null;
 }
 
-export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView, onMinimize }: LoanRepaymentModalProps) {
+export function LoanRepaymentModal({
+  opened,
+  onClose,
+  onSubmit,
+  editId,
+  isView,
+  onMinimize,
+  initialLoanId,
+  initialBorrower,
+}: LoanRepaymentModalProps) {
+   console.log("MODAL DEBUG props:", { editId, initialLoanId, initialBorrower });
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
-  const [selectedBorrower, setSelectedBorrower] = useState<Borrower | null>(null);
-  const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
+const [selectedBorrower, setSelectedBorrower] = useState<Borrower | null>(
+  initialBorrower ?? null,
+);
+const [selectedLoanId, setSelectedLoanId] = useState<string | null>(
+  editId ? null : (initialLoanId ?? null),
+);
   const [borrowerPanelCollapsed, setBorrowerPanelCollapsed] = useState(false);
   const [paymentEffectOpened, setPaymentEffectOpened] = useState(false);
-
+console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
   useEffect(() => {
     setBorrowerPanelCollapsed(!!selectedLoanId);
   }, [selectedLoanId]);
@@ -54,20 +91,21 @@ export function LoanRepaymentModal({ opened, onClose, onSubmit, editId, isView, 
     queryFn: () => getLoanRepaymentAccount(search),
     enabled: opened && search.trim().length > 0,
   });
-  const { data: modeOfPaymentResponse, isLoading: isModeOfPaymentLoading } = useQuery({
-  queryKey: ["modeOfPayment"],
-  queryFn: () => getModeOfPayment(),
-  enabled: opened,
-  staleTime: 5 * 60 * 1000, // rarely changes, avoid refetching every open
-});
+  const { data: modeOfPaymentResponse, isLoading: isModeOfPaymentLoading } =
+    useQuery({
+      queryKey: ["modeOfPayment"],
+      queryFn: () => getModeOfPayment(),
+      enabled: opened,
+      staleTime: 5 * 60 * 1000, // rarely changes, avoid refetching every open
+    });
 
-const modeOfPaymentOptions = useMemo(() => {
-  const items = modeOfPaymentResponse?.data ?? [];
-  return items.map((item) => ({
-    value: item.name,
-    label: item.name,
-  }));
-}, [modeOfPaymentResponse]);
+  const modeOfPaymentOptions = useMemo(() => {
+    const items = modeOfPaymentResponse?.data ?? [];
+    return items.map((item) => ({
+      value: item.name,
+      label: item.name,
+    }));
+  }, [modeOfPaymentResponse]);
 
   const matches: Borrower[] = useMemo(() => {
     const items = searchResponse?.message?.data ?? [];
@@ -153,7 +191,10 @@ const modeOfPaymentOptions = useMemo(() => {
 
   useEffect(() => {
     if (editId && editDetailsResponse) {
-      const item = editDetailsResponse.message?.data || editDetailsResponse.message || editDetailsResponse;
+      const item =
+        editDetailsResponse.message?.data ||
+        editDetailsResponse.message ||
+        editDetailsResponse;
 
       setSelectedBorrower({
         name: item.applicant,
@@ -177,23 +218,30 @@ const modeOfPaymentOptions = useMemo(() => {
       setSelectedLoanId(item.against_loan);
 
       form.setValues({
-        valueDate: item.value_date ? item.value_date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        valueDate: item.value_date
+          ? item.value_date.slice(0, 10)
+          : new Date().toISOString().slice(0, 10),
         natureOfPayment: fromRepaymentType(item.repayment_type),
         amountToPay: item.amount_paid ?? "",
         paymentMode: item.mode_of_payment || null,
         referenceNumber: item.reference_number || "",
         referenceDate: item.reference_date || "",
         accountNumber: item.account_number || "",
-        remark: item.manual_remarks || "", 
+        remark: item.manual_remarks || "",
       });
-    } else if (!editId) {
+  } else if (!editId && !initialLoanId) {
       handleReset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId, editDetailsResponse]);
 
   const { data: duesResponse, isFetching: isDuesLoading } = useQuery({
-    queryKey: ["loanDues", selectedLoanId, form.values.valueDate, form.values.natureOfPayment],
+    queryKey: [
+      "loanDues",
+      selectedLoanId,
+      form.values.valueDate,
+      form.values.natureOfPayment,
+    ],
     queryFn: () =>
       getLoanDues({
         payment_type: toRepaymentType(form.values.natureOfPayment),
@@ -207,16 +255,24 @@ const modeOfPaymentOptions = useMemo(() => {
 
   useEffect(() => {
     if (!dues) return;
-    if (form.values.natureOfPayment === "PAY_DUES" || form.values.natureOfPayment === "FULL_SETTLEMENT") {
+    if (
+      form.values.natureOfPayment === "PAY_DUES" ||
+      form.values.natureOfPayment === "FULL_SETTLEMENT"
+    ) {
       form.setFieldValue("amountToPay", dues.payable_amount);
     }
   }, [dues, form.values.natureOfPayment]);
 
-  const selectedLoan = selectedBorrower?.loans.find((l) => l.id === selectedLoanId) ?? null;
+  const selectedLoan =
+    selectedBorrower?.loans.find((l) => l.id === selectedLoanId) ?? null;
 
   const paymentEffect = useMemo(() => {
     if (!selectedLoan) return null;
-    return computePaymentEffect(selectedLoan, Number(form.values.amountToPay) || 0, form.values.natureOfPayment);
+    return computePaymentEffect(
+      selectedLoan,
+      Number(form.values.amountToPay) || 0,
+      form.values.natureOfPayment,
+    );
   }, [selectedLoan, form.values.amountToPay, form.values.natureOfPayment]);
 
   const handleSelectBorrower = (borrower: Borrower) => {
@@ -236,7 +292,10 @@ const modeOfPaymentOptions = useMemo(() => {
   };
 
   const handleNatureChange = (value: string) => {
-    form.setFieldValue("natureOfPayment", value as LoanRepaymentFormValues["natureOfPayment"]);
+    form.setFieldValue(
+      "natureOfPayment",
+      value as LoanRepaymentFormValues["natureOfPayment"],
+    );
     if (value === "PARTIAL") form.setFieldValue("amountToPay", "");
   };
 
@@ -244,7 +303,10 @@ const modeOfPaymentOptions = useMemo(() => {
     mutationFn: createLoanRepayment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
-      showSuccess("Repayment Processed", "Loan repayment processed successfully.");
+      showSuccess(
+        "Repayment Processed",
+        "Loan repayment processed successfully.",
+      );
       handleReset();
       onClose();
     },
@@ -283,7 +345,8 @@ const modeOfPaymentOptions = useMemo(() => {
     form.reset();
   };
 
-  const isProcessing = createRepaymentMutation.isPending || updateRepaymentMutation.isPending;
+  const isProcessing =
+    createRepaymentMutation.isPending || updateRepaymentMutation.isPending;
 
   return (
     <Modal
@@ -318,11 +381,21 @@ const modeOfPaymentOptions = useMemo(() => {
               <IconCash size={19} />
             </ThemeIcon>
             <div className="min-w-0">
-              <Text size="md" fw={700} c="white" className="leading-tight truncate">
-                {isView ? "View Loan Repayment" : editId ? "Edit Loan Repayment" : "Loan Repayment"}
+              <Text
+                size="md"
+                fw={700}
+                c="white"
+                className="leading-tight truncate"
+              >
+                {isView
+                  ? "View Loan Repayment"
+                  : editId
+                    ? "Edit Loan Repayment"
+                    : "Loan Repayment"}
               </Text>
               <Text size="xs" c="brand.1" className="leading-tight truncate">
-                Search a borrower and process a repayment against their loan account.
+                Search a borrower and process a repayment against their loan
+                account.
               </Text>
             </div>
           </Group>
@@ -333,7 +406,13 @@ const modeOfPaymentOptions = useMemo(() => {
               px={8}
               onClick={onMinimize}
               style={{ color: "var(--mantine-color-white)" }}
-              styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+              styles={{
+                root: {
+                  "&:hover": {
+                    backgroundColor: theme.other.headerButtonHoverBg,
+                  },
+                },
+              }}
             >
               <IconMinus size={18} />
             </Button>
@@ -343,15 +422,25 @@ const modeOfPaymentOptions = useMemo(() => {
               px={8}
               onClick={onClose}
               style={{ color: "var(--mantine-color-white)" }}
-              styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+              styles={{
+                root: {
+                  "&:hover": {
+                    backgroundColor: theme.other.headerButtonHoverBg,
+                  },
+                },
+              }}
             >
               <IconX size={18} />
             </Button>
           </Group>
         </Box>
-        <div style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }} />
+        <div
+          style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
+        />
 
-        <div style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }} />
+        <div
+          style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
+        />
 
         {/* Body: borrower selection + payment execution + dues summary */}
         <div className="flex flex-1 overflow-hidden">
@@ -370,15 +459,15 @@ const modeOfPaymentOptions = useMemo(() => {
             isView={isView}
           />
 
-         <PaymentExecutionPanel
-  form={form}
-  selectedLoan={selectedLoan}
-  selectedBorrower={selectedBorrower}
-  isView={isView}
-  onNatureChange={handleNatureChange}
-  modeOfPaymentOptions={modeOfPaymentOptions}
-  isModeOfPaymentLoading={isModeOfPaymentLoading}
-/>
+          <PaymentExecutionPanel
+            form={form}
+            selectedLoan={selectedLoan}
+            selectedBorrower={selectedBorrower}
+            isView={isView}
+            onNatureChange={handleNatureChange}
+            modeOfPaymentOptions={modeOfPaymentOptions}
+            isModeOfPaymentLoading={isModeOfPaymentLoading}
+          />
 
           <DuesSummaryPanel
             selectedLoan={selectedLoan}
@@ -397,7 +486,7 @@ const modeOfPaymentOptions = useMemo(() => {
           submitLabel={editId ? "Update" : "Save"}
           submitLoading={isProcessing}
           submitDisabled={!selectedLoan || isProcessing}
-                    onSubmit={() => form.onSubmit(handleSubmit)()}
+          onSubmit={() => form.onSubmit(handleSubmit)()}
         />
       </Box>
 
