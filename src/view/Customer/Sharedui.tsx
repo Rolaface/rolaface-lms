@@ -1303,7 +1303,7 @@ export function BorrowerSidebar({
             <Accordion.Control
               icon={<IconCreditCard size={13} color={themeTokens.primary} />}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <Text fz={10} fw={700} className="tracking-wide">
                   LOANS
                 </Text>
@@ -1314,9 +1314,12 @@ export function BorrowerSidebar({
                     root: {
                       backgroundColor: themeTokens.infoSoft,
                       color: themeTokens.info,
+                      minWidth: 18,
+                      width: "auto",
+                      padding: "0 5px",
+                      flexShrink: 0,
                     },
                   }}
-                  circle
                 >
                   {loans.length}
                 </Badge>

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { Box, Button, Group, Title, Text } from "@mantine/core";
-import { IconFileText, IconFileSpreadsheet } from "@tabler/icons-react";
+import { IconFileText, IconFileSpreadsheet, IconSend } from "@tabler/icons-react";
 
 import { useLoanStatement } from "../../../hooks/Report/LoanStatement/useLoanStatement";
 import { formatAmount, usePrefetchCurrencies } from "../../../store/currencyStore";
@@ -35,7 +35,7 @@ export function LoanStatement() {
   return (
     <Box className="bg-[#F7F8FB] text-slate-800 min-h-full">
       <Box component="main" className="p-4 flex flex-col gap-3.5">
-        
+
         {/* Header Section */}
         <Group justify="space-between" align="flex-start">
           <div>
@@ -47,6 +47,13 @@ export function LoanStatement() {
             </Group>
           </div>
           <Group gap={10}>
+            <Button
+              variant="default" size="sm" radius="md" leftSection={<IconSend size={15} color="#2563EB" />}
+              loading={status.sendingEmail}
+              onClick={() => actions.handleSendEmail()}
+            >
+              Send
+            </Button>
             <Button
               variant="default" size="sm" radius="md" leftSection={<IconFileText size={15} color="#DC2626" />}
               loading={status.exportingType === "pdf"} onClick={() => actions.handleExport("pdf")}
@@ -64,13 +71,13 @@ export function LoanStatement() {
 
         {/* Modular Sections */}
         <LoanStatementFilters filters={filters} lookups={lookups} />
-        
+
         <LoanStatementSummaryCards dashboardData={dashboardData} loadingDashboard={status.loadingDashboard} renderCurrency={renderCurrency} />
-        
+
         <LoanStatementCharts dashboardData={dashboardData} loadingDashboard={status.loadingDashboard} renderCurrency={renderCurrency} />
-        
-        <LoanStatementTable 
-          rows={rows} 
+
+        <LoanStatementTable
+          rows={rows}
           pagination={pagination}
           paginationState={paginationState}
           sortState={sortState}
@@ -79,7 +86,7 @@ export function LoanStatement() {
           actions={actions}
           renderCurrency={renderCurrency}
         />
-        
+
       </Box>
     </Box>
   );

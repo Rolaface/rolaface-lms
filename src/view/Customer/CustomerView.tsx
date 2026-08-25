@@ -52,6 +52,7 @@ export function Borrower360({
   const [selected, setSelected] = useState<SelectedItem>(
     initialSelected ?? { type: "profile" },
   );
+  const [customerLoans, setCustomerLoans] = useState<any[]>([]);
   useEffect(() => {
     if (selected?.type !== "loan") {
       setSelectedLoanData(null);
@@ -69,6 +70,23 @@ export function Borrower360({
         setSelectedLoanData(null);
       });
   }, [selected]);
+  useEffect(() => {
+  if (!borrower.name) {
+    setCustomerLoans([]);
+    return;
+  }
+
+  getLoanList({
+    applicant: [borrower.name],
+  })
+    .then((response) => {
+      const loans = response?.data?.data ?? response?.data ?? [];
+      setCustomerLoans(loans);
+    })
+    .catch(() => {
+      setCustomerLoans([]);
+    });
+}, [borrower.name]);
   const activeContent = useMemo(() => {
     if (!selected) return null;
     if (selected.type === "profile") {
@@ -144,46 +162,38 @@ export function Borrower360({
 
   return (
     <div className="flex h-full min-h-screen">
-      <BorrowerSidebar
-        borrower={{
-          ...borrower,
-          loans:
-            selected?.type === "loan"
-              ? [
-                  {
-                    id: selected.id,
-                    loanNumber: selected.id,
-                    product: "",
-                    outstanding:
-                      selectedLoanData?.pending_principal_amount ?? 0,
-                    repaidPercent:
-                      selectedLoanData?.loan_amount > 0
-                        ? Math.round(
-                            Math.min(
-                              100,
-                              Math.max(
-                                0,
-                                (selectedLoanData.total_principal_paid /
-                                  selectedLoanData.loan_amount) *
-                                  100,
-                              ),
-                            ),
-                          )
-                        : 0,
-                    status: selectedLoanData?.status ?? "",
-                    nextInstallment: selectedLoanData?.total_payment ?? 0,
-                    dpd: selectedLoanData?.dpd ?? 0,
-                  },
-                ]
-              : borrower.loans,
-        }}
-        collapsed={collapsed}
-        onToggleCollapsed={() => setCollapsed((c) => !c)}
-        onBack={onBack}
-        selected={selected}
-        onSelect={setSelected}
-        hideProfile={hideProfile}
-      />
+    <BorrowerSidebar
+  borrower={{
+    ...borrower,
+    loans: customerLoans.map((loan) => ({
+      id: loan.name,
+      loanNumber: loan.name,
+      product: loan.loan_product ?? "",
+      outstanding: loan.pending_principal_amount ?? 0,
+      repaidPercent:
+        loan.loan_amount > 0
+          ? Math.round(
+              Math.min(
+                100,
+                Math.max(
+                  0,
+                  ((loan.total_principal_paid ?? 0) / loan.loan_amount) * 100,
+                ),
+              ),
+            )
+          : 0,
+      status: loan.status ?? "",
+      nextInstallment: loan.total_payment ?? 0,
+      dpd: loan.dpd ?? 0,
+    })),
+  }}
+  collapsed={collapsed}
+  onToggleCollapsed={() => setCollapsed((c) => !c)}
+  onBack={onBack}
+  selected={selected}
+  onSelect={setSelected}
+  hideProfile={hideProfile}
+/>
 
       <div
         className="flex-1 flex flex-col overflow-y-auto"
