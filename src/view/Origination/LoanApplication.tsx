@@ -799,8 +799,9 @@ const effectiveStatus = getEffectiveStatus(row);
             isReadyForApproval ||
             isRejectionOutcome ||
             isApproved;
-
-          const menuDisabled = isCreated || isRejected;
+const underReview = (isUnderReview && firstName === "Administrator") || (isApproved  && firstName != "Administrator") 
+|| (isReadyForApproval && firstName != "Administrator")
+          const menuDisabled = isCreated || isRejected || underReview;
 
           return (
             <Group
@@ -830,7 +831,7 @@ const effectiveStatus = getEffectiveStatus(row);
                   size="sm"
                   variant="subtle"
                   color={isPending ? "brand" : "gray"}
-                  disabled={!isPending}
+                  disabled={!isPending || firstName !== "Administrator"}
                   onClick={() => handleEdit(row.name)}
                 >
                   <IconPencil size={14} />
@@ -850,7 +851,7 @@ const effectiveStatus = getEffectiveStatus(row);
                   variant="subtle"
                   color={isPending || isRejected ? "danger" : "gray"}
                   disabled={
-                    (!isPending && !isRejected) || deleteMutation.isPending
+                    (!isPending && !isRejected) || deleteMutation.isPending || firstName !== "Administrator"
                   }
                   onClick={() => confirmDelete(row.name)}
                 >
@@ -933,6 +934,7 @@ const effectiveStatus = getEffectiveStatus(row);
                   {isApproved && (
                     <Menu.Item
                       onClick={() => confirmCreateLoanBooking(row.name)}
+                      disabled={firstName !== "Administrator"}
                     >
                       Create Loan
                     </Menu.Item>
