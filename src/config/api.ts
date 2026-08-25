@@ -176,6 +176,7 @@ loanStatement: {
     getStatement: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_statement.api.get_loan_statement`,
     exportPdf: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_statement.api.export_loan_statement_pdf`,
     exportExcel: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_statement.api.export_loan_statement_excel`,
+    sendStatement: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_statement.api.send_loan_statment`
   },
 
     loanArrear: {

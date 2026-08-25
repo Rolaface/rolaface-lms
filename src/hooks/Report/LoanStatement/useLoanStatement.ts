@@ -5,11 +5,13 @@ import {
   getLoanStatement,
   exportLoanStatementPDF,
   exportLoanStatementExcel,
+  sendLoanStatementEmail
 } from '../../../api/Report/loanStatementApi';
 import { getCustomerList, getLoanList } from '../../../api/lookup api/lookUpApi';
 import type { DashboardData, StatementRow, StatementSort, PaginationMeta } from '../../../types/Report/loanStatement';
 import { notifyError } from '../../../utils/notify';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
+import { openCommonModal } from '../../../components/Modal/AlertModal';
 
 const DEFAULT_SORT: StatementSort = { field: 'date', direction: 'asc' };
 const DEFAULT_PAGE_SIZE = 5;
@@ -41,6 +43,7 @@ export function useLoanStatement() {
   const [viewType, setViewType] = useState<'summary' | 'detailed'>('summary');
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 350);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const [customers, setCustomers] = useState<{ value: string; label: string }[]>([]);
   const [loans, setLoans] = useState<{ value: string; label: string; applicant?: string }[]>([]);
@@ -52,7 +55,7 @@ export function useLoanStatement() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [rows, setRows] = useState<StatementRow[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  
+
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [loadingTable, setLoadingTable] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -182,18 +185,42 @@ export function useLoanStatement() {
     setPage(1);
   }, []);
 
+  const handleSendEmail = async () => {
+    if (!loanId) return;
+    setSendingEmail(true);
+    try {
+      await sendLoanStatementEmail({
+        customer_id: customerId || '',
+        loan_id: loanId,
+        from_date: formatDateToAPI(fromDate),
+        to_date: formatDateToAPI(toDate),
+      });
+      openCommonModal({
+        heading: "Statement Sent",
+        subtitle: "",
+        body: "Loan statement has been emailed successfully.",
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
+    } catch (err) {
+      notifyError(parseFrappeError(err), 'Failed to send statement');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const handleExport = async (type: 'pdf' | 'excel') => {
     if (!loanId) return;
     setExportingType(type);
     try {
       const exportFn = type === 'pdf' ? exportLoanStatementPDF : exportLoanStatementExcel;
-      const blob = await exportFn({ 
-        loan_id: loanId, 
-        from_date: formatDateToAPI(fromDate), 
-        to_date: formatDateToAPI(toDate), 
-        view_type: viewType 
+      const blob = await exportFn({
+        loan_id: loanId,
+        from_date: formatDateToAPI(fromDate),
+        to_date: formatDateToAPI(toDate),
+        view_type: viewType
       });
-      
+
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement('a');
       link.href = url;
@@ -215,7 +242,7 @@ export function useLoanStatement() {
     paginationState: { page, setPage, pageSize, setPageSize },
     sortState: { sort, toggleSort },
     data: { dashboardData, rows, pagination },
-    status: { loadingDashboard, loadingTable, error, exportingType },
-    actions: { refetchTable: fetchTable, handleExport },
+    status: { loadingDashboard, loadingTable, error, exportingType, sendingEmail },
+    actions: { refetchTable: fetchTable, handleExport, handleSendEmail },
   };
 }
