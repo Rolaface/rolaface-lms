@@ -19,7 +19,13 @@ import {
 import { useLoanView } from "../../../hooks/Loan/useLoanView";
 import { useCompanyStore } from "../../../store/companyStore";
 import { formatAmount } from "../../../store/currencyStore";
-import { OverviewField, StatusPill, TenureBar, themeTokens, serif } from "./SharedUI";
+import {
+  OverviewField,
+  StatusPill,
+  TenureBar,
+  themeTokens,
+  serif,
+} from "./SharedUI";
 import { LoanDetailSkeleton } from "./LoanDetailSkeleton";
 import {
   RiskSnapshotPanel,
@@ -36,6 +42,7 @@ import { AccountingTab } from "./Tabs/AccountingTab";
 import { CollateralTab } from "./Tabs/CollateralTab";
 import { DocumentsTab } from "./Tabs/DocumentsTab";
 import { ActivityTab } from "./Tabs/ActivityTab";
+import { loanRepaymentModal } from "../../../components/Modal/loanRepaymentModalStore";
 
 export function LoanDetailView({
   loanId,
@@ -46,7 +53,7 @@ export function LoanDetailView({
 }) {
   const { data, status, activeTab, setActiveTab, pagination, actions } =
     useLoanView(loanId);
-  console.log("🚀 ~ LoanDetailView ~ data:", data);
+  
   const { overview } = data;
 
   const currencyCode = useCompanyStore((state) => state.baseCurrency);
@@ -97,6 +104,30 @@ export function LoanDetailView({
         ? themeTokens.slate
         : themeTokens.danger;
 
+const repaymentBorrower: Borrower | null = borrower
+  ? {
+      name: borrower.name ?? "",
+      cif: borrower.custId ?? borrower.customerId ?? "",
+      phone: borrower.mobile ?? "",
+      status: borrower.status ?? "",
+      loans: [
+        {
+          id: loanId,
+          type: overview.loan_product ?? "",
+          balance: overview.total_outstanding ?? 0,
+          emiDate: overview.maturity_date ?? "",
+          principalDue: 0,
+          interestDue: 0,
+          penalty: 0,
+          lateFees: 0,
+          remainingInstallments:
+            (overview.repayment_periods ?? 0) -
+            (overview.total_installments_raised ?? 0),
+        },
+      ],
+    }
+  : null;
+
   return (
     <div className="flex flex-col lg:flex-row gap-5 items-start">
       <div className="flex-1 min-w-0 flex flex-col gap-5">
@@ -135,6 +166,14 @@ export function LoanDetailView({
                 size="xs"
                 radius="md"
                 styles={{ root: { backgroundColor: themeTokens.primary } }}
+                onClick={() =>
+                  loanRepaymentModal.open({
+                    editId: null,
+                    isView: false,
+                    initialLoanId: loanId,
+                    initialBorrower: repaymentBorrower,
+                  })
+                }
               >
                 Record payment
               </Button>
