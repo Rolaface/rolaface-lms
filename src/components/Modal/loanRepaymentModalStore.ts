@@ -1,10 +1,13 @@
 import { IconCash } from '@tabler/icons-react';
 import { createModal } from '../../store/modal store/createModal';
 import { LoanRepaymentModal } from './LoanRepaymentModal';
+import type { Borrower } from '../../types/loanRepayment'; 
 
 export interface LoanRepaymentModalParams {
   editId?: string | null;
   isView?: boolean;
+  initialLoanId?: string;
+  initialBorrower?: Borrower | null;
 }
 
 interface LoanRepaymentModalProps {
@@ -13,6 +16,8 @@ interface LoanRepaymentModalProps {
   onMinimize: () => void;
   editId?: string | null;
   isView?: boolean;
+  initialLoanId?: string;
+  initialBorrower?: Borrower | null;
 }
 
 function getTitle(params: LoanRepaymentModalParams) {
@@ -30,6 +35,8 @@ export const loanRepaymentModal = createModal<LoanRepaymentModalParams, LoanRepa
     buildProps: (params) => ({
       editId: params.editId,
       isView: params.isView,
+      initialLoanId: params.initialLoanId,
+      initialBorrower: params.initialBorrower,
     }),
   },
 );
