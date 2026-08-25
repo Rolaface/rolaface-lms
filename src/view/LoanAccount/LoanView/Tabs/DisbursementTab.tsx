@@ -98,7 +98,7 @@ export function DisbursementTab({ data, meta, page, setPage, onPaginate, renderC
 
                 <Table.Td>
                   <Badge size="xs" variant="light" color={t.status === "Disbursed" ? "teal" : "orange"}>
-                    {t.status}
+                     {t.status === "Submitted" ? "Approved" : t.status}
                   </Badge>
                 </Table.Td>
               </Table.Tr>

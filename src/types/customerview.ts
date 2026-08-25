@@ -61,24 +61,24 @@ export type SelectedItem =
   | null;
 
 export interface BorrowerProfile {
-  customerId: number;
+  customerId: string;
   name: string;
   custId: string;
   status: 'Active' | 'Inactive';
   mobile: string;
-  nationalId: string;
-  branch: string;
-  totalExposure: number;
-  availableCredit: number;
-  riskRating: 'Low' | 'Medium' | 'High';
-  kycStatus: 'Verified' | 'Pending' | 'Rejected';
-  relationshipSince: string;
-  relationshipManager: { name: string; branch: string; initials: string };
-  loans: LoanSummary[];
-  investments: InvestmentSummary[];
-  savings: SavingsSummary[];
-  fixedDeposits: FixedDepositSummary[];
-  creditScore: number;
+  nationalId?: string;
+  branch?: string;
+  totalExposure?: number;
+  availableCredit?: number;
+  riskRating?: 'Low' | 'Medium' | 'High';
+  kycStatus?: 'Verified' | 'Pending' | 'Rejected';
+  relationshipSince?: string;
+  relationshipManager?: { name: string; branch: string; initials: string };
+  loans?: LoanSummary[];
+  investments?: InvestmentSummary[];
+  savings?: SavingsSummary[];
+  fixedDeposits?: FixedDepositSummary[];
+  creditScore?: number;
 }
 
 export interface CollateralItem {

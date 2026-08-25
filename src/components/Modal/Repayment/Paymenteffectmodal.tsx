@@ -14,22 +14,52 @@ interface PaymentEffectModalProps {
 export function PaymentEffectModal({ opened, onClose, selectedLoan, amountToPay, paymentEffect }: PaymentEffectModalProps) {
   const theme = useMantineTheme();
 
-  const rows: Array<{ label: string; before: number | string; after: number | string; isCount?: boolean }> = paymentEffect
+  const rows: Array<{ label: string; before: number | string; paid: number | string; after: number | string; isCount?: boolean }> = paymentEffect
     ? [
-        { label: "Total Outstanding", before: paymentEffect.totalOutstandingBefore, after: paymentEffect.totalOutstandingAfter },
-        {
-          label: "Principal Outstanding",
-          before: paymentEffect.principalOutstandingBefore,
-          after: paymentEffect.principalOutstandingAfter,
-        },
-        { label: "Arrears", before: paymentEffect.arrearsBefore, after: paymentEffect.arrearsAfter },
-        {
-          label: "Remaining Installments",
-          before: paymentEffect.remainingInstallmentsBefore,
-          after: paymentEffect.remainingInstallmentsAfter,
-          isCount: true,
-        },
-        { label: "Interest Payable", before: paymentEffect.interestPayableBefore, after: paymentEffect.interestPayableAfter },
+      {
+        label: "Principal Outstanding",
+        before: paymentEffect.principalOutstandingBefore,
+        paid: 0.0,
+        after: paymentEffect.principalOutstandingAfter,
+      },
+      { 
+        label: "Interest Outstanding", 
+        before: paymentEffect.interestPayableBefore, 
+        paid: 0.0, after: 
+        paymentEffect.interestPayableAfter 
+      },
+      { 
+        label: "Penalty Outstanding", 
+        before: paymentEffect.interestPayableBefore, 
+        paid: 0.0, after: 
+        paymentEffect.interestPayableAfter 
+      },
+      { 
+        label: "Charges Outstanding", 
+        before: paymentEffect.interestPayableBefore, 
+        paid: 0.0, 
+        after: paymentEffect.interestPayableAfter 
+      },
+      { 
+        label: "Total Outstanding", 
+        before: paymentEffect.totalOutstandingBefore, 
+        paid: 0.0, 
+        after: paymentEffect.totalOutstandingAfter 
+      },
+      { 
+        label: "Arrears", 
+        before: paymentEffect.arrearsBefore, 
+        paid: 0.0, 
+        after: paymentEffect.arrearsAfter 
+
+      },
+      {
+        label: "Remaining Installments",
+        before: paymentEffect.remainingInstallmentsBefore,
+        paid: 0.0,
+        after: paymentEffect.remainingInstallmentsAfter,
+        isCount: true,
+      },
       ]
     : [];
 
@@ -66,8 +96,9 @@ export function PaymentEffectModal({ opened, onClose, selectedLoan, amountToPay,
             <Table verticalSpacing="sm" horizontalSpacing="md" withRowBorders={false}>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Component</Table.Th>
+                  <Table.Th>Head</Table.Th>
                   <Table.Th ta="right">Before</Table.Th>
+                  <Table.Th ta="right">Piad</Table.Th>
                   <Table.Th ta="right">After</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -85,6 +116,11 @@ export function PaymentEffectModal({ opened, onClose, selectedLoan, amountToPay,
                     <Table.Td ta="right">
                       <Text size="sm" ff="monospace" c="slate.6">
                         {row.isCount ? row.before : formatCurrency(Number(row.before))}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <Text size="sm" ff="monospace" c="slate.6">
+                        {row.isCount ? row.paid : formatCurrency(Number(row.paid))}
                       </Text>
                     </Table.Td>
                     <Table.Td ta="right">

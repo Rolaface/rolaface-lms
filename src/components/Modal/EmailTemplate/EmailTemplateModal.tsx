@@ -322,6 +322,8 @@ export function EmailTemplateModal({
             onClose={handleModalClose}
             size="1000px"
             padding={0}
+            closeOnClickOutside={false}
+            closeOnEscape={false}
             lockScroll
             styles={{
                 content: { display: "flex", flexDirection: "column", overflow: "hidden" },

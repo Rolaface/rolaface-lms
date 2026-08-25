@@ -137,9 +137,13 @@ export function LoanAccount() {
   const queryClient = useQueryClient();
 
   const { can } = usePermission();
+
   const canCreateLoan = can("Loan", "create");
-  const canWriteLoan = can("Loan", "write");   
+  const canReadLoan = can("Loan", "read");
+  const canWriteLoan = can("Loan", "write");
   const canDeleteLoan = can("Loan", "delete");
+  const canSubmitLoan = can("Loan", "submit");
+  const canCancelLoan = can("Loan", "cancel");
 
 
   const [selectedLoan, setSelectedLoan] = useState<SelectedLoan | null>(null);
@@ -156,7 +160,7 @@ export function LoanAccount() {
   const [branch, setBranch] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
 
   
   useEffect(() => {
@@ -190,36 +194,36 @@ export function LoanAccount() {
   }, [productsResponse]);
 
   const showSuccess = (heading: string, body: string) => {
-      openCommonModal({
-        heading,
-        subtitle: '',
-        body,
-        color: 'green',
-        buttons: [{ label: 'Close', color: 'green' }],
-      });
-    };
+    openCommonModal({
+      heading,
+      subtitle: '',
+      body,
+      color: 'green',
+      buttons: [{ label: 'Close', color: 'green' }],
+    });
+  };
 
   const { mutate: removeLoan, isPending: isDeleting } = useMutation({
     mutationFn: (id: string) => deleteLoan(id),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["loans"] }); 
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
       showSuccess('Loan Booking Deleted', `Loan Booking ${variables} deleted successfully.`);
     },
-     onError: (error: any) => {
-     openCommonModal({
-       heading: "Action Failed",
-       subtitle: "We couldn't complete your request.",
-       body: parseFrappeError(error),
-       color: "red",
-   
-       buttons: [
-         {
-           label: "Close",
-           color: "red",
-         },
-       ],
-     });
-   },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
   });
 
   const confirmDelete = (id: string) => {
@@ -241,13 +245,13 @@ export function LoanAccount() {
         {
           label: "Delete",
           color: "red",
-          onClick: () => removeLoan(id), 
+          onClick: () => removeLoan(id),
         },
       ],
     });
   };
 
-const { mutate: updateStatus } = useMutation({
+  const { mutate: updateStatus } = useMutation({
     mutationFn: ({ id, action }: { id: string; action: string }) =>
       changeLoanStatus(id, action),
     onSuccess: (_, variables) => {
@@ -294,8 +298,8 @@ const { mutate: updateStatus } = useMutation({
     return data.filter((a) => a.branch === branch);
   }, [data, branch]);
 
-const companyCurrency = useCompanyStore((state) => state.baseCurrency);
-const currencyReady = useCurrencyReady();
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencyReady = useCurrencyReady();
 
   const columns = useMemo(
     () => [
@@ -342,22 +346,22 @@ const currencyReady = useCurrencyReady();
           </Text>
         ),
       }),
-    columnHelper.accessor("amount", {
-  header: "Amount",
-  cell: (info) => (
-    <Text
-      fz="xs"
-      c="slate.6"
-      style={{
-        fontFamily: "var(--mantine-font-family-monospace)",
-        fontVariantNumeric: "tabular-nums",
-      }}
-    >
-      {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
-    </Text>
-  ),
-  sortingFn: "basic",
-}),
+      columnHelper.accessor("amount", {
+        header: "Amount",
+        cell: (info) => (
+          <Text
+            fz="xs"
+            c="slate.6"
+            style={{
+              fontFamily: "var(--mantine-font-family-monospace)",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
+          </Text>
+        ),
+        sortingFn: "basic",
+      }),
       columnHelper.accessor("rate", {
         header: "Rate",
         cell: (info) => (
@@ -397,7 +401,7 @@ const currencyReady = useCurrencyReady();
           const rowData = info.row.original;
           const loanIdentifier = rowData.name || rowData.appNo || rowData.id;
           const isDraft = rowData.status === "Draft";
-          const isCancelled = rowData.status === "SUBMIT";
+          const isCancelled = rowData.status === "Cancelled";
 
           return (
             <Group
@@ -406,17 +410,19 @@ const currencyReady = useCurrencyReady();
               wrap="nowrap"
               className="lms-row-actions"
             >
-              <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="slate"
-                  radius="md"
-                  onClick={() => handleViewLoan(rowData)}
-                >
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
+              {canReadLoan && (
+                <Tooltip label="View" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="slate"
+                    radius="md"
+                    onClick={() => handleViewLoan(rowData)}
+                  >
+                    <IconEye size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
 
               {canWriteLoan && (
                 <Tooltip
@@ -459,20 +465,28 @@ const currencyReady = useCurrencyReady();
                 </Tooltip>
               )}
 
-              {canWriteLoan && (
-                <Menu shadow="md" width={140} position="bottom-end" radius="md">
+             {(canSubmitLoan || canCancelLoan) && (
+                <Menu 
+                  shadow="md" 
+                  width={140} 
+                  position="bottom-end" 
+                  radius="md"
+                  disabled={isCancelled}
+                >
                   <Menu.Target>
                     <ActionIcon
                       size="sm"
                       variant="subtle"
                       color="slate"
                       radius="md"
+                      disabled={isCancelled}
                     >
                       <IconDotsVertical size={14} />
                     </ActionIcon>
                   </Menu.Target>
+
                   <Menu.Dropdown>
-                    {isDraft ? (
+                    {isDraft && canSubmitLoan && (
                       <Menu.Item
                         onClick={() => {
                           openCommonModal({
@@ -507,7 +521,9 @@ const currencyReady = useCurrencyReady();
                       >
                         Approve
                       </Menu.Item>
-                    ) : !isCancelled ? (
+                    )}
+
+                    {!isDraft && !isCancelled && canCancelLoan && (
                       <Menu.Item
                         color="danger"
                         onClick={() => {
@@ -542,7 +558,7 @@ const currencyReady = useCurrencyReady();
                       >
                         Cancel
                       </Menu.Item>
-                    ) : null}
+                    )}
                   </Menu.Dropdown>
                 </Menu>
               )}
@@ -551,7 +567,8 @@ const currencyReady = useCurrencyReady();
         },
       }),
     ],
-    [isDeleting, companyCurrency, canWriteLoan, canDeleteLoan],
+    [
+      isDeleting, companyCurrency, canWriteLoan, canDeleteLoan, canSubmitLoan, canCancelLoan],
   );
 
   const table = useReactTable({
@@ -586,14 +603,14 @@ const currencyReady = useCurrencyReady();
 
 
   const handleViewLoan = (rowData: any) => {
-  const loanIdentifier = rowData.name || rowData.appNo || rowData.id;
+    const loanIdentifier = rowData.name || rowData.appNo || rowData.id;
 
-  setSelectedLoan({
-    id: loanIdentifier,
-    customerId: rowData.customerId,
-    customerName: rowData.customer,
-  });
-};
+    setSelectedLoan({
+      id: loanIdentifier,
+      customerId: rowData.customerId,
+      customerName: rowData.customer,
+    });
+  };
 
   if (selectedLoan) {
     const borrower = getBorrowerProfile({
@@ -772,7 +789,7 @@ const currencyReady = useCurrencyReady();
                 horizontalSpacing="sm"
                 fz="xs"
                 w="100%"
-                style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+                style={{ borderCollapse: "separate", borderSpacing: "0 8px", height: "100%"}}
               >
                 <Table.Thead>
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -863,7 +880,7 @@ const currencyReady = useCurrencyReady();
                         <Table.Tr
                           key={row.id}
                           className="lms-row"
-                         onDoubleClick={() => handleViewLoan(row.original)}
+                          onDoubleClick={() => handleViewLoan(row.original)}
                           style={{ cursor: "pointer" }}
                         >
                           {cells.map((cell, idx) => (

@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { Modal, TextInput, Group, Stack, Text, Checkbox, Chip, Paper, Box, ActionIcon } from "@mantine/core";
-import { IconShieldCheck, IconX } from "@tabler/icons-react";
+import { IconShieldCheck, IconMinus, IconX } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { roleModal, useRoleModal } from "./Rolemodalstore";
+import type { UserRoleFormData } from "../../../types/User/userRole";
 import { useUserRoleLogic, PERMISSION_KEYS } from "../../../hooks/user/useUserRole";
 import { LMS_MODULES } from "../../../types/User/userRole";
 import type { LmsModule } from "../../../types/User/userRole";
@@ -23,8 +23,16 @@ const ACTION_LABELS: Record<string, string> = {
   email: "Email",
 };
 
-export function AssignUserRoleModal() {
-  const { opened, editId, isView, initialData } = useRoleModal();
+interface AssignUserRoleModalProps {
+  opened: boolean;
+  onClose: () => void;
+  onMinimize: () => void;
+  editId?: string | null;
+  isView?: boolean;
+  initialData?: UserRoleFormData | null;
+}
+
+export function AssignUserRoleModal({ opened, onClose, onMinimize, editId, isView, initialData }: AssignUserRoleModalProps) {
   const queryClient = useQueryClient();
   const isEdit = !!editId && !isView;
 
@@ -47,7 +55,8 @@ export function AssignUserRoleModal() {
         : await createUserRoles(data);
 
       queryClient.invalidateQueries({ queryKey: ["userRoles"] });
-      roleModal.close();
+        handleReset();
+    onClose();
 
       // backend-driven success message; falls back only if backend sends null
       openCommonModal({
@@ -63,7 +72,7 @@ export function AssignUserRoleModal() {
 
   const handleClose = () => {
     handleReset();
-    roleModal.close();
+    onClose();
   };
 
   return (
@@ -110,26 +119,21 @@ export function AssignUserRoleModal() {
             </Text>
           </Group>
 
-          <ActionIcon
-            variant="subtle"
-            radius="md"
-            onClick={handleClose}
-            style={{ color: "var(--mantine-color-white)" }}
-            styles={{
-              root: {
-                "&:hover": {
-                  backgroundColor: "color-mix(in srgb, var(--mantine-color-white) 15%, transparent)",
-                },
-              },
-            }}
-          >
-            <IconX size={18} />
-          </ActionIcon>
+            <Group gap={4} wrap="nowrap">
+           <ActionIcon variant="subtle" radius="md" onClick={onMinimize} style={{ color: "var(--mantine-color-white)" }}
+              styles={{ root: { "&:hover": { backgroundColor: "color-mix(in srgb, var(--mantine-color-white) 15%, transparent)" } } }}>
+              <IconMinus size={18} />
+            </ActionIcon>
+            <ActionIcon variant="subtle" radius="md" onClick={handleClose} style={{ color: "var(--mantine-color-white)" }}
+              styles={{ root: { "&:hover": { backgroundColor: "color-mix(in srgb, var(--mantine-color-white) 15%, transparent)" } } }}>
+              <IconX size={18} />
+            </ActionIcon>
+          </Group>
         </Group>
       </Box>
 
       {/* ── Body ───────────────────────────────────────────── */}
-      <Box px="xl" py="lg" style={{ maxHeight: "70vh", overflowY: "auto", background: "var(--mantine-color-slate-0)" }}>
+        <Box px="xl" py="lg" style={{ maxHeight: "70vh", overflowY: "auto", background: "var(--mantine-color-slate-0)" }}>
         <Stack gap="md">
           <TextInput
             label="Role Name"
@@ -239,7 +243,6 @@ export function AssignUserRoleModal() {
         <ModalFooter
           variant="theme"
           onClose={handleClose}
-          onReset={handleReset}
           submitLabel={isEdit ? "Update" : "Submit"}
           submitLoading={isSubmitting}
           onSubmit={handleSubmit}

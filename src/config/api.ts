@@ -15,6 +15,9 @@ Company:{
   getUserDetails: `${ERP_BASE}/api/method/auth_api.user_management.api.auth.get_login_user`,
   getCurrency: `${ERP_BASE}/api/method/custom_api.api.search.get_currencies`,
 },
+logout:{
+  logout: `${ERP_BASE}/api/method/auth_api.user_management.api.auth.logout`,
+},
 Accounting: {
   chartOfAccounts: {
     createCOA: `${ERP_BASE}/api/method/erpnext.accounts.utils.add_ac`,
@@ -138,6 +141,7 @@ RoleManagement: {
   customer: {
     getAllCustomers: `${ERP_BASE}/api/method/rolaface_lms_app.utils.search.get_customers`,
     list: `${ERP_BASE}/api/method/rolaface_lms_app.modules.customer.api.get_customers`,
+    getById:`${ERP_BASE}/api/method/rolaface_lms_app.modules.customer.api.get_customer_by_id`,
   },
 
   // =========================
