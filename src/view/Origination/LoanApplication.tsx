@@ -915,7 +915,7 @@ const underReview = (isUnderReview && firstName === "Administrator") || (isAppro
                   )}
                   {isUnderReview && isAssignedToUser(row, email) && (
                     <Menu.Item onClick={() => handleOutcome(row.name)}>
-                      Outcome
+                      Submit Review
                     </Menu.Item>
                   )}
                   {isReadyForApproval && (
