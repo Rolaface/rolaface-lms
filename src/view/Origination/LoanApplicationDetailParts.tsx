@@ -446,6 +446,8 @@ export function DocumentCard({ doc }: { doc: ApplicationDocument }) {
     document.body.removeChild(a);
   };
 
+  const canPreview = !missing && !!doc.file;
+
   return (
     <>
       <Paper
@@ -453,7 +455,12 @@ export function DocumentCard({ doc }: { doc: ApplicationDocument }) {
         radius="lg"
         p="sm"
         className="flex flex-col gap-2 transition-shadow hover:shadow-md"
-        style={{ borderColor: 'var(--mantine-color-slate-2)', boxShadow: 'var(--mantine-shadow-xs)' }}
+        style={{
+          borderColor: 'var(--mantine-color-slate-2)',
+          boxShadow: 'var(--mantine-shadow-xs)',
+          cursor: canPreview ? 'pointer' : 'default',
+        }}
+        onDoubleClick={canPreview ? handlePreview : undefined}
       >
         <div className="flex flex-row items-center justify-between w-full">
           <div
@@ -463,14 +470,17 @@ export function DocumentCard({ doc }: { doc: ApplicationDocument }) {
             {documentIconMap[doc.icon]}
           </div>
 
-          {!missing && doc.file && (
+          {canPreview && (
             <ActionIcon
               variant="light"
               color="info"
               size="md"
               radius="md"
               className="shrink-0"
-              onClick={handlePreview}
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePreview();
+              }}
               disabled={isLoading}
               aria-label={`Preview ${doc.name}`}
               title="Preview document"
