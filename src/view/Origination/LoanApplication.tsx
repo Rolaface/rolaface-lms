@@ -258,22 +258,15 @@ function getApplicantDisplayName(row: LoanApplicationRow) {
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-function formatDate(date: string) {
-  if (!date) return "—";
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return date;
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
 export function LoanApplication() {
   const [bookingOpened, { open: openBooking, close: closeBooking }] =
     useDisclosure(false);
-  const [reviewOpened, { open: openReview, close: closeReview }] =
+   const [reviewOpened, { open: openReview, close: closeReviewDisclosure }] =
   useDisclosure(false);
+  const closeReview = () => {
+    setIsResubmitFlow(false);
+    closeReviewDisclosure();
+  };
   const [outcomeOpened, { open: openOutcome, close: closeOutcome }] =
   useDisclosure(false);
 const [outcomeApplicationId, setOutcomeApplicationId] = useState
@@ -287,6 +280,7 @@ const [reviewApplicationId, setReviewApplicationId] = useState<string | null>(
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
   const companyName = useCompanyStore((state) => state.companyName);
+  const [isResubmitFlow, setIsResubmitFlow] = useState(false);
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencySymbol = getSymbol(companyCurrency);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -629,16 +623,42 @@ const reviewApplicantName = reviewApplication
   ? getApplicantDisplayName(reviewApplication)
   : null;
 
+{/* const handleSendForReview = (id: string) => {
+  setReviewApplicationId(id);
+  openReview();
+}; */}
 const handleSendForReview = (id: string) => {
+  setIsResubmitFlow(false);
+  setReviewApplicationId(id);
+  openReview();
+};
+const handleResubmit = (id: string) => {
+  setIsResubmitFlow(true);
   setReviewApplicationId(id);
   openReview();
 };
 
-const handleConfirmReview = (payload: { assign_to_user: string; comment: string }) => {
+{/* const handleConfirmReview = (payload: { assign_to_user: string; comment: string }) => {
   if (!reviewApplicationId) return;
   reviewMutation.mutate({ application_id: reviewApplicationId, ...payload });
+}; */}
+const handleConfirmReview = (payload: { assign_to_user: string; comment: string }) => {
+  if (!reviewApplicationId) return;
+  if (isResubmitFlow) {
+    outcomeMutation.mutate(
+      {
+        application_id: reviewApplicationId,
+        action: "Resubmit",
+        ...payload,
+      },
+      {
+        onSuccess: () => closeReview(),
+      },
+    );
+  } else {
+    reviewMutation.mutate({ application_id: reviewApplicationId, ...payload });
+  }
 };
-
 const outcomeApplication = data.find((a) => a.name === outcomeApplicationId);
 const outcomeApplicantName = outcomeApplication
   ? getApplicantDisplayName(outcomeApplication)
@@ -881,10 +901,12 @@ const effectiveStatus = getEffectiveStatus(row);
                     <Menu.Item onClick={() => handleSendForReview(row.name)}>
                       Send for Review
                     </Menu.Item>
-                  )}
-                    {effectiveStatus === "Additional Information Required" && (
-                    <Menu.Item onClick={() => handleSendForReview(row.name)}>
-                      Send for Review
+                  )}                  {effectiveStatus === "Additional Information Required" && (
+                    <Menu.Item
+                      onClick={() => handleResubmit(row.name)}
+                      disabled={firstName !== "Administrator"}
+                    >
+                      Resubmit
                     </Menu.Item>
                   )}
                   {isUnderReview && isAssignedToUser(row, email) && (
@@ -893,7 +915,9 @@ const effectiveStatus = getEffectiveStatus(row);
                     </Menu.Item>
                   )}
                   {isReadyForApproval && (
-                    <Menu.Item onClick={() => confirmApprove(row.name)}>
+                    <Menu.Item 
+                    onClick={() => confirmApprove(row.name)}
+                    disabled={firstName !== "Administrator"}>
                       Approve
                     </Menu.Item>
                   )}
@@ -901,6 +925,7 @@ const effectiveStatus = getEffectiveStatus(row);
                     <Menu.Item
                       color="red"
                       onClick={() => confirmReject(row.name)}
+                      disabled={firstName !== "Administrator"}
                     >
                       Reject
                     </Menu.Item>
@@ -993,10 +1018,10 @@ const effectiveStatus = getEffectiveStatus(row);
   opened={reviewOpened}
   applicationId={reviewApplicationId}
   applicantName={reviewApplicantName}
-   currentUserEmail={email}
+  currentUserEmail={email}
   onClose={closeReview}
   onConfirm={handleConfirmReview}
-  isSubmitting={reviewMutation.isPending}
+  isSubmitting={isResubmitFlow ? outcomeMutation.isPending : reviewMutation.isPending}
 />
 <OutcomeModal
   opened={outcomeOpened}
@@ -1303,7 +1328,7 @@ const effectiveStatus = getEffectiveStatus(row);
                     : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
                 </span>
                 <Group gap="xs">
-                  <span>Rows:</span>
+                  <span>Rows:</span>                  
                   <Select
                     data={["10", "20", "50"]}
                     value={String(pageSize)}

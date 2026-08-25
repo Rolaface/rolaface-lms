@@ -21,7 +21,7 @@ const hex = "#E8590C";
 
 const ACTION_OPTIONS = [
   { value: "Recommend Reject", label: "Recommend Reject" },
-  { value: "Resubmit", label: "Resubmit" },
+  // { value: "Resubmit", label: "Resubmit" },
   { value: "Request Info", label: "Request Info" },
   { value: "Ready for Approval", label: "Ready for Approval" },
 ];
