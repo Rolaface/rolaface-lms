@@ -11,7 +11,7 @@ interface AsyncAccountSelectProps extends Omit<SelectProps, "data"> {
   fetchFn: (searchTerm?: string) => Promise<any>;
 }
 
-export function AsyncAccountSelect({ queryKeyPrefix, fetchFn, ...props }: AsyncAccountSelectProps) {
+export function AsyncAccountSelect({ queryKeyPrefix, fetchFn, value, ...props }: AsyncAccountSelectProps) {
   const [searchValue, setSearchValue] = useState("");
   const [debouncedSearch] = useDebouncedValue(searchValue, 300);
 
@@ -22,13 +22,22 @@ export function AsyncAccountSelect({ queryKeyPrefix, fetchFn, ...props }: AsyncA
 
   const options = data?.data ? toAccountOptions(data.data) : [];
 
+   // toAccountOptions returns string[] (each string doubles as value+label
+  // for Mantine's Select). Make sure the currently selected value is present
+   // (in case it's not in this page's fetch result), and dedupe defensively —
+   // the backend can return the same account name more than once for a query.
+   const rawOptions = value ? [...options, value] : options;
+   const dedupedOptions = Array.from(new Set(rawOptions));
+
+
   return (
     <Select
       searchable
       searchValue={searchValue}
       onSearchChange={setSearchValue}
-      filter={({ options }) => options} 
-      data={options}
+      filter={({ options }) => options}
+      data={dedupedOptions}
+      value={value}
       rightSection={isFetching ? <Loader size={14} color="blue" /> : props.rightSection}
       {...props}
     />
