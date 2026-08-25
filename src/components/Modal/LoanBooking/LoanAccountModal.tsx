@@ -563,7 +563,7 @@ export function LoanAccountModal({
       tenure: scheduleParams.tenure,
       repayment_frequency: scheduleParams.repayment_frequency,
       repayment_start_date: dayjs(scheduleParams.repayment_start_date).format(
-        "DD-MM-YYYY",
+        "YYYY-MM-DD",
       ),
     })
       .then((res) => {
