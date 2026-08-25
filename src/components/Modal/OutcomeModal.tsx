@@ -222,7 +222,7 @@ export function OutcomeModal({
             <ModalFooter
               variant="theme"
               onClose={onClose}
-              submitLabel="Submit Outcome"
+              submitLabel="Submit Review"
               submitDisabled={!action || !selectedUser}
               submitLoading={isSubmitting}
               onSubmit={handleSubmit}
