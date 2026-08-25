@@ -141,7 +141,7 @@ export function OutcomeModal({
         <Stack align="center" gap="md" px="xl" pb="xl">
           <Stack gap={4} align="center">
             <Text fw={700} size="xl" ta="center">
-              Record Review Outcome
+              Submit Review
             </Text>
             <Text size="sm" c="dimmed" ta="center">
               Decide the next step for{" "}
