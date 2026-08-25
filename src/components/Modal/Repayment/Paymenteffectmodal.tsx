@@ -98,7 +98,7 @@ export function PaymentEffectModal({ opened, onClose, selectedLoan, amountToPay,
                 <Table.Tr>
                   <Table.Th>Head</Table.Th>
                   <Table.Th ta="right">Before</Table.Th>
-                  <Table.Th ta="right">Piad</Table.Th>
+                  <Table.Th ta="right">Paid</Table.Th>
                   <Table.Th ta="right">After</Table.Th>
                 </Table.Tr>
               </Table.Thead>
