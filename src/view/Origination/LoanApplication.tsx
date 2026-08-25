@@ -374,9 +374,9 @@ const outcomeMutation = useMutation({
   onSuccess: (_, variables) => {
     queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
     closeOutcome();
-    showSuccess(
-      "Outcome Recorded",
-      `Loan Application ${variables.application_id} outcome (${variables.action}) was recorded successfully.`,
+       showSuccess(
+      "Review Submitted",
+      `Loan Application ${variables.application_id} review (${variables.action}) was submitted successfully.`,
     );
   },
   onError: (error: any) => {
