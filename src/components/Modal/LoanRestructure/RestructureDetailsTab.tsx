@@ -1,5 +1,5 @@
-import { Text, Button, NumberInput, SegmentedControl } from "@mantine/core";
-import { IconCalendarStats  } from "@tabler/icons-react";
+import { Text, Button, NumberInput, SegmentedControl, Textarea } from "@mantine/core";
+import { IconCalendarStats, IconNotes } from "@tabler/icons-react";
 import { DateInput } from "@mantine/dates";
 import dayjs from "dayjs";
 import type { RestructureType } from "../../../types/RestructureTypes";
@@ -29,7 +29,10 @@ interface RestructureDetailsTabProps {
   currentPrincipalOutstanding: number | "";
   onCurrentPrincipalChange: (value: number | "") => void;
 
-  // Modify Maturity
+  comment: string;
+  setComment: (value: string) => void;
+
+  // Maturity
   currentMaturityDate: string;
   repaymentFrequency: string;
   extendTenureBy: number | "";
@@ -59,6 +62,8 @@ export function RestructureDetailsTab({
   extendTenureBy,
   setExtendTenureBy,
   newMaturityDate,
+  comment,
+  setComment,
   onViewSchedule,
   canPreviewSchedule,
   currentInterestRate,
@@ -205,6 +210,23 @@ export function RestructureDetailsTab({
               </div>
             </>
           )}
+
+          <div className="mt-2">
+              <Textarea
+                size="sm"
+                label="Comment"
+                placeholder="Add a comment or description..."
+                disabled={disabled}
+                value={comment}
+                onChange={(e) => setComment(e.currentTarget.value)}
+                minRows={2}
+                maxRows={4}
+                autosize
+                variant={disabled ? 'filled' : 'default'}
+                leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+                leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+              />
+            </div>
         </div>
       </fieldset>
 
@@ -222,3 +244,4 @@ export function RestructureDetailsTab({
     </div>
   );
 }
+

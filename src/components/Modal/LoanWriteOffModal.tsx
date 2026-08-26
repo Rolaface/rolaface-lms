@@ -27,8 +27,9 @@ import {
   ActionIcon,
   ThemeIcon,
   useMantineTheme,
+  Textarea,
 } from '@mantine/core';
-import { IconX, IconFileOff, IconMinus } from '@tabler/icons-react';
+import { IconX, IconFileOff, IconMinus, IconNotes } from '@tabler/icons-react';
 
 interface LoanWriteOffModalProps {
   opened: boolean;
@@ -46,6 +47,7 @@ export interface LoanWriteOffFormData {
   writeOffPercentage: number | '';
   writeOffAmount: number | '';
   writeOffAccount: string | null;
+  comment?: string;
 }
 
 const ACCOUNT_SUMMARY = {
@@ -72,6 +74,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
   const [writeOffPercentage, setWriteOffPercentage] = useState<number | ''>('');
   const [writeOffAmount, setWriteOffAmount] = useState<number | ''>('');
   const [writeOffAccount, setWriteOffAccount] = useState<string | null>(null);
+  const [comment, setComment] = useState('');
   const [accountOptions, setAccountOptions] = useState<WriteOffAccountItem[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountSearch, setAccountSearch] = useState('');
@@ -153,6 +156,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
       setValueDate(editData.value_date);
       setWriteOffAmount(editData.write_off_amount);
       setWriteOffAccount(editData.write_off_account);
+      setComment(editData.comment || '');
     } else {
       setLoanAc('');
       setValueDate('');
@@ -160,6 +164,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
       setWriteOffPercentage('');
       setWriteOffAmount('');
       setWriteOffAccount(null);
+      setComment('');
       setErrors({});
     }
   }, [editData]);
@@ -212,6 +217,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
     setWriteOffPercentage('');
     setWriteOffAmount('');
     setWriteOffAccount(null);
+    setComment('');
     setErrors({});
   };
 
@@ -238,6 +244,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
       posting_date: string;
       value_date: string;
       is_settlement_write_off: 1;
+      comment?: string;
     }) =>
       editData
         ? updateLoanWriteOff({ name: editData.name, ...payload })
@@ -254,6 +261,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
         writeOffPercentage,
         writeOffAmount,
         writeOffAccount,
+        comment,
       });
       handleModalClose();
     },
@@ -273,6 +281,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
       posting_date: postingDate,
       value_date: valueDate,
       is_settlement_write_off: 1,
+      comment,
     });
   };
 
@@ -461,6 +470,23 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
                   </Text>
                 </div>
               </div>
+
+              <div className="mt-2">
+                  <Textarea
+                    size="sm"
+                    label="Comment"
+                    placeholder="Add a comment or description..."
+                    value={comment}
+                    onChange={(e) => setComment(e.currentTarget.value)}
+                    minRows={2}
+                    maxRows={4}
+                    autosize
+                    readOnly={isView}
+                    variant={isView ? 'filled' : 'default'}
+                    leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+                    leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+                  />
+                </div>
             </Stack>
           </Box>
 
@@ -544,3 +570,4 @@ function SummaryCard({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

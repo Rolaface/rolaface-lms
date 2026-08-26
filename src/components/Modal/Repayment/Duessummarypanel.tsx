@@ -25,7 +25,7 @@ export function DuesSummaryPanel({
 
   return (
     <div
-      className="w-[300px] p-5 shrink-0 flex flex-col shadow-[var(--mantine-shadow-lg)]"
+      className="w-[300px] p-5 shrink-0 flex flex-col min-h-0 shadow-[var(--mantine-shadow-lg)]"
       style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
     >
       <div className="flex items-center gap-2 mb-4">

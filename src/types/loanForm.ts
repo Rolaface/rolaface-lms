@@ -24,6 +24,7 @@ export interface CreateLoanPayload {
   reference_number?: string;
   migration_date?: string;
   grace_period?: number;
+  comment?: string;
 
  loan_charges?: {
   charge: string;

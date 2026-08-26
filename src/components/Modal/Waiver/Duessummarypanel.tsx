@@ -20,10 +20,10 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
 
   return (
     <div
-      className="w-[300px] p-5 shrink-0 overflow-y-auto shadow-[var(--mantine-shadow-lg)]"
+      className="w-[300px] p-4 shrink-0 min-h-0 overflow-y-auto shadow-[var(--mantine-shadow-lg)]"
       style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
     >
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-3">
         <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
         <Text size="sm" fw={700} c="slate.8" tt="uppercase" style={{ letterSpacing: "0.05em" }}>
           Dues Summary
@@ -31,7 +31,7 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
       </div>
 
       {selectedLoan ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <div
             className="rounded-md p-2.5"
             style={{ background: "var(--mantine-color-slate-1)", border: "1px solid var(--mantine-color-slate-2)" }}

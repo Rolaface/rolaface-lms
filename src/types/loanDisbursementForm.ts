@@ -62,6 +62,7 @@ tranche_number?: number;
     new_outstanding_amount: number;
     top_up_amount: number;
   };
+  comment?: string;
 }
 
 // Frappe whitelisted methods wrap the response in `message`

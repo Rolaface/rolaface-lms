@@ -63,7 +63,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
     search, setSearch, matches, searchLoading,
     selectedBorrower, selectedLoanId, selectedLoan, loanLocked,
     handleSelectBorrower, handleSelectLoan, handleClearBorrower,
-    valueDate, setValueDate, reason, setReason,
+    valueDate, setValueDate, reason, setReason, comment, setComment,
     restructureType, setRestructureType,
     newInterestRate, setNewInterestRate, newPenaltyRate, setNewPenaltyRate,
     topupAmount, handleTopupAmountChange, newPrincipalOutstanding, handleNewPrincipalChange,
@@ -388,7 +388,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                     </div>
                   ) : (
                     <div className="flex flex-col">
-                      <div className="p-4 pb-3 flex flex-nowrap items-end gap-4 overflow-x-auto">
+                      <div className="p-3 flex flex-nowrap items-end gap-4 overflow-x-auto">
                         <div className="shrink-0">
                           <Text size="sm" fw={500} className="text-gray-700 mb-1">
                             Selected Loan A/C Number

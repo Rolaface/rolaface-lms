@@ -18,6 +18,7 @@ import {
   ThemeIcon,
   Checkbox,
   useMantineTheme,
+  Textarea,
 } from "@mantine/core";
 import {
   IconX,
@@ -76,6 +77,7 @@ export interface LoanDisbursementFormData {
   topupOutstandingCurrent: number | "";
   topupOutstandingNew: number | "";
   topupAmount: number | "";
+  comment?: string;
 }
 
 
@@ -171,6 +173,7 @@ export function LoanDisbursementModal({
       topupOutstandingCurrent: "" as number | "",
       topupOutstandingNew: "" as number | "",
       topupAmount: "" as number | "",
+      comment: "",
     },
     validate: {
       acNo: (v) => (!v ? "Account Number is required" : null),
@@ -289,6 +292,7 @@ export function LoanDisbursementModal({
       repayment_start_date: selectedLoanApp?.repayment_start_date || undefined,
       disbursement_account: resolvedDisbursementAc,
       loan_account: selectedLoanApp?.loan_account || undefined,
+      comment: values.comment,
       loan_disbursement_charges: values.charges.map((charge) => ({
         charge: charge.name,
         amount: Number(charge.amount || 0),
@@ -365,6 +369,7 @@ export function LoanDisbursementModal({
         topupOutstandingCurrent: topupDetails?.old_outstanding_amount ?? "",
         topupOutstandingNew: topupDetails?.new_outstanding_amount ?? "",
         topupAmount: topupDetails?.top_up_amount ?? "",
+        comment: item.comment || "",
       });
       const existingCharges = normalizeLoanCharges({ loan_charges: item.loan_disbursement_charges });
       form.setFieldValue("charges", existingCharges);
@@ -690,7 +695,7 @@ export function LoanDisbursementModal({
           </Box>
 
           {/* Body: main form + summary sidebar */}
-          <div className="flex overflow-hidden" style={{ height: 540 }}>
+          <div className="flex overflow-hidden" style={{ height: "70vh", maxHeight: 680, minHeight: 500 }}>
             {/* Main form column */}
             <div className="flex-1 overflow-y-auto p-4">
               <fieldset disabled={isView} className="border-0 p-0 m-0">
@@ -883,12 +888,26 @@ export function LoanDisbursementModal({
                           label="A/c No"
                           placeholder="Account number"
                           disabled={isView}
-                          // {...form.getInputProps("beneficiaryAcNo")}
                           leftSection={<IconHome size={14} color="var(--mantine-color-brand-5)" />}
                         />
                       </div>
                     </div>
                   </div>
+                  <div className="mt-4">
+                      <Textarea
+                        size="sm"
+                        label="Comment"
+                        placeholder="Add a comment or description..."
+                        minRows={2}
+                        maxRows={4}
+                        autosize
+                        disabled={isView}
+                        variant={isView ? 'filled' : 'default'}
+                        leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+                        leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+                        {...form.getInputProps("comment")}
+                      />
+                    </div>
                 </Tabs.Panel>
 
                 <Tabs.Panel value="charges" pt="md">

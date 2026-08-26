@@ -41,6 +41,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
 
   const [valueDate, setValueDate] = useState(new Date().toISOString().slice(0, 10));
   const [remark, setRemark] = useState("");
+  const [comment, setComment] = useState("");
 
   const [waivedInterest, setWaivedInterest] = useState<number | "">("");
   const [waivedPenalty, setWaivedPenalty] = useState<number | "">("");
@@ -112,6 +113,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
       setSelectedLoanId(item.against_loan);
       setValueDate(item.value_date ? item.value_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
       setRemark("");
+      setComment(item.comment || "");
 
       setWaivedInterest("");
       setWaivedPenalty("");
@@ -150,6 +152,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
     setSelectedLoanId(null);
     setSearch("");
     setRemark("");
+    setComment("");
     setWaivedInterest("");
     setWaivedPenalty("");
     setWaivedFee("");
@@ -168,6 +171,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
     setSelectedLoanId(null);
     setValueDate(new Date().toISOString().slice(0, 10));
     setRemark("");
+    setComment("");
     setWaivedInterest("");
     setWaivedPenalty("");
     setWaivedFee("");
@@ -214,6 +218,7 @@ const updateWaiverMutation = useMutation({
       mode_of_payment: "", // not shown in this UI — send empty unless your doctype requires it
       reference_number: "",
       reference_date: "",
+      comment,
     };
 
     if (editId) {
@@ -262,6 +267,7 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
         referenceDate: "",
         accountNumber: "",
         remark,
+        comment,
         waivedInterest,
         waivedPenalty,
         waivedFee,
@@ -303,7 +309,7 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
         closeOnClickOutside={false}
         closeOnEscape={false}
       >
-        <Box className="flex flex-col h-[700px] max-h-[90vh] overflow-hidden">
+        <Box className="flex flex-col h-[75vh] min-h-[650px] max-h-[95vh] overflow-hidden">
           {/* Header */}
           <Box
             className="px-6 py-3 flex justify-between items-center shrink-0"
@@ -358,7 +364,7 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
           <div style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }} />
 
           {/* Body */}
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 min-h-0 overflow-hidden">
             <BorrowerSelectionPanel
               collapsed={borrowerPanelCollapsed}
               onToggleCollapse={setBorrowerPanelCollapsed}
@@ -392,6 +398,8 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
               onWaivedFeeChange={setWaivedFee}
               remark={remark}
               onRemarkChange={setRemark}
+              comment={comment}
+              onCommentChange={setComment}
             />
 
             <DuesSummaryPanel
@@ -403,7 +411,7 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
           </div>
 
           {/* Footer */}
-          <ModalFooter
+          <ModalFooter 
             variant="theme"
             isViewMode={isView}
             onClose={onClose}

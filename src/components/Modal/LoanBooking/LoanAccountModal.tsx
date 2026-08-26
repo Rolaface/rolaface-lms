@@ -130,6 +130,7 @@ export function LoanAccountModal({
       moratoriumType: "None",
       moratoriumPeriod: "" as number | "",
       auto_create_disbursement_on_loan_booking: 0,
+      comment: "",
     },
     validate: {
       customerNumber: (v) => (!v ? "Customer is required" : null),
@@ -405,6 +406,7 @@ export function LoanAccountModal({
     payload.transaction_date = values.trnDate || "";
     payload.reference_number = values.refNumber || "";
     payload.migration_date = values.migrationDate || "";
+    payload.comment = values.comment || "";
     payload.grace_period =
       chargeSectionDefaults.gracePeriodDays === ""
         ? 0
@@ -630,6 +632,7 @@ export function LoanAccountModal({
         // moratoriumType: loan.moratorium_type || "Principal",
         moratoriumType: loan.moratorium_type || "None",
         moratoriumPeriod: loan.moratorium_tenure || "",
+        comment: loan.comment || "",
       });
 
       // loadedLoanProductCode.current = loan.loan_product || "";
@@ -800,14 +803,17 @@ export function LoanAccountModal({
       > */}
       <form
         onSubmit={form.onSubmit(handleSubmit, handleFormError)}
+        className="flex flex-col flex-1 h-full min-h-0 overflow-hidden"
         style={{
           display: "flex",
           flexDirection: "column",
           minHeight: 0,
           flex: 1,
+          height: "100%",
+          overflow: "hidden",
         }}
       >
-        <Box className="flex flex-col flex-1 min-h-0">
+        <Box className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Header */}
 
           <Box
@@ -977,10 +983,10 @@ export function LoanAccountModal({
           <Box
             component="fieldset"
             disabled={isViewMode}
-            bg="white"
-            className="flex-1 flex flex-col lg:flex-row overflow-y-auto border-0 p-0 m-0 min-w-0 min-h-0"
+            className="flex-1 flex flex-col min-w-0 min-h-0 border-0 p-0 m-0"
           >
-            <div className="flex-1 pt-3 px-5 pb-5 min-w-0">
+            <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto bg-white min-w-0 min-h-0">
+              <div className="flex-1 p-3 min-w-0">
               {activeTab === "basic" && (
                 <BasicDetailsTab
                   form={form}
@@ -1059,12 +1065,13 @@ export function LoanAccountModal({
               totalInterest={totalInterest}
               totalRepayment={totalRepayment}
             />
+            </div>
           </Box>
 
           {/* Footer — shared ModalFooter, no Reset action exposed. */}
           <Box style={{ flexShrink: 0 }}>
-            <ModalFooter
-              variant="theme"
+            <ModalFooter variant="theme"
+              
               isViewMode={isViewMode}
               onClose={handleModalClose}
               // onSaveDraft={!isViewMode ? () => { } : undefined}
