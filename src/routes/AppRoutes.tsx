@@ -11,7 +11,7 @@ import { PermissionGuard } from "../view/Permissionguard";
 import { Dashboard } from "../view/Dashboard";
 import { Customer } from "../view/Customer/Customer";
 import { Account } from "../view/LoanAccount/Account";
-import {EmailTemplate} from "../view/Template/EmailTemplate";
+import { EmailTemplate } from "../view/Template/EmailTemplate";
 import { UserManagement } from "../view/User/UserManagement";
 import { RoleManagement } from "../view/User/RoleManagement";
 
@@ -58,6 +58,7 @@ import {
 } from "@tabler/icons-react";
 import { RouteTabs, type RouteTabItem } from "../components/ui/RouteTabs";
 import SchedulerPage from "../view/Schedular";
+import { LendingConfiguration } from "../view/lending Configuration/LendingConfiguration";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -170,7 +171,6 @@ const originationLoanApplicationRoute = createRoute({
 //   path: '/application',
 //   component: LoanApplication,
 // });
-
 
 const operationsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -364,18 +364,23 @@ const settingsRoute = createRoute({
   path: "/settings",
   component: Outlet,
 });
+const lendingConfigurationRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/lending-configuration",
+  component: LendingConfiguration,
+});
 const userRoute = createRoute({
-  getParentRoute: () => settingsRoute,   
+  getParentRoute: () => settingsRoute,
   path: "/user",
   component: Outlet,
 });
 const emailTemplateRoute = createRoute({
-  getParentRoute: () => settingsRoute,   
+  getParentRoute: () => settingsRoute,
   path: "/emailTemplate",
   component: EmailTemplate,
 });
 const schedulerRoute = createRoute({
-  getParentRoute: () => settingsRoute,   
+  getParentRoute: () => settingsRoute,
   path: "/scheduler",
   component: SchedulerPage,
 });
@@ -436,10 +441,12 @@ const routeTree = rootRoute.addChildren([
 
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute]),
   settingsRoute.addChildren([
-  emailTemplateRoute,
-  schedulerRoute,
-  userRoute.addChildren([userManagementRoute, userRolesRoute]),
-]),
+    lendingConfigurationRoute,
+
+    emailTemplateRoute,
+    schedulerRoute,
+    userRoute.addChildren([userManagementRoute, userRolesRoute]),
+  ]),
 ]);
 
 export const router = createRouter({ routeTree });

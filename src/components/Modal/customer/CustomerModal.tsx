@@ -26,7 +26,8 @@ import { CreditAssessmentStep } from "./steps/Creditassessmentstep";
 import { KycStep } from "./steps/KycStep";
 import { DocumentsStep } from "./steps/DocumentsStep";
 import { KinStep } from "./steps/KinStep";
-import { TagsStep } from "./steps/TagsStep";
+
+import { DirectorsStakeholdersStep } from "./steps/DirectorsStakeholdersStep";
 import { ModalFooter } from "../../shared/ModalFooter";
 import {
   showApiError,
@@ -79,8 +80,10 @@ export function CustomerModal({
   const creditAssessment = useCreditAssessmentState({
     customerId: identity.customerNumber ?? null,
   });
-const kyc = useKycState({ customerId: identity.customerNumber ?? null });
-const documents = useDocumentsState({ customerId: identity.customerNumber ?? null });
+  const kyc = useKycState({ customerId: identity.customerNumber ?? null });
+  const documents = useDocumentsState({
+    customerId: identity.customerNumber ?? null,
+  });
   const kin = useKinState();
   const tagsState = useTagsState();
 
@@ -89,11 +92,11 @@ const documents = useDocumentsState({ customerId: identity.customerNumber ?? nul
       (g.stepIndices as readonly number[]).includes(currentStep),
     ) ?? STEP_GROUPS[0];
   const stepInGroup = activeGroup.stepIndices.indexOf(currentStep as never) + 1;
-const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
-  if (group.id === activeGroup.id) return;
+  const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
+    if (group.id === activeGroup.id) return;
 
-  setActiveTab(group.stepIndices[0].toString());
-};
+    setActiveTab(group.stepIndices[0].toString());
+  };
 
   const mobileDuplicateName = contact.mobileNumber
     .replace(/\D/g, "")
@@ -112,7 +115,8 @@ const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
   const sidebarCustomerName = isBusinessType
     ? identity.companyName
     : [identity.firstName, identity.lastName].filter(Boolean).join(" ");
-
+  const stepLabel = (idx: number) =>
+    idx === 6 && isBusinessType ? "Directors & Stakeholders" : STEPS[idx].label;
   // Derived, sidebar-only view of the credit assessment result. `result`
   // stays the single source of truth (owned by useCreditAssessmentState);
   // this just reshapes it into the flat props CustomerSummarySidebar takes.
@@ -300,10 +304,7 @@ const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
             setBusinessCountry={identity.setBusinessCountry}
             businessPostalCode={identity.businessPostalCode}
             setBusinessPostalCode={identity.setBusinessPostalCode}
-            directors={identity.directors}
-            addDirector={identity.addDirector}
-            updateDirector={identity.updateDirector}
-            removeDirector={identity.removeDirector}
+
             errors={attemptedSteps.has(0) ? getStepErrors(0) : {}}
           />
         );
@@ -320,6 +321,8 @@ const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
             setPreferredCommunication={contact.setPreferredCommunication}
             residentialAddress={contact.residentialAddress}
             setResidentialAddress={contact.setResidentialAddress}
+            residentialAddressLine2={contact.residentialAddressLine2}
+            setResidentialAddressLine2={contact.setResidentialAddressLine2}
             country={contact.country}
             setCountry={contact.setCountry}
             province={contact.province}
@@ -334,6 +337,18 @@ const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
             setSameAsResidential={contact.setSameAsResidential}
             mailingAddress={contact.mailingAddress}
             setMailingAddress={contact.setMailingAddress}
+            mailingAddressLine2={contact.mailingAddressLine2}
+            setMailingAddressLine2={contact.setMailingAddressLine2}
+            mailingCountry={contact.mailingCountry}
+            setMailingCountry={contact.setMailingCountry}
+            mailingProvince={contact.mailingProvince}
+            setMailingProvince={contact.setMailingProvince}
+            mailingDistrict={contact.mailingDistrict}
+            setMailingDistrict={contact.setMailingDistrict}
+            mailingCityTown={contact.mailingCityTown}
+            setMailingCityTown={contact.setMailingCityTown}
+            mailingPostalCode={contact.mailingPostalCode}
+            setMailingPostalCode={contact.setMailingPostalCode}
             mobileDuplicateName={mobileDuplicateName}
             errors={attemptedSteps.has(1) ? getStepErrors(1) : {}}
           />
@@ -387,46 +402,61 @@ const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
         return <KycStep kycStatus={kyc.kycStatus} runCheck={kyc.runCheck} />;
       case 5:
         return (
-         <DocumentsStep
-      uploadedDocs={documents.uploadedDocs}
-      uploadDoc={documents.uploadDoc}
-      removeUpload={documents.removeUpload}
-      uploadingKey={documents.uploadingKey}
-      isViewMode={isViewMode}
-    />
+          <DocumentsStep
+            uploadedDocs={documents.uploadedDocs}
+            uploadDoc={documents.uploadDoc}
+            removeUpload={documents.removeUpload}
+            uploadingKey={documents.uploadingKey}
+            isViewMode={isViewMode}
+          />
         );
       case 6:
-        return (
+        return isBusinessType ? (
+          <DirectorsStakeholdersStep
+            directors={identity.directors}
+            addDirector={identity.addDirector}
+            updateDirector={identity.updateDirector}
+            removeDirector={identity.removeDirector}
+          />
+        ) : (
           <KinStep
-            kinName={kin.kinName}
-            setKinName={kin.setKinName}
+            kinFirstName={kin.kinFirstName}
+            setKinFirstName={kin.setKinFirstName}
+            kinMiddleName={kin.kinMiddleName}
+            setKinMiddleName={kin.setKinMiddleName}
+            kinLastName={kin.kinLastName}
+            setKinLastName={kin.setKinLastName}
             kinRelationship={kin.kinRelationship}
             setKinRelationship={kin.setKinRelationship}
             kinPhone={kin.kinPhone}
             setKinPhone={kin.setKinPhone}
             kinAddress={kin.kinAddress}
             setKinAddress={kin.setKinAddress}
-            guarantorLinked={kin.guarantorLinked}
-            setGuarantorLinked={kin.setGuarantorLinked}
+            kinDistrict={kin.kinDistrict}
+            setKinDistrict={kin.setKinDistrict}
+            kinCityTown={kin.kinCityTown}
+            setKinCityTown={kin.setKinCityTown}
+            kinPostalCode={kin.kinPostalCode}
+            setKinPostalCode={kin.setKinPostalCode}
           />
         );
-      // case 7:
-      //   return (
-      //     <TagsStep
-      //       tags={tagsState.tags}
-      //       tagInput={tagsState.tagInput}
-      //       setTagInput={tagsState.setTagInput}
-      //       addTag={tagsState.addTag}
-      //       removeTag={tagsState.removeTag}
-      //       relationshipNotes={tagsState.relationshipNotes}
-      //       setRelationshipNotes={tagsState.setRelationshipNotes}
-      //       customFields={tagsState.customFields}
-      //       addCustomField={tagsState.addCustomField}
-      //       removeCustomField={tagsState.removeCustomField}
-      //       updateCustomField={tagsState.updateCustomField}
-      //     />
-      //   );
-      // default:
+        // case 7:
+        //   return (
+        //     <TagsStep
+        //       tags={tagsState.tags}
+        //       tagInput={tagsState.tagInput}
+        //       setTagInput={tagsState.setTagInput}
+        //       addTag={tagsState.addTag}
+        //       removeTag={tagsState.removeTag}
+        //       relationshipNotes={tagsState.relationshipNotes}
+        //       setRelationshipNotes={tagsState.setRelationshipNotes}
+        //       customFields={tagsState.customFields}
+        //       addCustomField={tagsState.addCustomField}
+        //       removeCustomField={tagsState.removeCustomField}
+        //       updateCustomField={tagsState.updateCustomField}
+        //     />
+        //   );
+        // default:
         return null;
     }
   };
@@ -442,8 +472,8 @@ const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
       closeOnEscape={false}
       styles={{
         content: {
-          height: "95vh",
-          maxHeight: "96vh",
+          height: "98vh",
+          maxHeight: "99vh",
           width: "90vw",
           maxWidth: "1600px",
           display: "flex",
@@ -473,8 +503,8 @@ const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
         <Group
           justify="space-between"
           align="center"
-          px="xl"
-          py="sm"
+          px="lg"
+          py={6}
           style={{
             background: theme.other.brandGradient,
             borderBottom: "1px solid var(--mantine-color-brand-7)",
@@ -539,8 +569,8 @@ const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
                 <UnstyledButton
                   key={group.id}
                   onClick={() => handleGroupClick(group)}
-                  px={14}
-                  py={9}
+                  px={12}
+                  py={6}
                   style={{
                     whiteSpace: "nowrap",
                     flexShrink: 0,
@@ -579,8 +609,8 @@ const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
             <Group
               gap={0}
               wrap="nowrap"
-              px={14}
-              py={10}
+              px={12}
+              py={6}
               style={{ overflow: "hidden" }}
             >
               {activeGroup.stepIndices.map((stepIdx, i) => {
@@ -647,7 +677,7 @@ const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
                           }
                           style={{ whiteSpace: "nowrap" }}
                         >
-                          {STEPS[stepIdx].label}
+                          {stepLabel(stepIdx)}
                         </Text>
                       </Group>
                     </UnstyledButton>
@@ -698,40 +728,37 @@ const handleGroupClick = (group: (typeof STEP_GROUPS)[number]) => {
               component="fieldset"
               disabled={isViewMode}
               style={{ border: 0, padding: 0, margin: 0 }}
-              pt="md"
-              pl="lg"
-              pr="lg"
-              pb="md"
+              pt="xs"
+              pl="md"
+              pr="md"
+              pb="xs"
             >
               {renderStep()}
             </Box>
           </Box>
 
           <Box className="w-full lg:w-auto lg:flex-shrink-0 lg:h-full lg:overflow-y-auto">
-           <CustomerSummarySidebar
-  customerName={sidebarCustomerName}
-  customerType={identity.customerType}
-  customerNumber={identity.customerNumber}
-  activeGroupLabel={activeGroup.label}
-  currentStepLabel={STEPS[currentStep]?.label ?? ""}
-  stepInGroup={stepInGroup}
-  groupStepCount={activeGroup.stepIndices.length}
-  overallCompleted={currentStep}
-  overallTotal={STEPS.length}
-  creditScore={creditResult?.score ?? null}
-  creditBand={
-    creditResult
-      ? getScoreBand(creditResult.score).label
-      : null
-  }
-  activeFacilities={
-    activeFacilitiesFlag
-      ? Number(activeFacilitiesFlag.value)
-      : null
-  }
-  onViewSnapshot={() => {
-  }}
-/>
+            <CustomerSummarySidebar
+              customerName={sidebarCustomerName}
+              customerType={identity.customerType}
+              customerNumber={identity.customerNumber}
+              activeGroupLabel={activeGroup.label}
+              currentStepLabel={
+                currentStep in STEPS ? stepLabel(currentStep) : ""
+              }
+              stepInGroup={stepInGroup}
+              groupStepCount={activeGroup.stepIndices.length}
+              overallCompleted={currentStep}
+              overallTotal={STEPS.length}
+              creditScore={creditResult?.score ?? null}
+              creditBand={
+                creditResult ? getScoreBand(creditResult.score).label : null
+              }
+              activeFacilities={
+                activeFacilitiesFlag ? Number(activeFacilitiesFlag.value) : null
+              }
+              onViewSnapshot={() => {}}
+            />
           </Box>
         </Box>
 
