@@ -151,7 +151,7 @@ export function LendingConfiguration() {
     w={300}
     styles={{
       input: {
-        height: 34,
+        height: 24,
       },
     }}
   />
