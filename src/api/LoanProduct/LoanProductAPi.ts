@@ -293,7 +293,7 @@ export const updateLoanProduct = async (
 export const deleteLoanProduct = async (
   id: string
 ): Promise<CommonApiResponse> => {
-  const response: AxiosResponse<CommonApiResponse> = await api.post(
+  const response: AxiosResponse<CommonApiResponse> = await api.delete(
     `${LoanProductAPI.delete}?id=${id}`
   );
   return response.data;
@@ -306,7 +306,7 @@ export const deleteLoanProduct = async (
 export const enableLoanProduct = async (
   id: string
 ): Promise<CommonApiResponse> => {
-  const response: AxiosResponse<CommonApiResponse> = await api.post(
+  const response: AxiosResponse<CommonApiResponse> = await api.put(
     `${LoanProductAPI.enable}?id=${id}`
   );
   return response.data;
@@ -319,7 +319,7 @@ export const enableLoanProduct = async (
 export const disableLoanProduct = async (
   id: string
 ): Promise<CommonApiResponse> => {
-  const response: AxiosResponse<CommonApiResponse> = await api.post(
+  const response: AxiosResponse<CommonApiResponse> = await api.put(
     `${LoanProductAPI.disable}?id=${id}`
   );
   return response.data;
