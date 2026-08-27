@@ -17,7 +17,7 @@ export function WaiverEffectModal({ opened, onClose, selectedLoan, waiverEffect 
   const currencyReady = useCurrencyReady();
 
   return (
-    <Modal opened={opened} onClose={onClose} size={640} zIndex={1000} withCloseButton={false} padding={0} radius="md">
+    <Modal opened={opened} onClose={onClose} size={800} zIndex={1000} withCloseButton={false} padding={0} radius="md">
       <Box className="flex flex-col">
         <div className="flex items-center justify-between px-6 pt-5 pb-4">
           <div className="flex items-center gap-3">
@@ -46,9 +46,7 @@ export function WaiverEffectModal({ opened, onClose, selectedLoan, waiverEffect 
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>
-                    <Text size="xs" fw={600} c="slate.5" className="uppercase tracking-wide">
-                      Component
-                    </Text>
+                    <Text size="xs" fw={600} c="slate.5" className="uppercase tracking-wide">HEAD</Text>
                   </Table.Th>
                   <Table.Th style={{ textAlign: "right" }}>
                     <Text size="xs" fw={600} c="slate.5" className="uppercase tracking-wide">

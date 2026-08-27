@@ -109,7 +109,7 @@ interface PaymentEffectModalProps {
 function PaymentEffectModal({ opened, onClose, loanId, customerName, rows, currency }: PaymentEffectModalProps) {
   const theme = useMantineTheme();
   return (
-    <Modal opened={opened} onClose={onClose} size={640} withCloseButton={false} padding={0} radius="lg">
+    <Modal opened={opened} onClose={onClose} size={800} withCloseButton={false} padding={0} radius="lg">
       <Box bg="white">
         <Group justify="space-between" align="center" px="xl" py="md">
           <Group gap="sm">
@@ -155,7 +155,7 @@ function PaymentEffectModal({ opened, onClose, loanId, customerName, rows, curre
             >
               <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
                 <Table.Tr>
-                  <Table.Th c="slate.5" fz="xs" tt="uppercase">Component</Table.Th>
+                  <Table.Th c="slate.5" fz="xs" tt="uppercase">HEAD</Table.Th>
                   <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">Before</Table.Th>
                   <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">Capitalized</Table.Th>
                   <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">After</Table.Th>
