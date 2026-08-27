@@ -423,10 +423,17 @@ export function LoanWaiver() {
                 </Tooltip>
               )}
 
-              {(canSubmitLoan || canCancelLoan) && !isCancelled && (
-                <Menu shadow="md" width={140} position="bottom-end" radius="md">
+              {(canSubmitLoan || canCancelLoan) && (
+                <Menu shadow="md" width={140} position="bottom-end" withinPortal radius="md" withArrow>
                   <Menu.Target>
-                    <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
+                    <ActionIcon 
+                      size="sm" 
+                      variant="subtle" 
+                      color="slate" 
+                      radius="md"
+                      disabled={isCancelled}
+                      style={{ opacity: isCancelled ? 0.5 : 1 }}
+                    >
                       <IconDotsVertical size={14} />
                     </ActionIcon>
                   </Menu.Target>
@@ -436,7 +443,7 @@ export function LoanWaiver() {
                         Approve
                       </Menu.Item>
                     )}
-                    {!isDraft && canCancelLoan && (
+                    {!isDraft && !isCancelled && canCancelLoan && (
                       <Menu.Item color="danger" onClick={() => handleStatusChange(row, 'cancelled')}>
                         Cancel
                       </Menu.Item>
