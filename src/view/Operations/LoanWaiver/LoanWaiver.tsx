@@ -52,6 +52,7 @@ import { formatAmount, useCurrencyReady } from '../../../store/currencyStore';
 import { useCompanyStore } from '../../../store/companyStore';
 import { useDebouncedValue } from '@mantine/hooks';
 import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
+import { usePermission } from '../../../hooks/Usepermission';
 
 const WAIVER_TYPES = ['Interest Waiver', 'Penalty Waiver', 'Charges Waiver'];
 
@@ -125,6 +126,15 @@ export function LoanWaiver() {
   const theme = useMantineTheme();
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencyReady = useCurrencyReady();
+
+  const { can } = usePermission();
+  const canCreateLoan = can("Loan Repayment", "create");
+  const canReadLoan = can("Loan Repayment", "read");
+  const canWriteLoan = can("Loan Repayment", "write");
+  const canDeleteLoan = can("Loan Repayment", "delete");
+  const canSubmitLoan = can("Loan Repayment", "submit");
+  const canCancelLoan = can("Loan Repayment", "cancel");
+
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
   const [loanType, setLoanType] = useState<string[]>([]);
@@ -369,72 +379,77 @@ export function LoanWaiver() {
 
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-              <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="slate"
-                  radius="md"
-                  onClick={() => loanWaiverModal.open({ editId: row.id, isView: true })}
-                >
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={isDraft ? 'Edit' : 'Only Drafts can be edited'} withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={isDraft ? 'brand' : 'slate'}
-                  radius="md"
-                  disabled={!isDraft}
-                  onClick={() => loanWaiverModal.open({ editId: row.id, isView: false })}
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={canDelete ? 'Delete' : 'Submitted waivers cannot be deleted'} withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={canDelete ? 'danger' : 'slate'}
-                  radius="md"
-                  disabled={!canDelete || isDeleting}
-                  onClick={() => handleDelete(row)}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Menu shadow="md" width={140} position="bottom-end" radius="md">
-                <Menu.Target>
-                  <ActionIcon 
-                    size="sm" 
-                    variant="subtle" 
-                    color="slate" 
+              {canReadLoan && (
+                <Tooltip label="View" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="slate"
                     radius="md"
-                    disabled={isCancelled}
-                    style={{ opacity: isCancelled ? 0.5 : 1 }}
+                    onClick={() => loanWaiverModal.open({ editId: row.id, isView: true })}
                   >
-                    <IconDotsVertical size={14} />
+                    <IconEye size={14} />
                   </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  {isDraft ? (
-                    <Menu.Item onClick={() => handleStatusChange(row, 'approved')}>
-                      Approve
-                    </Menu.Item>
-                  ) : (
-                    <Menu.Item color="danger" onClick={() => handleStatusChange(row, 'cancelled')}>
-                      Cancel
-                    </Menu.Item>
-                  )}
-                </Menu.Dropdown>
-              </Menu>
+                </Tooltip>
+              )}
+
+              {canWriteLoan && (
+                <Tooltip label={isDraft ? 'Edit' : 'Only Drafts can be edited'} withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color={isDraft ? 'brand' : 'slate'}
+                    radius="md"
+                    disabled={!isDraft}
+                    onClick={() => loanWaiverModal.open({ editId: row.id, isView: false })}
+                  >
+                    <IconPencil size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+
+              {canDeleteLoan && (
+                <Tooltip label={canDelete ? 'Delete' : 'Submitted waivers cannot be deleted'} withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color={canDelete ? 'danger' : 'slate'}
+                    radius="md"
+                    disabled={!canDelete || isDeleting}
+                    onClick={() => handleDelete(row)}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+
+              {(canSubmitLoan || canCancelLoan) && !isCancelled && (
+                <Menu shadow="md" width={140} position="bottom-end" radius="md">
+                  <Menu.Target>
+                    <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
+                      <IconDotsVertical size={14} />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    {isDraft && canSubmitLoan && (
+                      <Menu.Item onClick={() => handleStatusChange(row, 'approved')}>
+                        Approve
+                      </Menu.Item>
+                    )}
+                    {!isDraft && canCancelLoan && (
+                      <Menu.Item color="danger" onClick={() => handleStatusChange(row, 'cancelled')}>
+                        Cancel
+                      </Menu.Item>
+                    )}
+                  </Menu.Dropdown>
+                </Menu>
+              )}
             </Group>
           );
         },
       }),
     ],
-    [isDeleting, companyCurrency]
+    [isDeleting, companyCurrency, canReadLoan, canWriteLoan, canDeleteLoan, canSubmitLoan, canCancelLoan]
   );
 
   const table = useReactTable({
@@ -545,19 +560,21 @@ export function LoanWaiver() {
           <Button size="sm" radius="xl" variant="default" px="md" ml="auto" onClick={resetFilters}>
             Reset
           </Button>
-          <Button
-            size="sm"
-            radius="xl"
-            color="brand"
-            onClick={() => loanWaiverModal.open({ editId: null, isView: false })}
-            leftSection={<IconPlus size={14} />}
-            style={{
-              background: theme.other.brandGradient,
-              boxShadow: theme.other.brandGlowShadowSm,
-            }}
-          >
-            Process Waiver
-          </Button>
+          {canCreateLoan && (
+            <Button
+              size="sm"
+              radius="xl"
+              color="brand"
+              onClick={() => loanWaiverModal.open({ editId: null, isView: false })}
+              leftSection={<IconPlus size={14} />}
+              style={{
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
+              }}
+            >
+              Process Waiver
+            </Button>
+          )}
         </Group>
       </Paper>
 
