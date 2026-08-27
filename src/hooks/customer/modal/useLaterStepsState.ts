@@ -159,31 +159,47 @@ export function useDocumentsState({
 }
 
 export function useKinState() {
-  const [kinName, setKinName] = useState("");
+  const [kinFirstName, setKinFirstName] = useState("");
+  const [kinMiddleName, setKinMiddleName] = useState("");
+  const [kinLastName, setKinLastName] = useState("");
   const [kinRelationship, setKinRelationship] = useState<string | null>(null);
   const [kinPhone, setKinPhone] = useState("");
   const [kinAddress, setKinAddress] = useState("");
-  const [guarantorLinked, setGuarantorLinked] = useState(false);
+  const [kinDistrict, setKinDistrict] = useState("");
+  const [kinCityTown, setKinCityTown] = useState("");
+  const [kinPostalCode, setKinPostalCode] = useState("");
 
   const reset = () => {
-    setKinName("");
+    setKinFirstName("");
+    setKinMiddleName("");
+    setKinLastName("");
     setKinRelationship(null);
     setKinPhone("");
     setKinAddress("");
-    setGuarantorLinked(false);
+    setKinDistrict("");
+    setKinCityTown("");
+    setKinPostalCode("");
   };
 
   return {
-    kinName,
-    setKinName,
+    kinFirstName,
+    setKinFirstName,
+    kinMiddleName,
+    setKinMiddleName,
+    kinLastName,
+    setKinLastName,
     kinRelationship,
     setKinRelationship,
     kinPhone,
     setKinPhone,
     kinAddress,
     setKinAddress,
-    guarantorLinked,
-    setGuarantorLinked,
+    kinDistrict,
+    setKinDistrict,
+    kinCityTown,
+    setKinCityTown,
+    kinPostalCode,
+    setKinPostalCode,
     reset,
   };
 }

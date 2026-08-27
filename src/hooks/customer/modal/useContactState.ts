@@ -4,10 +4,9 @@ export function useContactState() {
   const [mobileNumber, setMobileNumber] = useState("");
   const [alternateMobile, setAlternateMobile] = useState("");
   const [email, setEmail] = useState("");
-  const [preferredCommunication, setPreferredCommunication] = useState<
-    string | null
-  >(null);
+const [preferredCommunication, setPreferredCommunication] = useState<string | null>(null);
   const [residentialAddress, setResidentialAddress] = useState("");
+  const [residentialAddressLine2, setResidentialAddressLine2] = useState("");
   const [country, setCountry] = useState<string | null>(null);
   const [province, setProvince] = useState<string | null>(null);
   const [district, setDistrict] = useState("");
@@ -15,6 +14,12 @@ export function useContactState() {
   const [postalCode, setPostalCode] = useState("");
   const [sameAsResidential, setSameAsResidential] = useState(true);
   const [mailingAddress, setMailingAddress] = useState("");
+  const [mailingAddressLine2, setMailingAddressLine2] = useState("");
+  const [mailingCountry, setMailingCountry] = useState<string | null>(null);
+  const [mailingProvince, setMailingProvince] = useState<string | null>(null);
+  const [mailingDistrict, setMailingDistrict] = useState("");
+  const [mailingCityTown, setMailingCityTown] = useState("");
+  const [mailingPostalCode, setMailingPostalCode] = useState("");
 
   const reset = () => {
     setMobileNumber("");
@@ -22,6 +27,7 @@ export function useContactState() {
     setEmail("");
     setPreferredCommunication(null);
     setResidentialAddress("");
+    setResidentialAddressLine2("");
     setCountry(null);
     setProvince(null);
     setDistrict("");
@@ -29,6 +35,12 @@ export function useContactState() {
     setPostalCode("");
     setSameAsResidential(true);
     setMailingAddress("");
+    setMailingAddressLine2("");
+    setMailingCountry(null);
+    setMailingProvince(null);
+    setMailingDistrict("");
+    setMailingCityTown("");
+    setMailingPostalCode("");
   };
 
   return {
@@ -37,6 +49,7 @@ export function useContactState() {
     email, setEmail,
     preferredCommunication, setPreferredCommunication,
     residentialAddress, setResidentialAddress,
+    residentialAddressLine2, setResidentialAddressLine2,
     country, setCountry,
     province, setProvince,
     district, setDistrict,
@@ -44,6 +57,12 @@ export function useContactState() {
     postalCode, setPostalCode,
     sameAsResidential, setSameAsResidential,
     mailingAddress, setMailingAddress,
+    mailingAddressLine2, setMailingAddressLine2,
+    mailingCountry, setMailingCountry,
+    mailingProvince, setMailingProvince,
+    mailingDistrict, setMailingDistrict,
+    mailingCityTown, setMailingCityTown,
+    mailingPostalCode, setMailingPostalCode,
     reset,
   };
 }
