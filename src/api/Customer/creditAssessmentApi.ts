@@ -9,18 +9,35 @@ export interface CreditFlag {
   value: string;
 }
 
+export interface BureauFacility {
+  institution: string;
+  facilityType: string;
+  outstandingAmount: number;
+  monthlyPayment: number;
+  accountStatus: string;
+}
+
 export interface CreditAssessmentResult {
   score: number;
   bureau: string;
   fetchedAt: string; // ISO timestamp
   referenceId: string;
   flags: CreditFlag[];
+  riskBand: string;
+  activeAccounts: number;
+  delinquentAccounts: number;
+  totalOutstanding: number;
+  monthlyObligations: number;
+  recentEnquiries: number;
+  existingFacilities: BureauFacility[];
 }
 
 export type BureauCallResponse =
   | { outcome: "success"; result: CreditAssessmentResult }
   | { outcome: "no_record" }
   | { outcome: "error"; message: string };
+
+export const BUREAU_PROVIDERS = ["TransUnion Zambia", "Metropol", "CRB Africa"];
 
 /* ───────────────── Moved from Usecreditassessmentstate.ts — same signatures/bodies ─────────────────
    TODO: backend not ready. Replace bodies, keep signatures — the state
@@ -36,14 +53,15 @@ export async function fetchCachedCreditAssessment(
 
 export async function callBureauCreditCheck(
   customerId: string,
+  provider: string = "TransUnion Zambia",
 ): Promise<BureauCallResponse> {
-  // Real version: POST /api/customers/:id/credit-assessment/run
+  // Real version: POST /api/customers/:id/credit-assessment/run { provider }
   await new Promise((res) => setTimeout(res, 1200));
   return {
     outcome: "success",
     result: {
       score: 451,
-      bureau: "TransUnion Zambia",
+      bureau: provider,
       fetchedAt: new Date().toISOString(),
       referenceId: `TU-${customerId}-${Date.now()}`,
       flags: [
@@ -51,6 +69,28 @@ export async function callBureauCreditCheck(
         { label: "Defaults", value: "0" },
         { label: "Delinquencies", value: "1 flagged" },
         { label: "Recent Inquiries", value: "3 (90d)" },
+      ],
+      riskBand: "Medium",
+      activeAccounts: 2,
+      delinquentAccounts: 1,
+      totalOutstanding: 18500,
+      monthlyObligations: 1200,
+      recentEnquiries: 3,
+      existingFacilities: [
+        {
+          institution: "Zanaco",
+          facilityType: "Personal Loan",
+          outstandingAmount: 12500,
+          monthlyPayment: 850,
+          accountStatus: "Active",
+        },
+        {
+          institution: "Absa",
+          facilityType: "Credit Card",
+          outstandingAmount: 6000,
+          monthlyPayment: 350,
+          accountStatus: "Active",
+        },
       ],
     },
   };

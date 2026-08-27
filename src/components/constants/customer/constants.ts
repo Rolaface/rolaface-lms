@@ -1,9 +1,8 @@
 import {
   IconUser, IconPhone, IconId, IconChartLine, IconCash, IconShieldCheck,
   IconUpload, IconUsers, IconTag, IconPhoto, IconSignature, IconFileText,
-  IconReceipt, IconBuildingBank as IconBankFile, IconDots,
+  IconReceipt, IconBuildingBank as IconBankFile, IconDots, IconCreditCard,
 } from "@tabler/icons-react";
-
 
 export const W = {
   xxs: 2, // postal code, dependents
@@ -11,49 +10,46 @@ export const W = {
   sm: 3,  // marital status, city, industry
   md: 3,  // occupation, id number, education, credit officer
   lg: 4,  // employer, id type, borrower category, branch
-  xl: 3,  
+  xl: 3,
   xxl: 6,
 } as const;
-
 
 export const STEPS = [
   { label: "Identity", icon: IconUser },
   { label: "Contact", icon: IconPhone },
   { label: "ID Documents", icon: IconId },
-  { label: "Financial & Lending", icon: IconCash },
+  { label: "Financial", icon: IconCash },
+  { label: "Lending", icon: IconCreditCard },
   { label: "KYC", icon: IconShieldCheck },
   { label: "Documents", icon: IconUpload },
   { label: "Next of Kin", icon: IconUsers },
-
 ] as const;
-
-
 
 export const STEP_GROUPS = [
   {
     id: "profile",
     label: "Customer Profile",
     icon: IconUser,
-    stepIndices: [0, 1, 6], // Identity, Contact, Next of Kin
+    stepIndices: [0, 1, 7], // Identity, Contact, Next of Kin
   },
   {
     id: "verification",
     label: "KYC & Compliance",
     icon: IconShieldCheck,
-    stepIndices: [2, 4, 5], // ID Documents, KYC, Documents
+    stepIndices: [2, 5, 6], // ID Documents, KYC, Documents
   },
   {
     id: "financial",
-    label: "Financial & Lending",
-    icon: IconBankFile,
-    stepIndices: [3], // Financial & Lending (merged)
+    label: "Financial",
+    icon: IconCash,
+    stepIndices: [3], // Financial only — same level as the other tabs, no nesting
   },
-  // {
-  //   id: "additional",
-  //   label: "Additional",
-  //   icon: IconDots,
-  //   stepIndices: [7], // Tags & Notes
-  // },
+  {
+    id: "lending",
+    label: "Lending",
+    icon: IconCreditCard,
+    stepIndices: [4], // Lending only — same level as the other tabs, no nesting
+  },
 ] as const;
 
 export const DOC_TILES = [
@@ -144,7 +140,6 @@ export const DOC_TILES = [
 ] as const;
 
 export const SUGGESTED_TAGS = ["VIP", "High risk", "Government employee", "Business owner", "Senior citizen", "Student"];
-
 
 export const readOnlyClassNames = {
   input: "!bg-slate-50 !text-slate-400",

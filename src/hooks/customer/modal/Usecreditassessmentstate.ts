@@ -22,9 +22,11 @@ export type { CreditFlag, CreditAssessmentResult };
 
 interface UseCreditAssessmentStateArgs {
   customerId: string | null;
+  bureauProvider?: string;
 }
 export function useCreditAssessmentState({
   customerId,
+  bureauProvider,
 }: UseCreditAssessmentStateArgs) {
   const [status, setStatus] = useState<CreditCheckStatus>("idle");
   const [result, setResult] = useState<CreditAssessmentResult | null>(null);
@@ -74,7 +76,7 @@ export function useCreditAssessmentState({
     setErrorMessage(null);
 
     try {
-      const response = await callBureauCreditCheck(customerId);
+      const response = await callBureauCreditCheck(customerId, bureauProvider);
 
       if (response.outcome === "no_record") {
         setStatus("no_record");
@@ -92,7 +94,7 @@ export function useCreditAssessmentState({
     } finally {
       inFlightRef.current = false;
     }
-  }, [consentGiven, customerId]);
+  }, [consentGiven, customerId, bureauProvider]);
 
   const runCheck = runBureauCall;
   const refreshCheck = runBureauCall;
@@ -118,4 +120,3 @@ export function useCreditAssessmentState({
     reset,
   };
 }
-

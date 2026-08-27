@@ -49,6 +49,7 @@ export function useIdentityState() {
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [incorporationDate, setIncorporationDate] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
+  const [businessAddressLine2, setBusinessAddressLine2] = useState("");
   const [businessIndustry, setBusinessIndustry] = useState<string | null>(null);
   const [numberOfEmployees, setNumberOfEmployees] = useState<number | "">("");
   const [annualRevenue, setAnnualRevenue] = useState<number | "">("");
@@ -59,6 +60,7 @@ export function useIdentityState() {
   const [currency, setCurrency] = useState<string | null>("ZMW");
   const [fiscalYearEnd, setFiscalYearEnd] = useState("");
   const [businessCity, setBusinessCity] = useState("");
+  const [businessProvince, setBusinessProvince] = useState<string | null>(null);
   const [businessCountry, setBusinessCountry] = useState<string | null>(null);
   const [businessPostalCode, setBusinessPostalCode] = useState("");
 
@@ -88,6 +90,7 @@ export function useIdentityState() {
     setRegistrationNumber("");
     setIncorporationDate("");
     setBusinessAddress("");
+    setBusinessAddressLine2("");
     setBusinessIndustry(null);
     setNumberOfEmployees("");
     setAnnualRevenue("");
@@ -98,9 +101,10 @@ export function useIdentityState() {
     setCurrency("ZMW");
     setFiscalYearEnd("");
     setBusinessCity("");
+    setBusinessProvince(null);
     setBusinessCountry(null);
     setBusinessPostalCode("");
-       setDirectors([]);
+    setDirectors([]);
   };
 
   return {
@@ -120,6 +124,7 @@ export function useIdentityState() {
     registrationNumber, setRegistrationNumber,
     incorporationDate, setIncorporationDate,
     businessAddress, setBusinessAddress,
+    businessAddressLine2, setBusinessAddressLine2,
     businessIndustry, setBusinessIndustry,
     numberOfEmployees, setNumberOfEmployees,
     annualRevenue, setAnnualRevenue,
@@ -130,6 +135,7 @@ export function useIdentityState() {
     currency, setCurrency,
     fiscalYearEnd, setFiscalYearEnd,
     businessCity, setBusinessCity,
+    businessProvince, setBusinessProvince,
     businessCountry, setBusinessCountry,
     businessPostalCode, setBusinessPostalCode,
     directors, addDirector, updateDirector, removeDirector,

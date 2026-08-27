@@ -1,131 +1,98 @@
 import {
-  Box,
-  Button,
-  Badge,
-  Checkbox,
-  Group,
-  Stack,
-  Text,
-  Tooltip,
-  SimpleGrid,
-  Loader,
-  Divider,
-  } from "@mantine/core";
-import { openCommonModal } from "../../../../components/Modal/AlertModal";
+  Box, Button, Badge, Checkbox, Group, Select, Stack, Text, Tooltip,
+} from "@mantine/core";
+import { IconChevronDown, IconGauge, IconRefresh, IconAlertTriangle, IconBuildingBank } from "@tabler/icons-react";
 import dayjs from "dayjs";
-import {
-  IconGauge,
-  IconRefresh,
-  IconFileSearch,
-  IconAlertTriangle,
-  IconBuildingBank,
-  IconCash,
-  IconCalendarStats,
-  IconChartPie,
-  IconShieldCheck,
-  IconFlag,
-  IconSearch,
-  IconAward,
-} from "@tabler/icons-react";
 
 import {
-  PlainCard,
-  SectionHeader,
+  PlainCard, SectionHeader,
 } from "../../../../components/shared/customer/Shared";
+import { BUREAU_PROVIDERS } from "../../../../api/Customer/creditAssessmentApi";
 import {
-  CreditScoreGauge,
-} from "../../../../components/shared/Creditscoregauge";
-import {
-
   type CreditAssessmentResult,
   type CreditCheckStatus,
 } from "../../../../hooks/customer/modal/Usecreditassessmentstate";
+import { openCommonModal } from "../../../../components/Modal/AlertModal";
 
 interface CreditAssessmentStepProps {
   status: CreditCheckStatus;
   result: CreditAssessmentResult | null;
   errorMessage: string | null;
-  isExpired: boolean;
   consentGiven: boolean;
   setConsentGiven: (v: boolean) => void;
+  bureauProvider: string | null;
+  setBureauProvider: (v: string | null) => void;
   runCheck: () => void;
   refreshCheck: () => void;
-  onViewFullReport?: () => void;
 }
 
-const STATUS_PILL: Record<CreditCheckStatus, { label: string; color: string }> =
-  {
-    idle: { label: "NOT STARTED", color: "slate" },
-    loading: { label: "IN PROGRESS", color: "info" },
-    assessed: { label: "ASSESSED", color: "success" },
-    failed: { label: "FAILED", color: "danger" },
-    no_record: { label: "NO RECORD FOUND", color: "warning" },
-  };
-
-// Maps known flag labels to an icon. Falls back to a generic icon for
-// anything the bureau response adds that we don't explicitly know about.
-const FLAG_ICONS: Record<
-  string,
-  React.ComponentType<{ size?: number; color?: string }>
-> = {
-  "active facilities": IconBuildingBank,
-  "outstanding debt": IconCash,
-  "monthly obligations": IconCalendarStats,
-  "credit utilisation": IconChartPie,
-  "credit utilization": IconChartPie,
-  defaults: IconShieldCheck,
-  delinquencies: IconFlag,
-  "recent inquiries": IconSearch,
-  "credit band": IconAward,
+const STATUS_PILL: Record<CreditCheckStatus, { label: string; color: string }> = {
+  idle: { label: "NOT STARTED", color: "slate" },
+  loading: { label: "IN PROGRESS", color: "info" },
+  assessed: { label: "ASSESSED", color: "success" },
+  failed: { label: "FAILED", color: "danger" },
+  no_record: { label: "NO RECORD FOUND", color: "warning" },
 };
 
-function getFlagIcon(label: string) {
-  return FLAG_ICONS[label.trim().toLowerCase()] ?? IconGauge;
-}
-
-// "1 flagged" / "3 (90d)" etc — highlight anything that reads as a flag.
-function isFlaggedValue(value: string) {
-  return /flag/i.test(value);
-}
+const chevron = <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />;
 
 function formatTimestamp(iso: string) {
   return dayjs(iso).format("DD-MMM-YYYY hh:mm A");
 }
 
-
-
 export function CreditAssessmentStep({
-  status,
-  result,
-  errorMessage,
-  isExpired,
-  consentGiven,
-  setConsentGiven,
-  runCheck,
-  refreshCheck,
-  onViewFullReport,
+  status, result, errorMessage,
+  consentGiven, setConsentGiven,
+  bureauProvider, setBureauProvider,
+  runCheck, refreshCheck,
 }: CreditAssessmentStepProps) {
   const pill = STATUS_PILL[status];
 
   const handleRefresh = () => {
-    openCommonModal({
-      heading: "Refresh credit assessment?",
-      subtitle: "A new credit bureau check will be performed.",
-      body: "This will retrieve the customer's latest credit information from TransUnion Zambia.",
-      color: "blue",
-      buttons: [
-        {
-          label: "Not now",
-          variant: "default",
-        },
-        {
-          label: "Refresh",
-          color: "blue",
-          onClick: refreshCheck,
-        },
-      ],
-    });
-  };
+  if (!result?.fetchedAt) {
+    refreshCheck();
+    return;
+  }
+
+  const lastRefreshed = dayjs(result.fetchedAt);
+  const now = dayjs();
+
+  const minutesAgo = Math.max(0, now.diff(lastRefreshed, "minute"));
+
+  const timeText =
+    minutesAgo < 1
+      ? "less than a minute ago"
+      : minutesAgo === 1
+        ? "1 minute ago"
+        : `${minutesAgo} minutes ago`;
+
+  openCommonModal({
+    heading: "Refresh Credit Assessment?",
+    subtitle: "A recent credit assessment is already available.",
+    body: (
+      <>
+        This credit assessment was last refreshed <strong>{timeText}</strong>.
+        Refreshing will send a new request to the credit bureau and may update
+        the customer's credit information.
+        <br />
+        <br />
+        Do you want to continue?
+      </>
+    ),
+    color: "info",
+    buttons: [
+      {
+        label: "Cancel",
+        variant: "default",
+      },
+      {
+        label: "Refresh Credit Check",
+        color: "brand",
+        onClick: refreshCheck,
+      },
+    ],
+  });
+};
 
   return (
     <PlainCard dense>
@@ -138,38 +105,39 @@ export function CreditAssessmentStep({
           dense
           stepNumber={1}
         />
-        <Group gap={6}>
-          <Badge color={pill.color} variant="light" radius="sm">
-            {pill.label}
-          </Badge>
-        </Group>
+        <Badge color={pill.color} variant="light" radius="sm">
+          {pill.label}
+        </Badge>
       </Group>
 
-      {/* ---------------- IDLE (pre-check) ---------------- */}
-      {status === "idle" && (
+      {(status === "idle" || status === "loading") && (
         <Group justify="space-between" align="center" wrap="wrap" gap="md">
-          <Group gap="xs">
-            <IconBuildingBank size={16} color="var(--mantine-color-slate-5)" />
-
-            <Text size="sm" c="slate.6">
-              TransUnion Zambia · Credit check
-            </Text>
-          </Group>
-
+          <Select
+            radius="md" rightSection={chevron}
+            leftSection={<IconBuildingBank size={14} color="var(--mantine-color-slate-5)" />}
+            label="Bureau / Credit Check Provider"
+            data={BUREAU_PROVIDERS}
+            value={bureauProvider}
+            onChange={setBureauProvider}
+            disabled={status === "loading"}
+            styles={{ input: { height: 38 } }}
+            w={220}
+          />
           <Group gap="md" align="center">
             <Checkbox
               label="Customer consent obtained"
               checked={consentGiven}
+              disabled={status === "loading"}
               onChange={(e) => setConsentGiven(e.currentTarget.checked)}
             />
-
-            <Tooltip
-              label="Confirm customer consent first."
-              disabled={consentGiven}
-              withArrow
-            >
+            <Tooltip label="Confirm customer consent first." disabled={consentGiven} withArrow>
               <Box>
-                <Button radius="sm" disabled={!consentGiven} onClick={runCheck}>
+                <Button
+                  radius="sm"
+                  disabled={!consentGiven || status === "loading"}
+                  loading={status === "loading"}
+                  onClick={runCheck}
+                >
                   Run Credit Check
                 </Button>
               </Box>
@@ -178,152 +146,56 @@ export function CreditAssessmentStep({
         </Group>
       )}
 
-      {/* ---------------- LOADING ---------------- */}
-      {status === "loading" && (
-        <Group gap="sm" py="md">
-          <Loader size="sm" color="brand" />
-          <Text size="sm" c="slate.6" fw={500}>
-            Fetching from bureau…
-          </Text>
-        </Group>
-      )}
-
-      {/* ---------------- FAILED ---------------- */}
       {status === "failed" && (
         <Stack gap={6}>
           <Group gap={8}>
-            <IconAlertTriangle
-              size={16}
-              color="var(--mantine-color-danger-6)"
-            />
+            <IconAlertTriangle size={16} color="var(--mantine-color-danger-6)" />
             <Text size="sm" c="danger.7" fw={500}>
               {errorMessage ?? "Bureau request failed."}
             </Text>
           </Group>
           <Group>
-            <Button
-              radius="sm"
-              variant="light"
-              color="danger"
-              leftSection={<IconRefresh size={14} />}
-              onClick={runCheck}
-            >
+            <Button radius="sm" variant="light" color="danger" leftSection={<IconRefresh size={14} />} onClick={runCheck}>
               Retry
             </Button>
           </Group>
         </Stack>
       )}
 
-      {/* ---------------- NO RECORD FOUND ---------------- */}
       {status === "no_record" && (
         <Stack gap={6}>
           <Group gap={8}>
-            <IconAlertTriangle
-              size={16}
-              color="var(--mantine-color-warning-6)"
-            />
+            <IconAlertTriangle size={16} color="var(--mantine-color-warning-6)" />
             <Text size="sm" c="warning.8" fw={500}>
               No bureau history found for this customer.
             </Text>
           </Group>
           <Text size="xs" c="slate.5">
-            This is itself a data point (thin-file risk) — proceed with manual
-            risk assessment if required.
+            This is itself a data point (thin-file risk) — proceed with manual risk assessment if required.
           </Text>
           <Group>
-            <Button
-              radius="sm"
-              variant="light"
-              leftSection={<IconRefresh size={14} />}
-              onClick={refreshCheck}
-            >
+            <Button radius="sm" variant="light" leftSection={<IconRefresh size={14} />} onClick={handleRefresh}>
               Check Again
             </Button>
           </Group>
         </Stack>
       )}
 
-      {/* ---------------- ASSESSED (success) ---------------- */}
       {status === "assessed" && result && (
-        <Stack gap="md">
-          <Group align="center" wrap="nowrap" gap="lg">
-            <CreditScoreGauge score={result.score} size={150} />
-            <Stack gap={4} style={{ flex: 1 }}>
-              <Group gap={6} align="center">
-                <Text size="xs" c="slate.5" fw={500}>
-                  {result.bureau}
-                </Text>
-
-                <Text size="xs" c="slate.4">
-                  · Fetched {formatTimestamp(result.fetchedAt)}
-                </Text>
-              </Group>
-
-              <SimpleGrid cols={4} spacing="md" verticalSpacing="xs" mt={2}>
-                {result.flags.map((flag) => {
-                  const Icon = getFlagIcon(flag.label);
-                  const flagged = isFlaggedValue(flag.value);
-                  return (
-                    <Group
-                      key={flag.label}
-                      gap={8}
-                      align="flex-start"
-                      wrap="nowrap"
-                    >
-                      <Icon size={16} color="var(--mantine-color-slate-4)" />
-                      <Stack gap={0}>
-                        <Text size="xs" c="slate.5">
-                          {flag.label}
-                        </Text>
-                        <Text
-                          size="sm"
-                          fw={700}
-                          c={flagged ? "warning.7" : "slate.8"}
-                        >
-                          {flag.value}
-                        </Text>
-                      </Stack>
-                    </Group>
-                  );
-                })}
-              </SimpleGrid>
-
-              <Divider my={4} />
-
-              <Group justify="flex-end" gap="xs" mt="xs">
-                <Button
-                  size="xs"
-                  radius="sm"
-                  variant="default"
-                  leftSection={<IconFileSearch size={14} />}
-                  onClick={onViewFullReport}
-                >
-                  View Report
-                </Button>
-
-                <Button
-                  size="xs"
-                  radius="sm"
-                  variant="default"
-                  leftSection={<IconRefresh size={14} />}
-                  onClick={handleRefresh}
-                >
-                  Refresh
-                </Button>
-              </Group>
-              {isExpired && (
-                <Badge
-                  color="warning"
-                  variant="light"
-                  radius="sm"
-                  w="fit-content"
-                >
-                  Expired — refresh recommended
-                </Badge>
-              )}
-            </Stack>
-          </Group>
-        </Stack>
+        <Group justify="space-between" align="center">
+          <Text size="sm" c="slate.6">
+            Assessed via <Text span fw={600} c="slate.8">{result.bureau}</Text> · {formatTimestamp(result.fetchedAt)}
+          </Text>
+        <Button
+  size="xs"
+  radius="sm"
+  variant="default"
+  leftSection={<IconRefresh size={14} />}
+  onClick={handleRefresh}
+>
+  Refresh
+</Button>
+        </Group>
       )}
     </PlainCard>
   );
