@@ -77,7 +77,7 @@ export interface LoanDisbursementFormData {
   topupOutstandingCurrent: number | "";
   topupOutstandingNew: number | "";
   topupAmount: number | "";
-  comment?: string;
+  _comments?: string;
 }
 
 
@@ -173,7 +173,7 @@ export function LoanDisbursementModal({
       topupOutstandingCurrent: "" as number | "",
       topupOutstandingNew: "" as number | "",
       topupAmount: "" as number | "",
-      comment: "",
+      _comments: "",
     },
     validate: {
       acNo: (v) => (!v ? "Account Number is required" : null),
@@ -292,7 +292,7 @@ export function LoanDisbursementModal({
       repayment_start_date: selectedLoanApp?.repayment_start_date || undefined,
       disbursement_account: resolvedDisbursementAc,
       loan_account: selectedLoanApp?.loan_account || undefined,
-      comment: values.comment,
+      _comments: values._comments,
       loan_disbursement_charges: values.charges.map((charge) => ({
         charge: charge.name,
         amount: Number(charge.amount || 0),
@@ -369,7 +369,7 @@ export function LoanDisbursementModal({
         topupOutstandingCurrent: topupDetails?.old_outstanding_amount ?? "",
         topupOutstandingNew: topupDetails?.new_outstanding_amount ?? "",
         topupAmount: topupDetails?.top_up_amount ?? "",
-        comment: item.comment || "",
+        _comments: (item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || "",
       });
       const existingCharges = normalizeLoanCharges({ loan_charges: item.loan_disbursement_charges });
       form.setFieldValue("charges", existingCharges);
@@ -894,20 +894,20 @@ export function LoanDisbursementModal({
                     </div>
                   </div>
                   <div className="mt-4">
-                      <Textarea
-                        size="sm"
-                        label="Comment"
-                        placeholder="Add a comment or description..."
-                        minRows={2}
-                        maxRows={4}
-                        autosize
-                        disabled={isView}
-                        variant={isView ? 'filled' : 'default'}
-                        leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
-                        leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
-                        {...form.getInputProps("comment")}
-                      />
-                    </div>
+                    <Textarea
+                      size="sm"
+                      label="Comment"
+                      placeholder="Add a comment or description..."
+                      minRows={2}
+                      maxRows={4}
+                      autosize
+                      disabled={isView}
+                      variant={isView ? 'filled' : 'default'}
+                      leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+                      leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+                      {...form.getInputProps("_comments")}
+                    />
+                  </div>
                 </Tabs.Panel>
 
                 <Tabs.Panel value="charges" pt="md">
