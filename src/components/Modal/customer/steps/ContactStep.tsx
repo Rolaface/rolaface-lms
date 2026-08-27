@@ -14,13 +14,16 @@ import {
   IconPhone,
   IconMapPin,
   IconAlertTriangle,
+  IconUserCircle,
 } from "@tabler/icons-react";
 import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useCountries } from "../../../../hooks/common/useLookups";
 
 interface ContactStepProps {
+  customerType: string;
+
   mobileNumber: string;
   setMobileNumber: (v: string) => void;
   alternateMobile: string;
@@ -61,6 +64,31 @@ interface ContactStepProps {
   setMailingCityTown: (v: string) => void;
   mailingPostalCode: string;
   setMailingPostalCode: (v: string) => void;
+
+  primaryContactName: string;
+  setPrimaryContactName: (v: string) => void;
+
+  sameAsRegisteredOffice: boolean;
+  setSameAsRegisteredOffice: (v: boolean) => void;
+  correspondenceAddress: string;
+  setCorrespondenceAddress: (v: string) => void;
+  correspondenceAddressLine2: string;
+  setCorrespondenceAddressLine2: (v: string) => void;
+  correspondenceCountry: string | null;
+  setCorrespondenceCountry: (v: string | null) => void;
+  correspondenceProvince: string | null;
+  setCorrespondenceProvince: (v: string | null) => void;
+  correspondenceCityTown: string;
+  setCorrespondenceCityTown: (v: string) => void;
+  correspondencePostalCode: string;
+  setCorrespondencePostalCode: (v: string) => void;
+
+  registeredOfficeAddress: string;
+  registeredOfficeAddressLine2: string;
+  registeredOfficeCity: string;
+  registeredOfficeProvince: string | null;
+  registeredOfficeCountry: string | null;
+  registeredOfficePostalCode: string;
 
   mobileDuplicateName?: string | null;
   errors?: Record<string, string>;
@@ -129,6 +157,7 @@ function AddressCard({
   onCityTown,
   county,
   onCounty,
+  showCounty = true,
   province,
   onProvince,
   country,
@@ -151,6 +180,7 @@ function AddressCard({
   onCityTown: (v: string) => void;
   county: string;
   onCounty: (v: string) => void;
+  showCounty?: boolean;
   province: string | null;
   onProvince: (v: string | null) => void;
   country: string | null;
@@ -195,7 +225,7 @@ function AddressCard({
         mb={6}
       />
 
-      <FieldRow columns="repeat(2, minmax(0, 1fr))">
+      <FieldRow columns={showCounty ? "repeat(2, minmax(0, 1fr))" : "1fr"}>
         <TextInput
           radius="md"
           label="City / Town"
@@ -205,14 +235,16 @@ function AddressCard({
           value={cityTown}
           onChange={(e) => onCityTown(e.currentTarget.value)}
         />
-        <TextInput
-          radius="md"
-          label="County"
-          placeholder="e.g. Chongwe"
-          disabled={disabled}
-          value={county}
-          onChange={(e) => onCounty(e.currentTarget.value)}
-        />
+        {showCounty && (
+          <TextInput
+            radius="md"
+            label="County"
+            placeholder="e.g. Chongwe"
+            disabled={disabled}
+            value={county}
+            onChange={(e) => onCounty(e.currentTarget.value)}
+          />
+        )}
       </FieldRow>
 
       <FieldRow columns="repeat(3, minmax(0, 1fr))">
@@ -268,7 +300,44 @@ export function ContactStep(props: ContactStepProps) {
   const { data: mailingCountryOptions, isLoading: mailingCountriesLoading } =
     useCountries(debouncedMailingCountrySearch);
 
+  const [correspondenceCountrySearch, setCorrespondenceCountrySearch] =
+    useState("");
+  const [debouncedCorrespondenceCountrySearch] = useDebouncedValue(
+    correspondenceCountrySearch,
+    300,
+  );
   const {
+    data: correspondenceCountryOptions,
+    isLoading: correspondenceCountriesLoading,
+  } = useCountries(debouncedCorrespondenceCountrySearch);
+
+  useEffect(() => {
+    if (props.sameAsRegisteredOffice) {
+      props.setCorrespondenceAddress(props.registeredOfficeAddress);
+      props.setCorrespondenceAddressLine2(props.registeredOfficeAddressLine2);
+      props.setCorrespondenceCityTown(props.registeredOfficeCity);
+      props.setCorrespondenceProvince(props.registeredOfficeProvince);
+      props.setCorrespondenceCountry(props.registeredOfficeCountry);
+      props.setCorrespondencePostalCode(props.registeredOfficePostalCode);
+    }
+  }, [
+    props.sameAsRegisteredOffice,
+    props.registeredOfficeAddress,
+    props.registeredOfficeAddressLine2,
+    props.registeredOfficeCity,
+    props.registeredOfficeProvince,
+    props.registeredOfficeCountry,
+    props.registeredOfficePostalCode,
+    props.setCorrespondenceAddress,
+    props.setCorrespondenceAddressLine2,
+    props.setCorrespondenceCityTown,
+    props.setCorrespondenceProvince,
+    props.setCorrespondenceCountry,
+    props.setCorrespondencePostalCode,
+  ]);
+
+  const {
+    customerType,
     mobileNumber,
     setMobileNumber,
     alternateMobile,
@@ -307,9 +376,33 @@ export function ContactStep(props: ContactStepProps) {
     setMailingCityTown,
     mailingPostalCode,
     setMailingPostalCode,
+    primaryContactName,
+    setPrimaryContactName,
+    sameAsRegisteredOffice,
+    setSameAsRegisteredOffice,
+    correspondenceAddress,
+    setCorrespondenceAddress,
+    correspondenceAddressLine2,
+    setCorrespondenceAddressLine2,
+    correspondenceCountry,
+    setCorrespondenceCountry,
+    correspondenceProvince,
+    setCorrespondenceProvince,
+    correspondenceCityTown,
+    setCorrespondenceCityTown,
+    correspondencePostalCode,
+    setCorrespondencePostalCode,
+    registeredOfficeAddress,
+    registeredOfficeAddressLine2,
+    registeredOfficeCity,
+    registeredOfficeProvince,
+    registeredOfficeCountry,
+    registeredOfficePostalCode,
     mobileDuplicateName,
     errors = {},
   } = props;
+
+  const isBusiness = customerType === "Business";
 
   return (
     <PlainCard>
@@ -320,7 +413,10 @@ export function ContactStep(props: ContactStepProps) {
         accent="indigoAlt"
       />
 
-      <SubHeading icon={IconPhone} label="Phone & Email" />
+      <SubHeading
+        icon={IconPhone}
+        label={isBusiness ? "Contact Information" : "Phone & Email"}
+      />
 
       {mobileDuplicateName && (
         <Paper
@@ -345,108 +441,201 @@ export function ContactStep(props: ContactStepProps) {
         </Paper>
       )}
 
-      <FieldRow columns="repeat(4, minmax(0, 1fr))">
-        <TextInput
-          radius="md"
-          label="Mobile Number"
-          placeholder="+260 9__ ___ ___"
-          withAsterisk
-          value={mobileNumber}
-          onChange={(e) => setMobileNumber(e.currentTarget.value)}
-          error={errors.mobileNumber}
-        />
-        <TextInput
-          radius="md"
-          label="Alternate Mobile"
-          placeholder="+260 9__ ___ ___"
-          value={alternateMobile}
-          onChange={(e) => setAlternateMobile(e.currentTarget.value)}
-        />
-        <TextInput
-          radius="md"
-          label="Email Address"
-          placeholder="name@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.currentTarget.value)}
-          error={errors.email}
-        />
-        <Select
-          radius="md"
-          searchable
-          rightSection={chevron}
-          label="Preferred Communication"
-          placeholder="Select"
-          data={["SMS", "Email", "WhatsApp", "Phone Call"]}
-          value={preferredCommunication}
-          onChange={setPreferredCommunication}
-        />
-      </FieldRow>
+      {isBusiness && (
+        <FieldRow columns="repeat(4, minmax(0, 1fr))">
+          <TextInput
+            radius="md"
+            label="Primary Contact"
+            placeholder="e.g. Mwansa Chileshe"
+            value={primaryContactName}
+            onChange={(e) => setPrimaryContactName(e.currentTarget.value)}
+          />
+          <TextInput
+            radius="md"
+            label="Mobile Number"
+            placeholder="+260 9__ ___ ___"
+            withAsterisk
+            value={mobileNumber}
+            onChange={(e) => setMobileNumber(e.currentTarget.value)}
+            error={errors.mobileNumber}
+          />
+          <TextInput
+            radius="md"
+            label="Email Address"
+            placeholder="name@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.currentTarget.value)}
+            error={errors.email}
+          />
+          <Select
+            radius="md"
+            searchable
+            rightSection={chevron}
+            label="Preferred Communication"
+            placeholder="Select"
+            data={["SMS", "Email", "WhatsApp", "Phone Call"]}
+            value={preferredCommunication}
+            onChange={setPreferredCommunication}
+          />
+        </FieldRow>
+      )}
+
+      {!isBusiness && (
+        <FieldRow columns="repeat(4, minmax(0, 1fr))">
+          <TextInput
+            radius="md"
+            label="Mobile Number"
+            placeholder="+260 9__ ___ ___"
+            withAsterisk
+            value={mobileNumber}
+            onChange={(e) => setMobileNumber(e.currentTarget.value)}
+            error={errors.mobileNumber}
+          />
+          <TextInput
+            radius="md"
+            label="Alternate Mobile"
+            placeholder="+260 9__ ___ ___"
+            value={alternateMobile}
+            onChange={(e) => setAlternateMobile(e.currentTarget.value)}
+          />
+          <TextInput
+            radius="md"
+            label="Email Address"
+            placeholder="name@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.currentTarget.value)}
+            error={errors.email}
+          />
+          <Select
+            radius="md"
+            searchable
+            rightSection={chevron}
+            label="Preferred Communication"
+            placeholder="Select"
+            data={["SMS", "Email", "WhatsApp", "Phone Call"]}
+            value={preferredCommunication}
+            onChange={setPreferredCommunication}
+          />
+        </FieldRow>
+      )}
 
       <SubHeading icon={IconMapPin} label="Address" />
 
-      <Box
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-          gap: "var(--mantine-spacing-sm)",
-          minWidth: 0,
-        }}
-      >
-        <AddressCard
-          title="Residential Address"
-          subtitle="Primary location"
-          addressLine1={residentialAddress}
-          onAddressLine1={setResidentialAddress}
-          addressLine2={residentialAddressLine2}
-          onAddressLine2={setResidentialAddressLine2}
-          cityTown={cityTown}
-          onCityTown={setCityTown}
-          county={district}
-          onCounty={setDistrict}
-          province={province}
-          onProvince={setProvince}
-          country={country}
-          onCountry={setCountry}
-          countryOptions={countryOptions ?? []}
-          countriesLoading={countriesLoading}
-          onCountrySearch={setCountrySearch}
-          postalCode={postalCode}
-          onPostalCode={setPostalCode}
-        />
+      {isBusiness ? (
+        <Box style={{ minWidth: 0 }}>
+          <AddressCard
+            title="Correspondence Address"
+            subtitle="Where correspondence should be sent"
+            disabled={sameAsRegisteredOffice}
+            showCounty={false}
+            headerRight={
+              <Checkbox
+                size="xs"
+                label="Same as registered office"
+                checked={sameAsRegisteredOffice}
+                onChange={(e) => {
+                  setSameAsRegisteredOffice(e.currentTarget.checked);
+                }}
+              />
+            }
+            addressLine1={
+              sameAsRegisteredOffice ? registeredOfficeAddress || "" : correspondenceAddress
+            }
+            onAddressLine1={setCorrespondenceAddress}
+            addressLine2={
+              sameAsRegisteredOffice ? registeredOfficeAddressLine2 || "" : correspondenceAddressLine2
+            }
+            onAddressLine2={setCorrespondenceAddressLine2}
+            cityTown={
+              sameAsRegisteredOffice ? registeredOfficeCity || "" : correspondenceCityTown
+            }
+            onCityTown={setCorrespondenceCityTown}
+            county=""
+            onCounty={() => {}}
+            province={
+              sameAsRegisteredOffice ? registeredOfficeProvince || null : correspondenceProvince
+            }
+            onProvince={setCorrespondenceProvince}
+            country={
+              sameAsRegisteredOffice ? registeredOfficeCountry || null : correspondenceCountry
+            }
+            onCountry={setCorrespondenceCountry}
+            countryOptions={correspondenceCountryOptions ?? []}
+            countriesLoading={correspondenceCountriesLoading}
+            onCountrySearch={setCorrespondenceCountrySearch}
+            postalCode={
+              sameAsRegisteredOffice ? registeredOfficePostalCode || "" : correspondencePostalCode
+            }
+            onPostalCode={setCorrespondencePostalCode}
+          />
+        </Box>
+      ) : (
+        <Box
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: "var(--mantine-spacing-sm)",
+            minWidth: 0,
+          }}
+        >
+          <AddressCard
+            title="Residential Address"
+            subtitle="Primary location"
+            addressLine1={residentialAddress}
+            onAddressLine1={setResidentialAddress}
+            addressLine2={residentialAddressLine2}
+            onAddressLine2={setResidentialAddressLine2}
+            cityTown={cityTown}
+            onCityTown={setCityTown}
+            county={district}
+            onCounty={setDistrict}
+            province={province}
+            onProvince={setProvince}
+            country={country}
+            onCountry={setCountry}
+            countryOptions={countryOptions ?? []}
+            countriesLoading={countriesLoading}
+            onCountrySearch={setCountrySearch}
+            postalCode={postalCode}
+            onPostalCode={setPostalCode}
+          />
 
-        <AddressCard
-          title="Mailing Address"
-          subtitle="Correspondence & delivery"
-          disabled={sameAsResidential}
-          headerRight={
-            <Checkbox
-              size="xs"
-              label="Same as residential"
-              checked={sameAsResidential}
-              onChange={(e) => setSameAsResidential(e.currentTarget.checked)}
-            />
-          }
-          addressLine1={sameAsResidential ? residentialAddress : mailingAddress}
-          onAddressLine1={setMailingAddress}
-          addressLine2={
-            sameAsResidential ? residentialAddressLine2 : mailingAddressLine2
-          }
-          onAddressLine2={setMailingAddressLine2}
-          cityTown={sameAsResidential ? cityTown : mailingCityTown}
-          onCityTown={setMailingCityTown}
-          county={sameAsResidential ? district : mailingDistrict}
-          onCounty={setMailingDistrict}
-          province={sameAsResidential ? province : mailingProvince}
-          onProvince={setMailingProvince}
-          country={sameAsResidential ? country : mailingCountry}
-          onCountry={setMailingCountry}
-          countryOptions={mailingCountryOptions ?? []}
-          countriesLoading={mailingCountriesLoading}
-          onCountrySearch={setMailingCountrySearch}
-          postalCode={sameAsResidential ? postalCode : mailingPostalCode}
-          onPostalCode={setMailingPostalCode}
-        />
-      </Box>
+          <AddressCard
+            title="Mailing Address"
+            subtitle="Correspondence & delivery"
+            disabled={sameAsResidential}
+            headerRight={
+              <Checkbox
+                size="xs"
+                label="Same as residential"
+                checked={sameAsResidential}
+                onChange={(e) => setSameAsResidential(e.currentTarget.checked)}
+              />
+            }
+            addressLine1={
+              sameAsResidential ? residentialAddress : mailingAddress
+            }
+            onAddressLine1={setMailingAddress}
+            addressLine2={
+              sameAsResidential ? residentialAddressLine2 : mailingAddressLine2
+            }
+            onAddressLine2={setMailingAddressLine2}
+            cityTown={sameAsResidential ? cityTown : mailingCityTown}
+            onCityTown={setMailingCityTown}
+            county={sameAsResidential ? district : mailingDistrict}
+            onCounty={setMailingDistrict}
+            province={sameAsResidential ? province : mailingProvince}
+            onProvince={setMailingProvince}
+            country={sameAsResidential ? country : mailingCountry}
+            onCountry={setMailingCountry}
+            countryOptions={mailingCountryOptions ?? []}
+            countriesLoading={mailingCountriesLoading}
+            onCountrySearch={setMailingCountrySearch}
+            postalCode={sameAsResidential ? postalCode : mailingPostalCode}
+            onPostalCode={setMailingPostalCode}
+          />
+        </Box>
+      )}
     </PlainCard>
   );
 }

@@ -32,7 +32,6 @@ interface IdentityStepProps {
   customerType: string;
   setCustomerType: (v: string) => void;
 
-  // Individual
   firstName: string;
   setFirstName: (v: string) => void;
   middleName: string;
@@ -54,7 +53,6 @@ interface IdentityStepProps {
   employer: string;
   setEmployer: (v: string) => void;
 
-  // Business — original field set only
   companyName: string;
   setCompanyName: (v: string) => void;
   registrationNumber: string;
@@ -63,12 +61,22 @@ interface IdentityStepProps {
   setIncorporationDate: (v: string) => void;
   businessAddress: string;
   setBusinessAddress: (v: string) => void;
+  businessAddressLine2: string;
+  setBusinessAddressLine2: (v: string) => void;
   businessIndustry: string | null;
   setBusinessIndustry: (v: string | null) => void;
   numberOfEmployees: number | "";
   setNumberOfEmployees: (v: number | "") => void;
   annualRevenue: number | "";
   setAnnualRevenue: (v: number | "") => void;
+  businessCity: string;
+  setBusinessCity: (v: string) => void;
+  businessProvince: string | null;
+  setBusinessProvince: (v: string | null) => void;
+  businessCountry: string | null;
+  setBusinessCountry: (v: string | null) => void;
+  businessPostalCode: string;
+  setBusinessPostalCode: (v: string) => void;
 
   errors?: Record<string, string>;
 }
@@ -77,13 +85,6 @@ const chevron = (
   <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
 );
 
-// Sensible cap for grid fields in the Identity form. Too small (the old
-// 200px) left dead space in wide grid columns; no cap at all made every
-// field balloon to ~300px+ regardless of content (Gender/DOB/Nationality
-// don't need that much room). 260px is the sweet spot for this modal's
-// content width at 4 columns — fields read as properly sized for their
-// content, and the grid gap (not empty field padding) does the job of
-// separating columns.
 const FIELD_MAW = 260;
 
 export function IdentityStep(props: IdentityStepProps) {
@@ -100,6 +101,15 @@ export function IdentityStep(props: IdentityStepProps) {
   );
   const { data: nationalityOptions, isLoading: nationalitiesLoading } =
     useCountries(debouncedNationalitySearch);
+
+  const [businessCountrySearch, setBusinessCountrySearch] = useState("");
+  const [debouncedBusinessCountrySearch] = useDebouncedValue(
+    businessCountrySearch,
+    300,
+  );
+  const { data: businessCountryOptions, isLoading: businessCountriesLoading } =
+    useCountries(debouncedBusinessCountrySearch);
+
   const {
     customerNumber,
     customerType,
@@ -132,12 +142,22 @@ export function IdentityStep(props: IdentityStepProps) {
     setIncorporationDate,
     businessAddress,
     setBusinessAddress,
+    businessAddressLine2,
+    setBusinessAddressLine2,
     businessIndustry,
     setBusinessIndustry,
     numberOfEmployees,
     setNumberOfEmployees,
     annualRevenue,
     setAnnualRevenue,
+    businessCity,
+    setBusinessCity,
+    businessProvince,
+    setBusinessProvince,
+    businessCountry,
+    setBusinessCountry,
+    businessPostalCode,
+    setBusinessPostalCode,
     errors = {},
   } = props;
 
@@ -227,17 +247,6 @@ export function IdentityStep(props: IdentityStepProps) {
 
           {typeHeaderRow}
 
-          {/*
-            Widths are in `ch` (character-width, relative to font-size)
-            instead of raw px. A fixed px guess like 220px is still
-            arbitrary — it doesn't actually track the content, and it
-            doesn't adapt if font size or zoom changes. `ch` sizes each
-            field to roughly how many characters it needs to hold typical
-            content (e.g. "Zimbabwean" needs far fewer than a full name),
-            so it's genuinely content-driven. `maxWidth: "100%"` on every
-            field means on a narrow viewport a field will still shrink to
-            fit its wrapped row instead of overflowing.
-          */}
           <Group gap="md" align="flex-start" wrap="wrap">
             <TextInput
               style={{ width: "22ch", maxWidth: "100%" }}
@@ -316,14 +325,6 @@ export function IdentityStep(props: IdentityStepProps) {
                 </Text>
               )}
             </Box>
-            {/* <TextInput
-              maw={FIELD_MAW}
-              radius="md"
-              label="Age (calculated)"
-              value={calcAge(dateOfBirth)}
-              disabled
-              classNames={readOnlyClassNames}
-            /> */}
             <Select
               style={{ width: "18ch", maxWidth: "100%" }}
               radius="md"
@@ -465,14 +466,20 @@ export function IdentityStep(props: IdentityStepProps) {
             </Grid.Col>
           </Grid>
 
-          <Grid gap="sm" mt="xs">
+          <Text size="10px" fw={700} tt="uppercase" c="slate.5" mt="md" mb={6} style={{ letterSpacing: 0.5 }}>
+            Registered Office Address
+          </Text>
+
+          <Grid gap="sm">
             <Grid.Col span={4}>
               <TextInput
                 radius="md"
                 label="Address line 1"
                 placeholder="Plot / building / street"
+                withAsterisk
                 value={businessAddress}
                 onChange={(e) => setBusinessAddress(e.currentTarget.value)}
+                error={errors.businessAddress}
               />
             </Grid.Col>
 
@@ -481,6 +488,8 @@ export function IdentityStep(props: IdentityStepProps) {
                 radius="md"
                 label="Address line 2 (Optional)"
                 placeholder="Area / locality"
+                value={businessAddressLine2}
+                onChange={(e) => setBusinessAddressLine2(e.currentTarget.value)}
               />
             </Grid.Col>
 
@@ -489,6 +498,53 @@ export function IdentityStep(props: IdentityStepProps) {
                 radius="md"
                 label="City / town"
                 placeholder="e.g. Lusaka"
+                withAsterisk
+                value={businessCity}
+                onChange={(e) => setBusinessCity(e.currentTarget.value)}
+                error={errors.businessCity}
+              />
+            </Grid.Col>
+          </Grid>
+
+          <Grid gap="sm" mt="xs">
+            <Grid.Col span={4}>
+              <Select
+                radius="md"
+                searchable
+                rightSection={chevron}
+                label="State / Province"
+                placeholder="Select"
+                withAsterisk
+                data={["Lusaka", "Copperbelt", "Southern", "Eastern", "Northern"]}
+                value={businessProvince}
+                onChange={setBusinessProvince}
+                error={errors.businessProvince}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={4}>
+              <Select
+                radius="md"
+                searchable
+                rightSection={chevron}
+                label="Country"
+                placeholder={businessCountriesLoading ? "Loading..." : "Select"}
+                withAsterisk
+                data={businessCountryOptions ?? []}
+                value={businessCountry}
+                onChange={setBusinessCountry}
+                onSearchChange={setBusinessCountrySearch}
+                error={errors.businessCountry}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={4}>
+              <TextInput
+                radius="md"
+                label="Postal Code"
+                placeholder="e.g. 10101"
+                value={businessPostalCode}
+                onChange={(e) => setBusinessPostalCode(e.currentTarget.value)}
               />
             </Grid.Col>
           </Grid>
