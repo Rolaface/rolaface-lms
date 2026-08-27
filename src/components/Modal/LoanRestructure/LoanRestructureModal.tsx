@@ -466,6 +466,8 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                               newMaturityDate={newMaturityDate}
                               onViewSchedule={() => setScheduleOpened(true)}
                               canPreviewSchedule={canPreviewSchedule}
+                                comment={comment}
+                                setComment={setComment}
                               currentInterestRate={currentInterestRate}
                               currentPenaltyRate={currentPenaltyRate}
                             />

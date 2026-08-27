@@ -18,6 +18,8 @@ import { WaiverEffectModal } from "./Waiver/Waivereffectmodal";
 import { ModalFooter } from "../../components/shared/ModalFooter";
 import { openCommonModal } from '../../components/Modal/AlertModal';
 import { parseCommentForTextarea } from "../../utils/commentUtils";
+import { parseFrappeError } from "../../utils/parseFrappeError";
+
 
 
 
@@ -194,10 +196,10 @@ const updateWaiverMutation = useMutation({
       buttons: [{ label: "Okay" }],
     });
   },
-  onError: () => {
+  onError: (err) => {
     openCommonModal({
       heading: "Update Failed",
-      body: "Something went wrong while updating the waiver. Please try again.",
+      body: parseFrappeError(err) || "Something went wrong while updating the waiver. Please try again.",
       color: "danger",
       buttons: [{ label: "Okay" }],
     });
@@ -282,7 +284,7 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
     } catch (err) {
       openCommonModal({
         heading: "Waiver Failed",
-        body: "Something went wrong while processing the waiver. Please try again.",
+        body: parseFrappeError(err) || "Something went wrong while processing the waiver. Please try again.",
         color: "danger",
         buttons: [{ label: "Okay" }],
       });

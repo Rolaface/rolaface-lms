@@ -55,6 +55,7 @@ export const openCommonModal = ({
 
   modalId = modals.open({
     centered: true,
+      zIndex: 10000,
     withCloseButton: false,
     size: "md",
     radius: "lg",
