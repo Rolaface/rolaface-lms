@@ -277,7 +277,7 @@ const matches: Borrower[] = useMemo(() => {
         <div className="flex flex-1 overflow-hidden">
           {/* Borrower Selection column */}
           <div
-            className={`border-r border-gray-200 shrink-0 overflow-y-auto transition-all duration-200 ${borrowerPanelCollapsed ? "w-14 p-3" : "w-[300px] p-5"
+            className={`border-r border-gray-200 shrink-0 overflow-y-auto transition-all duration-200 ${borrowerPanelCollapsed ? "w-14 p-3" : "w-75 p-5"
               }`}
           >
             {borrowerPanelCollapsed ? (
@@ -624,7 +624,7 @@ const matches: Borrower[] = useMemo(() => {
           </div>
 
           {/* Dues Summary — separate card, to the right of Payment Execution */}
-          <div className="w-[300px] border-l border-gray-200 p-5 shrink-0 overflow-y-auto">
+          <div className="w-75 border-l border-gray-200 p-5 shrink-0 overflow-y-auto">
             <div className="flex items-center gap-2 mb-0.5">
               <div className="w-1 h-4 rounded bg-gradient-to-b from-[#4338CA] to-[#4F46E5]" />
               <Text size="sm" fw={700} className="text-gray-900">

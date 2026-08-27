@@ -95,7 +95,7 @@ export function RestructureDetailsTab({
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <NumberInput
                   size="sm"
-                  className="max-w-[220px]"
+                  className="max-w-55"
                   label="Current Interest Rate (%)"
                   value={currentInterestRate}
                   disabled
@@ -108,7 +108,7 @@ export function RestructureDetailsTab({
 
                 <NumberInput
                   size="sm"
-                  className="max-w-[220px]"
+                  className="max-w-55"
                   label="New Interest Rate (%)"
                   value={newInterestRate}
                   onChange={(v) => setNewInterestRate(v as number | "")}
@@ -121,7 +121,7 @@ export function RestructureDetailsTab({
 
                 <NumberInput
                   size="sm"
-                  className="max-w-[220px]"
+                  className="max-w-55"
                   label="Current Penalty Rate (%)"
                   value={currentPenaltyRate}
                   disabled
@@ -134,7 +134,7 @@ export function RestructureDetailsTab({
 
                 <NumberInput
                   size="sm"
-                  className="max-w-[220px]"
+                  className="max-w-55"
                   label="New Penalty Rate (%)"
                   value={newPenaltyRate}
                   hideControls

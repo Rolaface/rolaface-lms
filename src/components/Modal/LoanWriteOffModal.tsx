@@ -494,7 +494,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
 
           {/* Summary sidebar */}
           <Box
-            className="w-[280px] shrink-0 overflow-y-auto"
+            className="w-70 shrink-0 overflow-y-auto"
             style={{ borderLeft: '1px solid var(--mantine-color-slate-2)' }}
             p="md"
           >

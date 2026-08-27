@@ -70,7 +70,7 @@ export function WaiverExecutionPanel({
             <Text component="span" c="slate.3" size="sm">
               /
             </Text>
-            <Badge color="brand" variant="filled" radius="sm" size="md" className="truncate max-w-[180px]">
+            <Badge color="brand" variant="filled" radius="sm" size="md" className="truncate max-w-45">
               {selectedBorrower?.name ?? "—"}
             </Badge>
           </Text>

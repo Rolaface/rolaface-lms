@@ -989,7 +989,7 @@ function TenureField({
           </div>
 
           {/* Live Preview Sidebar */}
-          <div className="w-[280px] border-l border-gray-200 bg-gradient-to-b from-blue-50/60 to-emerald-50/60 p-5 shrink-0 overflow-y-auto">
+          <div className="w-70 border-l border-gray-200 bg-gradient-to-b from-blue-50/60 to-emerald-50/60 p-5 shrink-0 overflow-y-auto">
             <Text size="xs" fw={700} c="blue.6" className="uppercase tracking-wide" style={{ fontSize: 10 }}>
               Live Preview
             </Text>

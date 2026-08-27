@@ -453,7 +453,7 @@ export function EmailTemplateModal({
                     {/* Right: variable chips */}
                     {!isView && (
                         <Box
-                            className="w-[220px] shrink-0 overflow-y-auto"
+                            className="w-55 shrink-0 overflow-y-auto"
                             style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
                             p="md"
                         >

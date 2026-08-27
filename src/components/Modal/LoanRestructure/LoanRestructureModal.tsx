@@ -172,7 +172,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                 {/* Borrower Selection */}
                 <div
                   className={`shrink-0 flex flex-col transition-all duration-300 ${
-                    borrowerPanelCollapsed ? 'w-14' : 'w-[300px]'
+                    borrowerPanelCollapsed ? 'w-14' : 'w-75'
                   }`}
                   style={{ borderRight: "1px solid var(--mantine-color-slate-2)" }}
                 >
@@ -366,7 +366,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                   {!selectedLoan ? (
                     <div className="h-full flex items-center justify-center p-6">
                       <div
-                        className="w-full max-w-[440px] rounded-lg p-8 flex flex-col items-center text-center"
+                        className="w-full max-w-110 rounded-lg p-8 flex flex-col items-center text-center"
                         style={{
                           background: "var(--mantine-color-white)",
                           border: "1px solid var(--mantine-color-slate-2)",
@@ -404,7 +404,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                         </div>
 
                         <DateInput
-                          size="sm" className="w-[180px] shrink-0"
+                          size="sm" className="w-45 shrink-0"
                           label="Value Date" disabled={isViewMode}
                           valueFormat="DD-MMM-YYYY"
                           value={toDateValue(valueDate)}
@@ -412,7 +412,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                           leftSection={<IconCalendarDue size={14} className="text-emerald-600" />}
                         />
                         <Select
-                          size="sm" label="Reason for Restructure" className="w-[220px] shrink-0"
+                          size="sm" label="Reason for Restructure" className="w-55 shrink-0"
                           placeholder="Select a reason" disabled={isViewMode}
                           data={RESTRUCTURE_REASONS}
                           value={reason}
@@ -430,7 +430,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                               type="button"
                               onClick={() => setActiveTab(t)}
                               className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === t
-                                ? "border-[color:var(--mantine-color-brand-6)] text-gray-900"
+                                ? "border-(--mantine-color-brand-6) text-gray-900"
                                 : "border-transparent text-gray-500 hover:text-gray-700"
                                 }`}
                             >
@@ -492,7 +492,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
 
                 {/* Before Restructure */}
                 <div
-                  className="w-[300px] p-5 shrink-0 flex flex-col shadow-[var(--mantine-shadow-lg)]"
+                  className="w-75 p-5 shrink-0 flex flex-col shadow-(--mantine-shadow-lg)"
                   style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
                 >
                   <div className="flex items-center gap-2 mb-4">

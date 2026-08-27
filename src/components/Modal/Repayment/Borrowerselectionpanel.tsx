@@ -79,7 +79,7 @@ export function BorrowerSelectionPanel({
   }
 
   return (
-    <div className="shrink-0 w-[300px] flex flex-col min-h-0" style={{ borderRight: "1px solid var(--mantine-color-slate-2)" }}>
+    <div className="shrink-0 w-75 flex flex-col min-h-0" style={{ borderRight: "1px solid var(--mantine-color-slate-2)" }}>
       <div className="p-5 pb-4">
         <div className="flex items-center justify-between mb-0.5">
           <div className="flex items-center gap-2">
