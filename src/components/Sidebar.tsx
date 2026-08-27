@@ -114,8 +114,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/operations/booking", label: "Loan Booking", icon: IconFileInvoice, modules: ["Loan"] },
       { path: "/operations/disbursement", label: "Loan Disbursement", icon: IconCreditCard, modules: ["Loan Disbursement"] },
       { path: "/operations/repayment", label: "Loan Repayment", icon: IconCash, modules: ["Loan Repayment"] },
-      { path: "/operations/waiver", label: "Loan Waiver", icon: IconDiscount2 },
-      { path: "/operations/capitalization", label: "Loan Capitalization", icon: IconFileText },
+     { path: "/operations/waiver", label: "Loan Waiver", icon: IconDiscount2, modules: ["Loan Repayment"] },
+     { path: "/operations/capitalization", label: "Loan Capitalization", icon: IconFileText, modules: ["Loan Repayment"] },
       { path: "/operations/restructure", label: "Loan Restructure", icon: IconSettings, modules: ["Loan Restructure"] },
       { path: "/operations/writeoff", label: "Loan Write-Off", icon: IconFileText },
       { path: "/operations/transfer", label: "Loan Transfer", icon: IconBuildingBank },
@@ -191,33 +191,46 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics },
     ],
   },
-  {
-    path: "/settings",
-    label: "Settings",
-    icon: IconTool,
-    matchPrefix: true,
-    subItems: [
-      {
-        path: "/settings/user",
-        label: "User",
-        icon: IconUserCog,
-        subItems: [
-          { path: "/settings/user/management", label: "User Management", icon: IconUsers },
-          { path: "/settings/user/roles", label: "Role Management", icon: IconShieldCheck },
-        ],
-      },
-       {
-        path: "/settings/emailTemplate",
-        label: "Email Template",
-        icon: IconMail,
-      },
-      {
-        path: "/settings/scheduler",
-        label: "Scheduler",
-        icon: IconCalendarClock,
-      },
-    ], 
-  },
+{
+  path: "/settings",
+  label: "Settings",
+  icon: IconTool,
+  matchPrefix: true,
+  subItems: [
+    {
+      path: "/settings/lending-configuration",
+      label: "Lending Configuration",
+      icon: IconSettings,
+    },
+    {
+      path: "/settings/user",
+      label: "User",
+      icon: IconUserCog,
+      subItems: [
+        {
+          path: "/settings/user/management",
+          label: "User Management",
+          icon: IconUsers,
+        },
+        {
+          path: "/settings/user/roles",
+          label: "Role Management",
+          icon: IconShieldCheck,
+        },
+      ],
+    },
+    {
+      path: "/settings/emailTemplate",
+      label: "Email Template",
+      icon: IconMail,
+    },
+    {
+      path: "/settings/scheduler",
+      label: "Scheduler",
+      icon: IconCalendarClock,
+    },
+  ],
+},
 ];
 
 
