@@ -31,15 +31,17 @@ export function computeWaiverEffect(
   const arrearsBefore = totalOutstandingBefore;
 
   return {
+    interestOutstandingBefore: interestDue,
+    interestOutstandingAfter: Math.max(interestDue - interestWaived, 0),
+    penaltyOutstandingBefore: penaltyDue,
+    penaltyOutstandingAfter: Math.max(penaltyDue - penaltyWaived, 0),
+    chargesOutstandingBefore: feeDue,
+    chargesOutstandingAfter: Math.max(feeDue - feeWaived, 0),
     totalOutstandingBefore,
     totalOutstandingAfter: Math.max(totalOutstandingBefore - totalWaived, 0),
-    principalOutstandingBefore: principalDue,
-    principalOutstandingAfter: principalDue,
     arrearsBefore,
     arrearsAfter: Math.max(arrearsBefore - totalWaived, 0),
     remainingInstallmentsBefore: 0,
     remainingInstallmentsAfter: 0,
-    interestPayableBefore: interestDue,
-    interestPayableAfter: Math.max(interestDue - interestWaived, 0),
   };
 }

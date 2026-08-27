@@ -25,18 +25,20 @@ export interface LoanWaiverFormData {
   waivedInterest: number | "";
   waivedPenalty: number | "";
   waivedFee: number | "";
-  comment?: string;
+  _comments?: string;
 }
 
 export interface LoanWaiverEffect {
+  interestOutstandingBefore: number;
+  interestOutstandingAfter: number;
+  penaltyOutstandingBefore: number;
+  penaltyOutstandingAfter: number;
+  chargesOutstandingBefore: number;
+  chargesOutstandingAfter: number;
   totalOutstandingBefore: number;
   totalOutstandingAfter: number;
-  principalOutstandingBefore: number;
-  principalOutstandingAfter: number;
   arrearsBefore: number;
   arrearsAfter: number;
   remainingInstallmentsBefore: number;
   remainingInstallmentsAfter: number;
-  interestPayableBefore: number;
-  interestPayableAfter: number;
 }

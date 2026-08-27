@@ -44,6 +44,8 @@ import { openCommonModal } from './AlertModal';
 import { IconMinus } from '@tabler/icons-react';
 import { formatAmount, useCurrencyReady } from '../../store/currencyStore';
 import { useCompanyStore } from '../../store/companyStore';
+import { parseCommentForTextarea } from "../../utils/commentUtils";
+
 
 export interface LoanCapitalizationModalProps {
   opened: boolean;
@@ -64,7 +66,7 @@ export interface LoanCapitalizationFormData {
   referenceDate: string;
   accountNumber: string;
   remark: string;
-  comment?: string;
+  _comments?: string;
   capitalizedInterest: number | '';
   capitalizedPenalty: number | '';
   capitalizedFee: number | '';
@@ -109,7 +111,7 @@ interface PaymentEffectModalProps {
 function PaymentEffectModal({ opened, onClose, loanId, customerName, rows, currency }: PaymentEffectModalProps) {
   const theme = useMantineTheme();
   return (
-    <Modal opened={opened} onClose={onClose} size={640} withCloseButton={false} padding={0} radius="lg">
+    <Modal opened={opened} onClose={onClose} size={800} withCloseButton={false} padding={0} radius="lg">
       <Box bg="white">
         <Group justify="space-between" align="center" px="xl" py="md">
           <Group gap="sm">
@@ -143,34 +145,52 @@ function PaymentEffectModal({ opened, onClose, loanId, customerName, rows, curre
 
         <Divider color="slate.2" />
 
-        <Box p="xl">
-          <Table withTableBorder withColumnBorders striped verticalSpacing="sm" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th c="slate.5" fz="xs" tt="uppercase">head</Table.Th>
-                <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">Before</Table.Th>
-                <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">Capitalization</Table.Th>
-                <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">After</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {rows.map((row) => (
-                <Table.Tr key={row.component}>
-                  <Table.Td fz="sm" fw={600} c="slate.7">{row.component}</Table.Td>
-                <Table.Td ta="right" fz="sm" c="slate.6" style={{ fontFamily: 'var(--mantine-font-family-monospace)', fontVariantNumeric: 'tabular-nums' }}>
-  {formatAmount(currency, row.before, { withSymbol: true })}
-</Table.Td>
-<Table.Td ta="right" fz="sm" fw={700} c="success.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-  0.0
-</Table.Td>
-<Table.Td ta="right" fz="sm" fw={700} c="success.7" style={{ fontFamily: 'var(--mantine-font-family-monospace)', fontVariantNumeric: 'tabular-nums' }}>
-  {formatAmount(currency, row.after, { withSymbol: true })}
-</Table.Td>
+                  <Box p="xl">
+            <Table
+              withTableBorder={false}
+              withColumnBorders={false}
+              withRowBorders={false}
+              verticalSpacing="sm"
+              styles={{
+                table: { borderCollapse: "separate", borderSpacing: "0" }
+              }}
+            >
+              <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
+                <Table.Tr>
+                  <Table.Th c="slate.5" fz="xs" tt="uppercase">HEAD</Table.Th>
+                  <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">Before</Table.Th>
+                  <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">Capitalized</Table.Th>
+                  <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right">After</Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Box>
+              </Table.Thead>
+              <Table.Tbody>
+                {rows.map((row, index) => (
+                  <Table.Tr key={row.component} style={{ background: index % 2 === 1 ? "var(--mantine-color-slate-0)" : "transparent" }}>
+                    <Table.Td>
+                      <Text size="sm" fw={600} c="slate.8">
+                        {row.component}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: "right" }}>
+                      <Text size="sm" ff="monospace" c="slate.6" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        {row.component === "Installment Remaining" ? row.before : formatAmount(currency, row.before, { withSymbol: true })}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: "right" }}>
+                      <Text size="sm" fw={600} ff="monospace" c="brand.6" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        {row.component === "Installment Remaining" ? Math.abs(row.before - row.after) : formatAmount(currency, Math.abs(row.before - row.after), { withSymbol: true })}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: "right" }}>
+                      <Text size="sm" fw={600} ff="monospace" c="success.7" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        {row.component === "Installment Remaining" ? row.after : formatAmount(currency, row.after, { withSymbol: true })}
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Box>
 
         <Divider color="slate.2" />
         <Group justify="flex-end" px="xl" py="md">
@@ -266,8 +286,8 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
       });
       setSelectedLoanId(item.against_loan);
       setValueDate(item.value_date ? item.value_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
-      setRemark('');
-      setComment(item.comment || '');
+        setRemark((item as any).manual_remarks || (item as any).remarks || item.remark || "");
+        setComment(parseCommentForTextarea((item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || ""));
 
       setCapitalizedInterest('');
       setCapitalizedPenalty('');
@@ -421,7 +441,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
       mode_of_payment: '',
       reference_number: '',
       reference_date: '',
-      comment,
+      _comments: comment,
     };
 
     if (editId) {
@@ -478,7 +498,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
         referenceDate: '',
         accountNumber: '',
         remark,
-        comment,
+        _comments: comment,
         capitalizedInterest,
         capitalizedPenalty,
         capitalizedFee,
@@ -792,77 +812,78 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                   Capitalization Breakdown
                 </Text>
 
-                <Table withTableBorder withColumnBorders striped highlightOnHover verticalSpacing="sm" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th c="slate.5" fz="xs" tt="uppercase" w={180}>Component</Table.Th>
-                      <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right" w={180}>Arrears</Table.Th>
-                      <Table.Th c="slate.5" fz="xs" tt="uppercase" ta="right" w={180}>Capitalized Amount</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    <Table.Tr>
-                      <Table.Td fw={600} c="slate.7">Interest</Table.Td>
-                      <Table.Td ta="right" style={{ fontFamily: 'var(--mantine-font-family-monospace)', fontVariantNumeric: 'tabular-nums' }}>
-  {isDuesLoading ? '...' : formatAmount(companyCurrency, dues?.interest_amount ?? 0, { withSymbol: true })}
-</Table.Td>
+                
+                  
+                      <Box style={{ border: "1px solid var(--mantine-color-slate-2)", borderRadius: "var(--mantine-radius-md)", overflow: "hidden" }}>
+              <Table
+                verticalSpacing="md"
+                horizontalSpacing="xl"
+                withRowBorders={true}
+                styles={{
+                  table: {
+                    borderCollapse: "collapse",
+                    margin: 0,
+                  },
+                }}
+              >
+                <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
+                  <Table.Tr>
+                    <Table.Th c="slate.5" fz="xs" tt="uppercase" w="30%">Component</Table.Th>
+                    <Table.Th c="slate.5" fz="xs" fw={600} tt="uppercase" w="28%" ta="right">Arrears</Table.Th>
+                    <Table.Th c="slate.5" fz="xs" tt="uppercase" w="40%" ta="right">Capitalized Amount</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {[
+                    { label: "Interest", arrears: dues?.interest_amount ?? 0, value: capitalizedInterest, onChange: setCapitalizedInterest, max: dues?.interest_amount, type: "Interest Capitalization" },
+                    { label: "Penalty", arrears: dues?.penalty_amount ?? 0, value: capitalizedPenalty, onChange: setCapitalizedPenalty, max: dues?.penalty_amount, type: "Penalty Capitalization" },
+                    { label: "Charge / Fee", arrears: dues?.total_charges_payable ?? 0, value: capitalizedFee, onChange: setCapitalizedFee, max: dues?.total_charges_payable, type: "Charges Capitalization" },
+                  ].map((row) => (
+                    <Table.Tr key={row.label} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
                       <Table.Td>
+                        <Text size="sm" fw={700} c="slate.8">
+                          {row.label}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td ta="right">
+                        <Text size="sm" ff="monospace" c="slate.6" style={{ fontVariantNumeric: "tabular-nums" }}>
+                          {isDuesLoading ? "..." : formatAmount(companyCurrency, row.arrears, { withSymbol: true })}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td ta="right">
                         <NumberInput
                           hideControls
                           placeholder="0.00"
                           thousandSeparator=","
                           decimalScale={2}
                           min={0}
-                          max={dues?.interest_amount}
-                          disabled={isView || (editId ? editRecordType !== 'Interest Capitalization' : false)}
-                          value={capitalizedInterest}
-                          onChange={(v) => setCapitalizedInterest(v as number | '')}
+                          radius="sm"
+                          max={row.max}
+                          disabled={isView || (editId ? editRecordType !== row.type : false)}
+                          value={row.value}
+                          onChange={(v) => row.onChange(v as number | "")}
+                          rightSection={<Text size="xs" fw={600} c="slate.4">{companyCurrency}</Text>}
+                          rightSectionWidth={48}
+                          styles={{
+                            root: { maxWidth: "190px", marginLeft: "auto" },
+                            input: {
+                              textAlign: "right",
+                              paddingRight: 44,
+                              fontWeight: 600,
+                              backgroundColor: "var(--mantine-color-slate-0)",
+                              borderColor: "var(--mantine-color-slate-2)",
+                            },
+                          }}
                         />
                       </Table.Td>
                     </Table.Tr>
-                    <Table.Tr>
-                      <Table.Td fw={600} c="slate.7">Penalty</Table.Td>
-                      <Table.Td ta="right" style={{ fontFamily: 'var(--mantine-font-family-monospace)', fontVariantNumeric: 'tabular-nums' }}>
-  {isDuesLoading ? '...' : formatAmount(companyCurrency, dues?.penalty_amount ?? 0, { withSymbol: true })}
-</Table.Td>
-                      <Table.Td>
-                        <NumberInput
-                          hideControls
-                          placeholder="0.00"
-                          thousandSeparator=","
-                          decimalScale={2}
-                          min={0}
-                          max={dues?.penalty_amount}
-                          disabled={isView || (editId ? editRecordType !== 'Penalty Capitalization' : false)}
-                          value={capitalizedPenalty}
-                          onChange={(v) => setCapitalizedPenalty(v as number | '')}
-                        />
-                      </Table.Td>
-                    </Table.Tr>
-                    <Table.Tr>
-                      <Table.Td fw={600} c="slate.7">Charge / Fee</Table.Td>
-                     <Table.Td ta="right" style={{ fontFamily: 'var(--mantine-font-family-monospace)', fontVariantNumeric: 'tabular-nums' }}>
-  {isDuesLoading ? '...' : formatAmount(companyCurrency, dues?.total_charges_payable ?? 0, { withSymbol: true })}
-</Table.Td>
-                      <Table.Td>
-                        <NumberInput
-                          hideControls
-                          placeholder="0.00"
-                          thousandSeparator=","
-                          decimalScale={2}
-                          min={0}
-                          max={dues?.total_charges_payable}
-                          disabled={isView || (editId ? editRecordType !== 'Charges Capitalization' : false)}
-                          value={capitalizedFee}
-                          onChange={(v) => setCapitalizedFee(v as number | '')}
-                        />
-                      </Table.Td>
-                    </Table.Tr>
-                  </Table.Tbody>
-                </Table>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Box>
               </Box>
 
-              <div className="mt-4">
+              <div className="mt-4 w-2/3">
                   <Textarea
                     size="sm"
                     label="Comment"
@@ -1008,22 +1029,19 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
 </Text>
                   </div>
                 </div>
+                <Button
+                  size="sm"
+                  variant="light"
+                  color="brand"
+                  fullWidth
+                  className="mt-4"
+                  leftSection={<IconReportMoney size={14} />}
+                  onClick={() => setPaymentEffectOpened(true)}
+                >
+                  Capitalization Effect
+                </Button>
               </div>
             )}
-
-              <Button
-                size="sm"
-                radius="xl"
-                variant="light"
-                color="brand"
-                fullWidth
-                className="mt-4"
-                disabled={!selectedLoan}
-                leftSection={<IconReportMoney size={14} />}
-                onClick={() => setPaymentEffectOpened(true)}
-              >
-                Capitalization Effect
-              </Button>
           </div>
         </Group>
 

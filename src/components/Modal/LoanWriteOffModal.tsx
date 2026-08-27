@@ -30,6 +30,8 @@ import {
   Textarea,
 } from '@mantine/core';
 import { IconX, IconFileOff, IconMinus, IconNotes } from '@tabler/icons-react';
+import { parseCommentForTextarea } from "../../utils/commentUtils";
+
 
 interface LoanWriteOffModalProps {
   opened: boolean;
@@ -47,7 +49,7 @@ export interface LoanWriteOffFormData {
   writeOffPercentage: number | '';
   writeOffAmount: number | '';
   writeOffAccount: string | null;
-  comment?: string;
+  _comments?: string;
 }
 
 const ACCOUNT_SUMMARY = {
@@ -156,7 +158,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
       setValueDate(editData.value_date);
       setWriteOffAmount(editData.write_off_amount);
       setWriteOffAccount(editData.write_off_account);
-      setComment(editData.comment || '');
+      setComment(parseCommentForTextarea((editData as any)._comments || (editData as any).comment || (editData as any).comments || (editData as any).manual_remarks || (editData as any).remarks || ""));
     } else {
       setLoanAc('');
       setValueDate('');
@@ -244,7 +246,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
       posting_date: string;
       value_date: string;
       is_settlement_write_off: 1;
-      comment?: string;
+      _comments?: string;
     }) =>
       editData
         ? updateLoanWriteOff({ name: editData.name, ...payload })
@@ -261,7 +263,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
         writeOffPercentage,
         writeOffAmount,
         writeOffAccount,
-        comment,
+        _comments: comment,
       });
       handleModalClose();
     },
@@ -281,7 +283,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
       posting_date: postingDate,
       value_date: valueDate,
       is_settlement_write_off: 1,
-      comment,
+      _comments: comment,
     });
   };
 

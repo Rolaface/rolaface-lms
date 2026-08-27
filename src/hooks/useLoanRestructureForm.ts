@@ -10,6 +10,8 @@ import {
 } from "../types/RestructureTypes";
 import { openCommonModal } from "../components/Modal/AlertModal";
 import { parseFrappeError } from "../utils/parseFrappeError";
+import { parseCommentForTextarea } from "../utils/commentUtils";
+
 
 interface UseLoanRestructureFormArgs {
   opened: boolean;
@@ -250,7 +252,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
         setLoanLocked(true);
         setValueDate((rec.restructure_date || todayISO()).slice(0, 10));
         setReason(rec.reason_for_restructure);
-        setComment(rec.comment || "");
+        setComment(parseCommentForTextarea((rec as any)._comments || (rec as any).comment || (rec as any).comments || (rec as any).manual_remarks || (rec as any).remarks || ""));
         setNewInterestRate(rec.new_rate_of_interest ?? "");
         setExtendTenureBy(rec.new_repayment_period_in_months ?? "");
         setRestructureType(rec.new_rate_of_interest != null ? "RATE_CHANGE" : "MODIFY_MATURITY");
@@ -347,7 +349,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
       loan: selectedLoan.id,
       restructure_date: valueDate,
       reason_for_restructure: reason as string,
-      comment,
+      _comments: comment,
       ...(newInterestRate !== "" ? { new_rate_of_interest: Number(newInterestRate) } : {}),
       ...(restructureType === "MODIFY_MATURITY" ? { new_repayment_period_in_months: Number(extendTenureBy) } : {}),
       loan_restructure_charges: buildCharges(),

@@ -43,6 +43,8 @@ import { getSymbol, formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { openCommonModal } from "./AlertModal";
 import { ModalFooter } from "../shared/ModalFooter";
+import { parseCommentForTextarea } from "../../utils/commentUtils";
+
 
 interface LoanDisbursementModalProps {
   opened: boolean;
@@ -369,7 +371,7 @@ export function LoanDisbursementModal({
         topupOutstandingCurrent: topupDetails?.old_outstanding_amount ?? "",
         topupOutstandingNew: topupDetails?.new_outstanding_amount ?? "",
         topupAmount: topupDetails?.top_up_amount ?? "",
-        _comments: (item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || "",
+        _comments: parseCommentForTextarea((item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || ""),
       });
       const existingCharges = normalizeLoanCharges({ loan_charges: item.loan_disbursement_charges });
       form.setFieldValue("charges", existingCharges);

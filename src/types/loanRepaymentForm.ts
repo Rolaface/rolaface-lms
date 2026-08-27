@@ -16,7 +16,7 @@ export interface LoanRepaymentPayload {
   reference_date: string;
    account_number?: string;  
   manual_remarks?: string;
-  comment?: string;
+  _comments?: string;
 }
 
 export interface LoanRepaymentResponse {

@@ -37,7 +37,7 @@ export interface LoanTransferFormData {
   fromBranch: string;
   toBranch: string;
   loans: { rowId: number; loanId: string; applicant: string }[];
-  comment?: string;
+  _comments?: string;
 }
 
 interface LoanTransferModalProps {
@@ -125,7 +125,7 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
 
   const handleSubmit = () => {
     const filledRows = rows.filter((r) => r.loanId);
-    onSubmit?.({ transferDate, fromBranch, toBranch, loans: filledRows, comment });
+    onSubmit?.({ transferDate, fromBranch, toBranch, loans: filledRows, _comments: comment });
     handleModalClose();
   };
 
