@@ -53,7 +53,7 @@ export function BorrowerSelectionPanel({
   if (collapsed) {
     return (
       <div className="shrink-0 w-14 p-3" style={{ borderRight: "1px solid var(--mantine-color-slate-2)" }}>
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-3">
           <Tooltip label="Expand borrower selection" withArrow position="right">
             <ActionIcon variant="light" color="brand" size="md" onClick={() => onToggleCollapse(false)}>
               <IconChevronRight size={16} />
@@ -84,9 +84,9 @@ export function BorrowerSelectionPanel({
   }
 
   return (
-    <div className="shrink-0 w-[300px] flex flex-col" style={{ borderRight: "1px solid var(--mantine-color-slate-2)" }}>
+    <div className="shrink-0 w-[300px] flex flex-col min-h-0" style={{ borderRight: "1px solid var(--mantine-color-slate-2)" }}>
       {/* Fixed header + search — no longer scrolls away with the results list */}
-      <div className="p-5 pb-4">
+      <div className="p-4 pb-3">
         <div className="flex items-center justify-between mb-0.5">
           <div className="flex items-center gap-2">
             <div className="w-1 h-4 rounded" style={{ background: theme.other.accentBarGradient }} />
@@ -103,7 +103,7 @@ export function BorrowerSelectionPanel({
             </Tooltip>
           )}
         </div>
-        <Text size="xs" c="dimmed" className="ml-5 mb-4">
+        <Text size="xs" c="dimmed" className="ml-5 mb-3">
           Search by A/C no, phone or name
         </Text>
 
@@ -221,7 +221,7 @@ export function BorrowerSelectionPanel({
         )}
 
         {selectedBorrower && (
-          <div className="mt-5">
+          <div className="mt-3">
             <div className="flex items-center gap-1.5 mb-2">
               <IconBuildingBank size={13} style={{ color: "var(--mantine-color-slate-4)" }} />
               <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">

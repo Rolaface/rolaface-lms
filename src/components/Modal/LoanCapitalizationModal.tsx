@@ -5,6 +5,7 @@ import {
   Button,
   TextInput,
   NumberInput,
+  Textarea,
   Modal,
   Badge,
   ActionIcon,
@@ -63,6 +64,7 @@ export interface LoanCapitalizationFormData {
   referenceDate: string;
   accountNumber: string;
   remark: string;
+  comment?: string;
   capitalizedInterest: number | '';
   capitalizedPenalty: number | '';
   capitalizedFee: number | '';
@@ -192,6 +194,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
 
   const [valueDate, setValueDate] = useState(new Date().toISOString().slice(0, 10));
   const [remark, setRemark] = useState('');
+  const [comment, setComment] = useState('');
 
   const [capitalizedInterest, setCapitalizedInterest] = useState<number | ''>('');
   const [capitalizedPenalty, setCapitalizedPenalty] = useState<number | ''>('');
@@ -264,6 +267,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
       setSelectedLoanId(item.against_loan);
       setValueDate(item.value_date ? item.value_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
       setRemark('');
+      setComment(item.comment || '');
 
       setCapitalizedInterest('');
       setCapitalizedPenalty('');
@@ -320,6 +324,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
     setSelectedLoanId(null);
     setSearch('');
     setRemark('');
+    setComment('');
     setCapitalizedInterest('');
     setCapitalizedPenalty('');
     setCapitalizedFee('');
@@ -338,6 +343,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
     setSelectedLoanId(null);
     setValueDate(new Date().toISOString().slice(0, 10));
     setRemark('');
+    setComment('');
     setCapitalizedInterest('');
     setCapitalizedPenalty('');
     setCapitalizedFee('');
@@ -415,6 +421,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
       mode_of_payment: '',
       reference_number: '',
       reference_date: '',
+      comment,
     };
 
     if (editId) {
@@ -471,6 +478,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
         referenceDate: '',
         accountNumber: '',
         remark,
+        comment,
         capitalizedInterest,
         capitalizedPenalty,
         capitalizedFee,
@@ -615,7 +623,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                 )}
 
                 {selectedBorrower ? (
-                  <Box mt="md">
+                  <Box mt="sm">
                     <Group justify="space-between" align="center" mb={8}>
                       <Text size="xs" fw={600} c="slate.5" tt="uppercase">
                         Selected Borrower
@@ -655,7 +663,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                   </Box>
                 ) : (
                   search.trim() && (
-                    <Stack gap={8} mt="md">
+                    <Stack gap={8} mt="sm">
                       {isSearching ? (
                         <Text size="xs" c="slate.5" py={8}>Searching...</Text>
                       ) : matches.length === 0 ? (
@@ -697,7 +705,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                 )}
 
                 {selectedBorrower && (
-                  <Box mt="lg">
+                  <Box mt="sm">
                     <Text size="xs" fw={600} c="slate.5" tt="uppercase" mb={8}>
                       Select Active Loan Account
                     </Text>
@@ -748,9 +756,9 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                 opacity: !selectedLoan ? 0.5 : 1,
                 filter: !selectedLoan ? 'blur(2px)' : 'none',
               }}
-              p="lg"
+              p="md"
             >
-              <Group gap={8} mb="sm">
+              <Group gap={8} mb="xs">
                 <IconChecklist size={16} color="var(--mantine-color-brand-6)" />
                 <Group gap={6}>
                   <Text size="sm" fw={700} c="slate.8">
@@ -779,8 +787,8 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                 styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)', marginBottom: 4 } }}
               />
 
-              <Box mt="20">
-                <Text size="sm" fw={700} c="slate.8" mb="sm">
+              <Box mt="sm">
+                <Text size="sm" fw={700} c="slate.8" mb="xs">
                   Capitalization Breakdown
                 </Text>
 
@@ -854,17 +862,22 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                 </Table>
               </Box>
 
-              <TextInput
-                size="sm"
-                label="Remark"
-                placeholder="Add a note about this capitalization (optional)"
-                disabled={isView}
-                value={remark}
-                onChange={(e) => setRemark(e.currentTarget.value)}
-                leftSection={<IconNotes size={14} color="var(--mantine-color-slate-4)" />}
-                mt="lg"
-                styles={{ label: { fontWeight: 600, color: 'var(--mantine-color-slate-7)', marginBottom: 4 } }}
-              />
+              <div className="mt-4">
+                  <Textarea
+                    size="sm"
+                    label="Comment"
+                    placeholder="Add a comment or description..."
+                    disabled={isView}
+                    value={comment}
+                    onChange={(e) => setComment(e.currentTarget.value)}
+                    minRows={2}
+                    maxRows={4}
+                    autosize
+                    variant={isView ? 'filled' : 'default'}
+                    leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+                    leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+                  />
+              </div>
             </Box>
 
             {!selectedLoan && (
@@ -912,7 +925,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                     <Text size="sm" c="slate.5" mt="sm" style={{ lineHeight: 1.6 }}>
                       To proceed with a capitalization transaction, first search for a borrower and select one of their active loan accounts from the panel on the left.
                     </Text>
-                    <Box mt="lg" p="sm" style={{ borderRadius: 'var(--mantine-radius-md)', border: '1px solid var(--mantine-color-slate-2)', background: 'var(--mantine-color-slate-0)' }}>
+                    <Box mt="sm" p="sm" style={{ borderRadius: 'var(--mantine-radius-md)', border: '1px solid var(--mantine-color-slate-2)', background: 'var(--mantine-color-slate-0)' }}>
                       <Text size="xs" fw={700} c="brand.6" tt="uppercase">
                         Next Step
                       </Text>
@@ -954,7 +967,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                   <div>
                     <Text size="xs" c="dimmed">EMI Date</Text>
                    <Text size="sm" fw={700} c="slate.8">
-  {isDuesLoading ? 'Loading...' : fmtDate(dues?.due_date)}
+  {isDuesLoading ? 'Loading...' : fmtDate(dues?.due_date || '')}
 </Text>
                   </div>
                 </div>
@@ -997,27 +1010,27 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                 </div>
               </div>
             )}
+
+              <Button
+                size="sm"
+                radius="xl"
+                variant="light"
+                color="brand"
+                fullWidth
+                className="mt-4"
+                disabled={!selectedLoan}
+                leftSection={<IconReportMoney size={14} />}
+                onClick={() => setPaymentEffectOpened(true)}
+              >
+                Capitalization Effect
+              </Button>
           </div>
         </Group>
 
-        <ModalFooter
+        <ModalFooter 
           variant="theme"
           isViewMode={isView}
           onClose={onClose}
-          leftSlot={
-            <Button
-              size="sm"
-              radius="xl"
-              variant="light"
-              color="brand"
-              disabled={!selectedLoan}
-              leftSection={<IconReportMoney size={14} />}
-              onClick={() => setPaymentEffectOpened(true)}
-              px="md"
-            >
-              Capitalization Effect
-            </Button>
-          }
           submitLabel={editId ? 'Update' : 'Save'}
           submitDisabled={!selectedLoan || !hasAnyCapitalizedAmount || isPending}
           submitLoading={isPending}

@@ -10,6 +10,8 @@ import {
   SimpleGrid,
   Group,
   ThemeIcon,
+  Box,
+  Textarea,
 } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import { DateInput } from "@mantine/dates";
@@ -17,6 +19,7 @@ import {
   IconChevronDown,
   IconUserSquareRounded,
   IconReceiptDollar,
+  IconNotes,
 } from "@tabler/icons-react";
 
 import { CURRENCIES, FREQUENCIES } from "./Constants";
@@ -140,9 +143,9 @@ const customerOptions = useMemo(() => {
   }, [productResponse, form.values.productCode]);
   const hasLoanAppNumber = !!form.values.loanAppNumber;
   return (
-    <div className="flex flex-col gap-3">
-      <Paper withBorder radius="lg" shadow="md" p="lg">
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
+    <div className="flex flex-col gap-2">
+      <Paper withBorder radius="lg" shadow="md" p="sm">
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm" verticalSpacing="xs">
           <Select
             label="Customer Number"
             placeholder={isCustomersLoading ? "Loading..." : "Search customer number..."}
@@ -234,9 +237,9 @@ const customerOptions = useMemo(() => {
         </SimpleGrid>
       </Paper>
 
-      <Paper withBorder radius="lg" shadow="md" p="lg">
-        <div className="flex flex-col gap-3">
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
+      <Paper withBorder radius="lg" shadow="md" p="sm">
+        <div className="flex flex-col gap-2">
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm" verticalSpacing="xs">
             <DateInput
               label="Transaction Date"
               valueFormat="DD-MMM-YYYY"
@@ -278,7 +281,7 @@ const customerOptions = useMemo(() => {
             />
           </SimpleGrid>
 
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm" verticalSpacing="xs">
             <Input.Wrapper label="Fixed Repayments In">
               <SegmentedControl
                 data={["TENOR", "EMI"]}
@@ -313,7 +316,7 @@ const customerOptions = useMemo(() => {
             />
           </SimpleGrid>
 
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm" verticalSpacing="xs">
             <DateInput
               label="Maturity Date"
               valueFormat="DD-MMM-YYYY"
@@ -356,8 +359,8 @@ const customerOptions = useMemo(() => {
         </div>
       </Paper>
 
-      <Paper withBorder radius="lg" shadow="md" p="lg">
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" verticalSpacing="sm">
+      <Paper withBorder radius="lg" shadow="md" p="sm">
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm" verticalSpacing="xs">
           <Input.Wrapper label="Moratorium Type">
             <SegmentedControl
               size="xs"
@@ -380,7 +383,23 @@ const customerOptions = useMemo(() => {
             {...form.getInputProps("moratoriumPeriod")}
           />
         </SimpleGrid>
+
+        <Box mt="sm">
+            <Textarea
+              size="sm"
+              label="Comment"
+              placeholder="Add a comment or description..."
+              minRows={2}
+              maxRows={4}
+              autosize
+              variant={form.getInputProps("comment").disabled ? 'filled' : 'default'}
+              leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+              leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+              {...form.getInputProps("comment")}
+            />
+          </Box>
       </Paper>
     </div>
   );
 }
+

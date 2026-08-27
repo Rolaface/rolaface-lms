@@ -59,6 +59,7 @@ export interface CreateLoanWriteOffPayload {
   posting_date: string;
   value_date: string;
   is_settlement_write_off: 1;
+  comment?: string;
 }
 
 export interface CreateLoanWriteOffResponse {
@@ -113,6 +114,7 @@ export interface LoanWriteOffDetail {
   modified: string;
   docstatus: number;
   owner: string;
+  comment?: string;
 }
 
 export interface GetLoanWriteOffByIdResponse {
@@ -131,6 +133,7 @@ export interface UpdateLoanWriteOffPayload {
   posting_date: string;
   value_date: string;
   is_settlement_write_off: 1;
+  comment?: string;
 }
 export interface DeleteLoanWriteOffResponse {
   status_code: number;

@@ -32,6 +32,7 @@ export interface LoanRepaymentFormData {
   referenceDate: string;
   accountNumber: string;
   remark: string;
+  comment?: string;
 }
 
 

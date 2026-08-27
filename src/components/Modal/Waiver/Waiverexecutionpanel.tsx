@@ -1,4 +1,4 @@
-import { Badge, NumberInput, Table, Text, TextInput, useMantineTheme } from "@mantine/core";
+import { Badge, NumberInput, Table, Text, TextInput, useMantineTheme, Textarea } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconCalendarDue,
@@ -29,6 +29,8 @@ interface WaiverExecutionPanelProps {
   onWaivedFeeChange: (value: number | "") => void;
   remark: string;
   onRemarkChange: (value: string) => void;
+  comment: string;
+  onCommentChange: (value: string) => void;
 }
 
 export function WaiverExecutionPanel({
@@ -49,19 +51,21 @@ export function WaiverExecutionPanel({
   onWaivedFeeChange,
   remark,
   onRemarkChange,
+  comment,
+  onCommentChange,
 }: WaiverExecutionPanelProps) {
   const theme = useMantineTheme();
     const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencyReady = useCurrencyReady();
 
   return (
-    <div className="relative flex-1 overflow-y-auto p-6">
+    <div className="relative flex-1 min-w-0 min-h-0 overflow-y-auto p-3">
       <div
-        className={`flex h-full flex-col rounded-lg p-4 transition-all duration-300 ${!selectedLoan ? "pointer-events-none select-none opacity-50 blur-[2px]" : ""
+        className={`flex h-full flex-col rounded-lg p-3 transition-all duration-300 ${!selectedLoan ? "pointer-events-none select-none opacity-50 blur-[2px]" : ""
           }`}
         style={{ border: "1px solid var(--mantine-color-slate-2)" }}
       >
-        <div className="flex items-center gap-2 mb-5">
+        <div className="flex items-center gap-2 mb-3">
           <IconChecklist size={16} style={{ color: "var(--mantine-color-brand-6)" }} />
           <Text size="sm" fw={700} c="slate.8" className="flex items-center gap-2">
             Executing Waiver for
@@ -77,7 +81,7 @@ export function WaiverExecutionPanel({
           </Text>
         </div>
 
-        <div className="grid grid-cols-3 gap-x-8 gap-y-3">
+        <div className="grid grid-cols-3 gap-x-6 gap-y-3">
           <TextInput
             size="sm"
             withAsterisk
@@ -90,7 +94,7 @@ export function WaiverExecutionPanel({
           />
         </div>
 
-        <div className="mt-6">
+        <div className="mt-3">
           <div className="flex items-center justify-between mb-3">
             <Text size="sm" fw={600} c="slate.8">
               Waiver Breakdown
@@ -120,7 +124,7 @@ export function WaiverExecutionPanel({
               <Table.Tr style={{ background: "var(--mantine-color-slate-0)" }}>
                 <Table.Td>
                   <div className="flex items-center gap-2">
-                    <IconPercentage size={14} style={{ color: "var(--mantine-color-brand-6)" }} />
+                    
                     <Text size="sm" c="slate.7">
                       Interest
                     </Text>
@@ -148,7 +152,7 @@ export function WaiverExecutionPanel({
               <Table.Tr style={{ background: "var(--mantine-color-slate-0)" }}>
                 <Table.Td>
                   <div className="flex items-center gap-2">
-                    <IconAlertTriangle size={14} style={{ color: "var(--mantine-color-warning-6)" }} />
+                    
                     <Text size="sm" c="slate.7">
                       Penalty
                     </Text>
@@ -176,7 +180,7 @@ export function WaiverExecutionPanel({
               <Table.Tr style={{ background: "var(--mantine-color-slate-0)" }}>
                 <Table.Td>
                   <div className="flex items-center gap-2">
-                    <IconNotes size={14} style={{ color: "var(--mantine-color-accent-6)" }} />
+                    
                     <Text size="sm" c="slate.7">
                       Charge / Fee
                     </Text>
@@ -205,19 +209,41 @@ export function WaiverExecutionPanel({
           </Table>
         </div>
 
-        <TextInput
-          size="sm"
-          label="Remark"
-          placeholder="Add a note about this waiver (optional)"
-          disabled={isView}
-          value={remark}
-          onChange={(e) => onRemarkChange(e.currentTarget.value)}
-          leftSection={<IconMessage size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
-          className="mt-4"
-        />
-      </div>
+          <div className="mt-4 grid grid-cols-2 gap-4">
 
-      {!selectedLoan && (
+            <Textarea
+              size="sm"
+              label="Remarks"
+              placeholder="Add a remark about this waiver..."
+              disabled={isView}
+              value={remark}
+              onChange={(e) => onRemarkChange(e.currentTarget.value)}
+              minRows={2}
+              maxRows={4}
+              autosize
+              variant={isView ? 'filled' : 'default'}
+              leftSection={<IconMessage size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+              leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+            />
+
+            <Textarea
+              size="sm"
+              label="Comment"
+              placeholder="Add a comment or description..."
+              disabled={isView}
+              value={comment}
+              onChange={(e) => onCommentChange(e.currentTarget.value)}
+              minRows={2}
+              maxRows={4}
+              autosize
+              variant={isView ? 'filled' : 'default'}
+              leftSection={<IconMessage size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+              leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+            />
+            </div>
+          </div>
+
+        {!selectedLoan && (
         <div
           className="absolute inset-0 z-20 flex items-center justify-center rounded-lg backdrop-blur-[3px]"
           style={{ background: "color-mix(in srgb, var(--mantine-color-white) 55%, transparent)" }}
@@ -253,7 +279,7 @@ export function WaiverExecutionPanel({
               </Text>
 
               <div
-                className="mt-6 rounded-lg px-4 py-3"
+                className="mt-4 rounded-lg px-4 py-3"
                 style={{
                   border: "1px solid var(--mantine-color-slate-2)",
                   background: "var(--mantine-color-slate-0)",
@@ -273,3 +299,13 @@ export function WaiverExecutionPanel({
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+

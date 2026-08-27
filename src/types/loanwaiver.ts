@@ -25,6 +25,7 @@ export interface LoanWaiverFormData {
   waivedInterest: number | "";
   waivedPenalty: number | "";
   waivedFee: number | "";
+  comment?: string;
 }
 
 export interface LoanWaiverEffect {

@@ -10,6 +10,7 @@ import {
   ActionIcon,
   Group,
   ThemeIcon,
+  Textarea,
 } from '@mantine/core';
 import {
   IconX,
@@ -20,7 +21,7 @@ import {
   IconArrowsExchange,
   IconPlus,
   IconChevronLeft,
-  IconChevronRight,
+  IconChevronRight, IconNotes,
 } from '@tabler/icons-react';
 import {
   useReactTable,
@@ -36,6 +37,7 @@ export interface LoanTransferFormData {
   fromBranch: string;
   toBranch: string;
   loans: { rowId: number; loanId: string; applicant: string }[];
+  comment?: string;
 }
 
 interface LoanTransferModalProps {
@@ -67,9 +69,11 @@ type TransferRow = { rowId: number; loanId: string; applicant: string };
 
 const columnHelper = createColumnHelper<TransferRow>();
 
-export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: LoanTransferModalProps) {  const [transferDate, setTransferDate] = useState('2026-07-28');
+export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: LoanTransferModalProps) {
+  const [transferDate, setTransferDate] = useState('2026-07-28');
   const [fromBranch, setFromBranch] = useState('');
   const [toBranch, setToBranch] = useState('');
+  const [comment, setComment] = useState('');
 
   const [rows, setRows] = useState<TransferRow[]>([
     { rowId: 1, loanId: 'ACC-LOAN-2026-00001', applicant: 'Mwansa Chileshe' },
@@ -121,7 +125,7 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
 
   const handleSubmit = () => {
     const filledRows = rows.filter((r) => r.loanId);
-    onSubmit?.({ transferDate, fromBranch, toBranch, loans: filledRows });
+    onSubmit?.({ transferDate, fromBranch, toBranch, loans: filledRows, comment });
     handleModalClose();
   };
 
@@ -403,13 +407,27 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
               <Button variant="default" size="xs" mt="sm" leftSection={<IconPlus size={13} />} onClick={addRow}>
                 Add Row
               </Button>
+              <div className="mt-4">
+                  <Textarea
+                    size="sm"
+                    label="Comment"
+                    placeholder="Add a comment or description..."
+                    value={comment}
+                    onChange={(e) => setComment(e.currentTarget.value)}
+                    minRows={2}
+                    maxRows={4}
+                    autosize
+                    leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+                    leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+                  />
+                </div>
             </div>
           </div>
         </Box>
 
         {/* Footer */}
-        <ModalFooter
-          variant="theme"
+        <ModalFooter variant="theme"
+          
           isViewMode={false}
           onClose={handleModalClose}
           onSubmit={handleSubmit}
@@ -420,3 +438,4 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
     </Modal>
   );
 }
+

@@ -40,6 +40,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
 
   const [valueDate, setValueDate] = useState(todayISO());
   const [reason, setReason] = useState<string | null>(null);
+  const [comment, setComment] = useState("");
   const [restructureType, setRestructureType] = useState<RestructureType>("RATE_CHANGE");
 
   const [newInterestRate, setNewInterestRate] = useState<number | "">("");
@@ -152,7 +153,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
   const resetAll = () => {
     setSearch(""); setMatches([]); setSelectedBorrower(null); setSelectedLoanId(null);
     setLoanLocked(false);
-    setValueDate(todayISO()); setReason(null); setRestructureType("RATE_CHANGE");
+    setValueDate(todayISO()); setReason(null); setComment(""); setRestructureType("RATE_CHANGE");
     setOverrideNewMaturityDate(null);
     setNewInterestRate(""); setNewPenaltyRate(""); setTopupAmount(""); setNewPrincipalOutstanding("");
     setExtendTenureBy(""); setChargeRows([]); setOldValues(null);
@@ -249,6 +250,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
         setLoanLocked(true);
         setValueDate((rec.restructure_date || todayISO()).slice(0, 10));
         setReason(rec.reason_for_restructure);
+        setComment(rec.comment || "");
         setNewInterestRate(rec.new_rate_of_interest ?? "");
         setExtendTenureBy(rec.new_repayment_period_in_months ?? "");
         setRestructureType(rec.new_rate_of_interest != null ? "RATE_CHANGE" : "MODIFY_MATURITY");
@@ -345,6 +347,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
       loan: selectedLoan.id,
       restructure_date: valueDate,
       reason_for_restructure: reason as string,
+      comment,
       ...(newInterestRate !== "" ? { new_rate_of_interest: Number(newInterestRate) } : {}),
       ...(restructureType === "MODIFY_MATURITY" ? { new_repayment_period_in_months: Number(extendTenureBy) } : {}),
       loan_restructure_charges: buildCharges(),
@@ -373,7 +376,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
     search, setSearch, matches, searchLoading,
     selectedBorrower, selectedLoanId, selectedLoan, loanLocked,
     handleSelectBorrower, handleSelectLoan, handleClearBorrower,
-    valueDate, setValueDate, reason, setReason,
+    valueDate, setValueDate, reason, setReason, comment, setComment,
     restructureType, setRestructureType,
     newInterestRate, setNewInterestRate, newPenaltyRate, setNewPenaltyRate,
     topupAmount, handleTopupAmountChange, newPrincipalOutstanding, handleNewPrincipalChange,

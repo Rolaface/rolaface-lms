@@ -141,6 +141,7 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
       referenceDate: todayIso(),
       accountNumber: "",
       remark: "",
+      comment: "",
     },
     validate: {
       valueDate: (v) => (!v ? "Value Date is required" : null),
@@ -228,6 +229,7 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
         referenceDate: item.reference_date || "",
         accountNumber: item.account_number || "",
         remark: item.manual_remarks || "",
+        comment: item.comment || "",
       });
   } else if (!editId && !initialLoanId) {
       handleReset();
@@ -329,6 +331,7 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
       reference_date: values.referenceDate,
       account_number: values.accountNumber || undefined,
       manual_remarks: values.remark || undefined,
+      comment: values.comment || undefined,
     };
 
     if (editId) {
@@ -500,3 +503,5 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
     </Modal>
   );
 }
+
+

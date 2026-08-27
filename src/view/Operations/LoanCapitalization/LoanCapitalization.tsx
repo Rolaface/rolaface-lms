@@ -446,10 +446,17 @@ export function LoanCapitalization() {
                 </Tooltip>
               )}
 
-              {(canSubmitLoan || canCancelLoan) && !isCancelled && (
-                <Menu shadow="md" width={150} radius="md" position="bottom-end">
+              {(canSubmitLoan || canCancelLoan) && (
+                <Menu shadow="md" width={150} radius="md" position="bottom-end" withinPortal withArrow>
                   <Menu.Target>
-                    <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
+                    <ActionIcon 
+                      size="sm" 
+                      variant="subtle" 
+                      color="slate" 
+                      radius="md"
+                      disabled={isCancelled}
+                      style={{ opacity: isCancelled ? 0.5 : 1 }}
+                    >
                       <IconDotsVertical size={14} />
                     </ActionIcon>
                   </Menu.Target>
@@ -459,7 +466,7 @@ export function LoanCapitalization() {
                         Approve
                       </Menu.Item>
                     )}
-                    {!isDraft && canCancelLoan && (
+                    {!isDraft && !isCancelled && canCancelLoan && (
                       <Menu.Item color="danger" onClick={() => handleStatusChange(row, 'cancelled')}>
                         Cancel
                       </Menu.Item>

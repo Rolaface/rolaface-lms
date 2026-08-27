@@ -48,6 +48,8 @@ export function ModalFooter({
           borderTop: '1px solid var(--mantine-color-slate-2)',
           flexShrink: 0,
           minHeight: FOOTER_MIN_HEIGHT,
+          backgroundColor: 'var(--mantine-color-white)',
+          zIndex: 10,
         }}
       >
         {errorMessage && !isViewMode && (

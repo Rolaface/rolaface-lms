@@ -5,8 +5,9 @@ import {
   SimpleGrid,
   Text,
   TextInput,
-  UnstyledButton,
+  UnstyledButton, SegmentedControl, Group,
   useMantineTheme,
+  Textarea,
 } from "@mantine/core";
 import {
   IconBuildingBank,
@@ -115,50 +116,23 @@ export function PaymentExecutionPanel({
             <Text size="sm" fw={500} c="slate.6" className="mb-2">
               Nature of Payment
             </Text>
-            <div
-              className="grid grid-cols-3 gap-1.5 p-1.5 rounded-lg"
-              style={{ background: "var(--mantine-color-slate-1)" }}
-            >
-              {PAYMENT_NATURE_OPTIONS.map((option) => {
-                const isActive = form.values.natureOfPayment === option.value;
-                const Icon = option.icon;
-                return (
-                  <UnstyledButton
-                    key={option.value}
-                    type="button"
-                    disabled={isView}
-                    onClick={() => onNatureChange(option.value)}
-                    className="flex items-center justify-center gap-2 rounded-md py-2.5 px-3 text-sm font-semibold transition-all duration-150"
-                    style={{
-                      background: isActive
-                        ? "var(--mantine-color-white)"
-                        : "transparent",
-                      color: isActive
-                        ? `var(--mantine-color-${option.color}-7)`
-                        : "var(--mantine-color-slate-6)",
-                      boxShadow: isActive
-                        ? `var(--mantine-shadow-xs), 0 0 0 1px var(--mantine-color-${option.color}-2)`
-                        : "none",
-                      cursor: isView ? "default" : "pointer",
-                    }}
-                    styles={{
-                      root: {
-                        "&:hover":
-                          !isActive && !isView
-                            ? {
-                                color: `var(--mantine-color-${option.color}-7)`,
-                                backgroundColor: "var(--mantine-color-white)",
-                              }
-                            : undefined,
-                      },
-                    }}
-                  >
-                    <Icon size={15} />
-                    {option.label}
-                  </UnstyledButton>
-                );
-              })}
-            </div>
+            <SegmentedControl
+              data={PAYMENT_NATURE_OPTIONS.map((opt) => ({
+                label: (
+                  <Group gap="xs" justify="center" wrap="nowrap">
+                    <opt.icon size={16} />
+                    <span>{opt.label}</span>
+                  </Group>
+                ),
+                value: opt.value,
+              }))}
+              value={form.values.natureOfPayment}
+              onChange={(val) => onNatureChange(val as any)}
+              fullWidth
+              size="md"
+              color="brand"
+              disabled={isView}
+            />
           </div>
 
           <SimpleGrid cols={4} spacing="xl">
@@ -240,20 +214,34 @@ export function PaymentExecutionPanel({
               }}
               error={form.errors.referenceDate}
             />
-            <TextInput
-              size="sm"
-              label="Remark"
-              placeholder="Add a note about this repayment (optional)"
-              disabled={isView}
-              leftSection={
-                <IconNotes
-                  size={14}
-                  style={{ color: "var(--mantine-color-slate-4)" }}
-                />
-              }
-              style={{ gridColumn: "span 3" }}
-              {...form.getInputProps("remark")}
-            />
+            <div className="grid grid-cols-2 gap-4" style={{ gridColumn: "span 3" }}>
+              <Textarea
+                size="sm"
+                label="Remarks"
+                placeholder="Add a remark about this repayment..."
+                disabled={isView}
+                minRows={2}
+                maxRows={4}
+                autosize
+                variant={isView ? 'filled' : 'default'}
+                leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+                leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+                {...form.getInputProps("remark")}
+              />
+              <Textarea
+                size="sm"
+                label="Comment"
+                placeholder="Add a comment or description..."
+                disabled={isView}
+                minRows={2}
+                maxRows={4}
+                autosize
+                variant={isView ? 'filled' : 'default'}
+                leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+                leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+                {...form.getInputProps("comment")}
+              />
+            </div>
           </SimpleGrid>
         </div>
       </div>
@@ -326,3 +314,13 @@ export function PaymentExecutionPanel({
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
