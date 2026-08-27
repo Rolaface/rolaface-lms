@@ -17,7 +17,7 @@ export function WaiverEffectModal({ opened, onClose, selectedLoan, waiverEffect 
   const currencyReady = useCurrencyReady();
 
   return (
-    <Modal opened={opened} onClose={onClose} size="640px" withCloseButton={false} padding={0} radius="md">
+    <Modal opened={opened} onClose={onClose} size={640} zIndex={1000} withCloseButton={false} padding={0} radius="md">
       <Box className="flex flex-col">
         <div className="flex items-center justify-between px-6 pt-5 pb-4">
           <div className="flex items-center gap-3">
