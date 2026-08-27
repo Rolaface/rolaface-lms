@@ -40,8 +40,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
   const [borrowerPanelCollapsed, setBorrowerPanelCollapsed] = useState(false);
 
   const [valueDate, setValueDate] = useState(new Date().toISOString().slice(0, 10));
-  const [remark, setRemark] = useState("");
-  const [comment, setComment] = useState("");
+    const [comment, setComment] = useState("");
 
   const [waivedInterest, setWaivedInterest] = useState<number | "">("");
   const [waivedPenalty, setWaivedPenalty] = useState<number | "">("");
@@ -112,8 +111,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
       });
       setSelectedLoanId(item.against_loan);
       setValueDate(item.value_date ? item.value_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
-      setRemark("");
-      setComment(item.comment || "");
+                setComment((item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || "");
 
       setWaivedInterest("");
       setWaivedPenalty("");
@@ -151,8 +149,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
     setSelectedBorrower(null);
     setSelectedLoanId(null);
     setSearch("");
-    setRemark("");
-    setComment("");
+        setComment("");
     setWaivedInterest("");
     setWaivedPenalty("");
     setWaivedFee("");
@@ -170,8 +167,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
     setSelectedBorrower(null);
     setSelectedLoanId(null);
     setValueDate(new Date().toISOString().slice(0, 10));
-    setRemark("");
-    setComment("");
+        setComment("");
     setWaivedInterest("");
     setWaivedPenalty("");
     setWaivedFee("");
@@ -218,7 +214,7 @@ const updateWaiverMutation = useMutation({
       mode_of_payment: "", // not shown in this UI — send empty unless your doctype requires it
       reference_number: "",
       reference_date: "",
-      comment,
+      _comments: comment,
     };
 
     if (editId) {
@@ -266,8 +262,8 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
         referenceNumber: "",
         referenceDate: "",
         accountNumber: "",
-        remark,
-        comment,
+        remark: "",
+        _comments: comment,
         waivedInterest,
         waivedPenalty,
         waivedFee,
@@ -299,16 +295,20 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
 
   return (
     <>
-      <Modal
-        opened={opened}
-        onClose={onClose}
-        size="1300px"
-        withCloseButton={false}
-        padding={0}
-        radius="md"
-        closeOnClickOutside={false}
-        closeOnEscape={false}
-      >
+     <Modal
+  opened={opened}
+  onClose={onClose}
+  size="1300px"
+  centered
+  withinPortal
+  zIndex={300}
+  overlayProps={{ backgroundOpacity: 0.6, blur: 2 }}
+  withCloseButton={false}
+  padding={0}
+  radius="md"
+  closeOnClickOutside={false}
+  closeOnEscape={false}
+>
         <Box className="flex flex-col h-[75vh] min-h-[650px] max-h-[95vh] overflow-hidden">
           {/* Header */}
           <Box
@@ -396,9 +396,7 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
               onWaivedInterestChange={setWaivedInterest}
               onWaivedPenaltyChange={setWaivedPenalty}
               onWaivedFeeChange={setWaivedFee}
-              remark={remark}
-              onRemarkChange={setRemark}
-              comment={comment}
+                                          comment={comment}
               onCommentChange={setComment}
             />
 

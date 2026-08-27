@@ -98,7 +98,7 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
             leftSection={<IconCreditCard size={14} />}
             onClick={onOpenPaymentEffect}
           >
-            Payment Effect
+            Waiver Effect
           </Button>
         </div>
       ) : (

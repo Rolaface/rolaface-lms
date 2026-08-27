@@ -214,35 +214,23 @@ export function PaymentExecutionPanel({
               }}
               error={form.errors.referenceDate}
             />
-            <div className="grid grid-cols-2 gap-4" style={{ gridColumn: "span 3" }}>
-              <Textarea
-                size="sm"
-                label="Remarks"
-                placeholder="Add a remark about this repayment..."
-                disabled={isView}
-                minRows={2}
-                maxRows={4}
-                autosize
-                variant={isView ? 'filled' : 'default'}
-                leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
-                leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
-                {...form.getInputProps("remark")}
-              />
-              <Textarea
-                size="sm"
-                label="Comment"
-                placeholder="Add a comment or description..."
-                disabled={isView}
-                minRows={2}
-                maxRows={4}
-                autosize
-                variant={isView ? 'filled' : 'default'}
-                leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
-                leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
-                {...form.getInputProps("comment")}
-              />
-            </div>
           </SimpleGrid>
+
+          <div className="w-1/2">
+            <Textarea
+              size="sm"
+              label="Comment"
+              placeholder="Add a comment or description..."
+              disabled={isView}
+              minRows={2}
+              maxRows={4}
+              autosize
+              variant={isView ? 'filled' : 'default'}
+              leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+              leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+              {...form.getInputProps("_comments")}
+            />
+          </div>
         </div>
       </div>
 
