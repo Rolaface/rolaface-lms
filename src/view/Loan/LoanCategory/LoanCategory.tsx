@@ -49,6 +49,7 @@ import {
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { loanCategoryModal } from './loanCategoryModalStore';
+import { usePermission } from '../../../hooks/Usepermission';
 
 type LoanStatus = 'ACTIVE' | 'INACTIVE';
 
@@ -128,6 +129,14 @@ function statusToDisabledParam(status: string): 0 | 1 | undefined {
 export function LoanCategory() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
+
+
+  const { can } = usePermission();
+  const canCreateLoan = can('Loan Category', 'create');
+  const canReadLoan = can('Loan Category', 'read');
+  const canWriteLoan = can('Loan Category', 'write');
+  const canDeleteLoan = can('Loan Category', 'delete');
+
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
   const [status, setStatus] = useState('all');
@@ -312,65 +321,73 @@ export function LoanCategory() {
 
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-              <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="slate"
-                  radius="md"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleView(row);
-                  }}
-                >
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Edit" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="brand"
-                  radius="md"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEdit(row);
-                  }}
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Delete" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="danger"
-                  radius="md"
-                  loading={isDeleting}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(row);
-                  }}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} withArrow>
-                <Switch
-                  size="xs"
-                  color="success"
-                  checked={row.status === 'ACTIVE'}
-                  disabled={isTogglingStatus}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={() => toggleStatus(row)}
-                />
-              </Tooltip>
+              {canReadLoan && (
+                <Tooltip label="View" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="slate"
+                    radius="md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleView(row);
+                    }}
+                  >
+                    <IconEye size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canWriteLoan && (
+                <Tooltip label="Edit" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="brand"
+                    radius="md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(row);
+                    }}
+                  >
+                    <IconPencil size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canDeleteLoan && (
+                <Tooltip label="Delete" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="danger"
+                    radius="md"
+                    loading={isDeleting}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(row);
+                    }}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canWriteLoan && (
+                <Tooltip label={row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} withArrow>
+                  <Switch
+                    size="xs"
+                    color="success"
+                    checked={row.status === 'ACTIVE'}
+                    disabled={isTogglingStatus}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => toggleStatus(row)}
+                  />
+                </Tooltip>
+              )}
             </Group>
           );
         },
       }),
     ],
-    [deleteMutation, enableDisableMutation]
+    [deleteMutation, enableDisableMutation, canReadLoan, canWriteLoan, canDeleteLoan]
   );
   const table = useReactTable<LoanCategoryRow>({
     data: rowsData,
@@ -467,19 +484,21 @@ export function LoanCategory() {
             <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>
               Reset
             </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={handleAdd}
-              leftSection={<IconPlus size={14} />}
-              style={{
-                background: theme.other.brandGradient,
-                boxShadow: theme.other.brandGlowShadowSm,
-              }}
-            >
-              Add Category
-            </Button>
+            {canCreateLoan && (
+              <Button
+                size="sm"
+                radius="xl"
+                color="brand"
+                onClick={handleAdd}
+                leftSection={<IconPlus size={14} />}
+                style={{
+                  background: theme.other.brandGradient,
+                  boxShadow: theme.other.brandGlowShadowSm,
+                }}
+              >
+                Add Category
+              </Button>
+            )}
           </Group>
         </Group>
       </Paper>
@@ -573,8 +592,8 @@ export function LoanCategory() {
                       <Table.Tr
                         key={row.id}
                         className="lms-row"
-                        onDoubleClick={() => handleView(row.original)}
-                        style={{ cursor: 'pointer' }}
+                        onDoubleClick={canReadLoan ? () => handleView(row.original) : undefined}
+                        style={{ cursor: canReadLoan ? 'pointer' : 'default' }}
                       >
                         {cells.map((cell, idx) => (
                           <Table.Td

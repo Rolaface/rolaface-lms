@@ -34,7 +34,6 @@ import {
   IconTrash,
   IconDotsVertical,
 } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 import {
   useReactTable,
   getCoreRowModel,
@@ -63,9 +62,7 @@ interface RepaymentRow {
   valueDate: string;
 }
 
-// Docstatus -> status badge meta, driven by theme semantic colors
-// (slate/info/danger) instead of raw Mantine color names, same tokens
-// LoanProduct.tsx uses for Active/Inactive.
+
 const STATUS_META: Record<number, { label: string; color: string }> = {
   0: { label: 'DRAFT', color: 'slate' },
   1: { label: 'Approved', color: 'info' },

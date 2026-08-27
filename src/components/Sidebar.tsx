@@ -89,11 +89,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconSettings,
     matchPrefix: true,
     subItems: [
-      { path: "/setup/category", label: "Loan Category", icon: IconListDetails },
-      { path: "/setup/classification", label: "Loan Classification", icon: IconFileText },
+      { path: "/setup/category", label: "Loan Category", icon: IconListDetails , modules: ["Loan Category"]},
+      { path: "/setup/classification", label: "Loan Classification", icon: IconFileText ,modules: ["Loan Classification"] },
       { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails },
       { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt },
-      { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank },
+      { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank ,modules: ["Loan Product"]},
     ],
   },
   {
