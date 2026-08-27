@@ -30,6 +30,8 @@ import {
   Textarea,
 } from '@mantine/core';
 import { IconX, IconFileOff, IconMinus, IconNotes } from '@tabler/icons-react';
+import { parseCommentForTextarea } from "../../utils/commentUtils";
+
 
 interface LoanWriteOffModalProps {
   opened: boolean;
@@ -156,7 +158,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
       setValueDate(editData.value_date);
       setWriteOffAmount(editData.write_off_amount);
       setWriteOffAccount(editData.write_off_account);
-      setComment((editData as any)._comments || (editData as any).comment || (editData as any).comments || (editData as any).manual_remarks || (editData as any).remarks || "");
+      setComment(parseCommentForTextarea((editData as any)._comments || (editData as any).comment || (editData as any).comments || (editData as any).manual_remarks || (editData as any).remarks || ""));
     } else {
       setLoanAc('');
       setValueDate('');

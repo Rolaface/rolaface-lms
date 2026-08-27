@@ -44,6 +44,8 @@ import { openCommonModal } from './AlertModal';
 import { IconMinus } from '@tabler/icons-react';
 import { formatAmount, useCurrencyReady } from '../../store/currencyStore';
 import { useCompanyStore } from '../../store/companyStore';
+import { parseCommentForTextarea } from "../../utils/commentUtils";
+
 
 export interface LoanCapitalizationModalProps {
   opened: boolean;
@@ -285,7 +287,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
       setSelectedLoanId(item.against_loan);
       setValueDate(item.value_date ? item.value_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
         setRemark((item as any).manual_remarks || (item as any).remarks || item.remark || "");
-        setComment((item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || "");
+        setComment(parseCommentForTextarea((item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || ""));
 
       setCapitalizedInterest('');
       setCapitalizedPenalty('');

@@ -17,6 +17,8 @@ import { DuesSummaryPanel } from "./Waiver/Duessummarypanel";
 import { WaiverEffectModal } from "./Waiver/Waivereffectmodal";
 import { ModalFooter } from "../../components/shared/ModalFooter";
 import { openCommonModal } from '../../components/Modal/AlertModal';
+import { parseCommentForTextarea } from "../../utils/commentUtils";
+
 
 
 export type { LoanWaiverFormData };
@@ -111,7 +113,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
       });
       setSelectedLoanId(item.against_loan);
       setValueDate(item.value_date ? item.value_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
-                setComment((item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || "");
+                setComment(parseCommentForTextarea((item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || ""));
 
       setWaivedInterest("");
       setWaivedPenalty("");

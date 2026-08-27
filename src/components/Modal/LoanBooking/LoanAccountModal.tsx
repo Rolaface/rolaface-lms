@@ -57,6 +57,8 @@ import {
   type RepaymentScheduleResponse,
 } from "../../../api/loanRestructureApi";
 import dayjs from "dayjs";
+import { parseCommentForTextarea } from "../../../utils/commentUtils";
+
 
 interface LoanAccountModalProps {
   opened: boolean;
@@ -633,12 +635,12 @@ export function LoanAccountModal({
         moratoriumType: loan.moratorium_type || "None",
         moratoriumPeriod: loan.moratorium_tenure || "",
         _comments:
-  (loan as any)._comments ||
+  parseCommentForTextarea((loan as any)._comments ||
   (loan as any).comment ||
   (loan as any).comments ||
   (loan as any).manual_remarks ||
   (loan as any).remarks ||
-  "",
+  ""),
       });
 
       // loadedLoanProductCode.current = loan.loan_product || "";
