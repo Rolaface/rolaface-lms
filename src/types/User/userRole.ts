@@ -3,6 +3,8 @@ export const LMS_MODULES = [
   "Loan Repayment",
   "Loan Disbursement",
   "Loan Restructure",
+  "Loan Write Off",
+  "Loan Transfer",
   "Customer",
 ] as const;
 

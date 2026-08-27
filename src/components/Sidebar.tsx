@@ -114,11 +114,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/operations/booking", label: "Loan Booking", icon: IconFileInvoice, modules: ["Loan"] },
       { path: "/operations/disbursement", label: "Loan Disbursement", icon: IconCreditCard, modules: ["Loan Disbursement"] },
       { path: "/operations/repayment", label: "Loan Repayment", icon: IconCash, modules: ["Loan Repayment"] },
-     { path: "/operations/waiver", label: "Loan Waiver", icon: IconDiscount2, modules: ["Loan Repayment"] },
-     { path: "/operations/capitalization", label: "Loan Capitalization", icon: IconFileText, modules: ["Loan Repayment"] },
+      { path: "/operations/waiver", label: "Loan Waiver", icon: IconDiscount2, modules: ["Loan Repayment"] },
+      { path: "/operations/capitalization", label: "Loan Capitalization", icon: IconFileText, modules: ["Loan Repayment"] },
       { path: "/operations/restructure", label: "Loan Restructure", icon: IconSettings, modules: ["Loan Restructure"] },
-      { path: "/operations/writeoff", label: "Loan Write-Off", icon: IconFileText },
-      { path: "/operations/transfer", label: "Loan Transfer", icon: IconBuildingBank },
+      { path: "/operations/writeoff", label: "Loan Write-Off", icon: IconFileText, modules: ["Loan Write Off"] },
+      { path: "/operations/transfer", label: "Loan Transfer", icon: IconBuildingBank, modules: ["Loan Transfer"] },
     ],
   },
   {
@@ -191,46 +191,46 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics },
     ],
   },
-{
-  path: "/settings",
-  label: "Settings",
-  icon: IconTool,
-  matchPrefix: true,
-  subItems: [
-    {
-      path: "/settings/lending-configuration",
-      label: "Lending Configuration",
-      icon: IconSettings,
-    },
-    {
-      path: "/settings/user",
-      label: "User",
-      icon: IconUserCog,
-      subItems: [
-        {
-          path: "/settings/user/management",
-          label: "User Management",
-          icon: IconUsers,
-        },
-        {
-          path: "/settings/user/roles",
-          label: "Role Management",
-          icon: IconShieldCheck,
-        },
-      ],
-    },
-    {
-      path: "/settings/emailTemplate",
-      label: "Email Template",
-      icon: IconMail,
-    },
-    {
-      path: "/settings/scheduler",
-      label: "Scheduler",
-      icon: IconCalendarClock,
-    },
-  ],
-},
+  {
+    path: "/settings",
+    label: "Settings",
+    icon: IconTool,
+    matchPrefix: true,
+    subItems: [
+      {
+        path: "/settings/lending-configuration",
+        label: "Lending Configuration",
+        icon: IconSettings,
+      },
+      {
+        path: "/settings/user",
+        label: "User",
+        icon: IconUserCog,
+        subItems: [
+          {
+            path: "/settings/user/management",
+            label: "User Management",
+            icon: IconUsers,
+          },
+          {
+            path: "/settings/user/roles",
+            label: "Role Management",
+            icon: IconShieldCheck,
+          },
+        ],
+      },
+      {
+        path: "/settings/emailTemplate",
+        label: "Email Template",
+        icon: IconMail,
+      },
+      {
+        path: "/settings/scheduler",
+        label: "Scheduler",
+        icon: IconCalendarClock,
+      },
+    ],
+  },
 ];
 
 
@@ -455,55 +455,55 @@ export function Sidebar({
   );
 
   const { canAccessAnyOf, isAdmin, permissions } = usePermission();
-const visibleNavItems = React.useMemo(
-  () => filterNavItems(LOCAL_NAV_ITEMS, canAccessAnyOf),
-  [canAccessAnyOf, isAdmin, permissions]
-);
+  const visibleNavItems = React.useMemo(
+    () => filterNavItems(LOCAL_NAV_ITEMS, canAccessAnyOf),
+    [canAccessAnyOf, isAdmin, permissions]
+  );
 
-const user = useUserStore((s) => s.user);
-const clearUser = useUserStore((s) => s.clearUser);
-const [loggingOut, setLoggingOut] = React.useState(false);
+  const user = useUserStore((s) => s.user);
+  const clearUser = useUserStore((s) => s.clearUser);
+  const [loggingOut, setLoggingOut] = React.useState(false);
 
-const displayName =
-  [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
-  user?.userId ||
-  "User";
-const initial = (user?.firstName?.[0] || user?.userId?.[0] || "U").toUpperCase();
-const roleLabel = isAdmin ? "ADMINISTRATOR" : (user?.roles?.[0]?.toUpperCase() || "USER");
+  const displayName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+    user?.userId ||
+    "User";
+  const initial = (user?.firstName?.[0] || user?.userId?.[0] || "U").toUpperCase();
+  const roleLabel = isAdmin ? "ADMINISTRATOR" : (user?.roles?.[0]?.toUpperCase() || "USER");
 
-const performLogout = async () => {
-  if (loggingOut) return;
-  setLoggingOut(true);
-  try {
-    await logoutUser();
-    localStorage.clear();
-    clearUser();
-    window.location.href = `${import.meta.env.VITE_ERP_URL}/login`;
-  } catch (err: any) {
+  const performLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logoutUser();
+      localStorage.clear();
+      clearUser();
+      window.location.href = `${import.meta.env.VITE_ERP_URL}/login`;
+    } catch (err: any) {
+      openCommonModal({
+        heading: "Sign Out Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(err),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      });
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
+  const handleLogoutClick = () => {
     openCommonModal({
-      heading: "Sign Out Failed",
-      subtitle: "We couldn't complete your request.",
-      body: parseFrappeError(err),
-      color: "red",
-      buttons: [{ label: "Close", color: "red" }],
+      heading: "Sign Out",
+      subtitle: "Are you sure you want to sign out?",
+      body: "You will need to sign in again to access your account.",
+      color: "blue",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        { label: "Sign Out", color: "blue", onClick: () => performLogout() },
+      ],
     });
-  } finally {
-    setLoggingOut(false);
-  }
-};
-
-const handleLogoutClick = () => {
-  openCommonModal({
-    heading: "Sign Out",
-    subtitle: "Are you sure you want to sign out?",
-    body: "You will need to sign in again to access your account.",
-    color: "blue",
-    buttons: [
-      { label: "Cancel", variant: "default" },
-      { label: "Sign Out", color: "blue", onClick: () => performLogout() },
-    ],
-  });
-};
+  };
 
   const toggleMenu = (key: string, depth: number) => {
     setOpenMenus((prev) => {
@@ -738,7 +738,7 @@ const handleLogoutClick = () => {
                 background: `linear-gradient(135deg, var(--mantine-color-brand-4), var(--mantine-color-brand-7))`,
               }}
             >
-                           <Avatar color="brand" radius="xl" size={isCollapsed ? "sm" : "md"} style={{ border: `2px solid ${tk.surface}` }}>
+              <Avatar color="brand" radius="xl" size={isCollapsed ? "sm" : "md"} style={{ border: `2px solid ${tk.surface}` }}>
                 {initial}
               </Avatar>
             </Box>
