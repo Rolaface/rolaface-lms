@@ -385,18 +385,17 @@ const customerOptions = useMemo(() => {
         </SimpleGrid>
 
         <Box mt="sm">
-            <Textarea
-              size="sm"
-              label="Comment"
-              placeholder="Add a comment or description..."
-              minRows={2}
-              maxRows={4}
-              autosize
-              variant={form.getInputProps("comment").disabled ? 'filled' : 'default'}
-              leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
-              leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
-              {...form.getInputProps("comment")}
-            />
+           <Textarea
+  size="sm"
+  label="Comment"
+  placeholder="Add a comment or description..."
+  minRows={2}
+  maxRows={4}
+  autosize
+  leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+  leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+  {...form.getInputProps("_comments")}
+/>
           </Box>
       </Paper>
     </div>

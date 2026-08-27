@@ -130,7 +130,7 @@ export function LoanAccountModal({
       moratoriumType: "None",
       moratoriumPeriod: "" as number | "",
       auto_create_disbursement_on_loan_booking: 0,
-      comment: "",
+      _comments: "",
     },
     validate: {
       customerNumber: (v) => (!v ? "Customer is required" : null),
@@ -406,7 +406,7 @@ export function LoanAccountModal({
     payload.transaction_date = values.trnDate || "";
     payload.reference_number = values.refNumber || "";
     payload.migration_date = values.migrationDate || "";
-    payload.comment = values.comment || "";
+    payload._comments = values._comments || "";
     payload.grace_period =
       chargeSectionDefaults.gracePeriodDays === ""
         ? 0
@@ -632,7 +632,13 @@ export function LoanAccountModal({
         // moratoriumType: loan.moratorium_type || "Principal",
         moratoriumType: loan.moratorium_type || "None",
         moratoriumPeriod: loan.moratorium_tenure || "",
-        comment: loan.comment || "",
+        _comments:
+  (loan as any)._comments ||
+  (loan as any).comment ||
+  (loan as any).comments ||
+  (loan as any).manual_remarks ||
+  (loan as any).remarks ||
+  "",
       });
 
       // loadedLoanProductCode.current = loan.loan_product || "";
