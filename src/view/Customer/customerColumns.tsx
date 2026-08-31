@@ -6,15 +6,15 @@ import { NameCell, IconText, EmptyPlaceholder, StatusBadge } from './CustomerTab
 
 
 export interface CustomerRow {
-  id: string; // CustomerRaw.name (Frappe doc name) — API has no separate numeric id
-  name: string; // CustomerRaw.customer_name
-  type: string; // CustomerRaw.customer_type
-  contact: string; // no matching API field yet — blank
-  email: string; // CustomerRaw.email_id
-  mobile: string; // CustomerRaw.mobile_no
-  city: string; // no matching API field yet — blank
-  country: string; // no matching API field yet — blank
-  status: string; // CustomerRaw.status, upper-cased to match existing badge logic
+  id: string; 
+  name: string;
+  type: string; 
+  contact: string; 
+  email: string; 
+  mobile: string; 
+  city: string; 
+  country: string; 
+  status: string; 
 }
 
 export function mapCustomer(raw: CustomerRaw): CustomerRow {
@@ -37,9 +37,12 @@ interface BuildColumnsArgs {
   onView: (row: CustomerRow) => void;
   onEdit: (row: CustomerRow) => void;
   onDelete: (id: string) => void;
+  canRead: boolean;
+  canWrite: boolean;
+  canDelete: boolean;
 }
 
-export function buildCustomerColumns({ onView, onEdit, onDelete }: BuildColumnsArgs) {
+export function buildCustomerColumns({ onView, onEdit, onDelete, canRead, canWrite, canDelete }: BuildColumnsArgs) {
   return [
     columnHelper.accessor('name', {
       header: 'Customer Name',
@@ -98,21 +101,27 @@ export function buildCustomerColumns({ onView, onEdit, onDelete }: BuildColumnsA
         const row = info.row.original;
         return (
           <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-            <Tooltip label="View" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => onView(row)}>
-                <IconEye size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Edit" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="brand" radius="md" onClick={() => onEdit(row)}>
-                <IconPencil size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Delete" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="danger" radius="md" onClick={() => onDelete(row.id)}>
-                <IconTrash size={14} />
-              </ActionIcon>
-            </Tooltip>
+            {canRead && (
+              <Tooltip label="View" withArrow>
+                <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => onView(row)}>
+                  <IconEye size={14} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            {canWrite && (
+              <Tooltip label="Edit" withArrow>
+                <ActionIcon size="sm" variant="subtle" color="brand" radius="md" onClick={() => onEdit(row)}>
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            {canDelete && (
+              <Tooltip label="Delete" withArrow>
+                <ActionIcon size="sm" variant="subtle" color="danger" radius="md" onClick={() => onDelete(row.id)}>
+                  <IconTrash size={14} />
+                </ActionIcon>
+              </Tooltip>
+            )}
           </Group>
         );
       },

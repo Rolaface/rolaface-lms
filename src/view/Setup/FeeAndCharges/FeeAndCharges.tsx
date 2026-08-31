@@ -42,6 +42,7 @@ import {
 } from '@tanstack/react-table';
 import { feeAndChargesModal } from './feeAndChargesModalStore';
 import type { FeeAndCharge } from '../../../components/Modal/FeeAndChargesModal';
+import { usePermission } from '../../../hooks/Usepermission';
 
 const columnHelper = createColumnHelper<FeeAndCharge>();
 
@@ -57,6 +58,12 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function FeeAndCharges() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
+
+  const { can } = usePermission();
+  const canCreateItem = can('Item', 'create');
+  const canReadItem = can('Item', 'read');
+  const canWriteItem = can('Item', 'write');
+  const canDeleteItem = can('Item', 'delete');
 
   const handleOpenModal = (mode: 'add' | 'edit' | 'view', data: FeeAndCharge | null = null) => {
     feeAndChargesModal.open({ mode, data });
@@ -184,58 +191,63 @@ export function FeeAndCharges() {
         ),
         cell: (info) => (
           <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-            <Tooltip label="View" withArrow>
-              <ActionIcon
-                size="sm"
-                variant="subtle"
-                color="slate"
-                radius="md"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleView(info.row.original);
-                }}
-              >
-                <IconEye size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Edit" withArrow>
-              <ActionIcon
-                size="sm"
-                variant="subtle"
-                color="brand"
-                radius="md"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleOpenModal('edit', info.row.original);
-                }}
-              >
-                <IconPencil size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Delete" withArrow>
-              <ActionIcon
-                size="sm"
-                variant="subtle"
-                color="danger"
-                radius="md"
-                loading={deleteMutation.isPending && deleteMutation.variables === info.row.original.name}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(info.row.original);
-                }}
-              >
-                <IconTrash size={14} />
-              </ActionIcon>
-            </Tooltip>
+            {canReadItem && (
+              <Tooltip label="View" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="slate"
+                  radius="md"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleView(info.row.original);
+                  }}
+                >
+                  <IconEye size={14} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            {canWriteItem && (
+              <Tooltip label="Edit" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="brand"
+                  radius="md"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenModal('edit', info.row.original);
+                  }}
+                >
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            {canDeleteItem && (
+              <Tooltip label="Delete" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="danger"
+                  radius="md"
+                  loading={deleteMutation.isPending && deleteMutation.variables === info.row.original.name}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(info.row.original);
+                  }}
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
+              </Tooltip>
+            )}
           </Group>
         ),
       }),
     ],
-    [deleteMutation.isPending, deleteMutation.variables]
+    [deleteMutation.isPending, deleteMutation.variables, canReadItem, canWriteItem, canDeleteItem]
   );
 
-  // No pagination state on the table itself — backend already paginates,
-  // same as LoanAccount. Table only owns sorting.
+
   const table = useReactTable({
     data: filteredData,
     columns,
@@ -314,19 +326,21 @@ export function FeeAndCharges() {
             <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>
               Reset
             </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={() => handleOpenModal('add')}
-              leftSection={<IconPlus size={14} />}
-              style={{
-                background: theme.other.brandGradient,
-                boxShadow: theme.other.brandGlowShadowSm,
-              }}
-            >
-              Add Fee/Charge
-            </Button>
+            {canCreateItem && (
+              <Button
+                size="sm"
+                radius="xl"
+                color="brand"
+                onClick={() => handleOpenModal('add')}
+                leftSection={<IconPlus size={14} />}
+                style={{
+                  background: theme.other.brandGradient,
+                  boxShadow: theme.other.brandGlowShadowSm,
+                }}
+              >
+                Add Fee/Charge
+              </Button>
+            )}
           </Group>
         </Group>
       </Paper>

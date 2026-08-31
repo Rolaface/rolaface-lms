@@ -79,8 +79,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconBuildingBank,
     matchPrefix: true,
     subItems: [
-      { path: "/collateral/type", label: "Collateral Type", icon: IconBox },
-      { path: "/collateral/list", label: "Collateral", icon: IconCoins },
+      { path: "/collateral/type", label: "Collateral Type", icon: IconBox, modules: ["Loan Security Type"] },
+      { path: "/collateral/list", label: "Collateral", icon: IconCoins, modules: ["Loan Security"] },
     ],
   },
   {
@@ -91,8 +91,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     subItems: [
       { path: "/setup/category", label: "Loan Category", icon: IconListDetails , modules: ["Loan Category"]},
       { path: "/setup/classification", label: "Loan Classification", icon: IconFileText ,modules: ["Loan Classification"] },
-      { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails },
-      { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt },
+      { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails , modules:["Loan Demand Offset Order"]},
+      { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt , modules:["Item"] },
       { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank ,modules: ["Loan Product"]},
     ],
   },
@@ -102,7 +102,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconFileText,
     matchPrefix: true,
     subItems: [
-      { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText },
+      { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText , modules:["Loan Application"]},
     ],
   },
   {
@@ -187,8 +187,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconReportAnalytics,
     matchPrefix: true,
     subItems: [
-      { path: "/reports/statement", label: "Loan Statement", icon: IconFileText },
-      { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics },
+      { path: "/reports/statement", label: "Loan Statement", icon: IconFileText , modules:["Loan"]},
+      { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics , modules:["Loan"] },
     ],
   },
   {

@@ -39,12 +39,18 @@ import { buildCustomerColumns, type CustomerRow } from "./customerColumns";
 import { SortIcon } from "./CustomerTableCells";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
 import type { BorrowerProfile } from "../../types/customerview";
+import { usePermission } from "../../hooks/Usepermission";
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function Customer() {
   const theme = useMantineTheme();
   const list = useCustomerList();
+  const {can} = usePermission();
+  const canCreateCustomer = can('Customer','create');
+  const canWriteCustomer = can('Customer','write');
+  const canDeleteCustomer = can('Customer','delete');
+  const canReadCustomer = can('Customer','read');
 
   const [sorting, setSorting] = useState([{ id: "id", desc: true }]);
   const [borrower360CustomerId, setBorrower360CustomerId] = useState<
@@ -62,8 +68,11 @@ export function Customer() {
         onView: handleViewCustomer,
         onEdit: () => customerModal.open({ isViewMode: false }),
         onDelete: handleDeleteCustomer,
+        canRead: canReadCustomer,
+        canWrite: canWriteCustomer,
+        canDelete: canDeleteCustomer,
       }),
-    [],
+    [canReadCustomer, canWriteCustomer, canDeleteCustomer],
   );
 
   const table = useReactTable({
@@ -221,6 +230,7 @@ export function Customer() {
             >
               Reset
             </Button>
+            {canCreateCustomer &&(
             <Button
               size="sm"
               radius="xl"
@@ -234,6 +244,7 @@ export function Customer() {
             >
               Add Customer
             </Button>
+            )}
           </Group>
         </Group>
       </Paper>
