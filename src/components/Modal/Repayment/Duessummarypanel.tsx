@@ -124,6 +124,7 @@ export function DuesSummaryPanel({
               variant="light"
               color="brand"
               fullWidth
+              className="mt-4"
               leftSection={<IconCreditCard size={14} />}
               onClick={onOpenPaymentEffect}
             >
