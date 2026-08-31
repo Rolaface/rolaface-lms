@@ -4,7 +4,9 @@ export function useContactState() {
   const [mobileNumber, setMobileNumber] = useState("");
   const [alternateMobile, setAlternateMobile] = useState("");
   const [email, setEmail] = useState("");
-const [preferredCommunication, setPreferredCommunication] = useState<string | null>(null);
+  const [preferredCommunication, setPreferredCommunication] = useState<
+    string | null
+  >(null);
   const [residentialAddress, setResidentialAddress] = useState("");
   const [residentialAddressLine2, setResidentialAddressLine2] = useState("");
   const [country, setCountry] = useState<string | null>(null);
@@ -20,8 +22,24 @@ const [preferredCommunication, setPreferredCommunication] = useState<string | nu
   const [mailingDistrict, setMailingDistrict] = useState("");
   const [mailingCityTown, setMailingCityTown] = useState("");
   const [mailingPostalCode, setMailingPostalCode] = useState("");
+  const [correspondenceAddress, setCorrespondenceAddress] = useState("");
+  const [primaryContactName, setPrimaryContactName] = useState("");
+
+const [sameAsRegisteredOffice, setSameAsRegisteredOffice] = useState(true);
+  const [correspondenceAddressLine2, setCorrespondenceAddressLine2] =
+    useState("");
+  const [correspondenceCountry, setCorrespondenceCountry] = useState<
+    string | null
+  >(null);
+  const [correspondenceProvince, setCorrespondenceProvince] = useState<
+    string | null
+  >(null);
+  const [correspondenceCityTown, setCorrespondenceCityTown] = useState("");
+  const [correspondencePostalCode, setCorrespondencePostalCode] = useState("");
 
   const reset = () => {
+    setPrimaryContactName("");
+setSameAsRegisteredOffice(true);
     setMobileNumber("");
     setAlternateMobile("");
     setEmail("");
@@ -41,28 +59,68 @@ const [preferredCommunication, setPreferredCommunication] = useState<string | nu
     setMailingDistrict("");
     setMailingCityTown("");
     setMailingPostalCode("");
+    setCorrespondenceAddress("");
+    setCorrespondenceAddressLine2("");
+    setCorrespondenceCountry(null);
+    setCorrespondenceProvince(null);
+    setCorrespondenceCityTown("");
+    setCorrespondencePostalCode("");
   };
 
   return {
-    mobileNumber, setMobileNumber,
-    alternateMobile, setAlternateMobile,
-    email, setEmail,
-    preferredCommunication, setPreferredCommunication,
-    residentialAddress, setResidentialAddress,
-    residentialAddressLine2, setResidentialAddressLine2,
-    country, setCountry,
-    province, setProvince,
-    district, setDistrict,
-    cityTown, setCityTown,
-    postalCode, setPostalCode,
-    sameAsResidential, setSameAsResidential,
-    mailingAddress, setMailingAddress,
-    mailingAddressLine2, setMailingAddressLine2,
-    mailingCountry, setMailingCountry,
-    mailingProvince, setMailingProvince,
-    mailingDistrict, setMailingDistrict,
-    mailingCityTown, setMailingCityTown,
-    mailingPostalCode, setMailingPostalCode,
+    primaryContactName,
+setPrimaryContactName,
+    mobileNumber,
+    setMobileNumber,
+    alternateMobile,
+    setAlternateMobile,
+    email,
+    setEmail,
+    preferredCommunication,
+    setPreferredCommunication,
+    residentialAddress,
+    setResidentialAddress,
+    residentialAddressLine2,
+    setResidentialAddressLine2,
+    country,
+    setCountry,
+    province,
+    setProvince,
+    district,
+    setDistrict,
+    cityTown,
+    setCityTown,
+    postalCode,
+    setPostalCode,
+    sameAsResidential,
+    setSameAsResidential,
+    mailingAddress,
+    setMailingAddress,
+    mailingAddressLine2,
+    setMailingAddressLine2,
+    mailingCountry,
+    setMailingCountry,
+    mailingProvince,
+    setMailingProvince,
+    mailingDistrict,
+    setMailingDistrict,
+    mailingCityTown,
+    setMailingCityTown,
+    mailingPostalCode,
+    setMailingPostalCode,
+    correspondenceAddress,
+    setCorrespondenceAddress,
+    correspondenceAddressLine2,
+    setCorrespondenceAddressLine2,
+    correspondenceCountry,
+    setCorrespondenceCountry,
+    correspondenceProvince,
+    setCorrespondenceProvince,
+    correspondenceCityTown,
+    setCorrespondenceCityTown,
+    correspondencePostalCode,
+    setCorrespondencePostalCode,
+
     reset,
   };
 }

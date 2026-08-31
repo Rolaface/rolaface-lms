@@ -10,6 +10,7 @@ import type { LoanWriteOffListItem, LoanWriteOffDetail } from '../../../types/lo
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { FilterMultiSelect } from '../../../components/shared/FilterMultiSelect';
+import { usePermission } from '../../../hooks/Usepermission';
 
 import {
   Box,
@@ -108,6 +109,14 @@ export function LoanWriteOff() {
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencyReady = useCurrencyReady();
 
+  const { can } = usePermission();
+  const canCreateLoan = can("Loan Write Off", "create");
+  const canReadLoan = can("Loan Write Off", "read");
+  const canWriteLoan = can("Loan Write Off", "write");
+  const canDeleteLoan = can("Loan Write Off", "delete");
+  const canSubmitLoan = can("Loan Write Off", "submit");
+  const canCancelLoan = can("Loan Write Off", "cancel");
+
   const [editData, setEditData] = useState<LoanWriteOffDetail | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -135,7 +144,7 @@ export function LoanWriteOff() {
   });
 
   const serverData: LoanWriteOffListItem[] = writeOffResponse?.data ?? [];
-  
+
   // Local fallback filter since backend 'get_loan_write_offs' might not filter by status yet
   const filteredData = useMemo(() => {
     if (!statusFilter || statusFilter.length === 0) return serverData;
@@ -318,28 +327,28 @@ export function LoanWriteOff() {
           </Text>
         ),
       }),
-     columnHelper.accessor('write_off_amount', {
-  header: 'Write-off Amount',
-  cell: (info) => (
-    <Text
-      fz="xs"
-      fw={700}
-      c="slate.8"
-      style={{ fontVariantNumeric: 'tabular-nums' }}
-    >
-      {formatAmount(companyCurrency, Number(info.getValue()), { withSymbol: true })}
-    </Text>
-  ),
-}),
+      columnHelper.accessor('write_off_amount', {
+        header: 'Write-off Amount',
+        cell: (info) => (
+          <Text
+            fz="xs"
+            fw={700}
+            c="slate.8"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            {formatAmount(companyCurrency, Number(info.getValue()), { withSymbol: true })}
+          </Text>
+        ),
+      }),
       columnHelper.accessor('posting_date', {
-  header: 'Posting Date',
-  cell: (info) => (
-    <Text fz="xs" c="slate.6">
-      {fmtDate(info.getValue())}
-    </Text>
-  ),
-  sortingFn: 'basic',
-}),
+        header: 'Posting Date',
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {fmtDate(info.getValue())}
+          </Text>
+        ),
+        sortingFn: 'basic',
+      }),
       columnHelper.accessor('docstatus', {
         header: () => (
           <Text fz="xs" fw={600} w="100%">
@@ -363,78 +372,91 @@ export function LoanWriteOff() {
 
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap">
-              <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="slate"
-                  radius="md"
-                  onClick={() => handleViewClick(row.name)}
-                >
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={isDraft ? 'Edit' : 'Only Drafts can be edited'} withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={isDraft ? 'brand' : 'slate'}
-                  radius="md"
-                  disabled={!isDraft}
-                  onClick={() => handleEditClick(row.name)}
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={canDelete ? 'Delete' : 'Approved write-offs cannot be deleted'} withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={canDelete ? 'danger' : 'slate'}
-                  radius="md"
-                  disabled={!canDelete || (deleteMutation.isPending && deleteMutation.variables === row.name)}
-                  loading={deleteMutation.isPending && deleteMutation.variables === row.name}
-                  onClick={() => handleDeleteClick(row.name)}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Menu shadow="md" width={140} position="bottom-end" withinPortal radius="md" withArrow>
-                <Menu.Target>
+              {canReadLoan && (
+                <Tooltip label="View" withArrow>
                   <ActionIcon
                     size="sm"
                     variant="subtle"
                     color="slate"
                     radius="md"
-                    disabled={isCancelled}
-                    loading={statusMutation.isPending && statusMutation.variables?.id === row.name}
-                    style={{ opacity: isCancelled ? 0.5 : 1 }}
+                    onClick={() => handleViewClick(row.name)}
                   >
-                    <IconDotsVertical size={14} />
+                    <IconEye size={14} />
                   </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  {isDraft ? (
-                    <Menu.Item 
-                      color="success" 
-                      leftSection={<IconCircleCheck size={14} />}
-                      onClick={() => handleStatusChange(row.name, 'approved')}
+                </Tooltip>
+              )}
+
+              {canWriteLoan && (
+                <Tooltip label={isDraft ? 'Edit' : 'Only Drafts can be edited'} withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color={isDraft ? 'brand' : 'slate'}
+                    radius="md"
+                    disabled={!isDraft}
+                    onClick={() => handleEditClick(row.name)}
+                  >
+                    <IconPencil size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+
+              {canDeleteLoan && (
+                <Tooltip label={canDelete ? 'Delete' : 'Approved write-offs cannot be deleted'} withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color={canDelete ? 'danger' : 'slate'}
+                    radius="md"
+                    disabled={!canDelete || (deleteMutation.isPending && deleteMutation.variables === row.name)}
+                    loading={deleteMutation.isPending && deleteMutation.variables === row.name}
+                    onClick={() => handleDeleteClick(row.name)}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+
+              {(canSubmitLoan || canCancelLoan) && !isCancelled && (
+                <Menu shadow="md" width={140} position="bottom-end" withinPortal radius="md" withArrow>
+                  <Menu.Target>
+                    <ActionIcon
+                      size="sm"
+                      variant="subtle"
+                      color="slate"
+                      radius="md"
+                      disabled={isCancelled}
+                      loading={statusMutation.isPending && statusMutation.variables?.id === row.name}
+                      style={{ opacity: isCancelled ? 0.5 : 1 }}
                     >
-                      Approve
-                    </Menu.Item>
-                  ) : (
-                    <Menu.Item color="danger" onClick={() => handleStatusChange(row.name, 'cancelled')}>
-                      Cancel
-                    </Menu.Item>
-                  )}
-                </Menu.Dropdown>
-              </Menu>
+                      <IconDotsVertical size={14} />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    {isDraft && canSubmitLoan && (
+                      <Menu.Item
+                        color="success"
+                        leftSection={<IconCircleCheck size={14} />}
+                        onClick={() => handleStatusChange(row.name, 'approved')}
+                      >
+                        Approve
+                      </Menu.Item>
+                    )}
+                    {!isDraft && canCancelLoan && (
+                      <Menu.Item color="danger" onClick={() => handleStatusChange(row.name, 'cancelled')}>
+                        Cancel
+                      </Menu.Item>
+                    )}
+                  </Menu.Dropdown>
+                </Menu>
+              )}
             </Group>
           );
         },
       }),
     ],
-    [deleteMutation.isPending, deleteMutation.variables, statusMutation.isPending, statusMutation.variables, companyCurrency]
+    [deleteMutation.isPending, deleteMutation.variables, statusMutation.isPending, statusMutation.variables, companyCurrency, canReadLoan,
+      canWriteLoan, canDeleteLoan, canSubmitLoan, canCancelLoan]
   );
 
   const table = useReactTable({
@@ -543,19 +565,21 @@ export function LoanWriteOff() {
           </Button>
 
           <Group gap="xs">
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={handleAddClick}
-              leftSection={<IconPlus size={14} />}
-              style={{
-                background: theme.other.brandGradient,
-                boxShadow: theme.other.brandGlowShadowSm,
-              }}
-            >
-              Write Off Loan
-            </Button>
+            {canCreateLoan && (
+              <Button
+                size="sm"
+                radius="xl"
+                color="brand"
+                onClick={handleAddClick}
+                leftSection={<IconPlus size={14} />}
+                style={{
+                  background: theme.other.brandGradient,
+                  boxShadow: theme.other.brandGlowShadowSm,
+                }}
+              >
+                Write Off Loan
+              </Button>
+            )}
           </Group>
         </Group>
       </Paper>
@@ -659,7 +683,7 @@ export function LoanWriteOff() {
               rows.map((row) => {
                 const cells = row.getVisibleCells();
                 return (
-                   <Table.Tr
+                  <Table.Tr
                     key={row.id}
                     className="lms-row"
                     onDoubleClick={() => handleViewClick(row.original.name)}

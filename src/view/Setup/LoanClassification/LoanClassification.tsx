@@ -49,6 +49,7 @@ import {
 } from '../../../api/LoanClassificationApi';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
+import { usePermission } from '../../../hooks/Usepermission';
 
 const EMPTY_CLASSIFICATIONS: LoanClassificationData[] = [];
 const DEFAULT_SORTING = [{ id: 'code', desc: false }];
@@ -82,6 +83,13 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function LoanClassification() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
+
+  
+  const { can } = usePermission();
+  const canCreateLoan = can('Loan Classification', 'create');
+  const canReadLoan = can('Loan Classification', 'read');
+  const canWriteLoan = can('Loan Classification', 'write');
+  const canDeleteLoan = can('Loan Classification', 'delete');
 
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
@@ -244,56 +252,62 @@ export function LoanClassification() {
           const row = info.row.original;
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-              <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="slate"
-                  radius="md"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleView(row);
-                  }}
-                >
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Edit" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="brand"
-                  radius="md"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEdit(row);
-                  }}
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Delete" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="danger"
-                  radius="md"
-                  loading={isDeleting}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(row);
-                  }}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
+              {canReadLoan && (
+                <Tooltip label="View" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="slate"
+                    radius="md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleView(row);
+                    }}
+                  >
+                    <IconEye size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canWriteLoan && (
+                <Tooltip label="Edit" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="brand"
+                    radius="md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(row);
+                    }}
+                  >
+                    <IconPencil size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canDeleteLoan && (
+                <Tooltip label="Delete" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="danger"
+                    radius="md"
+                    loading={isDeleting}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(row);
+                    }}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
             </Group>
           );
         },
       }),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isDeleting]
+    [isDeleting, canReadLoan, canWriteLoan, canDeleteLoan]
   );
 
   const table = useReactTable({
@@ -383,19 +397,21 @@ export function LoanClassification() {
             <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>
               Reset
             </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={handleAdd}
-              leftSection={<IconPlus size={14} />}
-              style={{
-                background: theme.other.brandGradient,
-                boxShadow: theme.other.brandGlowShadowSm,
-              }}
-            >
-              Add Classification
-            </Button>
+            {canCreateLoan && (
+              <Button
+                size="sm"
+                radius="xl"
+                color="brand"
+                onClick={handleAdd}
+                leftSection={<IconPlus size={14} />}
+                style={{
+                  background: theme.other.brandGradient,
+                  boxShadow: theme.other.brandGlowShadowSm,
+                }}
+              >
+                Add Classification
+              </Button>
+            )}
           </Group>
         </Group>
       </Paper>
@@ -494,8 +510,8 @@ export function LoanClassification() {
                   <Table.Tr
                     key={row.id}
                     className="lms-row"
-                    onDoubleClick={() => handleView(row.original)}
-                    style={{ cursor: 'pointer' }}
+                    onDoubleClick={canReadLoan ? () => handleView(row.original) : undefined}
+                    style={{ cursor: canReadLoan ? 'pointer' : 'default' }}
                   >
                     {cells.map((cell, idx) => (
                       <Table.Td

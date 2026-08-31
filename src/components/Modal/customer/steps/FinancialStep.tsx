@@ -16,8 +16,12 @@ interface FinancialStepProps {
   setMonthlyIncome: (v: number | "") => void;
   annualIncome: number | "";
   setAnnualIncome: (v: number | "") => void;
-  creditRiskCategory: string | null;
-  setCreditRiskCategory: (v: string | null) => void;
+  totalAssets: number | "";
+  setTotalAssets: (v: number | "") => void;
+  totalLiabilities: number | "";
+  setTotalLiabilities: (v: number | "") => void;
+  existingMonthlyObligations: number | "";
+  setExistingMonthlyObligations: (v: number | "") => void;
   relationshipManager: string | null;
   setRelationshipManager: (v: string | null) => void;
 }
@@ -41,21 +45,21 @@ const fieldStyles = {
 
 export function FinancialStep(props: FinancialStepProps) {
   const {
-    educationLevel,
-    setEducationLevel,
-    employmentType,
-    setEmploymentType,
-    sourceOfIncome,
-    setSourceOfIncome,
-    monthlyIncome,
-    setMonthlyIncome,
-    annualIncome,
-    setAnnualIncome,
-    creditRiskCategory,
-    setCreditRiskCategory,
-    relationshipManager,
-    setRelationshipManager,
+    educationLevel, setEducationLevel,
+    employmentType, setEmploymentType,
+    sourceOfIncome, setSourceOfIncome,
+    monthlyIncome, setMonthlyIncome,
+    annualIncome, setAnnualIncome,
+    totalAssets, setTotalAssets,
+    totalLiabilities, setTotalLiabilities,
+    existingMonthlyObligations, setExistingMonthlyObligations,
+    relationshipManager, setRelationshipManager,
   } = props;
+
+  const netWorth =
+    totalAssets !== "" && totalLiabilities !== ""
+      ? totalAssets - totalLiabilities
+      : "";
 
   return (
     <PlainCard dense>
@@ -70,117 +74,79 @@ export function FinancialStep(props: FinancialStepProps) {
       <Box
         style={{
           display: "grid",
-          gridTemplateColumns: "165px 190px 160px 178px 172px",
+          gridTemplateColumns: "repeat(auto-fill, minmax(165px, 1fr))",
           columnGap: 16,
           rowGap: 16,
           alignItems: "start",
         }}
       >
         <Select
-          radius="md"
-          searchable
-          rightSection={chevron}
-          label="Education Level"
-          placeholder="Select"
+          radius="md" searchable rightSection={chevron}
+          label="Education Level" placeholder="Select"
           data={["Primary", "Secondary", "Tertiary", "Postgraduate"]}
-          value={educationLevel}
-          onChange={setEducationLevel}
-          comboboxProps={{
-            width: 280,
-            position: "bottom-start",
-          }}
+          value={educationLevel} onChange={setEducationLevel}
+          comboboxProps={{ width: 280, position: "bottom-start" }}
           styles={fieldStyles}
         />
-
         <Select
-          radius="md"
-          searchable
-          rightSection={chevron}
-          label="Employment Type"
-          placeholder="Select"
-          data={[
-            "Formally Employed",
-            "Self-Employed",
-            "Informal",
-            "Unemployed",
-            "Retired",
-          ]}
-          value={employmentType}
-          onChange={setEmploymentType}
-          comboboxProps={{
-            width: 280,
-            position: "bottom-start",
-          }}
+          radius="md" searchable rightSection={chevron}
+          label="Employment Type" placeholder="Select"
+          data={["Formally Employed", "Self-Employed", "Informal", "Unemployed", "Retired"]}
+          value={employmentType} onChange={setEmploymentType}
+          comboboxProps={{ width: 280, position: "bottom-start" }}
           styles={fieldStyles}
         />
-
         <Select
-          radius="md"
-          searchable
-          rightSection={chevron}
-          label="Source of Income"
-          placeholder="Select"
+          radius="md" searchable rightSection={chevron}
+          label="Source of Income" placeholder="Select"
           data={["Salary", "Business", "Farming", "Pension", "Other"]}
-          value={sourceOfIncome}
-          onChange={setSourceOfIncome}
-          comboboxProps={{
-            width: 280,
-            position: "bottom-start",
-          }}
+          value={sourceOfIncome} onChange={setSourceOfIncome}
+          comboboxProps={{ width: 280, position: "bottom-start" }}
           styles={fieldStyles}
         />
-
         <NumberInput
-          radius="md"
-          hideControls
-          label="Monthly Income"
-          placeholder="e.g. 12,500"
-          thousandSeparator=","
-          value={monthlyIncome}
-          onChange={(v) => setMonthlyIncome(v as number | "")}
+          radius="md" hideControls
+          label="Monthly Income" placeholder="e.g. 12,500" thousandSeparator=","
+          value={monthlyIncome} onChange={(v) => setMonthlyIncome(v as number | "")}
           styles={fieldStyles}
         />
-
         <NumberInput
-          radius="md"
-          hideControls
-          label="Annual Income"
-          placeholder="e.g. 150,000"
-          thousandSeparator=","
-          value={annualIncome}
-          onChange={(v) => setAnnualIncome(v as number | "")}
+          radius="md" hideControls
+          label="Annual Income" placeholder="e.g. 150,000" thousandSeparator=","
+          value={annualIncome} onChange={(v) => setAnnualIncome(v as number | "")}
           styles={fieldStyles}
         />
-
-        <Select
-          radius="md"
-          searchable
-          rightSection={chevron}
-          label="Credit Risk Category"
-          placeholder="Not yet assessed"
-          data={["Low", "Medium", "High"]}
-          value={creditRiskCategory}
-          onChange={setCreditRiskCategory}
-          comboboxProps={{
-            width: 280,
-            position: "bottom-start",
-          }}
+        <NumberInput
+          radius="md" hideControls
+          label="Total Assets" placeholder="e.g. 250,000" thousandSeparator=","
+          value={totalAssets} onChange={(v) => setTotalAssets(v as number | "")}
           styles={fieldStyles}
         />
-
+        <NumberInput
+          radius="md" hideControls
+          label="Total Liabilities" placeholder="e.g. 80,000" thousandSeparator=","
+          value={totalLiabilities} onChange={(v) => setTotalLiabilities(v as number | "")}
+          styles={fieldStyles}
+        />
+        <NumberInput
+          radius="md" hideControls disabled
+          label="Net Worth" placeholder="Auto-calculated" thousandSeparator=","
+          value={netWorth}
+          styles={fieldStyles}
+        />
+        <NumberInput
+          radius="md" hideControls
+          label="Existing Monthly Obligations" placeholder="e.g. 3,000" thousandSeparator=","
+          value={existingMonthlyObligations}
+          onChange={(v) => setExistingMonthlyObligations(v as number | "")}
+          styles={fieldStyles}
+        />
         <Select
-          radius="md"
-          searchable
-          rightSection={chevron}
-          label="Relationship Manager"
-          placeholder="Unassigned"
+          radius="md" searchable rightSection={chevron}
+          label="Relationship Manager" placeholder="Unassigned"
           data={["K. Zulu", "N. Tembo"]}
-          value={relationshipManager}
-          onChange={setRelationshipManager}
-          comboboxProps={{
-            width: 280,
-            position: "bottom-start",
-          }}
+          value={relationshipManager} onChange={setRelationshipManager}
+          comboboxProps={{ width: 280, position: "bottom-start" }}
           styles={fieldStyles}
         />
       </Box>

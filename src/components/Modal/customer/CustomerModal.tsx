@@ -21,19 +21,20 @@ import { IdentityStep } from "./steps/IdentityStep";
 import { ContactStep } from "./steps/ContactStep";
 import { IdentificationStep } from "./steps/IdentificationStep";
 import { FinancialStep } from "./steps/FinancialStep";
-// import { BorrowerStep } from "./steps/BorrowerStep";
+import { BorrowerStep } from "./steps/BorrowerStep";
 import { CreditAssessmentStep } from "./steps/Creditassessmentstep";
+import { CreditBureauSummary } from "./steps/CreditBureauSummary";
+import { ExistingFacilities } from "./steps/ExistingFacilities";
+import { EligibilitySummary } from "./steps/EligibilitySummary";
 import { KycStep } from "./steps/KycStep";
 import { DocumentsStep } from "./steps/DocumentsStep";
 import { KinStep } from "./steps/KinStep";
 
 import { DirectorsStakeholdersStep } from "./steps/DirectorsStakeholdersStep";
 import { ModalFooter } from "../../shared/ModalFooter";
-import {
-  showApiError,
-  showSuccess,
-  showValidationError,
-} from "../../../utils/alert";
+import { showValidationError } from "../../../utils/alert";
+import { openCommonModal } from "../AlertModal";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
 
 import { useIdentityState } from "../../../hooks/customer/modal/useIdentityState";
 import { useContactState } from "../../../hooks/customer/modal/useContactState";
@@ -55,13 +56,14 @@ interface CustomerModalProps {
   isViewMode?: boolean;
 }
 
-// NOTE: step indices are unchanged from constants.ts — Credit Assessment is
-// NOT a new step. It's a second stacked card inside case 3 ("Financial &
-// Lending"), same pattern already used for Financial + Borrower there.
-// Consent is captured on the card itself (see useCreditAssessmentState) —
-// Financial & Lending (index 3) runs before KYC (index 4) in this app's
-// real step order, so gating consent on the KYC step would make the check
-// unrunnable on first pass through the wizard.
+// NOTE: STEPS now has 8 entries (was 7) — "Financial & Lending" was split
+// into two separate steps, "Financial" (index 3) and "Lending" (index 4).
+// STEP_GROUPS.financial.stepIndices is [3, 4], same pattern as the
+// verification group's multi-step sub-stepper. Consent for the bureau
+// check is captured on the Credit Assessment card itself (see
+// useCreditAssessmentState) inside the Lending step — Lending (index 4)
+// still runs before KYC (index 5), so gating consent on the KYC step would
+// make the check unrunnable on first pass through the wizard.
 
 export function CustomerModal({
   opened,
@@ -79,6 +81,7 @@ export function CustomerModal({
   const financialBorrower = useFinancialBorrowerState();
   const creditAssessment = useCreditAssessmentState({
     customerId: identity.customerNumber ?? null,
+    bureauProvider: financialBorrower.bureauProvider ?? undefined,
   });
   const kyc = useKycState({ customerId: identity.customerNumber ?? null });
   const documents = useDocumentsState({
@@ -116,16 +119,13 @@ export function CustomerModal({
     ? identity.companyName
     : [identity.firstName, identity.lastName].filter(Boolean).join(" ");
   const stepLabel = (idx: number) =>
-    idx === 6 && isBusinessType ? "Directors & Stakeholders" : STEPS[idx].label;
+    idx === 7 && isBusinessType ? "Directors & Stakeholders" : STEPS[idx].label;
   // Derived, sidebar-only view of the credit assessment result. `result`
   // stays the single source of truth (owned by useCreditAssessmentState);
   // this just reshapes it into the flat props CustomerSummarySidebar takes.
   // Returns all-null when there's no result yet, so the sidebar's credit
   // panels simply don't render (see hasCreditData in CustomerSummarySidebar).
   const creditResult = creditAssessment.result;
-  const activeFacilitiesFlag = creditResult?.flags.find(
-    (f) => f.label === "Active Facilities",
-  );
 
   const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(new Set());
 
@@ -138,6 +138,14 @@ export function CustomerModal({
             errs.companyName = "Registered company name is required";
           if (!identity.registrationNumber.trim())
             errs.registrationNumber = "Registration number is required";
+          if (!identity.businessAddress.trim())
+            errs.businessAddress = "Address line 1 is required";
+          if (!identity.businessCity.trim())
+            errs.businessCity = "City / town is required";
+          if (!identity.businessProvince)
+            errs.businessProvince = "State / Province is required";
+          if (!identity.businessCountry)
+            errs.businessCountry = "Country is required";
         } else {
           if (!identity.firstName.trim())
             errs.firstName = "First name is required";
@@ -171,8 +179,12 @@ export function CustomerModal({
         return errs;
       }
       case 3:
-        // Financial & Lending. Credit Assessment is optional/unvalidated —
-        // only the Financial income/employment fields are required here.
+        // Financial — no required fields currently.
+        return {};
+      case 4:
+        // Lending — Loan Requirement validation (borrower category, loan
+        // purpose, branch) lives here. Credit Assessment/bureau check stays
+        // optional/unvalidated.
         return financialBorrower.getErrors();
       default:
         return {};
@@ -180,7 +192,7 @@ export function CustomerModal({
   };
 
   const handleCreateCustomer = () => {
-    const stepsToCheck = [0, 1, 2, 3];
+    const stepsToCheck = [0, 1, 2, 3, 4];
     let firstInvalid: number | null = null;
     const newAttempted = new Set(attemptedSteps);
     for (const s of stepsToCheck) {
@@ -199,10 +211,33 @@ export function CustomerModal({
     }
 
     try {
-      showSuccess("Customer created successfully.");
-      handleModalClose();
-    } catch (err) {
-      showApiError("Something went wrong while creating the customer.");
+      openCommonModal({
+        heading: "Customer Created",
+        subtitle: "Success",
+        body: "Customer has been created successfully.",
+        color: "success",
+        buttons: [
+          {
+            label: "Close",
+            color: "teal",
+            onClick: () => handleModalClose(),
+          },
+        ],
+      });
+    } catch (err: any) {
+      const errorMessage = parseFrappeError(err);
+      openCommonModal({
+        heading: "Unable to Create Customer",
+        subtitle: "Customer creation failed",
+        body: errorMessage,
+        color: "danger",
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
     }
   };
 
@@ -280,37 +315,29 @@ export function CustomerModal({
             setIncorporationDate={identity.setIncorporationDate}
             businessAddress={identity.businessAddress}
             setBusinessAddress={identity.setBusinessAddress}
+            businessAddressLine2={identity.businessAddressLine2}
+            setBusinessAddressLine2={identity.setBusinessAddressLine2}
             businessIndustry={identity.businessIndustry}
             setBusinessIndustry={identity.setBusinessIndustry}
             numberOfEmployees={identity.numberOfEmployees}
             setNumberOfEmployees={identity.setNumberOfEmployees}
             annualRevenue={identity.annualRevenue}
             setAnnualRevenue={identity.setAnnualRevenue}
-            businessType={identity.businessType}
-            setBusinessType={identity.setBusinessType}
-            legalStructure={identity.legalStructure}
-            setLegalStructure={identity.setLegalStructure}
-            taxId={identity.taxId}
-            setTaxId={identity.setTaxId}
-            vatNumber={identity.vatNumber}
-            setVatNumber={identity.setVatNumber}
-            currency={identity.currency}
-            setCurrency={identity.setCurrency}
-            fiscalYearEnd={identity.fiscalYearEnd}
-            setFiscalYearEnd={identity.setFiscalYearEnd}
             businessCity={identity.businessCity}
             setBusinessCity={identity.setBusinessCity}
+            businessProvince={identity.businessProvince}
+            setBusinessProvince={identity.setBusinessProvince}
             businessCountry={identity.businessCountry}
             setBusinessCountry={identity.setBusinessCountry}
             businessPostalCode={identity.businessPostalCode}
             setBusinessPostalCode={identity.setBusinessPostalCode}
-
             errors={attemptedSteps.has(0) ? getStepErrors(0) : {}}
           />
         );
       case 1:
         return (
           <ContactStep
+            customerType={identity.customerType}
             mobileNumber={contact.mobileNumber}
             setMobileNumber={contact.setMobileNumber}
             alternateMobile={contact.alternateMobile}
@@ -349,6 +376,30 @@ export function CustomerModal({
             setMailingCityTown={contact.setMailingCityTown}
             mailingPostalCode={contact.mailingPostalCode}
             setMailingPostalCode={contact.setMailingPostalCode}
+            primaryContactName={contact.primaryContactName}
+            setPrimaryContactName={contact.setPrimaryContactName}
+            sameAsRegisteredOffice={contact.sameAsRegisteredOffice}
+            setSameAsRegisteredOffice={contact.setSameAsRegisteredOffice}
+            correspondenceAddress={contact.correspondenceAddress}
+            setCorrespondenceAddress={contact.setCorrespondenceAddress}
+            correspondenceAddressLine2={contact.correspondenceAddressLine2}
+            setCorrespondenceAddressLine2={
+              contact.setCorrespondenceAddressLine2
+            }
+            correspondenceCountry={contact.correspondenceCountry}
+            setCorrespondenceCountry={contact.setCorrespondenceCountry}
+            correspondenceProvince={contact.correspondenceProvince}
+            setCorrespondenceProvince={contact.setCorrespondenceProvince}
+            correspondenceCityTown={contact.correspondenceCityTown}
+            setCorrespondenceCityTown={contact.setCorrespondenceCityTown}
+            correspondencePostalCode={contact.correspondencePostalCode}
+            setCorrespondencePostalCode={contact.setCorrespondencePostalCode}
+            registeredOfficeAddress={identity.businessAddress}
+            registeredOfficeAddressLine2={identity.businessAddressLine2}
+            registeredOfficeCity={identity.businessCity}
+            registeredOfficeProvince={identity.businessProvince}
+            registeredOfficeCountry={identity.businessCountry}
+            registeredOfficePostalCode={identity.businessPostalCode}
             mobileDuplicateName={mobileDuplicateName}
             errors={attemptedSteps.has(1) ? getStepErrors(1) : {}}
           />
@@ -366,41 +417,97 @@ export function CustomerModal({
         );
       case 3:
         return (
+          <FinancialStep
+            educationLevel={financialBorrower.educationLevel}
+            setEducationLevel={financialBorrower.setEducationLevel}
+            employmentType={financialBorrower.employmentType}
+            setEmploymentType={financialBorrower.setEmploymentType}
+            sourceOfIncome={financialBorrower.sourceOfIncome}
+            setSourceOfIncome={financialBorrower.setSourceOfIncome}
+            monthlyIncome={financialBorrower.monthlyIncome}
+            setMonthlyIncome={financialBorrower.setMonthlyIncome}
+            annualIncome={financialBorrower.annualIncome}
+            setAnnualIncome={financialBorrower.setAnnualIncome}
+            totalAssets={financialBorrower.totalAssets}
+            setTotalAssets={financialBorrower.setTotalAssets}
+            totalLiabilities={financialBorrower.totalLiabilities}
+            setTotalLiabilities={financialBorrower.setTotalLiabilities}
+            existingMonthlyObligations={
+              financialBorrower.existingMonthlyObligations
+            }
+            setExistingMonthlyObligations={
+              financialBorrower.setExistingMonthlyObligations
+            }
+            relationshipManager={financialBorrower.relationshipManager}
+            setRelationshipManager={financialBorrower.setRelationshipManager}
+          />
+        );
+      case 4:
+        return (
           <Stack gap="lg">
             <CreditAssessmentStep
               status={creditAssessment.status}
               result={creditAssessment.result}
               errorMessage={creditAssessment.errorMessage}
-              isExpired={creditAssessment.isExpired}
               consentGiven={creditAssessment.consentGiven}
               setConsentGiven={creditAssessment.setConsentGiven}
+              bureauProvider={financialBorrower.bureauProvider}
+              setBureauProvider={financialBorrower.setBureauProvider}
               runCheck={creditAssessment.runCheck}
               refreshCheck={creditAssessment.refreshCheck}
+            />
+            <CreditBureauSummary
+              result={creditAssessment.result}
+              isExpired={creditAssessment.isExpired}
               onViewFullReport={() => {
                 // TODO: open a Drawer/Modal with the full bureau report
                 // (trade lines, inquiry history, exportable PDF).
               }}
             />
-            <FinancialStep
-              educationLevel={financialBorrower.educationLevel}
-              setEducationLevel={financialBorrower.setEducationLevel}
-              employmentType={financialBorrower.employmentType}
-              setEmploymentType={financialBorrower.setEmploymentType}
-              sourceOfIncome={financialBorrower.sourceOfIncome}
-              setSourceOfIncome={financialBorrower.setSourceOfIncome}
-              monthlyIncome={financialBorrower.monthlyIncome}
-              setMonthlyIncome={financialBorrower.setMonthlyIncome}
-              annualIncome={financialBorrower.annualIncome}
-              setAnnualIncome={financialBorrower.setAnnualIncome}
-              creditRiskCategory={financialBorrower.creditRiskCategory}
-              setCreditRiskCategory={financialBorrower.setCreditRiskCategory}
+            <ExistingFacilities
+              bureauFacilities={
+                creditAssessment.result?.existingFacilities ?? []
+              }
             />
-            {/* <BorrowerStep ... /> */}
+            {/* <BorrowerStep
+              convertToBorrower={financialBorrower.convertToBorrower}
+              setConvertToBorrower={financialBorrower.setConvertToBorrower}
+              borrowerCategory={financialBorrower.borrowerCategory}
+              setBorrowerCategory={financialBorrower.setBorrowerCategory}
+              loanPurpose={financialBorrower.loanPurpose}
+              setLoanPurpose={financialBorrower.setLoanPurpose}
+              intendedLoanProduct={financialBorrower.intendedLoanProduct}
+              setIntendedLoanProduct={financialBorrower.setIntendedLoanProduct}
+              loanAmountRequested={financialBorrower.loanAmountRequested}
+              setLoanAmountRequested={financialBorrower.setLoanAmountRequested}
+              loanTenureMonths={financialBorrower.loanTenureMonths}
+              setLoanTenureMonths={financialBorrower.setLoanTenureMonths}
+              repaymentFrequency={financialBorrower.repaymentFrequency}
+              setRepaymentFrequency={financialBorrower.setRepaymentFrequency}
+              preliminaryRiskRating={financialBorrower.preliminaryRiskRating}
+              setPreliminaryRiskRating={
+                financialBorrower.setPreliminaryRiskRating
+              }
+              branch={financialBorrower.branch}
+              setBranch={financialBorrower.setBranch}
+              creditOfficer={financialBorrower.creditOfficer}
+              setCreditOfficer={financialBorrower.setCreditOfficer}
+            /> */}
+            <EligibilitySummary
+              monthlyIncome={financialBorrower.monthlyIncome}
+              existingMonthlyObligations={
+                financialBorrower.existingMonthlyObligations
+              }
+              bureauMonthlyObligations={
+                creditAssessment.result?.monthlyObligations
+              }
+              loanTenureMonths={financialBorrower.loanTenureMonths}
+            />
           </Stack>
         );
-      case 4:
-        return <KycStep kycStatus={kyc.kycStatus} runCheck={kyc.runCheck} />;
       case 5:
+        return <KycStep kycStatus={kyc.kycStatus} runCheck={kyc.runCheck} />;
+      case 6:
         return (
           <DocumentsStep
             uploadedDocs={documents.uploadedDocs}
@@ -410,7 +517,7 @@ export function CustomerModal({
             isViewMode={isViewMode}
           />
         );
-      case 6:
+      case 7:
         return isBusinessType ? (
           <DirectorsStakeholdersStep
             directors={identity.directors}
@@ -440,7 +547,7 @@ export function CustomerModal({
             setKinPostalCode={kin.setKinPostalCode}
           />
         );
-        // case 7:
+        // case 8:
         //   return (
         //     <TagsStep
         //       tags={tagsState.tags}
@@ -755,7 +862,7 @@ export function CustomerModal({
                 creditResult ? getScoreBand(creditResult.score).label : null
               }
               activeFacilities={
-                activeFacilitiesFlag ? Number(activeFacilitiesFlag.value) : null
+                creditResult ? creditResult.existingFacilities.length : null
               }
               onViewSnapshot={() => {}}
             />

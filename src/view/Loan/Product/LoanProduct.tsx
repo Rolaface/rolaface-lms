@@ -40,7 +40,6 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LoanProductModal } from "../../../components/Modal/LoanProduct/LoanProductModal";
 import {
   getLoanProducts,
   getAllLoanCategories,
@@ -49,10 +48,10 @@ import {
   disableLoanProduct,
   type LoanProductRaw,
 } from "../../../api/LoanProduct/LoanProductAPi";
-
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { loanProductModal } from "../../../components/Modal/LoanProduct/loanProductModalstore";
+import { usePermission } from "../../../hooks/Usepermission";
 
 interface NormalizedProduct {
   id: string;
@@ -123,6 +122,13 @@ function statusToDisabledParam(status: string): 0 | 1 | undefined {
 
 export function LoanProduct() {
   const theme = useMantineTheme();
+
+
+  const { can } = usePermission();
+  const canCreateLoan = can("Loan Product", "create");
+  const canReadLoan = can("Loan Product", "read");
+  const canWriteLoan = can("Loan Product", "write");
+  const canDeleteLoan = can("Loan Product", "delete");
 
   // filter state
   const [search, setSearch] = useState("");
@@ -367,68 +373,76 @@ const categoryOptions = useMemo(() => {
               wrap="nowrap"
               className="lms-row-actions"
             >
-              <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="slate"
-                  radius="md"
-                  onClick={() =>
-                    loanProductModal.open({
-                      loanProductId: row.id,
-                      isViewMode: true,
-                    })
-                  }
+              {canReadLoan && (
+                <Tooltip label="View" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="slate"
+                    radius="md"
+                    onClick={() =>
+                      loanProductModal.open({
+                        loanProductId: row.id,
+                        isViewMode: true,
+                      })
+                    }
+                  >
+                    <IconEye size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canWriteLoan && (
+                <Tooltip label="Edit" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="brand"
+                    radius="md"
+                    onClick={() =>
+                      loanProductModal.open({
+                        loanProductId: row.id,
+                        isViewMode: false,
+                      })
+                    }
+                  >
+                    <IconPencil size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canDeleteLoan && (
+                <Tooltip label="Delete" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="danger"
+                    radius="md"
+                    loading={isDeleting}
+                    onClick={() => handleDelete(row)}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canWriteLoan && (
+                <Tooltip
+                  label={row.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                  withArrow
                 >
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Edit" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="brand"
-                  radius="md"
-                  onClick={() =>
-                    loanProductModal.open({
-                      loanProductId: row.id,
-                      isViewMode: false,
-                    })
-                  }
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Delete" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="danger"
-                  radius="md"
-                  loading={isDeleting}
-                  onClick={() => handleDelete(row)}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip
-                label={row.status === "ACTIVE" ? "Deactivate" : "Activate"}
-                withArrow
-              >
-                <Switch
-                  size="xs"
-                  color="success"
-                  checked={row.status === "ACTIVE"}
-                  disabled={isTogglingStatus}
-                  onChange={() => toggleStatus(row)}
-                />
-              </Tooltip>
+                  <Switch
+                    size="xs"
+                    color="success"
+                    checked={row.status === "ACTIVE"}
+                    disabled={isTogglingStatus}
+                    onChange={() => toggleStatus(row)}
+                  />
+                </Tooltip>
+              )}
             </Group>
           );
         },
       }),
     ],
-    [isDeleting, isEnabling, isDisabling],
+    [isDeleting, isEnabling, isDisabling, canReadLoan, canWriteLoan, canDeleteLoan],
   );
 
   const table = useReactTable({
@@ -551,19 +565,21 @@ const categoryOptions = useMemo(() => {
             >
               Reset
             </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={() => loanProductModal.open({})}
-              leftSection={<IconPlus size={14} />}
-              style={{
-                background: theme.other.brandGradient,
-                boxShadow: theme.other.brandGlowShadowSm,
-              }}
-            >
-              Add Product
-            </Button>
+            {canCreateLoan && (
+              <Button
+                size="sm"
+                radius="xl"
+                color="brand"
+                onClick={() => loanProductModal.open({})}
+                leftSection={<IconPlus size={14} />}
+                style={{
+                  background: theme.other.brandGradient,
+                  boxShadow: theme.other.brandGlowShadowSm,
+                }}
+              >
+                Add Product
+              </Button>
+            )}
           </Group>
         </Group>
       </Paper>

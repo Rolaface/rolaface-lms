@@ -7,11 +7,20 @@ export function useFinancialBorrowerState() {
   const [sourceOfIncome, setSourceOfIncome] = useState<string | null>(null);
   const [monthlyIncome, setMonthlyIncome] = useState<number | "">("");
   const [annualIncome, setAnnualIncome] = useState<number | "">("");
-  const [creditRiskCategory, setCreditRiskCategory] = useState<string | null>(
-    null,
+  const [totalAssets, setTotalAssets] = useState<number | "">("");
+  const [totalLiabilities, setTotalLiabilities] = useState<number | "">("");
+  const [existingMonthlyObligations, setExistingMonthlyObligations] =
+    useState<number | "">("");
+  const [relationshipManager, setRelationshipManager] = useState<
+    string | null
+  >(null);
+
+  // Lending — Credit Assessment
+  const [bureauProvider, setBureauProvider] = useState<string | null>(
+    "TransUnion Zambia",
   );
 
-  // Borrower
+  // Lending — Loan Requirement
   const [convertToBorrower, setConvertToBorrower] = useState(true);
   const [borrowerCategory, setBorrowerCategory] = useState<string | null>(
     null,
@@ -20,14 +29,18 @@ export function useFinancialBorrowerState() {
   const [intendedLoanProduct, setIntendedLoanProduct] = useState<
     string | null
   >(null);
+  const [loanAmountRequested, setLoanAmountRequested] = useState<
+    number | ""
+  >("");
+  const [loanTenureMonths, setLoanTenureMonths] = useState<number | "">("");
+  const [repaymentFrequency, setRepaymentFrequency] = useState<
+    string | null
+  >(null);
   const [preliminaryRiskRating, setPreliminaryRiskRating] = useState<
     string | null
   >(null);
   const [branch, setBranch] = useState<string | null>(null);
   const [creditOfficer, setCreditOfficer] = useState<string | null>(null);
-  const [relationshipManager, setRelationshipManager] = useState<
-    string | null
-  >(null);
 
   const getErrors = (): Record<string, string> => {
     if (!convertToBorrower) return {};
@@ -45,15 +58,21 @@ export function useFinancialBorrowerState() {
     setSourceOfIncome(null);
     setMonthlyIncome("");
     setAnnualIncome("");
-    setCreditRiskCategory(null);
+    setTotalAssets("");
+    setTotalLiabilities("");
+    setExistingMonthlyObligations("");
+    setRelationshipManager(null);
+    setBureauProvider("TransUnion Zambia");
     setConvertToBorrower(true);
     setBorrowerCategory(null);
     setLoanPurpose(null);
     setIntendedLoanProduct(null);
+    setLoanAmountRequested("");
+    setLoanTenureMonths("");
+    setRepaymentFrequency(null);
     setPreliminaryRiskRating(null);
     setBranch(null);
     setCreditOfficer(null);
-    setRelationshipManager(null);
   };
 
   return {
@@ -62,15 +81,21 @@ export function useFinancialBorrowerState() {
     sourceOfIncome, setSourceOfIncome,
     monthlyIncome, setMonthlyIncome,
     annualIncome, setAnnualIncome,
-    creditRiskCategory, setCreditRiskCategory,
+    totalAssets, setTotalAssets,
+    totalLiabilities, setTotalLiabilities,
+    existingMonthlyObligations, setExistingMonthlyObligations,
+    relationshipManager, setRelationshipManager,
+    bureauProvider, setBureauProvider,
     convertToBorrower, setConvertToBorrower,
     borrowerCategory, setBorrowerCategory,
     loanPurpose, setLoanPurpose,
     intendedLoanProduct, setIntendedLoanProduct,
+    loanAmountRequested, setLoanAmountRequested,
+    loanTenureMonths, setLoanTenureMonths,
+    repaymentFrequency, setRepaymentFrequency,
     preliminaryRiskRating, setPreliminaryRiskRating,
     branch, setBranch,
     creditOfficer, setCreditOfficer,
-    relationshipManager, setRelationshipManager,
     getErrors,
     reset,
   };

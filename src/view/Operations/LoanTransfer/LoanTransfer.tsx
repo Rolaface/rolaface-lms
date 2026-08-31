@@ -40,6 +40,7 @@ import {
 import type { LoanTransferFormData } from '../../../components/Modal/LoanTransferModal';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { loanTransferModal } from './LoanTransferModalStore';
+import { usePermission } from '../../../hooks/Usepermission';
 
 interface TransferRow {
   id: number;
@@ -98,6 +99,12 @@ const fmtDate = (iso: string) =>
 
 export function LoanTransfer() {
   const theme = useMantineTheme();
+
+  const { can } = usePermission();
+  const canCreateLoan = can("Loan Transfer", "create");
+  const canReadLoan = can("Loan Transfer", "read");
+  const canWriteLoan = can("Loan Transfer", "write");
+  const canDeleteLoan = can("Loan Transfer", "delete");
 
   const [search, setSearch] = useState('');
   const [branch, setBranch] = useState<string | null>(null);
@@ -193,15 +200,15 @@ export function LoanTransfer() {
 
   const columns = useMemo(
     () => [
-   columnHelper.accessor('transferDate', {
-  header: 'Transfer Date',
-  cell: (info) => (
-    <Text fz="sm" fw={700} c="slate.8">
-      {fmtDate(info.getValue())}
-    </Text>
-  ),
-  sortingFn: 'basic',
-}),
+      columnHelper.accessor('transferDate', {
+        header: 'Transfer Date',
+        cell: (info) => (
+          <Text fz="sm" fw={700} c="slate.8">
+            {fmtDate(info.getValue())}
+          </Text>
+        ),
+        sortingFn: 'basic',
+      }),
       columnHelper.accessor('fromBranch', {
         header: 'From Branch',
         cell: (info) => (
@@ -255,44 +262,45 @@ export function LoanTransfer() {
           const row = info.row.original;
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-              <Tooltip label="View" withArrow>
-                <ActionIcon 
-                  size="sm" 
-                  variant="subtle" 
-                  color="slate" 
-                  radius="md"
-                >
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Edit" withArrow>
-                <ActionIcon 
-                  size="sm" 
-                  variant="subtle" 
-                  color="brand" 
-                  radius="md"
-                  onClick={() => loanTransferModal.open({ onSubmit: handleAddTransfer })}
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Delete" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="danger"
-                  radius="md"
-                  onClick={() => confirmDelete(row)}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
+              {canReadLoan && (
+                <Tooltip label="View" withArrow>
+                  <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
+                    <IconEye size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canWriteLoan && (
+                <Tooltip label="Edit" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="brand"
+                    radius="md"
+                    onClick={() => loanTransferModal.open({ onSubmit: handleAddTransfer })}
+                  >
+                    <IconPencil size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canDeleteLoan && (
+                <Tooltip label="Delete" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="danger"
+                    radius="md"
+                    onClick={() => confirmDelete(row)}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
             </Group>
           );
         },
       }),
     ],
-    []
+    [canReadLoan, canWriteLoan, canDeleteLoan]
   );
 
   const table = useReactTable({
@@ -425,19 +433,21 @@ export function LoanTransfer() {
             <Button size="sm" radius="xl" variant="default" onClick={resetFilters}>
               Reset
             </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={() => loanTransferModal.open({ onSubmit: handleAddTransfer })}
-              leftSection={<IconPlus size={14} />}
-              style={{
-                background: theme.other.brandGradient,
-                boxShadow: theme.other.brandGlowShadowSm,
-              }}
-            >
-              New Transfer
-            </Button>
+            {canCreateLoan && (
+              <Button
+                size="sm"
+                radius="xl"
+                color="brand"
+                onClick={() => loanTransferModal.open({ onSubmit: handleAddTransfer })}
+                leftSection={<IconPlus size={14} />}
+                style={{
+                  background: theme.other.brandGradient,
+                  boxShadow: theme.other.brandGlowShadowSm,
+                }}
+              >
+                New Transfer
+              </Button>
+            )}
           </Group>
         </Group>
       </Paper>
