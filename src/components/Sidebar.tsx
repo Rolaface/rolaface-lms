@@ -189,6 +189,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     subItems: [
       { path: "/reports/statement", label: "Loan Statement", icon: IconFileText },
       { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics },
+      { path: "/reports/schedule", label: "Repayment Schedule", icon: IconFileText },
     ],
   },
   {
