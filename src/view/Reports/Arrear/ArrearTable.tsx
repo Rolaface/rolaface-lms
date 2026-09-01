@@ -12,6 +12,20 @@ const BUCKET_BADGE: Record<string, { bg: string; color: string }> = {
   "Current": { bg: cv("gray", 1), color: cv("gray", 7) },
 };
 
+const splitCurrency = (val: string) => {
+  if (!val) return val;
+  const parts = val.split(" ");
+  if (parts.length > 1) {
+    return (
+      <div className="flex flex-col items-end leading-tight">
+        <span className="text-[10px] text-slate-500">{parts[0]}</span>
+        <span>{parts.slice(1).join(" ")}</span>
+      </div>
+    );
+  }
+  return val;
+};
+
 export function ArrearTable({ topAccounts, paginationState, paginationMeta, loadingTable, renderCurrency }: any) {
   return (
     <Paper withBorder radius="lg" className="border-slate-200 overflow-hidden relative">
@@ -31,18 +45,18 @@ export function ArrearTable({ topAccounts, paginationState, paginationMeta, load
             No overdue accounts match the selected criteria.
           </Alert>
         ) : (
-          <Table verticalSpacing="xs" horizontalSpacing="md" className="text-[12.5px]">
+          <Table verticalSpacing="xs" horizontalSpacing="sm" className="text-[11px] ">
             <Table.Thead>
               <Table.Tr className="text-slate-400">
-                <Table.Th><Text size="12px" fw={600} c="dimmed">Loan Account</Text></Table.Th>
-                <Table.Th><Text size="12px" fw={600} c="dimmed">Customer Name</Text></Table.Th>
-                <Table.Th><Text size="12px" fw={600} c="dimmed">Branch</Text></Table.Th>
-                <Table.Th><Group gap={4}><Text size="12px" fw={600} c="dimmed">Days Past Due</Text><IconSelector size={13} className="text-slate-300" /></Group></Table.Th>
-                <Table.Th><Text size="12px" fw={600} c="dimmed">Arrear Bucket</Text></Table.Th>
-                <Table.Th ta="right"><Text size="12px" fw={600} c="dimmed">Overdue Amount</Text></Table.Th>
-                <Table.Th ta="right"><Text size="12px" fw={600} c="dimmed">Overdue EMI</Text></Table.Th>
-                <Table.Th ta="right"><Text size="12px" fw={600} c="dimmed">Total Overdue</Text></Table.Th>
-                <Table.Th ta="right"><Text size="12px" fw={600} c="dimmed">Action</Text></Table.Th>
+                <Table.Th><Text size="11px" fw={600} c="dimmed">Loan Account</Text></Table.Th>
+                <Table.Th><Text size="11px" fw={600} c="dimmed">Customer Name</Text></Table.Th>
+                <Table.Th><Text size="11px" fw={600} c="dimmed">Branch</Text></Table.Th>
+                <Table.Th><Text size="11px" fw={600} c="dimmed">Days Past Due</Text></Table.Th>
+                <Table.Th><Text size="11px" fw={600} c="dimmed">Arrear Bucket</Text></Table.Th>
+                <Table.Th ta="right"><Text size="11px" fw={600} c="dimmed">Overdue Amount</Text></Table.Th>
+                <Table.Th ta="right"><Text size="11px" fw={600} c="dimmed">Overdue EMI</Text></Table.Th>
+                <Table.Th ta="right"><Text size="11px" fw={600} c="dimmed">Total Overdue</Text></Table.Th>
+                <Table.Th ta="right"><Text size="11px" fw={600} c="dimmed">Action</Text></Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -50,14 +64,14 @@ export function ArrearTable({ topAccounts, paginationState, paginationMeta, load
                 const b = BUCKET_BADGE[r.arrear_bucket] || { bg: cv("gray", 1), color: cv("gray", 7) };
                 return (
                   <Table.Tr key={r.loan_account}>
-                    <Table.Td fw={600} className="text-slate-700">{r.loan_account}</Table.Td>
+                    <Table.Td fw={600} className="text-slate-700 text-[10px]">{r.loan_account}</Table.Td>
                     <Table.Td className="text-slate-700">{r.customer_name}</Table.Td>
                     <Table.Td className="text-slate-500">{r.branch}</Table.Td>
                     <Table.Td className="text-slate-600">{r.days_past_due}</Table.Td>
                     <Table.Td><Badge radius="sm" size="sm" style={{ backgroundColor: b.bg, color: b.color, textTransform: "none" }}>{r.arrear_bucket}</Badge></Table.Td>
-                    <Table.Td ta="right" className="text-slate-600">{renderCurrency(r.overdue_amount)}</Table.Td>
-                    <Table.Td ta="right" className="text-slate-600">{renderCurrency(r.overdue_emi)}</Table.Td>
-                    <Table.Td ta="right" fw={700} className="text-slate-800">{renderCurrency(r.total_outstanding)}</Table.Td>
+                    <Table.Td ta="right" className="text-slate-600">{splitCurrency(renderCurrency(r.overdue_amount))}</Table.Td>
+                    <Table.Td ta="right" className="text-slate-600">{splitCurrency(renderCurrency(r.overdue_emi))}</Table.Td>
+                    <Table.Td ta="right" fw={700} className="text-slate-800">{splitCurrency(renderCurrency(r.total_outstanding))}</Table.Td>
                     <Table.Td>
                       <Group justify="flex-end">
                         <Tooltip label="View"><ActionIcon variant="subtle" color="gray" size="sm"><IconEye size={14} /></ActionIcon></Tooltip>
@@ -72,7 +86,7 @@ export function ArrearTable({ topAccounts, paginationState, paginationMeta, load
       </div>
       
       <Group justify="space-between" p="sm" className="border-t border-slate-100">
-        <Text size="12px" c="dimmed">
+        <Text size="11px" c="dimmed">
           Showing {paginationMeta?.total === 0 ? 0 : (paginationState.page - 1) * paginationState.pageSize + 1} to {Math.min(paginationMeta?.total || 0, paginationState.page * paginationState.pageSize)} of {paginationMeta?.total || 0} entries
         </Text>
         <Group gap={12}>
