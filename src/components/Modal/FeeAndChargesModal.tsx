@@ -10,7 +10,7 @@ import {
   ThemeIcon,
 } from '@mantine/core';
 import { IconMinus, IconReceipt, IconX } from '@tabler/icons-react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from '@mantine/form';
 import {
   createFeeAndCharge,
@@ -46,6 +46,7 @@ export function FeeAndChargesModal({
   data = null,
 }: FeeAndChargesModalProps) {
   const isView = mode === 'view';
+   const queryClient = useQueryClient();
 
   const title =
     mode === 'add' ? 'New Fee & Charge' :
@@ -121,6 +122,10 @@ export function FeeAndChargesModal({
     mutationFn: (payload: CreateFeeAndChargePayload & { id?: string }) =>
       payload.id ? updateFeeAndCharge(payload as CreateFeeAndChargePayload & { id: string }) : createFeeAndCharge(payload),
     onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['fee-and-charges'] });
+     if (mode === 'edit' && data?.id) {
+        queryClient.invalidateQueries({ queryKey: ['fee-and-charge', data.id] });
+      }
       showSuccess(
         mode === 'edit' ? 'Fee/Charge Updated' : 'Fee/Charge Created',
         mode === 'edit' ? 'Fee/Charge updated successfully.' : 'Fee/Charge created successfully.'
