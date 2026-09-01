@@ -43,6 +43,7 @@ import { logoutUser } from "../api/authApi";
 import { openCommonModal } from "./Modal/AlertModal";
 import { parseFrappeError } from "../utils/parseFrappeError";
 import type { LmsModule } from "../types/User/userRole";
+import { ERP_FRONTEND } from '../config/resolveUrls';
 
 
 
@@ -500,7 +501,7 @@ export function Sidebar({
       await logoutUser();
       localStorage.clear();
       clearUser();
-      window.location.href = `${import.meta.env.VITE_ERP_URL}/login`;
+      window.location.href = `${ERP_FRONTEND}/login`;
     } catch (err: any) {
       openCommonModal({
         heading: "Sign Out Failed",
@@ -592,7 +593,7 @@ export function Sidebar({
             radius="md"
             className="lms-focusable shrink-0"
             onClick={() => {
-              window.location.href = `${import.meta.env.VITE_ERP_URL}/select-app`;
+              window.location.href = `${ERP_FRONTEND}/select-app`;
             }}
             style={{ color: tk.iconDefault }}
           >
