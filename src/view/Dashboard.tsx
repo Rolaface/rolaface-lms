@@ -114,7 +114,7 @@ function StatCard({ stat, loading }: { stat: any; loading: boolean }) {
 
 function PanelCard({ title, info, loading, children }: { title: string; info?: boolean; loading?: boolean; children: React.ReactNode }) {
   return (
-    <Paper withBorder radius="lg" p="sm" className="border-slate-200 flex flex-col relative overflow-hidden h-full">
+    <Paper withBorder radius="lg" p="sm" className="border-slate-200 relative overflow-hidden" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {loading && (
         <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center rounded-lg">
           <Loader size="sm" color="blue" />
@@ -318,9 +318,10 @@ export function Dashboard() {
         <div className="grid grid-cols-[1fr_1fr_2.2fr_1.5fr] gap-3.5 items-stretch">
           
           <PanelCard title="Collection Efficiency Rate (%)" info loading={status.loadingCharts}>
-            <div className="flex flex-col items-center pt-1">
+            <div className="flex-1 flex flex-col items-center pt-1">
               <CircularProgress percent={eff?.rate_pct || 0} />
-              <Text size="12px" c="dimmed" mt={8}>Collected</Text>
+              <div className="w-full flex flex-col items-center mt-8">
+<Text size="12px" c="dimmed">Collected</Text>
               <Text fw={700} size="12.5px" className="text-slate-700">
                 {renderSmartCurrency(eff?.collected || 0)} / {renderSmartCurrency(eff?.demand || 0)}
               </Text>
@@ -328,13 +329,14 @@ export function Dashboard() {
                 <Group gap={4}>
                   <IconArrowUp size={11} />
                   <span>6.2% vs last month</span>
-                </Group>
-              </Badge>
+</Group>
+</Badge>
+</div>
             </div>
           </PanelCard>
 
           <PanelCard title="Non-Performing Assets (NPA)" loading={status.loadingCharts}>
-            <div className="flex flex-col gap-5 pt-6">
+            <div className="flex-1 flex flex-col justify-evenly py-2">
               <NpaBlock label="Gross NPA" value={`${npa?.gross_npa_pct || 0}%`} delta="0.35%" trend={GROSS_NPA_TREND} />
               <NpaBlock label="Net NPA" value={`${npa?.net_npa_pct || 0}%`} delta="0.18%" trend={NET_NPA_TREND} />
             </div>
@@ -345,8 +347,9 @@ export function Dashboard() {
               <Group gap={5}><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cv("brand", 6) }} /><Text size="11px" c="dimmed">Disbursement</Text></Group>
               <Group gap={5}><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cv("green", 6) }} /><Text size="11px" c="dimmed">Collection</Text></Group>
             </Group>
-            <div className="h-[248px]">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="relative flex-1 min-h-[250px]">
+                <div className="absolute inset-0">
+                  <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={TREND} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="#F1F5F9" />
                   <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
@@ -360,16 +363,17 @@ export function Dashboard() {
                   <Line type="monotone" dataKey="collection" stroke={cv("green", 6)} strokeWidth={1.5} dot={{ r: 2.5, fill: cv("green", 6) }} />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-          </PanelCard>
+                </div>
+              </div>
+            </PanelCard>
 
           <PanelCard title="Risk Grade Matrix" loading={status.loadingCharts}>
-            <div className="flex flex-col gap-2 h-full overflow-y-auto max-h-[250px] pr-1">
+            <div className="flex-1 flex flex-col gap-1">
                 {classifications.map((r) => {
                 const { bg, color } = getRiskGradeColors(r.code);
                 
                 return (
-                  <Group key={r.code} justify="space-between" p="xs" className="rounded-md" style={{ backgroundColor: bg }}>
+                  <Group key={r.code} justify="space-between" p={6} className="rounded-md" style={{ backgroundColor: bg }}>
                     <div>
                       <Text size="11.5px" fw={700} style={{ color }}>{r.label}</Text>
                       <Text size="10.5px" c="dimmed" mt={2} fw={500}>
