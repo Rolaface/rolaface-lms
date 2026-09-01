@@ -41,7 +41,7 @@ const DEMO_INFO: LoanScheduleInfo = {
   emi_amount: 21247,
   interest_rate: 9.5,
   penalty_rate: 2.0,
-  currency: "₹",
+  currency: "ZMW"₹",
   disbursement_date: "2024-05-01",
   frequency: "Monthly",
   interest_method: "Reducing Balance",
