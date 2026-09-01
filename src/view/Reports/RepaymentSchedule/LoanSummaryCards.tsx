@@ -60,17 +60,17 @@ export function LoanSummaryCards({ info }: LoanSummaryCardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-5 gap-3">
+    <div className="grid grid-cols-5 gap-2">
       {cards.map((card) => (
         <Box
           key={card.label}
-          className="flex items-center gap-2 p-3 rounded-lg"
+          className="flex items-center gap-2 p-2 rounded-lg"
           style={{ border: "1px solid var(--mantine-color-slate-1)", background: "white" }}
         >
           <Box
             style={{
-              width: 42,
-              height: 42,
+              width: 36,
+              height: 36,
               borderRadius: "var(--mantine-radius-md)",
               background: card.bg,
               display: "flex",
@@ -79,13 +79,13 @@ export function LoanSummaryCards({ info }: LoanSummaryCardsProps) {
               flexShrink: 0,
             }}
           >
-            <card.icon size={22} color={card.color} stroke={1.5} />
+            <card.icon size={18} color={card.color} stroke={1.5} />
           </Box>
           <div>
-            <Text size="xs" c="slate.5" fw={600} mb={2}>
+            <Text size="11px" c="slate.5" fw={600} mb={0}>
               {card.label}
             </Text>
-            <Text size="md" fw={700} c="slate.9">
+            <Text size="xs" fw={700} c="slate.9">
               {card.value}
             </Text>
           </div>

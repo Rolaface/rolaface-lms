@@ -25,7 +25,7 @@ interface RepaymentScheduleFiltersProps {
 export function RepaymentScheduleFilters({ filters, lookups }: RepaymentScheduleFiltersProps) {
   return (
     <Box
-      className="grid grid-cols-4 gap-3 p-3 rounded-lg"
+      className="grid grid-cols-4 gap-2 p-1.5 rounded-lg"
       style={{ border: "1px solid var(--mantine-color-slate-2)", background: "white" }}
     >
       <Select
@@ -40,7 +40,7 @@ export function RepaymentScheduleFilters({ filters, lookups }: RepaymentSchedule
         leftSection={<IconSearch size={14} />}
         size="sm"
         withAsterisk
-        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 } }}
+        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 2 } }}
       />
       <Select
         label="Customer"
@@ -53,7 +53,7 @@ export function RepaymentScheduleFilters({ filters, lookups }: RepaymentSchedule
         onSearchChange={filters.setCustomerSearch}
         size="sm"
         withAsterisk
-        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 } }}
+        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 2 } }}
       />
       <TextInput
         label="From Date"
@@ -63,7 +63,7 @@ export function RepaymentScheduleFilters({ filters, lookups }: RepaymentSchedule
         rightSection={<IconCalendarDue size={14} color="var(--mantine-color-success-6)" />}
         size="sm"
         withAsterisk
-        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 } }}
+        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 2 } }}
       />
       <TextInput
         label="To Date"
@@ -73,7 +73,7 @@ export function RepaymentScheduleFilters({ filters, lookups }: RepaymentSchedule
         rightSection={<IconCalendarDue size={14} color="var(--mantine-color-success-6)" />}
         size="sm"
         withAsterisk
-        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 } }}
+        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 2 } }}
       />
     </Box>
   );

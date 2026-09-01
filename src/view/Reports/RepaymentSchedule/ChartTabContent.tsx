@@ -43,7 +43,7 @@ export function ChartTabContent({ info, chartData, chartViewType, setChartViewTy
       
 
       {/* 4 Summary Cards */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-2">
         {summaryCards.map((card) => (
           <Box
             key={card.label}
@@ -68,15 +68,15 @@ export function ChartTabContent({ info, chartData, chartViewType, setChartViewTy
       </div>
 
       {/* Chart + Composition */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3 min-w-0">
         {/* Left: Stacked Bar Chart */}
-        <Box className="col-span-2 rounded-lg p-4" style={{ border: "1px solid var(--mantine-color-slate-2)", background: "white" }}>
+        <Box className="col-span-2 rounded-lg p-4 min-w-0 overflow-hidden" style={{ border: "1px solid var(--mantine-color-slate-2)", background: "white" }}>
           <Group justify="space-between" mb="md">
             <Text size="sm" fw={700} c="slate.8">Repayment Overview (EMI Composition)</Text>
             <Button size="xs" variant="default" radius="md">Monthly</Button>
           </Group>
 
-          <ResponsiveContainer width="100%" height={320}>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData} barCategoryGap="10%">
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--mantine-color-slate-1)" />
               <XAxis dataKey="installment" tick={{ fontSize: 11, fill: "var(--mantine-color-slate-5)" }} />

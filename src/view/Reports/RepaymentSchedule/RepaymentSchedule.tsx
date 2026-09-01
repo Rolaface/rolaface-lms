@@ -31,7 +31,7 @@ export function RepaymentSchedule() {
 
   return (
     <Box className="bg-[#F7F8FB] text-slate-800 min-h-full">
-      <Box component="main" className="p-4 flex flex-col gap-4">
+      <Box component="main" className="p-4 flex flex-col gap-3">
         {/* Header */}
         <Group justify="space-between" align="flex-start">
           <div>
@@ -94,7 +94,7 @@ export function RepaymentSchedule() {
             </Group>
           </Box>
 
-          <Box mt="xs">
+          <Box mt={4}>
             <Tabs.Panel value="schedule">
               <ScheduleTabContent
                 info={data.scheduleInfo}

@@ -55,7 +55,7 @@ export function ScheduleTabContent({
   return (
     <div className="flex items-start gap-3">
       {/* Left Column */}
-      <div className="flex-1 flex flex-col gap-4 min-w-0">
+      <div className="flex-1 flex flex-col gap-2 min-w-0">
         
         {/* Rate History Row */}
         <div className="grid grid-cols-2 gap-3 items-start">
@@ -70,8 +70,8 @@ export function ScheduleTabContent({
             <Table verticalSpacing="xs" horizontalSpacing="sm" withRowBorders={false}>
               <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
                 <Table.Tr>
-                  <Table.Th c="slate.5" fz="xs" tt="uppercase">Effective From</Table.Th>
-                  <Table.Th c="slate.5" fz="xs" ta="right" tt="uppercase">Interest Rate (% p.a.)</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" tt="uppercase">Effective From</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" ta="right" tt="uppercase">Interest Rate (% p.a.)</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -80,8 +80,8 @@ export function ScheduleTabContent({
                     key={i}
                     style={i === interest_rate_history.length - 1 ? { background: "var(--mantine-color-green-0)" } : undefined}
                   >
-                    <Table.Td><Text size="sm" c="slate.7">{fmtDate(entry.effective_from)}</Text></Table.Td>
-                    <Table.Td ta="right"><Text size="sm" fw={600} c="slate.8">{entry.rate.toFixed(2)}%</Text></Table.Td>
+                    <Table.Td style={{ whiteSpace: "nowrap" }}><Text size="12px" c="slate.7">{fmtDate(entry.effective_from)}</Text></Table.Td>
+                    <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}><Text size="12px" fw={600} c="slate.8">{entry.rate.toFixed(2)}%</Text></Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
@@ -104,8 +104,8 @@ export function ScheduleTabContent({
             <Table verticalSpacing="xs" horizontalSpacing="sm" withRowBorders={false}>
               <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
                 <Table.Tr>
-                  <Table.Th c="slate.5" fz="xs" tt="uppercase">Effective From</Table.Th>
-                  <Table.Th c="slate.5" fz="xs" ta="right" tt="uppercase">Penalty Rate (% p.a.)</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" tt="uppercase">Effective From</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" ta="right" tt="uppercase">Penalty Rate (% p.a.)</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -114,8 +114,8 @@ export function ScheduleTabContent({
                     key={i}
                     style={i === penalty_rate_history.length - 1 ? { background: "var(--mantine-color-red-1)" } : undefined}
                   >
-                    <Table.Td><Text size="sm" c="slate.7">{fmtDate(entry.effective_from)}</Text></Table.Td>
-                    <Table.Td ta="right"><Text size="sm" fw={600} c="slate.8">{entry.rate.toFixed(2)}%</Text></Table.Td>
+                    <Table.Td style={{ whiteSpace: "nowrap" }}><Text size="12px" c="slate.7">{fmtDate(entry.effective_from)}</Text></Table.Td>
+                    <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}><Text size="12px" fw={600} c="slate.8">{entry.rate.toFixed(2)}%</Text></Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
@@ -131,38 +131,38 @@ export function ScheduleTabContent({
         {/* Installment Table */}
         <Box className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--mantine-color-slate-2)", background: "white" }}>
           <div className="overflow-x-auto">
-            <Table verticalSpacing="sm" horizontalSpacing="md" highlightOnHover>
+            <Table verticalSpacing="sm" horizontalSpacing="sm" highlightOnHover>
               <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
                 <Table.Tr>
-                  <Table.Th c="slate.5" fz="xs" tt="uppercase">#</Table.Th>
-                  <Table.Th c="slate.5" fz="xs" tt="uppercase">Due Date</Table.Th>
-                  <Table.Th c="slate.5" fz="xs" ta="right" tt="uppercase">EMI Amount</Table.Th>
-                  <Table.Th c="slate.5" fz="xs" ta="right" tt="uppercase">Principal</Table.Th>
-                  <Table.Th c="slate.5" fz="xs" ta="right" tt="uppercase">Interest</Table.Th>
-                  <Table.Th c="slate.5" fz="xs" ta="right" tt="uppercase">Penalty</Table.Th>
-                  <Table.Th c="slate.5" fz="xs" ta="right" tt="uppercase">Charges</Table.Th>
-                  <Table.Th c="slate.5" fz="xs" ta="right" tt="uppercase">Total Payment</Table.Th>
-                  <Table.Th c="slate.5" fz="xs" ta="right" tt="uppercase">Outstanding Balance</Table.Th>
-                  <Table.Th c="slate.5" fz="xs" tt="uppercase">Status</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" style={{ whiteSpace: "nowrap" }}>#</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" style={{ whiteSpace: "nowrap" }}>Due Date</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" ta="right" style={{ whiteSpace: "nowrap" }}>EMI Amount</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" ta="right" style={{ whiteSpace: "nowrap" }}>Principal</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" ta="right" style={{ whiteSpace: "nowrap" }}>Interest</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" ta="right" style={{ whiteSpace: "nowrap" }}>Penalty</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" ta="right" style={{ whiteSpace: "nowrap" }}>Charges</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" ta="right" style={{ whiteSpace: "nowrap" }}>Total Payment</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" ta="right" style={{ whiteSpace: "nowrap" }}>Outstanding Balance</Table.Th>
+                  <Table.Th c="slate.5" fz="11px" style={{ whiteSpace: "nowrap" }}>Status</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {paginatedRows.map((row) => (
                   <Table.Tr key={row.idx}>
-                    <Table.Td><Text size="sm" c="slate.5" ff="monospace">{row.idx}</Text></Table.Td>
-                    <Table.Td><Text size="sm" c="slate.7">{fmtDate(row.payment_date)}</Text></Table.Td>
-                    <Table.Td ta="right"><Text size="sm" c="slate.7" ff="monospace">{formatAmount(currency, row.emi_amount)}</Text></Table.Td>
-                    <Table.Td ta="right"><Text size="sm" c="slate.7" ff="monospace">{formatAmount(currency, row.principal_amount)}</Text></Table.Td>
-                    <Table.Td ta="right"><Text size="sm" c="slate.7" ff="monospace">{formatAmount(currency, row.interest_amount)}</Text></Table.Td>
-                    <Table.Td ta="right">
-                      <Text size="sm" c={row.penalty_amount > 0 ? "red.6" : "slate.7"} fw={row.penalty_amount > 0 ? 600 : 400} ff="monospace">
-                        {formatAmount(currency, row.penalty_amount)}
+                    <Table.Td style={{ whiteSpace: "nowrap" }}><Text size="12px" c="slate.5" ff="monospace">{row.idx}</Text></Table.Td>
+                    <Table.Td style={{ whiteSpace: "nowrap" }}><Text size="12px" c="slate.7">{fmtDate(row.payment_date)}</Text></Table.Td>
+                    <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}><Text size="12px" c="slate.7" ff="monospace">{formatAmount(currency, row.emi_amount, { withSymbol: true })}</Text></Table.Td>
+                    <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}><Text size="12px" c="slate.7" ff="monospace">{formatAmount(currency, row.principal_amount, { withSymbol: true })}</Text></Table.Td>
+                    <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}><Text size="12px" c="slate.7" ff="monospace">{formatAmount(currency, row.interest_amount, { withSymbol: true })}</Text></Table.Td>
+                    <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}>
+                        <Text size="12px" c={row.penalty_amount > 0 ? "red.6" : "slate.7"} fw={row.penalty_amount > 0 ? 600 : 400} ff="monospace">
+                        {formatAmount(currency, row.penalty_amount, { withSymbol: true })}
                       </Text>
                     </Table.Td>
-                    <Table.Td ta="right"><Text size="sm" c="slate.7" ff="monospace">{formatAmount(currency, row.charges)}</Text></Table.Td>
-                    <Table.Td ta="right"><Text size="sm" fw={600} c="slate.8" ff="monospace">{formatAmount(currency, row.total_payment)}</Text></Table.Td>
-                    <Table.Td ta="right"><Text size="sm" c="slate.6" ff="monospace">{formatAmount(currency, row.balance_loan_amount)}</Text></Table.Td>
-                    <Table.Td>
+                    <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}><Text size="12px" c="slate.7" ff="monospace">{formatAmount(currency, row.charges, { withSymbol: true })}</Text></Table.Td>
+                    <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}><Text size="12px" fw={600} c="slate.8" ff="monospace">{formatAmount(currency, row.total_payment, { withSymbol: true })}</Text></Table.Td>
+                    <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}><Text size="12px" c="slate.6" ff="monospace">{formatAmount(currency, row.balance_loan_amount, { withSymbol: true })}</Text></Table.Td>
+                    <Table.Td style={{ whiteSpace: "nowrap" }}>
                       <Badge size="xs" variant="light" color={STATUS_COLORS[row.ui_status] || "gray"}>
                         {row.ui_status}
                       </Badge>
@@ -172,7 +172,7 @@ export function ScheduleTabContent({
                 {paginatedRows.length === 0 && (
                   <Table.Tr>
                     <Table.Td colSpan={10} className="text-center py-6">
-                      <Text size="sm" c="dimmed">No installments found.</Text>
+                        <Text size="12px" c="dimmed">No installments found.</Text>
                     </Table.Td>
                   </Table.Tr>
                 )}
@@ -191,7 +191,7 @@ export function ScheduleTabContent({
       </div>
 
       {/* Right Column: Schedule Summary */}
-      <Box className="w-[290px] shrink-0 rounded-lg p-3" style={{ border: "1px solid var(--mantine-color-slate-2)", background: "white" }}>
+      <Box className="w-[260px] shrink-0 rounded-lg p-3" style={{ border: "1px solid var(--mantine-color-slate-2)", background: "white" }}>
         <Group gap={8} mb="sm">
           <Box style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--mantine-color-violet-0)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <IconCalendarEvent size={16} color="var(--mantine-color-violet-6)" />

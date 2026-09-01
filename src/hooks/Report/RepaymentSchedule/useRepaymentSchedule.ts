@@ -74,7 +74,7 @@ export function useRepaymentSchedule() {
   const [activeTab, setActiveTab] = useState<string>("schedule");
   const [chartViewType, setChartViewType] = useState<"chart" | "table">("chart");
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(8);
   const [fromDate] = useState("2024-05-01");
   const [toDate] = useState("2029-04-30");
 
