@@ -14,6 +14,7 @@ export function useContactState() {
   const [district, setDistrict] = useState("");
   const [cityTown, setCityTown] = useState("");
   const [postalCode, setPostalCode] = useState("");
+  const [residentialAddressSince, setResidentialAddressSince] = useState("");
   const [sameAsResidential, setSameAsResidential] = useState(true);
   const [mailingAddress, setMailingAddress] = useState("");
   const [mailingAddressLine2, setMailingAddressLine2] = useState("");
@@ -22,6 +23,7 @@ export function useContactState() {
   const [mailingDistrict, setMailingDistrict] = useState("");
   const [mailingCityTown, setMailingCityTown] = useState("");
   const [mailingPostalCode, setMailingPostalCode] = useState("");
+  const [mailingAddressSince, setMailingAddressSince] = useState("");
   const [correspondenceAddress, setCorrespondenceAddress] = useState("");
   const [primaryContactName, setPrimaryContactName] = useState("");
 
@@ -36,6 +38,8 @@ const [sameAsRegisteredOffice, setSameAsRegisteredOffice] = useState(true);
   >(null);
   const [correspondenceCityTown, setCorrespondenceCityTown] = useState("");
   const [correspondencePostalCode, setCorrespondencePostalCode] = useState("");
+  const [correspondenceAddressSince, setCorrespondenceAddressSince] =
+    useState("");
 
   const reset = () => {
     setPrimaryContactName("");
@@ -51,6 +55,7 @@ setSameAsRegisteredOffice(true);
     setDistrict("");
     setCityTown("");
     setPostalCode("");
+    setResidentialAddressSince("");
     setSameAsResidential(true);
     setMailingAddress("");
     setMailingAddressLine2("");
@@ -59,12 +64,14 @@ setSameAsRegisteredOffice(true);
     setMailingDistrict("");
     setMailingCityTown("");
     setMailingPostalCode("");
+    setMailingAddressSince("");
     setCorrespondenceAddress("");
     setCorrespondenceAddressLine2("");
     setCorrespondenceCountry(null);
     setCorrespondenceProvince(null);
     setCorrespondenceCityTown("");
     setCorrespondencePostalCode("");
+    setCorrespondenceAddressSince("");
   };
 
   return {
@@ -92,6 +99,8 @@ setPrimaryContactName,
     setCityTown,
     postalCode,
     setPostalCode,
+    residentialAddressSince,
+    setResidentialAddressSince,
     sameAsResidential,
     setSameAsResidential,
     mailingAddress,
@@ -108,6 +117,8 @@ setPrimaryContactName,
     setMailingCityTown,
     mailingPostalCode,
     setMailingPostalCode,
+    mailingAddressSince,
+    setMailingAddressSince,
     correspondenceAddress,
     setCorrespondenceAddress,
     correspondenceAddressLine2,
@@ -120,6 +131,8 @@ setPrimaryContactName,
     setCorrespondenceCityTown,
     correspondencePostalCode,
     setCorrespondencePostalCode,
+    correspondenceAddressSince,
+    setCorrespondenceAddressSince,
 
     reset,
   };
