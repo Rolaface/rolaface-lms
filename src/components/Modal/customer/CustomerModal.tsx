@@ -431,33 +431,37 @@ export function CustomerModal({
             duplicateDocMatch={duplicateDocMatch}
           />
         );
-      case 3:
-        return (
-          <FinancialStep
-            educationLevel={financialBorrower.educationLevel}
-            setEducationLevel={financialBorrower.setEducationLevel}
-            employmentType={financialBorrower.employmentType}
-            setEmploymentType={financialBorrower.setEmploymentType}
-            sourceOfIncome={financialBorrower.sourceOfIncome}
-            setSourceOfIncome={financialBorrower.setSourceOfIncome}
-            monthlyIncome={financialBorrower.monthlyIncome}
-            setMonthlyIncome={financialBorrower.setMonthlyIncome}
-            annualIncome={financialBorrower.annualIncome}
-            setAnnualIncome={financialBorrower.setAnnualIncome}
-            totalAssets={financialBorrower.totalAssets}
-            setTotalAssets={financialBorrower.setTotalAssets}
-            totalLiabilities={financialBorrower.totalLiabilities}
-            setTotalLiabilities={financialBorrower.setTotalLiabilities}
-            existingMonthlyObligations={
-              financialBorrower.existingMonthlyObligations
-            }
-            setExistingMonthlyObligations={
-              financialBorrower.setExistingMonthlyObligations
-            }
-            relationshipManager={financialBorrower.relationshipManager}
-            setRelationshipManager={financialBorrower.setRelationshipManager}
-          />
-        );
+     case 3:
+  return (
+    <FinancialStep
+      customerType={identity.customerType}
+      educationLevel={financialBorrower.educationLevel}
+      setEducationLevel={financialBorrower.setEducationLevel}
+      employmentType={financialBorrower.employmentType}
+      setEmploymentType={financialBorrower.setEmploymentType}
+      sourceOfIncome={financialBorrower.sourceOfIncome}
+      setSourceOfIncome={financialBorrower.setSourceOfIncome}
+      monthlyIncome={financialBorrower.monthlyIncome}
+      setMonthlyIncome={financialBorrower.setMonthlyIncome}
+      annualIncome={financialBorrower.annualIncome}
+      setAnnualIncome={financialBorrower.setAnnualIncome}
+      totalAssets={financialBorrower.totalAssets}
+      setTotalAssets={financialBorrower.setTotalAssets}
+      totalLiabilities={financialBorrower.totalLiabilities}
+      setTotalLiabilities={financialBorrower.setTotalLiabilities}
+      existingMonthlyObligations={
+        financialBorrower.existingMonthlyObligations
+      }
+      setExistingMonthlyObligations={
+        financialBorrower.setExistingMonthlyObligations
+      }
+      relationshipManager={financialBorrower.relationshipManager}
+      setRelationshipManager={financialBorrower.setRelationshipManager}
+      industryType={financialBorrower.industryType}
+      setIndustryType={financialBorrower.setIndustryType}
+      employerName={financialBorrower.employerName}
+    />
+  );
      case 4:
   return (
     <Stack gap="lg">
