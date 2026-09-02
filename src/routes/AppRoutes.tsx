@@ -20,6 +20,7 @@ import { Collateral } from "../view/Collateral/Collateral";
 import { LoanApplication } from "../view/Origination/LoanApplication";
 import { LoanStatement } from "../view/Reports/LoanStatement/LoanStatement";
 import { ArrearReports } from "../view/Reports/Arrear/ArrearReports";
+import { RepaymentSchedule } from "../view/Reports/RepaymentSchedule/RepaymentSchedule";
 
 import { LoanAccount } from "../view/LoanAccount/LoanAccount";
 import { LoanDisbursement } from "../view/Operations/LoanDisbursement/LoanDisbursement";
@@ -377,6 +378,11 @@ const reportsArrearsRoute = createRoute({
   path: "/arrears",
   component: ArrearReports,
 });
+const reportsScheduleRoute = createRoute({
+  getParentRoute: () => reportsRoute,
+  path: "/schedule",
+  component: RepaymentSchedule,
+});
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
@@ -457,7 +463,7 @@ const routeTree = rootRoute.addChildren([
     cashflowRoute,
   ]),
 
-  reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute]),
+  reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
   settingsRoute.addChildren([
     lendingConfigurationRoute,
 

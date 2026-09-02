@@ -214,7 +214,7 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
     <Modal
       opened={opened}
       onClose={handleModalClose}
-      size="850px"
+      size={850}
       padding={0}
       lockScroll
       styles={{

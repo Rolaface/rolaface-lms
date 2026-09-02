@@ -81,13 +81,13 @@ export function LoanSummarySidebar({
 }
   return (
     <div
-      className="w-full lg:w-[300px] shrink-0"
+      className="w-full lg:w-75 shrink-0"
       style={{
         borderTop: "1px solid var(--mantine-color-slate-2)",
         background: theme.other.summaryPanelBg as string,
       }}
     >
-      <div className="lg:shadow-[var(--mantine-shadow-lg)] h-full">
+      <div className="lg:shadow-(--mantine-shadow-lg) h-full">
         {/* p-5 -> p-4, gap-4 -> gap-3, and pb-6 added as a safety buffer
             so the last card never sits behind the footer */}
         <div className="p-4 pb-6 flex flex-col gap-3">

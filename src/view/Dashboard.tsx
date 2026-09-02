@@ -114,7 +114,7 @@ function StatCard({ stat, loading }: { stat: any; loading: boolean }) {
 
 function PanelCard({ title, info, loading, children }: { title: string; info?: boolean; loading?: boolean; children: React.ReactNode }) {
   return (
-    <Paper withBorder radius="lg" p="sm" className="border-slate-200 flex flex-col relative overflow-hidden h-full">
+    <Paper withBorder radius="lg" p="sm" className="border-slate-200 relative overflow-hidden" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {loading && (
         <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center rounded-lg">
           <Loader size="sm" color="blue" />
@@ -182,6 +182,20 @@ const getRiskGradeColors = (code: string) => {
   if (c.includes("SUBSTANDARD") || c.includes("LOSS")) return { bg: cv("danger", 0), color: cv("danger", 7) };
   if (c.includes("DOUBT")) return { bg: cv("orange", 0), color: cv("orange", 7) }; 
   return { bg: cv("gray", 1), color: cv("gray", 7) }; 
+};
+
+const splitCurrency = (val: string) => {
+  if (!val) return val;
+  const parts = val.split(" ");
+  if (parts.length > 1) {
+    return (
+      <div className="flex flex-col items-end leading-tight">
+        <span className="text-[10px] text-slate-500">{parts[0]}</span>
+        <span>{parts.slice(1).join(" ")}</span>
+      </div>
+    );
+  }
+  return val;
 };
 
 export function Dashboard() {
@@ -304,9 +318,10 @@ export function Dashboard() {
         <div className="grid grid-cols-[1fr_1fr_2.2fr_1.5fr] gap-3.5 items-stretch">
           
           <PanelCard title="Collection Efficiency Rate (%)" info loading={status.loadingCharts}>
-            <div className="flex flex-col items-center pt-1">
+            <div className="flex-1 flex flex-col items-center pt-1">
               <CircularProgress percent={eff?.rate_pct || 0} />
-              <Text size="12px" c="dimmed" mt={8}>Collected</Text>
+              <div className="w-full flex flex-col items-center mt-8">
+<Text size="12px" c="dimmed">Collected</Text>
               <Text fw={700} size="12.5px" className="text-slate-700">
                 {renderSmartCurrency(eff?.collected || 0)} / {renderSmartCurrency(eff?.demand || 0)}
               </Text>
@@ -314,13 +329,14 @@ export function Dashboard() {
                 <Group gap={4}>
                   <IconArrowUp size={11} />
                   <span>6.2% vs last month</span>
-                </Group>
-              </Badge>
+</Group>
+</Badge>
+</div>
             </div>
           </PanelCard>
 
           <PanelCard title="Non-Performing Assets (NPA)" loading={status.loadingCharts}>
-            <div className="flex flex-col gap-5 pt-6">
+            <div className="flex-1 flex flex-col justify-evenly py-2">
               <NpaBlock label="Gross NPA" value={`${npa?.gross_npa_pct || 0}%`} delta="0.35%" trend={GROSS_NPA_TREND} />
               <NpaBlock label="Net NPA" value={`${npa?.net_npa_pct || 0}%`} delta="0.18%" trend={NET_NPA_TREND} />
             </div>
@@ -331,8 +347,9 @@ export function Dashboard() {
               <Group gap={5}><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cv("brand", 6) }} /><Text size="11px" c="dimmed">Disbursement</Text></Group>
               <Group gap={5}><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cv("green", 6) }} /><Text size="11px" c="dimmed">Collection</Text></Group>
             </Group>
-            <div className="h-[248px]">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="relative flex-1 min-h-[250px]">
+                <div className="absolute inset-0">
+                  <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={TREND} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="#F1F5F9" />
                   <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
@@ -346,16 +363,17 @@ export function Dashboard() {
                   <Line type="monotone" dataKey="collection" stroke={cv("green", 6)} strokeWidth={1.5} dot={{ r: 2.5, fill: cv("green", 6) }} />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-          </PanelCard>
+                </div>
+              </div>
+            </PanelCard>
 
           <PanelCard title="Risk Grade Matrix" loading={status.loadingCharts}>
-            <div className="flex flex-col gap-2 h-full">
-              {classifications.map((r) => {
+            <div className="flex-1 flex flex-col gap-1">
+                {classifications.map((r) => {
                 const { bg, color } = getRiskGradeColors(r.code);
                 
                 return (
-                  <Group key={r.code} justify="space-between" p="xs" className="rounded-md" style={{ backgroundColor: bg }}>
+                  <Group key={r.code} justify="space-between" p={6} className="rounded-md" style={{ backgroundColor: bg }}>
                     <div>
                       <Text size="11.5px" fw={700} style={{ color }}>{r.label}</Text>
                       <Text size="10.5px" c="dimmed" mt={2} fw={500}>
@@ -393,24 +411,24 @@ export function Dashboard() {
               <Title order={5} className="text-slate-900">Pending Approvals List</Title>
             </Group>
             <div className="overflow-x-auto flex-1">
-              <Table verticalSpacing="xs" horizontalSpacing="md" className="text-[12.5px]">
+              <Table verticalSpacing="xs" horizontalSpacing="sm" className="text-[11px]">
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th><Text size="12px" fw={600} c="dimmed">Application ID</Text></Table.Th>
-                    <Table.Th><Text size="12px" fw={600} c="dimmed">Customer Name</Text></Table.Th>
-                    <Table.Th><Text size="12px" fw={600} c="dimmed">Loan Product</Text></Table.Th>
-                    <Table.Th><Text size="12px" fw={600} c="dimmed">Amount</Text></Table.Th>
-                    <Table.Th><Text size="12px" fw={600} c="dimmed">Current Stage</Text></Table.Th>
-                    <Table.Th><Text size="12px" fw={600} c="dimmed">Pending Since</Text></Table.Th>
+                    <Table.Th><Text size="10px" fw={600} c="dimmed" tt="uppercase">Application ID</Text></Table.Th>
+                    <Table.Th><Text size="10px" fw={600} c="dimmed" tt="uppercase">Customer Name</Text></Table.Th>
+                    <Table.Th><Text size="10px" fw={600} c="dimmed" tt="uppercase">Loan Product</Text></Table.Th>
+                    <Table.Th><Text size="10px" fw={600} c="dimmed" tt="uppercase">Amount</Text></Table.Th>
+                    <Table.Th><Text size="10px" fw={600} c="dimmed" tt="uppercase">Current Stage</Text></Table.Th>
+                    <Table.Th><Text size="10px" fw={600} c="dimmed" tt="uppercase">Pending Since</Text></Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {data.pendingApprovals.map((r) => (
                     <Table.Tr key={r.application_id}>
-                      <Table.Td fw={600} className="text-slate-700">{r.application_id}</Table.Td>
+                      <Table.Td fw={600} className="text-slate-700 text-[10px]">{r.application_id}</Table.Td>
                       <Table.Td className="text-slate-700">{r.customer_name}</Table.Td>
                       <Table.Td className="text-slate-500">{r.loan_product}</Table.Td>
-                      <Table.Td className="text-slate-600">{renderCurrency(r.amount)}</Table.Td>
+                      <Table.Td className="text-slate-600">{splitCurrency(renderCurrency(r.amount))}</Table.Td>
                       <Table.Td className="text-slate-600">{r.current_stage}</Table.Td>
                       <Table.Td>
                         <Badge radius="sm" size="sm" variant="light" color={r.pending_since.includes("Day") ? "gold" : "gray"}>
@@ -450,15 +468,15 @@ export function Dashboard() {
               <Title order={5} className="text-slate-900">Overdue Collections Task List</Title>
             </Group>
             <div className="overflow-x-auto flex-1">
-              <Table verticalSpacing="xs" horizontalSpacing="md" className="text-[12.5px]">
+              <Table verticalSpacing="xs" horizontalSpacing="sm" className="text-[11px]">
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th><Text size="12px" fw={600} c="dimmed">Loan Account</Text></Table.Th>
-                    <Table.Th><Text size="12px" fw={600} c="dimmed">Customer Name</Text></Table.Th>
-                    <Table.Th><Text size="12px" fw={600} c="dimmed">Days Past Due</Text></Table.Th>
-                    <Table.Th><Text size="12px" fw={600} c="dimmed">Amount Overdue</Text></Table.Th>
-                    <Table.Th><Text size="12px" fw={600} c="dimmed">Next Action</Text></Table.Th>
-                    <Table.Th><Text size="12px" fw={600} c="dimmed">Priority</Text></Table.Th>
+                    <Table.Th><Text size="10px" fw={600} c="dimmed" tt="uppercase">Loan Account</Text></Table.Th>
+                    <Table.Th><Text size="10px" fw={600} c="dimmed" tt="uppercase">Customer Name</Text></Table.Th>
+                    <Table.Th><Text size="10px" fw={600} c="dimmed" tt="uppercase">Days Past Due</Text></Table.Th>
+                    <Table.Th><Text size="10px" fw={600} c="dimmed" tt="uppercase">Amount Overdue</Text></Table.Th>
+                    <Table.Th><Text size="10px" fw={600} c="dimmed" tt="uppercase">Next Action</Text></Table.Th>
+                    <Table.Th><Text size="10px" fw={600} c="dimmed" tt="uppercase">Priority</Text></Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -466,10 +484,10 @@ export function Dashboard() {
                     const b = PRIORITY_BADGE[r.priority] || PRIORITY_BADGE.Low;
                     return (
                       <Table.Tr key={r.loan_account}>
-                        <Table.Td fw={600} className="text-slate-700">{r.loan_account}</Table.Td>
+                        <Table.Td fw={600} className="text-slate-700 text-[10px]">{r.loan_account}</Table.Td>
                         <Table.Td className="text-slate-700">{r.customer_name}</Table.Td>
                         <Table.Td className="text-slate-600">{r.days_past_due}</Table.Td>
-                        <Table.Td className="text-slate-600">{renderCurrency(r.amount_overdue)}</Table.Td>
+                        <Table.Td className="text-slate-600">{splitCurrency(renderCurrency(r.amount_overdue))}</Table.Td>
                         <Table.Td className="text-slate-600">{r.next_action}</Table.Td>
                         <Table.Td>
                           <Badge radius="sm" size="sm" style={{ backgroundColor: b.bg, color: b.color }}>{r.priority}</Badge>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Box, Button, Group, Modal, Text, ThemeIcon, useMantineTheme } from "@mantine/core";
-import { IconArrowRight, IconDiscount2, IconX, IconMinus } from "@tabler/icons-react"; import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {  IconDiscount2, IconX, IconMinus } from "@tabler/icons-react"; import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LoanRepaymentPayload } from "../../types/loanRepaymentForm";
 import type { LoanWaiverBorrower, LoanWaiverFormData, LoanWaiverLoanAccount } from "../../types/loanwaiver";
 import {
@@ -313,7 +313,7 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
   closeOnClickOutside={false}
   closeOnEscape={false}
 >
-        <Box className="flex flex-col h-[75vh] min-h-[650px] max-h-[95vh] overflow-hidden">
+        <Box className="flex flex-col h-[75vh] min-h-162.5 max-h-[95vh] overflow-hidden">
           {/* Header */}
           <Box
             className="px-6 py-3 flex justify-between items-center shrink-0"

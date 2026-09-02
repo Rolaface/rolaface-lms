@@ -20,7 +20,7 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
 
   return (
     <div
-      className="w-[300px] p-4 shrink-0 min-h-0 overflow-y-auto shadow-[var(--mantine-shadow-lg)]"
+      className="w-75 p-4 shrink-0 min-h-0 overflow-y-auto shadow-(--mantine-shadow-lg)"
       style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
     >
       <div className="flex items-center gap-2 mb-3">
@@ -95,6 +95,7 @@ export function DuesSummaryPanel({ selectedLoan, dues, isDuesLoading, onOpenPaym
             variant="light"
             color="brand"
             fullWidth
+            className="mt-4"
             leftSection={<IconCreditCard size={14} />}
             onClick={onOpenPaymentEffect}
           >

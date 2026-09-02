@@ -207,8 +207,9 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconReportAnalytics,
     matchPrefix: true,
     subItems: [
-      { path: "/reports/statement", label: "Loan Statement", icon: IconFileText , modules:["Loan"]},
-      { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics , modules:["Loan"] },
+      { path: "/reports/statement", label: "Loan Statement", icon: IconFileText, modules: ["Loan"] },
+      { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics, modules: ["Loan"] },
+      { path: "/reports/schedule", label: "Repayment Schedule", icon: IconFileText, modules: ["Loan"] },
     ],
   },
   {

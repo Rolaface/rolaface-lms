@@ -1124,7 +1124,7 @@ export function LoanDisbursementModal({
 
             {/* Summary sidebar — styled after the Loan Booking summary sidebar */}
             <div
-              className="w-[280px] shrink-0 overflow-y-auto p-4"
+              className="w-70 shrink-0 overflow-y-auto p-4"
               style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
             >
               <Text size="sm" fw={700} c="slate.7" tt="uppercase" style={{ letterSpacing: "0.05em" }} mb="sm">
