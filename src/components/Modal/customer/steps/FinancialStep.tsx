@@ -1,4 +1,4 @@
-import { Select, NumberInput, Box } from "@mantine/core";
+import { Select, NumberInput, Box ,TextInput} from "@mantine/core";
 import { IconChevronDown, IconChartLine } from "@tabler/icons-react";
 import {
   PlainCard,
@@ -24,6 +24,9 @@ interface FinancialStepProps {
   setExistingMonthlyObligations: (v: number | "") => void;
   relationshipManager: string | null;
   setRelationshipManager: (v: string | null) => void;
+  industryType: string | null;
+  setIndustryType: (v: string | null) => void;
+  employerName: string;
 }
 
 const chevron = (
@@ -54,6 +57,8 @@ export function FinancialStep(props: FinancialStepProps) {
     totalLiabilities, setTotalLiabilities,
     existingMonthlyObligations, setExistingMonthlyObligations,
     relationshipManager, setRelationshipManager,
+    industryType, setIndustryType,
+    employerName,
   } = props;
 
   const netWorth =
@@ -96,6 +101,20 @@ export function FinancialStep(props: FinancialStepProps) {
           comboboxProps={{ width: 280, position: "bottom-start" }}
           styles={fieldStyles}
         />
+         <Select
+          radius="md" searchable rightSection={chevron}
+          label="Industry Type" placeholder="Select Industry Type"
+          data={["Agriculture", "Construction", "Education", "Finance", "Healthcare", "Hospitality", "Information Technology", "Manufacturing", "Retail", "Transportation", "Other"]}
+          value={industryType} onChange={setIndustryType}
+          comboboxProps={{ width: 280, position: "bottom-start" }}
+          styles={fieldStyles}
+        />
+        <TextInput
+  radius="md"
+  label="Employer Name"
+  placeholder="e.g. ABC Ltd"
+  value={employerName}
+/>
         <Select
           radius="md" searchable rightSection={chevron}
           label="Source of Income" placeholder="Select"
@@ -141,14 +160,14 @@ export function FinancialStep(props: FinancialStepProps) {
           onChange={(v) => setExistingMonthlyObligations(v as number | "")}
           styles={fieldStyles}
         />
-        <Select
+        {/* <Select
           radius="md" searchable rightSection={chevron}
           label="Relationship Manager" placeholder="Unassigned"
           data={["K. Zulu", "N. Tembo"]}
           value={relationshipManager} onChange={setRelationshipManager}
           comboboxProps={{ width: 280, position: "bottom-start" }}
           styles={fieldStyles}
-        />
+        /> */}
       </Box>
     </PlainCard>
   );

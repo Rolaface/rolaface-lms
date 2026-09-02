@@ -5,9 +5,11 @@ export type IdDocument = {
   idType: string;
   docNumber: string;
   issuingAuthority: string;
+  issuingCountry: string;
   issueDate: string;
   expiryDate: string;
   verification: string;
+  
   isPrimary: boolean;
 };
 

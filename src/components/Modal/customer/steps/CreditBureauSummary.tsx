@@ -15,7 +15,44 @@ interface CreditBureauSummaryProps {
 }
 
 export function CreditBureauSummary({ result, isExpired, onViewFullReport }: CreditBureauSummaryProps) {
-  if (!result) return null;
+  if (!result) {
+    return (
+      <PlainCard dense>
+        <Group justify="space-between" align="center" mb="xs">
+          <SectionHeader
+            icon={IconGauge}
+            title="Credit bureau summary"
+            badge="BUREAU"
+            accent="accent"
+            dense
+            stepNumber={2}
+          />
+        </Group>
+
+        <Stack
+          align="center"
+          justify="center"
+          gap={6}
+          py="xl"
+          style={{
+            border: "1px dashed var(--mantine-color-slate-3)",
+            borderRadius: "var(--mantine-radius-md)",
+          }}
+        >
+          <ThemeIcon variant="light" color="slate" size={36} radius="xl">
+            <IconFileSearch size={18} />
+          </ThemeIcon>
+          <Text size="sm" fw={600} c="slate.6">
+            No bureau summary yet
+          </Text>
+          <Text size="xs" c="slate.5" ta="center" maw={260}>
+            Run the credit check on the left to pull the customer's bureau
+            score, risk band, and account history.
+          </Text>
+        </Stack>
+      </PlainCard>
+    );
+  }
 
   const band = getScoreBand(result.score);
   const items = [
@@ -57,8 +94,6 @@ export function CreditBureauSummary({ result, isExpired, onViewFullReport }: Cre
           </SimpleGrid>
 
           <Divider my={4} />
-
-         
         </Stack>
       </Group>
     </PlainCard>

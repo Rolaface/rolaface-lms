@@ -29,6 +29,8 @@ import {
 } from "../../../../components/shared/customer/Shared";
 import type { IdDocument } from "../../../../types/customer/types";
 import { DatePickerInput } from "@mantine/dates";
+import { useCountries } from "../../../../hooks/common/useLookups";
+import { useDebouncedValue } from "@mantine/hooks";
 
 interface IdentificationStepProps {
   idDocuments: IdDocument[];
@@ -138,6 +140,16 @@ export function IdentificationStep({
     idDocuments[0]?.id ?? null,
   );
   const prevCount = useRef(idDocuments.length);
+
+  // Issuing country lookup — same useCountries hook + debounced search
+  // pattern used for Nationality / Business Country in IdentityStep.
+  const [issuingCountrySearch, setIssuingCountrySearch] = useState("");
+  const [debouncedIssuingCountrySearch] = useDebouncedValue(
+    issuingCountrySearch,
+    300,
+  );
+  const { data: issuingCountryOptions, isLoading: issuingCountriesLoading } =
+    useCountries(debouncedIssuingCountrySearch);
 
   // Auto-select a newly added document; if the selected one was removed,
   // fall back to the first document in the list.
@@ -357,8 +369,10 @@ export function IdentificationStep({
                 />
               </FieldRow>
 
-              <Box mt="sm">
+              <FieldRow columns={isMobile ? "1.5fr 1fr": "1fr 1fr 1fr"}>
+               
                 <TextInput
+                  mt="sm"
                   size="xs"
                   radius="md"
                   label="Issuing Authority"
@@ -370,7 +384,29 @@ export function IdentificationStep({
                     })
                   }
                 />
-              </Box>
+
+                  <Select
+                  mt="sm"
+                  size="xs"
+                  radius="md"
+                  searchable
+                  rightSection={chevron}
+                  label="Issuing Country"
+                  placeholder={
+                    issuingCountriesLoading ? "Loading..." : "Select"
+                  }
+                  data={issuingCountryOptions ?? []}
+                  value={selectedDoc.issuingCountry ?? null}
+                  onChange={(v) =>
+                    updateIdDocument(selectedDoc.id, {
+                      issuingCountry: v,
+                    })
+                  }
+                  onSearchChange={setIssuingCountrySearch}
+                  disabled={issuingCountriesLoading && !issuingCountryOptions}
+                />
+               
+              </FieldRow>
 
               {duplicateDocMatch && (
                 <Alert

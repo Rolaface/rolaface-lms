@@ -16,6 +16,7 @@ import {
   IconAlertTriangle,
   IconUserCircle,
 } from "@tabler/icons-react";
+import { DatePickerInput } from "@mantine/dates";
 import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
 import { useState, useEffect } from "react";
 import { useDebouncedValue } from "@mantine/hooks";
@@ -47,6 +48,8 @@ interface ContactStepProps {
   setCityTown: (v: string) => void;
   postalCode: string;
   setPostalCode: (v: string) => void;
+  residentialAddressSince: string;
+  setResidentialAddressSince: (v: string) => void;
 
   sameAsResidential: boolean;
   setSameAsResidential: (v: boolean) => void;
@@ -64,6 +67,8 @@ interface ContactStepProps {
   setMailingCityTown: (v: string) => void;
   mailingPostalCode: string;
   setMailingPostalCode: (v: string) => void;
+  mailingAddressSince: string;
+  setMailingAddressSince: (v: string) => void;
 
   primaryContactName: string;
   setPrimaryContactName: (v: string) => void;
@@ -82,6 +87,8 @@ interface ContactStepProps {
   setCorrespondenceCityTown: (v: string) => void;
   correspondencePostalCode: string;
   setCorrespondencePostalCode: (v: string) => void;
+  correspondenceAddressSince: string;
+  setCorrespondenceAddressSince: (v: string) => void;
 
   registeredOfficeAddress: string;
   registeredOfficeAddressLine2: string;
@@ -167,6 +174,8 @@ function AddressCard({
   onCountrySearch,
   postalCode,
   onPostalCode,
+  addressSince,
+  onAddressSince,
 }: {
   title: string;
   subtitle: string;
@@ -190,6 +199,8 @@ function AddressCard({
   onCountrySearch: (v: string) => void;
   postalCode: string;
   onPostalCode: (v: string) => void;
+  addressSince?: string;
+  onAddressSince?: (v: string) => void;
 }) {
   return (
     <Paper radius="md" p="sm" withBorder style={{ minWidth: 0 }}>
@@ -225,7 +236,9 @@ function AddressCard({
         mb={6}
       />
 
-      <FieldRow columns={showCounty ? "repeat(2, minmax(0, 1fr))" : "1fr"}>
+      <FieldRow
+        columns={showCounty ? "repeat(3, minmax(0, 1fr))" : "repeat(2, minmax(0, 1fr))"}
+      >
         <TextInput
           radius="md"
           label="City / Town"
@@ -245,9 +258,6 @@ function AddressCard({
             onChange={(e) => onCounty(e.currentTarget.value)}
           />
         )}
-      </FieldRow>
-
-      <FieldRow columns="repeat(3, minmax(0, 1fr))">
         <Select
           radius="md"
           searchable
@@ -259,6 +269,9 @@ function AddressCard({
           value={province}
           onChange={onProvince}
         />
+      </FieldRow>
+
+      <FieldRow columns="repeat(3, minmax(0, 1fr))">
         <Select
           radius="md"
           searchable
@@ -280,6 +293,31 @@ function AddressCard({
           value={postalCode}
           onChange={(e) => onPostalCode(e.currentTarget.value)}
         />
+        {onAddressSince ? (
+          <DatePickerInput
+            radius="md"
+            label="Address Since"
+            placeholder="DD-MMM-YYYY"
+            disabled={disabled}
+            value={addressSince ? new Date(addressSince) : null}
+            valueFormat="DD-MMM-YYYY"
+            onChange={(date) =>
+              onAddressSince(
+                date ? new Date(date).toISOString().split("T")[0] : "",
+              )
+            }
+            maxDate={new Date()}
+            clearable
+            popoverProps={{
+              withinPortal: true,
+              zIndex: 1000,
+              position: "bottom-start",
+              middlewares: { flip: true, shift: true },
+            }}
+          />
+        ) : (
+          <Box />
+        )}
       </FieldRow>
     </Paper>
   );
@@ -360,6 +398,8 @@ export function ContactStep(props: ContactStepProps) {
     setCityTown,
     postalCode,
     setPostalCode,
+    residentialAddressSince,
+    setResidentialAddressSince,
     sameAsResidential,
     setSameAsResidential,
     mailingAddress,
@@ -376,6 +416,8 @@ export function ContactStep(props: ContactStepProps) {
     setMailingCityTown,
     mailingPostalCode,
     setMailingPostalCode,
+    mailingAddressSince,
+    setMailingAddressSince,
     primaryContactName,
     setPrimaryContactName,
     sameAsRegisteredOffice,
@@ -392,6 +434,8 @@ export function ContactStep(props: ContactStepProps) {
     setCorrespondenceCityTown,
     correspondencePostalCode,
     setCorrespondencePostalCode,
+    correspondenceAddressSince,
+    setCorrespondenceAddressSince,
     registeredOfficeAddress,
     registeredOfficeAddressLine2,
     registeredOfficeCity,
@@ -567,6 +611,8 @@ export function ContactStep(props: ContactStepProps) {
               sameAsRegisteredOffice ? registeredOfficePostalCode || "" : correspondencePostalCode
             }
             onPostalCode={setCorrespondencePostalCode}
+            addressSince={correspondenceAddressSince}
+            onAddressSince={setCorrespondenceAddressSince}
           />
         </Box>
       ) : (
@@ -598,6 +644,8 @@ export function ContactStep(props: ContactStepProps) {
             onCountrySearch={setCountrySearch}
             postalCode={postalCode}
             onPostalCode={setPostalCode}
+            addressSince={residentialAddressSince}
+            onAddressSince={setResidentialAddressSince}
           />
 
           <AddressCard
@@ -633,6 +681,10 @@ export function ContactStep(props: ContactStepProps) {
             onCountrySearch={setMailingCountrySearch}
             postalCode={sameAsResidential ? postalCode : mailingPostalCode}
             onPostalCode={setMailingPostalCode}
+            addressSince={
+              sameAsResidential ? residentialAddressSince : mailingAddressSince
+            }
+            onAddressSince={setMailingAddressSince}
           />
         </Box>
       )}
