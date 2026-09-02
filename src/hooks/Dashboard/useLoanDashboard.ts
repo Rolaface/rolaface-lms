@@ -27,6 +27,19 @@ const getStartOfYearAndToday = () => {
   };
 };
 
+let isErrorShowing = false;
+
+const safeNotifyError = (err: any, defaultMessage: string) => {
+  if (isErrorShowing) return;
+  
+  isErrorShowing = true;
+  notifyError(parseFrappeError(err), defaultMessage);
+  
+  setTimeout(() => {
+    isErrorShowing = false;
+  }, 3000);
+};
+
 export function useLoanDashboard() {
   const { start, end } = getStartOfYearAndToday();
   const [fromDate, setFromDate] = useState(start);
@@ -60,7 +73,7 @@ export function useLoanDashboard() {
         const payload = res.message || res;
         if (payload.status_code === 200) setSummary(payload.data);
       })
-      .catch((err) => notifyError(parseFrappeError(err), "Failed to load summary"))
+      .catch((err) => safeNotifyError(err, "Failed to load summary"))
       .finally(() => setLoadingSummary(false));
 
     setLoadingCharts(true);
@@ -69,7 +82,7 @@ export function useLoanDashboard() {
         const payload = res.message || res;
         if (payload.status_code === 200) setCharts(payload.data);
       })
-      .catch((err) => notifyError(parseFrappeError(err), "Failed to load charts"))
+      .catch((err) => safeNotifyError(err, "Failed to load charts"))
       .finally(() => setLoadingCharts(false));
 
     setLoadingInsights(true);
@@ -78,7 +91,7 @@ export function useLoanDashboard() {
         const payload = res.message || res;
         if (payload.status_code === 200) setInsights(payload.data);
       })
-      .catch((err) => notifyError(parseFrappeError(err), "Failed to load insights"))
+      .catch((err) => safeNotifyError(err, "Failed to load insights"))
       .finally(() => setLoadingInsights(false));
   }, [fromDate, toDate, company]);
 
@@ -92,7 +105,7 @@ export function useLoanDashboard() {
           setPendingPagination(payload.pagination);
         }
       })
-      .catch((err) => notifyError(parseFrappeError(err), "Failed to load pending approvals"))
+      .catch((err) => safeNotifyError(err, "Failed to load pending approvals"))
       .finally(() => setLoadingPending(false));
   }, [fromDate, toDate, company, pendingPage]);
 
@@ -106,7 +119,7 @@ export function useLoanDashboard() {
           setOverduePagination(payload.pagination);
         }
       })
-      .catch((err) => notifyError(parseFrappeError(err), "Failed to load overdue tasks"))
+      .catch((err) => safeNotifyError(err, "Failed to load overdue tasks"))
       .finally(() => setLoadingOverdue(false));
   }, [fromDate, toDate, company, overduePage]);
 
