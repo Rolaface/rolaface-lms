@@ -14,7 +14,7 @@ interface LoanSummaryCardsProps {
 
 const fmtDate = (iso: string) =>
   iso
-    ? new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    ? new Date(iso).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
     : "—";
 
 const fmtCurrency = (currency: string, val: number) =>

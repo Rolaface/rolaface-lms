@@ -1,4 +1,4 @@
-import { Box, Text, Group, Button, SegmentedControl } from "@mantine/core";
+import { Box, Text, Group, Button, SegmentedControl, Select } from "@mantine/core";
 import { IconChartBar, IconTable, IconInfoCircle } from "@tabler/icons-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { LoanScheduleInfo } from "../../../types/Report/repaymentSchedule";
@@ -39,7 +39,7 @@ export function ChartTabContent({ info, chartData, chartViewType, setChartViewTy
   ];
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 w-full h-full">
       
 
       {/* 4 Summary Cards */}
@@ -73,22 +73,23 @@ export function ChartTabContent({ info, chartData, chartViewType, setChartViewTy
         <Box className="col-span-2 rounded-lg p-4 min-w-0 overflow-hidden" style={{ border: "1px solid var(--mantine-color-slate-2)", background: "white" }}>
           <Group justify="space-between" mb="md">
             <Text size="sm" fw={700} c="slate.8">Repayment Overview (EMI Composition)</Text>
-            <Button size="xs" variant="default" radius="md">Monthly</Button>
+            <Select size="xs" radius="md" data={["Monthly", "Quarterly", "Yearly"]} defaultValue="Monthly" styles={{ input: { width: 110, fontWeight: 500, color: "var(--mantine-color-slate-7)" } }} />
           </Group>
 
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={chartData} barCategoryGap="10%">
+            <BarChart data={chartData} barCategoryGap="10%" margin={{ top: 10, right: 10, left: 65, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--mantine-color-slate-1)" />
               <XAxis dataKey="installment" tick={{ fontSize: 11, fill: "var(--mantine-color-slate-5)" }} />
               <YAxis
                 tick={{ fontSize: 11, fill: "var(--mantine-color-slate-5)" }}
-                tickFormatter={(v) => `${currency} ${(v / 1000).toFixed(0)}K`}
+                tickFormatter={(v) => v.toLocaleString("en-IN")}
+                label={{ value: `Amount (${currency})`, angle: -90, position: "insideLeft", offset: 0, dx: -10, style: { fontSize: 12, fill: "var(--mantine-color-slate-6)", fontWeight: 500 } }}
               />
               <Tooltip
                 formatter={(v: number, name: string) => [formatAmount(currency, v, { withSymbol: true }), name]}
                 contentStyle={{ borderRadius: 8, border: "1px solid var(--mantine-color-slate-2)" }}
               />
-              <Legend iconType="square" wrapperStyle={{ fontSize: 12 }} />
+              <Legend verticalAlign="top" align="center" iconType="square" wrapperStyle={{ paddingBottom: 20, fontSize: 12 }} />
               <Bar dataKey="Principal" stackId="a" fill="#4C6EF5" radius={[0, 0, 0, 0]} />
               <Bar dataKey="Interest" stackId="a" fill="#40C057" />
               <Bar dataKey="Charges" stackId="a" fill="#FD7E14" radius={[3, 3, 0, 0]} />

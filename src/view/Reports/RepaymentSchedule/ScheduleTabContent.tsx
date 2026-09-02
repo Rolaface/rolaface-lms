@@ -10,12 +10,12 @@ interface ScheduleTabContentProps {
   setPage: (p: number) => void;
   totalPages: number;
   pageSize: number;
-  fromDate: string;
-  toDate: string;
+  fromDate: Date | string | null;
+  toDate: Date | string | null;
 }
 
 const fmtDate = (iso: string) =>
-  iso ? new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+  iso ? new Date(iso).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "—";
 
 const formatAmount = (currency: string, val: number, opts?: { withSymbol?: boolean }) => {
   const num = val.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -53,7 +53,7 @@ export function ScheduleTabContent({
   ];
 
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex items-stretch gap-3 w-full h-full">
       {/* Left Column */}
       <div className="flex-1 flex flex-col gap-2 min-w-0">
         
@@ -129,8 +129,8 @@ export function ScheduleTabContent({
         </div>
 
         {/* Installment Table */}
-        <Box className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--mantine-color-slate-2)", background: "white" }}>
-          <div className="overflow-x-auto">
+        <Box className="rounded-lg flex-1 flex flex-col overflow-hidden" style={{ border: "1px solid var(--mantine-color-slate-2)", background: "white" }}>
+          <div className="overflow-x-auto flex-1">
             <Table verticalSpacing="sm" horizontalSpacing="sm" highlightOnHover>
               <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
                 <Table.Tr>

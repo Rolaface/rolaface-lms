@@ -1,18 +1,19 @@
-import { Box, Select, TextInput } from "@mantine/core";
+import { Box, Select } from "@mantine/core";
+import { DateInput } from "@mantine/dates";
 import { IconCalendarDue, IconSearch } from "@tabler/icons-react";
 
 interface RepaymentScheduleFiltersProps {
   filters: {
     selectedLoan: string | null;
     selectedCustomer: string | null;
-    fromDate: string;
-    toDate: string;
+    fromDate: Date | null;
+    toDate: Date | null;
     loanSearch: string;
     customerSearch: string;
     setSelectedLoan: (v: string | null) => void;
     setSelectedCustomer: (v: string | null) => void;
-    setFromDate: (v: string) => void;
-    setToDate: (v: string) => void;
+    setFromDate: (v: Date | null) => void;
+    setToDate: (v: Date | null) => void;
     setLoanSearch: (v: string) => void;
     setCustomerSearch: (v: string) => void;
   };
@@ -25,10 +26,11 @@ interface RepaymentScheduleFiltersProps {
 export function RepaymentScheduleFilters({ filters, lookups }: RepaymentScheduleFiltersProps) {
   return (
     <Box
-      className="grid grid-cols-4 gap-2 p-1.5 rounded-lg"
+      className="flex flex-wrap gap-6 p-4 rounded-lg items-start"
       style={{ border: "1px solid var(--mantine-color-slate-2)", background: "white" }}
     >
       <Select
+        className="w-[240px]"
         label="Loan Account"
         placeholder="Search loan account..."
         searchable
@@ -40,9 +42,10 @@ export function RepaymentScheduleFilters({ filters, lookups }: RepaymentSchedule
         leftSection={<IconSearch size={14} />}
         size="sm"
         withAsterisk
-        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 2 } }}
+        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 } }}
       />
       <Select
+        className="w-[240px]"
         label="Customer"
         placeholder="Search customer..."
         searchable
@@ -53,27 +56,27 @@ export function RepaymentScheduleFilters({ filters, lookups }: RepaymentSchedule
         onSearchChange={filters.setCustomerSearch}
         size="sm"
         withAsterisk
-        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 2 } }}
+        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 } }}
       />
-      <TextInput
+      <DateInput valueFormat="MM/DD/YYYY" popoverProps={{ withinPortal: true, position: "bottom-start" }}
+        className="w-[200px]"
         label="From Date"
-        type="text"
         value={filters.fromDate}
-        onChange={(e) => filters.setFromDate(e.currentTarget.value)}
-        rightSection={<IconCalendarDue size={14} color="var(--mantine-color-success-6)" />}
+        onChange={filters.setFromDate}
+        leftSection={<IconCalendarDue size={14} color="var(--mantine-color-success-6)" />}
         size="sm"
         withAsterisk
-        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 2 } }}
+        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 } }}
       />
-      <TextInput
+      <DateInput valueFormat="MM/DD/YYYY" popoverProps={{ withinPortal: true, position: "bottom-start" }}
+        className="w-[200px]"
         label="To Date"
-        type="text"
         value={filters.toDate}
-        onChange={(e) => filters.setToDate(e.currentTarget.value)}
-        rightSection={<IconCalendarDue size={14} color="var(--mantine-color-success-6)" />}
+        onChange={filters.setToDate}
+        leftSection={<IconCalendarDue size={14} color="var(--mantine-color-success-6)" />}
         size="sm"
         withAsterisk
-        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 2 } }}
+        styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 } }}
       />
     </Box>
   );

@@ -7,27 +7,28 @@ import type {
 // ── Hardcoded demo data ──────────────────────────────────────
 const DEMO_ROWS: RepaymentScheduleRow[] = Array.from({ length: 60 }, (_, i) => {
   const idx = i + 1;
-  const principalBase = 15000 + idx * 20;
-  const interestBase = 6200 - idx * 25;
+  const step = (idx - 1) * (11000 / 59);
+  const principalBase = 6000 + step;
+  const interestBase = 14000 - step;
+  const charges = 1800;
   const penalty = [2, 4, 7].includes(idx) ? (idx === 2 ? 200 : idx === 4 ? 150 : 300) : 0;
-  const charges = 133;
-  const total = principalBase + Math.max(interestBase, 0) + penalty + charges;
-  const balance = Math.max(1000000 - principalBase * idx, 0);
-  const month = ((i % 12)) ;
+  const total = principalBase + interestBase + penalty + charges;
+  const balance = Math.max(1000000 - (6000 * idx + (idx * (idx - 1) / 2) * (11000 / 59)), 0);
+  const month = ((i % 12));
   const year = 2024 + Math.floor(i / 12);
   const dateStr = `${year}-${String(month + 6 > 12 ? month + 6 - 12 : month + 6).padStart(2, "0")}-01`;
   const status = idx <= 6 ? "Paid" : idx === 7 ? "Pending" : "Upcoming";
   return {
     idx,
     payment_date: dateStr,
-    emi_amount: 21247,
+    emi_amount: principalBase + interestBase,
     principal_amount: principalBase,
-    interest_amount: Math.max(interestBase, 0),
+    interest_amount: interestBase,
     penalty_amount: penalty,
-    charges,
+    charges: charges,
     total_payment: total,
     balance_loan_amount: balance,
-    ui_status: status,
+    ui_status: status as any,
   };
 });
 
@@ -75,8 +76,27 @@ export function useRepaymentSchedule() {
   const [chartViewType, setChartViewType] = useState<"chart" | "table">("chart");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(8);
-  const [fromDate] = useState("2024-05-01");
-  const [toDate] = useState("2029-04-30");
+  const [selectedLoan, setSelectedLoan] = useState<string | null>("LN-2024-000123");
+  const [selectedCustomer, setSelectedCustomer] = useState<string | null>("Rohit Sharma");
+  const [fromDate, setFromDate] = useState<Date | null>(new Date(2024, 4, 1));
+  const [toDate, setToDate] = useState<Date | null>(new Date(2029, 3, 30));
+  const [loanSearch, setLoanSearch] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const filters = {
+    selectedLoan,
+    selectedCustomer,
+    fromDate,
+    toDate,
+    loanSearch,
+    customerSearch,
+    setSelectedLoan,
+    setSelectedCustomer,
+    setFromDate,
+    setToDate,
+    setLoanSearch,
+    setCustomerSearch,
+    dates: { fromDate, toDate }
+  };
 
   const scheduleInfo = DEMO_INFO;
 
@@ -96,10 +116,5 @@ export function useRepaymentSchedule() {
     }));
   }, []);
 
-  return {
-    tabs: { activeTab, setActiveTab, chartViewType, setChartViewType },
-    data: { scheduleInfo, paginatedRows, chartData },
-    pagination: { page, setPage, pageSize, totalPages },
-    dates: { fromDate, toDate },
-  };
+  return { filters, scheduleInfo, paginatedRows, chartData, activeTab, setActiveTab, chartViewType, setChartViewType, page, setPage, pageSize, totalPages, loading: false, error: null, lookups: { loanOptions: [{ value: "LN-2024-000123", label: "LN-2024-000123" }], customerOptions: [{ value: "Rohit Sharma", label: "Rohit Sharma" }] } };
 }
