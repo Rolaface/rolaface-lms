@@ -1,4 +1,4 @@
-import { Select, NumberInput, Box ,TextInput} from "@mantine/core";
+import { Select, NumberInput, Box, TextInput } from "@mantine/core";
 import { IconChevronDown, IconChartLine } from "@tabler/icons-react";
 import {
   PlainCard,
@@ -6,6 +6,7 @@ import {
 } from "../../../../components/shared/customer/Shared";
 
 interface FinancialStepProps {
+  customerType: string;
   educationLevel: string | null;
   setEducationLevel: (v: string | null) => void;
   employmentType: string | null;
@@ -48,6 +49,7 @@ const fieldStyles = {
 
 export function FinancialStep(props: FinancialStepProps) {
   const {
+    customerType,
     educationLevel, setEducationLevel,
     employmentType, setEmploymentType,
     sourceOfIncome, setSourceOfIncome,
@@ -60,6 +62,8 @@ export function FinancialStep(props: FinancialStepProps) {
     industryType, setIndustryType,
     employerName,
   } = props;
+
+  const isBusiness = customerType === "Business";
 
   const netWorth =
     totalAssets !== "" && totalLiabilities !== ""
@@ -85,36 +89,47 @@ export function FinancialStep(props: FinancialStepProps) {
           alignItems: "start",
         }}
       >
-        <Select
-          radius="md" searchable rightSection={chevron}
-          label="Education Level" placeholder="Select"
-          data={["Primary", "Secondary", "Tertiary", "Postgraduate"]}
-          value={educationLevel} onChange={setEducationLevel}
-          comboboxProps={{ width: 280, position: "bottom-start" }}
-          styles={fieldStyles}
-        />
-        <Select
-          radius="md" searchable rightSection={chevron}
-          label="Employment Type" placeholder="Select"
-          data={["Formally Employed", "Self-Employed", "Informal", "Unemployed", "Retired"]}
-          value={employmentType} onChange={setEmploymentType}
-          comboboxProps={{ width: 280, position: "bottom-start" }}
-          styles={fieldStyles}
-        />
-         <Select
-          radius="md" searchable rightSection={chevron}
-          label="Industry Type" placeholder="Select Industry Type"
-          data={["Agriculture", "Construction", "Education", "Finance", "Healthcare", "Hospitality", "Information Technology", "Manufacturing", "Retail", "Transportation", "Other"]}
-          value={industryType} onChange={setIndustryType}
-          comboboxProps={{ width: 280, position: "bottom-start" }}
-          styles={fieldStyles}
-        />
-        <TextInput
-  radius="md"
-  label="Employer Name"
-  placeholder="e.g. ABC Ltd"
-  value={employerName}
-/>
+        {/* Individual-only fields — Education / Employment / Industry /
+            Employer aren't meaningful for a Business customer, and
+            Industry + Annual Revenue for businesses already live on the
+            Identity step's Business Information card, so we don't
+            duplicate them here. */}
+        {!isBusiness && (
+          <>
+            <Select
+              radius="md" searchable rightSection={chevron}
+              label="Education Level" placeholder="Select"
+              data={["Primary", "Secondary", "Tertiary", "Postgraduate"]}
+              value={educationLevel} onChange={setEducationLevel}
+              comboboxProps={{ width: 280, position: "bottom-start" }}
+              styles={fieldStyles}
+            />
+            <Select
+              radius="md" searchable rightSection={chevron}
+              label="Employment Type" placeholder="Select"
+              data={["Formally Employed", "Self-Employed", "Informal", "Unemployed", "Retired"]}
+              value={employmentType} onChange={setEmploymentType}
+              comboboxProps={{ width: 280, position: "bottom-start" }}
+              styles={fieldStyles}
+            />
+            <Select
+              radius="md" searchable rightSection={chevron}
+              label="Industry Type" placeholder="Select Industry Type"
+              data={["Agriculture", "Construction", "Education", "Finance", "Healthcare", "Hospitality", "Information Technology", "Manufacturing", "Retail", "Transportation", "Other"]}
+              value={industryType} onChange={setIndustryType}
+              comboboxProps={{ width: 280, position: "bottom-start" }}
+              styles={fieldStyles}
+            />
+            <TextInput
+              radius="md"
+              label="Employer Name"
+              placeholder="e.g. ABC Ltd"
+              value={employerName}
+              styles={fieldStyles}
+            />
+          </>
+        )}
+
         <Select
           radius="md" searchable rightSection={chevron}
           label="Source of Income" placeholder="Select"
@@ -123,18 +138,26 @@ export function FinancialStep(props: FinancialStepProps) {
           comboboxProps={{ width: 280, position: "bottom-start" }}
           styles={fieldStyles}
         />
-        <NumberInput
-          radius="md" hideControls
-          label="Monthly Income" placeholder="e.g. 12,500" thousandSeparator=","
-          value={monthlyIncome} onChange={(v) => setMonthlyIncome(v as number | "")}
-          styles={fieldStyles}
-        />
-        <NumberInput
-          radius="md" hideControls
-          label="Annual Income" placeholder="e.g. 150,000" thousandSeparator=","
-          value={annualIncome} onChange={(v) => setAnnualIncome(v as number | "")}
-          styles={fieldStyles}
-        />
+
+        {/* Annual Income is an individual-only figure — for Business,
+            Annual Revenue already covers this on the Identity step. */}
+        {!isBusiness && (
+          <>
+            <NumberInput
+              radius="md" hideControls
+              label="Monthly Income" placeholder="e.g. 12,500" thousandSeparator=","
+              value={monthlyIncome} onChange={(v) => setMonthlyIncome(v as number | "")}
+              styles={fieldStyles}
+            />
+            <NumberInput
+              radius="md" hideControls
+              label="Annual Income" placeholder="e.g. 150,000" thousandSeparator=","
+              value={annualIncome} onChange={(v) => setAnnualIncome(v as number | "")}
+              styles={fieldStyles}
+            />
+          </>
+        )}
+
         <NumberInput
           radius="md" hideControls
           label="Total Assets" placeholder="e.g. 250,000" thousandSeparator=","
