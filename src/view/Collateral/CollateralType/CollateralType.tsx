@@ -49,6 +49,7 @@ import {
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { collateralTypeModal } from '../../../components/Modal/collateralTypeModalStore';
+import { usePermission } from '../../../hooks/Usepermission';
 
 interface CollateralRow {
   id: string;
@@ -111,6 +112,13 @@ function statusToDisabledParam(status: string): 0 | 1 | undefined {
 
 export function CollateralType() {
   const theme = useMantineTheme();
+
+ 
+  const { can } = usePermission();
+  const canCreateCollateralType = can('Loan Security Type', 'create');
+  const canReadCollateralType = can('Loan Security Type', 'read');
+  const canWriteCollateralType = can('Loan Security Type', 'write');
+  const canDeleteCollateralType = can('Loan Security Type', 'delete');
 
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
@@ -259,8 +267,7 @@ export function CollateralType() {
     });
   };
 
-  // Shared by the eye icon and the row double-click handler — matches the
-  // ERP's "double-click a row to view" convention (see LoanDisbursement).
+
   const handleView = (row: CollateralRow) => {
     collateralTypeModal.open({ editId: row.id, isView: true });
   };
@@ -311,65 +318,80 @@ export function CollateralType() {
             (isEnabling || isDisabling);
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap">
-              <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="slate"
-                  radius="md"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleView(row);
-                  }}
-                >
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Edit" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="brand"
-                  radius="md"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    collateralTypeModal.open({ editId: row.id, isView: false });
-                  }}
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Delete" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="danger"
-                  radius="md"
-                  loading={isDeleting}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(row);
-                  }}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={isActive ? 'Inactive' : 'Active'} withArrow>
-                <Switch
-                  size="xs"
-                  color="success"
-                  checked={isActive}
-                  disabled={isTogglingStatus}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={() => handleToggleStatus(row)}
-                />
-              </Tooltip>
+              {canReadCollateralType && (
+                <Tooltip label="View" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="slate"
+                    radius="md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleView(row);
+                    }}
+                  >
+                    <IconEye size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canWriteCollateralType && (
+                <Tooltip label="Edit" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="brand"
+                    radius="md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      collateralTypeModal.open({ editId: row.id, isView: false });
+                    }}
+                  >
+                    <IconPencil size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canDeleteCollateralType && (
+                <Tooltip label="Delete" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="danger"
+                    radius="md"
+                    loading={isDeleting}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(row);
+                    }}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canWriteCollateralType && (
+                <Tooltip label={isActive ? 'Inactive' : 'Active'} withArrow>
+                  <Switch
+                    size="xs"
+                    color="success"
+                    checked={isActive}
+                    disabled={isTogglingStatus}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => handleToggleStatus(row)}
+                  />
+                </Tooltip>
+              )}
             </Group>
           );
         },
       }),
     ],
-    [isDeleting, isEnabling, isDisabling]
+    [
+      isDeleting,
+      isEnabling,
+      isDisabling,
+      canReadCollateralType,
+      canWriteCollateralType,
+      canDeleteCollateralType,
+    ]
   );
 
   const table = useReactTable({
@@ -470,21 +492,23 @@ export function CollateralType() {
             Reset
           </Button>
 
-          <Button
-            size="sm"
-            radius="xl"
-            color="brand"
-            onClick={() => {
-              collateralTypeModal.open({ editId: null, isView: false });
-            }}
-            leftSection={<IconPlus size={14} />}
-            style={{
-              background: theme.other.brandGradient,
-              boxShadow: theme.other.brandGlowShadowSm,
-            }}
-          >
-            Add Collateral Type
-          </Button>
+          {canCreateCollateralType && (
+            <Button
+              size="sm"
+              radius="xl"
+              color="brand"
+              onClick={() => {
+                collateralTypeModal.open({ editId: null, isView: false });
+              }}
+              leftSection={<IconPlus size={14} />}
+              style={{
+                background: theme.other.brandGradient,
+                boxShadow: theme.other.brandGlowShadowSm,
+              }}
+            >
+              Add Collateral Type
+            </Button>
+          )}
         </Group>
       </Paper>
 

@@ -1,4 +1,8 @@
+import { useMemo } from "react";
 import { RouteTabs, type RouteTabItem } from "../../components/ui/RouteTabs";
+import { usePermission } from "../../hooks/Usepermission"; 
+import type { PermissionAction } from "../../store/Permissionstore";
+import type { LmsModule } from "../../types/User/userRole";
 import {
   IconBookmarks,
   IconCreditCardRefund,
@@ -9,16 +13,76 @@ import {
   IconArrowsExchange,
 } from "@tabler/icons-react";
 
-const ACCOUNTING_TABS: RouteTabItem[] = [
-  { path: "/accounting/general-ledger", label: "General Ledger", icon: IconBookmarks, matchPrefix: true },
-   { path: "/accounting/trial-balance", label: "Trial Balance", icon: IconReportAnalytics, matchPrefix: true },
-  { path: "/accounting/receivable", label: "Receivable", icon: IconCreditCardRefund, matchPrefix: true },
-  { path: "/accounting/payable", label: "Payable", icon: IconCreditCardPay, matchPrefix: true },
-  { path: "/accounting/profit-loss", label: "Profit & Loss", icon: IconChartLine, matchPrefix: true },
-  { path: "/accounting/balance-sheet", label: "Balance Sheet", icon: IconScale, matchPrefix: true },
-  { path: "/accounting/cash-flow", label: "Cash Flow", icon: IconArrowsExchange, matchPrefix: true },
+type AccountingTabConfig = RouteTabItem & {
+  moduleChecks: Array<{ module: LmsModule; action: PermissionAction }>;
+};
+
+const ACCOUNTING_TABS: AccountingTabConfig[] = [
+  {
+    path: "/accounting/general-ledger",
+    label: "General Ledger",
+    icon: IconBookmarks,
+    matchPrefix: true,
+    moduleChecks: [
+      { module: "Account", action: "read" },
+      { module: "Journal Entry", action: "read" },
+      { module: "Account", action: "report" },
+    ],
+  },
+  {
+    path: "/accounting/trial-balance",
+    label: "Trial Balance",
+    icon: IconReportAnalytics,
+    matchPrefix: true,
+    moduleChecks: [{ module: "Account", action: "report" }],
+  },
+  {
+    path: "/accounting/receivable",
+    label: "Receivable",
+    icon: IconCreditCardRefund,
+    matchPrefix: true,
+    moduleChecks: [{ module: "Account", action: "report" }],
+  },
+  {
+    path: "/accounting/payable",
+    label: "Payable",
+    icon: IconCreditCardPay,
+    matchPrefix: true,
+    moduleChecks: [{ module: "Account", action: "report" }],
+  },
+  {
+    path: "/accounting/profit-loss",
+    label: "Profit & Loss",
+    icon: IconChartLine,
+    matchPrefix: true,
+    moduleChecks: [{ module: "Account", action: "report" }],
+  },
+  {
+    path: "/accounting/balance-sheet",
+    label: "Balance Sheet",
+    icon: IconScale,
+    matchPrefix: true,
+    moduleChecks: [{ module: "Account", action: "report" }],
+  },
+  {
+    path: "/accounting/cash-flow",
+    label: "Cash Flow",
+    icon: IconArrowsExchange,
+    matchPrefix: true,
+    moduleChecks: [{ module: "Account", action: "report" }],
+  },
 ];
 
 export function AccountingLayout() {
-  return <RouteTabs tabs={ACCOUNTING_TABS} />;
+  const { can } = usePermission();
+
+  const visibleTabs = useMemo(
+    () =>
+      ACCOUNTING_TABS.filter((tab) =>
+        tab.moduleChecks.some(({ module, action }) => can(module, action))
+      ),
+    [can]
+  );
+
+  return <RouteTabs tabs={visibleTabs} />;
 }

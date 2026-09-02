@@ -8,7 +8,14 @@ export const LMS_MODULES = [
   "Customer",
   "Loan Category",
   "Loan Classification",
-  "Loan Product"
+  "Loan Product",
+  "Loan Demand Offset Order",
+  "Item",
+  "Loan Security",
+  "Loan Security Type",
+  "Loan Application",
+  "Account",
+  "Journal Entry",
 ] as const;
 
 export type LmsModule = (typeof LMS_MODULES)[number];

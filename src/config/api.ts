@@ -1,7 +1,9 @@
-const ERP_BASE = (import.meta.env.VITE_API_BASE_URL ?? "") as string;
+import { ERP_BASE, ERP_FRONTEND, LMS_FRONTEND } from './resolveUrls';
+  console.log("🚀 ~ LMS_FRONTEND:", LMS_FRONTEND)
+  console.log("🚀 ~ ERP_FRONTEND:", ERP_FRONTEND)
+  console.log("🚀 ~ ERP_BASE:", ERP_BASE)
 
-export { ERP_BASE };
-
+export { ERP_BASE, ERP_FRONTEND, LMS_FRONTEND };
 export const API = {
   // =========================
   // AUTH

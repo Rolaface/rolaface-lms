@@ -36,13 +36,14 @@ import {
   IconBox,
   IconCoins,
 } from "@tabler/icons-react";
-
+import type { PermissionAction } from "../store/Permissionstore";
 import { usePermission } from "../hooks/Usepermission";
 import { useUserStore } from "../store/userStore";
 import { logoutUser } from "../api/authApi";
 import { openCommonModal } from "./Modal/AlertModal";
 import { parseFrappeError } from "../utils/parseFrappeError";
 import type { LmsModule } from "../types/User/userRole";
+import { ERP_FRONTEND } from '../config/resolveUrls';
 
 
 
@@ -57,6 +58,7 @@ interface NavItem {
   matchPrefix?: boolean;
   subItems?: NavItem[];
   modules?: LmsModule[];
+   action?: PermissionAction;
 }
 
 const LOCAL_NAV_ITEMS: NavItem[] = [
@@ -79,8 +81,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconBuildingBank,
     matchPrefix: true,
     subItems: [
-      { path: "/collateral/type", label: "Collateral Type", icon: IconBox },
-      { path: "/collateral/list", label: "Collateral", icon: IconCoins },
+      { path: "/collateral/type", label: "Collateral Type", icon: IconBox, modules: ["Loan Security Type"] },
+      { path: "/collateral/list", label: "Collateral", icon: IconCoins, modules: ["Loan Security"] },
     ],
   },
   {
@@ -91,8 +93,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     subItems: [
       { path: "/setup/category", label: "Loan Category", icon: IconListDetails , modules: ["Loan Category"]},
       { path: "/setup/classification", label: "Loan Classification", icon: IconFileText ,modules: ["Loan Classification"] },
-      { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails },
-      { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt },
+      { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails , modules:["Loan Demand Offset Order"]},
+      { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt , modules:["Item"] },
       { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank ,modules: ["Loan Product"]},
     ],
   },
@@ -102,7 +104,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconFileText,
     matchPrefix: true,
     subItems: [
-      { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText },
+      { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText , modules:["Loan Application"]},
     ],
   },
   {
@@ -135,17 +137,23 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
           {
             path: "/accounting/general-ledger/chart-of-accounts",
             label: "Chart of Accounts",
-            icon: IconHierarchy2,
+            icon: IconHierarchy2, 
+            modules: ["Account"],
+            action: "read",
           },
           {
             path: "/accounting/general-ledger/journal-entry",
             label: "Journal Entry",
             icon: IconReceipt2,
+            modules: ["Journal Entry"],
+            action: "read",
           },
           {
             path: "/accounting/general-ledger/report",
             label: "General Ledger Report",
             icon: IconFileText,
+             modules: ["Account"],
+             action: "report",
           },
         ],
       },
@@ -153,31 +161,43 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         path: "/accounting/trial-balance",
         label: "Trial Balance",
         icon: IconScale,
+        modules: ["Account"],
+        action: "report",
       },
       {
         path: "/accounting/receivable",
         label: "Receivable",
         icon: IconUsers,
+        modules: ["Account"],
+        action: "report",
       },
       {
         path: "/accounting/payable",
         label: "Payable",
         icon: IconBuildingBank,
+        modules: ["Account"],
+        action: "report",
       },
       {
         path: "/accounting/profit-loss",
         label: "Profit & Loss",
         icon: IconChartBar,
+        modules: ["Account"],
+        action: "report",
       },
       {
         path: "/accounting/balance-sheet",
         label: "Balance Sheet",
         icon: IconReportAnalytics,
+        modules: ["Account"],
+        action: "report",
       },
       {
         path: "/accounting/cash-flow",
         label: "Cash Flow",
         icon: IconArrowsExchange,
+        modules: ["Account"],
+        action: "report",
       },
     ],
   },
@@ -237,18 +257,21 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
 
 function filterNavItems(
   items: NavItem[],
-  canAccessAnyOf: (modules: LmsModule[]) => boolean
+   can: (module: LmsModule, action: PermissionAction) => boolean
 ): NavItem[] {
   const result: NavItem[] = [];
   for (const item of items) {
     if (item.subItems && item.subItems.length > 0) {
-      const filteredChildren = filterNavItems(item.subItems, canAccessAnyOf);
+     const filteredChildren = filterNavItems(item.subItems, can);
       if (filteredChildren.length > 0) {
         result.push({ ...item, subItems: filteredChildren });
       }
       continue;
     }
-    const allowed = !item.modules || item.modules.length === 0 || canAccessAnyOf(item.modules);
+     const allowed =
+     !item.modules ||
+      item.modules.length === 0 ||
+     item.modules.some((mod) => can(mod, item.action ?? "read"));
     if (allowed) result.push(item);
   }
   return result;
@@ -455,10 +478,10 @@ export function Sidebar({
     getInitialOpenMenus(pathname)
   );
 
-  const { canAccessAnyOf, isAdmin, permissions } = usePermission();
+  const { can, isAdmin, permissions } = usePermission();
   const visibleNavItems = React.useMemo(
-    () => filterNavItems(LOCAL_NAV_ITEMS, canAccessAnyOf),
-    [canAccessAnyOf, isAdmin, permissions]
+    () => filterNavItems(LOCAL_NAV_ITEMS, can),
+   [can, isAdmin, permissions]
   );
 
   const user = useUserStore((s) => s.user);
@@ -479,7 +502,7 @@ export function Sidebar({
       await logoutUser();
       localStorage.clear();
       clearUser();
-      window.location.href = `${import.meta.env.VITE_ERP_URL}/login`;
+      window.location.href = `${ERP_FRONTEND}/login`;
     } catch (err: any) {
       openCommonModal({
         heading: "Sign Out Failed",
@@ -571,7 +594,7 @@ export function Sidebar({
             radius="md"
             className="lms-focusable shrink-0"
             onClick={() => {
-              window.location.href = `${import.meta.env.VITE_ERP_URL}/select-app`;
+              window.location.href = `${ERP_FRONTEND}/select-app`;
             }}
             style={{ color: tk.iconDefault }}
           >
