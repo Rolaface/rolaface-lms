@@ -287,6 +287,12 @@ export function CustomerModal({
             customerNumber={identity.customerNumber}
             customerType={identity.customerType}
             setCustomerType={identity.setCustomerType}
+            customerCategory={identity.customerCategory}
+            setCustomerCategory={identity.setCustomerCategory}
+            isStaffCustomer={identity.isStaffCustomer}
+            setIsStaffCustomer={identity.setIsStaffCustomer}
+            staffId={identity.staffId}
+            setStaffId={identity.setStaffId}
             firstName={identity.firstName}
             setFirstName={identity.setFirstName}
             middleName={identity.middleName}
@@ -301,6 +307,8 @@ export function CustomerModal({
             setDateOfBirth={identity.setDateOfBirth}
             nationality={identity.nationality}
             setNationality={identity.setNationality}
+            maritalStatus={identity.maritalStatus}
+            setMaritalStatus={identity.setMaritalStatus}
             occupation={identity.occupation}
             setOccupation={identity.setOccupation}
             industry={identity.industry}

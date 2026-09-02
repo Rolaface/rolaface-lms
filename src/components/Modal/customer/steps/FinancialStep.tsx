@@ -1,4 +1,4 @@
-import { Select, NumberInput, Box } from "@mantine/core";
+import { Select, NumberInput, Box ,TextInput} from "@mantine/core";
 import { IconChevronDown, IconChartLine } from "@tabler/icons-react";
 import {
   PlainCard,
@@ -26,6 +26,7 @@ interface FinancialStepProps {
   setRelationshipManager: (v: string | null) => void;
   industryType: string | null;
   setIndustryType: (v: string | null) => void;
+  employerName: string;
 }
 
 const chevron = (
@@ -57,6 +58,7 @@ export function FinancialStep(props: FinancialStepProps) {
     existingMonthlyObligations, setExistingMonthlyObligations,
     relationshipManager, setRelationshipManager,
     industryType, setIndustryType,
+    employerName,
   } = props;
 
   const netWorth =
@@ -107,6 +109,12 @@ export function FinancialStep(props: FinancialStepProps) {
           comboboxProps={{ width: 280, position: "bottom-start" }}
           styles={fieldStyles}
         />
+        <TextInput
+  radius="md"
+  label="Employer Name"
+  placeholder="e.g. ABC Ltd"
+  value={employerName}
+/>
         <Select
           radius="md" searchable rightSection={chevron}
           label="Source of Income" placeholder="Select"

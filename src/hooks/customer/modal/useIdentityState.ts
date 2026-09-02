@@ -33,6 +33,11 @@ export function useIdentityState() {
       `CUST-${String(Math.floor(1000000 + Math.random() * 9000000)).slice(0, 7)}`,
   );
   const [customerType, setCustomerType] = useState<string>("Individual");
+  const [customerCategory, setCustomerCategory] = useState<string | null>(
+    null,
+  );
+  const [isStaffCustomer, setIsStaffCustomer] = useState(false);
+  const [staffId, setStaffId] = useState<string | null>(null);
 
   const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
@@ -41,6 +46,7 @@ export function useIdentityState() {
   const [gender, setGender] = useState<string | null>(null);
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [nationality, setNationality] = useState<string | null>(null);
+  const [maritalStatus, setMaritalStatus] = useState<string | null>(null);
   const [occupation, setOccupation] = useState("");
   const [industry, setIndustry] = useState<string | null>(null);
   const [employer, setEmployer] = useState("");
@@ -76,6 +82,9 @@ export function useIdentityState() {
 
   const reset = () => {
     setCustomerType("Individual");
+    setCustomerCategory(null);
+    setIsStaffCustomer(false);
+    setStaffId(null);
     setFirstName("");
     setMiddleName("");
     setLastName("");
@@ -83,6 +92,7 @@ export function useIdentityState() {
     setGender(null);
     setDateOfBirth("");
     setNationality(null);
+    setMaritalStatus(null);
     setOccupation("");
     setIndustry(null);
     setEmployer("");
@@ -110,6 +120,9 @@ export function useIdentityState() {
   return {
     customerNumber,
     customerType, setCustomerType,
+    customerCategory, setCustomerCategory,
+    isStaffCustomer, setIsStaffCustomer,
+    staffId, setStaffId,
     firstName, setFirstName,
     middleName, setMiddleName,
     lastName, setLastName,
@@ -117,6 +130,7 @@ export function useIdentityState() {
     gender, setGender,
     dateOfBirth, setDateOfBirth,
     nationality, setNationality,
+    maritalStatus, setMaritalStatus,
     occupation, setOccupation,
     industry, setIndustry,
     employer, setEmployer,
