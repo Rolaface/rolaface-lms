@@ -370,7 +370,22 @@ export function IdentificationStep({
               </FieldRow>
 
               <FieldRow columns={isMobile ? "1.5fr 1fr": "1fr 1fr 1fr"}>
-                 <Select
+               
+                <TextInput
+                  mt="sm"
+                  size="xs"
+                  radius="md"
+                  label="Issuing Authority"
+                  placeholder="e.g. NRC Dept."
+                  value={selectedDoc.issuingAuthority}
+                  onChange={(e) =>
+                    updateIdDocument(selectedDoc.id, {
+                      issuingAuthority: e.currentTarget.value,
+                    })
+                  }
+                />
+
+                  <Select
                   mt="sm"
                   size="xs"
                   radius="md"
@@ -389,19 +404,6 @@ export function IdentificationStep({
                   }
                   onSearchChange={setIssuingCountrySearch}
                   disabled={issuingCountriesLoading && !issuingCountryOptions}
-                />
-                <TextInput
-                  mt="sm"
-                  size="xs"
-                  radius="md"
-                  label="Issuing Authority"
-                  placeholder="e.g. NRC Dept."
-                  value={selectedDoc.issuingAuthority}
-                  onChange={(e) =>
-                    updateIdDocument(selectedDoc.id, {
-                      issuingAuthority: e.currentTarget.value,
-                    })
-                  }
                 />
                
               </FieldRow>
