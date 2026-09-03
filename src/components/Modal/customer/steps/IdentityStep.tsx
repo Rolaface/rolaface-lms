@@ -92,6 +92,10 @@ interface IdentityStepProps {
   setBusinessCountry: (v: string | null) => void;
   businessPostalCode: string;
   setBusinessPostalCode: (v: string) => void;
+  nrcNumber: string;
+  setNrcNumber: (v: string) => void;
+  individualTaxId: string;
+  setIndividualTaxId: (v: string) => void;
 
   errors?: Record<string, string>;
 }
@@ -198,6 +202,10 @@ export function IdentityStep(props: IdentityStepProps) {
     setBusinessCountry,
     businessPostalCode,
     setBusinessPostalCode,
+    nrcNumber,
+    setNrcNumber,
+    individualTaxId,
+    setIndividualTaxId,
     errors = {},
   } = props;
 
@@ -480,31 +488,27 @@ export function IdentityStep(props: IdentityStepProps) {
             mb={6}
             style={{ letterSpacing: 0.5 }}
           >
-            Employment Details
+            Government Identification
           </Text>
 
           <Grid gap="sm">
             <Grid.Col span={4}>
-              <Select
+              <TextInput
                 radius="md"
-                searchable
-                rightSection={chevron}
-                label="Industry (Optional)"
-                placeholder={industriesLoading ? "Loading..." : "Select"}
-                data={industryOptions ?? []}
-                value={industry}
-                onChange={setIndustry}
-                onSearchChange={setIndustrySearch}
-                disabled={industriesLoading && !industryOptions}
+                label="NRC Number"
+                placeholder="e.g. 123456/78/1"
+                value={nrcNumber}
+                onChange={(e) => setNrcNumber(e.currentTarget.value)}
               />
             </Grid.Col>
+
             <Grid.Col span={4}>
               <TextInput
                 radius="md"
-                label="Employer (Optional)"
-                placeholder="e.g. Ministry of Agriculture"
-                value={employer}
-                onChange={(e) => setEmployer(e.currentTarget.value)}
+                label="Tax Identification Number"
+                placeholder="Enter TIN / PAN"
+                value={individualTaxId}
+                onChange={(e) => setIndividualTaxId(e.currentTarget.value)}
               />
             </Grid.Col>
           </Grid>

@@ -33,9 +33,7 @@ export function useIdentityState() {
       `CUST-${String(Math.floor(1000000 + Math.random() * 9000000)).slice(0, 7)}`,
   );
   const [customerType, setCustomerType] = useState<string>("Individual");
-  const [customerCategory, setCustomerCategory] = useState<string | null>(
-    null,
-  );
+  const [customerCategory, setCustomerCategory] = useState<string | null>(null);
   const [isStaffCustomer, setIsStaffCustomer] = useState(false);
   const [staffId, setStaffId] = useState<string | null>(null);
 
@@ -50,6 +48,8 @@ export function useIdentityState() {
   const [occupation, setOccupation] = useState("");
   const [industry, setIndustry] = useState<string | null>(null);
   const [employer, setEmployer] = useState("");
+  const [nrcNumber, setNrcNumber] = useState("");
+  const [individualTaxId, setIndividualTaxId] = useState("");
 
   const [companyName, setCompanyName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
@@ -114,45 +114,88 @@ export function useIdentityState() {
     setBusinessProvince(null);
     setBusinessCountry(null);
     setBusinessPostalCode("");
+    setNrcNumber("");
+    setIndividualTaxId("");
+    setIndustry(null);
     setDirectors([]);
   };
 
   return {
     customerNumber,
-    customerType, setCustomerType,
-    customerCategory, setCustomerCategory,
-    isStaffCustomer, setIsStaffCustomer,
-    staffId, setStaffId,
-    firstName, setFirstName,
-    middleName, setMiddleName,
-    lastName, setLastName,
-    preferredName, setPreferredName,
-    gender, setGender,
-    dateOfBirth, setDateOfBirth,
-    nationality, setNationality,
-    maritalStatus, setMaritalStatus,
-    occupation, setOccupation,
-    industry, setIndustry,
-    employer, setEmployer,
-    companyName, setCompanyName,
-    registrationNumber, setRegistrationNumber,
-    incorporationDate, setIncorporationDate,
-    businessAddress, setBusinessAddress,
-    businessAddressLine2, setBusinessAddressLine2,
-    businessIndustry, setBusinessIndustry,
-    numberOfEmployees, setNumberOfEmployees,
-    annualRevenue, setAnnualRevenue,
-    businessType, setBusinessType,
-    legalStructure, setLegalStructure,
-    taxId, setTaxId,
-    vatNumber, setVatNumber,
-    currency, setCurrency,
-    fiscalYearEnd, setFiscalYearEnd,
-    businessCity, setBusinessCity,
-    businessProvince, setBusinessProvince,
-    businessCountry, setBusinessCountry,
-    businessPostalCode, setBusinessPostalCode,
-    directors, addDirector, updateDirector, removeDirector,
+    customerType,
+    setCustomerType,
+    customerCategory,
+    setCustomerCategory,
+    isStaffCustomer,
+    setIsStaffCustomer,
+    staffId,
+    setStaffId,
+    firstName,
+    setFirstName,
+    middleName,
+    setMiddleName,
+    lastName,
+    setLastName,
+    preferredName,
+    setPreferredName,
+    gender,
+    setGender,
+    dateOfBirth,
+    setDateOfBirth,
+    nationality,
+    setNationality,
+    maritalStatus,
+    setMaritalStatus,
+    occupation,
+    setOccupation,
+    nrcNumber,
+    setNrcNumber,
+    individualTaxId,
+    setIndividualTaxId,
+    industry,
+    setIndustry,
+    employer,
+    setEmployer,
+    companyName,
+    setCompanyName,
+    registrationNumber,
+    setRegistrationNumber,
+    incorporationDate,
+    setIncorporationDate,
+    businessAddress,
+    setBusinessAddress,
+    businessAddressLine2,
+    setBusinessAddressLine2,
+    businessIndustry,
+    setBusinessIndustry,
+    numberOfEmployees,
+    setNumberOfEmployees,
+    annualRevenue,
+    setAnnualRevenue,
+    businessType,
+    setBusinessType,
+    legalStructure,
+    setLegalStructure,
+    taxId,
+    setTaxId,
+    vatNumber,
+    setVatNumber,
+    currency,
+    setCurrency,
+    fiscalYearEnd,
+    setFiscalYearEnd,
+    businessCity,
+    setBusinessCity,
+    businessProvince,
+    setBusinessProvince,
+    businessCountry,
+    setBusinessCountry,
+    businessPostalCode,
+    setBusinessPostalCode,
+    directors,
+    addDirector,
+    updateDirector,
+    removeDirector,
     reset,
   };
 }
