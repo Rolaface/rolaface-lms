@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { parseFrappeError } from '../../../utils/parseFrappeError';
 import { getAllCollectionOrders, deleteCollectionOrder } from '../../../api/collectionOrderApi';
+import { usePermission } from '../../../hooks/Usepermission';
 import {
   Box,
   Button,
@@ -57,6 +58,12 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function LoanCollectionSequenceOrder() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
+
+  const { can } = usePermission();
+  const canCreateCollectionOrder = can('Loan Demand Offset Order', 'create');
+  const canReadCollectionOrder = can('Loan Demand Offset Order', 'read');
+  const canWriteCollectionOrder = can('Loan Demand Offset Order', 'write');
+  const canDeleteCollectionOrder = can('Loan Demand Offset Order', 'delete');
 
   const handleOpenModal = (mode: 'add' | 'edit' | 'view', data: CollectionOrderListItem | null = null) => {
     collectionSequenceOrderModal.open({ mode, data, onSaved: () => queryClient.invalidateQueries({ queryKey: ['collection-orders'] }) });
@@ -147,8 +154,7 @@ export function LoanCollectionSequenceOrder() {
     });
   };
 
-  // Shared by the eye icon and the row double-click handler — matches the
-  // ERP's "double-click a row to view" convention used across the other modules.
+
   const handleView = (row: CollectionOrderListItem) => {
     handleOpenModal('view', row);
   };
@@ -209,56 +215,68 @@ export function LoanCollectionSequenceOrder() {
           const row = info.row.original;
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-              <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="slate"
-                  radius="md"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleView(row);
-                  }}
-                >
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Edit" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="brand"
-                  radius="md"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenModal('edit', row);
-                  }}
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Delete" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="danger"
-                  radius="md"
-                  loading={deleteMutation.isPending && deleteMutation.variables === row.name}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(row);
-                  }}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
+              {canReadCollectionOrder && (
+                <Tooltip label="View" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="slate"
+                    radius="md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleView(row);
+                    }}
+                  >
+                    <IconEye size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canWriteCollectionOrder && (
+                <Tooltip label="Edit" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="brand"
+                    radius="md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenModal('edit', row);
+                    }}
+                  >
+                    <IconPencil size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {canDeleteCollectionOrder && (
+                <Tooltip label="Delete" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="danger"
+                    radius="md"
+                    loading={deleteMutation.isPending && deleteMutation.variables === row.name}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(row);
+                    }}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
             </Group>
           );
         },
       }),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [deleteMutation.isPending, deleteMutation.variables]
+    [
+      deleteMutation.isPending,
+      deleteMutation.variables,
+      canReadCollectionOrder,
+      canWriteCollectionOrder,
+      canDeleteCollectionOrder,
+    ]
   );
 
   const table = useReactTable({
@@ -350,16 +368,18 @@ export function LoanCollectionSequenceOrder() {
             <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>
               Reset
             </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={() => handleOpenModal('add')}
-              leftSection={<IconPlus size={14} />}
-              style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
-            >
-              Add Sequence
-            </Button>
+            {canCreateCollectionOrder && (
+              <Button
+                size="sm"
+                radius="xl"
+                color="brand"
+                onClick={() => handleOpenModal('add')}
+                leftSection={<IconPlus size={14} />}
+                style={{ background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadowSm }}
+              >
+                Add Sequence
+              </Button>
+            )}
           </Group>
         </Group>
       </Paper>

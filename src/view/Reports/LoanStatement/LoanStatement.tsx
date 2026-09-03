@@ -1,9 +1,10 @@
 import { useCallback } from "react";
-import { Box, Button, Group, Title, Text } from "@mantine/core";
+import { Box, Button, Group, Title, Text, Stack } from "@mantine/core";
 import { IconFileText, IconFileSpreadsheet, IconSend } from "@tabler/icons-react";
 
 import { useLoanStatement } from "../../../hooks/Report/LoanStatement/useLoanStatement";
 import { formatAmount, usePrefetchCurrencies } from "../../../store/currencyStore";
+import { usePermission } from "../../../hooks/Usepermission";
 
 import { LoanStatementFilters } from "./LoanStatementFilters";
 import { LoanStatementSummaryCards } from "./LoanStatementSummaryCards";
@@ -31,6 +32,24 @@ export function LoanStatement() {
     },
     [currencyCode]
   );
+
+  const { can } = usePermission();
+  const canViewLoanStatement = can("Loan", "report");
+
+  if (!canViewLoanStatement) {
+    return (
+      <Box className="bg-[#F7F8FB] text-slate-800 min-h-full flex items-center justify-center">
+        <Stack align="center" gap={4}>
+          <Text fw={600} c="slate.7">
+            Access Restricted
+          </Text>
+          <Text size="sm" c="dimmed">
+            You don't have permission to view the Loan Statement report.
+          </Text>
+        </Stack>
+      </Box>
+    );
+  }
 
   return (
     <Box className="bg-[#F7F8FB] text-slate-800 min-h-full">

@@ -78,8 +78,8 @@ export function useRepaymentSchedule() {
   const [pageSize] = useState(8);
   const [selectedLoan, setSelectedLoan] = useState<string | null>("LN-2024-000123");
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>("Rohit Sharma");
-  const [fromDate, setFromDate] = useState<Date | null>(new Date(2024, 4, 1));
-  const [toDate, setToDate] = useState<Date | null>(new Date(2029, 3, 30));
+  const [fromDate, setFromDate] = useState<Date | string | null>(new Date(2024, 4, 1));
+  const [toDate, setToDate] = useState<Date | string | null>(new Date(2029, 3, 30));
   const [loanSearch, setLoanSearch] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const filters = {

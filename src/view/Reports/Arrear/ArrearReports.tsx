@@ -1,10 +1,11 @@
 import { useCallback } from "react";
-import { Box, Button, Group, Title, Alert, Text } from "@mantine/core";
+import { Box, Button, Group, Title, Alert, Text, Stack } from "@mantine/core";
 import { IconFileSpreadsheet, IconFileAlert, IconAlertCircle } from "@tabler/icons-react";
 import { useLoanArrear } from "../../../hooks/Report/Arrear/useLoanArrear";
 
 import { formatAmount, usePrefetchCurrencies } from "../../../store/currencyStore"; 
 import { useCompanyStore } from "../../../store/companyStore";
+import { usePermission } from "../../../hooks/Usepermission";
 
 import { ArrearFilters } from "./ArrearFilters";
 import { ArrearSummaryCards } from "./ArrearSummaryCards";
@@ -38,6 +39,24 @@ export function ArrearReports() {
     },
     [currencyCode]
   );
+
+  const { can } = usePermission();
+  const canViewArrearReport = can("Loan", "report");
+
+  if (!canViewArrearReport) {
+    return (
+      <Box className="bg-[#F7F8FB] text-slate-800 min-h-full flex items-center justify-center">
+        <Stack align="center" gap={4}>
+          <Text fw={600} c="slate.7">
+            Access Restricted
+          </Text>
+          <Text size="sm" c="dimmed">
+            You don't have permission to view Arrear Reports.
+          </Text>
+        </Stack>
+      </Box>
+    );
+  }
 
   return (
     <Box className="bg-[#F7F8FB] text-slate-800 min-h-full relative">

@@ -34,6 +34,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { LoanApplicationModal } from '../../components/Modal/LoanApplicationModal';
+import { usePermission } from '../../hooks/Usepermission';
 
 // NOTE: requires `@tanstack/react-table` — install with:
 //   npm install @tanstack/react-table
@@ -133,6 +134,11 @@ const fmtDate = (iso: string) =>
 
 export function LoanApplication() {
   const [opened, { open, close }] = useDisclosure(false);
+
+  const { can } = usePermission();
+  const canCreateLoanApplication = can('Loan Application', 'create');
+  const canReadLoanApplication = can('Loan Application', 'read');
+  const canWriteLoanApplication = can('Loan Application', 'write');
 
   // filter state
   const [search, setSearch] = useState('');
@@ -247,21 +253,25 @@ export function LoanApplication() {
         ),
         cell: () => (
           <Group justify="flex-end" gap={6} wrap="nowrap">
-            <Tooltip label="View" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="gray">
-                <IconEye size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Edit" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="blue">
-                <IconPencil size={14} />
-              </ActionIcon>
-            </Tooltip>
+            {canReadLoanApplication && (
+              <Tooltip label="View" withArrow>
+                <ActionIcon size="sm" variant="subtle" color="gray">
+                  <IconEye size={14} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            {canWriteLoanApplication && (
+              <Tooltip label="Edit" withArrow>
+                <ActionIcon size="sm" variant="subtle" color="blue">
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+            )}
           </Group>
         ),
       }),
     ],
-    []
+    [canReadLoanApplication, canWriteLoanApplication]
   );
 
   const table = useReactTable({
@@ -300,15 +310,17 @@ export function LoanApplication() {
         <Text size="md" fw={700} className="text-gray-900">
           Loan Applications
         </Text>
-        <Button
-          size="xs"
-          bg="indigoAlt.4"
-          onClick={open}
-          className="bg-[#991B1B] hover:bg-red-900 transition-colors"
-          leftSection={<IconPlus size={14} />}
-        >
-          New Application
-        </Button>
+        {canCreateLoanApplication && (
+          <Button
+            size="xs"
+            bg="indigoAlt.4"
+            onClick={open}
+            className="bg-[#991B1B] hover:bg-red-900 transition-colors"
+            leftSection={<IconPlus size={14} />}
+          >
+            New Application
+          </Button>
+        )}
       </div>
 
       {/* Filters Box */}
