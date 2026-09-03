@@ -10,7 +10,7 @@ import {
   ScrollArea,
   UnstyledButton,
   useMantineTheme,
-  Stack,
+  Stack,SimpleGrid
 } from "@mantine/core";
 import { IconX, IconUser, IconCheck, IconMinus } from "@tabler/icons-react";
 
@@ -25,7 +25,7 @@ import { BorrowerStep } from "./steps/BorrowerStep";
 import { CreditAssessmentStep } from "./steps/Creditassessmentstep";
 import { CreditBureauSummary } from "./steps/CreditBureauSummary";
 import { ExistingFacilities } from "./steps/ExistingFacilities";
-import { EligibilitySummary } from "./steps/EligibilitySummary";
+import { AssignmentStep } from "./steps/AssignmentStep";
 import { KycStep } from "./steps/KycStep";
 import { DocumentsStep } from "./steps/DocumentsStep";
 import { KinStep } from "./steps/KinStep";
@@ -287,6 +287,12 @@ export function CustomerModal({
             customerNumber={identity.customerNumber}
             customerType={identity.customerType}
             setCustomerType={identity.setCustomerType}
+            customerCategory={identity.customerCategory}
+            setCustomerCategory={identity.setCustomerCategory}
+            isStaffCustomer={identity.isStaffCustomer}
+            setIsStaffCustomer={identity.setIsStaffCustomer}
+            staffId={identity.staffId}
+            setStaffId={identity.setStaffId}
             firstName={identity.firstName}
             setFirstName={identity.setFirstName}
             middleName={identity.middleName}
@@ -301,6 +307,8 @@ export function CustomerModal({
             setDateOfBirth={identity.setDateOfBirth}
             nationality={identity.nationality}
             setNationality={identity.setNationality}
+            maritalStatus={identity.maritalStatus}
+            setMaritalStatus={identity.setMaritalStatus}
             occupation={identity.occupation}
             setOccupation={identity.setOccupation}
             industry={identity.industry}
@@ -360,6 +368,8 @@ export function CustomerModal({
             setCityTown={contact.setCityTown}
             postalCode={contact.postalCode}
             setPostalCode={contact.setPostalCode}
+            residentialAddressSince={contact.residentialAddressSince}
+            setResidentialAddressSince={contact.setResidentialAddressSince}
             sameAsResidential={contact.sameAsResidential}
             setSameAsResidential={contact.setSameAsResidential}
             mailingAddress={contact.mailingAddress}
@@ -376,6 +386,8 @@ export function CustomerModal({
             setMailingCityTown={contact.setMailingCityTown}
             mailingPostalCode={contact.mailingPostalCode}
             setMailingPostalCode={contact.setMailingPostalCode}
+            mailingAddressSince={contact.mailingAddressSince}
+            setMailingAddressSince={contact.setMailingAddressSince}
             primaryContactName={contact.primaryContactName}
             setPrimaryContactName={contact.setPrimaryContactName}
             sameAsRegisteredOffice={contact.sameAsRegisteredOffice}
@@ -394,6 +406,10 @@ export function CustomerModal({
             setCorrespondenceCityTown={contact.setCorrespondenceCityTown}
             correspondencePostalCode={contact.correspondencePostalCode}
             setCorrespondencePostalCode={contact.setCorrespondencePostalCode}
+            correspondenceAddressSince={contact.correspondenceAddressSince}
+            setCorrespondenceAddressSince={
+              contact.setCorrespondenceAddressSince
+            }
             registeredOfficeAddress={identity.businessAddress}
             registeredOfficeAddressLine2={identity.businessAddressLine2}
             registeredOfficeCity={identity.businessCity}
@@ -415,96 +431,96 @@ export function CustomerModal({
             duplicateDocMatch={duplicateDocMatch}
           />
         );
-      case 3:
-        return (
-          <FinancialStep
-            educationLevel={financialBorrower.educationLevel}
-            setEducationLevel={financialBorrower.setEducationLevel}
-            employmentType={financialBorrower.employmentType}
-            setEmploymentType={financialBorrower.setEmploymentType}
-            sourceOfIncome={financialBorrower.sourceOfIncome}
-            setSourceOfIncome={financialBorrower.setSourceOfIncome}
-            monthlyIncome={financialBorrower.monthlyIncome}
-            setMonthlyIncome={financialBorrower.setMonthlyIncome}
-            annualIncome={financialBorrower.annualIncome}
-            setAnnualIncome={financialBorrower.setAnnualIncome}
-            totalAssets={financialBorrower.totalAssets}
-            setTotalAssets={financialBorrower.setTotalAssets}
-            totalLiabilities={financialBorrower.totalLiabilities}
-            setTotalLiabilities={financialBorrower.setTotalLiabilities}
-            existingMonthlyObligations={
-              financialBorrower.existingMonthlyObligations
-            }
-            setExistingMonthlyObligations={
-              financialBorrower.setExistingMonthlyObligations
-            }
-            relationshipManager={financialBorrower.relationshipManager}
-            setRelationshipManager={financialBorrower.setRelationshipManager}
-          />
-        );
-      case 4:
-        return (
-          <Stack gap="lg">
-            <CreditAssessmentStep
-              status={creditAssessment.status}
-              result={creditAssessment.result}
-              errorMessage={creditAssessment.errorMessage}
-              consentGiven={creditAssessment.consentGiven}
-              setConsentGiven={creditAssessment.setConsentGiven}
-              bureauProvider={financialBorrower.bureauProvider}
-              setBureauProvider={financialBorrower.setBureauProvider}
-              runCheck={creditAssessment.runCheck}
-              refreshCheck={creditAssessment.refreshCheck}
-            />
-            <CreditBureauSummary
-              result={creditAssessment.result}
-              isExpired={creditAssessment.isExpired}
-              onViewFullReport={() => {
-                // TODO: open a Drawer/Modal with the full bureau report
-                // (trade lines, inquiry history, exportable PDF).
-              }}
-            />
-            <ExistingFacilities
-              bureauFacilities={
-                creditAssessment.result?.existingFacilities ?? []
-              }
-            />
-            {/* <BorrowerStep
-              convertToBorrower={financialBorrower.convertToBorrower}
-              setConvertToBorrower={financialBorrower.setConvertToBorrower}
-              borrowerCategory={financialBorrower.borrowerCategory}
-              setBorrowerCategory={financialBorrower.setBorrowerCategory}
-              loanPurpose={financialBorrower.loanPurpose}
-              setLoanPurpose={financialBorrower.setLoanPurpose}
-              intendedLoanProduct={financialBorrower.intendedLoanProduct}
-              setIntendedLoanProduct={financialBorrower.setIntendedLoanProduct}
-              loanAmountRequested={financialBorrower.loanAmountRequested}
-              setLoanAmountRequested={financialBorrower.setLoanAmountRequested}
-              loanTenureMonths={financialBorrower.loanTenureMonths}
-              setLoanTenureMonths={financialBorrower.setLoanTenureMonths}
-              repaymentFrequency={financialBorrower.repaymentFrequency}
-              setRepaymentFrequency={financialBorrower.setRepaymentFrequency}
-              preliminaryRiskRating={financialBorrower.preliminaryRiskRating}
-              setPreliminaryRiskRating={
-                financialBorrower.setPreliminaryRiskRating
-              }
-              branch={financialBorrower.branch}
-              setBranch={financialBorrower.setBranch}
-              creditOfficer={financialBorrower.creditOfficer}
-              setCreditOfficer={financialBorrower.setCreditOfficer}
-            /> */}
-            <EligibilitySummary
-              monthlyIncome={financialBorrower.monthlyIncome}
-              existingMonthlyObligations={
-                financialBorrower.existingMonthlyObligations
-              }
-              bureauMonthlyObligations={
-                creditAssessment.result?.monthlyObligations
-              }
-              loanTenureMonths={financialBorrower.loanTenureMonths}
-            />
-          </Stack>
-        );
+     case 3:
+  return (
+    <FinancialStep
+      customerType={identity.customerType}
+      educationLevel={financialBorrower.educationLevel}
+      setEducationLevel={financialBorrower.setEducationLevel}
+      employmentType={financialBorrower.employmentType}
+      setEmploymentType={financialBorrower.setEmploymentType}
+      sourceOfIncome={financialBorrower.sourceOfIncome}
+      setSourceOfIncome={financialBorrower.setSourceOfIncome}
+      monthlyIncome={financialBorrower.monthlyIncome}
+      setMonthlyIncome={financialBorrower.setMonthlyIncome}
+      annualIncome={financialBorrower.annualIncome}
+      setAnnualIncome={financialBorrower.setAnnualIncome}
+      totalAssets={financialBorrower.totalAssets}
+      setTotalAssets={financialBorrower.setTotalAssets}
+      totalLiabilities={financialBorrower.totalLiabilities}
+      setTotalLiabilities={financialBorrower.setTotalLiabilities}
+      existingMonthlyObligations={
+        financialBorrower.existingMonthlyObligations
+      }
+      setExistingMonthlyObligations={
+        financialBorrower.setExistingMonthlyObligations
+      }
+      relationshipManager={financialBorrower.relationshipManager}
+      setRelationshipManager={financialBorrower.setRelationshipManager}
+      industryType={financialBorrower.industryType}
+      setIndustryType={financialBorrower.setIndustryType}
+      employerName={financialBorrower.employerName}
+    />
+  );
+     case 4:
+  return (
+    <Stack gap="lg">
+      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+        <CreditAssessmentStep
+          status={creditAssessment.status}
+          result={creditAssessment.result}
+          errorMessage={creditAssessment.errorMessage}
+          consentGiven={creditAssessment.consentGiven}
+          setConsentGiven={creditAssessment.setConsentGiven}
+          bureauProvider={financialBorrower.bureauProvider}
+          setBureauProvider={financialBorrower.setBureauProvider}
+          runCheck={creditAssessment.runCheck}
+          refreshCheck={creditAssessment.refreshCheck}
+        />
+        <CreditBureauSummary
+          result={creditAssessment.result}
+          isExpired={creditAssessment.isExpired}
+          onViewFullReport={() => {
+            // TODO: open a Drawer/Modal with the full bureau report
+            // (trade lines, inquiry history, exportable PDF).
+          }}
+        />
+      </SimpleGrid>
+
+      <ExistingFacilities
+        bureauFacilities={creditAssessment.result?.existingFacilities ?? []}
+      />
+
+      {/* <BorrowerStep
+        convertToBorrower={financialBorrower.convertToBorrower}
+        setConvertToBorrower={financialBorrower.setConvertToBorrower}
+        borrowerCategory={financialBorrower.borrowerCategory}
+        setBorrowerCategory={financialBorrower.setBorrowerCategory}
+        loanPurpose={financialBorrower.loanPurpose}
+        setLoanPurpose={financialBorrower.setLoanPurpose}
+        intendedLoanProduct={financialBorrower.intendedLoanProduct}
+        setIntendedLoanProduct={financialBorrower.setIntendedLoanProduct}
+        loanAmountRequested={financialBorrower.loanAmountRequested}
+        setLoanAmountRequested={financialBorrower.setLoanAmountRequested}
+        loanTenureMonths={financialBorrower.loanTenureMonths}
+        setLoanTenureMonths={financialBorrower.setLoanTenureMonths}
+        repaymentFrequency={financialBorrower.repaymentFrequency}
+        setRepaymentFrequency={financialBorrower.setRepaymentFrequency}
+        preliminaryRiskRating={financialBorrower.preliminaryRiskRating}
+        setPreliminaryRiskRating={
+          financialBorrower.setPreliminaryRiskRating
+        }
+        branch={financialBorrower.branch}
+        setBranch={financialBorrower.setBranch}
+        creditOfficer={financialBorrower.creditOfficer}
+        setCreditOfficer={financialBorrower.setCreditOfficer}
+      /> */}
+      <AssignmentStep
+  relationshipManager={financialBorrower.relationshipManager}
+  setRelationshipManager={financialBorrower.setRelationshipManager}
+/>
+    </Stack>
+  );
       case 5:
         return <KycStep kycStatus={kyc.kycStatus} runCheck={kyc.runCheck} />;
       case 6:

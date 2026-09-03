@@ -76,8 +76,13 @@ function formatDateToDDMMMYYYY(dateString: string) {
 
 function StatCard({ stat, loading }: { stat: any; loading: boolean }) {
   const Icon = stat.icon;
-  const DeltaIcon = stat.up ? IconArrowUp : IconArrowDown;
-  const deltaColor = stat.up ? cv("green", 6) : cv("danger", 6);
+  
+  const hasDelta = stat.delta != null && stat.delta !== 0 && stat.delta !== "0" && stat.delta !== "0%";
+  const isUp = stat.up === true;
+  
+  const DeltaIcon = isUp ? IconArrowUp : IconArrowDown;
+  const deltaColor = isUp ? cv("green", 6) : cv("danger", 6);
+
   return (
     <Paper withBorder radius="lg" p="md" className="border-slate-200 flex-1 relative overflow-hidden">
       {loading && (
@@ -99,13 +104,17 @@ function StatCard({ stat, loading }: { stat: any; loading: boolean }) {
           <Text fw={800} className="text-[22px] text-slate-900 leading-tight mt-0.5 whitespace-nowrap">
             {stat.value}
           </Text>
-          <Group gap={4} mt={2}>
-            <DeltaIcon size={12} style={{ color: deltaColor }} />
-            <Text size="12px" fw={700} style={{ color: deltaColor }}>
-              {stat.delta}
-            </Text>
-            <Text size="12px" c="dimmed">vs last month</Text>
-          </Group>
+          
+          {hasDelta && (
+            <Group gap={4} mt={2}>
+              <DeltaIcon size={12} style={{ color: deltaColor }} />
+              <Text size="12px" fw={700} style={{ color: deltaColor }}>
+                {stat.delta}
+              </Text>
+              <Text size="12px" c="dimmed">vs last month</Text>
+            </Group>
+          )}
+
         </div>
       </Group>
     </Paper>
@@ -166,11 +175,14 @@ function NpaBlock({ label, value, delta, trend }: { label: string; value: string
       </div>
       <Text size="11.5px" c="dimmed" fw={500} mt={6}>{label}</Text>
       <Text fw={800} className="text-[19px] text-slate-900 leading-tight">{value}</Text>
-      <Group gap={3} justify="center" mt={1}>
-        <IconArrowUp size={11} style={{ color: cv("danger", 6) }} />
-        <Text size="11px" fw={600} style={{ color: cv("danger", 6) }}>{delta}</Text>
-        <Text size="11px" c="dimmed">vs last month</Text>
-      </Group>
+      
+      {delta && delta !== "0%" && delta !== "0" && (
+        <Group gap={3} justify="center" mt={1}>
+          <IconArrowUp size={11} style={{ color: cv("danger", 6) }} />
+          <Text size="11px" fw={600} style={{ color: cv("danger", 6) }}>{delta}</Text>
+          <Text size="11px" c="dimmed">vs last month</Text>
+        </Group>
+      )}
     </div>
   );
 }
@@ -228,10 +240,10 @@ export function Dashboard() {
   );
 
   const STATS = useMemo(() => [
-    { title: "TOTAL LOANS", value: data.summary?.total_loans || 0, delta: "5.2%", up: true, icon: IconFileText, color: "brand" },
-    { title: "ACTIVE CUSTOMERS", value: data.summary?.active_customers || 0, delta: "3.1%", up: true, icon: IconUsers, color: "green" },
-    { title: "TOTAL DISBURSED", value: renderSmartCurrency(data.summary?.total_disbursed || 0), delta: "8.7%", up: true, icon: IconCashBanknote, color: "indigoAlt" },
-    { title: "PENDING APPLICATIONS", value: data.summary?.pending_applications || 0, delta: "12.5%", up: false, icon: IconApps, color: "gold" },
+    { title: "TOTAL LOANS", value: data.summary?.total_loans || 0, delta: null, up: null, icon: IconFileText, color: "brand" },
+    { title: "ACTIVE CUSTOMERS", value: data.summary?.active_customers || 0, delta: null, up: null, icon: IconUsers, color: "green" },
+    { title: "TOTAL DISBURSED", value: renderSmartCurrency(data.summary?.total_disbursed || 0), delta: null, up: null, icon: IconCashBanknote, color: "indigoAlt" },
+    { title: "PENDING APPLICATIONS", value: data.summary?.pending_applications || 0, delta: null, up: null, icon: IconApps, color: "gold" },
   ], [data.summary, renderSmartCurrency]);
 
   const eff = data.charts?.collection_efficiency;
@@ -245,9 +257,9 @@ export function Dashboard() {
   const QUICK_INSIGHTS = [
     { icon: IconTrophy, color: "brand", label: "Top Loan Product", value: ins?.top_loan_product?.loan_product || "-", note: `${ins?.top_loan_product?.pct_of_total || 0}% of total disbursed` },
     { icon: IconTrendingUp, color: "green", label: "Highest Disbursement", value: renderSmartCurrency(ins?.highest_disbursement?.amount || 0), note: `in ${ins?.highest_disbursement?.month_label || "-"}` },
-    { icon: IconClock, color: "gold", label: "Avg. Approval Time", value: ins?.avg_approval_time || "2.4 Days", note: "↓ 10% vs last month" },
+    { icon: IconClock, color: "gold", label: "Avg. Approval Time", value: ins?.avg_approval_time || "-", note: "-" },
     { icon: IconAlertTriangle, color: "accent", label: "Overdue Loans", value: renderSmartCurrency(ins?.overdue_loans?.amount || 0), note: `${ins?.overdue_loans?.pct_of_total || 0}% of total portfolio` },
-    { icon: IconUsersGroup, color: "indigoAlt", label: "Active Agents", value: ins?.active_agents || "12", note: "↑ 2 vs last month" },
+    { icon: IconUsersGroup, color: "indigoAlt", label: "Active Agents", value: ins?.active_agents || "-", note: "-" },
   ];
 
   return (
@@ -321,24 +333,18 @@ export function Dashboard() {
             <div className="flex-1 flex flex-col items-center pt-1">
               <CircularProgress percent={eff?.rate_pct || 0} />
               <div className="w-full flex flex-col items-center mt-8">
-<Text size="12px" c="dimmed">Collected</Text>
-              <Text fw={700} size="12.5px" className="text-slate-700">
-                {renderSmartCurrency(eff?.collected || 0)} / {renderSmartCurrency(eff?.demand || 0)}
-              </Text>
-              <Badge mt={8} radius="sm" variant="light" color="green" size="sm" className="!normal-case">
-                <Group gap={4}>
-                  <IconArrowUp size={11} />
-                  <span>6.2% vs last month</span>
-</Group>
-</Badge>
-</div>
+                <Text size="12px" c="dimmed">Collected</Text>
+                <Text fw={700} size="12.5px" className="text-slate-700">
+                  {renderSmartCurrency(eff?.collected || 0)} / {renderSmartCurrency(eff?.demand || 0)}
+                </Text>
+              </div>
             </div>
           </PanelCard>
 
           <PanelCard title="Non-Performing Assets (NPA)" loading={status.loadingCharts}>
             <div className="flex-1 flex flex-col justify-evenly py-2">
-              <NpaBlock label="Gross NPA" value={`${npa?.gross_npa_pct || 0}%`} delta="0.35%" trend={GROSS_NPA_TREND} />
-              <NpaBlock label="Net NPA" value={`${npa?.net_npa_pct || 0}%`} delta="0.18%" trend={NET_NPA_TREND} />
+              <NpaBlock label="Gross NPA" value={`${npa?.gross_npa_pct || 0}%`} delta="" trend={GROSS_NPA_TREND} />
+              <NpaBlock label="Net NPA" value={`${npa?.net_npa_pct || 0}%`} delta="" trend={NET_NPA_TREND} />
             </div>
           </PanelCard>
 
@@ -423,7 +429,7 @@ export function Dashboard() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {data.pendingApprovals.map((r) => (
+                  {data.pendingApprovals?.map((r) => (
                     <Table.Tr key={r.application_id}>
                       <Table.Td fw={600} className="text-slate-700 text-[10px]">{r.application_id}</Table.Td>
                       <Table.Td className="text-slate-700">{r.customer_name}</Table.Td>
@@ -480,7 +486,7 @@ export function Dashboard() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {data.overdueTasks.map((r) => {
+                  {data.overdueTasks?.map((r) => {
                     const b = PRIORITY_BADGE[r.priority] || PRIORITY_BADGE.Low;
                     return (
                       <Table.Tr key={r.loan_account}>

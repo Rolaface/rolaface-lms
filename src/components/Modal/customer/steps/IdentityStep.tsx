@@ -9,6 +9,7 @@ import {
   NumberInput,
   Grid,
   Box,
+  Switch,
 } from "@mantine/core";
 import {
   IconChevronDown,
@@ -18,7 +19,6 @@ import {
 } from "@tabler/icons-react";
 import { DatePickerInput } from "@mantine/dates";
 import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
-import { readOnlyClassNames } from "../../../constants/customer/constants";
 import { calcAge } from "../../../../utils/customer/utils";
 import {
   useGenders,
@@ -27,11 +27,24 @@ import {
 } from "../../../../hooks/common/useLookups";
 import { useDebouncedValue } from "@mantine/hooks";
 
+// TODO: replace with real staff lookup (useStaff hook / API) once available.
+// Kept as temporary UI data only — not part of the final architecture.
+const staffOptions = [
+  { value: "EMP001", label: "EMP001 - John Banda" },
+  { value: "EMP002", label: "EMP002 - Mary Phiri" },
+  { value: "EMP003", label: "EMP003 - Peter Mwansa" },
+];
+
 interface IdentityStepProps {
   customerNumber: string;
   customerType: string;
   setCustomerType: (v: string) => void;
-
+  customerCategory: string | null;
+  setCustomerCategory: (v: string | null) => void;
+  isStaffCustomer: boolean;
+  setIsStaffCustomer: (v: boolean) => void;
+  staffId: string | null;
+  setStaffId: (v: string | null) => void;
   firstName: string;
   setFirstName: (v: string) => void;
   middleName: string;
@@ -46,6 +59,8 @@ interface IdentityStepProps {
   setDateOfBirth: (v: string) => void;
   nationality: string | null;
   setNationality: (v: string | null) => void;
+  maritalStatus: string | null;
+  setMaritalStatus: (v: string | null) => void;
   occupation: string;
   setOccupation: (v: string) => void;
   industry: string | null;
@@ -77,9 +92,29 @@ interface IdentityStepProps {
   setBusinessCountry: (v: string | null) => void;
   businessPostalCode: string;
   setBusinessPostalCode: (v: string) => void;
+  nrcNumber: string;
+  setNrcNumber: (v: string) => void;
+  individualTaxId: string;
+  setIndividualTaxId: (v: string) => void;
 
   errors?: Record<string, string>;
 }
+
+const customerCategoryOptions = [
+  { value: "Retail", label: "Retail" },
+  { value: "SME", label: "SME" },
+  { value: "Corporate", label: "Corporate" },
+];
+
+const customerMaritalOptions = [
+  { value: "Single", label: "Single" },
+  { value: "Married", label: "Married" },
+  { value: "Separated", label: "Separated" },
+  { value: "Divorced", label: "Divorced" },
+  { value: "Widowed", label: "Widowed" },
+  { value: "Annulled", label: "Annulled" },
+  { value: "Not Disclosed", label: "Not Disclosed" },
+];
 
 const chevron = (
   <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
@@ -94,6 +129,7 @@ export function IdentityStep(props: IdentityStepProps) {
   const { data: industryOptions, isLoading: industriesLoading } = useIndustries(
     debouncedIndustrySearch,
   );
+
   const [nationalitySearch, setNationalitySearch] = useState("");
   const [debouncedNationalitySearch] = useDebouncedValue(
     nationalitySearch,
@@ -114,6 +150,12 @@ export function IdentityStep(props: IdentityStepProps) {
     customerNumber,
     customerType,
     setCustomerType,
+    customerCategory,
+    setCustomerCategory,
+    isStaffCustomer,
+    setIsStaffCustomer,
+    staffId,
+    setStaffId,
     firstName,
     setFirstName,
     middleName,
@@ -128,6 +170,8 @@ export function IdentityStep(props: IdentityStepProps) {
     setDateOfBirth,
     nationality,
     setNationality,
+    maritalStatus,
+    setMaritalStatus,
     occupation,
     setOccupation,
     industry,
@@ -158,6 +202,10 @@ export function IdentityStep(props: IdentityStepProps) {
     setBusinessCountry,
     businessPostalCode,
     setBusinessPostalCode,
+    nrcNumber,
+    setNrcNumber,
+    individualTaxId,
+    setIndividualTaxId,
     errors = {},
   } = props;
 
@@ -211,27 +259,93 @@ export function IdentityStep(props: IdentityStepProps) {
     />
   );
 
-  const customerNumberField = (
-    <TextInput
-      maw={FIELD_MAW}
-      size="xs"
-      radius="md"
-      label="Customer number (auto)"
-      value={customerNumber}
-      disabled
-      classNames={readOnlyClassNames}
-    />
+  // Identity card header: title/badge on the left, read-only customer
+  // number tucked in the top-right as plain text (not a form field).
+  const identityCardHeader = (
+    <Group justify="space-between" align="flex-start" wrap="nowrap">
+      <SectionHeader
+        icon={IconClipboardCheck}
+        title="Identity"
+        badge="REQUIRED"
+      />
+
+      <Stack gap={0} align="flex-end" style={{ flex: "0 0 auto" }}>
+        <Text
+          size="10px"
+          fw={600}
+          tt="uppercase"
+          c="slate.5"
+          style={{ letterSpacing: 0.5 }}
+        >
+          Customer number
+        </Text>
+        <Text size="sm" fw={600} c="slate.7">
+          {customerNumber}
+        </Text>
+      </Stack>
+    </Group>
   );
 
+  // Classification row: Customer Type, Customer Category always shown.
+  // Staff Customer + conditional Staff ID only apply to Individual customers
+  // (a business/company can never itself be "staff").
   const typeHeaderRow = (
-    <Group align="flex-end" gap="md" mb="sm">
-      <Stack gap={2}>
+    <Group align="flex-end" gap="lg" mb="lg" wrap="wrap">
+      <Stack gap={2} style={{ flex: "0 0 auto" }}>
         <Text size="xs" fw={600} c="slate.6">
           Customer Type
         </Text>
         {typeToggle}
       </Stack>
-      {customerNumberField}
+
+      <Select
+        maw={FIELD_MAW}
+        size="xs"
+        radius="md"
+        label="Customer Category"
+        placeholder="Select"
+        data={customerCategoryOptions}
+        value={customerCategory}
+        onChange={setCustomerCategory}
+        rightSection={chevron}
+      />
+
+      {!isBusiness && (
+        <>
+          <Stack gap={2} style={{ flex: "0 0 auto" }}>
+            <Switch
+              label="Staff Customer"
+              description="Is the customer an employee?"
+              checked={isStaffCustomer}
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
+                setIsStaffCustomer(checked);
+
+                if (!checked) {
+                  setStaffId(null);
+                }
+              }}
+            />
+          </Stack>
+
+          {isStaffCustomer && (
+            <Select
+              maw={FIELD_MAW}
+              size="xs"
+              radius="md"
+              label="Staff ID"
+              placeholder="Select staff"
+              data={staffOptions}
+              value={staffId}
+              onChange={setStaffId}
+              rightSection={chevron}
+              searchable
+              clearable
+              withAsterisk
+            />
+          )}
+        </>
+      )}
     </Group>
   );
 
@@ -239,66 +353,70 @@ export function IdentityStep(props: IdentityStepProps) {
     <Stack gap="xs">
       {!isBusiness && (
         <PlainCard>
-          <SectionHeader
-            icon={IconClipboardCheck}
-            title="Identity"
-            badge="REQUIRED"
-          />
+          {identityCardHeader}
 
           {typeHeaderRow}
 
-          <Group gap="md" align="flex-start" wrap="wrap">
-            <TextInput
-              style={{ width: "22ch", maxWidth: "100%" }}
-              radius="md"
-              label="First name"
-              placeholder="e.g. Bwalya"
-              withAsterisk
-              value={firstName}
-              onChange={(e) => setFirstName(e.currentTarget.value)}
-              error={errors.firstName}
-            />
-            <TextInput
-              style={{ width: "16ch", maxWidth: "100%" }}
-              radius="md"
-              label="Middle name (Optional)"
-              placeholder="Optional"
-              value={middleName}
-              onChange={(e) => setMiddleName(e.currentTarget.value)}
-            />
-            <TextInput
-              style={{ width: "22ch", maxWidth: "100%" }}
-              radius="md"
-              label="Last name"
-              placeholder="e.g. Mutale"
-              withAsterisk
-              value={lastName}
-              onChange={(e) => setLastName(e.currentTarget.value)}
-              error={errors.lastName}
-            />
-            <TextInput
-              style={{ width: "24ch", maxWidth: "100%" }}
-              radius="md"
-              label="Preferred name (Optional)"
-              placeholder="What should we call them?"
-              value={preferredName}
-              onChange={(e) => setPreferredName(e.currentTarget.value)}
-            />
-            <Select
-              style={{ width: "13ch", maxWidth: "100%" }}
-              radius="md"
-              searchable
-              rightSection={chevron}
-              label="Gender"
-              placeholder={gendersLoading ? "Loading..." : "Select"}
-              withAsterisk
-              data={genderOptions ?? []}
-              value={gender}
-              onChange={setGender}
-              error={errors.gender}
-              disabled={gendersLoading}
-            />
-            <Box style={{ width: "16ch", maxWidth: "100%" }}>
+          <Grid gap="sm" mt="xs">
+            <Grid.Col span={3}>
+              <TextInput
+                radius="md"
+                label="First name"
+                placeholder="e.g. Bwalya"
+                withAsterisk
+                value={firstName}
+                onChange={(e) => setFirstName(e.currentTarget.value)}
+                error={errors.firstName}
+              />
+            </Grid.Col>
+            <Grid.Col span={2}>
+              <TextInput
+                radius="md"
+                label="Middle name (Optional)"
+                placeholder="Optional"
+                value={middleName}
+                onChange={(e) => setMiddleName(e.currentTarget.value)}
+              />
+            </Grid.Col>
+            <Grid.Col span={3}>
+              <TextInput
+                radius="md"
+                label="Last name"
+                placeholder="e.g. Mutale"
+                withAsterisk
+                value={lastName}
+                onChange={(e) => setLastName(e.currentTarget.value)}
+                error={errors.lastName}
+              />
+            </Grid.Col>
+            <Grid.Col span={4}>
+              <TextInput
+                radius="md"
+                label="Preferred name (Optional)"
+                placeholder="What should we call them?"
+                value={preferredName}
+                onChange={(e) => setPreferredName(e.currentTarget.value)}
+              />
+            </Grid.Col>
+          </Grid>
+
+          <Grid gap="sm" mt="xs">
+            <Grid.Col span={2}>
+              <Select
+                radius="md"
+                searchable
+                rightSection={chevron}
+                label="Gender"
+                placeholder={gendersLoading ? "Loading..." : "Select"}
+                withAsterisk
+                data={genderOptions ?? []}
+                value={gender}
+                onChange={setGender}
+                error={errors.gender}
+                disabled={gendersLoading}
+              />
+            </Grid.Col>
+            <Grid.Col span={2}>
               <DatePickerInput
                 radius="md"
                 label="Date of birth"
@@ -315,7 +433,6 @@ export function IdentityStep(props: IdentityStepProps) {
                 withAsterisk
                 error={errors.dateOfBirth}
               />
-
               {dateOfBirth && (
                 <Text size="xs" c="slate.5" mt={4}>
                   Age:{" "}
@@ -324,61 +441,104 @@ export function IdentityStep(props: IdentityStepProps) {
                   </Text>
                 </Text>
               )}
-            </Box>
-            <Select
-              style={{ width: "18ch", maxWidth: "100%" }}
-              radius="md"
-              searchable
-              rightSection={chevron}
-              label="Nationality"
-              placeholder={nationalitiesLoading ? "Loading..." : "Select"}
-              withAsterisk
-              data={nationalityOptions ?? []}
-              value={nationality}
-              onChange={setNationality}
-              onSearchChange={setNationalitySearch}
-              error={errors.nationality}
-            />
-            <TextInput
-              style={{ width: "20ch", maxWidth: "100%" }}
-              radius="md"
-              label="Occupation (Optional)"
-              placeholder="e.g. Agronomist"
-              value={occupation}
-              onChange={(e) => setOccupation(e.currentTarget.value)}
-            />
-            <Select
-              style={{ width: "18ch", maxWidth: "100%" }}
-              radius="md"
-              searchable
-              rightSection={chevron}
-              label="Industry (Optional)"
-              placeholder={industriesLoading ? "Loading..." : "Select"}
-              data={industryOptions ?? []}
-              value={industry}
-              onChange={setIndustry}
-              onSearchChange={setIndustrySearch}
-              disabled={industriesLoading && !industryOptions}
-            />
-            <TextInput
-              style={{ width: "22ch", maxWidth: "100%" }}
-              radius="md"
-              label="Employer (Optional)"
-              placeholder="e.g. Ministry of Agriculture"
-              value={employer}
-              onChange={(e) => setEmployer(e.currentTarget.value)}
-            />
-          </Group>
+            </Grid.Col>
+            <Grid.Col span={2}>
+              <Select
+                radius="md"
+                searchable
+                rightSection={chevron}
+                label="Nationality"
+                placeholder={nationalitiesLoading ? "Loading..." : "Select"}
+                withAsterisk
+                data={nationalityOptions ?? []}
+                value={nationality}
+                onChange={setNationality}
+                onSearchChange={setNationalitySearch}
+                error={errors.nationality}
+              />
+            </Grid.Col>
+            <Grid.Col span={2}>
+              <Select
+                radius="md"
+                label="Marital Status"
+                placeholder="Select"
+                data={customerMaritalOptions}
+                value={maritalStatus}
+                onChange={setMaritalStatus}
+                rightSection={chevron}
+              />
+            </Grid.Col>
+            <Grid.Col span={4}>
+              <TextInput
+                radius="md"
+                label="Occupation (Optional)"
+                placeholder="e.g. Agronomist"
+                value={occupation}
+                onChange={(e) => setOccupation(e.currentTarget.value)}
+              />
+            </Grid.Col>
+          </Grid>
+
+          <Text
+            size="10px"
+            fw={700}
+            tt="uppercase"
+            c="slate.5"
+            mt="lg"
+            mb={6}
+            style={{ letterSpacing: 0.5 }}
+          >
+            Government Identification
+          </Text>
+
+          <Grid gap="sm">
+            <Grid.Col span={4}>
+              <TextInput
+                radius="md"
+                label="NRC Number"
+                placeholder="e.g. 123456/78/1"
+                value={nrcNumber}
+                onChange={(e) => setNrcNumber(e.currentTarget.value)}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={4}>
+              <TextInput
+                radius="md"
+                label="Tax Identification Number"
+                placeholder="Enter TIN / PAN"
+                value={individualTaxId}
+                onChange={(e) => setIndividualTaxId(e.currentTarget.value)}
+              />
+            </Grid.Col>
+          </Grid>
         </PlainCard>
       )}
 
       {isBusiness && (
         <PlainCard dense>
-          <SectionHeader
-            icon={IconBuilding}
-            title="Business information"
-            badge="REQUIRED"
-          />
+          <Group justify="space-between" align="flex-start" wrap="nowrap">
+            <SectionHeader
+              icon={IconBuilding}
+              title="Business information"
+              badge="REQUIRED"
+            />
+
+            <Stack gap={0} align="flex-end" style={{ flex: "0 0 auto" }}>
+              <Text
+                size="10px"
+                fw={600}
+                tt="uppercase"
+                c="slate.5"
+                style={{ letterSpacing: 0.5 }}
+              >
+                Customer number
+              </Text>
+              <Text size="sm" fw={600} c="slate.7">
+                {customerNumber}
+              </Text>
+            </Stack>
+          </Group>
 
           {typeHeaderRow}
 
@@ -466,7 +626,15 @@ export function IdentityStep(props: IdentityStepProps) {
             </Grid.Col>
           </Grid>
 
-          <Text size="10px" fw={700} tt="uppercase" c="slate.5" mt="md" mb={6} style={{ letterSpacing: 0.5 }}>
+          <Text
+            size="10px"
+            fw={700}
+            tt="uppercase"
+            c="slate.5"
+            mt="lg"
+            mb={6}
+            style={{ letterSpacing: 0.5 }}
+          >
             Registered Office Address
           </Text>
 
@@ -515,7 +683,13 @@ export function IdentityStep(props: IdentityStepProps) {
                 label="State / Province"
                 placeholder="Select"
                 withAsterisk
-                data={["Lusaka", "Copperbelt", "Southern", "Eastern", "Northern"]}
+                data={[
+                  "Lusaka",
+                  "Copperbelt",
+                  "Southern",
+                  "Eastern",
+                  "Northern",
+                ]}
                 value={businessProvince}
                 onChange={setBusinessProvince}
                 error={errors.businessProvince}
