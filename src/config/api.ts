@@ -397,6 +397,15 @@ loanStatement: {
   // COMMON
   // =========================
   common: {},
+
+   // =========================
+  // LENDING CONFIGURATION
+  // =========================
+  lendingConfig: {
+    getDefaults: `${ERP_BASE}/api/method/rolaface_lms_app.modules.organization.lending_configuration.api.get_lending_config`,
+    updateDefaults: `${ERP_BASE}/api/method/rolaface_lms_app.modules.organization.lending_configuration.api.update_lending_config`,
+  },
+
   lookup:{
     getAllReceivable: `${ERP_BASE}/api/method/custom_api.api.accounts_receivable.get_accounts_receivable`,
     getSuppliers:`${ERP_BASE}/api/method/custom_api.api.search.get_suppliers`,

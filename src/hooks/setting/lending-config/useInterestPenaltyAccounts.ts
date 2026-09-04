@@ -1,106 +1,101 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { notifications } from "@mantine/notifications";
-import {
-  getLendingDefaults,
-  getGLAccountsList,
-  updateLendingDefaults,
-} from "../../../api/setting/lending_config/lending_cfgApi";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getLendingDefaults } from "../../../api/setting/lending_config/lending_cfgApi";
 import { LENDING_CONFIG_QUERY_KEY } from "./useGeneralLendingSettings";
-import type { AccountMappingRaw } from "../../../types/setting/lending_config/lendingConfig.types";
+import type {
+  AccountMappingRaw,
+  GLAccountOption,
+  LendingDefaultsRaw,
+  InterestAndPenaltyAccounts,
+} from "../../../types/setting/lending_config/lendingConfig.types";
+
+const ROW_DEFS: {
+  id: string;
+  transaction_type: string;
+  interestKey: keyof InterestAndPenaltyAccounts;
+  penaltyKey: keyof InterestAndPenaltyAccounts;
+}[] = [
+  {
+    id: "1",
+    transaction_type: "Income",
+    interestKey: "default_interest_income_account",
+    penaltyKey: "default_penalty_income_account",
+  },
+  {
+    id: "2",
+    transaction_type: "Receivable",
+    interestKey: "default_interest_receivable_account",
+    penaltyKey: "default_penalty_receivable_account",
+  },
+  {
+    id: "3",
+    transaction_type: "Accrued",
+    interestKey: "default_interest_accrued_account",
+    penaltyKey: "default_penalty_accrued_account",
+  },
+  {
+    id: "4",
+    transaction_type: "Suspended",
+    interestKey: "default_interest_suspended_account",
+    penaltyKey: "default_penalty_suspended_account",
+  },
+  {
+    id: "5",
+    transaction_type: "Waiver",
+    interestKey: "default_interest_waiver_account",
+    penaltyKey: "default_penalty_waiver_account",
+  },
+];
 
 export function useInterestPenaltyAccounts() {
-  const queryClient = useQueryClient();
-
-  const [sameAsInterest, setSameAsInterest] = useState<boolean>(true);
-  const [mappings, setMappings] = useState<AccountMappingRaw[]>([]);
-
-  const { data: defaultsData, isLoading: isDefaultsLoading } = useQuery({
+  const { data: defaultsData, isLoading } = useQuery<LendingDefaultsRaw>({
     queryKey: LENDING_CONFIG_QUERY_KEY,
     queryFn: getLendingDefaults,
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: glAccounts = [], isLoading: isAccountsLoading } = useQuery({
-    queryKey: ["glAccounts"],
-    queryFn: () => getGLAccountsList(),
-  });
+  const accounts = defaultsData?.default_accounts.interest_and_penalty_accounts;
 
-  useEffect(() => {
-    if (defaultsData) {
-      setSameAsInterest(defaultsData.same_as_interest);
-      setMappings(defaultsData.mappings || []);
-    }
+  // Flat API keys → row-based structure the table renders.
+  const mappings: AccountMappingRaw[] = useMemo(() => {
+    if (!accounts) return [];
+    return ROW_DEFS.map((row) => ({
+      id: row.id,
+      transaction_type: row.transaction_type,
+      interest_account: accounts[row.interestKey],
+      penalty_account: accounts[row.penaltyKey],
+    }));
+  }, [accounts]);
+
+  // True only if every row's interest & penalty account already match in the API data.
+  const sameAsInterest = useMemo(
+    () =>
+      mappings.length > 0 &&
+      mappings.every((m) => m.interest_account === m.penalty_account),
+    [mappings]
+  );
+
+  // Built from whatever account strings the GET response contains, so the
+  // disabled Select can render the current value as a valid option.
+  // Swap for a real chart-of-accounts endpoint once one is available.
+  const glAccounts: GLAccountOption[] = useMemo(() => {
+    if (!defaultsData) return [];
+    const all = [
+      ...Object.values(defaultsData.default_accounts.principal_accounts),
+      ...Object.values(defaultsData.default_accounts.interest_and_penalty_accounts),
+      ...Object.values(defaultsData.default_accounts.general_accounts),
+    ].filter((v): v is string => !!v);
+
+    return Array.from(new Set(all)).map((name) => ({
+      value: name,
+      label: name,
+    }));
   }, [defaultsData]);
-
-  const handleInterestChange = (index: number, val: string | null) => {
-    const updated = [...mappings];
-    const newAccount = val || "";
-    updated[index].interest_account = newAccount;
-
-    if (sameAsInterest) {
-      updated[index].penalty_account = newAccount;
-    }
-    setMappings(updated);
-  };
-
-  const handlePenaltyChange = (index: number, val: string | null) => {
-    const updated = [...mappings];
-    updated[index].penalty_account = val || "";
-    setMappings(updated);
-  };
-
-  const handleToggleSameAsInterest = (checked: boolean) => {
-    setSameAsInterest(checked);
-    if (checked) {
-      setMappings((prev) =>
-        prev.map((r) => ({ ...r, penalty_account: r.interest_account }))
-      );
-    }
-  };
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      if (!defaultsData) return;
-      return updateLendingDefaults({
-        auto_disbursement: defaultsData.auto_disbursement,
-        enable_topup: defaultsData.enable_topup,
-        same_as_interest: sameAsInterest,
-        mappings: mappings.map((m) => ({
-          transaction_type: m.transaction_type,
-          interest_account: m.interest_account,
-          penalty_account: m.penalty_account,
-        })),
-      });
-    },
-    onSuccess: (updated) => {
-      if (updated) {
-        queryClient.setQueryData(LENDING_CONFIG_QUERY_KEY, updated);
-      }
-      notifications.show({
-        title: "Success",
-        message: "Lending defaults updated successfully",
-        color: "green",
-      });
-    },
-    onError: (err: Error) => {
-      console.error("Failed to update lending mappings:", err);
-      notifications.show({
-        title: "Error",
-        message: "Failed to update lending settings",
-        color: "red",
-      });
-    },
-  });
 
   return {
     mappings,
     glAccounts,
     sameAsInterest,
-    isLoading: isDefaultsLoading || isAccountsLoading,
-    isSaving: saveMutation.isPending,
-    handleInterestChange,
-    handlePenaltyChange,
-    handleToggleSameAsInterest,
-    saveMappings: saveMutation.mutate,
+    isLoading,
   };
 }

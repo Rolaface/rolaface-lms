@@ -12,15 +12,8 @@ import { CurrencySymbol } from "../../../components/shared/CurrencyIcon";
 import { useInterestPenaltyAccounts } from "../../../hooks/setting/lending-config/useInterestPenaltyAccounts";
 
 export function InterestPenaltyAccountsPanel() {
-  const {
-    mappings,
-    glAccounts,
-    sameAsInterest,
-    isLoading,
-    handleInterestChange,
-    handlePenaltyChange,
-    handleToggleSameAsInterest,
-  } = useInterestPenaltyAccounts();
+  const { mappings, glAccounts, sameAsInterest, isLoading } =
+    useInterestPenaltyAccounts();
 
   return (
     <Paper radius="sm" withBorder>
@@ -88,7 +81,7 @@ export function InterestPenaltyAccountsPanel() {
                     </Table.Td>
                   </Table.Tr>
                 ))
-              : mappings.map((row, index) => (
+              : mappings.map((row) => (
                   <Table.Tr key={row.id}>
                     <Table.Td>
                       <Text size="sm" fw={600} c="slate.8">
@@ -98,12 +91,11 @@ export function InterestPenaltyAccountsPanel() {
 
                     <Table.Td>
                       <Select
-                        placeholder="Search account..."
+                        placeholder={
+                          row.interest_account ? undefined : "Not configured"
+                        }
                         data={glAccounts}
                         value={row.interest_account}
-                        onChange={(val) => handleInterestChange(index, val)}
-                        clearable
-                        searchable
                         disabled
                       />
                     </Table.Td>
@@ -113,7 +105,9 @@ export function InterestPenaltyAccountsPanel() {
                         placeholder={
                           sameAsInterest
                             ? "Same as interest"
-                            : "Search account..."
+                            : row.penalty_account
+                              ? undefined
+                              : "Not configured"
                         }
                         data={glAccounts}
                         value={
@@ -121,11 +115,7 @@ export function InterestPenaltyAccountsPanel() {
                             ? row.interest_account
                             : row.penalty_account
                         }
-                        onChange={(val) => handlePenaltyChange(index, val)}
-
                         disabled
-                        clearable={!sameAsInterest}
-                        searchable={!sameAsInterest}
                         rightSection={
                           sameAsInterest ? <IconLock size={14} /> : undefined
                         }

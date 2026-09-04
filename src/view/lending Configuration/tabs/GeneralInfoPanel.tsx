@@ -39,9 +39,6 @@ interface SettingItem extends SettingConfig {
   checked: boolean;
 }
 
-// Column layout — which sections render on which side.
-// Kept separate from section metadata so the grouping choice is explicit
-// and easy to re-balance later without touching render logic.
 const COLUMN_LAYOUT: SettingSection[][] = [
   ["Operational Settings", "Interest Settings", "Document & Verification"],
   ["Repayment Settings", "Risk & Controls"],
@@ -55,8 +52,6 @@ const SECTION_ICONS: Record<SettingSection, React.ReactNode> = {
   "Document & Verification": <IconFileCheck size={15} stroke={1.8} />,
 };
 
-// Static metadata only — no boolean state baked in here.
-// `checked` is resolved at render time from the injected `defaults` payload.
 const SETTINGS_CONFIG: SettingConfig[] = [
   {
     id: "enable_loan_accounting",
@@ -189,14 +184,21 @@ const SETTINGS_CONFIG: SettingConfig[] = [
     section: "Document & Verification",
   },
 ];
-function resolveChecked(
-  id: string,
-  defaults: LendingDefaultsRaw,
-): boolean {
-  const raw = (defaults as unknown as Record<string, unknown>)[id];
 
-  return typeof raw === "boolean" ? raw : false;
+// Maps UI toggle ids → actual API field names.
+// Only fields that exist in the real GET response are listed here.
+// Anything not mapped renders OFF until the backend exposes that field.
+const API_FIELD_MAP: Partial<Record<string, keyof LendingDefaultsRaw>> = {
+  enable_topup: "enable_topup",
+  auto_disbursement: "enable_auto_disbursement",
+};
+
+function resolveChecked(id: string, defaults: LendingDefaultsRaw): boolean {
+  const apiField = API_FIELD_MAP[id];
+  if (!apiField) return false;
+  return defaults[apiField] === 1;
 }
+
 const accordionStyles = {
   item: {
     marginBottom: 6,
