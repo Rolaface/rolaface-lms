@@ -223,6 +223,18 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         label: "Lending Configuration",
         icon: IconSettings,
       },
+       {
+        path: "/settings/los-configuration",
+        label: "LOS Configuration",
+        icon: IconSettings,
+         subItems: [
+          {
+            path: "/settings/los-configuration/pre-screening",
+            label: "Pre-Screening",
+            icon: IconUsers,
+          }, 
+        ],
+      },
       {
         path: "/settings/user",
         label: "User",
