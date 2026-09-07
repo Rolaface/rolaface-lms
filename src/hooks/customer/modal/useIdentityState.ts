@@ -28,12 +28,12 @@ function emptyDirector(): BusinessDirector {
 }
 
 export function useIdentityState() {
-  const [customerNumber] = useState(
+  const [customerNumber, setCustomerNumber] = useState(
     () =>
       `CUST-${String(Math.floor(1000000 + Math.random() * 9000000)).slice(0, 7)}`,
   );
   const [customerType, setCustomerType] = useState<string>("Individual");
-  const [customerCategory, setCustomerCategory] = useState<string | null>(null);
+const [customerGroup, setCustomerGroup] = useState<string | null>(null);
   const [isStaffCustomer, setIsStaffCustomer] = useState(false);
   const [staffId, setStaffId] = useState<string | null>(null);
 
@@ -82,7 +82,7 @@ export function useIdentityState() {
 
   const reset = () => {
     setCustomerType("Individual");
-    setCustomerCategory(null);
+    setCustomerGroup(null);
     setIsStaffCustomer(false);
     setStaffId(null);
     setFirstName("");
@@ -108,7 +108,7 @@ export function useIdentityState() {
     setLegalStructure(null);
     setTaxId("");
     setVatNumber("");
-    setCurrency("ZMW");
+    setCurrency("");
     setFiscalYearEnd("");
     setBusinessCity("");
     setBusinessProvince(null);
@@ -122,10 +122,11 @@ export function useIdentityState() {
 
   return {
     customerNumber,
+    setCustomerNumber,
     customerType,
     setCustomerType,
-    customerCategory,
-    setCustomerCategory,
+    customerGroup,
+    setCustomerGroup,
     isStaffCustomer,
     setIsStaffCustomer,
     staffId,

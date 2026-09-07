@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Text,
@@ -48,12 +48,16 @@ import {
   useTagsState,
 } from "../../../hooks/customer/modal/useLaterStepsState";
 import { getScoreBand } from "../../../components/shared/Creditscoregauge";
+import { useCreateCustomer, useUpdateCustomer } from "../../../hooks/customer/api/useCustomerMutations";
+import { useCustomer } from "../../../hooks/customer/api/useCustomerQuery";
+import { buildCustomerPayload } from "../../../types/customer/types";
 
 interface CustomerModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize: () => void;
   isViewMode?: boolean;
+  customerId?: string;
 }
 
 // NOTE: STEPS now has 8 entries (was 7) — "Financial & Lending" was split
@@ -70,10 +74,14 @@ export function CustomerModal({
   onClose,
   onMinimize,
   isViewMode,
+  customerId,
 }: CustomerModalProps) {
   const theme = useMantineTheme();
   const [activeTab, setActiveTab] = useState<string>("0");
   const currentStep = parseInt(activeTab);
+  const stepFlow = STEP_GROUPS.flatMap((group) => [...group.stepIndices]);
+  const currentFlowIndex = stepFlow.indexOf(currentStep as never);
+  const isLastStep = currentFlowIndex === stepFlow.length - 1;
 
   const identity = useIdentityState();
   const contact = useContactState();
@@ -89,6 +97,12 @@ export function CustomerModal({
   });
   const kin = useKinState();
   const tagsState = useTagsState();
+  const createCustomerMutation = useCreateCustomer();
+  const updateCustomerMutation = useUpdateCustomer();
+  const { data: editCustomer } = useCustomer(customerId ?? null);
+  const [populatedCustomerId, setPopulatedCustomerId] = useState<string | null>(
+    null,
+  );
 
   const activeGroup =
     STEP_GROUPS.find((g) =>
@@ -128,6 +142,128 @@ export function CustomerModal({
   const creditResult = creditAssessment.result;
 
   const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (!customerId || !editCustomer || populatedCustomerId === customerId) {
+      return;
+    }
+
+    const text = (value: string | null | undefined) => value ?? "";
+    const nullableText = (value: string | null | undefined) => value || null;
+    const isBusiness = editCustomer.customer_type === "Company";
+    const addresses = editCustomer.addresses ?? [];
+    const contacts = editCustomer.contacts ?? [];
+    const primaryAddress =
+      addresses.find(
+        (address) =>
+          address.name === editCustomer.customer_primary_address ||
+          address.is_primary_address === 1,
+      ) ?? addresses[0];
+    const shippingAddress =
+      addresses.find((address) => address.is_shipping_address === 1) ??
+      primaryAddress;
+    const primaryContact =
+      contacts.find(
+        (contactItem) =>
+          contactItem.name === editCustomer.customer_primary_contact ||
+          contactItem.is_primary_contact === 1,
+      ) ?? contacts[0];
+    const secondaryContact = contacts.find(
+      (contactItem) => contactItem.name !== primaryContact?.name,
+    );
+
+    identity.reset();
+    contact.reset();
+    identification.reset();
+    financialBorrower.reset();
+    kin.reset();
+
+    identity.setCustomerNumber(editCustomer.name);
+    identity.setCustomerType(isBusiness ? "Business" : "Individual");
+    identity.setCustomerGroup(nullableText(editCustomer.customer_group));
+    identity.setFirstName(text(editCustomer.first_name));
+    identity.setLastName(text(editCustomer.last_name));
+    identity.setGender(nullableText(editCustomer.gender));
+    identity.setIndividualTaxId(text(editCustomer.tax_id));
+    identity.setTaxId(text(editCustomer.tax_id));
+    identity.setCurrency(nullableText(editCustomer.default_currency));
+    identity.setIndustry(nullableText(editCustomer.industry));
+    identity.setBusinessIndustry(nullableText(editCustomer.industry));
+    identity.setCompanyName(isBusiness ? text(editCustomer.customer_name) : "");
+
+    contact.setEmail(text(editCustomer.email_id || primaryContact?.email_id));
+    contact.setMobileNumber(
+      text(editCustomer.mobile_no || primaryContact?.mobile_no),
+    );
+    contact.setAlternateMobile(text(secondaryContact?.mobile_no));
+    contact.setPrimaryContactName(
+      [primaryContact?.first_name, primaryContact?.last_name]
+        .filter(Boolean)
+        .join(" "),
+    );
+    contact.setCustomerAddresses(
+      addresses.map((address) => ({
+        name: address.name,
+        address_type: text(address.address_type),
+        address_line1: text(address.address_line1),
+        address_line2: text(address.address_line2),
+        city: text(address.city),
+        state: text(address.state),
+        pincode: text(address.pincode),
+        country: text(address.country),
+        is_primary_address: address.is_primary_address,
+        is_shipping_address: address.is_shipping_address,
+      })),
+    );
+    contact.setCustomerContacts(
+      contacts.map((contactItem) => ({
+        name: contactItem.name,
+        first_name: text(contactItem.first_name),
+        last_name: text(contactItem.last_name),
+        salutation: nullableText(contactItem.salutation),
+        designation: nullableText(contactItem.designation),
+        email_id: text(contactItem.email_id),
+        mobile_no: text(contactItem.mobile_no),
+        is_primary_contact: contactItem.is_primary_contact,
+        is_billing_contact: contactItem.is_billing_contact,
+      })),
+    );
+
+    if (isBusiness && primaryAddress) {
+      identity.setBusinessAddress(text(primaryAddress.address_line1));
+      identity.setBusinessAddressLine2(text(primaryAddress.address_line2));
+      identity.setBusinessCity(text(primaryAddress.city));
+      identity.setBusinessProvince(nullableText(primaryAddress.state));
+      identity.setBusinessCountry(nullableText(primaryAddress.country));
+      identity.setBusinessPostalCode(text(primaryAddress.pincode));
+      contact.setSameAsRegisteredOffice(true);
+    }
+
+    if (!isBusiness && primaryAddress) {
+      contact.setResidentialAddress(text(primaryAddress.address_line1));
+      contact.setResidentialAddressLine2(text(primaryAddress.address_line2));
+      contact.setCityTown(text(primaryAddress.city));
+      contact.setProvince(nullableText(primaryAddress.state));
+      contact.setCountry(nullableText(primaryAddress.country));
+      contact.setPostalCode(text(primaryAddress.pincode));
+    }
+
+    if (!isBusiness && shippingAddress) {
+      const sameAddress =
+        !primaryAddress || shippingAddress.name === primaryAddress.name;
+      contact.setSameAsResidential(sameAddress);
+      contact.setMailingAddress(text(shippingAddress.address_line1));
+      contact.setMailingAddressLine2(text(shippingAddress.address_line2));
+      contact.setMailingCityTown(text(shippingAddress.city));
+      contact.setMailingProvince(nullableText(shippingAddress.state));
+      contact.setMailingCountry(nullableText(shippingAddress.country));
+      contact.setMailingPostalCode(text(shippingAddress.pincode));
+    }
+
+    setAttemptedSteps(new Set());
+    setActiveTab("0");
+    setPopulatedCustomerId(customerId);
+  }, [customerId, editCustomer, populatedCustomerId]);
 
   const getStepErrors = (step: number): Record<string, string> => {
     switch (step) {
@@ -191,7 +327,7 @@ export function CustomerModal({
     }
   };
 
-  const handleCreateCustomer = () => {
+  const handleCreateCustomer = async () => {
     const stepsToCheck = [0, 1, 2, 3, 4];
     let firstInvalid: number | null = null;
     const newAttempted = new Set(attemptedSteps);
@@ -210,11 +346,29 @@ export function CustomerModal({
       return;
     }
 
+    const isEditMode = !!customerId;
+
     try {
+      const payload = buildCustomerPayload(
+        identity,
+        contact,
+        identification,
+        financialBorrower,
+        kin,
+      );
+
+      if (isEditMode) {
+        await updateCustomerMutation.mutateAsync({ customerId, payload });
+      } else {
+        await createCustomerMutation.mutateAsync(payload);
+      }
+
       openCommonModal({
-        heading: "Customer Created",
+        heading: isEditMode ? "Customer Updated" : "Customer Created",
         subtitle: "Success",
-        body: "Customer has been created successfully.",
+        body: isEditMode
+          ? "Customer has been updated successfully."
+          : "Customer has been created successfully.",
         color: "success",
         buttons: [
           {
@@ -227,8 +381,10 @@ export function CustomerModal({
     } catch (err: any) {
       const errorMessage = parseFrappeError(err);
       openCommonModal({
-        heading: "Unable to Create Customer",
-        subtitle: "Customer creation failed",
+        heading: isEditMode
+          ? "Unable to Update Customer"
+          : "Unable to Create Customer",
+        subtitle: isEditMode ? "Customer update failed" : "Customer creation failed",
         body: errorMessage,
         color: "danger",
         buttons: [
@@ -252,6 +408,7 @@ export function CustomerModal({
     kin.reset();
     tagsState.reset();
     setAttemptedSteps(new Set());
+    setPopulatedCustomerId(null);
     setActiveTab("0");
   };
 
@@ -268,16 +425,21 @@ export function CustomerModal({
       );
       return;
     }
-    if (currentStep < STEPS.length - 1)
-      setActiveTab((currentStep + 1).toString());
+    const nextStep = stepFlow[currentFlowIndex + 1];
+    if (nextStep !== undefined) setActiveTab(nextStep.toString());
   };
   const handleBack = () => {
-    if (currentStep > 0) setActiveTab((currentStep - 1).toString());
+    const previousStep = stepFlow[currentFlowIndex - 1];
+    if (previousStep !== undefined) setActiveTab(previousStep.toString());
   };
 
   const headerIcon = STEPS[currentStep]?.icon || IconUser;
   const HeaderIcon = headerIcon;
-  const headerTitle = isViewMode ? "View Customer" : "Create Customer";
+  const headerTitle = isViewMode
+    ? "View Customer"
+    : customerId
+      ? "Edit Customer"
+      : "Create Customer";
 
   const renderStep = () => {
     switch (currentStep) {
@@ -287,8 +449,8 @@ export function CustomerModal({
             customerNumber={identity.customerNumber}
             customerType={identity.customerType}
             setCustomerType={identity.setCustomerType}
-            customerCategory={identity.customerCategory}
-            setCustomerCategory={identity.setCustomerCategory}
+            customerGroup={identity.customerGroup}
+            setCustomerGroup={identity.setCustomerGroup}
             isStaffCustomer={identity.isStaffCustomer}
             setIsStaffCustomer={identity.setIsStaffCustomer}
             staffId={identity.staffId}
@@ -315,6 +477,10 @@ export function CustomerModal({
             setIndustry={identity.setIndustry}
             employer={identity.employer}
             setEmployer={identity.setEmployer}
+            nrcNumber={identity.nrcNumber}
+            setNrcNumber={identity.setNrcNumber}
+            individualTaxId={identity.individualTaxId}
+            setIndividualTaxId={identity.setIndividualTaxId}
             companyName={identity.companyName}
             setCompanyName={identity.setCompanyName}
             registrationNumber={identity.registrationNumber}
@@ -457,9 +623,10 @@ export function CustomerModal({
       }
       relationshipManager={financialBorrower.relationshipManager}
       setRelationshipManager={financialBorrower.setRelationshipManager}
-      industryType={financialBorrower.industryType}
-      setIndustryType={financialBorrower.setIndustryType}
-      employerName={financialBorrower.employerName}
+      industryType={identity.industry}
+      setIndustryType={identity.setIndustry}
+      employerName={identity.employer}
+      setEmployerName={identity.setEmployer}
     />
   );
      case 4:
@@ -563,23 +730,6 @@ export function CustomerModal({
             setKinPostalCode={kin.setKinPostalCode}
           />
         );
-        // case 8:
-        //   return (
-        //     <TagsStep
-        //       tags={tagsState.tags}
-        //       tagInput={tagsState.tagInput}
-        //       setTagInput={tagsState.setTagInput}
-        //       addTag={tagsState.addTag}
-        //       removeTag={tagsState.removeTag}
-        //       relationshipNotes={tagsState.relationshipNotes}
-        //       setRelationshipNotes={tagsState.setRelationshipNotes}
-        //       customFields={tagsState.customFields}
-        //       addCustomField={tagsState.addCustomField}
-        //       removeCustomField={tagsState.removeCustomField}
-        //       updateCustomField={tagsState.updateCustomField}
-        //     />
-        //   );
-        // default:
         return null;
     }
   };
@@ -824,20 +974,6 @@ export function CustomerModal({
           )}
         </Box>
 
-        {/*
-          Content region — this is the piece that was causing the dead
-          gap + clipped sidebar on narrow/mobile widths.
-
-          Below `lg`: the OUTER box owns the scroll (`overflow-y-auto`) and
-          both children (main content + sidebar) just flow naturally, full
-          width, stacked. No fixed heights fighting each other, nothing
-          gets clipped — it just scrolls as one long page.
-
-          At `lg` and above: outer scroll is turned off
-          (`lg:overflow-hidden`) and we go back to the original two-pane
-          layout — main content and sidebar each own their own
-          ScrollArea/overflow independently, side by side.
-        */}
         <Box
           bg="slate.0"
           className="flex-1 flex flex-col lg:flex-row min-w-0 overflow-y-auto lg:overflow-hidden"
@@ -871,7 +1007,7 @@ export function CustomerModal({
               }
               stepInGroup={stepInGroup}
               groupStepCount={activeGroup.stepIndices.length}
-              overallCompleted={currentStep}
+              overallCompleted={currentFlowIndex === -1 ? 0 : currentFlowIndex}
               overallTotal={STEPS.length}
               creditScore={creditResult?.score ?? null}
               creditBand={
@@ -897,20 +1033,20 @@ export function CustomerModal({
             ) : undefined
           }
           submitLabel={
-            currentStep < STEPS.length - 1
+            !isLastStep
               ? isViewMode
                 ? "Next"
                 : "Save & Continue"
               : "Save"
           }
           onSubmit={
-            currentStep < STEPS.length - 1
+            !isLastStep
               ? handleNext
               : isViewMode
                 ? undefined
                 : handleCreateCustomer
           }
-          submitDisabled={isViewMode && currentStep === STEPS.length - 1}
+          submitDisabled={isViewMode && isLastStep}
         />
       </Box>
     </Modal>

@@ -1,5 +1,30 @@
 import { useState } from "react";
 
+export interface CustomerModalAddress {
+  name?: string;
+  address_type: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country: string;
+  is_primary_address: 0 | 1;
+  is_shipping_address: 0 | 1;
+}
+
+export interface CustomerModalContact {
+  name?: string;
+  first_name: string;
+  last_name: string;
+  salutation: string | null;
+  designation: string | null;
+  email_id: string;
+  mobile_no: string;
+  is_primary_contact: 0 | 1;
+  is_billing_contact: 0 | 1;
+}
+
 export function useContactState() {
   const [mobileNumber, setMobileNumber] = useState("");
   const [alternateMobile, setAlternateMobile] = useState("");
@@ -40,6 +65,12 @@ const [sameAsRegisteredOffice, setSameAsRegisteredOffice] = useState(true);
   const [correspondencePostalCode, setCorrespondencePostalCode] = useState("");
   const [correspondenceAddressSince, setCorrespondenceAddressSince] =
     useState("");
+  const [customerAddresses, setCustomerAddresses] = useState<
+    CustomerModalAddress[]
+  >([]);
+  const [customerContacts, setCustomerContacts] = useState<
+    CustomerModalContact[]
+  >([]);
 
   const reset = () => {
     setPrimaryContactName("");
@@ -72,6 +103,8 @@ setSameAsRegisteredOffice(true);
     setCorrespondenceCityTown("");
     setCorrespondencePostalCode("");
     setCorrespondenceAddressSince("");
+    setCustomerAddresses([]);
+    setCustomerContacts([]);
   };
 
   return {
@@ -133,6 +166,10 @@ setPrimaryContactName,
     setCorrespondencePostalCode,
     correspondenceAddressSince,
     setCorrespondenceAddressSince,
+    customerAddresses,
+    setCustomerAddresses,
+    customerContacts,
+    setCustomerContacts,
 
     reset,
   };
