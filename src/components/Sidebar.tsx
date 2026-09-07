@@ -233,6 +233,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
             label: "Pre-Screening",
             icon: IconUsers,
           }, 
+           {
+            path: "/settings/los-configuration/eligibility-check",
+            label: "Loan Eligibility Check",
+            icon: IconUsers,
+          }, 
         ],
       },
       {
