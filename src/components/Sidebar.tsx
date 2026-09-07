@@ -96,6 +96,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails , modules:["Loan Demand Offset Order"]},
       { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt , modules:["Item"] },
       { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank ,modules: ["Loan Product"]},
+        { path: "/setup/contract-templates", label: "Contract Templates", icon: IconFileText },
     ],
   },
   {
@@ -801,3 +802,7 @@ export function Sidebar({
     </Box>
   );
 }
+
+
+
+

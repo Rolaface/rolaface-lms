@@ -1,9 +1,12 @@
+import { CreateTemplateWizard } from "../view/Setup/ContractTemplates/CreateTemplate/CreateTemplateWizard";
+import { ContractTemplateManagement } from "../view/Setup/ContractTemplates/ContractTemplateManagement";
 import {
   createRouter,
   createRoute,
   createRootRoute,
   Outlet,
   redirect,
+  Link,
 } from "@tanstack/react-router";
 import { AppLayout } from "../layout/AppLayout";
 import { PermissionGuard } from "../view/Permissionguard";
@@ -40,6 +43,8 @@ import { LoanCollectionSequenceOrder } from "../view/Setup/LoanCollectionSequenc
 import { FeeAndCharges } from "../view/Setup/FeeAndCharges/FeeAndCharges";
 import { LoanProduct } from "../view/Loan/Product/LoanProduct";
 import { LoanClassificationRanges } from "../view/Setup/LoanClassificationRanges/LoanClassificationRanges";
+import { TemplateSuccessPage } from "../view/Setup/ContractTemplates/CreateTemplate/TemplateSuccessPage";
+import { ProductMappingPage } from "../view/Setup/ContractTemplates/ProductMapping/ProductMappingPage";
 
 //accounting
 import { ChartOfAccounts } from "../view/Accounting/chartofaccounting";
@@ -158,6 +163,27 @@ const setupProductRoute = createRoute({
   getParentRoute: () => setupRoute,
   path: "/product",
   component: LoanProduct,
+});
+
+const setupContractTemplatesRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: "/contract-templates",
+  component: ContractTemplateManagement,
+});
+const setupContractTemplateCreateRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: "/contract-templates/create",
+  component: CreateTemplateWizard,
+});
+const setupContractTemplateSuccessRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: "/contract-templates/create/success",
+  component: TemplateSuccessPage,
+});
+const setupContractTemplateMapProductsRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: "/contract-templates/$templateId/map-products",
+  component: ProductMappingPage,
 });
 
 /* ---------- Origination (layout + children) — ungated ---------- */
@@ -433,6 +459,10 @@ const routeTree = rootRoute.addChildren([
     setupCollectionRoute,
     setupFeesRoute,
     setupProductRoute,
+    setupContractTemplatesRoute,
+    setupContractTemplateCreateRoute,
+    setupContractTemplateSuccessRoute,
+    setupContractTemplateMapProductsRoute,
   ]),
   originationRoute.addChildren([originationLoanApplicationRoute]),
   operationsRoute.addChildren([
@@ -480,3 +510,5 @@ declare module "@tanstack/react-router" {
     router: typeof router;
   }
 }
+
+
