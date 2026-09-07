@@ -91,11 +91,12 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconSettings,
     matchPrefix: true,
     subItems: [
-      { path: "/setup/category", label: "Loan Category", icon: IconListDetails, modules: ["Loan Category"] },
-      { path: "/setup/classification", label: "Loan Classification", icon: IconFileText, modules: ["Loan Classification"] },
-      { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails, modules: ["Loan Demand Offset Order"] },
-      { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt, modules: ["Item"] },
-      { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank, modules: ["Loan Product"] },
+      { path: "/setup/category", label: "Loan Category", icon: IconListDetails , modules: ["Loan Category"]},
+      { path: "/setup/classification", label: "Loan Classification", icon: IconFileText ,modules: ["Loan Classification"] },
+      { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails , modules:["Loan Demand Offset Order"]},
+      { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt , modules:["Item"] },
+      { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank ,modules: ["Loan Product"]},
+        { path: "/setup/contract-templates", label: "Contract Templates", icon: IconFileText },
     ],
   },
   {
@@ -827,3 +828,7 @@ export function Sidebar({
     </Box>
   );
 }
+
+
+
+
