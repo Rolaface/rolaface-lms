@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@mantine/form";
 import {
@@ -35,6 +35,9 @@ import { ChargeAccountsModal } from "./ChargesaccountModal";
 import { ModalFooter } from "../../shared/ModalFooter";
 import { openCommonModal } from "../AlertModal";
 import { CollectionTab } from "./CollectionsTab";
+import { useGeneralAccounts } from "../../../hooks/setting/lending-config/useGeneralAccounts";
+import { usePrincipalAccounts } from "../../../hooks/setting/lending-config/usePrincipalAccounts";
+import { useInterestPenaltyAccounts } from "../../../hooks/setting/lending-config/useInterestPenaltyAccounts";
 
 interface LoanProductProps {
   opened: boolean;
@@ -102,6 +105,9 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
 
   const [charges, setCharges] = useState<ChargeRow[]>([]);
   const [accountsModalIndex, setAccountsModalIndex] = useState<number | null>(null);
+  const { rows: principalRows } = usePrincipalAccounts();
+const { rows: generalRows } = useGeneralAccounts();
+const { mappings: ipMappings, sameAsInterest: defaultSameAsInterest } = useInterestPenaltyAccounts();
 
   // ---------- ALERT HELPERS (same pattern as AddLoanCategoryModal) ----------
   const showError = (heading: string, error: any) => {
@@ -166,6 +172,63 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     enabled: !!loanProductId,
     refetchOnMount: false,
   });
+
+
+
+const hasPrefilledDefaults = useRef(false);
+
+useEffect(() => {
+  if (loanProductId) return; 
+  if (hasPrefilledDefaults.current) return; 
+  if (principalRows.length === 0 && generalRows.length === 0 && ipMappings.length === 0) return; 
+
+  const findVal = (rows: typeof principalRows, id: string) =>
+    rows.find((r) => r.id === id)?.value || "";
+
+  setGeneralAccs((prev) => ({
+    ...prev,
+    loanAccount: findVal(principalRows, "loan_account") || prev.loanAccount,
+    disbursementAccount: findVal(principalRows, "disbursement_account") || prev.disbursementAccount,
+    repaymentAccount: findVal(principalRows, "repayment_account") || prev.repaymentAccount,
+    writeOffAccount: findVal(generalRows, "write_off") || prev.writeOffAccount,
+    writeOffRecoveryAccount: findVal(generalRows, "write_off_recovery") || prev.writeOffRecoveryAccount,
+    subsidyAccount: findVal(generalRows, "subsidy") || prev.subsidyAccount,
+    securityDepositAccount: findVal(generalRows, "security_deposit") || prev.securityDepositAccount,
+    suspenseCollectionAccount: findVal(generalRows, "suspense_collection") || prev.suspenseCollectionAccount,
+    customerRefundAccount: findVal(generalRows, "customer_refund") || prev.customerRefundAccount,
+  }));
+
+  const mapByType = (type: string, key: "interest_account" | "penalty_account") =>
+    ipMappings.find((m) => m.transaction_type === type)?.[key] || "";
+
+  setInterestAccs((prev) => ({
+    income: mapByType("Income", "interest_account") || prev.income,
+    receivable: mapByType("Receivable", "interest_account") || prev.receivable,
+    accrued: mapByType("Accrued", "interest_account") || prev.accrued,
+    suspended: mapByType("Suspended", "interest_account") || prev.suspended,
+    waiver: mapByType("Waiver", "interest_account") || prev.waiver,
+  }));
+
+  setPenaltyAccs((prev) => ({
+    income: mapByType("Income", "penalty_account") || prev.income,
+    receivable: mapByType("Receivable", "penalty_account") || prev.receivable,
+    accrued: mapByType("Accrued", "penalty_account") || prev.accrued,
+    suspended: mapByType("Suspended", "penalty_account") || prev.suspended,
+    waiver: mapByType("Waiver", "penalty_account") || prev.waiver,
+  }));
+
+  setSameAsInterest(defaultSameAsInterest);
+
+  hasPrefilledDefaults.current = true;
+}, [loanProductId, principalRows, generalRows, ipMappings, defaultSameAsInterest]);
+
+
+
+
+
+
+
+
 
   useEffect(() => {
     const product = (existingProductData as any)?.message?.data || (existingProductData as any)?.data;
@@ -476,24 +539,11 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
     setSubmitError(null);
     createMutation.reset();
     updateMutation.reset();
+    hasPrefilledDefaults.current = false; 
   };
 
   const handleReset = doReset;
 
-  // Confirm before wiping out everything the user has entered — same
-  // heading/subtitle/buttons pattern as LoanCategory's confirm modals.
-  const handleResetClick = () => {
-    openCommonModal({
-      heading: "Reset this form?",
-      subtitle: "This action cannot be undone.",
-      body: "This will clear everything you've entered on this form.",
-      color: "red",
-      buttons: [
-        { label: "Cancel", variant: "default" },
-        { label: "Reset", color: "red", onClick: () => doReset() },
-      ],
-    });
-  };
 
   const handleModalClose = () => {
     if (loanProductId) {

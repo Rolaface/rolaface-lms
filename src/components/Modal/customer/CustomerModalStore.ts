@@ -4,6 +4,7 @@ import { CustomerModal } from './CustomerModal';
 
 export interface CustomerModalParams {
   isViewMode?: boolean;
+  customerId?: string;
 }
 
 interface CustomerModalProps {
@@ -11,10 +12,12 @@ interface CustomerModalProps {
   onClose: () => void;
   onMinimize: () => void;
   isViewMode?: boolean;
+  customerId?: string;
 }
 
 function getTitle(params: CustomerModalParams) {
-  return params.isViewMode ? 'View Customer' : 'Create Customer';
+  if (params.isViewMode) return 'View Customer';
+  return params.customerId ? 'Edit Customer' : 'Create Customer';
 }
 
 export const customerModal = createModal<CustomerModalParams, CustomerModalProps>(
@@ -25,6 +28,7 @@ export const customerModal = createModal<CustomerModalParams, CustomerModalProps
     getTitle,
     buildProps: (params) => ({
       isViewMode: params.isViewMode,
+      customerId: params.customerId,
     }),
   },
 );

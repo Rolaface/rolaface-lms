@@ -3,13 +3,13 @@ import {
   IconPercentage,
   IconReceipt2,
   IconCoins,
-  IconAlertTriangle,
+ IconBuildingBank
 } from "@tabler/icons-react";
+import { API } from "../../../../config/api"; 
 
 export const LENDING_ENDPOINTS = {
-  getDefaults: "TODO_ADD_API_LENDING_DEFAULTS_GET",
-  updateDefaults: "TODO_ADD_API_LENDING_DEFAULTS_UPDATE",
-  getGLAccounts: "TODO_ADD_API_GL_ACCOUNTS_GET",
+  getDefaults: API.lendingConfig.getDefaults,
+  updateDefaults: API.lendingConfig.updateDefaults,
 } as const;
 
 export const TAB_ITEMS = [
@@ -19,12 +19,13 @@ export const TAB_ITEMS = [
     label: "Interest & Penalty Accounts",
     icon: IconPercentage,
   },
-  { value: "fee", label: "Fee Accounts", icon: IconReceipt2 },
   { value: "principal", label: "Principal Accounts", icon: IconCoins },
+  { value: "fee", label: "Fee Accounts", icon: IconReceipt2 },
+  
   {
-    value: "arrears",
-    label: "Arrears & Write-off",
-    icon: IconAlertTriangle,
+    value: "general-accounts",
+    label: "General Accounts",
+  icon: IconBuildingBank,
   },
 ] as const;
 

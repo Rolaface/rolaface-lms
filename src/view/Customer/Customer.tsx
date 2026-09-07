@@ -66,7 +66,8 @@ export function Customer() {
     () =>
       buildCustomerColumns({
         onView: handleViewCustomer,
-        onEdit: () => customerModal.open({ isViewMode: false }),
+        onEdit: (customer) =>
+          customerModal.open({ isViewMode: false, customerId: customer.id }),
         onDelete: handleDeleteCustomer,
         canRead: canReadCustomer,
         canWrite: canWriteCustomer,

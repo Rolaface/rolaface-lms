@@ -19,6 +19,8 @@ import {
 } from "../../components/constants/setting/lendingConfig/lendingConfig.constants";
 import { GeneralInfoPanel } from "./tabs/GeneralInfoPanel";
 import { InterestPenaltyAccountsPanel } from "./tabs/InterestPenaltyAccountsPanel";
+import { PrincipalAccountsPanel } from "./tabs/PrincipalAccountsPanel";
+import { GeneralAccountsPanel } from "./tabs/GeneralAccountsPanel";
 import { TabComingSoon } from "./tabs/TabComingSoon";
 
 export function LendingConfiguration() {
@@ -172,11 +174,20 @@ export function LendingConfiguration() {
             <Tabs.Panel value="interest-penalty">
               <InterestPenaltyAccountsPanel />
             </Tabs.Panel>
+             <Tabs.Panel value="principal">
+              <PrincipalAccountsPanel />
+            </Tabs.Panel>
+
+             <Tabs.Panel value="general-accounts">
+              <GeneralAccountsPanel />
+            </Tabs.Panel>
 
             {TAB_ITEMS.filter(
               (tab) =>
                 tab.value !== "general" &&
-                tab.value !== "interest-penalty",
+                tab.value !== "interest-penalty" &&
+                tab.value !== "principal" &&
+                tab.value !== "general-accounts",
             ).map(({ value, label, icon }) => (
               <Tabs.Panel key={value} value={value}>
                 <TabComingSoon icon={icon} label={label} />

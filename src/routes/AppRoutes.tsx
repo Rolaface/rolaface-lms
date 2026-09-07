@@ -69,6 +69,8 @@ import { useMemo } from "react";
 import { usePermission } from "../hooks/Usepermission";
 import type { PermissionAction } from "../store/Permissionstore";
 import type { LmsModule } from "../types/User/userRole";
+import LOSPreScreening from "../view/LosConfiguration/PreScreening/Losprescreening";
+import LOSEligibilityCheck from "../view/LosConfiguration/EligibilityCheck/LOSEligibilityCheck";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -424,6 +426,21 @@ const userRoute = createRoute({
   path: "/user",
   component: Outlet,
 });
+const losConfigurationRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/los-configuration",
+  component: Outlet,
+});
+const preScreeningRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/los-configuration/pre-screening",
+  component: LOSPreScreening,
+});
+const loanEligibilityCheckRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/los-configuration/eligibility-check",
+  component: LOSEligibilityCheck,
+});
 const emailTemplateRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/emailTemplate",
@@ -498,6 +515,7 @@ const routeTree = rootRoute.addChildren([
     lendingConfigurationRoute,
 
     emailTemplateRoute,
+    losConfigurationRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute]),
     schedulerRoute,
     userRoute.addChildren([userManagementRoute, userRolesRoute]),
   ]),

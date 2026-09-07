@@ -58,7 +58,7 @@ interface NavItem {
   matchPrefix?: boolean;
   subItems?: NavItem[];
   modules?: LmsModule[];
-   action?: PermissionAction;
+  action?: PermissionAction;
 }
 
 const LOCAL_NAV_ITEMS: NavItem[] = [
@@ -105,7 +105,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconFileText,
     matchPrefix: true,
     subItems: [
-      { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText , modules:["Loan Application"]},
+      { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText, modules: ["Loan Application"] },
     ],
   },
   {
@@ -138,7 +138,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
           {
             path: "/accounting/general-ledger/chart-of-accounts",
             label: "Chart of Accounts",
-            icon: IconHierarchy2, 
+            icon: IconHierarchy2,
             modules: ["Account"],
             action: "read",
           },
@@ -153,8 +153,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
             path: "/accounting/general-ledger/report",
             label: "General Ledger Report",
             icon: IconFileText,
-             modules: ["Account"],
-             action: "report",
+            modules: ["Account"],
+            action: "report",
           },
         ],
       },
@@ -225,6 +225,23 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         icon: IconSettings,
       },
       {
+        path: "/settings/los-configuration",
+        label: "LOS Configuration",
+        icon: IconSettings,
+        subItems: [
+          {
+            path: "/settings/los-configuration/pre-screening",
+            label: "Pre-Screening",
+            icon: IconUsers,
+          },
+          {
+            path: "/settings/los-configuration/eligibility-check",
+            label: "Loan Eligibility Check",
+            icon: IconUsers,
+          },
+        ],
+      },
+      {
         path: "/settings/user",
         label: "User",
         icon: IconUserCog,
@@ -258,21 +275,21 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
 
 function filterNavItems(
   items: NavItem[],
-   can: (module: LmsModule, action: PermissionAction) => boolean
+  can: (module: LmsModule, action: PermissionAction) => boolean
 ): NavItem[] {
   const result: NavItem[] = [];
   for (const item of items) {
     if (item.subItems && item.subItems.length > 0) {
-     const filteredChildren = filterNavItems(item.subItems, can);
+      const filteredChildren = filterNavItems(item.subItems, can);
       if (filteredChildren.length > 0) {
         result.push({ ...item, subItems: filteredChildren });
       }
       continue;
     }
-     const allowed =
-     !item.modules ||
+    const allowed =
+      !item.modules ||
       item.modules.length === 0 ||
-     item.modules.some((mod) => can(mod, item.action ?? "read"));
+      item.modules.some((mod) => can(mod, item.action ?? "read"));
     if (allowed) result.push(item);
   }
   return result;
@@ -482,12 +499,19 @@ export function Sidebar({
   const { can, isAdmin, permissions } = usePermission();
   const visibleNavItems = React.useMemo(
     () => filterNavItems(LOCAL_NAV_ITEMS, can),
-   [can, isAdmin, permissions]
+    [can, isAdmin, permissions]
   );
 
   const user = useUserStore((s) => s.user);
   const clearUser = useUserStore((s) => s.clearUser);
   const [loggingOut, setLoggingOut] = React.useState(false);
+
+  // Show "Switch workspace" only if the company's plan actually has an
+  // ERP-side workspace enabled (erp OR hrms). If the company is
+  // lending-only, there's nowhere else to switch to.
+  const canSwitchWorkspace =
+    user?.subscribed_modules?.erp?.enabled === true ||
+    user?.subscribed_modules?.hrms?.enabled === true;
 
   const displayName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
@@ -589,19 +613,21 @@ export function Sidebar({
           </Box>
         )}
 
-        <Tooltip label="Switch workspace" position="bottom" disabled={isCollapsed}>
-          <ActionIcon
-            variant="subtle"
-            radius="md"
-            className="lms-focusable shrink-0"
-            onClick={() => {
-              window.location.href = `${ERP_FRONTEND}/select-app`;
-            }}
-            style={{ color: tk.iconDefault }}
-          >
-            <IconHome size={18} />
-          </ActionIcon>
-        </Tooltip>
+        {canSwitchWorkspace && (
+          <Tooltip label="Switch workspace" position="bottom" disabled={isCollapsed}>
+            <ActionIcon
+              variant="subtle"
+              radius="md"
+              className="lms-focusable shrink-0"
+              onClick={() => {
+                window.location.href = `${ERP_FRONTEND}/dashboard`;
+              }}
+              style={{ color: tk.iconDefault }}
+            >
+              <IconHome size={18} />
+            </ActionIcon>
+          </Tooltip>
+        )}
 
         {!isCollapsed && (
           <ActionIcon

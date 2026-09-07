@@ -24,6 +24,7 @@ import {
   useGenders,
   useIndustries,
   useCountries,
+  useCustomerGroups,
 } from "../../../../hooks/common/useLookups";
 import { useDebouncedValue } from "@mantine/hooks";
 
@@ -39,8 +40,8 @@ interface IdentityStepProps {
   customerNumber: string;
   customerType: string;
   setCustomerType: (v: string) => void;
-  customerCategory: string | null;
-  setCustomerCategory: (v: string | null) => void;
+  customerGroup: string | null;
+  setCustomerGroup: (v: string | null) => void;
   isStaffCustomer: boolean;
   setIsStaffCustomer: (v: boolean) => void;
   staffId: string | null;
@@ -100,12 +101,6 @@ interface IdentityStepProps {
   errors?: Record<string, string>;
 }
 
-const customerCategoryOptions = [
-  { value: "Retail", label: "Retail" },
-  { value: "SME", label: "SME" },
-  { value: "Corporate", label: "Corporate" },
-];
-
 const customerMaritalOptions = [
   { value: "Single", label: "Single" },
   { value: "Married", label: "Married" },
@@ -124,6 +119,8 @@ const FIELD_MAW = 260;
 
 export function IdentityStep(props: IdentityStepProps) {
   const { data: genderOptions, isLoading: gendersLoading } = useGenders();
+  const { data: customerGroupOptions, isLoading: customerGroupsLoading } =
+    useCustomerGroups();
   const [industrySearch, setIndustrySearch] = useState("");
   const [debouncedIndustrySearch] = useDebouncedValue(industrySearch, 300);
   const { data: industryOptions, isLoading: industriesLoading } = useIndustries(
@@ -150,8 +147,8 @@ export function IdentityStep(props: IdentityStepProps) {
     customerNumber,
     customerType,
     setCustomerType,
-    customerCategory,
-    setCustomerCategory,
+    customerGroup,
+    setCustomerGroup,
     isStaffCustomer,
     setIsStaffCustomer,
     staffId,
@@ -302,12 +299,13 @@ export function IdentityStep(props: IdentityStepProps) {
         maw={FIELD_MAW}
         size="xs"
         radius="md"
-        label="Customer Category"
-        placeholder="Select"
-        data={customerCategoryOptions}
-        value={customerCategory}
-        onChange={setCustomerCategory}
+        label="Customer Group"
+        placeholder={customerGroupsLoading ? "Loading..." : "Select"}
+        data={customerGroupOptions ?? []}
+        value={customerGroup}
+        onChange={setCustomerGroup}
         rightSection={chevron}
+        disabled={customerGroupsLoading}
       />
 
       {!isBusiness && (
@@ -475,6 +473,37 @@ export function IdentityStep(props: IdentityStepProps) {
                 placeholder="e.g. Agronomist"
                 value={occupation}
                 onChange={(e) => setOccupation(e.currentTarget.value)}
+              />
+            </Grid.Col>
+          </Grid>
+
+          {/* Industry + Employer were previously destructured from props
+              but never rendered here — identity.industry/employer could
+              never be set for an Individual customer, so they always went
+              to the API as null. Bound to the same industryOptions/
+              industriesLoading/setIndustrySearch already fetched above via
+              useIndustries(). */}
+          <Grid gap="sm" mt="xs">
+            <Grid.Col span={4}>
+              <Select
+                radius="md"
+                searchable
+                rightSection={chevron}
+                label="Industry (Optional)"
+                placeholder={industriesLoading ? "Loading..." : "Select"}
+                data={industryOptions ?? []}
+                value={industry}
+                onChange={setIndustry}
+                onSearchChange={setIndustrySearch}
+              />
+            </Grid.Col>
+            <Grid.Col span={4}>
+              <TextInput
+                radius="md"
+                label="Employer (Optional)"
+                placeholder="e.g. ABC Ltd"
+                value={employer}
+                onChange={(e) => setEmployer(e.currentTarget.value)}
               />
             </Grid.Col>
           </Grid>

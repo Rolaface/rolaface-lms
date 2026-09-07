@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { RawSubscribedModules } from "../utils/subscriptionTypes";
 
 export interface LoginUser {
   userId: string;
@@ -6,6 +7,7 @@ export interface LoginUser {
   firstName: string;
   lastName: string;
   roles?: string[];
+  subscribed_modules?: RawSubscribedModules;
   [key: string]: any;
 }
 
