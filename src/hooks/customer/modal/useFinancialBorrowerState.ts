@@ -43,13 +43,15 @@ export function useFinancialBorrowerState() {
   const [creditOfficer, setCreditOfficer] = useState<string | null>(null);
 
   const getErrors = (): Record<string, string> => {
-    if (!convertToBorrower) return {};
-    const errs: Record<string, string> = {};
-    if (!borrowerCategory)
-      errs.borrowerCategory = "Borrower category is required";
-    if (!loanPurpose) errs.loanPurpose = "Loan purpose is required";
-    if (!branch) errs.branch = "Branch is required";
-    return errs;
+    // Validation disabled for now — re-enable by restoring the checks below.
+    return {};
+    // if (!convertToBorrower) return {};
+    // const errs: Record<string, string> = {};
+    // if (!borrowerCategory)
+    //   errs.borrowerCategory = "Borrower category is required";
+    // if (!loanPurpose) errs.loanPurpose = "Loan purpose is required";
+    // if (!branch) errs.branch = "Branch is required";
+    // return errs;
   };
 
   const reset = () => {

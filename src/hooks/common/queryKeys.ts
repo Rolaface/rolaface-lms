@@ -3,4 +3,5 @@ export const commonKeys = {
   countries: (search?: string) => [...commonKeys.all, "countries", search ?? ""] as const,
   genders: () => [...commonKeys.all, "genders"] as const,
   industries: (search?: string) => [...commonKeys.all, "industries", search ?? ""] as const,
+  customerGroups: () => [...commonKeys.all, "customerGroups"] as const,
 };
