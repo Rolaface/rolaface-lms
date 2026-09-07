@@ -24,7 +24,7 @@ import {
   IconTestPipe,
   IconHistory,
   IconClipboardList,
-  IconShieldCheck,
+  IconDeviceDesktopCog,
   IconX,
 } from "@tabler/icons-react";
 import {
@@ -79,7 +79,7 @@ function RuleSetList({
               justifyContent: "center",
             }}
           >
-            <IconShieldCheck size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconDeviceDesktopCog size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>Pre-Screening Rule Sets</Title>
@@ -226,7 +226,7 @@ function CreateRuleSetModal({
               color: "var(--mantine-color-white)",
             }}
           >
-            <IconShieldCheck size={32} stroke={1.8} />
+            <IconDeviceDesktopCog size={32} stroke={1.8} />
           </Box>
         </Box>
 
@@ -396,7 +396,7 @@ function RuleSetDetail({
                   flexShrink: 0,
                 }}
               >
-                <IconShieldCheck size={20} color="var(--mantine-color-white)" stroke={1.8} />
+                <IconDeviceDesktopCog size={20} color="var(--mantine-color-white)" stroke={1.8} />
               </Box>
               <div>
                 <Group gap={10} mb={4}>
@@ -411,7 +411,7 @@ function RuleSetDetail({
               <Button variant="default" radius="xl" onClick={() => toast("Draft saved")}>Save Draft</Button>
               <Button
                 radius="xl"
-                leftSection={<IconShieldCheck size={14} />}
+                leftSection={<IconDeviceDesktopCog size={14} />}
                 disabled={!v.ok}
                 style={{ background: v.ok ? (theme.other?.brandGradient || "var(--mantine-color-brand-6)") : undefined }}
                 onClick={() => setShowActivateConfirm(true)}
@@ -471,7 +471,7 @@ function RuleSetDetail({
 
       {showActivateConfirm && (
         <Modal opened onClose={() => !activating && setShowActivateConfirm(false)} title="Activate Rule Set" radius="lg" centered size="md">
-          <Text fz={13} c="slate.6" mb={18} mt={-8}>This publishes a new version and applies it to new applications immediately.</Text>
+          <Text fz={13} c="slate.6" mb={18} mt={8}>This publishes a new version and applies it to new applications immediately.</Text>
           <div style={{ fontSize: 13.5, marginBottom: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid var(--mantine-color-slate-2)" }}><span style={{ color: "var(--mantine-color-slate-6)" }}>Current version</span><span style={{ fontWeight: 600 }}>v{ruleSet.version}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid var(--mantine-color-slate-2)" }}><span style={{ color: "var(--mantine-color-slate-6)" }}>New version</span><span style={{ fontWeight: 600 }}>v{(parseFloat(ruleSet.version) + 0.1).toFixed(1)}</span></div>
