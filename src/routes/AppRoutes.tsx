@@ -72,6 +72,8 @@ import type { PermissionAction } from "../store/Permissionstore";
 import type { LmsModule } from "../types/User/userRole";
 import LOSPreScreening from "../view/LosConfiguration/PreScreening/Losprescreening";
 import LOSEligibilityCheck from "../view/LosConfiguration/EligibilityCheck/LOSEligibilityCheck";
+import LoanProductAutoAssignment from "../view/LosConfiguration/ProductAssignment/LoanProductAssignment";
+import ProductAssignments from "../view/LosConfiguration/ProductAssignment/ProductAssignments";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -167,7 +169,31 @@ const setupProductRoute = createRoute({
   path: "/product",
   component: LoanProduct,
 });
-
+const originationSetupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/origination-setup",
+  component: Outlet,
+});
+const preScreeningRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/pre-screening",
+  component: LOSPreScreening,
+});
+const loanEligibilityCheckRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/eligibility-check",
+  component: LOSEligibilityCheck,
+});
+const loanProductAssignmentRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/product-assignment",
+  component: LoanProductAutoAssignment,
+});
+// const tempProductAssignmentRoute = createRoute({
+//   getParentRoute: () => originationSetupRoute,
+//   path: "/product-temp",
+//   component: ProductAssignments,
+// });
 const setupContractTemplatesRoute = createRoute({
   getParentRoute: () => setupRoute,
   path: "/contract-templates",
@@ -432,21 +458,6 @@ const userRoute = createRoute({
   path: "/user",
   component: Outlet,
 });
-const losConfigurationRoute = createRoute({
-  getParentRoute: () => settingsRoute,
-  path: "/los-configuration",
-  component: Outlet,
-});
-const preScreeningRoute = createRoute({
-  getParentRoute: () => settingsRoute,
-  path: "/los-configuration/pre-screening",
-  component: LOSPreScreening,
-});
-const loanEligibilityCheckRoute = createRoute({
-  getParentRoute: () => settingsRoute,
-  path: "/los-configuration/eligibility-check",
-  component: LOSEligibilityCheck,
-});
 const emailTemplateRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/emailTemplate",
@@ -516,13 +527,13 @@ const routeTree = rootRoute.addChildren([
     balancesheetRoute,
     cashflowRoute,
   ]),
-
+// originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute]),
+originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute]),
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
   settingsRoute.addChildren([
     lendingConfigurationRoute,
 
     emailTemplateRoute,
-    losConfigurationRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute]),
     schedulerRoute,
     userRoute.addChildren([userManagementRoute, userRolesRoute]),
   ]),

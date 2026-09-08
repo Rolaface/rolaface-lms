@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { IconCalendarClock, IconMail, IconSettingsCheck, IconTimelineEvent, IconUserCog } from "@tabler/icons-react";
 import {
   IconCalendarClock,
   IconMail,
@@ -40,7 +41,7 @@ import {
   IconArrowsExchange,
   IconReceipt,
   IconBox,
-  IconCoins,
+  IconCoins, IconBrandProducthunt
 } from "@tabler/icons-react";
 import type { PermissionAction } from "../store/Permissionstore";
 import { usePermission } from "../hooks/Usepermission";
@@ -106,6 +107,33 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         { path: "/setup/map-products", label: "Map Loan Products", icon: IconLayersLinked },
     ],
   },
+   {
+        path: "/origination-setup",
+        label: "Origination Setup",
+        icon: IconSettings,
+         subItems: [
+          {
+            path: "/origination-setup/pre-screening",
+            label: "Pre-Screening",
+            icon: IconUsers,
+          }, 
+           {
+            path: "/origination-setup/eligibility-check",
+            label: "Loan Eligibility Check",
+            icon: IconSettingsCheck,
+          },
+           {
+            path: "/origination-setup/product-assignment",
+            label: "Loan Product Assignment",
+            icon: IconBrandProducthunt,
+          },  
+          //  {
+          //   path: "/origination-setup/product-temp",
+          //   label: "Temp Product Assignment",
+          //   icon: IconBrandProducthunt,
+          // },  
+        ],
+      },
   {
     path: "/origination",
     label: "Origination",
@@ -230,23 +258,6 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         path: "/settings/lending-configuration",
         label: "Lending Configuration",
         icon: IconSettings,
-      },
-      {
-        path: "/settings/los-configuration",
-        label: "LOS Configuration",
-        icon: IconSettings,
-        subItems: [
-          {
-            path: "/settings/los-configuration/pre-screening",
-            label: "Pre-Screening",
-            icon: IconUsers,
-          },
-          {
-            path: "/settings/los-configuration/eligibility-check",
-            label: "Loan Eligibility Check",
-            icon: IconUsers,
-          },
-        ],
       },
       {
         path: "/settings/user",
