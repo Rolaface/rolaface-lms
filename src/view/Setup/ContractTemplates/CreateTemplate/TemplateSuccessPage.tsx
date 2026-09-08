@@ -13,7 +13,7 @@ export function TemplateSuccessPage() {
   const templateId = activeTemplate?.id ?? 'tmpl-001';
 
   return (
-    <Box className="max-w-4xl mx-auto">
+    <Box>
       {/* Page Title */}
       <Box className="mb-2">
         <Text size="xl" fw={700} c="slate.9" className="text-2xl">
@@ -170,7 +170,7 @@ export function TemplateSuccessPage() {
             <Button
               size="md"
               rightSection={<IconArrowRight size={16} />}
-              onClick={() => navigate({ to: `/setup/contract-templates/${templateId}/map-products` })}
+              onClick={() => navigate({ to: '/setup/map-products' })}
             >
               Map to Loan Product
             </Button>
