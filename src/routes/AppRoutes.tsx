@@ -1,5 +1,6 @@
-import { CreateTemplateWizard } from "../view/Setup/ContractTemplates/CreateTemplate/CreateTemplateWizard";
+
 import { ContractTemplateManagement } from "../view/Setup/ContractTemplates/ContractTemplateManagement";
+import { CreateTemplateWizard } from "../view/Setup/ContractTemplates/CreateTemplate/CreateTemplateWizard";
 import {
   createRouter,
   createRoute,
@@ -43,7 +44,7 @@ import { LoanCollectionSequenceOrder } from "../view/Setup/LoanCollectionSequenc
 import { FeeAndCharges } from "../view/Setup/FeeAndCharges/FeeAndCharges";
 import { LoanProduct } from "../view/Loan/Product/LoanProduct";
 import { LoanClassificationRanges } from "../view/Setup/LoanClassificationRanges/LoanClassificationRanges";
-import { TemplateSuccessPage } from "../view/Setup/ContractTemplates/CreateTemplate/TemplateSuccessPage";
+
 import { MapLoanProducts } from "../view/Setup/MapLoanProducts/MapLoanProducts";
 
 //accounting
@@ -198,16 +199,13 @@ const setupContractTemplatesRoute = createRoute({
   path: "/contract-templates",
   component: ContractTemplateManagement,
 });
+
 const setupContractTemplateCreateRoute = createRoute({
   getParentRoute: () => setupRoute,
   path: "/contract-templates/create",
   component: CreateTemplateWizard,
 });
-const setupContractTemplateSuccessRoute = createRoute({
-  getParentRoute: () => setupRoute,
-  path: "/contract-templates/create/success",
-  component: TemplateSuccessPage,
-});
+
 const setupMapProductsRoute = createRoute({
   getParentRoute: () => setupRoute,
   path: "/map-products",
@@ -489,7 +487,6 @@ const routeTree = rootRoute.addChildren([
     setupProductRoute,
     setupContractTemplatesRoute,
     setupContractTemplateCreateRoute,
-    setupContractTemplateSuccessRoute,
     setupMapProductsRoute,
   ]),
   originationRoute.addChildren([originationLoanApplicationRoute]),

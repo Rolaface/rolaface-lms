@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Box, Stepper, Title, Text, Paper, ThemeIcon, Group, Button, useMantineTheme, Modal } from '@mantine/core';
 import { IconFileText, IconMinus, IconX } from '@tabler/icons-react';
+import { useNavigate } from '@tanstack/react-router';
+import { useContractTemplateStore } from '../../store/contractTemplateStore';
+import { openCommonModal } from './AlertModal';
 import { TemplateInfo } from '../../view/Setup/ContractTemplates/CreateTemplate/TemplateInfo';
 import { UploadTemplate } from '../../view/Setup/ContractTemplates/CreateTemplate/UploadTemplate';
 import { ConfigureTemplate } from '../../view/Setup/ContractTemplates/CreateTemplate/ConfigureTemplate';
@@ -16,6 +19,7 @@ export function CreateTemplateModal({ opened, onClose, onMinimize, editId }: Cre
   const [activeStep, setActiveStep] = useState(0);
   const [uploadedData, setUploadedData] = useState<any>(null);
   const theme = useMantineTheme();
+  const navigate = useNavigate();
 
   const handleNext = (data?: any) => {
     if (data !== undefined) {
@@ -24,7 +28,34 @@ export function CreateTemplateModal({ opened, onClose, onMinimize, editId }: Cre
     if (activeStep < 2) {
       setActiveStep((current) => current + 1);
     } else {
-      // It's handled inside ConfigureTemplate via handleNext which calls openCommonModal
+      const activeTemplate = useContractTemplateStore.getState().activeTemplate;
+      const templateName = activeTemplate?.templateName ?? 'Standard Personal Loan Agreement';
+      const templateVersion = activeTemplate?.templateVersion ?? '1.0';
+
+      openCommonModal({
+        heading: 'Contract Template Created Successfully',
+        subtitle: 'Your contract template has been created. You can now map this template to loan products.',
+        body: `Template Name: ${templateName}\nVersion: ${templateVersion}\nStatus: Active`,
+        color: 'green',
+        buttons: [
+          {
+            label: 'View Template',
+            variant: 'default',
+            onClick: () => {
+              onClose();
+              navigate({ to: '/setup/contract-templates' });
+            },
+          },
+          {
+            label: 'Map to Loan Product',
+            color: 'brand',
+            onClick: () => {
+              onClose();
+              navigate({ to: '/setup/map-products' });
+            },
+          },
+        ],
+      });
       onClose();
     }
   };
@@ -43,7 +74,7 @@ export function CreateTemplateModal({ opened, onClose, onMinimize, editId }: Cre
     <Modal
       opened={opened}
       onClose={onClose}
-      size={900}
+      size={1200}
       padding={0}
       radius="lg"
       closeOnClickOutside={false}
@@ -54,6 +85,7 @@ export function CreateTemplateModal({ opened, onClose, onMinimize, editId }: Cre
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          height: '90vh',
         },
         body: {
           flex: 1,
@@ -65,7 +97,7 @@ export function CreateTemplateModal({ opened, onClose, onMinimize, editId }: Cre
         },
       }}
     >
-      <Box style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
         {/* Header */}
         <Box
           className="px-6 py-3 flex justify-between items-center shrink-0"
@@ -119,7 +151,7 @@ export function CreateTemplateModal({ opened, onClose, onMinimize, editId }: Cre
         </Box>
 
         {/* Body */}
-        <Box className="w-full p-4 flex flex-col" style={{ flex: 1, overflowY: 'auto' }}>
+        <Box className="w-full p-4 flex flex-col" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           <Paper p="md" radius="md" className="border border-slate-200 shadow-sm mb-4 shrink-0 bg-white">
             <Stepper
               active={activeStep}

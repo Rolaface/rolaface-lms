@@ -4,6 +4,7 @@ import { Box, Button, Group, Text, Paper, SimpleGrid, TextInput, Select, Table, 
 import { IconCloudUpload, IconSearch, IconFilter, IconFileDescription, IconCircleCheck, IconClock, IconLink, IconEye, IconPencil, IconCopy, IconTrash, IconChevronUp, IconChevronDown, IconSelector } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
+import { createTemplateModal } from '../../../components/Modal/createTemplateModalStore';
 
 const mockTemplates = [
   { id: 1, bank: 'HDFC Bank', color: 'red', product: 'Business Loan', type: 'Loan Agreement', name: 'HDFC Business Loan Agreement', version: '2.0', uploadDate: '01-May-2024', uploadTime: '10:30 AM', effectiveDate: '01-May-2024', status: 'Active' },
@@ -170,14 +171,14 @@ export function ContractTemplateManagement() {
             Upload and manage bank/NBFC loan contract templates. Upload your legally approved PDF templates and map them to loan products.
           </Text>
         </Box>
-        <Button 
-          component={Link}
-          to="/setup/contract-templates/create"
-          leftSection={<IconCloudUpload size={18} />} 
-          size="md"
-        >
-          Upload New Contract Template
-        </Button>
+        <Link to="/setup/contract-templates/create">
+          <Button 
+            leftSection={<IconCloudUpload size={18} />} 
+            size="md"
+          >
+            Upload New Contract Template
+          </Button>
+        </Link>
       </Group>
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm" mb="md">
