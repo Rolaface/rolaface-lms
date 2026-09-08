@@ -45,6 +45,7 @@ import { LoanProduct } from "../view/Loan/Product/LoanProduct";
 import { LoanClassificationRanges } from "../view/Setup/LoanClassificationRanges/LoanClassificationRanges";
 import { TemplateSuccessPage } from "../view/Setup/ContractTemplates/CreateTemplate/TemplateSuccessPage";
 import { ProductMappingPage } from "../view/Setup/ContractTemplates/ProductMapping/ProductMappingPage";
+import { MapLoanProducts } from "../view/Setup/MapLoanProducts/MapLoanProducts";
 
 //accounting
 import { ChartOfAccounts } from "../view/Accounting/chartofaccounting";
@@ -186,6 +187,11 @@ const setupContractTemplateMapProductsRoute = createRoute({
   getParentRoute: () => setupRoute,
   path: "/contract-templates/$templateId/map-products",
   component: ProductMappingPage,
+});
+const setupMapProductsRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: "/map-products",
+  component: MapLoanProducts,
 });
 
 /* ---------- Origination (layout + children) — ungated ---------- */
@@ -480,6 +486,7 @@ const routeTree = rootRoute.addChildren([
     setupContractTemplateCreateRoute,
     setupContractTemplateSuccessRoute,
     setupContractTemplateMapProductsRoute,
+    setupMapProductsRoute,
   ]),
   originationRoute.addChildren([originationLoanApplicationRoute]),
   operationsRoute.addChildren([
