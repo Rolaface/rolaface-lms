@@ -326,6 +326,9 @@ function RuleSetDetail({
   const [showActivateConfirm, setShowActivateConfirm] = useState(false);
 
   const v = computeValidation(ruleSet);
+  // add
+const reorderRules = (groupId: string, rules: Rule[]) =>
+  setRuleSet({ ...ruleSet, groups: ruleSet.groups.map((g) => (g.id !== groupId ? g : { ...g, rules })) });
   const rulesCount = v.rulesCount;
 
   const addGroup = () => {
@@ -456,6 +459,7 @@ function RuleSetDetail({
             onAddGroup={addGroup}
             onRenameGroup={renameGroup}
             onSetLogic={setLogic}
+            onReorderRules={reorderRules}
             onDeleteGroup={deleteGroup}
             onToggleRule={toggleRule}
             onDuplicateRule={duplicateRule}
