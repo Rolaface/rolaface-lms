@@ -10,21 +10,21 @@ import {
   Badge,
   ActionIcon,
   ThemeIcon,
-  useMantineTheme,
 } from '@mantine/core';
 import { IconSearch, IconX, IconGripVertical, IconInfoCircle, IconArrowRight, IconStack2, IconLink } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useLoanProductStore } from '../../../store/loanProductStore';
+import { ModalFooter } from '../../../components/shared/ModalFooter';
 
 export function MapLoanProducts() {
   const navigate = useNavigate();
   const { products } = useLoanProductStore();
-  const theme = useMantineTheme();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
 
   const [selectedIds, setSelectedIds] = useState<string[]>(['prod-005', 'prod-006']);
+  const [isSaving, setIsSaving] = useState(false);
 
   const filters = ['All', 'Personal', 'Vehicle', 'Business', 'Home', 'Education'];
 
@@ -67,9 +67,25 @@ export function MapLoanProducts() {
     return `${prefix}-00${product.id.replace(/\D/g, '') || '1'}`;
   };
 
+  const handleBack = () => {
+    navigate({ to: '..' });
+  };
+
+  const handleSaveDraft = () => {
+    // TODO: wire actual save-as-draft API call
+    console.log('Saving as draft', selectedIds);
+  };
+
+  const handleSubmit = () => {
+    setIsSaving(true);
+    // TODO: wire actual save & continue API call
+    console.log('Saving & continuing', selectedIds);
+    setIsSaving(false);
+  };
+
   return (
-<Box className="w-full px-6 pt-0 pb-5">      {/* Page header */}
-      <Box className="mb-5">
+    <Box className="w-full px-6 pt-0 pb-3">      {/* Page header */}
+      <Box className="mb-3">
         <Text size="xl" fw={700} c="slate.9">
           Map Loan Products
         </Text>
@@ -79,7 +95,7 @@ export function MapLoanProducts() {
       </Box>
 
       {/* Body */}
-      <div className="flex gap-5 items-start">
+      <div className="flex gap-4 items-start">
         {/* Left Column: Available Products */}
         <Paper className="flex-[1.3] border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
           <Box className="p-5 border-b border-slate-100">
@@ -122,11 +138,9 @@ export function MapLoanProducts() {
             </Group>
           </Box>
 
-          {/* List Header */}
+          {/* List Header — checkbox column placeholder kept for alignment, no checkbox rendered */}
           <Box className="px-5 py-2.5 border-b border-slate-100 flex items-center bg-slate-0">
-            <Box style={{ width: 32 }}>
-              <Checkbox radius="sm" size="xs" />
-            </Box>
+            <Box style={{ width: 32 }} />
             <Text size="xs" fw={700} c="slate.4" className="uppercase tracking-wider flex-1">Product Name</Text>
             <Text size="xs" fw={700} c="slate.4" className="uppercase tracking-wider w-24">Loan Type</Text>
             <Text size="xs" fw={700} c="slate.4" className="uppercase tracking-wider w-24 pl-2">Status</Text>
@@ -283,47 +297,17 @@ export function MapLoanProducts() {
         </Paper>
       </div>
 
-      {/* Footer — styled like Collateral.tsx's action buttons: radius "xl",
-          brand gradient + glow shadow on the primary action */}
-      <Group
-        justify="flex-end"
-        gap="sm"
-        mt="xl"
-        pt="md"
-        pb="sm"
-        style={{ borderTop: '1px solid var(--mantine-color-slate-2)' }}
-      >
-        <Button
-          size="sm"
-          radius="xl"
-          variant="default"
-          px="md"
-          onClick={() => navigate({ to: '..' })}
-        >
-          Back
-        </Button>
-        <Button
-          size="sm"
-          radius="xl"
-          variant="outline"
-          color="brand"
-          px="md"
-        >
-          Save as Draft
-        </Button>
-        <Button
-          size="sm"
-          radius="xl"
-          color="brand"
-          rightSection={<IconArrowRight size={14} />}
-          style={{
-            background: theme.other.brandGradient,
-            boxShadow: theme.other.brandGlowShadowSm,
-          }}
-        >
-          Save & Continue
-        </Button>
-      </Group>
+      {/* Footer — shared ModalFooter component (theme variant), same as CollateralTypeModal */}
+      <ModalFooter
+        variant="theme"
+        onClose={handleBack}
+        onSaveDraft={handleSaveDraft}
+        saveDraftLabel="Save as Draft"
+        onSubmit={handleSubmit}
+        submitLabel="Save & Continue"
+        submitLoading={isSaving}
+        submitIcon={<IconArrowRight size={14} />}
+      />
     </Box>
   );
 }
