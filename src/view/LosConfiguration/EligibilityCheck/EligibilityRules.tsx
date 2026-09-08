@@ -47,8 +47,8 @@ export function EligibilityRules({ onCreateRule, onSimulate }: { onCreateRule: (
           </Text>
         </Box>
         <Group gap={8} wrap="wrap">
-          <Button size="sm" radius="xl" leftSection={<IconPlus size={15} />} color="brand" onClick={onCreateRule}>Create Rule</Button>
-          <Button size="sm" radius="xl" variant="default" leftSection={<IconFlask size={15} />} onClick={onSimulate}>Test Eligibility</Button>
+          {/* <Button size="sm" radius="xl" leftSection={<IconPlus size={15} />} color="brand" onClick={onCreateRule}>Create Rule</Button> */}
+          {/* <Button size="sm" radius="xl" variant="default" leftSection={<IconFlask size={15} />} onClick={onSimulate}>Test Eligibility</Button> */}
           <Button size="sm" radius="xl" variant="default" leftSection={<IconUpload size={15} />}>Import Rules</Button>
           <Button size="sm" radius="xl" variant="default" leftSection={<IconDownload size={15} />}>Export Rules</Button>
         </Group>

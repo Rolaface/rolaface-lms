@@ -18,11 +18,8 @@ import {
 } from "./shared";
 
 interface RuleSetConfiguratorProps {
-  /** Pass an existing record to edit it; omit to configure a new rule set. */
   ruleSet?: RuleSetRecord;
-  /** Returns to the Pre-Screening Rule Sets list. */
   onExit: () => void;
-  /** Called with the current details/groups/settings when the user saves. */
   onSave?: (record: Pick<RuleSetRecord, "details" | "groups" | "settings">) => void;
 }
 
@@ -161,10 +158,12 @@ export function RuleSetConfigurator({ ruleSet, onExit, onSave }: RuleSetConfigur
               <RuleDetailsTab details={details} onChange={patchDetails} />
             </Tabs.Panel>
 
-            <Tabs.Panel value="groups">
+            {/* <Tabs.Panel value="groups">
               <RuleGroupsTab groups={groups} onChange={setGroups} />
-            </Tabs.Panel>
-
+            </Tabs.Panel> */}
+<Tabs.Panel value="groups">
+  <RuleGroupsTab groups={groups} onChange={setGroups} productLine={details.productLine} />
+</Tabs.Panel>
             <Tabs.Panel value="behavior">
               <MatchingBehaviorTab settings={settings} onChange={patchSettings} />
             </Tabs.Panel>
