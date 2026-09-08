@@ -1,7 +1,13 @@
 import React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { IconCalendarClock, IconMail, IconTimelineEvent, IconUserCog, IconLayersLinked } from "@tabler/icons-react";
 import {
+  IconCalendarClock,
+  IconMail,
+  IconTimelineEvent,
+  IconUserCog,
+  IconLayersLinked,
+  IconSettingsCheck,
+} from "@tabler/icons-react";import {
   Box,
   Text,
   Stack,
