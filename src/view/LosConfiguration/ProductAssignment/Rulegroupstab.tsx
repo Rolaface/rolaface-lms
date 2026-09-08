@@ -37,10 +37,11 @@ import {
 interface RuleGroupsTabProps {
   groups: RuleGroup[];
   startIndex?: number;
+  productLine: string;
   onChange: (groups: RuleGroup[]) => void;
 }
 
-export function RuleGroupsTab({ groups, startIndex = 0, onChange }: RuleGroupsTabProps) {
+export function RuleGroupsTab({ groups, startIndex = 0, onChange, productLine }: RuleGroupsTabProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   
   // Use local state for smooth dragging without interrupting the HTML5 drag event
@@ -135,6 +136,7 @@ export function RuleGroupsTab({ groups, startIndex = 0, onChange }: RuleGroupsTa
               group={group}
               index={startIndex + index}
               expanded={isExpanded}
+               productLine={productLine}
               onToggleExpand={() => setExpanded((e) => ({ ...e, [group.id]: !isExpanded }))}
               onUpdateGroup={(patch) => updateGroup(group.id, patch)}
               onDuplicate={() => duplicateGroup(group.id)}
@@ -161,13 +163,11 @@ export function RuleGroupsTab({ groups, startIndex = 0, onChange }: RuleGroupsTa
 // ---------------------------------------------------------------------------
 // Rule group card
 // ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// Rule group card
-// ---------------------------------------------------------------------------
 interface RuleGroupCardProps {
   group: RuleGroup;
   index: number;
   expanded: boolean;
+  productLine: string;
   onToggleExpand: () => void;
   onUpdateGroup: (patch: Partial<RuleGroup>) => void;
   onDuplicate: () => void;
@@ -178,12 +178,13 @@ function RuleGroupCard({
   group,
   index,
   expanded,
+  productLine,
   onToggleExpand,
   onUpdateGroup,
   onDuplicate,
   onRemove,
 }: RuleGroupCardProps) {
-  const color = colorForProduct(group.product);
+  const color = colorForProduct(productLine);
 
   const updateCondition = (condId: string, patch: Partial<Condition>) =>
     onUpdateGroup({
@@ -295,7 +296,7 @@ function RuleGroupCard({
             {index + 1}
           </Text>
           <Stack gap={4} style={{ minWidth: 0 }}>
-            <Badge 
+            {/* <Badge 
               size="sm" 
               variant="light" 
               color={color} 
@@ -303,10 +304,13 @@ function RuleGroupCard({
               leftSection={<Box w={6} h={6} style={{ borderRadius: '50%', backgroundColor: `var(--mantine-color-${color}-6)` }} />}
             >
               {group.product || "Unassigned product"}
-            </Badge>
-            <Title order={5} c="slate.8" fw={600} truncate style={{ fontFamily: "serif" }}>
+            </Badge> */}
+            {/* <Title order={5} c="slate.8" fw={600} truncate style={{ fontFamily: "serif" }}>
               Rule Group {index + 1} — {group.product || "Untitled product"}
-            </Title>
+            </Title> */}
+            <Title order={5} c="slate.8" fw={600} truncate style={{ fontFamily: "serif" }}>
+  Rule Group {index + 1} — {getConditionSummary()}
+</Title>
             <Text fz="xs" c="slate.5">
               {group.conditions.length} condition{group.conditions.length !== 1 ? "s" : ""}
             </Text>

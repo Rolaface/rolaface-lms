@@ -8,8 +8,15 @@ import {
   IconPlus,
   IconShieldCog,
 } from "@tabler/icons-react";
-// import { RuleSetConfigurator } from "./Rulesetconfigurator";
-import { RuleSetConfigurator } from "./ProductDetails"; 
+import { RuleSetConfigurator } from "./Rulesetconfigurator";
+import {
+  uid,
+  DEFAULT_MATCHING_SETTINGS,
+  emptyRuleGroup,
+  type RuleSetRecord,
+  // type RuleStatus, 
+} from "./shared";
+// import { RuleSetConfigurator } from "./ProductDetails"; 
 
 type RuleStatus = "Active" | "Draft" | "Inactive";
 
@@ -23,15 +30,27 @@ interface AssignmentRule {
   status: RuleStatus;
 }
 
-const ASSIGNMENT_RULES: AssignmentRule[] = [
+const ASSIGNMENT_RULES: RuleSetRecord[] = [
   {
-    id: "rule-1",
-    ruleName: "Auto Loan Product Assignment",
-    source: "Customer Profile",
-    category: "Credit",
-    subcategory: "Credit Score",
-    productLine: "Auto Loan",
-    status: "Active",
+    summary: { 
+      id: "rule-1", 
+      name: "Auto Loan Product Assignment", 
+      status: "Active",
+      product: "Auto Loan",
+      rulesCount: 1,
+      version: "v1.0",
+      lastModified: "2026-09-08",
+      lastModifiedBy: "Admin"
+    },
+    details: {
+      ruleName: "Auto Loan Product Assignment",
+      source: "Customer Profile",
+      category: "Credit",
+      subcategory: "Credit Score",
+      productLine: "Auto Loan",
+    },
+    groups: [emptyRuleGroup()],
+    settings: DEFAULT_MATCHING_SETTINGS,
   },
 ];
 
@@ -48,21 +67,58 @@ export function LoanProductAssignment() {
   // 2. Add a state to track the active view
   const [activeView, setActiveView] = useState<"list" | "configurator">("list");
 
-  const ruleSets = showEmptyState ? [] : ASSIGNMENT_RULES;
+// after
+const [ruleSets, setRuleSets] = useState<RuleSetRecord[]>(ASSIGNMENT_RULES);
+const [editingId, setEditingId] = useState<string | null>(null);
+const visibleRuleSets = showEmptyState ? [] : ruleSets;
 
-  // 3. Update the handlers to switch views instead of just logging
-  const onOpenRuleSet = (id: string) => setActiveView("configurator");
-  const onCreateNew = () => setActiveView("configurator");
+const onOpenRuleSet = (id: string) => {
+  setEditingId(id);
+  setActiveView("configurator");
+};
+const onCreateNew = () => {
+  setEditingId(null);
+  setActiveView("configurator");
+};
 
-  // 4. Return the configurator component if the state is active
-  if (activeView === "configurator") {
-    return (
-      <RuleSetConfigurator 
-        onExit={() => setActiveView("list")} 
-      />
-    );
-  }
-
+if (activeView === "configurator") {
+  const current = ruleSets.find((r) => r.summary.id === editingId);
+  return (
+    <RuleSetConfigurator
+      ruleSet={current}
+      onExit={() => setActiveView("list")}
+      onSave={({ details, groups, settings }) => {
+        setRuleSets((prev) =>
+          current
+            ? prev.map((r) =>
+                r.summary.id === current.summary.id
+                  ? { ...r, details, groups, settings, summary: { ...r.summary, name: details.ruleName } }
+                  : r
+              )
+            : [
+                ...prev, 
+                { 
+                  summary: { 
+                    id: uid(), 
+                    name: details.ruleName, 
+                    status: "Draft",
+                    product: details.productLine,
+                    rulesCount: groups.length,
+                    version: "v1.0",
+                    lastModified: new Date().toISOString().split('T')[0],
+                    lastModifiedBy: "Admin"
+                  }, 
+                  details, 
+                  groups, 
+                  settings 
+                }
+              ]
+        );
+        setActiveView("list");
+      }}
+    />
+  );
+}
   return (
     <Box p="xl">
       <Group justify="space-between" align="flex-start" mb="lg" wrap="wrap">
@@ -160,14 +216,15 @@ export function LoanProductAssignment() {
             </Box>
 
             <Stack gap={0}>
-              {ruleSets.map((rs) => (
+              {/* {ruleSets.map((rs) => ( */}
+              {visibleRuleSets.map((rs) => (
                 <Box
-                  key={rs.id}
+                  key={rs.summary.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => onOpenRuleSet(rs.id)}
+                  onClick={() => onOpenRuleSet(rs.summary.id)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") onOpenRuleSet(rs.id);
+                    if (e.key === "Enter" || e.key === " ") onOpenRuleSet(rs.summary.id);
                   }}
                   px="lg"
                   py="md"
@@ -183,26 +240,26 @@ export function LoanProductAssignment() {
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--mantine-color-slate-0)")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
-                  <Group wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                 <Group wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
                     <Stack gap={4} style={{ flex: "2 1 0", minWidth: 0 }}>
                       <Text fz="sm" fw={600} c="slate.8" truncate>
-                        {rs.ruleName}
+                        {rs.details.ruleName}
                       </Text>
-                      <Badge size="sm" variant="light" color={STATUS_COLOR[rs.status]} w="fit-content">
-                        {rs.status}
+                      <Badge size="sm" variant="light" color={STATUS_COLOR[rs.summary.status as RuleStatus]} w="fit-content">
+                        {rs.summary.status}
                       </Badge>
                     </Stack>
                     <Text fz="sm" c="slate.6" style={{ flex: "1 1 0" }}>
-                      {rs.source}
+                      {rs.details.source}
                     </Text>
                     <Text fz="sm" c="slate.6" style={{ flex: "1 1 0" }}>
-                      {rs.category}
+                      {rs.details.category}
                     </Text>
                     <Text fz="sm" c="slate.6" style={{ flex: "1 1 0" }}>
-                      {rs.subcategory}
+                      {rs.details.subcategory}
                     </Text>
                     <Text fz="sm" c="slate.6" style={{ flex: "1 1 0" }}>
-                      {rs.productLine}
+                      {rs.details.productLine}
                     </Text>
                     <Box style={{ width: 20, display: "flex", justifyContent: "flex-end" }}>
                       <IconChevronRight size={16} color="var(--mantine-color-slate-4)" />

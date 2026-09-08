@@ -12,7 +12,7 @@ import {
 import { IconCheck, IconCircleX, IconAlertTriangle } from "@tabler/icons-react";
 import { Pill, SectionLabel, LabeledField, computeEligibility, type EligibilityInputs } from "./shared";
 
-function NumberField({ label, value, onChange, prefix = "ZMW" }: { label: string; value: number; onChange: (v: number) => void; prefix?: string }) {
+function NumberField({ label, value, onChange, prefix = "ZMW" }: { label: string; value: any; onChange: (v: any) => void; prefix?: string }) {
   return (
     <LabeledField label={label}>
       <Group gap={0} style={{ border: "1px solid var(--mantine-color-slate-3)", borderRadius: "var(--mantine-radius-sm)", overflow: "hidden" }}>
@@ -24,7 +24,7 @@ function NumberField({ label, value, onChange, prefix = "ZMW" }: { label: string
         <input
           type="number"
           value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
           style={{ flex: 1, border: "none", outline: "none", padding: "8px 10px", fontSize: 13.5, width: "100%" }}
         />
       </Group>
@@ -40,7 +40,8 @@ const DEFAULT_INPUTS: EligibilityInputs = {
 
 export function Simulator() {
   const [inputs, setInputs] = useState<EligibilityInputs>(DEFAULT_INPUTS);
-  const set = <K extends keyof EligibilityInputs>(k: K) => (v: EligibilityInputs[K]) => setInputs((p) => ({ ...p, [k]: v }));
+  // const set = <K extends keyof EligibilityInputs>(k: K) => (v: EligibilityInputs[K]) => setInputs((p) => ({ ...p, [k]: v }));
+  const set = (k: keyof EligibilityInputs) => (v: any) => setInputs((p) => ({ ...p, [k]: v }));
   const r = useMemo(() => computeEligibility(inputs), [inputs]);
 
   return (
