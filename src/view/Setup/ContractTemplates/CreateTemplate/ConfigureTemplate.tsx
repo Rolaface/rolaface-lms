@@ -12,9 +12,7 @@ interface ConfigureTemplateProps {
 export const ConfigureTemplate: React.FC<ConfigureTemplateProps> = ({ uploadedData, onNext, onPrev, onCancel }) => {
   const [zoom, setZoom] = useState(100);
   const [previewOpened, setPreviewOpened] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const totalPages = 3;
 
   const handleZoomIn = () => setZoom(z => Math.min(z + 25, 200));
   const handleZoomOut = () => setZoom(z => Math.max(z - 25, 50));
@@ -121,17 +119,7 @@ export const ConfigureTemplate: React.FC<ConfigureTemplateProps> = ({ uploadedDa
                   <ActionIcon variant="transparent" c="slate.6" onClick={handleZoomIn}><IconZoomIn size={18} /></ActionIcon>
                   <ActionIcon variant="transparent" c="slate.6" onClick={handleZoomOut}><IconZoomOut size={18} /></ActionIcon>
                 </Group>
-                
-                {/* Top Pagination */}
-                <Group gap="xs" align="center">
-                  <ActionIcon variant="transparent" c="slate.6" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
-                    <Text size="lg">‹</Text>
-                  </ActionIcon>
-                  <Text size="sm" fw={500} c="slate.7">{currentPage} / {totalPages}</Text>
-                  <ActionIcon variant="transparent" c="slate.6" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-                    <Text size="lg">›</Text>
-                  </ActionIcon>
-                </Group>
+
 
                 <Group gap="md">
                   <Select
@@ -152,8 +140,7 @@ export const ConfigureTemplate: React.FC<ConfigureTemplateProps> = ({ uploadedDa
                   <Paper shadow="sm" radius="sm" style={{ width: '100%', maxWidth: '800px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <Box style={{ flex: 1, transform: `scale(${zoom / 100})`, transformOrigin: 'top center', transition: 'transform 0.2s', width: '100%' }}>
                       <iframe 
-                        key={currentPage}
-                        src={`${filePreviewUrl}#page=${currentPage}&view=FitH&toolbar=0&navpanes=0&scrollbar=0`} 
+                        src={`${filePreviewUrl}#view=FitH&toolbar=0&navpanes=0`} 
                         width="100%" 
                         height="100%" 
                         style={{ border: 'none', backgroundColor: 'white', display: 'block' }} 
@@ -161,18 +148,6 @@ export const ConfigureTemplate: React.FC<ConfigureTemplateProps> = ({ uploadedDa
                       />
                     </Box>
                   </Paper>
-                  
-                  {/* Bottom Pagination */}
-                  <Center mt="md">
-                    <Pagination 
-                      total={totalPages} 
-                      value={currentPage} 
-                      onChange={setCurrentPage} 
-                      size="sm" 
-                      radius="xl"
-                      color="brand"
-                    />
-                  </Center>
                 </Box>
               ) : (
                 <Center style={{ flex: 1, minHeight: '500px', backgroundColor: 'var(--mantine-color-slate-0)' }}>
