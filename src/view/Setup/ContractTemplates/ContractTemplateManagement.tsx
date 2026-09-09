@@ -279,7 +279,7 @@ export function ContractTemplateManagement() {
               Contract Templates
             </Title>
             <Text fz="sm" c="slate.5">
-              Upload and manage bank/NBFC loan contract templates
+              Upload and manage bank loan contract templates
             </Text>
           </Stack>
         </Group>
