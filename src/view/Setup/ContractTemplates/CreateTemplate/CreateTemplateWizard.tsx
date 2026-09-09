@@ -58,18 +58,18 @@ export function CreateTemplateWizard() {
   return (
     <Box className="w-full px-6 pt-0 pb-3">
       {/* Page header */}
-      <Box className="mb-3">
+      <Box className="mb-1">
         <Text size="xl" fw={700} c="slate.9">
           Create Contract Template
         </Text>
-        <Text size="sm" c="slate.5" className="mt-1">
+        <Text size="sm" c="slate.5">
           Create a reusable contract template and configure its fields.
         </Text>
       </Box>
 
       {/* Body */}
       <Box className="w-full">
-        <Paper p="md" radius="md" className="border border-slate-200 shadow-sm mb-4 shrink-0 bg-white">
+        <Paper py="xs" px="md" radius="md" className="border border-slate-200 shadow-sm mb-2 shrink-0 bg-white">
           <Stepper
             active={activeStep}
             onStepClick={setActiveStep}
