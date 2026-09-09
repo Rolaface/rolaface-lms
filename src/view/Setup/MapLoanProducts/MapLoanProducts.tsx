@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Text,
@@ -18,13 +18,16 @@ import { ModalFooter } from '../../../components/shared/ModalFooter';
 
 export function MapLoanProducts() {
   const navigate = useNavigate();
-  const { products } = useLoanProductStore();
+  const { products, fetchProducts } = useLoanProductStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
-
-  const [selectedIds, setSelectedIds] = useState<string[]>(['prod-005', 'prod-006']);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   const filters = ['All', 'Personal', 'Vehicle', 'Business', 'Home', 'Education'];
 
@@ -202,17 +205,6 @@ export function MapLoanProducts() {
                           {product.status}
                         </Badge>
                       </Box>
-                      <Box style={{ width: 60 }} className="flex justify-end shrink-0">
-                        <Button
-                          variant={isSelected ? 'light' : 'subtle'}
-                          color={isSelected ? 'gray' : 'brand'}
-                          size="xs"
-                          px={8}
-                          onClick={() => (isSelected ? removeProduct(product.id) : addProduct(product.id))}
-                        >
-                          {isSelected ? 'Added' : 'Add'}
-                        </Button>
-                      </Box>
                     </Box>
                   );
                 })}
@@ -221,15 +213,6 @@ export function MapLoanProducts() {
           </div>
 
           <Box className="p-4 bg-white border-t border-slate-100">
-            <Button
-              variant="light"
-              color="brand"
-              fullWidth
-              radius="md"
-              leftSection={<Text size="sm" fw={700}>+</Text>}
-            >
-              Add More Products
-            </Button>
           </Box>
         </Paper>
 
@@ -262,52 +245,52 @@ export function MapLoanProducts() {
                 return (
                   <Paper
                     key={product.id}
-                    className="p-3 border border-slate-200 bg-white flex items-center gap-2 rounded-lg flex-nowrap overflow-hidden"
+                    className="p-3 border border-slate-200 bg-white flex flex-col gap-2 rounded-lg overflow-hidden relative"
                   >
-                    <IconGripVertical size={18} color="var(--mantine-color-slate-4)" className="cursor-grab shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <Text size="sm" fw={600} c="slate.8" truncate>{product.name}</Text>
-                      <Text size="xs" c="slate.5" truncate>{type} Loan · {code} · Secured</Text>
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <Text size="sm" fw={600} c="slate.8" truncate>{product.name}</Text>
+                        <Text size="xs" c="slate.5" truncate>{type} Loan · {code} · Secured</Text>
+                      </div>
+                      <ActionIcon
+                        variant="subtle"
+                        color="gray"
+                        onClick={() => removeProduct(product.id)}
+                        size="sm"
+                      >
+                        <IconX size={16} stroke={1.5} />
+                      </ActionIcon>
+                    </Group>
+
+                    <div>
+                      <Badge variant="light" color="brand" size="sm" className="shrink-0">
+                        Mapped
+                      </Badge>
                     </div>
-                    <Badge variant="light" color="brand" size="sm" className="shrink-0">
-                      Mapped
-                    </Badge>
-                    <ActionIcon
-                      variant="subtle"
-                      color="gray"
-                      onClick={() => removeProduct(product.id)}
-                      className="shrink-0"
-                    >
-                      <IconX size={16} stroke={1.5} />
-                    </ActionIcon>
                   </Paper>
                 );
               })}
             </div>
-
-            {selectedIds.length > 0 && (
-              <Box className="bg-brand-0 border border-brand-1 rounded-lg p-4 flex gap-3">
-                <IconInfoCircle size={20} color="var(--mantine-color-brand-6)" className="shrink-0 mt-0.5" />
-                <Text size="sm" c="brand.8" lh={1.4}>
-                  This template can be reused across all mapped products. Removing a product here won't delete it — it only unlinks it from this template.
-                </Text>
-              </Box>
-            )}
           </div>
         </Paper>
       </div>
 
-      {/* Footer — shared ModalFooter component (theme variant), same as CollateralTypeModal */}
-      <ModalFooter
-        variant="theme"
-        onClose={handleBack}
-        onSaveDraft={handleSaveDraft}
-        saveDraftLabel="Save as Draft"
-        onSubmit={handleSubmit}
-        submitLabel="Save & Continue"
-        submitLoading={isSaving}
-        submitIcon={<IconArrowRight size={14} />}
-      />
+      {/* Footer */}
+      <Box className="mt-6 pt-4 border-t border-slate-200">
+        <Group justify="space-between">
+          <Button variant="default" size="md" onClick={handleBack}>
+            Cancel
+          </Button>
+          <Group>
+            <Button variant="default" size="md" onClick={handleSaveDraft}>
+              Save as Draft
+            </Button>
+            <Button size="md" color="brand" onClick={handleSubmit} loading={isSaving} rightSection={<IconArrowRight size={16} />}>
+              Save & Continue
+            </Button>
+          </Group>
+        </Group>
+      </Box>
     </Box>
   );
 }
