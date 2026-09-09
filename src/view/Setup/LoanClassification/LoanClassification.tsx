@@ -138,7 +138,7 @@ export function LoanClassification() {
     });
   };
 
-  const { mutate: removeClassification, isPending: isDeleting } = useMutation({
+  const { mutate: removeClassification, isPending: isDeleting, variables: deletingId } = useMutation({
     mutationFn: (id: string) => deleteLoanClassification(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loanClassifications'] });
@@ -291,7 +291,8 @@ export function LoanClassification() {
                     variant="subtle"
                     color="danger"
                     radius="md"
-                    loading={isDeleting}
+                    loading={isDeleting && deletingId === row.code}
+                    disabled={isDeleting && deletingId !== row.code}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDelete(row);
@@ -307,7 +308,7 @@ export function LoanClassification() {
       }),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isDeleting, canReadLoan, canWriteLoan, canDeleteLoan]
+    [isDeleting, deletingId, canReadLoan, canWriteLoan, canDeleteLoan]
   );
 
   const table = useReactTable({
