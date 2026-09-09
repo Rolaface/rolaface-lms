@@ -13,7 +13,7 @@ function mapApiProductToLoanProduct(raw: any): LoanProduct {
     id: raw.name ?? raw.product_code ?? '',
     name: raw.product_name ?? raw.name ?? '',
     category: raw.loan_category ?? raw.category ?? '',
-    status: raw.status === 'Active' || raw.is_enabled === 1 ? 'Active' : 'Inactive',
+    status: raw.disabled === 1 ? 'Inactive' : 'Active',
     description: raw.description ?? '',
   };
 }
