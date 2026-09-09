@@ -81,6 +81,11 @@ export interface CustomerAddress {
 }
 
 // Mirrors backend CHILD_TABLE_FIELDS["basic_details"] (customer_api/constant.py).
+// Confirmed (2026-09-09) that basic_details carries total_assets,
+// total_liabilities, net_worth, existing_monthly_obligations,
+// annual_revenue and number_of_employees for BOTH customer types — this
+// is now the source of truth for those 6 fields on GET, regardless of
+// customer_type.
 export interface CustomerBasicDetails {
   name: string;
   date_of_birth: string | null;
@@ -393,6 +398,24 @@ export interface CompanyExtendedDetails {
   existing_monthly_obligations: number;
 }
 
+// NEW (2026-09-09) — backend requirement: total_assets, total_liabilities,
+// net_worth, existing_monthly_obligations, annual_revenue and
+// number_of_employees are handled from basic_details. Company previously
+// sent these ONLY inside extended_details (no basic_details entry existed
+// for Company at all). Sent alongside extended_details, which keeps
+// carrying the same 6 values too — extended_details' child-table sync
+// looks like a full-row replace, so removing them there risks nulling out
+// anything else that still reads from that table (decision confirmed:
+// keep in both).
+export interface CompanyBasicDetails {
+  total_assets: number;
+  total_liabilities: number;
+  net_worth: number;
+  existing_monthly_obligations: number;
+  annual_revenue: number;
+  number_of_employees: number;
+}
+
 export interface CompanyStakeholderPayload {
   stakeholder_name: string;
   stakeholder_role: string;
@@ -412,6 +435,7 @@ export interface CompanyCustomerPayload {
   is_npa: 0 | 1;
   // Backend maps this to `account_manager` (see FIELD_MAPPING).
   relationship_manager?: string;
+  basic_details: [CompanyBasicDetails];
   extended_details: [CompanyExtendedDetails];
   addresses: CustomerAddressPayload[];
   contacts: CustomerContactPayload[];

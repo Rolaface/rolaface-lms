@@ -21,9 +21,9 @@ import type {
  *   registration_number / incorporation_date, and does NOT accept
  *   national_identification_number (NRC) either — only `extended_details`
  *   does. Individual now sends BOTH basic_details (unchanged, already
- *   working) and extended_details (adds NRC). Company sends ONLY
- *   extended_details (basic_details was silently dropping its 3 identity
- *   fields, so it added nothing there).
+ *   working) and extended_details (adds NRC). Company sends BOTH
+ *   basic_details and extended_details as of 2026-09-09 (see below) —
+ *   previously it sent only extended_details.
  *
  * RESOLVED (confirmed against customer_api/utils.py sync_addresses /
  * sync_contacts):
@@ -44,7 +44,18 @@ import type {
  *   Total Liabilities) disabled field, but this builder never sent it —
  *   backend never received it. Now computed here the same way and added
  *   to every child-details row (individual basic_details + extended_details,
- *   company extended_details).
+ *   company basic_details + extended_details).
+ *
+ * RESOLVED (2026-09-09, backend requirement): total_assets,
+ * total_liabilities, net_worth, existing_monthly_obligations,
+ * annual_revenue and number_of_employees are handled from basic_details.
+ * Company previously sent these 6 fields ONLY inside extended_details
+ * (no basic_details entry existed for Company at all) — Company now also
+ * sends a basic_details row with these 6 values, alongside the unchanged
+ * extended_details row (kept in both — see CompanyBasicDetails comment in
+ * customerApi.ts for why extended_details wasn't stripped of them).
+ * Individual is unchanged: no UI collects annual_revenue/number_of_employees
+ * for Individual, so those two stay Company-only, same as before.
  */
 
 /**
@@ -383,6 +394,22 @@ export function buildCustomerPayload(
    industry_type: identity.businessIndustry ?? "",
     is_npa: 0, // TODO: no source field
     relationship_manager: financial.relationshipManager ?? undefined,
+
+    // NEW (2026-09-09) — backend requirement: these 6 fields are handled
+    // from basic_details. Company previously had no basic_details entry
+    // at all; this is additive and doesn't remove them from
+    // extended_details below (kept in both per confirmed decision).
+    basic_details: [
+      {
+        total_assets: Number(financial.totalAssets) || 0,
+        total_liabilities: Number(financial.totalLiabilities) || 0,
+        net_worth: netWorth,
+        existing_monthly_obligations:
+          Number(financial.existingMonthlyObligations) || 0,
+        annual_revenue: Number(identity.annualRevenue) || 0,
+        number_of_employees: Number(identity.numberOfEmployees) || 0,
+      },
+    ],
 
     extended_details: [
       {
