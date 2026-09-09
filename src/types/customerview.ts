@@ -60,6 +60,58 @@ export type SelectedItem =
   | { type: 'fixedDeposit'; id: string }
   | null;
 
+
+
+export interface NextOfKinInfo {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  relationship?: string | null;
+  phone?: string;
+  address?: string;
+  district?: string;
+  city?: string;
+  postalCode?: string;
+}
+
+export interface DirectorOrShareholder {
+  name?: string;
+  role?: string;
+  ownershipPercent?: number | string;
+}
+
+export interface IdentificationDocumentInfo {
+  name: string;
+  number?: string;
+  expiryDate?: string;
+  verification?: string;
+}
+
+export interface ComplianceCheckInfo {
+  status?: string;
+}
+
+export interface FinancialProfileInfo {
+  educationLevel?: string | null;
+  employmentType?: string | null;
+  sourceOfIncome?: string | null;
+  monthlyIncome?: number | null;
+  annualIncome?: number | null;
+  creditRiskCategory?: string | null;
+  relationshipManager?: string | null;
+}
+
+export interface CreditAssessmentInfo {
+  bureau?: string;
+  score?: number | null;
+  fetchedAt?: string | null;
+  activeFacilities?: number;
+  defaults?: number;
+  delinquencies?: number;
+  recentInquiries?: number;
+  status?: string;
+}
+
 export interface BorrowerProfile {
   customerId: string;
   name: string;
@@ -70,15 +122,72 @@ export interface BorrowerProfile {
   branch?: string;
   totalExposure?: number;
   availableCredit?: number;
-  riskRating?: 'Low' | 'Medium' | 'High';
-  kycStatus?: 'Verified' | 'Pending' | 'Rejected';
+   currency?: string;
+  riskRating?: 'Low' | 'Medium' | 'High' | string;
+  kycStatus?: 'Verified' | 'Pending' | 'Rejected' | string;
   relationshipSince?: string;
   relationshipManager?: { name: string; branch: string; initials: string };
+  lastUpdated?: string;  
   loans?: LoanSummary[];
   investments?: InvestmentSummary[];
   savings?: SavingsSummary[];
   fixedDeposits?: FixedDepositSummary[];
   creditScore?: number;
+
+  // --- Identity (PersonalInfoPanel) ---
+  type?: 'Individual' | 'Company' | 'Business';
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  preferredName?: string;
+  gender?: string | null;
+  dateOfBirth?: string;
+  nationality?: string | null;
+  occupation?: string;
+  industry?: string | null;
+  employer?: string;
+
+  // --- Business identity ---
+  registeredCompanyName?: string;
+  registrationNumber?: string;
+  incorporationDate?: string;
+  employees?: number;
+  annualRevenue?: number;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  directorsAndShareholders?: DirectorOrShareholder[];
+
+  // --- Contact ---
+  email?: string;
+  alternateMobile?: string;
+  preferredCommunication?: string;
+  residentialAddress?: string;
+  country?: string | null;
+  province?: string | null;
+  district?: string;
+  postalCode?: string;
+  mailingAddress?: string;
+
+  // --- Next of kin ---
+  nextOfKin?: NextOfKinInfo;
+
+  // --- KYC & Compliance ---
+  identificationDocuments?: IdentificationDocumentInfo[];
+  complianceChecks?: {
+    kycVerification?: ComplianceCheckInfo;
+    amlScreening?: ComplianceCheckInfo;
+    sanctionsScreening?: ComplianceCheckInfo;
+    pepStatus?: ComplianceCheckInfo;
+    fatca?: ComplianceCheckInfo;
+    crs?: ComplianceCheckInfo;
+  };
+  requiredDocuments?: { name: string; status?: string }[];
+
+  // --- Financial & Lending ---
+  exposure?: number;
+  creditAssessment?: CreditAssessmentInfo;
+  financialProfile?: FinancialProfileInfo;
 }
 
 export interface CollateralItem {

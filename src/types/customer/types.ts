@@ -10,22 +10,33 @@ import type {
  * as-is to a real backend without confirming:
  *   - territory            (no state field anywhere)
  *   - is_npa               (hardcoded 0, no toggle exists yet)
- *   - next_of_kin.country  (useKinState has no country field)
  *
  * customerType mapping ASSUMPTION (confirm before relying on this):
- *   Identity step has 6 types — Individual / Joint / Business / SME /
- *   Corporate / Group. The confirmed payload only supports
- *   "Individual" | "Company". Everything except "Individual" is
- *   mapped to "Company" below.
+ *   IdentityStep's SegmentedControl currently only offers Individual /
+ *   Business (2 values) — everything maps 1:1, no "Joint/SME/Corporate/
+ *   Group" collapsing needed at present.
  *
- * OPEN QUESTION — not resolved here:
- *   Company's registered_company_name / registration_number /
- *   incorporation_date are sent inside `basic_details`, but the
- *   backend's CHILD_TABLE_FIELDS["basic_details"] set (as configured
- *   at time of writing) does not include those keys — only
- *   CHILD_TABLE_FIELDS["extended_details"] does. Left as `basic_details`
- *   here since that matches the confirmed Postman payload; needs
- *   backend confirmation before changing.
+ * RESOLVED (confirmed against customer_api/constant.py CHILD_TABLE_FIELDS):
+ *   `basic_details` does NOT accept registered_company_name /
+ *   registration_number / incorporation_date, and does NOT accept
+ *   national_identification_number (NRC) either — only `extended_details`
+ *   does. Individual now sends BOTH basic_details (unchanged, already
+ *   working) and extended_details (adds NRC). Company sends ONLY
+ *   extended_details (basic_details was silently dropping its 3 identity
+ *   fields, so it added nothing there).
+ *
+ * RESOLVED (confirmed against customer_api/utils.py sync_addresses /
+ * sync_contacts):
+ *   addresses[] / contacts[] are now built directly from the flat
+ *   Identity/Contact step fields (Residential/Mailing/Registered
+ *   Office/Correspondence, Primary Contact Name) instead of the
+ *   `customerAddresses` / `customerContacts` arrays, which were only ever
+ *   populated during edit-mode hydration and stayed `[]` for every new
+ *   customer — meaning addresses/contacts silently never reached the
+ *   backend on create. The `*AddressId` / `primaryContactId` fields (set
+ *   during edit hydration) are passed through as each entry's `name` so
+ *   `sync_addresses`/`sync_contacts` patch the existing Address/Contact
+ *   doc on update instead of orphaning it and inserting a duplicate.
  */
 
 /**
@@ -40,6 +51,7 @@ interface IdentityState {
   customerType: string;
   customerGroup: string | null;
   isStaffCustomer: boolean;
+  staffId: string | null;
   firstName: string;
   lastName: string;
   gender: string | null;
@@ -49,6 +61,7 @@ interface IdentityState {
   occupation: string;
   industry: string | null;
   employer: string;
+  nrcNumber: string;
   individualTaxId: string;
   currency: string | null;
   companyName: string;
@@ -63,6 +76,7 @@ interface IdentityState {
   businessProvince: string | null;
   businessCountry: string | null;
   businessPostalCode: string;
+  registeredOfficeAddressId?: string;
   taxId: string;
   directors: Array<{
     fullName: string;
@@ -71,40 +85,39 @@ interface IdentityState {
   }>;
 }
 
-/* Mirrors CustomerModalAddress / CustomerModalContact from useContactState.ts.
-   useContactState already collects real multi-address / multi-contact arrays —
-   this builder now reads those directly instead of building a single
-   hardcoded address/contact from the flat residential-address fields. */
-interface ContactAddress {
-  name?: string;
-  address_type: string;
-  address_line1: string;
-  address_line2: string;
-  city: string;
-  state: string;
-  pincode: string;
-  country: string;
-  is_primary_address: 0 | 1;
-  is_shipping_address: 0 | 1;
-}
-
-interface ContactPerson {
-  name?: string;
-  first_name: string;
-  last_name: string;
-  salutation: string | null;
-  designation: string | null;
-  email_id: string;
-  mobile_no: string;
-  is_primary_contact: 0 | 1;
-  is_billing_contact: 0 | 1;
-}
-
 interface ContactState {
   email: string;
   mobileNumber: string;
-  customerAddresses: ContactAddress[];
-  customerContacts: ContactPerson[];
+  primaryContactName: string;
+  primaryContactId?: string;
+
+  residentialAddress: string;
+  residentialAddressLine2: string;
+  country: string | null;
+  province: string | null;
+  district: string;
+  cityTown: string;
+  postalCode: string;
+  residentialAddressId?: string;
+
+  sameAsResidential: boolean;
+  mailingAddress: string;
+  mailingAddressLine2: string;
+  mailingCountry: string | null;
+  mailingProvince: string | null;
+  mailingDistrict: string;
+  mailingCityTown: string;
+  mailingPostalCode: string;
+  mailingAddressId?: string;
+
+  sameAsRegisteredOffice: boolean;
+  correspondenceAddress: string;
+  correspondenceAddressLine2: string;
+  correspondenceCountry: string | null;
+  correspondenceProvince: string | null;
+  correspondenceCityTown: string;
+  correspondencePostalCode: string;
+  correspondenceAddressId?: string;
 }
 
 interface IdentificationState {
@@ -162,28 +175,108 @@ export function buildCustomerPayload(
     issuing_country: "", // TODO: no source field
   }));
 
-  const addresses = contact.customerAddresses.map((a) => ({
-    address_type: a.address_type,
-    address_line1: a.address_line1,
-    address_line2: a.address_line2 || undefined,
-    city: a.city,
-    state: a.state,
-    country: a.country,
-    pincode: a.pincode,
-    is_primary_address: a.is_primary_address,
-    is_shipping_address: a.is_shipping_address,
-  }));
+  // --- addresses ---------------------------------------------------------
+  // Built from the flat step fields (not a `customerAddresses` array — see
+  // header note). Entries with no address_line1 are dropped so we don't
+  // insert empty Address docs when a section was left blank.
+  const addresses = (
+    isCompany
+      ? [
+          {
+            name: identity.registeredOfficeAddressId,
+            address_type: "Office",
+            address_line1: identity.businessAddress,
+            address_line2: identity.businessAddressLine2 || undefined,
+            city: identity.businessCity,
+            state: identity.businessProvince ?? "",
+            country: identity.businessCountry ?? "",
+            pincode: identity.businessPostalCode,
+            is_primary_address: 1 as const,
+            is_shipping_address: (contact.sameAsRegisteredOffice ? 1 : 0) as 0 | 1,
+          },
+          contact.sameAsRegisteredOffice
+            ? null
+            : {
+                name: contact.correspondenceAddressId,
+                address_type: "Office",
+                address_line1: contact.correspondenceAddress,
+                address_line2: contact.correspondenceAddressLine2 || undefined,
+                city: contact.correspondenceCityTown,
+                state: contact.correspondenceProvince ?? "",
+                country: contact.correspondenceCountry ?? "",
+                pincode: contact.correspondencePostalCode,
+                is_primary_address: 0 as const,
+                is_shipping_address: 1 as const,
+              },
+        ]
+      : [
+          {
+            name: contact.residentialAddressId,
+            address_type: "Current",
+            address_line1: contact.residentialAddress,
+            address_line2: contact.residentialAddressLine2 || undefined,
+            city: contact.cityTown,
+            state: contact.province ?? "",
+            country: contact.country ?? "",
+            pincode: contact.postalCode,
+            is_primary_address: 1 as const,
+            is_shipping_address: (contact.sameAsResidential ? 1 : 0) as 0 | 1,
+          },
+          contact.sameAsResidential
+            ? null
+            : {
+                name: contact.mailingAddressId,
+                address_type: "Permanent",
+                address_line1: contact.mailingAddress,
+                address_line2: contact.mailingAddressLine2 || undefined,
+                city: contact.mailingCityTown,
+                state: contact.mailingProvince ?? "",
+                country: contact.mailingCountry ?? "",
+                pincode: contact.mailingPostalCode,
+                is_primary_address: 0 as const,
+                is_shipping_address: 1 as const,
+              },
+        ]
+  ).filter((a): a is NonNullable<typeof a> => !!a && a.address_line1.trim().length > 0);
 
-  const contacts = contact.customerContacts.map((c) => ({
-    first_name: c.first_name,
-    last_name: c.last_name,
-    salutation: c.salutation ?? undefined,
-    designation: c.designation ?? undefined,
-    email_id: c.email_id,
-    mobile_no: c.mobile_no,
-    is_primary_contact: c.is_primary_contact,
-    is_billing_contact: c.is_billing_contact,
-  }));
+  // --- contacts ------------------------------------------------------------
+  // Company: single "Primary Contact" text field, split into first/last —
+  // backend requires first_name (validate_customer_payload), and the UI has
+  // no separate first/last fields for this one, so first word = first name,
+  // rest = last name (same split CustomerModal.tsx already uses in reverse
+  // when hydrating primaryContactName for edit).
+  // Individual: built from firstName/lastName/email/mobile (matches how the
+  // sample getCustomerById response always has a linked primary contact).
+  const contacts = isCompany
+    ? (() => {
+        const trimmed = contact.primaryContactName.trim();
+        if (!trimmed) return [];
+        const [first, ...rest] = trimmed.split(/\s+/);
+        return [
+          {
+            name: contact.primaryContactId,
+            first_name: first,
+            last_name: rest.join(" "),
+            email_id: contact.email,
+            mobile_no: contact.mobileNumber,
+            is_primary_contact: 1 as const,
+            is_billing_contact: 1 as const,
+          },
+        ];
+      })()
+    : identity.firstName.trim()
+      ? [
+          {
+            name: contact.primaryContactId,
+            first_name: identity.firstName,
+            last_name: identity.lastName,
+            email_id: contact.email,
+            mobile_no: contact.mobileNumber,
+            is_primary_contact: 1 as const,
+            is_billing_contact: 1 as const,
+          },
+        ]
+      : [];
 
   if (!isCompany) {
     const payload: IndividualCustomerPayload = {
@@ -207,6 +300,33 @@ export function buildCustomerPayload(
           marital_status: identity.maritalStatus,
           nationality: identity.nationality,
           is_staff_customer: identity.isStaffCustomer ? 1 : 0,
+          staff_id: identity.isStaffCustomer ? identity.staffId : null,
+          occupation: identity.occupation,
+          education_level: financial.educationLevel,
+          employment_type: financial.employmentType,
+          industry_type: identity.industry,
+          employer_name: identity.employer,
+          source_of_income: financial.sourceOfIncome,
+          monthly_income: Number(financial.monthlyIncome) || 0,
+          annual_income: Number(financial.annualIncome) || 0,
+          total_assets: Number(financial.totalAssets) || 0,
+          total_liabilities: Number(financial.totalLiabilities) || 0,
+          existing_monthly_obligations:
+            Number(financial.existingMonthlyObligations) || 0,
+        },
+      ],
+      // Additive — basic_details above is unchanged/already-confirmed;
+      // extended_details is the only table that accepts NRC (see header
+      // note), sent alongside so it doesn't silently vanish.
+      extended_details: [
+        {
+          national_identification_number: identity.nrcNumber,
+          gender: identity.gender,
+          date_of_birth: identity.dateOfBirth,
+          marital_status: identity.maritalStatus,
+          nationality: identity.nationality,
+          is_staff_customer: identity.isStaffCustomer ? 1 : 0,
+          staff_id: identity.isStaffCustomer ? identity.staffId : null,
           occupation: identity.occupation,
           education_level: financial.educationLevel,
           employment_type: financial.employmentType,
@@ -254,7 +374,8 @@ export function buildCustomerPayload(
     industry: identity.businessIndustry ?? "",
     is_npa: 0, // TODO: no source field
     relationship_manager: financial.relationshipManager ?? undefined,
-    basic_details: [
+    
+    extended_details: [
       {
         registered_company_name: identity.companyName,
         registration_number: identity.registrationNumber,
