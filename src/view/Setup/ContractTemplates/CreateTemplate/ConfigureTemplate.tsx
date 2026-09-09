@@ -20,22 +20,56 @@ export const ConfigureTemplate: React.FC<ConfigureTemplateProps> = ({ uploadedDa
   const handleZoomOut = () => setZoom(z => Math.max(z - 25, 50));
 
   // Use extracted placeholders from API response if available, else fallback to defaults
+  const extracted: string[] = useMemo(() =>
+    uploadedData?.message?.placeholders ?? uploadedData?.data?.placeholders ?? [],
+    [uploadedData]
+  );
+
+  // Build all placeholder options for dropdown
+  const allPlaceholders = useMemo(() =>
+    extracted.map((p: string) => {
+      const clean = p.replace(/[{}]/g, '');
+      return { value: clean, label: clean };
+    }),
+    [extracted]
+  );
+
+  // Build field rows from extracted placeholders
   const fields = useMemo(() => {
-    const extracted: string[] = uploadedData?.message?.placeholders ?? uploadedData?.data?.placeholders ?? [];
-    if (extracted.length > 0) {
-      return extracted.map((placeholder: string) => {
-        const cleanName = placeholder.replace(/[{}]/g, ''); // remove {{ }}
-        const formattedName = cleanName.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-        return {
-          name: formattedName,
-          type: 'Text',
-          placeholder: `{{${cleanName}}}`, // ensure it's wrapped in {{ }}
-          required: true,
-        };
-      });
-    }
-    return [];
-  }, [uploadedData]);
+    if (extracted.length === 0) return [];
+    return extracted.map((placeholder: string) => {
+      const cleanName = placeholder.replace(/[{}]/g, '');
+      const formattedName = cleanName.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+      return {
+        name: formattedName,
+        type: 'Text',
+        placeholder: `{{${cleanName}}}`,
+        required: true,
+      };
+    });
+  }, [extracted]);
+
+  // Mapping state: field name → selected placeholder value
+  // Auto-map: try to match field name to a placeholder by normalized comparison
+  const [mappings, setMappings] = useState<Record<string, string | null>>({});
+
+  // Auto-map on first load when fields change
+  useMemo(() => {
+    if (fields.length === 0) return;
+    const initial: Record<string, string | null> = {};
+    fields.forEach(field => {
+      // Normalize field name: "Customer Name" → "customer_name"
+      const normalized = field.name.toLowerCase().replace(/\s+/g, '_');
+      // Find matching placeholder
+      const match = allPlaceholders.find(p => p.value === normalized);
+      initial[field.name] = match ? match.value : null;
+    });
+    setMappings(initial);
+  }, [fields, allPlaceholders]);
+
+  const updateMapping = (fieldName: string, value: string | null) => {
+    setMappings(prev => ({ ...prev, [fieldName]: value }));
+  };
 
   // File URL from API response (for preview)
   const filePreviewUrl = uploadedData?.message?.file_url ?? uploadedData?.data?.file_url ?? uploadedData?.local_file_url ?? null;
@@ -141,37 +175,54 @@ export const ConfigureTemplate: React.FC<ConfigureTemplateProps> = ({ uploadedDa
                     <Text size="sm" c="slate.5">No placeholders extracted. Please ensure the uploaded document contains {'{{placeholder}}'} tags.</Text>
                   </Center>
                 ) : (
-                  fields.map((field, idx) => (
-                    <Grid key={idx} m={0} py="sm" align="center" style={{ borderBottom: '1px dashed var(--mantine-color-slate-2)' }}>
-                      <Grid.Col span={5}>
-                        <Group gap="sm">
-                          <Text size="sm" fw={500} c="slate.7">{field.name}</Text>
-                          <Badge variant="light" color="brand" radius="sm" style={{ textTransform: 'none', fontSize: '10px' }}>
-                            {field.type}
-                          </Badge>
-                        </Group>
-                      </Grid.Col>
-                      <Grid.Col span={5}>
-                        <Select
-                          size="sm"
-                          data={[field.placeholder]}
-                          value={field.placeholder}
-                          styles={{ input: { fontSize: '12px', fontFamily: 'monospace', color: 'var(--mantine-color-slate-6)' } }}
-                          readOnly
-                        />
-                      </Grid.Col>
-                      <Grid.Col span={2}>
-                        {field.required ? (
-                          <Group gap={4}>
-                            <Text c="green.6" size="sm" fw={700}>*</Text>
-                            <Text c="green.7" size="xs" fw={600}>Required</Text>
+                  fields.map((field, idx) => {
+                    const mapped = mappings[field.name];
+                    const isMapped = !!mapped;
+                    return (
+                      <Grid key={idx} m={0} py="sm" align="center" style={{ borderBottom: '1px dashed var(--mantine-color-slate-2)' }}>
+                        <Grid.Col span={5}>
+                          <Group gap="sm">
+                            <Text size="sm" fw={500} c="slate.7">{field.name}</Text>
+                            <Badge variant="light" color="brand" radius="sm" style={{ textTransform: 'none', fontSize: '10px' }}>
+                              {field.type}
+                            </Badge>
                           </Group>
-                        ) : (
-                          <Text c="slate.4" size="xs">Optional</Text>
-                        )}
-                      </Grid.Col>
-                    </Grid>
-                  ))
+                        </Grid.Col>
+                        <Grid.Col span={5}>
+                          <Select
+                            size="sm"
+                            searchable
+                            clearable
+                            placeholder="Select placeholder..."
+                            data={allPlaceholders}
+                            value={mapped}
+                            onChange={(val) => updateMapping(field.name, val)}
+                            styles={{
+                              input: {
+                                fontSize: '12px',
+                                fontFamily: 'monospace',
+                                color: isMapped ? 'var(--mantine-color-slate-7)' : 'var(--mantine-color-red-6)',
+                                borderColor: isMapped ? 'var(--mantine-color-success-4)' : 'var(--mantine-color-slate-3)',
+                              },
+                            }}
+                            rightSection={isMapped ? (
+                              <Box w={8} h={8} style={{ borderRadius: '50%', background: 'var(--mantine-color-success-5)' }} />
+                            ) : undefined}
+                          />
+                        </Grid.Col>
+                        <Grid.Col span={2}>
+                          {field.required ? (
+                            <Group gap={4}>
+                              <Text c="green.6" size="sm" fw={700}>*</Text>
+                              <Text c="green.7" size="xs" fw={600}>Required</Text>
+                            </Group>
+                          ) : (
+                            <Text c="slate.4" size="xs">Optional</Text>
+                          )}
+                        </Grid.Col>
+                      </Grid>
+                    );
+                  })
                 )}
               </Box>
 
