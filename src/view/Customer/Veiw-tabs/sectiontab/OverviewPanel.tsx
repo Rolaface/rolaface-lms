@@ -17,40 +17,12 @@ import {
   IconCalendar,
   IconLayoutDashboard,
 } from '@tabler/icons-react';
-import type { BorrowerProfile } from '../../../../types/customerview';
+import type { BorrowerProfile, LoanSummary } from '../../../../types/customerview';
 import { InfoRow, SectionCard, StatCard, StatusBadge } from './Customerprofileshared ';
 import { RiskRatingCard } from './Riskratingcard';
 import { PersonalInfoPanel } from './PersonalInfoPanel';
 import { KycCompliancePanel } from './KycCompliancePanel';
 import { FinancialLendingPanel } from './FinancialLendingPanel';
-
-
-const DEMO_EXPOSURE = 2450000;
-const DEMO_OUTSTANDING = 1820000;
-const DEMO_OVERDUE = 0;
-
-const DEMO_EXPOSURE_TREND = [
-  2180000,
-  2240000,
-  2190000,
-  2310000,
-  2270000,
-  2390000,
-  2350000,
-  2450000,
-];
-
-const DEMO_OUTSTANDING_TREND = [
-  1490000,
-  1530000,
-  1510000,
-  1580000,
-  1560000,
-  1690000,
-  1760000,
-  1820000,
-];
-
 
 function field(value: unknown) {
   if (value === undefined || value === null || value === '') return '—';
@@ -445,10 +417,32 @@ export function OverviewPanel({
   const activity: any[] = b.recentActivity ?? [];
   const alerts = buildAlerts(b);
 
-  const outstandingPct = b.exposure ? Math.round(((b.outstandingBalance ?? 0) / b.exposure) * 100) : undefined;
+  const loans: LoanSummary[] = b.loans ?? [];
 
-  const facilityClosed = (b.loans ?? []).filter((l: any) => l.status === 'Closed').length;
-  const facilityOverdue = (b.loans ?? []).filter((l: any) => l.status === 'Overdue').length;
+  // FIX: these used to be hardcoded DEMO_EXPOSURE / DEMO_OUTSTANDING /
+  // DEMO_OVERDUE constants that never reflected the real customer — the
+  // headline cards always showed the same fake numbers regardless of who
+  // was open. Derive real totals from the loans this borrower actually
+  // has (loan.outstanding = pending_principal_amount from the API).
+  // `b.exposure`/`b.outstandingBalance` stay as an override hook for when
+  // the backend eventually exposes a dedicated exposure figure (per the
+  // TODO in mapCustomerDetail.ts) — until then we compute from loans.
+  const computedExposure = loans.reduce((sum, l) => sum + (l.outstanding ?? 0), 0);
+  const computedOverdue = loans
+    .filter((l) => l.status === 'Overdue')
+    .reduce((sum, l) => sum + (l.outstanding ?? 0), 0);
+
+  const exposure = b.exposure ?? (loans.length > 0 ? computedExposure : undefined);
+  const outstandingBalance = b.outstandingBalance ?? (loans.length > 0 ? computedExposure : undefined);
+  const overdueAmount = b.overdueAmount ?? (loans.length > 0 ? computedOverdue : undefined);
+
+  const outstandingPct =
+    exposure && Number(exposure) > 0
+      ? Math.round(((Number(outstandingBalance) || 0) / Number(exposure)) * 100)
+      : undefined;
+
+  const facilityClosed = loans.filter((l) => l.status === 'Closed').length;
+  const facilityOverdue = loans.filter((l) => l.status === 'Overdue').length;
   const facilityActive = Math.max(activeFacilities - facilityOverdue, 0);
 
   return (
@@ -459,34 +453,34 @@ export function OverviewPanel({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           label="Total Exposure"
-          value={money(DEMO_EXPOSURE)}
+          value={money(exposure)}
           subtitle={`Across ${totalFacilities} facilities`}
           icon={<IconWallet size={18} />}
-          sparkline={DEMO_EXPOSURE_TREND}
-          trend="4.1% vs last month"
-          trendDirection="up"
         />
 
         <StatCard
           label="Outstanding Balance"
-          value={money(DEMO_OUTSTANDING)}
-          subtitle={`${Math.round((DEMO_OUTSTANDING / DEMO_EXPOSURE) * 100)}% of exposure`}
+          value={money(outstandingBalance)}
+          subtitle={
+            exposure && Number(exposure) > 0
+              ? `${outstandingPct ?? 0}% of exposure`
+              : undefined
+          }
           icon={<IconBuildingBank size={18} />}
-          sparkline={DEMO_OUTSTANDING_TREND}
-          trend="2.8% vs last month"
-          trendDirection="up"
         />
 
         <StatCard
           label="Overdue Amount"
-          value={money(DEMO_OVERDUE)}
-          subtitle="All payments current"
+          value={money(overdueAmount)}
+          subtitle={overdueAmount ? `${facilityOverdue} facility(ies) overdue` : 'All payments current'}
           icon={<IconAlertCircle size={18} />}
-          tone="danger"
+          tone={overdueAmount ? 'danger' : 'brand'}
           rightIcon={
-            <ThemeIcon variant="light" color="success" size={34} radius="xl">
-              <IconCircleCheck size={18} />
-            </ThemeIcon>
+            !overdueAmount ? (
+              <ThemeIcon variant="light" color="success" size={34} radius="xl">
+                <IconCircleCheck size={18} />
+              </ThemeIcon>
+            ) : undefined
           }
         />
         <RiskRatingCard
@@ -529,7 +523,7 @@ export function OverviewPanel({
           facilityActive={facilityActive}
           facilityOverdue={facilityOverdue}
           facilityClosed={facilityClosed}
-          exposure={b.exposure}
+          exposure={exposure}
           utilizationPct={outstandingPct}
           onNewFacility={b.onNewFacility}
           onViewFacilities={b.onViewFacilities}

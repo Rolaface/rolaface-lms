@@ -69,6 +69,11 @@ const [customerGroup, setCustomerGroup] = useState<string | null>(null);
   const [businessProvince, setBusinessProvince] = useState<string | null>(null);
   const [businessCountry, setBusinessCountry] = useState<string | null>(null);
   const [businessPostalCode, setBusinessPostalCode] = useState("");
+  // Backend Address doc name for the Registered Office address — see
+  // matching comment in useContactState.ts.
+  const [registeredOfficeAddressId, setRegisteredOfficeAddressId] = useState<
+    string | undefined
+  >(undefined);
 
   const [directors, setDirectors] = useState<BusinessDirector[]>([]);
   const addDirector = (patch?: Partial<Omit<BusinessDirector, "id">>) =>
@@ -114,6 +119,7 @@ const [customerGroup, setCustomerGroup] = useState<string | null>(null);
     setBusinessProvince(null);
     setBusinessCountry(null);
     setBusinessPostalCode("");
+    setRegisteredOfficeAddressId(undefined);
     setNrcNumber("");
     setIndividualTaxId("");
     setIndustry(null);
@@ -193,7 +199,10 @@ const [customerGroup, setCustomerGroup] = useState<string | null>(null);
     setBusinessCountry,
     businessPostalCode,
     setBusinessPostalCode,
+    registeredOfficeAddressId,
+    setRegisteredOfficeAddressId,
     directors,
+    setDirectors, 
     addDirector,
     updateDirector,
     removeDirector,

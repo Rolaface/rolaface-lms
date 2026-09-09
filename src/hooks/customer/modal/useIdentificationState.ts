@@ -45,6 +45,7 @@ export function useIdentificationState() {
 
   return {
     idDocuments,
+    setIdDocuments, // bulk replace — used for edit-mode hydration from editCustomer.documents
     updateIdDocument,
     addIdDocument,
     removeIdDocument,

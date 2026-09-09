@@ -172,6 +172,19 @@ export function CustomerModal({
       (contactItem) => contactItem.name !== primaryContact?.name,
     );
 
+ 
+const basicDetails = editCustomer.basic_details?.[0];
+const extendedDetails = editCustomer.extended_details?.[0];
+const details = {
+  ...basicDetails,
+  ...Object.fromEntries(
+    Object.entries(extendedDetails ?? {}).filter(
+      ([, value]) => value !== null && value !== undefined,
+    ),
+  ),
+};
+    const nok = editCustomer.next_of_kin?.[0];
+
     identity.reset();
     contact.reset();
     identification.reset();
@@ -187,9 +200,88 @@ export function CustomerModal({
     identity.setIndividualTaxId(text(editCustomer.tax_id));
     identity.setTaxId(text(editCustomer.tax_id));
     identity.setCurrency(nullableText(editCustomer.default_currency));
-    identity.setIndustry(nullableText(editCustomer.industry));
+    identity.setIndustry(nullableText(details?.industry_type ?? editCustomer.industry));
     identity.setBusinessIndustry(nullableText(editCustomer.industry));
     identity.setCompanyName(isBusiness ? text(editCustomer.customer_name) : "");
+
+    // --- basic_details / extended_details (previously not read at all) ---
+    identity.setDateOfBirth(text(details?.date_of_birth));
+    identity.setMaritalStatus(nullableText(details?.marital_status));
+    identity.setNationality(nullableText(details?.nationality));
+    identity.setOccupation(text(details?.occupation));
+    identity.setIsStaffCustomer(!!details?.is_staff_customer);
+    identity.setStaffId(nullableText(details?.staff_id));
+    identity.setEmployer(text(details?.employer_name));
+    identity.setNrcNumber(
+      text(editCustomer.extended_details?.[0]?.national_identification_number),
+    );
+    financialBorrower.setEducationLevel(nullableText(details?.education_level));
+    financialBorrower.setEmploymentType(nullableText(details?.employment_type));
+    financialBorrower.setSourceOfIncome(nullableText(details?.source_of_income));
+    financialBorrower.setMonthlyIncome(details?.monthly_income ?? "");
+    financialBorrower.setAnnualIncome(details?.annual_income ?? "");
+    financialBorrower.setTotalAssets(details?.total_assets ?? "");
+    financialBorrower.setTotalLiabilities(details?.total_liabilities ?? "");
+    financialBorrower.setExistingMonthlyObligations(
+      details?.existing_monthly_obligations ?? "",
+    );
+
+    if (isBusiness) {
+      const companyDetails = editCustomer.extended_details?.[0];
+      identity.setRegistrationNumber(text(companyDetails?.registration_number));
+      identity.setIncorporationDate(text(companyDetails?.incorporation_date));
+      identity.setNumberOfEmployees(companyDetails?.number_of_employees ?? "");
+      identity.setAnnualRevenue(companyDetails?.annual_revenue ?? "");
+    }
+
+    // --- next of kin (previously not read at all) ---
+    if (nok) {
+      kin.setKinFirstName(text(nok.first_name));
+      kin.setKinMiddleName(text(nok.middle_name));
+      kin.setKinLastName(text(nok.last_name));
+      kin.setKinRelationship(nullableText(nok.relationship));
+      kin.setKinPhone(text(nok.phone));
+      kin.setKinAddress(text(nok.address_line_1));
+      kin.setKinDistrict(text(nok.district));
+      kin.setKinCityTown(text(nok.city));
+      kin.setKinPostalCode(text(nok.postal_code));
+    }
+
+    // --- identification documents (previously not read at all) ---
+    const idDocs = editCustomer.documents ?? [];
+    if (idDocs.length > 0) {
+      identification.setIdDocuments(
+        idDocs.map((d, i) => ({
+          id: d.name,
+          idType: text(d.document_type || d.document_name),
+          docNumber: text(d.document_number),
+          issuingAuthority: text(d.issuing_authority),
+          issueDate: text(d.issue_date),
+          expiryDate: text(d.expiry_date),
+          verification: text(d.verification_status) || "Not verified",
+          isPrimary: i === 0,
+        })),
+      );
+    }
+
+    // --- directors / stakeholders (previously not read at all) ---
+    if (isBusiness) {
+      const stakeholders = editCustomer.stakeholders ?? [];
+      identity.setDirectors(
+        stakeholders.map((s) => ({
+          id: s.name,
+          fullName: text(s.stakeholder_name),
+          role: text(s.stakeholder_role) || "Director",
+          shareholdingPercent:
+            s.ownership_percentage != null ? String(s.ownership_percentage) : "",
+          nationality: null,
+          idType: null,
+          idNumber: "",
+          address: "",
+          notes: "",
+        })),
+      );
+    }
 
     contact.setEmail(text(editCustomer.email_id || primaryContact?.email_id));
     contact.setMobileNumber(
@@ -201,6 +293,9 @@ export function CustomerModal({
         .filter(Boolean)
         .join(" "),
     );
+    contact.setPrimaryContactId(primaryContact?.name);
+    // Kept for anything else still reading these arrays — no longer the
+    // source buildCustomerPayload reads from (see types.ts header note).
     contact.setCustomerAddresses(
       addresses.map((address) => ({
         name: address.name,
@@ -236,7 +331,24 @@ export function CustomerModal({
       identity.setBusinessProvince(nullableText(primaryAddress.state));
       identity.setBusinessCountry(nullableText(primaryAddress.country));
       identity.setBusinessPostalCode(text(primaryAddress.pincode));
-      contact.setSameAsRegisteredOffice(true);
+      identity.setRegisteredOfficeAddressId(primaryAddress.name);
+
+      const correspondenceAddress =
+        shippingAddress && shippingAddress.name !== primaryAddress.name
+          ? shippingAddress
+          : null;
+      if (correspondenceAddress) {
+        contact.setSameAsRegisteredOffice(false);
+        contact.setCorrespondenceAddress(text(correspondenceAddress.address_line1));
+        contact.setCorrespondenceAddressLine2(text(correspondenceAddress.address_line2));
+        contact.setCorrespondenceCityTown(text(correspondenceAddress.city));
+        contact.setCorrespondenceProvince(nullableText(correspondenceAddress.state));
+        contact.setCorrespondenceCountry(nullableText(correspondenceAddress.country));
+        contact.setCorrespondencePostalCode(text(correspondenceAddress.pincode));
+        contact.setCorrespondenceAddressId(correspondenceAddress.name);
+      } else {
+        contact.setSameAsRegisteredOffice(true);
+      }
     }
 
     if (!isBusiness && primaryAddress) {
@@ -246,6 +358,7 @@ export function CustomerModal({
       contact.setProvince(nullableText(primaryAddress.state));
       contact.setCountry(nullableText(primaryAddress.country));
       contact.setPostalCode(text(primaryAddress.pincode));
+      contact.setResidentialAddressId(primaryAddress.name);
     }
 
     if (!isBusiness && shippingAddress) {
@@ -258,6 +371,7 @@ export function CustomerModal({
       contact.setMailingProvince(nullableText(shippingAddress.state));
       contact.setMailingCountry(nullableText(shippingAddress.country));
       contact.setMailingPostalCode(text(shippingAddress.pincode));
+      if (!sameAddress) contact.setMailingAddressId(shippingAddress.name);
     }
 
     setAttemptedSteps(new Set());
@@ -357,10 +471,25 @@ export function CustomerModal({
         kin,
       );
 
-      if (isEditMode) {
-        await updateCustomerMutation.mutateAsync({ customerId, payload });
-      } else {
-        await createCustomerMutation.mutateAsync(payload);
+      const savedCustomerId = isEditMode
+        ? (await updateCustomerMutation.mutateAsync({ customerId, payload })).name
+        : (await createCustomerMutation.mutateAsync(payload)).name;
+
+      if (Object.keys(documents.pendingDocs).length > 0) {
+        try {
+          await documents.uploadPendingDocs(savedCustomerId);
+        } catch {
+          // Customer record itself saved fine — surface this separately
+          // rather than showing "Unable to Create/Update Customer" for a
+          // document-upload failure.
+          openCommonModal({
+            heading: "Some Documents Weren't Uploaded",
+            subtitle: "Customer saved, document upload failed",
+            body: "The customer record was saved, but one or more documents could not be uploaded. You can retry uploading them from the Documents step.",
+            color: "warning",
+            buttons: [{ label: "Close", color: "teal" }],
+          });
+        }
       }
 
       openCommonModal({

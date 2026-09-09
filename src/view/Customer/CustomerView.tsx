@@ -1,25 +1,22 @@
 import { useMemo, useState, useEffect } from "react";
-import { Text } from "@mantine/core";
-import type { BorrowerProfile, SelectedItem } from "../../types/customerview";
+import { Text, Loader, Center } from "@mantine/core";
+import type { BorrowerProfile, SelectedItem, LoanSummary } from "../../types/customerview";
 
-// Assuming you are keeping mock data for savings/investments/FDs for now
 import {
   getFixedDepositDetail,
   getInvestmentDetail,
   getSavingsDetail,
 } from "./mockdata";
 
-// Import your existing Sidebar and SearchBar
 import { BorrowerSidebar, GlobalSearchBar } from "./Sharedui";
 import { AccountDetailView } from "./DetailViews";
 
-// Import the brand colors from your new SharedUI file
 import { themeTokens } from "../LoanAccount/LoanView/SharedUI";
 
-// Import your newly integrated API-driven Loan Detail View
 import { LoanDetailView } from "../LoanAccount/LoanView/LoanDetailView";
 import { CustomerProfileView } from "./Veiw-tabs/CustomerProfileView";
 import { getLoanList } from "../../api/lookup api/lookUpApi";
+import { mapLoanRawToLoanSummary } from "./mapCustomerDetail";
 
 /* ============================================================================
    MAIN EXPORT — Borrower360
@@ -33,87 +30,127 @@ export function Borrower360({
 }: {
   borrower: BorrowerProfile;
   onBack: () => void;
-  /**
-   * Lets a caller deep-link straight into a tab instead of always landing on
-   * "profile" — e.g. Loan Booking's View action opens this loan directly:
-   *   <Borrower360 borrower={b} onBack={...} initialSelected={{ type: 'loan', id: realLoanId }} />
-   */
   initialSelected?: SelectedItem;
-  /**
-   * When true, hides the "Profile" nav item from the sidebar entirely.
-   * Used by Loan Booking's View flow, which has no customer-profile
-   * context and should only show Loans/Investments/Savings/FDs.
-   */
   hideProfile?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [selectedLoanData, setSelectedLoanData] = useState<any>(null);
-  // Default to the first loan if it exists
+
+  // The single loan currently being viewed (fetched fresh by id — works
+  // even for a real API loan id that isn't in `customerLoans` yet, e.g.
+  // deep-linked from Loan Booking's "View" action).
+  const [selectedLoanData, setSelectedLoanData] = useState<LoanSummary | null>(
+    null,
+  );
+  const [selectedLoanLoading, setSelectedLoanLoading] = useState(false);
+
   const [selected, setSelected] = useState<SelectedItem>(
     initialSelected ?? { type: "profile" },
   );
-  const [customerLoans, setCustomerLoans] = useState<any[]>([]);
+
+  // All loans for this customer — powers the sidebar list.
+  const [customerLoans, setCustomerLoans] = useState<LoanSummary[]>([]);
+
   useEffect(() => {
     if (selected?.type !== "loan") {
       setSelectedLoanData(null);
       return;
     }
 
+    let cancelled = false;
+    setSelectedLoanLoading(true);
+
     getLoanList({
       search: selected.id,
     })
-      .then((response) => {
+      .then((response: any) => {
+        if (cancelled) return;
         const loans = response?.data?.data ?? response?.data ?? [];
-        setSelectedLoanData(loans[0] ?? null);
+        const raw = loans[0] ?? null;
+        setSelectedLoanData(raw ? mapLoanRawToLoanSummary(raw) : null);
       })
       .catch(() => {
-        setSelectedLoanData(null);
+        if (!cancelled) setSelectedLoanData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setSelectedLoanLoading(false);
       });
-  }, [selected]);
-  useEffect(() => {
-  if (!borrower.name) {
-    setCustomerLoans([]);
-    return;
-  }
 
-  getLoanList({
-    applicant: [borrower.name],
-  })
-    .then((response) => {
-      const loans = response?.data?.data ?? response?.data ?? [];
-      setCustomerLoans(loans);
-    })
-    .catch(() => {
+    return () => {
+      cancelled = true;
+    };
+  }, [selected]);
+
+  useEffect(() => {
+    if (!borrower.customerId) {
       setCustomerLoans([]);
-    });
-}, [borrower.name]);
+      return;
+    }
+
+    let cancelled = false;
+
+    getLoanList({
+      applicant: [borrower.customerId],
+    })
+      .then((response: any) => {
+        if (cancelled) return;
+        const loans = response?.data?.data ?? response?.data ?? [];
+        setCustomerLoans(loans.map(mapLoanRawToLoanSummary));
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerLoans([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [borrower.customerId]);
+
   const activeContent = useMemo(() => {
     if (!selected) return null;
+
     if (selected.type === "profile") {
       return {
-        node: <CustomerProfileView borrower={borrower} />,
+        node: (
+          <CustomerProfileView
+            borrower={{ ...borrower, loans: customerLoans }}
+          />
+        ),
         label: "Customer Profile",
       };
     }
 
-    // 1. REAL API-INTEGRATED LOAN VIEW
+    // LOAN — fixed: LoanDetailView takes `loan` (a LoanSummary), not
+    // `loanId`. Prefer the dedicated fetch (selectedLoanData); fall back
+    // to the sidebar list if that hasn't resolved yet.
     if (selected.type === "loan") {
-      // Try to enrich the label from the mock loans list, but don't require
-      // a match — the id here is often a real API loan id (e.g. coming from
-      // Loan Booking's "View" action) that won't exist in the mock array.
-      // LoanDetailView only needs the id itself; it fetches everything else.
-      const loan = borrower.loans.find((l) => l.id === selected.id);
+      const loan =
+        selectedLoanData ??
+        customerLoans.find((l) => l.id === selected.id) ??
+        null;
+
+      if (!loan) {
+        return {
+          node: selectedLoanLoading ? (
+            <Center py="xl">
+              <Loader size="sm" />
+            </Center>
+          ) : (
+            <Text c="dimmed" fz="sm">
+              Loan not found.
+            </Text>
+          ),
+          label: selected.id,
+        };
+      }
 
       return {
-        // Notice we only pass the loanId now; the component fetches its own data
-        node: <LoanDetailView loanId={selected.id} borrower={borrower} />,
-        label: loan ? `${loan.loanNumber} — ${loan.product}` : selected.id,
+        node: <LoanDetailView loan={loan} borrower={borrower} />,
+        label: `${loan.loanNumber} — ${loan.product}`,
       };
     }
 
-    // 2. MOCK VIEWS (Investments, Savings, Fixed Deposits)
     if (selected.type === "investment") {
-      const inv = borrower.investments.find((i) => i.id === selected.id);
+      const inv = borrower.investments?.find((i) => i.id === selected.id);
       if (!inv) return null;
       return {
         node: (
@@ -128,7 +165,7 @@ export function Borrower360({
     }
 
     if (selected.type === "savings") {
-      const sav = borrower.savings.find((s) => s.id === selected.id);
+      const sav = borrower.savings?.find((s) => s.id === selected.id);
       if (!sav) return null;
       return {
         node: (
@@ -143,7 +180,7 @@ export function Borrower360({
     }
 
     if (selected.type === "fixedDeposit") {
-      const fd = borrower.fixedDeposits.find((f) => f.id === selected.id);
+      const fd = borrower.fixedDeposits?.find((f) => f.id === selected.id);
       if (!fd) return null;
       return {
         node: (
@@ -158,42 +195,19 @@ export function Borrower360({
     }
 
     return null;
-  }, [selected, borrower]);
+  }, [selected, borrower, customerLoans, selectedLoanData, selectedLoanLoading]);
 
   return (
     <div className="flex h-full min-h-screen">
-    <BorrowerSidebar
-  borrower={{
-    ...borrower,
-    loans: customerLoans.map((loan) => ({
-      id: loan.name,
-      loanNumber: loan.name,
-      product: loan.loan_product ?? "",
-      outstanding: loan.pending_principal_amount ?? 0,
-      repaidPercent:
-        loan.loan_amount > 0
-          ? Math.round(
-              Math.min(
-                100,
-                Math.max(
-                  0,
-                  ((loan.total_principal_paid ?? 0) / loan.loan_amount) * 100,
-                ),
-              ),
-            )
-          : 0,
-      status: loan.status ?? "",
-      nextInstallment: loan.total_payment ?? 0,
-      dpd: loan.dpd ?? 0,
-    })),
-  }}
-  collapsed={collapsed}
-  onToggleCollapsed={() => setCollapsed((c) => !c)}
-  onBack={onBack}
-  selected={selected}
-  onSelect={setSelected}
-  hideProfile={hideProfile}
-/>
+      <BorrowerSidebar
+        borrower={{ ...borrower, loans: customerLoans }}
+        collapsed={collapsed}
+        onToggleCollapsed={() => setCollapsed((c) => !c)}
+        onBack={onBack}
+        selected={selected}
+        onSelect={setSelected}
+        hideProfile={hideProfile}
+      />
 
       <div
         className="flex-1 flex flex-col overflow-y-auto"

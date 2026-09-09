@@ -52,6 +52,24 @@ export function useContactState() {
   const [correspondenceAddress, setCorrespondenceAddress] = useState("");
   const [primaryContactName, setPrimaryContactName] = useState("");
 
+  // Backend Address/Contact doc names — undefined for a brand-new customer
+  // (nothing to patch yet), set during edit hydration from the matching
+  // existing Address/Contact so buildCustomerPayload can send them back as
+  // each entry's `name` and sync_addresses/sync_contacts update in place
+  // instead of disabling the old doc and inserting a fresh duplicate.
+  const [residentialAddressId, setResidentialAddressId] = useState<
+    string | undefined
+  >(undefined);
+  const [mailingAddressId, setMailingAddressId] = useState<
+    string | undefined
+  >(undefined);
+  const [correspondenceAddressId, setCorrespondenceAddressId] = useState<
+    string | undefined
+  >(undefined);
+  const [primaryContactId, setPrimaryContactId] = useState<
+    string | undefined
+  >(undefined);
+
 const [sameAsRegisteredOffice, setSameAsRegisteredOffice] = useState(true);
   const [correspondenceAddressLine2, setCorrespondenceAddressLine2] =
     useState("");
@@ -75,6 +93,10 @@ const [sameAsRegisteredOffice, setSameAsRegisteredOffice] = useState(true);
   const reset = () => {
     setPrimaryContactName("");
 setSameAsRegisteredOffice(true);
+    setResidentialAddressId(undefined);
+    setMailingAddressId(undefined);
+    setCorrespondenceAddressId(undefined);
+    setPrimaryContactId(undefined);
     setMobileNumber("");
     setAlternateMobile("");
     setEmail("");
@@ -110,6 +132,16 @@ setSameAsRegisteredOffice(true);
   return {
     primaryContactName,
 setPrimaryContactName,
+sameAsRegisteredOffice,
+setSameAsRegisteredOffice,
+    residentialAddressId,
+    setResidentialAddressId,
+    mailingAddressId,
+    setMailingAddressId,
+    correspondenceAddressId,
+    setCorrespondenceAddressId,
+    primaryContactId,
+    setPrimaryContactId,
     mobileNumber,
     setMobileNumber,
     alternateMobile,
