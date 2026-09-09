@@ -41,8 +41,6 @@ export function MapLoanProducts() {
     return category;
   };
 
-  // NOTE: list kept short for now — showing only the first 6 products.
-  // Remove the .slice(0, 6) once the full list should come back.
   const availableProducts = useMemo(() => {
     let filtered = products; // selected products stay visible here too, not removed
     if (activeFilter !== 'All') {
@@ -52,7 +50,7 @@ export function MapLoanProducts() {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
     }
-    return filtered.slice(0, 6);
+    return filtered;
   }, [products, activeFilter, searchQuery]);
 
   const selectedProducts = products.filter(p => selectedIds.includes(p.id));
@@ -141,13 +139,18 @@ export function MapLoanProducts() {
             </Group>
           </Box>
 
-          {/* List Header — checkbox column placeholder kept for alignment, no checkbox rendered */}
+          {/* List Header */}
           <Box className="px-5 py-2.5 border-b border-slate-100 flex items-center bg-slate-0">
             <Box style={{ width: 32 }} />
-            <Text size="xs" fw={700} c="slate.4" className="uppercase tracking-wider flex-1">Product Name</Text>
-            <Text size="xs" fw={700} c="slate.4" className="uppercase tracking-wider w-24">Loan Type</Text>
-            <Text size="xs" fw={700} c="slate.4" className="uppercase tracking-wider w-24 pl-2">Status</Text>
-            <Box style={{ width: 60 }} className="shrink-0" />
+            <Box className="flex-1 min-w-0 pr-4">
+              <Text size="xs" fw={700} c="slate.4" className="uppercase tracking-wider">Product Name</Text>
+            </Box>
+            <Box className="w-24">
+              <Text size="xs" fw={700} c="slate.4" className="uppercase tracking-wider">Loan Type</Text>
+            </Box>
+            <Box className="w-24 pl-2">
+              <Text size="xs" fw={700} c="slate.4" className="uppercase tracking-wider">Status</Text>
+            </Box>
           </Box>
 
           <div className="px-2 py-1 bg-white">
