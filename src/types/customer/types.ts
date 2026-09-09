@@ -37,6 +37,14 @@ import type {
  *   during edit hydration) are passed through as each entry's `name` so
  *   `sync_addresses`/`sync_contacts` patch the existing Address/Contact
  *   doc on update instead of orphaning it and inserting a duplicate.
+ *
+ * RESOLVED (confirmed against customer_api/constant.py CHILD_TABLE_FIELDS —
+ * both basic_details and extended_details accept `net_worth`):
+ *   FinancialStep shows Net Worth as an auto-calculated (Total Assets -
+ *   Total Liabilities) disabled field, but this builder never sent it —
+ *   backend never received it. Now computed here the same way and added
+ *   to every child-details row (individual basic_details + extended_details,
+ *   company extended_details).
  */
 
 /**
@@ -162,7 +170,13 @@ export function buildCustomerPayload(
   financial: FinancialBorrowerState,
   kin: KinState,
 ): CustomerCreatePayload {
-  const isCompany = identity.customerType === "Business"; // matches CustomerModal.tsx's isBusinessType check
+  const isCompany = identity.customerType === "Business";
+
+
+  const netWorth =
+    financial.totalAssets !== "" && financial.totalLiabilities !== ""
+      ? Number(financial.totalAssets) - Number(financial.totalLiabilities)
+      : 0;
 
   const documents = identification.idDocuments.map((doc) => ({
     document_type: doc.idType,
@@ -239,14 +253,7 @@ export function buildCustomerPayload(
         ]
   ).filter((a): a is NonNullable<typeof a> => !!a && a.address_line1.trim().length > 0);
 
-  // --- contacts ------------------------------------------------------------
-  // Company: single "Primary Contact" text field, split into first/last —
-  // backend requires first_name (validate_customer_payload), and the UI has
-  // no separate first/last fields for this one, so first word = first name,
-  // rest = last name (same split CustomerModal.tsx already uses in reverse
-  // when hydrating primaryContactName for edit).
-  // Individual: built from firstName/lastName/email/mobile (matches how the
-  // sample getCustomerById response always has a linked primary contact).
+
   const contacts = isCompany
     ? (() => {
         const trimmed = contact.primaryContactName.trim();
@@ -311,6 +318,7 @@ export function buildCustomerPayload(
           annual_income: Number(financial.annualIncome) || 0,
           total_assets: Number(financial.totalAssets) || 0,
           total_liabilities: Number(financial.totalLiabilities) || 0,
+          net_worth: netWorth,
           existing_monthly_obligations:
             Number(financial.existingMonthlyObligations) || 0,
         },
@@ -337,6 +345,7 @@ export function buildCustomerPayload(
           annual_income: Number(financial.annualIncome) || 0,
           total_assets: Number(financial.totalAssets) || 0,
           total_liabilities: Number(financial.totalLiabilities) || 0,
+          net_worth: netWorth,
           existing_monthly_obligations:
             Number(financial.existingMonthlyObligations) || 0,
         },
@@ -371,10 +380,10 @@ export function buildCustomerPayload(
     mobile_no: contact.mobileNumber,
     tax_id: identity.taxId,
     default_currency: identity.currency ?? "",
-    industry: identity.businessIndustry ?? "",
+   industry_type: identity.businessIndustry ?? "",
     is_npa: 0, // TODO: no source field
     relationship_manager: financial.relationshipManager ?? undefined,
-    
+
     extended_details: [
       {
         registered_company_name: identity.companyName,
@@ -384,6 +393,7 @@ export function buildCustomerPayload(
         annual_revenue: Number(identity.annualRevenue) || 0,
         total_assets: Number(financial.totalAssets) || 0,
         total_liabilities: Number(financial.totalLiabilities) || 0,
+        net_worth: netWorth,
         existing_monthly_obligations:
           Number(financial.existingMonthlyObligations) || 0,
       },

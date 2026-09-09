@@ -25,6 +25,7 @@ import { BorrowerStep } from "./steps/BorrowerStep";
 import { CreditAssessmentStep } from "./steps/Creditassessmentstep";
 import { CreditBureauSummary } from "./steps/CreditBureauSummary";
 import { ExistingFacilities } from "./steps/ExistingFacilities";
+import { EligibilitySummary } from "./steps/EligibilitySummary";
 import { AssignmentStep } from "./steps/AssignmentStep";
 import { KycStep } from "./steps/KycStep";
 import { DocumentsStep } from "./steps/DocumentsStep";
@@ -610,6 +611,10 @@ const details = {
             setNrcNumber={identity.setNrcNumber}
             individualTaxId={identity.individualTaxId}
             setIndividualTaxId={identity.setIndividualTaxId}
+            currency={identity.currency}
+            setCurrency={identity.setCurrency}
+            taxId={identity.taxId}
+            setTaxId={identity.setTaxId}
             companyName={identity.companyName}
             setCompanyName={identity.setCompanyName}
             registrationNumber={identity.registrationNumber}
@@ -785,6 +790,13 @@ const details = {
 
       <ExistingFacilities
         bureauFacilities={creditAssessment.result?.existingFacilities ?? []}
+      />
+
+      <EligibilitySummary
+        monthlyIncome={financialBorrower.monthlyIncome}
+        existingMonthlyObligations={financialBorrower.existingMonthlyObligations}
+        bureauMonthlyObligations={creditAssessment.result?.monthlyObligations}
+        loanTenureMonths={financialBorrower.loanTenureMonths}
       />
 
       {/* <BorrowerStep

@@ -306,6 +306,7 @@ export interface IndividualBasicDetails {
   annual_income: number;
   total_assets: number;
   total_liabilities: number;
+  net_worth: number;
   existing_monthly_obligations: number;
 }
 
@@ -331,6 +332,7 @@ export interface IndividualExtendedDetails {
   annual_income: number;
   total_assets: number;
   total_liabilities: number;
+  net_worth: number;
   existing_monthly_obligations: number;
 }
 
@@ -387,6 +389,7 @@ export interface CompanyExtendedDetails {
   annual_revenue: number;
   total_assets: number;
   total_liabilities: number;
+  net_worth: number;
   existing_monthly_obligations: number;
 }
 
@@ -405,7 +408,7 @@ export interface CompanyCustomerPayload {
   mobile_no: string;
   tax_id: string;
   default_currency: string;
-  industry: string;
+  industry_type: string;
   is_npa: 0 | 1;
   // Backend maps this to `account_manager` (see FIELD_MAPPING).
   relationship_manager?: string;
@@ -426,11 +429,7 @@ export interface CustomerRecord {
   customer_type: "Individual" | "Company";
 }
 
-// Backend wraps every whitelisted-method response in Frappe's default
-// `{ message: { status_code, status, message, data } }` envelope — same
-// shape getCustomerById already unwraps below. create/update/delete were
-// returning `response.data` (the raw envelope) typed as CustomerRecord,
-// so `result.name` was always undefined post-create. Unwrapped to match.
+
 interface MutationEnvelope<T> {
   message: {
     status_code: number;
@@ -452,13 +451,7 @@ export async function updateCustomer(
   customerId: string,
   payload: Partial<CustomerCreatePayload>
 ): Promise<CustomerRecord> {
-  // FIX: backend route is `@frappe.whitelist(methods=["PUT", "PATCH"])` and
-  // reads the id via `id=None` kwarg / `?id=` query param — it never reads
-  // `id`/`name` from the JSON body. The old code sent this as a POST with
-  // `{ name: customerId, ...payload }` in the body, which Frappe rejected
-  // with 403 "Not permitted" before the request even reached update_customer(),
-  // and even if the method matched, customer_id would still have come back
-  // empty. Use PUT with the id as a query param instead.
+
   const response: AxiosResponse<MutationEnvelope<CustomerRecord>> =
     await api.put(
       `${CUSTOMER_ENDPOINTS.update}?id=${encodeURIComponent(customerId)}`,
@@ -468,11 +461,7 @@ export async function updateCustomer(
 }
 
 export async function deleteCustomer(customerId: string): Promise<void> {
-  // FIX: backend route is `@frappe.whitelist(methods=["DELETE"])` and reads
-  // `id` via `id=None` kwarg / `?id=` query param (customer_api/routes.py
-  // delete_customer) — same class of bug as the updateCustomer fix above.
-  // POSTing `{ name: customerId }` would be rejected before reaching the
-  // handler.
+
   await api.delete(CUSTOMER_ENDPOINTS.delete, {
     params: { id: customerId },
   });

@@ -98,6 +98,15 @@ interface IdentityStepProps {
   individualTaxId: string;
   setIndividualTaxId: (v: string) => void;
 
+  // Already existed in useIdentityState (used during edit hydration —
+  // identity.setCurrency / identity.setTaxId in CustomerModal.tsx) but
+  // had no input control anywhere, so a new customer always saved with
+  // default_currency / tax_id (company) as "".
+  currency: string | null;
+  setCurrency: (v: string | null) => void;
+  taxId: string;
+  setTaxId: (v: string) => void;
+
   errors?: Record<string, string>;
 }
 
@@ -116,6 +125,12 @@ const chevron = (
 );
 
 const FIELD_MAW = 260;
+
+// TODO: replace with a real useCurrencies lookup hook once available
+// (same pattern as useGenders/useCountries/useCustomerGroups above) —
+// kept as a static list for now, matching the temporary-data convention
+// already used for staffOptions here and RM_OPTIONS in AssignmentStep.
+const CURRENCY_OPTIONS = ["ZMW", "USD", "EUR", "GBP", "ZAR"];
 
 export function IdentityStep(props: IdentityStepProps) {
   const { data: genderOptions, isLoading: gendersLoading } = useGenders();
@@ -203,6 +218,10 @@ export function IdentityStep(props: IdentityStepProps) {
     setNrcNumber,
     individualTaxId,
     setIndividualTaxId,
+    currency,
+    setCurrency,
+    taxId,
+    setTaxId,
     errors = {},
   } = props;
 
@@ -540,6 +559,18 @@ export function IdentityStep(props: IdentityStepProps) {
                 onChange={(e) => setIndividualTaxId(e.currentTarget.value)}
               />
             </Grid.Col>
+
+            <Grid.Col span={4}>
+              <Select
+                radius="md"
+                rightSection={chevron}
+                label="Currency"
+                placeholder="Select"
+                data={CURRENCY_OPTIONS}
+                value={currency}
+                onChange={setCurrency}
+              />
+            </Grid.Col>
           </Grid>
         </PlainCard>
       )}
@@ -651,6 +682,42 @@ export function IdentityStep(props: IdentityStepProps) {
                 thousandSeparator=","
                 value={annualRevenue}
                 onChange={(v) => setAnnualRevenue(v === "" ? "" : Number(v))}
+              />
+            </Grid.Col>
+          </Grid>
+
+          <Text
+            size="10px"
+            fw={700}
+            tt="uppercase"
+            c="slate.5"
+            mt="lg"
+            mb={6}
+            style={{ letterSpacing: 0.5 }}
+          >
+            Tax & Currency
+          </Text>
+
+          <Grid gap="sm">
+            <Grid.Col span={3}>
+              <TextInput
+                radius="md"
+                label="Tax Identification Number"
+                placeholder="Enter TIN"
+                value={taxId}
+                onChange={(e) => setTaxId(e.currentTarget.value)}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={3}>
+              <Select
+                radius="md"
+                rightSection={chevron}
+                label="Currency"
+                placeholder="Select"
+                data={CURRENCY_OPTIONS}
+                value={currency}
+                onChange={setCurrency}
               />
             </Grid.Col>
           </Grid>
