@@ -221,18 +221,36 @@ const details = {
     financialBorrower.setSourceOfIncome(nullableText(details?.source_of_income));
     financialBorrower.setMonthlyIncome(details?.monthly_income ?? "");
     financialBorrower.setAnnualIncome(details?.annual_income ?? "");
-    financialBorrower.setTotalAssets(details?.total_assets ?? "");
-    financialBorrower.setTotalLiabilities(details?.total_liabilities ?? "");
+
+    // CHANGED (2026-09-09) — backend requirement: total_assets,
+    // total_liabilities, existing_monthly_obligations are handled from
+    // basic_details. Previously read from `details` (basic_details merged
+    // with any non-null extended_details override) — now read strictly
+    // from `basicDetails` (basic_details[0]) so a value in extended_details
+    // can no longer silently take priority.
+    financialBorrower.setTotalAssets(basicDetails?.total_assets ?? "");
+    financialBorrower.setTotalLiabilities(basicDetails?.total_liabilities ?? "");
     financialBorrower.setExistingMonthlyObligations(
-      details?.existing_monthly_obligations ?? "",
+      basicDetails?.existing_monthly_obligations ?? "",
     );
+
+    // BLOCKED — Net Worth hydration from basicDetails?.net_worth was
+    // requested, but useFinancialBorrowerState.ts (not shared) has no
+    // netWorth/setNetWorth — Net Worth is currently only computed inline
+    // in FinancialStep.tsx (Total Assets - Total Liabilities), with no
+    // backing state to hydrate. Needs that hook's file before this can be
+    // wired up safely. See chat note.
 
     if (isBusiness) {
       const companyDetails = editCustomer.extended_details?.[0];
       identity.setRegistrationNumber(text(companyDetails?.registration_number));
       identity.setIncorporationDate(text(companyDetails?.incorporation_date));
-      identity.setNumberOfEmployees(companyDetails?.number_of_employees ?? "");
-      identity.setAnnualRevenue(companyDetails?.annual_revenue ?? "");
+      // CHANGED (2026-09-09) — backend requirement: number_of_employees and
+      // annual_revenue are handled from basic_details. Previously read from
+      // `companyDetails` (extended_details[0]) — now read from
+      // `basicDetails` (basic_details[0]).
+      identity.setNumberOfEmployees(basicDetails?.number_of_employees ?? "");
+      identity.setAnnualRevenue(basicDetails?.annual_revenue ?? "");
     }
 
     // --- next of kin (previously not read at all) ---
