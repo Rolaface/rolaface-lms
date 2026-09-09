@@ -104,11 +104,11 @@ function DocRow({
           {doc.idType || "Untitled document"}
         </Text>
       </Group>
-     {doc.expiryDate && (
-  <Text size="10px" c="slate.5" mb={6}>
-    Exp: {dayjs(doc.expiryDate).format("DD-MMM-YYYY")}
-  </Text>
-)}
+      {doc.expiryDate && (
+        <Text size="10px" c="slate.5" mb={6}>
+          Exp: {dayjs(doc.expiryDate).format("DD-MMM-YYYY")}
+        </Text>
+      )}
       <Group gap={4}>
         <Badge
           size="xs"
@@ -358,7 +358,13 @@ export function IdentificationStep({
                   size="xs"
                   radius="md"
                   label="Verification"
-                  data={["Not verified", "Pending", "Verified", "Rejected"]}
+                  data={[
+                    "Not Verified",
+                    "Pending Verification",
+                    "Verified",
+                    "Rejected",
+                    "Expired",
+                  ]}
                   value={selectedDoc.verification}
                   onChange={(v) =>
                     updateIdDocument(selectedDoc.id, {
@@ -369,8 +375,7 @@ export function IdentificationStep({
                 />
               </FieldRow>
 
-              <FieldRow columns={isMobile ? "1.5fr 1fr": "1fr 1fr 1fr"}>
-               
+              <FieldRow columns={isMobile ? "1.5fr 1fr" : "1fr 1fr 1fr"}>
                 <TextInput
                   mt="sm"
                   size="xs"
@@ -385,7 +390,7 @@ export function IdentificationStep({
                   }
                 />
 
-                  <Select
+                <Select
                   mt="sm"
                   size="xs"
                   radius="md"
@@ -405,7 +410,6 @@ export function IdentificationStep({
                   onSearchChange={setIssuingCountrySearch}
                   disabled={issuingCountriesLoading && !issuingCountryOptions}
                 />
-               
               </FieldRow>
 
               {duplicateDocMatch && (
