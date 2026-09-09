@@ -1,14 +1,12 @@
 import React from 'react';
 import {
   Box,
-  Button,
   Grid,
-  Group,
   Select,
   Textarea,
   TextInput,
-  Divider,
 } from '@mantine/core';
+import { ModalFooter } from '../../../../components/shared/ModalFooter';
 
 interface TemplateInfoProps {
   onNext: () => void;
@@ -63,19 +61,12 @@ export const TemplateInfo: React.FC<TemplateInfoProps> = ({
         </Box>
       </Box>
 
-      <Divider color="slate.2" />
-
-      <Group justify="space-between" className="p-4" px={32}>
-        <Button variant="default" size="md" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Group>
-          <Button variant="default" size="md">Save as Draft</Button>
-          <Button color="brand" size="md" onClick={onNext} rightSection={<span dangerouslySetInnerHTML={{ __html: '&rarr;' }} />}>
-            Next: Upload Template
-          </Button>
-        </Group>
-      </Group>
+      <ModalFooter
+        onClose={onCancel}
+        onSaveDraft={() => {}}
+        submitLabel="Next: Upload Template"
+        onSubmit={onNext}
+      />
     </Box>
   );
 };

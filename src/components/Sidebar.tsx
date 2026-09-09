@@ -1,6 +1,13 @@
 import React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { IconCalendarClock, IconMail, IconSettingsCheck, IconTimelineEvent, IconUserCog } from "@tabler/icons-react";
+import {
+  IconCalendarClock,
+  IconMail,
+  IconSettingsCheck,
+  IconTimelineEvent,
+  IconUserCog,
+  IconLayersLinked,
+} from "@tabler/icons-react";
 import {
   Box,
   Text,
@@ -97,6 +104,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt , modules:["Item"] },
       { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank ,modules: ["Loan Product"]},
         { path: "/setup/contract-templates", label: "Contract Templates", icon: IconFileText },
+        { path: "/setup/map-products", label: "Map Loan Products", icon: IconLayersLinked },
     ],
   },
    {

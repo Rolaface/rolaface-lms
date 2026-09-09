@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { Box, Button, Group, Text, Paper, Divider, Stack, Center, Modal } from '@mantine/core';
-import { IconCloudUpload, IconEye, IconRefresh, IconCircleCheck } from '@tabler/icons-react';
+import { Box, Button, Group, Text, Paper, Divider, Stack, Center, Modal, LoadingOverlay, Alert } from '@mantine/core';
+import { IconCloudUpload, IconEye, IconRefresh, IconCircleCheck, IconAlertCircle } from '@tabler/icons-react';
+import { useMutation } from '@tanstack/react-query';
+import { uploadAndExtractTemplate } from '../../../../api/ContractTemplateApi';
 
 interface UploadTemplateProps {
-  onNext: () => void;
+  onNext: (uploadedData?: any) => void;
   onPrev: () => void;
   onCancel: () => void;
 }
@@ -16,7 +18,24 @@ export const UploadTemplate: React.FC<UploadTemplateProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [previewOpened, setPreviewOpened] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadMutation = useMutation({
+    mutationFn: (f: File) => uploadAndExtractTemplate(f),
+    onSuccess: (data) => {
+      onNext({ ...data, local_file_url: fileUrl });
+    },
+    onError: (err: any) => {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'File upload failed. Please try again.';
+      setErrorMsg(msg);
+    },
+  });
+
+  const isUploading = uploadMutation.isPending;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -63,8 +82,14 @@ export const UploadTemplate: React.FC<UploadTemplateProps> = ({
   };
 
   return (
-    <Box className="flex flex-col bg-white">
+    <Box className="flex flex-col bg-white" style={{ position: 'relative' }}>
+      <LoadingOverlay visible={isUploading} overlayProps={{ blur: 2 }} loaderProps={{ type: 'dots' }} />
       <Box className="p-4">
+        {errorMsg && (
+          <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md" withCloseButton onClose={() => setErrorMsg(null)}>
+            {errorMsg}
+          </Alert>
+        )}
         <input
           type="file"
           ref={fileInputRef}
@@ -158,7 +183,19 @@ export const UploadTemplate: React.FC<UploadTemplateProps> = ({
           <Button variant="default" size="md">
             Save as Draft
           </Button>
-          <Button color="brand" size="md" onClick={onNext} rightSection={<span dangerouslySetInnerHTML={{ __html: '&rarr;' }} />} disabled={!file}>
+          <Button
+            color="brand"
+            size="md"
+            onClick={() => {
+              if (file) {
+                setErrorMsg(null);
+                uploadMutation.mutate(file);
+              }
+            }}
+            rightSection={<span dangerouslySetInnerHTML={{ __html: '&rarr;' }} />}
+            disabled={!file || isUploading}
+            loading={isUploading}
+          >
             Next: Configure Template
           </Button>
         </Group>

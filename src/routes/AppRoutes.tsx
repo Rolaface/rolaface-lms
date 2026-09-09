@@ -1,5 +1,6 @@
-import { CreateTemplateWizard } from "../view/Setup/ContractTemplates/CreateTemplate/CreateTemplateWizard";
+
 import { ContractTemplateManagement } from "../view/Setup/ContractTemplates/ContractTemplateManagement";
+import { CreateTemplateWizard } from "../view/Setup/ContractTemplates/CreateTemplate/CreateTemplateWizard";
 import {
   createRouter,
   createRoute,
@@ -43,8 +44,8 @@ import { LoanCollectionSequenceOrder } from "../view/Setup/LoanCollectionSequenc
 import { FeeAndCharges } from "../view/Setup/FeeAndCharges/FeeAndCharges";
 import { LoanProduct } from "../view/Loan/Product/LoanProduct";
 import { LoanClassificationRanges } from "../view/Setup/LoanClassificationRanges/LoanClassificationRanges";
-import { TemplateSuccessPage } from "../view/Setup/ContractTemplates/CreateTemplate/TemplateSuccessPage";
-import { ProductMappingPage } from "../view/Setup/ContractTemplates/ProductMapping/ProductMappingPage";
+
+import { MapLoanProducts } from "../view/Setup/MapLoanProducts/MapLoanProducts";
 
 //accounting
 import { ChartOfAccounts } from "../view/Accounting/chartofaccounting";
@@ -198,20 +199,17 @@ const setupContractTemplatesRoute = createRoute({
   path: "/contract-templates",
   component: ContractTemplateManagement,
 });
+
 const setupContractTemplateCreateRoute = createRoute({
   getParentRoute: () => setupRoute,
   path: "/contract-templates/create",
   component: CreateTemplateWizard,
 });
-const setupContractTemplateSuccessRoute = createRoute({
+
+const setupMapProductsRoute = createRoute({
   getParentRoute: () => setupRoute,
-  path: "/contract-templates/create/success",
-  component: TemplateSuccessPage,
-});
-const setupContractTemplateMapProductsRoute = createRoute({
-  getParentRoute: () => setupRoute,
-  path: "/contract-templates/$templateId/map-products",
-  component: ProductMappingPage,
+  path: "/map-products",
+  component: MapLoanProducts,
 });
 
 /* ---------- Origination (layout + children) — ungated ---------- */
@@ -489,8 +487,7 @@ const routeTree = rootRoute.addChildren([
     setupProductRoute,
     setupContractTemplatesRoute,
     setupContractTemplateCreateRoute,
-    setupContractTemplateSuccessRoute,
-    setupContractTemplateMapProductsRoute,
+    setupMapProductsRoute,
   ]),
   originationRoute.addChildren([originationLoanApplicationRoute]),
   operationsRoute.addChildren([

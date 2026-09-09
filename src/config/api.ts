@@ -382,6 +382,13 @@ export const API = {
   upload: {},
 
   // =========================
+  // CONTRACT TEMPLATE
+  // =========================
+  contractTemplate: {
+    uploadAndExtract: `${ERP_BASE}/api/method/rolaface_lms_app.api.contract_template.upload_and_extract`,
+  },
+
+  // =========================
   // COMMON
   // =========================
   common: {},
