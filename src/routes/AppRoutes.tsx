@@ -22,6 +22,8 @@ import { RoleManagement } from "../view/User/RoleManagement";
 import { CollateralType } from "../view/Collateral/CollateralType/CollateralType";
 import { Collateral } from "../view/Collateral/Collateral";
 import { LoanApplication } from "../view/Origination/LoanApplication";
+import { PrescreeningTable } from "../view/Origination/Prescreening/PrescreeningTable";
+import { EnrichmentTable } from "../view/Origination/Enrichment/EnrichmentTable";
 import { LoanStatement } from "../view/Reports/LoanStatement/LoanStatement";
 import { ArrearReports } from "../view/Reports/Arrear/ArrearReports";
 import { RepaymentSchedule } from "../view/Reports/RepaymentSchedule/RepaymentSchedule";
@@ -222,6 +224,16 @@ const originationLoanApplicationRoute = createRoute({
   getParentRoute: () => originationRoute,
   path: "/loanApplication",
   component: LoanApplication,
+});
+const originationPrescreeningRoute = createRoute({
+  getParentRoute: () => originationRoute,
+  path: "/prescreening",
+  component: PrescreeningTable,
+});
+const originationEnrichmentRoute = createRoute({
+  getParentRoute: () => originationRoute,
+  path: "/enrichment",
+  component: EnrichmentTable,
 });
 // const originationApplicationRoute = createRoute({
 //   getParentRoute: () => originationRoute,
@@ -489,7 +501,7 @@ const routeTree = rootRoute.addChildren([
     setupContractTemplateCreateRoute,
     setupMapProductsRoute,
   ]),
-  originationRoute.addChildren([originationLoanApplicationRoute]),
+  originationRoute.addChildren([originationLoanApplicationRoute, originationPrescreeningRoute, originationEnrichmentRoute]),
   operationsRoute.addChildren([
     operationsBookingRoute,
     operationsDisbursementRoute,
