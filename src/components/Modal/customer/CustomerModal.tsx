@@ -33,7 +33,6 @@ import { KinStep } from "./steps/KinStep";
 
 import { DirectorsStakeholdersStep } from "./steps/DirectorsStakeholdersStep";
 import { ModalFooter } from "../../shared/ModalFooter";
-import { showValidationError } from "../../../utils/alert";
 import { openCommonModal } from "../AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 
@@ -61,14 +60,7 @@ interface CustomerModalProps {
   customerId?: string;
 }
 
-// NOTE: STEPS now has 8 entries (was 7) — "Financial & Lending" was split
-// into two separate steps, "Financial" (index 3) and "Lending" (index 4).
-// STEP_GROUPS.financial.stepIndices is [3, 4], same pattern as the
-// verification group's multi-step sub-stepper. Consent for the bureau
-// check is captured on the Credit Assessment card itself (see
-// useCreditAssessmentState) inside the Lending step — Lending (index 4)
-// still runs before KYC (index 5), so gating consent on the KYC step would
-// make the check unrunnable on first pass through the wizard.
+
 
 export function CustomerModal({
   opened,
@@ -135,11 +127,7 @@ export function CustomerModal({
     : [identity.firstName, identity.lastName].filter(Boolean).join(" ");
   const stepLabel = (idx: number) =>
     idx === 7 && isBusinessType ? "Directors & Stakeholders" : STEPS[idx].label;
-  // Derived, sidebar-only view of the credit assessment result. `result`
-  // stays the single source of truth (owned by useCreditAssessmentState);
-  // this just reshapes it into the flat props CustomerSummarySidebar takes.
-  // Returns all-null when there's no result yet, so the sidebar's credit
-  // panels simply don't render (see hasCreditData in CustomerSummarySidebar).
+
   const creditResult = creditAssessment.result;
 
   const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(new Set());
@@ -173,17 +161,8 @@ export function CustomerModal({
       (contactItem) => contactItem.name !== primaryContact?.name,
     );
 
- 
-const basicDetails = editCustomer.basic_details?.[0];
-const extendedDetails = editCustomer.extended_details?.[0];
-const details = {
-  ...basicDetails,
-  ...Object.fromEntries(
-    Object.entries(extendedDetails ?? {}).filter(
-      ([, value]) => value !== null && value !== undefined,
-    ),
-  ),
-};
+
+    const basicDetails = editCustomer.basic_details?.[0];
     const nok = editCustomer.next_of_kin?.[0];
 
     identity.reset();
@@ -201,59 +180,44 @@ const details = {
     identity.setIndividualTaxId(text(editCustomer.tax_id));
     identity.setTaxId(text(editCustomer.tax_id));
     identity.setCurrency(nullableText(editCustomer.default_currency));
-    identity.setIndustry(nullableText(details?.industry_type ?? editCustomer.industry));
+    identity.setIndustry(nullableText(basicDetails?.industry_type ?? editCustomer.industry));
     identity.setBusinessIndustry(nullableText(editCustomer.industry));
     identity.setCompanyName(isBusiness ? text(editCustomer.customer_name) : "");
 
-    // --- basic_details / extended_details (previously not read at all) ---
-    identity.setDateOfBirth(text(details?.date_of_birth));
-    identity.setMaritalStatus(nullableText(details?.marital_status));
-    identity.setNationality(nullableText(details?.nationality));
-    identity.setOccupation(text(details?.occupation));
-    identity.setIsStaffCustomer(!!details?.is_staff_customer);
-    identity.setStaffId(nullableText(details?.staff_id));
-    identity.setEmployer(text(details?.employer_name));
-    identity.setNrcNumber(
-      text(editCustomer.extended_details?.[0]?.national_identification_number),
-    );
-    financialBorrower.setEducationLevel(nullableText(details?.education_level));
-    financialBorrower.setEmploymentType(nullableText(details?.employment_type));
-    financialBorrower.setSourceOfIncome(nullableText(details?.source_of_income));
-    financialBorrower.setMonthlyIncome(details?.monthly_income ?? "");
-    financialBorrower.setAnnualIncome(details?.annual_income ?? "");
+   
+    identity.setDateOfBirth(text(basicDetails?.date_of_birth));
+    identity.setMaritalStatus(nullableText(basicDetails?.marital_status));
+    identity.setNationality(nullableText(basicDetails?.nationality));
+    identity.setOccupation(text(basicDetails?.occupation));
+    identity.setIsStaffCustomer(!!basicDetails?.is_staff_customer);
+    identity.setStaffId(nullableText(basicDetails?.staff_id));
+    identity.setEmployer(text(basicDetails?.employer_name));
+  
+    
+    identity.setNrcNumber(text(basicDetails?.national_identification_number));
 
-    // CHANGED (2026-09-09) — backend requirement: total_assets,
-    // total_liabilities, existing_monthly_obligations are handled from
-    // basic_details. Previously read from `details` (basic_details merged
-    // with any non-null extended_details override) — now read strictly
-    // from `basicDetails` (basic_details[0]) so a value in extended_details
-    // can no longer silently take priority.
+    financialBorrower.setEducationLevel(nullableText(basicDetails?.education_level));
+    financialBorrower.setEmploymentType(nullableText(basicDetails?.employment_type));
+    financialBorrower.setSourceOfIncome(nullableText(basicDetails?.source_of_income));
+    financialBorrower.setMonthlyIncome(basicDetails?.monthly_income ?? "");
+    financialBorrower.setAnnualIncome(basicDetails?.annual_income ?? "");
     financialBorrower.setTotalAssets(basicDetails?.total_assets ?? "");
     financialBorrower.setTotalLiabilities(basicDetails?.total_liabilities ?? "");
     financialBorrower.setExistingMonthlyObligations(
       basicDetails?.existing_monthly_obligations ?? "",
     );
 
-    // BLOCKED — Net Worth hydration from basicDetails?.net_worth was
-    // requested, but useFinancialBorrowerState.ts (not shared) has no
-    // netWorth/setNetWorth — Net Worth is currently only computed inline
-    // in FinancialStep.tsx (Total Assets - Total Liabilities), with no
-    // backing state to hydrate. Needs that hook's file before this can be
-    // wired up safely. See chat note.
+
 
     if (isBusiness) {
-      const companyDetails = editCustomer.extended_details?.[0];
-      identity.setRegistrationNumber(text(companyDetails?.registration_number));
-      identity.setIncorporationDate(text(companyDetails?.incorporation_date));
-      // CHANGED (2026-09-09) — backend requirement: number_of_employees and
-      // annual_revenue are handled from basic_details. Previously read from
-      // `companyDetails` (extended_details[0]) — now read from
-      // `basicDetails` (basic_details[0]).
+
+      identity.setRegistrationNumber(text(basicDetails?.registration_number));
+      identity.setIncorporationDate(text(basicDetails?.incorporation_date));
       identity.setNumberOfEmployees(basicDetails?.number_of_employees ?? "");
       identity.setAnnualRevenue(basicDetails?.annual_revenue ?? "");
     }
 
-    // --- next of kin (previously not read at all) ---
+
     if (nok) {
       kin.setKinFirstName(text(nok.first_name));
       kin.setKinMiddleName(text(nok.middle_name));
@@ -266,7 +230,7 @@ const details = {
       kin.setKinPostalCode(text(nok.postal_code));
     }
 
-    // --- identification documents (previously not read at all) ---
+   
     const idDocs = editCustomer.documents ?? [];
     if (idDocs.length > 0) {
       identification.setIdDocuments(
@@ -275,6 +239,8 @@ const details = {
           idType: text(d.document_type || d.document_name),
           docNumber: text(d.document_number),
           issuingAuthority: text(d.issuing_authority),
+          
+          issuingCountry: nullableText(d.issuing_country),
           issueDate: text(d.issue_date),
           expiryDate: text(d.expiry_date),
           verification: text(d.verification_status) || "Not verified",
@@ -313,8 +279,7 @@ const details = {
         .join(" "),
     );
     contact.setPrimaryContactId(primaryContact?.name);
-    // Kept for anything else still reading these arrays — no longer the
-    // source buildCustomerPayload reads from (see types.ts header note).
+  
     contact.setCustomerAddresses(
       addresses.map((address) => ({
         name: address.name,
@@ -451,9 +416,7 @@ const details = {
         // Financial — no required fields currently.
         return {};
       case 4:
-        // Lending — Loan Requirement validation (borrower category, loan
-        // purpose, branch) lives here. Credit Assessment/bureau check stays
-        // optional/unvalidated.
+    
         return financialBorrower.getErrors();
       default:
         return {};
@@ -473,9 +436,14 @@ const details = {
     if (firstInvalid !== null) {
       setAttemptedSteps(newAttempted);
       setActiveTab(firstInvalid.toString());
-      showValidationError(
-        "Please fill in all required fields before submitting.",
-      );
+    
+      openCommonModal({
+        heading: "Missing Information",
+        subtitle: "Validation error",
+        body: "Please fill in all required fields before submitting.",
+        color: "warning",
+        buttons: [{ label: "Close", color: "teal" }],
+      });
       return;
     }
 
@@ -498,9 +466,7 @@ const details = {
         try {
           await documents.uploadPendingDocs(savedCustomerId);
         } catch {
-          // Customer record itself saved fine — surface this separately
-          // rather than showing "Unable to Create/Update Customer" for a
-          // document-upload failure.
+         
           openCommonModal({
             heading: "Some Documents Weren't Uploaded",
             subtitle: "Customer saved, document upload failed",
@@ -568,9 +534,16 @@ const details = {
     const errs = getStepErrors(currentStep);
     if (Object.keys(errs).length > 0) {
       setAttemptedSteps((prev) => new Set(prev).add(currentStep));
-      showValidationError(
-        "Please fill in all required fields before continuing.",
-      );
+      // FIXED: was showValidationError() — replaced with openCommonModal
+      // so every notification in this component goes through the one
+      // shared modal system.
+      openCommonModal({
+        heading: "Missing Information",
+        subtitle: "Validation error",
+        body: "Please fill in all required fields before continuing.",
+        color: "warning",
+        buttons: [{ label: "Close", color: "teal" }],
+      });
       return;
     }
     const nextStep = stepFlow[currentFlowIndex + 1];
