@@ -40,6 +40,7 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
+import { underwritingModal } from "../../../components/Modal/UnderwritingModal/underwritingModalStore";
 
 // MOCK DATA for Underwriting
 export interface UnderwritingRow {
@@ -263,16 +264,26 @@ export function UnderwritingTable() {
         ),
         cell: () => (
           <Group gap={6} justify="flex-end" wrap="nowrap" className="lms-row-actions">
-            <Tooltip label="View Details" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="gray">
-                <IconEye size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Edit" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="gray">
-                <IconPencil size={14} />
-              </ActionIcon>
-            </Tooltip>
+           <Tooltip label="View Details" withArrow>
+             <ActionIcon
+               size="sm"
+               variant="subtle"
+               color="gray"
+               onClick={() => underwritingModal.open({ applicationValues: undefined })}
+             >
+               <IconEye size={14} />
+             </ActionIcon>
+           </Tooltip>
+                        <Tooltip label="Edit" withArrow>
+                         <ActionIcon
+                           size="sm"
+                           variant="subtle"
+                           color="gray"
+                           onClick={() => underwritingModal.open({ applicationValues: undefined })}
+                         >
+                           <IconPencil size={14} />
+                         </ActionIcon>
+                       </Tooltip>
             <Tooltip label="Delete" withArrow>
               <ActionIcon size="sm" variant="subtle" color="gray">
                 <IconTrash size={14} />
