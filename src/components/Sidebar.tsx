@@ -117,9 +117,9 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
             path: "/origination-setup/workflow",
             label: "Workflow Configuration",
             icon: IconSettings,
-            modules: ["Workflow"]
           },
           {
+            path: "/origination-setup/pre-screening",
             label: "Pre-Screening",
             icon: IconUsers,
           }, 
