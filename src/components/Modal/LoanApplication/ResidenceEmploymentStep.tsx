@@ -23,7 +23,8 @@ import { DateInput } from "@mantine/dates";
 interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
   loanType: LoanType;
-    directorsError?: string | null;
+  directorsError?: string | null;
+  readOnly?: boolean;
 }
 
 const RELATIONSHIPS = [ "Spouse", "Parent", "Child", "Sibling", "Other",];
@@ -49,8 +50,7 @@ function Label({ text, required, optional }: { text: string; required?: boolean;
   );
 }
 
-// export function ResidenceEmploymentStep({ form, loanType }: StepProps) {
-export function ResidenceEmploymentStep({ form, loanType, directorsError }: StepProps) {
+export function ResidenceEmploymentStep({ form, loanType, directorsError, readOnly = false }: StepProps) {
   const [opened, { open, close }] = useDisclosure(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
@@ -72,12 +72,13 @@ if (loanType === "Personal") {
         spacing="md"
         verticalSpacing="sm"
       >
-        <TextInput
+                <TextInput
           radius="md"
           label={<Label text="Residential address" required />}
           placeholder="e.g. Plot 12, Kabulonga, Lusaka"
           {...form.getInputProps("residentialAddress")}
           style={{ gridColumn: "1 / -1" }}
+          readOnly={readOnly}
         />
 
         <TextInput
@@ -85,6 +86,7 @@ if (loanType === "Personal") {
           label={<Label text="Occupation" required />}
           placeholder="e.g. Software Engineer"
           {...form.getInputProps("occupation")}
+          readOnly={readOnly}
         />
 
         <TextInput
@@ -92,6 +94,7 @@ if (loanType === "Personal") {
           label={<Label text="Employer name" required />}
           placeholder="e.g. ABC Enterprises Ltd"
           {...form.getInputProps("employerName")}
+          readOnly={readOnly}
         />
 
         <Select
@@ -101,7 +104,7 @@ if (loanType === "Personal") {
           searchable
           clearable
           data={countryOptions}
-          disabled={isCountriesLoading}
+          disabled={isCountriesLoading || readOnly}
           {...form.getInputProps("nationality")}
         />
 
@@ -111,6 +114,7 @@ if (loanType === "Personal") {
           placeholder="e.g. Home renovation"
           {...form.getInputProps("principalObjective")}
           style={{ gridColumn: "1 / -1" }}
+          readOnly={readOnly}
         />
       </SimpleGrid>
 
@@ -132,11 +136,12 @@ if (loanType === "Personal") {
         spacing="md"
         verticalSpacing="sm"
       >
-        <TextInput
+                <TextInput
           radius="md"
           label={<Label text="Next of kin name" required />}
           placeholder="e.g. John Doe"
           {...form.getInputProps("kinName")}
+          readOnly={readOnly}
         />
 
         <TextInput
@@ -152,6 +157,7 @@ if (loanType === "Personal") {
             )
           }
           error={form.errors.kinPhone}
+          readOnly={readOnly}
         />
 
         <TextInput
@@ -165,6 +171,7 @@ if (loanType === "Personal") {
             form.validateField("kinEmail");
           }}
           error={form.errors.kinEmail}
+          readOnly={readOnly}
         />
 
         <Select
@@ -174,6 +181,7 @@ if (loanType === "Personal") {
           data={RELATIONSHIPS}
           {...form.getInputProps("kinRelationship")}
           style={{ gridColumn: "1 / -1" }}
+          disabled={readOnly}
         />
       </SimpleGrid>
     </Stack>
@@ -253,16 +261,18 @@ if (loanType === "Personal") {
                 </Text>
               )}
             </Box>
-            <Button 
-              variant="light" 
-              color="brand" 
-              radius="md" 
-              size="sm" 
-              onClick={handleAddDirector}
-              disabled={directors.length >= MAX_DIRECTORS}
-            >
-              Add Director
-            </Button>
+                       {!readOnly && (
+              <Button
+                variant="light"
+                color="brand"
+                radius="md"
+                size="sm"
+                onClick={handleAddDirector}
+                disabled={directors.length >= MAX_DIRECTORS}
+              >
+                Add Director
+              </Button>
+            )}
           </Group>
 
           {directors.length > 0 && (
@@ -282,24 +292,26 @@ if (loanType === "Personal") {
                       {dir.nrc ? `NRC: ${dir.nrc}` : "NRC pending"} • {dir.phone || "Phone pending"}
                     </Text>
                   </Box>
-                  <Group gap="xs">
-                    <ActionIcon 
-                      variant="subtle" 
-                      color="brand" 
-                      onClick={() => handleEditDirector(idx)}
-                      aria-label="Edit director"
-                    >
-                      <IconPencil size={18} />
-                    </ActionIcon>
-                    <ActionIcon 
-                      variant="subtle" 
-                      color="red" 
-                      onClick={() => handleDeleteDirector(idx)}
-                      aria-label="Delete director"
-                    >
-                      <IconTrash size={18} />
-                    </ActionIcon>
-                  </Group>
+                                   {!readOnly && (
+                    <Group gap="xs">
+                      <ActionIcon
+                        variant="subtle"
+                        color="brand"
+                        onClick={() => handleEditDirector(idx)}
+                        aria-label="Edit director"
+                      >
+                        <IconPencil size={18} />
+                      </ActionIcon>
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        onClick={() => handleDeleteDirector(idx)}
+                        aria-label="Delete director"
+                      >
+                        <IconTrash size={18} />
+                      </ActionIcon>
+                    </Group>
+                  )}
                 </Group>
               ))}
             </Stack>
@@ -308,23 +320,26 @@ if (loanType === "Personal") {
 
         {/* Applicant Details */}
         <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" verticalSpacing="md">
-          <TextInput
+                    <TextInput
   radius="md"
   label={<Label text="Applicant first name" required />}
   placeholder="e.g. John"
   {...form.getInputProps("applicantFirstName")}
+  readOnly={readOnly}
 />
 <TextInput
   radius="md"
   label={<Label text="Applicant middle name" optional />}
   placeholder="e.g. K."
   {...form.getInputProps("applicantMiddleName")}
+  readOnly={readOnly}
 />
 <TextInput
   radius="md"
   label={<Label text="Applicant last name" required />}
   placeholder="e.g. Doe"
   {...form.getInputProps("applicantLastName")}
+  readOnly={readOnly}
 />
 
 <TextInput
@@ -335,6 +350,7 @@ if (loanType === "Personal") {
   value={form.values.applicantPhone}
   onChange={(e) => form.setFieldValue("applicantPhone", e.currentTarget.value.replace(/\D/g, ""))}
   error={form.errors.applicantPhone}
+  readOnly={readOnly}
 />
 <TextInput
   radius="md"
@@ -347,12 +363,14 @@ if (loanType === "Personal") {
     form.validateField("applicantEmail");
   }}
   error={form.errors.applicantEmail}
+  readOnly={readOnly}
 />
 <TextInput
   radius="md"
   label={<Label text="Applicant NRC" required />}
   placeholder="e.g. 123456/78/1"
   {...form.getInputProps("applicantNrc")}
+  readOnly={readOnly}
 />
 
           <Select
@@ -361,6 +379,7 @@ if (loanType === "Personal") {
             placeholder="Select"
             data={GENDERS}
             {...form.getInputProps("applicantGender")}
+            disabled={readOnly}
           />
           <Select
             radius="md"
@@ -368,6 +387,7 @@ if (loanType === "Personal") {
             placeholder="Select"
             data={MARITAL_STATUSES}
             {...form.getInputProps("applicantMaritalStatus")}
+            disabled={readOnly}
           />
           <DateInput
   radius="md"
@@ -382,6 +402,7 @@ if (loanType === "Personal") {
     )
   }
   error={form.errors.applicantBirthDate}
+  readOnly={readOnly}
 />
 
           <TextInput
@@ -389,12 +410,14 @@ if (loanType === "Personal") {
   label={<Label text="Applicant address" required />}
   placeholder="e.g. Plot 12, Kabulonga, Lusaka"
   {...form.getInputProps("applicantAddress")}
+  readOnly={readOnly}
 />
 <TextInput
   radius="md"
   label={<Label text="Applicant position" required />}
   placeholder="e.g. Managing Director"
   {...form.getInputProps("applicantPosition")}
+  readOnly={readOnly}
 />
           <Select
   radius="md"
@@ -403,11 +426,11 @@ if (loanType === "Personal") {
   searchable
   clearable
   data={countryOptions}
-  disabled={isCountriesLoading}
+  disabled={isCountriesLoading || readOnly}
   {...form.getInputProps("applicantNationality")}
 />
         </SimpleGrid>
-      </Stack>
+       </Stack>
 
       {/* Director Edit/Add Modal */}
       <Modal 

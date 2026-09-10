@@ -6,6 +6,7 @@ import { DateInput } from "@mantine/dates";
 interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
   loanType: LoanType;
+  readOnly?: boolean;
 }
 
 const GENDERS = ["Male", "Female", "Other"];
@@ -50,7 +51,7 @@ function Label({
   );
 }
 
-export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
+export function PersonalBusinessInfoStep({ form, loanType, readOnly=false, }: StepProps) {
   if (loanType === "Personal") {
     return (
       <SimpleGrid
@@ -58,12 +59,13 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
         spacing="lg"
         verticalSpacing="md"
       >
-        <TextInput
+               <TextInput
           radius="md"
           styles={LABEL_STYLES}
           label={<Label text="First name" required />}
           placeholder="e.g. John"
           {...form.getInputProps("firstName")}
+          readOnly={readOnly}
         />
         <TextInput
           radius="md"
@@ -71,6 +73,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
           label={<Label text="Middle name" optional />}
           placeholder="e.g. K."
           {...form.getInputProps("middleName")}
+          readOnly={readOnly}
         />
         <TextInput
           radius="md"
@@ -78,6 +81,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
           label={<Label text="Surname" required />}
           placeholder="e.g. Doe"
           {...form.getInputProps("surname")}
+          readOnly={readOnly}
         />
         <TextInput
           radius="md"
@@ -85,6 +89,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
           label={<Label text="NRC" required />}
           placeholder="e.g. 123456/78/1"
           {...form.getInputProps("nrc")}
+          readOnly={readOnly}
         />
 
         <TextInput
@@ -101,6 +106,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
             )
           }
           error={form.errors.phone}
+          readOnly={readOnly}
         />
         <TextInput
           radius="md"
@@ -115,6 +121,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
             form.validateField("email");
           }}
           error={form.errors.email}
+          readOnly={readOnly}
         />
 
         <Select
@@ -124,6 +131,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
           placeholder="Select"
           data={GENDERS}
           {...form.getInputProps("gender")}
+          disabled={readOnly}
         />
         <Select
           radius="md"
@@ -132,6 +140,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
           placeholder="Select"
           data={MARITAL_STATUSES}
           {...form.getInputProps("maritalStatus")}
+          disabled={readOnly}
         />
         <DateInput
           radius="md"
@@ -147,6 +156,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
             )
           }
           error={form.errors.birthDate}
+          readOnly={readOnly}
         />
       </SimpleGrid>
     );
@@ -158,12 +168,13 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
   spacing="lg"
   verticalSpacing="md"
 >
-  <TextInput
+    <TextInput
     radius="md"
     styles={LABEL_STYLES}
     label={<Label text="Company name" required />}
     placeholder="e.g. ABC Enterprises Ltd"
     {...form.getInputProps("companyName")}
+    readOnly={readOnly}
   />
 
   <Select
@@ -173,6 +184,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
     placeholder="Select"
     data={BUSINESS_TYPES}
     {...form.getInputProps("typeOfBusiness")}
+    disabled={readOnly}
   />
 
   <DateInput
@@ -193,6 +205,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
       )
     }
     error={form.errors.establishedDate}
+    readOnly={readOnly}
   />
 
   <TextInput
@@ -201,6 +214,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
     label={<Label text="Nature of business" required />}
     placeholder="e.g. Retail trading"
     {...form.getInputProps("natureOfBusiness")}
+    readOnly={readOnly}
   />
 
   <TextInput
@@ -210,6 +224,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
     placeholder="e.g. Plot 12, Cairo Road, Lusaka"
     className="lg:col-span-2"
     {...form.getInputProps("registeredOffice")}
+    readOnly={readOnly}
   />
 
   <NumberInput
@@ -222,6 +237,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
     label={<Label text="Collateral pledged" required />}
     placeholder="e.g. 50,000"
     {...form.getInputProps("collateralPledged")}
+    readOnly={readOnly}
   />
 
   <TextInput
@@ -230,6 +246,7 @@ export function PersonalBusinessInfoStep({ form, loanType }: StepProps) {
     label={<Label text="Purpose of loan" required />}
     placeholder="e.g. Purchase of stock"
     {...form.getInputProps("purposeOfLoan")}
+    readOnly={readOnly}
   />
 </SimpleGrid>
   );
