@@ -7,6 +7,7 @@ export interface WorkflowAction {
   action: string;
   next_state: string;
   allowed_role: string;
+  assignable_role?: string;
 }
 
 export interface WorkflowActionsResponse {
