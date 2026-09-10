@@ -33,7 +33,6 @@ import { KinStep } from "./steps/KinStep";
 
 import { DirectorsStakeholdersStep } from "./steps/DirectorsStakeholdersStep";
 import { ModalFooter } from "../../shared/ModalFooter";
-import { showValidationError } from "../../../utils/alert";
 import { openCommonModal } from "../AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 
@@ -61,14 +60,7 @@ interface CustomerModalProps {
   customerId?: string;
 }
 
-// NOTE: STEPS now has 8 entries (was 7) — "Financial & Lending" was split
-// into two separate steps, "Financial" (index 3) and "Lending" (index 4).
-// STEP_GROUPS.financial.stepIndices is [3, 4], same pattern as the
-// verification group's multi-step sub-stepper. Consent for the bureau
-// check is captured on the Credit Assessment card itself (see
-// useCreditAssessmentState) inside the Lending step — Lending (index 4)
-// still runs before KYC (index 5), so gating consent on the KYC step would
-// make the check unrunnable on first pass through the wizard.
+
 
 export function CustomerModal({
   opened,
@@ -135,11 +127,7 @@ export function CustomerModal({
     : [identity.firstName, identity.lastName].filter(Boolean).join(" ");
   const stepLabel = (idx: number) =>
     idx === 7 && isBusinessType ? "Directors & Stakeholders" : STEPS[idx].label;
-  // Derived, sidebar-only view of the credit assessment result. `result`
-  // stays the single source of truth (owned by useCreditAssessmentState);
-  // this just reshapes it into the flat props CustomerSummarySidebar takes.
-  // Returns all-null when there's no result yet, so the sidebar's credit
-  // panels simply don't render (see hasCreditData in CustomerSummarySidebar).
+
   const creditResult = creditAssessment.result;
 
   const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(new Set());
@@ -173,15 +161,7 @@ export function CustomerModal({
       (contactItem) => contactItem.name !== primaryContact?.name,
     );
 
-    // CORRECTED (2026-09-10): basic_details is now the single source of
-    // truth for hydration (NRC, company registration fields, gender,
-    // all financials) — confirmed against customer_api/constant.py
-    // BASIC_DETAILS_FIELDS. The previous `details = {...basicDetails,
-    // ...extendedDetails}` merge assumed extended_details could carry an
-    // override for any of these fields; its real whitelist is just
-    // {registration_no, strict_credit_limit, principal_id}, so that merge
-    // was reading fields extended_details was never actually allowed to
-    // contain in the first place. Removed entirely.
+
     const basicDetails = editCustomer.basic_details?.[0];
     const nok = editCustomer.next_of_kin?.[0];
 
@@ -204,8 +184,7 @@ export function CustomerModal({
     identity.setBusinessIndustry(nullableText(editCustomer.industry));
     identity.setCompanyName(isBusiness ? text(editCustomer.customer_name) : "");
 
-    // --- basic_details (previously not read at all / read from the wrong
-    // table for some fields) ---
+   
     identity.setDateOfBirth(text(basicDetails?.date_of_birth));
     identity.setMaritalStatus(nullableText(basicDetails?.marital_status));
     identity.setNationality(nullableText(basicDetails?.nationality));
@@ -213,8 +192,8 @@ export function CustomerModal({
     identity.setIsStaffCustomer(!!basicDetails?.is_staff_customer);
     identity.setStaffId(nullableText(basicDetails?.staff_id));
     identity.setEmployer(text(basicDetails?.employer_name));
-    // FIXED: NRC lives in basic_details per constant.py
-    // BASIC_DETAILS_FIELDS, not in extended_details.
+  
+    
     identity.setNrcNumber(text(basicDetails?.national_identification_number));
 
     financialBorrower.setEducationLevel(nullableText(basicDetails?.education_level));
@@ -228,27 +207,17 @@ export function CustomerModal({
       basicDetails?.existing_monthly_obligations ?? "",
     );
 
-    // BLOCKED — Net Worth hydration from basicDetails?.net_worth was
-    // requested, but useFinancialBorrowerState.ts (not shared) has no
-    // netWorth/setNetWorth — Net Worth is currently only computed inline
-    // in FinancialStep.tsx (Total Assets - Total Liabilities), with no
-    // backing state to hydrate. Needs that hook's file before this can be
-    // wired up safely. See chat note.
+
 
     if (isBusiness) {
-      // FIXED: registration_number / incorporation_date live in
-      // basic_details per constant.py, not extended_details — previously
-      // read from editCustomer.extended_details?.[0], which per the real
-      // EXTENDED_DETAILS_FIELDS whitelist ({registration_no,
-      // strict_credit_limit, principal_id}) never actually contained
-      // these keys, so this always hydrated as empty.
+
       identity.setRegistrationNumber(text(basicDetails?.registration_number));
       identity.setIncorporationDate(text(basicDetails?.incorporation_date));
       identity.setNumberOfEmployees(basicDetails?.number_of_employees ?? "");
       identity.setAnnualRevenue(basicDetails?.annual_revenue ?? "");
     }
 
-    // --- next of kin (previously not read at all) ---
+
     if (nok) {
       kin.setKinFirstName(text(nok.first_name));
       kin.setKinMiddleName(text(nok.middle_name));
@@ -261,7 +230,7 @@ export function CustomerModal({
       kin.setKinPostalCode(text(nok.postal_code));
     }
 
-    // --- identification documents (previously not read at all) ---
+   
     const idDocs = editCustomer.documents ?? [];
     if (idDocs.length > 0) {
       identification.setIdDocuments(
@@ -270,8 +239,7 @@ export function CustomerModal({
           idType: text(d.document_type || d.document_name),
           docNumber: text(d.document_number),
           issuingAuthority: text(d.issuing_authority),
-          // FIXED: was missing entirely, so editing an existing customer
-          // never restored their saved issuing country into the form.
+          
           issuingCountry: nullableText(d.issuing_country),
           issueDate: text(d.issue_date),
           expiryDate: text(d.expiry_date),
@@ -311,8 +279,7 @@ export function CustomerModal({
         .join(" "),
     );
     contact.setPrimaryContactId(primaryContact?.name);
-    // Kept for anything else still reading these arrays — no longer the
-    // source buildCustomerPayload reads from (see types.ts header note).
+  
     contact.setCustomerAddresses(
       addresses.map((address) => ({
         name: address.name,
@@ -449,9 +416,7 @@ export function CustomerModal({
         // Financial — no required fields currently.
         return {};
       case 4:
-        // Lending — Loan Requirement validation (borrower category, loan
-        // purpose, branch) lives here. Credit Assessment/bureau check stays
-        // optional/unvalidated.
+    
         return financialBorrower.getErrors();
       default:
         return {};
@@ -471,9 +436,14 @@ export function CustomerModal({
     if (firstInvalid !== null) {
       setAttemptedSteps(newAttempted);
       setActiveTab(firstInvalid.toString());
-      showValidationError(
-        "Please fill in all required fields before submitting.",
-      );
+    
+      openCommonModal({
+        heading: "Missing Information",
+        subtitle: "Validation error",
+        body: "Please fill in all required fields before submitting.",
+        color: "warning",
+        buttons: [{ label: "Close", color: "teal" }],
+      });
       return;
     }
 
@@ -496,9 +466,7 @@ export function CustomerModal({
         try {
           await documents.uploadPendingDocs(savedCustomerId);
         } catch {
-          // Customer record itself saved fine — surface this separately
-          // rather than showing "Unable to Create/Update Customer" for a
-          // document-upload failure.
+         
           openCommonModal({
             heading: "Some Documents Weren't Uploaded",
             subtitle: "Customer saved, document upload failed",
@@ -566,9 +534,16 @@ export function CustomerModal({
     const errs = getStepErrors(currentStep);
     if (Object.keys(errs).length > 0) {
       setAttemptedSteps((prev) => new Set(prev).add(currentStep));
-      showValidationError(
-        "Please fill in all required fields before continuing.",
-      );
+      // FIXED: was showValidationError() — replaced with openCommonModal
+      // so every notification in this component goes through the one
+      // shared modal system.
+      openCommonModal({
+        heading: "Missing Information",
+        subtitle: "Validation error",
+        body: "Please fill in all required fields before continuing.",
+        color: "warning",
+        buttons: [{ label: "Close", color: "teal" }],
+      });
       return;
     }
     const nextStep = stepFlow[currentFlowIndex + 1];

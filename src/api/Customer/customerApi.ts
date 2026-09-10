@@ -6,7 +6,7 @@ const api = apiClient;
 
 const CUSTOMER_ENDPOINTS = {
   get: API.customer.list,
-  // Not confirmed yet — backend not ready.
+
   create: API.customer.create,
   update: API.customer.update,
   delete: API.customer.delete,
@@ -24,7 +24,7 @@ export interface CustomerRaw {
   territory: string;
   email_id: string;
   mobile_no: string;
-  status: string; // e.g. "active"
+  status: string;
 }
 
 export interface CustomerPagination {
@@ -77,14 +77,6 @@ export interface CustomerAddress {
   is_shipping_address: 0 | 1;
 }
 
-// CORRECTED (2026-09-10) against customer_api/constant.py
-// BASIC_DETAILS_FIELDS. This table is the real source of truth for NRC,
-// company registration fields, gender, and every financial field for
-// BOTH customer types — it was previously missing
-// national_identification_number / registered_company_name /
-// registration_number / incorporation_date even though the backend
-// whitelist has always included them here (they were wrongly assumed to
-// live in extended_details instead).
 export interface CustomerBasicDetails {
   name: string;
   national_identification_number: string | null;
@@ -113,15 +105,6 @@ export interface CustomerBasicDetails {
   number_of_employees: number;
 }
 
-// CORRECTED (2026-09-10) against customer_api/constant.py
-// EXTENDED_DETAILS_FIELDS. The real whitelist for this table is just
-// {name, registration_no, strict_credit_limit, principal_id} — a much
-// smaller set than previously modeled here, and none of it is NRC,
-// company registration, or financials (those all live in basic_details;
-// see CustomerBasicDetails above). Nothing in the current UI collects
-// registration_no / strict_credit_limit / principal_id, so this table is
-// effectively unused by the customer form right now — kept here only so
-// GET responses that include it don't break typing.
 export interface CustomerExtendedDetails {
   name: string;
   registration_no: string | null;
@@ -129,7 +112,6 @@ export interface CustomerExtendedDetails {
   principal_id: string | null;
 }
 
-// Mirrors backend CHILD_TABLE_FIELDS["next_of_kin"].
 export interface CustomerNextOfKin {
   name: string;
   first_name: string;
@@ -146,7 +128,6 @@ export interface CustomerNextOfKin {
   postal_code: string;
 }
 
-// Mirrors backend CHILD_TABLE_FIELDS["stakeholders"].
 export interface CustomerStakeholder {
   name: string;
   stakeholder_name: string;
@@ -154,7 +135,6 @@ export interface CustomerStakeholder {
   ownership_percentage: number;
 }
 
-// Mirrors backend CHILD_TABLE_FIELDS["documents"].
 export interface CustomerDocumentRecord {
   name: string;
   document_type: string;
@@ -198,9 +178,7 @@ export interface CustomerDetailRaw {
   primary_address: string | null;
   addresses: CustomerAddress[];
   contacts: CustomerContact[];
-  // Backend key is `relationship_manager`
-  // (FIELD_MAPPING translates `account_manager` <-> `relationship_manager`),
-  // not `account_manager`.
+
   relationship_manager: string | null;
   relationship_manager_name: string | null;
   basic_details: CustomerBasicDetails[];
@@ -225,7 +203,7 @@ export interface CustomerGroup {
 
 /* ───────────────── GET LIST ───────────────── */
 export const getCustomers = async (
-  params?: GetCustomersParams
+  params?: GetCustomersParams,
 ): Promise<CustomerApiResponse> => {
   const cleanParams: Record<string, string | number> = {};
   if (params?.search) cleanParams.search = params.search;
@@ -235,17 +213,13 @@ export const getCustomers = async (
   if (params?.customer_type) cleanParams.customer_type = params.customer_type;
   const response: AxiosResponse<CustomerApiResponse> = await api.get(
     CUSTOMER_ENDPOINTS.get,
-    { params: cleanParams }
+    { params: cleanParams },
   );
   return response.data;
 };
 
-/* ───────────────── Create payload — CORRECTED (2026-09-10) against
-   customer_api/constant.py. Two shapes depending on customer_type.
-   Shared sub-shapes first. ───────────────── */
-
 export interface CustomerAddressPayload {
-  name?: string; // present on update = patch existing Address; absent = insert new
+  name?: string;
   address_type: string;
   address_line1: string;
   address_line2?: string;
@@ -280,11 +254,6 @@ export interface CustomerDocumentPayload {
   issuing_country: string;
 }
 
-// CORRECTED — this is now the ONLY child-details table sent on create for
-// Individual. Per constant.py BASIC_DETAILS_FIELDS this table accepts
-// national_identification_number directly, so there is no need for a
-// separate extended_details record just to carry NRC (that assumption
-// was wrong — see types.ts header note).
 export interface IndividualBasicDetails {
   national_identification_number: string;
   gender: string | null;
@@ -325,10 +294,7 @@ export interface IndividualCustomerPayload {
   customer_type: "Individual";
   customer_group: string;
   territory: string;
-  // Top-level customer field — required here because basic_details'
-  // real whitelist does not include a plain `gender` override at the
-  // customer-doc level; ALLOWED_CUSTOMER_FIELDS does have it though, so
-  // it's sent here as well as inside basic_details.
+
   gender: string | null;
   first_name: string;
   last_name: string;
@@ -337,7 +303,7 @@ export interface IndividualCustomerPayload {
   tax_id: string;
   default_currency: string;
   is_npa: 0 | 1;
-  // Backend maps this to `account_manager` (see FIELD_MAPPING).
+
   relationship_manager?: string;
   basic_details: [IndividualBasicDetails];
   addresses: CustomerAddressPayload[];
@@ -346,20 +312,11 @@ export interface IndividualCustomerPayload {
   documents: CustomerDocumentPayload[];
 }
 
-// CORRECTED — this is now the ONLY child-details table sent on create for
-// Company. Company registration fields (registered_company_name,
-// registration_number, incorporation_date) and all financials live in
-// BASIC_DETAILS_FIELDS per constant.py, not in the real
-// EXTENDED_DETAILS_FIELDS (which is just registration_no /
-// strict_credit_limit / principal_id).
 export interface CompanyBasicDetails {
   registered_company_name: string;
   registration_number: string;
   incorporation_date: string;
-  // FIXED: source_of_income is in constant.py BASIC_DETAILS_FIELDS with
-  // no customer_type restriction — it was only ever being sent for
-  // Individual, so it was silently missing from every Company create/
-  // update payload.
+
   source_of_income: string | null;
   total_assets: number;
   total_liabilities: number;
@@ -384,14 +341,9 @@ export interface CompanyCustomerPayload {
   mobile_no: string;
   tax_id: string;
   default_currency: string;
-  // FIXED: ALLOWED_CUSTOMER_FIELDS has top-level "industry" for both
-  // customer types — confirmed against constant.py. "industry_type" is a
-  // *child-table* field (basic_details), a different field entirely;
-  // using that name at the top level meant this value was silently
-  // dropped on save.
+
   industry: string;
   is_npa: 0 | 1;
-  // Backend maps this to `account_manager` (see FIELD_MAPPING).
   relationship_manager?: string;
   basic_details: [CompanyBasicDetails];
   addresses: CustomerAddressPayload[];
@@ -401,8 +353,7 @@ export interface CompanyCustomerPayload {
 }
 
 export type CustomerCreatePayload =
-  | IndividualCustomerPayload
-  | CompanyCustomerPayload;
+  IndividualCustomerPayload | CompanyCustomerPayload;
 
 export interface CustomerRecord {
   name: string;
@@ -420,7 +371,7 @@ interface MutationEnvelope<T> {
 }
 
 export async function createCustomer(
-  payload: CustomerCreatePayload
+  payload: CustomerCreatePayload,
 ): Promise<CustomerRecord> {
   const response: AxiosResponse<MutationEnvelope<CustomerRecord>> =
     await api.post(CUSTOMER_ENDPOINTS.create, payload);
@@ -429,12 +380,12 @@ export async function createCustomer(
 
 export async function updateCustomer(
   customerId: string,
-  payload: Partial<CustomerCreatePayload>
+  payload: Partial<CustomerCreatePayload>,
 ): Promise<CustomerRecord> {
   const response: AxiosResponse<MutationEnvelope<CustomerRecord>> =
     await api.put(
       `${CUSTOMER_ENDPOINTS.update}?id=${encodeURIComponent(customerId)}`,
-      payload
+      payload,
     );
   return response.data.message.data;
 }
@@ -448,14 +399,14 @@ export async function deleteCustomer(customerId: string): Promise<void> {
 export async function getCustomerById(id: string): Promise<CustomerDetailRaw> {
   const response: AxiosResponse<GetCustomerByIdEnvelope> = await api.get(
     CUSTOMER_ENDPOINTS.getById,
-    { params: { id } }
+    { params: { id } },
   );
   return response.data.message.data;
 }
 
 export async function getCustomerGroups(): Promise<CustomerGroup[]> {
   const response: AxiosResponse<{ data: CustomerGroup[] }> = await api.get(
-    CUSTOMER_ENDPOINTS.getCustomerGroups
+    CUSTOMER_ENDPOINTS.getCustomerGroups,
   );
 
   return response.data.data;
