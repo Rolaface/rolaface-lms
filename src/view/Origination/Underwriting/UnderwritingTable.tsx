@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
 import {
   Box,
   Button,
@@ -183,7 +184,7 @@ export function UnderwritingTable() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
-  const [applicationType, setApplicationType] = useState<string | null>(null);
+  const [applicationTypes, setApplicationTypes] = useState<string[]>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -191,7 +192,7 @@ export function UnderwritingTable() {
   const filteredData = useMemo(() => {
     return MOCK_DATA.filter((item) => {
       if (status !== "All" && item.status !== status) return false;
-      if (applicationType && applicationType !== "All Types") {
+      if (applicationTypes.length > 0) {
         // Mock data doesn't have application_type in Underwriting anymore. Skip for dummy logic.
       }
       if (search) {
@@ -203,7 +204,7 @@ export function UnderwritingTable() {
       }
       return true;
     });
-  }, [search, status, applicationType]);
+  }, [search, status, applicationTypes]);
 
   const columns = useMemo(
     () => [
@@ -325,6 +326,14 @@ export function UnderwritingTable() {
 
   return (
     <Box p="md">
+      <style>{`
+  .lms-search:focus-within { box-shadow: var(--mantine-shadow-xs); }
+  .lms-row-actions { opacity: 1; }
+  .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+  .lms-row:hover td { background: var(--mantine-color-slate-0) !important; }
+  .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+  .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+      `}</style>
       {/* Header */}
       <Group justify="space-between" align="flex-end" mb="lg">
         <Group gap="sm">
@@ -380,21 +389,19 @@ export function UnderwritingTable() {
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
-          <Select
-            size="sm"
-            radius="xl"
-            placeholder="All Types"
-            data={["Personal loan", "Business loan", "Mortgage"]}
-            w={166}
-            searchable
-            clearable
-            rightSection={<IconChevronDown size={14} style={{ opacity: 0.6 }} />}
-            value={applicationType}
-            onChange={(v) => {
-              setApplicationType(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          />
+          <FilterMultiSelect
+              placeholder="All Types"
+              data={[
+                { label: "Personal loan", value: "Personal loan" },
+                { label: "Business loan", value: "Business loan" }
+              ]}
+              value={applicationTypes}
+              onChange={(v) => {
+                setApplicationTypes(v);
+                setPagination((p) => ({ ...p, pageIndex: 0 }));
+              }}
+              width={180}
+            />
 
           <SegmentedControl
             size="xs"
@@ -422,21 +429,12 @@ export function UnderwritingTable() {
               px="md"
               onClick={() => {
                 setSearch("");
-                setApplicationType(null);
+                setApplicationTypes([]);
                 setStatus("All");
                 setPagination((p) => ({ ...p, pageIndex: 0 }));
               }}
             >
               Reset
-            </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={() => {}}
-              leftSection={<IconPlus size={14} />}
-            >
-              Configure Underwriting
             </Button>
           </Group>
         </Group>
