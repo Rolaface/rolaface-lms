@@ -36,7 +36,7 @@ const columnHelper = createColumnHelper<CustomerRow>();
 interface BuildColumnsArgs {
   onView: (row: CustomerRow) => void;
   onEdit: (row: CustomerRow) => void;
-  onDelete: (id: string) => void;
+ onDelete: (row: CustomerRow) => void;
   canRead: boolean;
   canWrite: boolean;
   canDelete: boolean;
@@ -117,7 +117,7 @@ export function buildCustomerColumns({ onView, onEdit, onDelete, canRead, canWri
             )}
             {canDelete && (
               <Tooltip label="Delete" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="danger" radius="md" onClick={() => onDelete(row.id)}>
+                <ActionIcon size="sm" variant="subtle" color="danger" radius="md" onClick={() => onDelete(row)}>
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
