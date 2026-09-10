@@ -652,7 +652,6 @@ export function OfferIssuanceStage() {
             radius="xl"
           />
         </Group>
-      </Box>
     </Stack>
   );
 }
