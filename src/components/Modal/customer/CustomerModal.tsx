@@ -173,17 +173,16 @@ export function CustomerModal({
       (contactItem) => contactItem.name !== primaryContact?.name,
     );
 
- 
-const basicDetails = editCustomer.basic_details?.[0];
-const extendedDetails = editCustomer.extended_details?.[0];
-const details = {
-  ...basicDetails,
-  ...Object.fromEntries(
-    Object.entries(extendedDetails ?? {}).filter(
-      ([, value]) => value !== null && value !== undefined,
-    ),
-  ),
-};
+    // CORRECTED (2026-09-10): basic_details is now the single source of
+    // truth for hydration (NRC, company registration fields, gender,
+    // all financials) — confirmed against customer_api/constant.py
+    // BASIC_DETAILS_FIELDS. The previous `details = {...basicDetails,
+    // ...extendedDetails}` merge assumed extended_details could carry an
+    // override for any of these fields; its real whitelist is just
+    // {registration_no, strict_credit_limit, principal_id}, so that merge
+    // was reading fields extended_details was never actually allowed to
+    // contain in the first place. Removed entirely.
+    const basicDetails = editCustomer.basic_details?.[0];
     const nok = editCustomer.next_of_kin?.[0];
 
     identity.reset();
@@ -201,33 +200,28 @@ const details = {
     identity.setIndividualTaxId(text(editCustomer.tax_id));
     identity.setTaxId(text(editCustomer.tax_id));
     identity.setCurrency(nullableText(editCustomer.default_currency));
-    identity.setIndustry(nullableText(details?.industry_type ?? editCustomer.industry));
+    identity.setIndustry(nullableText(basicDetails?.industry_type ?? editCustomer.industry));
     identity.setBusinessIndustry(nullableText(editCustomer.industry));
     identity.setCompanyName(isBusiness ? text(editCustomer.customer_name) : "");
 
-    // --- basic_details / extended_details (previously not read at all) ---
-    identity.setDateOfBirth(text(details?.date_of_birth));
-    identity.setMaritalStatus(nullableText(details?.marital_status));
-    identity.setNationality(nullableText(details?.nationality));
-    identity.setOccupation(text(details?.occupation));
-    identity.setIsStaffCustomer(!!details?.is_staff_customer);
-    identity.setStaffId(nullableText(details?.staff_id));
-    identity.setEmployer(text(details?.employer_name));
-    identity.setNrcNumber(
-      text(editCustomer.extended_details?.[0]?.national_identification_number),
-    );
-    financialBorrower.setEducationLevel(nullableText(details?.education_level));
-    financialBorrower.setEmploymentType(nullableText(details?.employment_type));
-    financialBorrower.setSourceOfIncome(nullableText(details?.source_of_income));
-    financialBorrower.setMonthlyIncome(details?.monthly_income ?? "");
-    financialBorrower.setAnnualIncome(details?.annual_income ?? "");
+    // --- basic_details (previously not read at all / read from the wrong
+    // table for some fields) ---
+    identity.setDateOfBirth(text(basicDetails?.date_of_birth));
+    identity.setMaritalStatus(nullableText(basicDetails?.marital_status));
+    identity.setNationality(nullableText(basicDetails?.nationality));
+    identity.setOccupation(text(basicDetails?.occupation));
+    identity.setIsStaffCustomer(!!basicDetails?.is_staff_customer);
+    identity.setStaffId(nullableText(basicDetails?.staff_id));
+    identity.setEmployer(text(basicDetails?.employer_name));
+    // FIXED: NRC lives in basic_details per constant.py
+    // BASIC_DETAILS_FIELDS, not in extended_details.
+    identity.setNrcNumber(text(basicDetails?.national_identification_number));
 
-    // CHANGED (2026-09-09) — backend requirement: total_assets,
-    // total_liabilities, existing_monthly_obligations are handled from
-    // basic_details. Previously read from `details` (basic_details merged
-    // with any non-null extended_details override) — now read strictly
-    // from `basicDetails` (basic_details[0]) so a value in extended_details
-    // can no longer silently take priority.
+    financialBorrower.setEducationLevel(nullableText(basicDetails?.education_level));
+    financialBorrower.setEmploymentType(nullableText(basicDetails?.employment_type));
+    financialBorrower.setSourceOfIncome(nullableText(basicDetails?.source_of_income));
+    financialBorrower.setMonthlyIncome(basicDetails?.monthly_income ?? "");
+    financialBorrower.setAnnualIncome(basicDetails?.annual_income ?? "");
     financialBorrower.setTotalAssets(basicDetails?.total_assets ?? "");
     financialBorrower.setTotalLiabilities(basicDetails?.total_liabilities ?? "");
     financialBorrower.setExistingMonthlyObligations(
@@ -242,13 +236,14 @@ const details = {
     // wired up safely. See chat note.
 
     if (isBusiness) {
-      const companyDetails = editCustomer.extended_details?.[0];
-      identity.setRegistrationNumber(text(companyDetails?.registration_number));
-      identity.setIncorporationDate(text(companyDetails?.incorporation_date));
-      // CHANGED (2026-09-09) — backend requirement: number_of_employees and
-      // annual_revenue are handled from basic_details. Previously read from
-      // `companyDetails` (extended_details[0]) — now read from
-      // `basicDetails` (basic_details[0]).
+      // FIXED: registration_number / incorporation_date live in
+      // basic_details per constant.py, not extended_details — previously
+      // read from editCustomer.extended_details?.[0], which per the real
+      // EXTENDED_DETAILS_FIELDS whitelist ({registration_no,
+      // strict_credit_limit, principal_id}) never actually contained
+      // these keys, so this always hydrated as empty.
+      identity.setRegistrationNumber(text(basicDetails?.registration_number));
+      identity.setIncorporationDate(text(basicDetails?.incorporation_date));
       identity.setNumberOfEmployees(basicDetails?.number_of_employees ?? "");
       identity.setAnnualRevenue(basicDetails?.annual_revenue ?? "");
     }
@@ -275,6 +270,9 @@ const details = {
           idType: text(d.document_type || d.document_name),
           docNumber: text(d.document_number),
           issuingAuthority: text(d.issuing_authority),
+          // FIXED: was missing entirely, so editing an existing customer
+          // never restored their saved issuing country into the form.
+          issuingCountry: nullableText(d.issuing_country),
           issueDate: text(d.issue_date),
           expiryDate: text(d.expiry_date),
           verification: text(d.verification_status) || "Not verified",

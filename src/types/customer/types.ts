@@ -5,65 +5,52 @@ import type {
 } from "../../api/Customer/customerApi";
 
 /**
- * NOTE — fields with no source in current state hooks are left as
- * empty string / 0 with a TODO comment. Do not silently ship these
- * as-is to a real backend without confirming:
- *   - territory            (no state field anywhere)
- *   - is_npa               (hardcoded 0, no toggle exists yet)
+ * CORRECTED against the authoritative backend constant.py (2026-09-10):
  *
- * customerType mapping ASSUMPTION (confirm before relying on this):
- *   IdentityStep's SegmentedControl currently only offers Individual /
- *   Business (2 values) — everything maps 1:1, no "Joint/SME/Corporate/
- *   Group" collapsing needed at present.
+ *   EXTENDED_DETAILS_FIELDS only contains {name, registration_no,
+ *   strict_credit_limit, principal_id}. None of those map to anything
+ *   our UI state collects, so extended_details is dropped entirely from
+ *   both payloads — it was previously carrying NRC / company registration
+ *   / financial fields, ALL of which were being silently stripped by the
+ *   backend's field whitelist and never actually saved.
  *
- * RESOLVED (confirmed against customer_api/constant.py CHILD_TABLE_FIELDS):
- *   `basic_details` does NOT accept registered_company_name /
- *   registration_number / incorporation_date, and does NOT accept
- *   national_identification_number (NRC) either — only `extended_details`
- *   does. Individual now sends BOTH basic_details (unchanged, already
- *   working) and extended_details (adds NRC). Company sends BOTH
- *   basic_details and extended_details as of 2026-09-09 (see below) —
- *   previously it sent only extended_details.
+ *   BASIC_DETAILS_FIELDS is the table that actually accepts
+ *   national_identification_number, registered_company_name,
+ *   registration_number, incorporation_date, gender, and every financial
+ *   field — so all of that now lives in basic_details only, for both
+ *   Individual and Company.
  *
- * RESOLVED (confirmed against customer_api/utils.py sync_addresses /
- * sync_contacts):
- *   addresses[] / contacts[] are now built directly from the flat
- *   Identity/Contact step fields (Residential/Mailing/Registered
- *   Office/Correspondence, Primary Contact Name) instead of the
- *   `customerAddresses` / `customerContacts` arrays, which were only ever
- *   populated during edit-mode hydration and stayed `[]` for every new
- *   customer — meaning addresses/contacts silently never reached the
- *   backend on create. The `*AddressId` / `primaryContactId` fields (set
- *   during edit hydration) are passed through as each entry's `name` so
- *   `sync_addresses`/`sync_contacts` patch the existing Address/Contact
- *   doc on update instead of orphaning it and inserting a duplicate.
+ *   Top-level Company field is `industry` per ALLOWED_CUSTOMER_FIELDS,
+ *   NOT `industry_type` (industry_type only exists inside the child
+ *   tables). Previously sent as `industry_type` at the top level and
+ *   silently dropped by the backend's field filter.
  *
- * RESOLVED (confirmed against customer_api/constant.py CHILD_TABLE_FIELDS —
- * both basic_details and extended_details accept `net_worth`):
- *   FinancialStep shows Net Worth as an auto-calculated (Total Assets -
- *   Total Liabilities) disabled field, but this builder never sent it —
- *   backend never received it. Now computed here the same way and added
- *   to every child-details row (individual basic_details + extended_details,
- *   company basic_details + extended_details).
+ * Fields still with no source (left as empty/0 — do not ship without
+ * confirming with backend):
+ *   - territory
+ *   - is_npa
  *
- * RESOLVED (2026-09-09, backend requirement): total_assets,
- * total_liabilities, net_worth, existing_monthly_obligations,
- * annual_revenue and number_of_employees are handled from basic_details.
- * Company previously sent these 6 fields ONLY inside extended_details
- * (no basic_details entry existed for Company at all) — Company now also
- * sends a basic_details row with these 6 values, alongside the unchanged
- * extended_details row (kept in both — see CompanyBasicDetails comment in
- * customerApi.ts for why extended_details wasn't stripped of them).
- * Individual is unchanged: no UI collects annual_revenue/number_of_employees
- * for Individual, so those two stay Company-only, same as before.
+ * customerType mapping ASSUMPTION (unchanged, confirm before relying on
+ * this): IdentityStep's SegmentedControl currently only offers
+ * Individual / Business (2 values) — everything maps 1:1.
+ *
+ * addresses[] / contacts[] are built directly from the flat
+ * Identity/Contact step fields (Residential/Mailing/Registered
+ * Office/Correspondence, Primary Contact Name), not from the
+ * `customerAddresses` / `customerContacts` arrays (those are only
+ * populated during edit-mode hydration and stay `[]` on create). The
+ * `*AddressId` / `primaryContactId` fields (set during edit hydration)
+ * are passed through as each entry's `name` so the backend patches the
+ * existing Address/Contact doc on update instead of inserting a
+ * duplicate.
  */
 
 /**
  * These are deliberately NOT imported via `ReturnType<typeof useXState>`
  * because the real file paths/folders for these hooks weren't shared —
  * only their content was. Each type below lists just the fields this
- * builder actually reads, taken verbatim from the uploaded hook files.
- * Swap these for real imports once the hook file locations are known.
+ * builder actually reads. Swap for real imports once hook file locations
+ * are known.
  */
 
 interface IdentityState {
@@ -147,6 +134,11 @@ interface IdentificationState {
     issueDate: string;
     expiryDate: string;
     verification: string;
+    // ADDED — IdentificationStep.tsx already has a working "Issuing
+    // Country" Select bound to this field (via useCountries lookup); this
+    // local interface just never declared it, so buildCustomerPayload was
+    // hardcoding issuing_country to "" instead of reading the real value.
+    issuingCountry?: string | null;
   }>;
 }
 
@@ -183,7 +175,6 @@ export function buildCustomerPayload(
 ): CustomerCreatePayload {
   const isCompany = identity.customerType === "Business";
 
-
   const netWorth =
     financial.totalAssets !== "" && financial.totalLiabilities !== ""
       ? Number(financial.totalAssets) - Number(financial.totalLiabilities)
@@ -197,13 +188,15 @@ export function buildCustomerPayload(
     expiry_date: doc.expiryDate || undefined,
     verification_status: doc.verification,
     issuing_authority: doc.issuingAuthority,
-    issuing_country: "", // TODO: no source field
+    // FIXED: was hardcoded to "" — IdentificationStep.tsx already collects
+    // this via a country Select bound to issuingCountry, it just wasn't
+    // being read here.
+    issuing_country: doc.issuingCountry ?? "",
   }));
 
   // --- addresses ---------------------------------------------------------
-  // Built from the flat step fields (not a `customerAddresses` array — see
-  // header note). Entries with no address_line1 are dropped so we don't
-  // insert empty Address docs when a section was left blank.
+  // Entries with no address_line1 are dropped so we don't insert empty
+  // Address docs when a section was left blank.
   const addresses = (
     isCompany
       ? [
@@ -264,7 +257,6 @@ export function buildCustomerPayload(
         ]
   ).filter((a): a is NonNullable<typeof a> => !!a && a.address_line1.trim().length > 0);
 
-
   const contacts = isCompany
     ? (() => {
         // Sanitize before splitting — a stray comma (or other punctuation)
@@ -311,7 +303,7 @@ export function buildCustomerPayload(
       customer_type: "Individual",
       customer_group: identity.customerGroup ?? "",
       territory: "", // TODO: no source field
-      gender: identity.gender, // top-level — see IndividualCustomerPayload comment in customerApi.ts
+      gender: identity.gender, // top-level — in ALLOWED_CUSTOMER_FIELDS
       first_name: identity.firstName,
       last_name: identity.lastName,
       email_id: contact.email,
@@ -320,33 +312,13 @@ export function buildCustomerPayload(
       default_currency: identity.currency ?? "",
       is_npa: 0, // TODO: no source field
       relationship_manager: financial.relationshipManager ?? undefined,
+      // Single source of truth — basic_details is the only child table
+      // whose whitelist actually includes NRC + all financials (confirmed
+      // against constant.py BASIC_DETAILS_FIELDS). extended_details is
+      // NOT sent: its real whitelist is {registration_no,
+      // strict_credit_limit, principal_id}, none of which this form
+      // collects.
       basic_details: [
-        {
-          gender: identity.gender,
-          date_of_birth: identity.dateOfBirth,
-          marital_status: identity.maritalStatus,
-          nationality: identity.nationality,
-          is_staff_customer: identity.isStaffCustomer ? 1 : 0,
-          staff_id: identity.isStaffCustomer ? identity.staffId : null,
-          occupation: identity.occupation,
-          education_level: financial.educationLevel,
-          employment_type: financial.employmentType,
-          industry_type: identity.industry,
-          employer_name: identity.employer,
-          source_of_income: financial.sourceOfIncome,
-          monthly_income: Number(financial.monthlyIncome) || 0,
-          annual_income: Number(financial.annualIncome) || 0,
-          total_assets: Number(financial.totalAssets) || 0,
-          total_liabilities: Number(financial.totalLiabilities) || 0,
-          net_worth: netWorth,
-          existing_monthly_obligations:
-            Number(financial.existingMonthlyObligations) || 0,
-        },
-      ],
-      // Additive — basic_details above is unchanged/already-confirmed;
-      // extended_details is the only table that accepts NRC (see header
-      // note), sent alongside so it doesn't silently vanish.
-      extended_details: [
         {
           national_identification_number: identity.nrcNumber,
           gender: identity.gender,
@@ -400,21 +372,28 @@ export function buildCustomerPayload(
     mobile_no: contact.mobileNumber,
     tax_id: identity.taxId,
     default_currency: identity.currency ?? "",
-   // Backend's ALLOWED_CUSTOMER_FIELDS (constant.py) has top-level
-   // "industry", not "industry_type" — confirmed against backend's own
-   // sample Company payload. Sending "industry_type" here was silently
-   // dropped by create_customer's field loop (it only copies fields that
-   // are in ALLOWED_CUSTOMER_FIELDS).
-   industry_type: identity.businessIndustry ?? "",
+    // FIXED: ALLOWED_CUSTOMER_FIELDS has top-level "industry", not
+    // "industry_type" — "industry_type" only exists as a child-table
+    // field (basic_details/extended_details). Sending "industry_type"
+    // at the top level meant it was silently dropped by create_customer's
+    // field-whitelist loop.
+    industry: identity.businessIndustry ?? "",
     is_npa: 0, // TODO: no source field
     relationship_manager: financial.relationshipManager ?? undefined,
-
-   
+    // Single source of truth — same reasoning as Individual above.
+    // Company registration fields (registered_company_name,
+    // registration_number, incorporation_date) also only exist in
+    // BASIC_DETAILS_FIELDS, not in the real EXTENDED_DETAILS_FIELDS.
     basic_details: [
       {
         registered_company_name: identity.companyName,
         registration_number: identity.registrationNumber,
         incorporation_date: identity.incorporationDate,
+        // ADDED — source_of_income is in the shared BASIC_DETAILS_FIELDS
+        // whitelist (no customer_type restriction in constant.py) and is
+        // already collected by FinancialStep for both customer types, but
+        // was only ever included in the Individual basic_details object.
+        source_of_income: financial.sourceOfIncome,
         total_assets: Number(financial.totalAssets) || 0,
         total_liabilities: Number(financial.totalLiabilities) || 0,
         net_worth: netWorth,
@@ -422,21 +401,6 @@ export function buildCustomerPayload(
           Number(financial.existingMonthlyObligations) || 0,
         annual_revenue: Number(identity.annualRevenue) || 0,
         number_of_employees: Number(identity.numberOfEmployees) || 0,
-      },
-    ],
-
-    extended_details: [
-      {
-        registered_company_name: identity.companyName,
-        registration_number: identity.registrationNumber,
-        incorporation_date: identity.incorporationDate,
-        number_of_employees: Number(identity.numberOfEmployees) || 0,
-        annual_revenue: Number(identity.annualRevenue) || 0,
-        total_assets: Number(financial.totalAssets) || 0,
-        total_liabilities: Number(financial.totalLiabilities) || 0,
-        net_worth: netWorth,
-        existing_monthly_obligations:
-          Number(financial.existingMonthlyObligations) || 0,
       },
     ],
     addresses,
