@@ -159,6 +159,15 @@ function ApplicationIdCell({ name }: { name: string }) {
       </Text>
     </Group>
   );
+  }
+
+: { sorted: false | "asc" | "desc" }) {
+  const color = sorted
+    ? "var(--mantine-color-brand-6)"
+    : "var(--mantine-color-slate-4)";
+  if (sorted === "asc") return <IconChevronUp size={12} color={color} />;
+  if (sorted === "desc") return <IconChevronDown size={12} color={color} />;
+  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
 export function EnrichmentTable() {
@@ -166,6 +175,8 @@ export function EnrichmentTable() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
   const [applicationType, setApplicationType] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [sorting, setSorting] = useState([]);
   
   // Filter data
   const filteredData = useMemo(() => {
@@ -271,13 +282,18 @@ export function EnrichmentTable() {
   const table = useReactTable({
     data: filteredData,
     columns,
+    state: { sorting, pagination },
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: { pageSize: 10 },
-    },
   });
+
+  const totalRows = filteredData.length;
+  const { pageIndex, pageSize } = pagination;
+  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
+  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   return (
     <Box p="md">
@@ -332,7 +348,10 @@ export function EnrichmentTable() {
               input: { border: "1px solid var(--mantine-color-slate-2)" },
             }}
             value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
+            onChange={(e) => {
+              setSearch(e.currentTarget.value);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
           />
           <Select
             size="sm"
@@ -344,7 +363,10 @@ export function EnrichmentTable() {
             clearable
             rightSection={<IconChevronDown size={14} style={{ opacity: 0.6 }} />}
             value={applicationType}
-            onChange={(v) => setApplicationType(v)}
+            onChange={(v) => {
+              setApplicationType(v);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
           />
 
           <SegmentedControl
@@ -352,7 +374,10 @@ export function EnrichmentTable() {
             radius="xl"
             color="brand"
             value={status}
-            onChange={(v) => setStatus(v)}
+            onChange={(v) => {
+              setStatus(v);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
             data={[
               { label: "All", value: "All" },
               { label: "Pending", value: "Pending Data" },
@@ -371,6 +396,7 @@ export function EnrichmentTable() {
                 setSearch("");
                 setApplicationType(null);
                 setStatus("All");
+                setPagination((p) => ({ ...p, pageIndex: 0 }));
               }}
             >
               Reset
@@ -388,66 +414,165 @@ export function EnrichmentTable() {
         </Group>
       </Paper>
 
-      {/* Table */}
-      <Paper radius="md" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
-        <Box style={{ overflowX: "auto" }}>
-          <Table verticalSpacing="sm" horizontalSpacing="md" fz="sm" striped>
-            <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <Table.Tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
+      {/* Data Table */}
+      <Box style={{ overflowX: "auto" }}>
+        <Table
+          verticalSpacing="sm"
+          horizontalSpacing="sm"
+          fz="xs"
+          w="100%"
+          style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+        >
+          <Table.Thead>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <Table.Tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  const canSort = header.column.getCanSort();
+                  return (
                     <Table.Th
                       key={header.id}
-                      onClick={header.column.getToggleSortingHandler()}
+                      className="lms-thead-cell"
+                      c="slate.5"
+                      fw={700}
                       style={{
-                        cursor: header.column.getCanSort() ? "pointer" : "default",
-                        whiteSpace: "nowrap",
-                        padding: "12px 16px",
+                        fontSize: "var(--mantine-font-size-xs)",
+                        padding: "0 10px 6px",
+                        userSelect: "none",
+                        cursor: canSort ? "pointer" : "default",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        border: "none",
                       }}
+                      onClick={header.column.getToggleSortingHandler()}
                     >
-                      <Group gap={4} wrap="nowrap" justify={header.id === "actions" ? "flex-end" : "flex-start"}>
-                        <Text fz="xs" fw={700} c="slate.5" style={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                        </Text>
-                        {header.column.getCanSort() && <SortIcon sorted={header.column.getIsSorted()} />}
+                      <Group
+                        gap="xs"
+                        wrap="nowrap"
+                        justify={
+                          header.id === "actions"
+                            ? "flex-end"
+                            : "flex-start"
+                        }
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                        {canSort && (
+                          <SortIcon
+                            sorted={header.column.getIsSorted()}
+                          />
+                        )}
                       </Group>
                     </Table.Th>
-                  ))}
-                </Table.Tr>
-              ))}
-            </Table.Thead>
-            <Table.Tbody>
-              {table.getRowModel().rows.length > 0 ? (
-                table.getRowModel().rows.map((row) => (
-                  <Table.Tr key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <Table.Td key={cell.id} style={{ padding: "12px 16px", borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  );
+                })}
+              </Table.Tr>
+            ))}
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.length === 0 ? (
+              <Table.Tr>
+                <Table.Td
+                  colSpan={columns.length}
+                  style={{ border: "none" }}
+                >
+                  <Stack align="center" gap="xs" py="xl">
+                    <Box
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: "50%",
+                        background: "var(--mantine-color-white)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "1px solid var(--mantine-color-slate-2)",
+                      }}
+                    >
+                      <IconFileText
+                        size={26}
+                        color="var(--mantine-color-slate-4)"
+                      />
+                    </Box>
+                    <Text ta="center" c="slate.5" fz="xs">
+                      No enrichment applications match your filters.
+                    </Text>
+                  </Stack>
+                </Table.Td>
+              </Table.Tr>
+            ) : (
+              rows.map((row) => {
+                const scale = STATUS_COLOR[row.original.status] ?? "slate";
+                const cells = row.getVisibleCells();
+                return (
+                  <Table.Tr
+                    key={row.id}
+                    className="lms-row"
+                    style={{ cursor: "pointer", background: "var(--mantine-color-white)" }}
+                  >
+                    {cells.map((cell, idx) => (
+                      <Table.Td
+                        key={cell.id}
+                        style={{
+                          padding: "10px 10px",
+                          border: "none",
+                          boxShadow: "var(--mantine-shadow-xs)",
+                          borderLeft:
+                            idx === 0
+                              ? `3px solid var(--mantine-color-${scale}-4)`
+                              : undefined,
+                        }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
                       </Table.Td>
                     ))}
                   </Table.Tr>
-                ))
-              ) : (
-                <Table.Tr>
-                  <Table.Td colSpan={columns.length} style={{ textAlign: "center", padding: "40px" }}>
-                    <Text c="slate.5">No applications found in Enrichment</Text>
-                  </Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
-        </Box>
-        <Group justify="space-between" align="center" p="md" style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
-          <Text fz="sm" c="slate.5">
-            Showing {table.getRowModel().rows.length} rows
-          </Text>
+                );
+              })
+            )}
+          </Table.Tbody>
+        </Table>
+      </Box>
+        {/* Pagination Footer */}
+        <Group justify="space-between" px="sm" pt="xs" pb="xs">
+          <Group
+            gap="sm"
+            c="slate.6"
+            style={{ fontSize: "var(--mantine-font-size-xs)" }}
+          >
+            <span>
+              {totalRows === 0
+                ? "Showing 0 of 0"
+                : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+            </span>
+            <Group gap="xs">
+              <span>Rows:</span>                  
+              <Select
+                data={["10", "20", "50"]}
+                value={String(pageSize)}
+                onChange={(v) =>
+                  setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
+                }
+                rightSection={<IconChevronDown size={14} style={{ opacity: 0.6 }} />}
+                size="xs"
+                radius="xl"
+                w={60}
+              />
+            </Group>
+          </Group>
           <Pagination
-            total={table.getPageCount()}
-            value={table.getState().pagination.pageIndex + 1}
-            onChange={(page) => table.setPageIndex(page - 1)}
-            size="sm"
-            radius="md"
+            total={table.getPageCount() || 1}
+            value={pageIndex + 1}
+            onChange={(p) =>
+              setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
+            }
             color="brand"
+            size="xs"
+            radius="xl"
           />
         </Group>
       </Paper>

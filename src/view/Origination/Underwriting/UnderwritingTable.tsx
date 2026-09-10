@@ -27,9 +27,10 @@ import {
   IconSearch,
   IconFileText,
   IconEye,
-  IconAdjustments,
+  IconDatabase,
   IconTrash,
   IconDotsVertical,
+  IconGavel,
 } from "@tabler/icons-react";
 import {
   useReactTable,
@@ -40,72 +41,70 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 
-// MOCK DATA for Prescreening
-export interface PrescreeningRow {
+// MOCK DATA for Underwriting
+export interface UnderwritingRow {
   id: string;
   name: string;
   applicant: string;
-  amount: number;
-  creditScore: number | null;
-  obligations: number | null;
+  finalAmount: number;
+  assetValue: number;
+  coverage: number;
+  legalStatus: string;
   status: string;
 }
 
-const MOCK_DATA: PrescreeningRow[] = [
+const MOCK_DATA: UnderwritingRow[] = [
   {
     id: "APP-58231",
     name: "APP-58231",
     applicant: "Chanda Mwansa",
-    amount: 76500,
-    creditScore: 742,
-    obligations: 3850,
-    status: "Pending",
+    finalAmount: 76500,
+    assetValue: 95000,
+    coverage: 124,
+    legalStatus: "1 Exception",
+    status: "Ready for Decision",
   },
   {
     id: "APP-58232",
     name: "APP-58232",
     applicant: "Vinod Kumain",
-    amount: 50000,
-    creditScore: 680,
-    obligations: 1200,
-    status: "Passed",
+    finalAmount: 50000,
+    assetValue: 120000,
+    coverage: 240,
+    legalStatus: "Passed",
+    status: "Completed",
   },
   {
     id: "APP-58233",
     name: "APP-58233",
     applicant: "Simon Zimba",
-    amount: 5700,
-    creditScore: 520,
-    obligations: 4500,
-    status: "Failed",
+    finalAmount: 5700,
+    assetValue: 0,
+    coverage: 0,
+    legalStatus: "Unresolved",
+    status: "In Progress",
   },
   {
     id: "APP-58234",
     name: "APP-58234",
-    applicant: "Mwangi Zimba",
-    amount: 100000,
-    creditScore: null,
-    obligations: null,
-    status: "Pending",
+    applicant: "Bwembya Kunda",
+    finalAmount: 120000,
+    assetValue: 90000,
+    coverage: 75,
+    legalStatus: "Pending",
+    status: "Not Started",
   },
 ];
 
-const columnHelper = createColumnHelper<PrescreeningRow>();
+const columnHelper = createColumnHelper<UnderwritingRow>();
 
 export const STATUS_COLOR: Record<string, string> = {
-  Pending: "warning",
-  Passed: "success",
-  Failed: "danger",
+  "Not Started": "slate",
+  "In Progress": "brand",
+  "Ready for Decision": "warning",
+  Completed: "success",
+  Exception: "danger",
 };
-
-function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
-  const color = sorted
-    ? "var(--mantine-color-brand-6)"
-    : "var(--mantine-color-slate-4)";
-  if (sorted === "asc") return <IconChevronUp size={12} color={color} />;
-  if (sorted === "desc") return <IconChevronDown size={12} color={color} />;
-  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
-}
 
 function StatusBadge({ status }: { status: string }) {
   const scale = STATUS_COLOR[status] ?? "slate";
@@ -170,7 +169,7 @@ function ApplicationIdCell({ name }: { name: string }) {
   );
 }
 
-: { sorted: false | "asc" | "desc" }) {
+function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   const color = sorted
     ? "var(--mantine-color-brand-6)"
     : "var(--mantine-color-slate-4)";
@@ -179,7 +178,7 @@ function ApplicationIdCell({ name }: { name: string }) {
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-export function PrescreeningTable() {
+export function UnderwritingTable() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
@@ -192,8 +191,7 @@ export function PrescreeningTable() {
     return MOCK_DATA.filter((item) => {
       if (status !== "All" && item.status !== status) return false;
       if (applicationType && applicationType !== "All Types") {
-        // Mock data doesn't have application_type in Prescreening anymore since I removed it.
-        // Let's assume we don't filter it exactly for dummy, or we'll skip it for dummy logic if missing.
+        // Mock data doesn't have application_type in Underwriting anymore. Skip for dummy logic.
       }
       if (search) {
         const query = search.toLowerCase();
@@ -220,39 +218,37 @@ export function PrescreeningTable() {
           </Text>
         ),
       }),
-      columnHelper.accessor("amount", {
-        header: "Requested Amount",
+      columnHelper.accessor("finalAmount", {
+        header: "Final Amount",
         cell: (info) => (
           <Text fz="xs" fw={700} c="slate.7">
             ZMW {info.getValue().toLocaleString()}
           </Text>
         ),
       }),
-      columnHelper.accessor("creditScore", {
-        header: "Credit Score",
-        cell: (info) => {
-          const score = info.getValue();
-          if (!score) return <Text fz="xs" c="slate.4">Pending check</Text>;
-          return (
-            <Group gap={4}>
-              <Text fz="xs" fw={600} c={score > 650 ? "success.6" : "danger.6"}>
-                {score}
-              </Text>
-            </Group>
-          );
-        },
+      columnHelper.accessor("assetValue", {
+        header: "Collateral Value",
+        cell: (info) => (
+          <Text fz="xs" fw={600} c="slate.7">
+            {info.getValue() > 0 ? `ZMW ${info.getValue().toLocaleString()}` : "—"}
+          </Text>
+        ),
       }),
-      columnHelper.accessor("obligations", {
-        header: "Monthly Obligations",
-        cell: (info) => {
-          const obs = info.getValue();
-          if (!obs) return <Text fz="xs" c="slate.4">Pending check</Text>;
-          return (
-            <Text fz="xs" fw={600} c="slate.7">
-              ZMW {obs.toLocaleString()}
-            </Text>
-          );
-        },
+      columnHelper.accessor("coverage", {
+        header: "Coverage",
+        cell: (info) => (
+          <Text fz="xs" fw={700} c={info.getValue() >= 100 ? "green.7" : info.getValue() > 0 ? "orange.7" : "slate.5"}>
+            {info.getValue() > 0 ? `${info.getValue()}%` : "—"}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor("legalStatus", {
+        header: "Legal & Title",
+        cell: (info) => (
+          <Text fz="xs" fw={600} c={info.getValue() === "Passed" ? "green.7" : info.getValue().includes("Exception") ? "orange.7" : "slate.6"}>
+            {info.getValue()}
+          </Text>
+        ),
       }),
       columnHelper.accessor("status", {
         header: "Status",
@@ -319,31 +315,30 @@ export function PrescreeningTable() {
     <Box p="md">
       {/* Header */}
       <Group justify="space-between" align="flex-end" mb="lg">
-        <Group gap="md">
-          <Box
-            w={44}
-            h={44}
-            style={{
-              borderRadius: "var(--mantine-radius-md)",
-              background: theme.other?.brandGradient || "var(--mantine-color-brand-6)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              boxShadow: theme.other?.brandGlowShadow || "none",
-            }}
-          >
-            <IconFileText size={22} />
-          </Box>
-          <Stack gap={2}>
-            <Title order={2} fz={22} fw={800} c="slate.9">
-              Prescreening
-            </Title>
-            <Text fz="sm" c="slate.5">
-              Review applications and run prescreening checks
-            </Text>
-          </Stack>
-        </Group>
+          <Group gap="sm">
+            <Box
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: "var(--mantine-radius-md)",
+                background: "var(--mantine-color-brand-0)",
+                color: "var(--mantine-color-brand-6)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <IconGavel size={22} />
+            </Box>
+            <Stack gap={2}>
+              <Title order={2} fz={22} fw={800} c="slate.9">
+                Underwriting
+              </Title>
+              <Text fz="sm" c="slate.5">
+                Review application risk and make final credit decisions
+              </Text>
+            </Stack>
+          </Group>
       </Group>
 
       {/* Toolbar */}
@@ -400,8 +395,8 @@ export function PrescreeningTable() {
             }}
             data={[
               { label: "All", value: "All" },
-              { label: "Pending", value: "Pending" },
-              { label: "Passed", value: "Passed" },
+              { label: "Pending", value: "Pending Data" },
+              { label: "Enriched", value: "Enriched" },
               { label: "Failed", value: "Failed" },
             ]}
           />
@@ -428,25 +423,42 @@ export function PrescreeningTable() {
               onClick={() => {}}
               leftSection={<IconPlus size={14} />}
             >
-              Configure Prescreening
+              Configure Underwriting
             </Button>
           </Group>
         </Group>
       </Paper>
 
-      {/* Table */}
-      <Paper radius="md" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
-        <Box style={{ overflowX: "auto" }}>
-          <Table verticalSpacing="sm" horizontalSpacing="md" fz="sm" striped>
-            <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <Table.Tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
+      {/* Data Table */}
+      <Box style={{ overflowX: "auto" }}>
+        <Table
+          verticalSpacing="sm"
+          horizontalSpacing="sm"
+          fz="xs"
+          w="100%"
+          style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+        >
+          <Table.Thead>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <Table.Tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  const canSort = header.column.getCanSort();
+                  return (
                     <Table.Th
                       key={header.id}
-                      onClick={header.column.getToggleSortingHandler()}
+                      className="lms-thead-cell"
+                      c="slate.5"
+                      fw={700}
                       style={{
-                        cursor: header.column.getCanSort() ? "pointer" : "default",
+                        fontSize: "var(--mantine-font-size-xs)",
+                        padding: "0 10px 6px",
+                        userSelect: "none",
+                        cursor: canSort ? "pointer" : "default",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        border: "none",
+                      }}
+                      onClick={header.column.getToggleSortingHandler()}
                     >
                       <Group
                         gap="xs"
@@ -499,7 +511,7 @@ export function PrescreeningTable() {
                       />
                     </Box>
                     <Text ta="center" c="slate.5" fz="xs">
-                      No prescreening applications match your filters.
+                      No underwriting applications match your filters.
                     </Text>
                   </Stack>
                 </Table.Td>
@@ -534,7 +546,12 @@ export function PrescreeningTable() {
                       </Table.Td>
                     ))}
                   </Table.Tr>
-        </Box>
+                );
+              })
+            )}
+          </Table.Tbody>
+        </Table>
+      </Box>
         {/* Pagination Footer */}
         <Group justify="space-between" px="sm" pt="xs" pb="xs">
           <Group
@@ -573,7 +590,6 @@ export function PrescreeningTable() {
             radius="xl"
           />
         </Group>
-      </Paper>
     </Box>
   );
 }
