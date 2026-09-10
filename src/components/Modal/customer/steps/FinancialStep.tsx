@@ -28,6 +28,7 @@ interface FinancialStepProps {
   industryType: string | null;
   setIndustryType: (v: string | null) => void;
   employerName: string;
+  setEmployerName: (v: string) => void;
 }
 
 const chevron = (
@@ -60,7 +61,7 @@ export function FinancialStep(props: FinancialStepProps) {
     existingMonthlyObligations, setExistingMonthlyObligations,
     relationshipManager, setRelationshipManager,
     industryType, setIndustryType,
-    employerName,
+    employerName, setEmployerName,
   } = props;
 
   const isBusiness = customerType === "Business";
@@ -125,6 +126,7 @@ export function FinancialStep(props: FinancialStepProps) {
               label="Employer Name"
               placeholder="e.g. ABC Ltd"
               value={employerName}
+              onChange={(e) => setEmployerName(e.currentTarget.value)}
               styles={fieldStyles}
             />
           </>

@@ -14,7 +14,6 @@ import {
   IconPhone,
   IconMapPin,
   IconAlertTriangle,
-  IconUserCircle,
 } from "@tabler/icons-react";
 import { DatePickerInput } from "@mantine/dates";
 import { PlainCard, SectionHeader } from "../../../shared/customer/Shared";
@@ -105,6 +104,49 @@ const chevron = (
   <IconChevronDown size={13} color="var(--mantine-color-slate-4)" />
 );
 
+export interface LookupOption {
+  value: string;
+  label: string;
+}
+
+/**
+ * Country <Select> options come from an async, search-driven lookup
+ * (`useCountries`), which returns `{ value, label }` objects — NOT
+ * plain strings — and only returns matches for whatever text the user
+ * has typed. Two problems this handles:
+ *
+ * 1. If the currently-selected value isn't present in the fetched
+ *    list (e.g. on first render, or right after hydrating an existing
+ *    customer for edit, before the user has typed anything), Mantine's
+ *    Select can't find a label for it and the field renders as if
+ *    nothing were selected. A fallback option is synthesized so it
+ *    always renders correctly.
+ *
+ * 2. Mantine's Select throws ("Duplicate options are not supported")
+ *    if `data` contains two options with the same `value`. The lookup
+ *    itself can return the same record twice (e.g. "India" appearing
+ *    twice in one response — a backend/data issue, not something this
+ *    component can prevent at the source), so the result is always
+ *    de-duplicated by `.value`, not by object identity.
+ */
+function ensureSelectedOption(
+  options: LookupOption[] | undefined,
+  selectedValue: string | null | undefined,
+): LookupOption[] {
+  const seen = new Set<string>();
+  const deduped: LookupOption[] = [];
+  for (const opt of options ?? []) {
+    if (!seen.has(opt.value)) {
+      seen.add(opt.value);
+      deduped.push(opt);
+    }
+  }
+  if (selectedValue && !seen.has(selectedValue)) {
+    deduped.unshift({ value: selectedValue, label: selectedValue });
+  }
+  return deduped;
+}
+
 function FieldRow({
   columns,
   children,
@@ -194,7 +236,7 @@ function AddressCard({
   onProvince: (v: string | null) => void;
   country: string | null;
   onCountry: (v: string | null) => void;
-  countryOptions: string[];
+  countryOptions: LookupOption[];
   countriesLoading: boolean;
   onCountrySearch: (v: string) => void;
   postalCode: string;
@@ -224,7 +266,7 @@ function AddressCard({
         disabled={disabled}
         value={addressLine1}
         onChange={(e) => onAddressLine1(e.currentTarget.value)}
-        mb="{6}"
+        mb={6}
       />
       <TextInput
         radius="md"
@@ -280,7 +322,7 @@ function AddressCard({
           withAsterisk
           placeholder={countriesLoading ? "Loading..." : "Select"}
           disabled={disabled}
-          data={countryOptions ?? []}
+          data={countryOptions}
           value={country}
           onChange={onCountry}
           onSearchChange={onCountrySearch}
@@ -604,7 +646,10 @@ export function ContactStep(props: ContactStepProps) {
               sameAsRegisteredOffice ? registeredOfficeCountry || null : correspondenceCountry
             }
             onCountry={setCorrespondenceCountry}
-            countryOptions={correspondenceCountryOptions ?? []}
+            countryOptions={ensureSelectedOption(
+              correspondenceCountryOptions,
+              sameAsRegisteredOffice ? registeredOfficeCountry : correspondenceCountry,
+            )}
             countriesLoading={correspondenceCountriesLoading}
             onCountrySearch={setCorrespondenceCountrySearch}
             postalCode={
@@ -639,7 +684,7 @@ export function ContactStep(props: ContactStepProps) {
             onProvince={setProvince}
             country={country}
             onCountry={setCountry}
-            countryOptions={countryOptions ?? []}
+            countryOptions={ensureSelectedOption(countryOptions, country)}
             countriesLoading={countriesLoading}
             onCountrySearch={setCountrySearch}
             postalCode={postalCode}
@@ -676,7 +721,10 @@ export function ContactStep(props: ContactStepProps) {
             onProvince={setMailingProvince}
             country={sameAsResidential ? country : mailingCountry}
             onCountry={setMailingCountry}
-            countryOptions={mailingCountryOptions ?? []}
+            countryOptions={ensureSelectedOption(
+              mailingCountryOptions,
+              sameAsResidential ? country : mailingCountry,
+            )}
             countriesLoading={mailingCountriesLoading}
             onCountrySearch={setMailingCountrySearch}
             postalCode={sameAsResidential ? postalCode : mailingPostalCode}

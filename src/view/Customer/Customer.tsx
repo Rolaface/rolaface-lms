@@ -40,12 +40,52 @@ import { SortIcon } from "./CustomerTableCells";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
 import type { BorrowerProfile } from "../../types/customerview";
 import { usePermission } from "../../hooks/Usepermission";
+import { deleteCustomer } from "../../api/Customer/customerApi";
+import { useMutation } from "@tanstack/react-query";
+import { openCommonModal } from "../../components/Modal/AlertModal";
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 export function Customer() {
   const theme = useMantineTheme();
   const list = useCustomerList();
+ 
+     const deleteCustomerMutation = useMutation({
+    mutationFn: (id: string) => deleteCustomer(id),
+onSuccess: () => {
+  list.refetch();
+
+
+
+      openCommonModal({
+        heading: "Customer Deleted",
+        subtitle: "",
+        body: "Customer deleted successfully.",
+        color: "green",
+        buttons: [
+          {
+            label: "Close",
+            color: "green",
+          },
+        ],
+      });
+    },
+
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Delete Failed",
+        subtitle: "We couldn't complete your request.",
+        body: error?.message || "Failed to delete customer.",
+        color: "red",
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
+  });
   const {can} = usePermission();
   const canCreateCustomer = can('Customer','create');
   const canWriteCustomer = can('Customer','write');
@@ -60,13 +100,42 @@ export function Customer() {
   const handleViewCustomer = (customer: CustomerRow) =>
     setBorrower360CustomerId(customer.id);
 
-  const handleDeleteCustomer = (id: string) => {};
+const handleDeleteCustomer = (customer: CustomerRow) => {
+  openCommonModal({
+    heading: "Delete Customer",
+    subtitle: "This action cannot be undone.",
+    body: (
+      <>
+        Are you sure you want to delete customer{" "}
+        <Text span fw={600}>
+          {customer.name}
+        </Text>
+        ?
+      </>
+    ),
+    color: "red",
+    buttons: [
+      {
+        label: "Cancel",
+        variant: "default",
+      },
+      {
+        label: "Delete",
+        color: "red",
+        onClick: () => {
+          deleteCustomerMutation.mutate(customer.id);
+        },
+      },
+    ],
+  });
+};
 
   const columns = useMemo(
     () =>
       buildCustomerColumns({
         onView: handleViewCustomer,
-        onEdit: () => customerModal.open({ isViewMode: false }),
+        onEdit: (customer) =>
+          customerModal.open({ isViewMode: false, customerId: customer.id }),
         onDelete: handleDeleteCustomer,
         canRead: canReadCustomer,
         canWrite: canWriteCustomer,

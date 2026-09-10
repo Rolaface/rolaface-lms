@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Text,
@@ -25,6 +25,7 @@ import { BorrowerStep } from "./steps/BorrowerStep";
 import { CreditAssessmentStep } from "./steps/Creditassessmentstep";
 import { CreditBureauSummary } from "./steps/CreditBureauSummary";
 import { ExistingFacilities } from "./steps/ExistingFacilities";
+import { EligibilitySummary } from "./steps/EligibilitySummary";
 import { AssignmentStep } from "./steps/AssignmentStep";
 import { KycStep } from "./steps/KycStep";
 import { DocumentsStep } from "./steps/DocumentsStep";
@@ -32,7 +33,6 @@ import { KinStep } from "./steps/KinStep";
 
 import { DirectorsStakeholdersStep } from "./steps/DirectorsStakeholdersStep";
 import { ModalFooter } from "../../shared/ModalFooter";
-import { showValidationError } from "../../../utils/alert";
 import { openCommonModal } from "../AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 
@@ -48,32 +48,33 @@ import {
   useTagsState,
 } from "../../../hooks/customer/modal/useLaterStepsState";
 import { getScoreBand } from "../../../components/shared/Creditscoregauge";
+import { useCreateCustomer, useUpdateCustomer } from "../../../hooks/customer/api/useCustomerMutations";
+import { useCustomer } from "../../../hooks/customer/api/useCustomerQuery";
+import { buildCustomerPayload } from "../../../types/customer/types";
 
 interface CustomerModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize: () => void;
   isViewMode?: boolean;
+  customerId?: string;
 }
 
-// NOTE: STEPS now has 8 entries (was 7) — "Financial & Lending" was split
-// into two separate steps, "Financial" (index 3) and "Lending" (index 4).
-// STEP_GROUPS.financial.stepIndices is [3, 4], same pattern as the
-// verification group's multi-step sub-stepper. Consent for the bureau
-// check is captured on the Credit Assessment card itself (see
-// useCreditAssessmentState) inside the Lending step — Lending (index 4)
-// still runs before KYC (index 5), so gating consent on the KYC step would
-// make the check unrunnable on first pass through the wizard.
+
 
 export function CustomerModal({
   opened,
   onClose,
   onMinimize,
   isViewMode,
+  customerId,
 }: CustomerModalProps) {
   const theme = useMantineTheme();
   const [activeTab, setActiveTab] = useState<string>("0");
   const currentStep = parseInt(activeTab);
+  const stepFlow = STEP_GROUPS.flatMap((group) => [...group.stepIndices]);
+  const currentFlowIndex = stepFlow.indexOf(currentStep as never);
+  const isLastStep = currentFlowIndex === stepFlow.length - 1;
 
   const identity = useIdentityState();
   const contact = useContactState();
@@ -89,6 +90,12 @@ export function CustomerModal({
   });
   const kin = useKinState();
   const tagsState = useTagsState();
+  const createCustomerMutation = useCreateCustomer();
+  const updateCustomerMutation = useUpdateCustomer();
+  const { data: editCustomer } = useCustomer(customerId ?? null);
+  const [populatedCustomerId, setPopulatedCustomerId] = useState<string | null>(
+    null,
+  );
 
   const activeGroup =
     STEP_GROUPS.find((g) =>
@@ -120,14 +127,243 @@ export function CustomerModal({
     : [identity.firstName, identity.lastName].filter(Boolean).join(" ");
   const stepLabel = (idx: number) =>
     idx === 7 && isBusinessType ? "Directors & Stakeholders" : STEPS[idx].label;
-  // Derived, sidebar-only view of the credit assessment result. `result`
-  // stays the single source of truth (owned by useCreditAssessmentState);
-  // this just reshapes it into the flat props CustomerSummarySidebar takes.
-  // Returns all-null when there's no result yet, so the sidebar's credit
-  // panels simply don't render (see hasCreditData in CustomerSummarySidebar).
+
   const creditResult = creditAssessment.result;
 
   const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (!customerId || !editCustomer || populatedCustomerId === customerId) {
+      return;
+    }
+
+    const text = (value: string | null | undefined) => value ?? "";
+    const nullableText = (value: string | null | undefined) => value || null;
+    const isBusiness = editCustomer.customer_type === "Company";
+    const addresses = editCustomer.addresses ?? [];
+    const contacts = editCustomer.contacts ?? [];
+    const primaryAddress =
+      addresses.find(
+        (address) =>
+          address.name === editCustomer.customer_primary_address ||
+          address.is_primary_address === 1,
+      ) ?? addresses[0];
+    const shippingAddress =
+      addresses.find((address) => address.is_shipping_address === 1) ??
+      primaryAddress;
+    const primaryContact =
+      contacts.find(
+        (contactItem) =>
+          contactItem.name === editCustomer.customer_primary_contact ||
+          contactItem.is_primary_contact === 1,
+      ) ?? contacts[0];
+    const secondaryContact = contacts.find(
+      (contactItem) => contactItem.name !== primaryContact?.name,
+    );
+
+
+    const basicDetails = editCustomer.basic_details?.[0];
+    const nok = editCustomer.next_of_kin?.[0];
+
+    identity.reset();
+    contact.reset();
+    identification.reset();
+    financialBorrower.reset();
+    kin.reset();
+
+    identity.setCustomerNumber(editCustomer.name);
+    identity.setCustomerType(isBusiness ? "Business" : "Individual");
+    identity.setCustomerGroup(nullableText(editCustomer.customer_group));
+    identity.setFirstName(text(editCustomer.first_name));
+    identity.setLastName(text(editCustomer.last_name));
+    identity.setGender(nullableText(editCustomer.gender));
+    identity.setIndividualTaxId(text(editCustomer.tax_id));
+    identity.setTaxId(text(editCustomer.tax_id));
+    identity.setCurrency(nullableText(editCustomer.default_currency));
+    identity.setIndustry(nullableText(basicDetails?.industry_type ?? editCustomer.industry));
+    identity.setBusinessIndustry(nullableText(editCustomer.industry));
+    identity.setCompanyName(isBusiness ? text(editCustomer.customer_name) : "");
+
+   
+    identity.setDateOfBirth(text(basicDetails?.date_of_birth));
+    identity.setMaritalStatus(nullableText(basicDetails?.marital_status));
+    identity.setNationality(nullableText(basicDetails?.nationality));
+    identity.setOccupation(text(basicDetails?.occupation));
+    identity.setIsStaffCustomer(!!basicDetails?.is_staff_customer);
+    identity.setStaffId(nullableText(basicDetails?.staff_id));
+    identity.setEmployer(text(basicDetails?.employer_name));
+  
+    
+    identity.setNrcNumber(text(basicDetails?.national_identification_number));
+
+    financialBorrower.setEducationLevel(nullableText(basicDetails?.education_level));
+    financialBorrower.setEmploymentType(nullableText(basicDetails?.employment_type));
+    financialBorrower.setSourceOfIncome(nullableText(basicDetails?.source_of_income));
+    financialBorrower.setMonthlyIncome(basicDetails?.monthly_income ?? "");
+    financialBorrower.setAnnualIncome(basicDetails?.annual_income ?? "");
+    financialBorrower.setTotalAssets(basicDetails?.total_assets ?? "");
+    financialBorrower.setTotalLiabilities(basicDetails?.total_liabilities ?? "");
+    financialBorrower.setExistingMonthlyObligations(
+      basicDetails?.existing_monthly_obligations ?? "",
+    );
+
+
+
+    if (isBusiness) {
+
+      identity.setRegistrationNumber(text(basicDetails?.registration_number));
+      identity.setIncorporationDate(text(basicDetails?.incorporation_date));
+      identity.setNumberOfEmployees(basicDetails?.number_of_employees ?? "");
+      identity.setAnnualRevenue(basicDetails?.annual_revenue ?? "");
+    }
+
+
+    if (nok) {
+      kin.setKinFirstName(text(nok.first_name));
+      kin.setKinMiddleName(text(nok.middle_name));
+      kin.setKinLastName(text(nok.last_name));
+      kin.setKinRelationship(nullableText(nok.relationship));
+      kin.setKinPhone(text(nok.phone));
+      kin.setKinAddress(text(nok.address_line_1));
+      kin.setKinDistrict(text(nok.district));
+      kin.setKinCityTown(text(nok.city));
+      kin.setKinPostalCode(text(nok.postal_code));
+    }
+
+   
+ const idDocs = editCustomer.documents ?? [];
+
+if (idDocs.length > 0) {
+  identification.setIdDocuments(
+    idDocs.map((d, i) => ({
+      id: d.name,
+      idType: text(d.document_type || d.document_name),
+      docNumber: text(d.document_number),
+      issuingAuthority: text(d.issuing_authority),
+      issuingCountry: nullableText(d.issuing_country),
+      issueDate: text(d.issue_date),
+      expiryDate: text(d.expiry_date),
+      verification: text(d.verification_status) || "Not Verified",
+      documentUpload: null,
+      documentUploadRef: nullableText(d.document_upload),
+      isPrimary: i === 0,
+    })),
+  );
+}
+
+    // --- directors / stakeholders (previously not read at all) ---
+    if (isBusiness) {
+      const stakeholders = editCustomer.stakeholders ?? [];
+      identity.setDirectors(
+        stakeholders.map((s) => ({
+          id: s.name,
+          fullName: text(s.stakeholder_name),
+          role: text(s.stakeholder_role) || "Director",
+          shareholdingPercent:
+            s.ownership_percentage != null ? String(s.ownership_percentage) : "",
+          nationality: null,
+          idType: null,
+          idNumber: "",
+          address: "",
+          notes: "",
+        })),
+      );
+    }
+
+    contact.setEmail(text(editCustomer.email_id || primaryContact?.email_id));
+    contact.setMobileNumber(
+      text(editCustomer.mobile_no || primaryContact?.mobile_no),
+    );
+    contact.setAlternateMobile(text(secondaryContact?.mobile_no));
+    contact.setPrimaryContactName(
+      [primaryContact?.first_name, primaryContact?.last_name]
+        .filter(Boolean)
+        .join(" "),
+    );
+    contact.setPrimaryContactId(primaryContact?.name);
+  
+    contact.setCustomerAddresses(
+      addresses.map((address) => ({
+        name: address.name,
+        address_type: text(address.address_type),
+        address_line1: text(address.address_line1),
+        address_line2: text(address.address_line2),
+        city: text(address.city),
+        state: text(address.state),
+        pincode: text(address.pincode),
+        country: text(address.country),
+        is_primary_address: address.is_primary_address,
+        is_shipping_address: address.is_shipping_address,
+      })),
+    );
+    contact.setCustomerContacts(
+      contacts.map((contactItem) => ({
+        name: contactItem.name,
+        first_name: text(contactItem.first_name),
+        last_name: text(contactItem.last_name),
+        salutation: nullableText(contactItem.salutation),
+        designation: nullableText(contactItem.designation),
+        email_id: text(contactItem.email_id),
+        mobile_no: text(contactItem.mobile_no),
+        is_primary_contact: contactItem.is_primary_contact,
+        is_billing_contact: contactItem.is_billing_contact,
+      })),
+    );
+
+    if (isBusiness && primaryAddress) {
+      identity.setBusinessAddress(text(primaryAddress.address_line1));
+      identity.setBusinessAddressLine2(text(primaryAddress.address_line2));
+      identity.setBusinessCity(text(primaryAddress.city));
+      identity.setBusinessProvince(nullableText(primaryAddress.state));
+      identity.setBusinessCountry(nullableText(primaryAddress.country));
+      identity.setBusinessPostalCode(text(primaryAddress.pincode));
+      identity.setRegisteredOfficeAddressId(primaryAddress.name);
+
+      const correspondenceAddress =
+        shippingAddress && shippingAddress.name !== primaryAddress.name
+          ? shippingAddress
+          : null;
+      if (correspondenceAddress) {
+        contact.setSameAsRegisteredOffice(false);
+        contact.setCorrespondenceAddress(text(correspondenceAddress.address_line1));
+        contact.setCorrespondenceAddressLine2(text(correspondenceAddress.address_line2));
+        contact.setCorrespondenceCityTown(text(correspondenceAddress.city));
+        contact.setCorrespondenceProvince(nullableText(correspondenceAddress.state));
+        contact.setCorrespondenceCountry(nullableText(correspondenceAddress.country));
+        contact.setCorrespondencePostalCode(text(correspondenceAddress.pincode));
+        contact.setCorrespondenceAddressId(correspondenceAddress.name);
+      } else {
+        contact.setSameAsRegisteredOffice(true);
+      }
+    }
+
+    if (!isBusiness && primaryAddress) {
+      contact.setResidentialAddress(text(primaryAddress.address_line1));
+      contact.setResidentialAddressLine2(text(primaryAddress.address_line2));
+      contact.setCityTown(text(primaryAddress.city));
+      contact.setProvince(nullableText(primaryAddress.state));
+      contact.setCountry(nullableText(primaryAddress.country));
+      contact.setPostalCode(text(primaryAddress.pincode));
+      contact.setResidentialAddressId(primaryAddress.name);
+    }
+
+    if (!isBusiness && shippingAddress) {
+      const sameAddress =
+        !primaryAddress || shippingAddress.name === primaryAddress.name;
+      contact.setSameAsResidential(sameAddress);
+      contact.setMailingAddress(text(shippingAddress.address_line1));
+      contact.setMailingAddressLine2(text(shippingAddress.address_line2));
+      contact.setMailingCityTown(text(shippingAddress.city));
+      contact.setMailingProvince(nullableText(shippingAddress.state));
+      contact.setMailingCountry(nullableText(shippingAddress.country));
+      contact.setMailingPostalCode(text(shippingAddress.pincode));
+      if (!sameAddress) contact.setMailingAddressId(shippingAddress.name);
+    }
+
+    setAttemptedSteps(new Set());
+    setActiveTab("0");
+    setPopulatedCustomerId(customerId);
+  }, [customerId, editCustomer, populatedCustomerId]);
 
   const getStepErrors = (step: number): Record<string, string> => {
     switch (step) {
@@ -182,16 +418,14 @@ export function CustomerModal({
         // Financial — no required fields currently.
         return {};
       case 4:
-        // Lending — Loan Requirement validation (borrower category, loan
-        // purpose, branch) lives here. Credit Assessment/bureau check stays
-        // optional/unvalidated.
+    
         return financialBorrower.getErrors();
       default:
         return {};
     }
   };
 
-  const handleCreateCustomer = () => {
+  const handleCreateCustomer = async () => {
     const stepsToCheck = [0, 1, 2, 3, 4];
     let firstInvalid: number | null = null;
     const newAttempted = new Set(attemptedSteps);
@@ -204,17 +438,53 @@ export function CustomerModal({
     if (firstInvalid !== null) {
       setAttemptedSteps(newAttempted);
       setActiveTab(firstInvalid.toString());
-      showValidationError(
-        "Please fill in all required fields before submitting.",
-      );
+    
+      openCommonModal({
+        heading: "Missing Information",
+        subtitle: "Validation error",
+        body: "Please fill in all required fields before submitting.",
+        color: "warning",
+        buttons: [{ label: "Close", color: "teal" }],
+      });
       return;
     }
 
+    const isEditMode = !!customerId;
+
     try {
+      const payload = buildCustomerPayload(
+        identity,
+        contact,
+        identification,
+        financialBorrower,
+        kin,
+      );
+
+      const savedCustomerId = isEditMode
+        ? (await updateCustomerMutation.mutateAsync({ customerId, payload })).name
+        : (await createCustomerMutation.mutateAsync(payload)).name;
+
+      if (Object.keys(documents.pendingDocs).length > 0) {
+        try {
+          await documents.uploadPendingDocs(savedCustomerId);
+        } catch {
+         
+          openCommonModal({
+            heading: "Some Documents Weren't Uploaded",
+            subtitle: "Customer saved, document upload failed",
+            body: "The customer record was saved, but one or more documents could not be uploaded. You can retry uploading them from the Documents step.",
+            color: "warning",
+            buttons: [{ label: "Close", color: "teal" }],
+          });
+        }
+      }
+
       openCommonModal({
-        heading: "Customer Created",
+        heading: isEditMode ? "Customer Updated" : "Customer Created",
         subtitle: "Success",
-        body: "Customer has been created successfully.",
+        body: isEditMode
+          ? "Customer has been updated successfully."
+          : "Customer has been created successfully.",
         color: "success",
         buttons: [
           {
@@ -227,8 +497,10 @@ export function CustomerModal({
     } catch (err: any) {
       const errorMessage = parseFrappeError(err);
       openCommonModal({
-        heading: "Unable to Create Customer",
-        subtitle: "Customer creation failed",
+        heading: isEditMode
+          ? "Unable to Update Customer"
+          : "Unable to Create Customer",
+        subtitle: isEditMode ? "Customer update failed" : "Customer creation failed",
         body: errorMessage,
         color: "danger",
         buttons: [
@@ -252,6 +524,7 @@ export function CustomerModal({
     kin.reset();
     tagsState.reset();
     setAttemptedSteps(new Set());
+    setPopulatedCustomerId(null);
     setActiveTab("0");
   };
 
@@ -263,21 +536,33 @@ export function CustomerModal({
     const errs = getStepErrors(currentStep);
     if (Object.keys(errs).length > 0) {
       setAttemptedSteps((prev) => new Set(prev).add(currentStep));
-      showValidationError(
-        "Please fill in all required fields before continuing.",
-      );
+      // FIXED: was showValidationError() — replaced with openCommonModal
+      // so every notification in this component goes through the one
+      // shared modal system.
+      openCommonModal({
+        heading: "Missing Information",
+        subtitle: "Validation error",
+        body: "Please fill in all required fields before continuing.",
+        color: "warning",
+        buttons: [{ label: "Close", color: "teal" }],
+      });
       return;
     }
-    if (currentStep < STEPS.length - 1)
-      setActiveTab((currentStep + 1).toString());
+    const nextStep = stepFlow[currentFlowIndex + 1];
+    if (nextStep !== undefined) setActiveTab(nextStep.toString());
   };
   const handleBack = () => {
-    if (currentStep > 0) setActiveTab((currentStep - 1).toString());
+    const previousStep = stepFlow[currentFlowIndex - 1];
+    if (previousStep !== undefined) setActiveTab(previousStep.toString());
   };
 
   const headerIcon = STEPS[currentStep]?.icon || IconUser;
   const HeaderIcon = headerIcon;
-  const headerTitle = isViewMode ? "View Customer" : "Create Customer";
+  const headerTitle = isViewMode
+    ? "View Customer"
+    : customerId
+      ? "Edit Customer"
+      : "Create Customer";
 
   const renderStep = () => {
     switch (currentStep) {
@@ -287,8 +572,8 @@ export function CustomerModal({
             customerNumber={identity.customerNumber}
             customerType={identity.customerType}
             setCustomerType={identity.setCustomerType}
-            customerCategory={identity.customerCategory}
-            setCustomerCategory={identity.setCustomerCategory}
+            customerGroup={identity.customerGroup}
+            setCustomerGroup={identity.setCustomerGroup}
             isStaffCustomer={identity.isStaffCustomer}
             setIsStaffCustomer={identity.setIsStaffCustomer}
             staffId={identity.staffId}
@@ -315,6 +600,14 @@ export function CustomerModal({
             setIndustry={identity.setIndustry}
             employer={identity.employer}
             setEmployer={identity.setEmployer}
+            nrcNumber={identity.nrcNumber}
+            setNrcNumber={identity.setNrcNumber}
+            individualTaxId={identity.individualTaxId}
+            setIndividualTaxId={identity.setIndividualTaxId}
+            currency={identity.currency}
+            setCurrency={identity.setCurrency}
+            taxId={identity.taxId}
+            setTaxId={identity.setTaxId}
             companyName={identity.companyName}
             setCompanyName={identity.setCompanyName}
             registrationNumber={identity.registrationNumber}
@@ -457,9 +750,10 @@ export function CustomerModal({
       }
       relationshipManager={financialBorrower.relationshipManager}
       setRelationshipManager={financialBorrower.setRelationshipManager}
-      industryType={financialBorrower.industryType}
-      setIndustryType={financialBorrower.setIndustryType}
-      employerName={financialBorrower.employerName}
+      industryType={identity.industry}
+      setIndustryType={identity.setIndustry}
+      employerName={identity.employer}
+      setEmployerName={identity.setEmployer}
     />
   );
      case 4:
@@ -489,6 +783,13 @@ export function CustomerModal({
 
       <ExistingFacilities
         bureauFacilities={creditAssessment.result?.existingFacilities ?? []}
+      />
+
+      <EligibilitySummary
+        monthlyIncome={financialBorrower.monthlyIncome}
+        existingMonthlyObligations={financialBorrower.existingMonthlyObligations}
+        bureauMonthlyObligations={creditAssessment.result?.monthlyObligations}
+        loanTenureMonths={financialBorrower.loanTenureMonths}
       />
 
       {/* <BorrowerStep
@@ -563,23 +864,6 @@ export function CustomerModal({
             setKinPostalCode={kin.setKinPostalCode}
           />
         );
-        // case 8:
-        //   return (
-        //     <TagsStep
-        //       tags={tagsState.tags}
-        //       tagInput={tagsState.tagInput}
-        //       setTagInput={tagsState.setTagInput}
-        //       addTag={tagsState.addTag}
-        //       removeTag={tagsState.removeTag}
-        //       relationshipNotes={tagsState.relationshipNotes}
-        //       setRelationshipNotes={tagsState.setRelationshipNotes}
-        //       customFields={tagsState.customFields}
-        //       addCustomField={tagsState.addCustomField}
-        //       removeCustomField={tagsState.removeCustomField}
-        //       updateCustomField={tagsState.updateCustomField}
-        //     />
-        //   );
-        // default:
         return null;
     }
   };
@@ -824,20 +1108,6 @@ export function CustomerModal({
           )}
         </Box>
 
-        {/*
-          Content region — this is the piece that was causing the dead
-          gap + clipped sidebar on narrow/mobile widths.
-
-          Below `lg`: the OUTER box owns the scroll (`overflow-y-auto`) and
-          both children (main content + sidebar) just flow naturally, full
-          width, stacked. No fixed heights fighting each other, nothing
-          gets clipped — it just scrolls as one long page.
-
-          At `lg` and above: outer scroll is turned off
-          (`lg:overflow-hidden`) and we go back to the original two-pane
-          layout — main content and sidebar each own their own
-          ScrollArea/overflow independently, side by side.
-        */}
         <Box
           bg="slate.0"
           className="flex-1 flex flex-col lg:flex-row min-w-0 overflow-y-auto lg:overflow-hidden"
@@ -871,7 +1141,7 @@ export function CustomerModal({
               }
               stepInGroup={stepInGroup}
               groupStepCount={activeGroup.stepIndices.length}
-              overallCompleted={currentStep}
+              overallCompleted={currentFlowIndex === -1 ? 0 : currentFlowIndex}
               overallTotal={STEPS.length}
               creditScore={creditResult?.score ?? null}
               creditBand={
@@ -897,20 +1167,20 @@ export function CustomerModal({
             ) : undefined
           }
           submitLabel={
-            currentStep < STEPS.length - 1
+            !isLastStep
               ? isViewMode
                 ? "Next"
                 : "Save & Continue"
               : "Save"
           }
           onSubmit={
-            currentStep < STEPS.length - 1
+            !isLastStep
               ? handleNext
               : isViewMode
                 ? undefined
                 : handleCreateCustomer
           }
-          submitDisabled={isViewMode && currentStep === STEPS.length - 1}
+          submitDisabled={isViewMode && isLastStep}
         />
       </Box>
     </Modal>

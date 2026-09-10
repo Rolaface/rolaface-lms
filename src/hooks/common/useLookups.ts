@@ -4,6 +4,7 @@ import {
   getGenderList,
   getIndustryList,
 } from "../../api/lookup api/lookUpApi";
+import { getCustomerGroups } from "../../api/Customer/customerApi";
 import { commonKeys } from "./queryKeys";
 
 export interface LookupOption {
@@ -57,6 +58,19 @@ export function useIndustries(search?: string) {
       (res?.data ?? []).map((i: any) => ({
         value: i.name,
         label: i.industry,
+      })),
+    staleTime: 1000 * 60 * 30,
+  });
+}
+
+export function useCustomerGroups() {
+  return useQuery({
+    queryKey: commonKeys.customerGroups(),
+    queryFn: () => getCustomerGroups(),
+    select: (res): LookupOption[] =>
+      (res ?? []).map((group) => ({
+        value: group.name,
+        label: group.name,
       })),
     staleTime: 1000 * 60 * 30,
   });

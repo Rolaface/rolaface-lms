@@ -21,10 +21,9 @@ export const loanClassificationModal = createModal(
   {
     icon: IconLayersLinked,
     getTitle,
-    buildProps: (params) => ({
-      editId: params.editId ?? null,
-      initialData: params.initialData ?? null,
-      isView: params.isView ?? false,
-    }),
+   buildProps: (params) => ({
+  mode: params.isView ? "view" : params.editId ? "edit" : "add",
+  data: params.initialData ?? null,
+}),
   },
 );

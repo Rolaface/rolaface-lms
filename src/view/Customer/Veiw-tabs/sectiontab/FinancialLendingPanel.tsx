@@ -20,14 +20,15 @@ import {
   StatusBadge,
 } from "./Customerprofileshared ";
 import { CurrencySymbol } from "../../../../components/shared/CurrencyIcon";
+import {
+  formatAmount,
+  usePrefetchCurrencies,
+  useCurrencyReady,
+} from "../../../../store/currencyStore";
+
 function field(value: unknown) {
   if (value === undefined || value === null || value === "") return "—";
   return value as React.ReactNode;
-}
-
-function money(value: unknown) {
-  if (value === undefined || value === null || value === "") return "—";
-  return `K ${Number(value).toLocaleString()}`;
 }
 
 export function FinancialLendingPanel({
@@ -44,6 +45,20 @@ export function FinancialLendingPanel({
   const b = borrower as any;
   const credit = b.creditAssessment ?? {};
   const financial = b.financialProfile ?? {};
+  const currencyCode: string | undefined = b.currency;
+
+  // Prefetch this customer's currency symbol/number-format so `money()`
+  // below renders with the right pattern (e.g. "ZMW 150,000.00") instead
+  // of a hardcoded "K" prefix that ignored the customer's actual currency.
+  usePrefetchCurrencies(currencyCode, (code) => [code]);
+  useCurrencyReady(); // re-render once the currency metadata arrives
+
+  const money = (value: unknown) => {
+    if (value === undefined || value === null || value === "") return "—";
+    return formatAmount(currencyCode, value as number | string, {
+      withSymbol: true,
+    });
+  };
 
   return (
     <div className="flex flex-col gap-4">

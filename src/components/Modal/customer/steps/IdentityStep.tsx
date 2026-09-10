@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   TextInput,
   Select,
@@ -24,8 +24,11 @@ import {
   useGenders,
   useIndustries,
   useCountries,
+  useCustomerGroups,
 } from "../../../../hooks/common/useLookups";
 import { useDebouncedValue } from "@mantine/hooks";
+import { getCurrencyList } from "../../../../api/erpDataApi";
+import { useCompanyStore } from "../../../../store/companyStore";
 
 // TODO: replace with real staff lookup (useStaff hook / API) once available.
 // Kept as temporary UI data only — not part of the final architecture.
@@ -39,8 +42,8 @@ interface IdentityStepProps {
   customerNumber: string;
   customerType: string;
   setCustomerType: (v: string) => void;
-  customerCategory: string | null;
-  setCustomerCategory: (v: string | null) => void;
+  customerGroup: string | null;
+  setCustomerGroup: (v: string | null) => void;
   isStaffCustomer: boolean;
   setIsStaffCustomer: (v: boolean) => void;
   staffId: string | null;
@@ -97,14 +100,17 @@ interface IdentityStepProps {
   individualTaxId: string;
   setIndividualTaxId: (v: string) => void;
 
+  // Already existed in useIdentityState (used during edit hydration —
+  // identity.setCurrency / identity.setTaxId in CustomerModal.tsx) but
+  // had no input control anywhere, so a new customer always saved with
+  // default_currency / tax_id (company) as "".
+  currency: string | null;
+  setCurrency: (v: string | null) => void;
+  taxId: string;
+  setTaxId: (v: string) => void;
+
   errors?: Record<string, string>;
 }
-
-const customerCategoryOptions = [
-  { value: "Retail", label: "Retail" },
-  { value: "SME", label: "SME" },
-  { value: "Corporate", label: "Corporate" },
-];
 
 const customerMaritalOptions = [
   { value: "Single", label: "Single" },
@@ -122,8 +128,15 @@ const chevron = (
 
 const FIELD_MAW = 260;
 
+// TODO: replace with a real useCurrencies lookup hook once available
+// (same pattern as useGenders/useCountries/useCustomerGroups above) —
+// kept as a static list for now, matching the temporary-data convention
+// already used for staffOptions here and RM_OPTIONS in AssignmentStep.
+
 export function IdentityStep(props: IdentityStepProps) {
   const { data: genderOptions, isLoading: gendersLoading } = useGenders();
+  const { data: customerGroupOptions, isLoading: customerGroupsLoading } =
+    useCustomerGroups();
   const [industrySearch, setIndustrySearch] = useState("");
   const [debouncedIndustrySearch] = useDebouncedValue(industrySearch, 300);
   const { data: industryOptions, isLoading: industriesLoading } = useIndustries(
@@ -150,8 +163,8 @@ export function IdentityStep(props: IdentityStepProps) {
     customerNumber,
     customerType,
     setCustomerType,
-    customerCategory,
-    setCustomerCategory,
+    customerGroup,
+    setCustomerGroup,
     isStaffCustomer,
     setIsStaffCustomer,
     staffId,
@@ -206,8 +219,102 @@ export function IdentityStep(props: IdentityStepProps) {
     setNrcNumber,
     individualTaxId,
     setIndividualTaxId,
+    currency,
+    setCurrency,
+    taxId,
+    setTaxId,
     errors = {},
   } = props;
+
+  // ── Currency (backend-driven search) ──────────────────────────────
+  const [currencySearch, setCurrencySearch] = useState("");
+  const [debouncedCurrencySearch] = useDebouncedValue(currencySearch, 300);
+  const [currencyOptions, setCurrencyOptions] = useState<string[]>([]);
+  const [currencyLoading, setCurrencyLoading] = useState(false);
+
+  // Fires only after the user pauses typing, calling the backend search API.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCurrencies = async () => {
+      try {
+        setCurrencyLoading(true);
+
+        const response = await getCurrencyList({
+          search: debouncedCurrencySearch,
+          page_size: 10,
+        });
+
+        if (cancelled) return;
+
+        const records = Array.isArray(response) ? response : [];
+        setCurrencyOptions(
+          records.map((item: any) => item?.name).filter(Boolean),
+        );
+      } catch {
+        if (!cancelled) setCurrencyOptions([]);
+      } finally {
+        if (!cancelled) setCurrencyLoading(false);
+      }
+    };
+
+    loadCurrencies();
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedCurrencySearch]);
+
+  // ── Default to the company's base currency ────────────────────────
+  // Reads from the shared useCompanyStore (persisted in localStorage under
+  // "company-info") instead of calling getCompanyInfo() ourselves — this
+  // reuses whatever the store already fetched/cached and avoids a second
+  // network round-trip. Reacts to `companyBaseCurrency` directly so it
+  // applies as soon as the store has a value, whether that's instantly
+  // from the persisted cache or after `fetchCompany()` resolves.
+  const companyBaseCurrency = useCompanyStore((s) => s.baseCurrency);
+  const fetchCompany = useCompanyStore((s) => s.fetchCompany);
+
+  // If the store hasn't fetched company info yet in this session (no
+  // persisted cache, or it's empty), kick off a fetch once on mount.
+  useEffect(() => {
+    if (!companyBaseCurrency) {
+      fetchCompany();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const currencyRef = useRef(currency);
+  useEffect(() => {
+    currencyRef.current = currency;
+  }, [currency]);
+
+  const defaultCurrencyAttempted = useRef(false);
+  useEffect(() => {
+    if (defaultCurrencyAttempted.current) return;
+    if (!companyBaseCurrency) return; // wait until the store actually has one
+
+    defaultCurrencyAttempted.current = true;
+
+    // Only apply if nothing was set meanwhile (e.g. edit hydration).
+    if (currencyRef.current) return;
+
+    // Ensure the Select has a matching option so it can render the label.
+    setCurrencyOptions((prev) =>
+      prev.includes(companyBaseCurrency) ? prev : [companyBaseCurrency, ...prev],
+    );
+    setCurrency(companyBaseCurrency);
+  }, [companyBaseCurrency]);
+
+  // Safety net: if `currency` already has a value when we render (e.g. set
+  // by edit-hydration, or by a parent hook) but it isn't in the fetched
+  // currencyOptions yet, inject it so the Select can actually show it
+  // instead of rendering a blank "Select" placeholder.
+  useEffect(() => {
+    if (!currency) return;
+    setCurrencyOptions((prev) =>
+      prev.includes(currency) ? prev : [currency, ...prev],
+    );
+  }, [currency]);
 
   const isBusiness = customerType === "Business";
 
@@ -302,12 +409,13 @@ export function IdentityStep(props: IdentityStepProps) {
         maw={FIELD_MAW}
         size="xs"
         radius="md"
-        label="Customer Category"
-        placeholder="Select"
-        data={customerCategoryOptions}
-        value={customerCategory}
-        onChange={setCustomerCategory}
+        label="Customer Group"
+        placeholder={customerGroupsLoading ? "Loading..." : "Select"}
+        data={customerGroupOptions ?? []}
+        value={customerGroup}
+        onChange={setCustomerGroup}
         rightSection={chevron}
+        disabled={customerGroupsLoading}
       />
 
       {!isBusiness && (
@@ -455,6 +563,7 @@ export function IdentityStep(props: IdentityStepProps) {
                 onChange={setNationality}
                 onSearchChange={setNationalitySearch}
                 error={errors.nationality}
+                filter={({ options }) => options}
               />
             </Grid.Col>
             <Grid.Col span={2}>
@@ -475,6 +584,38 @@ export function IdentityStep(props: IdentityStepProps) {
                 placeholder="e.g. Agronomist"
                 value={occupation}
                 onChange={(e) => setOccupation(e.currentTarget.value)}
+              />
+            </Grid.Col>
+          </Grid>
+
+          {/* Industry + Employer were previously destructured from props
+              but never rendered here — identity.industry/employer could
+              never be set for an Individual customer, so they always went
+              to the API as null. Bound to the same industryOptions/
+              industriesLoading/setIndustrySearch already fetched above via
+              useIndustries(). */}
+          <Grid gap="sm" mt="xs">
+            <Grid.Col span={4}>
+              <Select
+                radius="md"
+                searchable
+                rightSection={chevron}
+                label="Industry (Optional)"
+                placeholder={industriesLoading ? "Loading..." : "Select"}
+                data={industryOptions ?? []}
+                value={industry}
+                onChange={setIndustry}
+                onSearchChange={setIndustrySearch}
+                filter={({ options }) => options}
+              />
+            </Grid.Col>
+            <Grid.Col span={4}>
+              <TextInput
+                radius="md"
+                label="Employer (Optional)"
+                placeholder="e.g. ABC Ltd"
+                value={employer}
+                onChange={(e) => setEmployer(e.currentTarget.value)}
               />
             </Grid.Col>
           </Grid>
@@ -509,6 +650,22 @@ export function IdentityStep(props: IdentityStepProps) {
                 placeholder="Enter TIN / PAN"
                 value={individualTaxId}
                 onChange={(e) => setIndividualTaxId(e.currentTarget.value)}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={4}>
+              <Select
+                radius="md"
+                searchable
+                rightSection={chevron}
+                label="Currency"
+                placeholder={currencyLoading ? "Loading..." : "Select"}
+                data={currencyOptions}
+                value={currency}
+                onChange={setCurrency}
+                onSearchChange={setCurrencySearch}
+                clearable
+                filter={({ options }) => options}
               />
             </Grid.Col>
           </Grid>
@@ -595,6 +752,7 @@ export function IdentityStep(props: IdentityStepProps) {
                 value={businessIndustry}
                 onChange={setBusinessIndustry}
                 onSearchChange={setIndustrySearch}
+                filter={({ options }) => options}
               />
             </Grid.Col>
 
@@ -622,6 +780,46 @@ export function IdentityStep(props: IdentityStepProps) {
                 thousandSeparator=","
                 value={annualRevenue}
                 onChange={(v) => setAnnualRevenue(v === "" ? "" : Number(v))}
+              />
+            </Grid.Col>
+          </Grid>
+
+          <Text
+            size="10px"
+            fw={700}
+            tt="uppercase"
+            c="slate.5"
+            mt="lg"
+            mb={6}
+            style={{ letterSpacing: 0.5 }}
+          >
+            Tax & Currency
+          </Text>
+
+          <Grid gap="sm">
+            <Grid.Col span={3}>
+              <TextInput
+                radius="md"
+                label="Tax Identification Number"
+                placeholder="Enter TIN"
+                value={taxId}
+                onChange={(e) => setTaxId(e.currentTarget.value)}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={3}>
+              <Select
+                radius="md"
+                searchable
+                rightSection={chevron}
+                label="Currency"
+                placeholder={currencyLoading ? "Loading..." : "Select"}
+                data={currencyOptions}
+                value={currency}
+                onChange={setCurrency}
+                onSearchChange={setCurrencySearch}
+                clearable
+                filter={({ options }) => options}
               />
             </Grid.Col>
           </Grid>
@@ -709,6 +907,7 @@ export function IdentityStep(props: IdentityStepProps) {
                 onChange={setBusinessCountry}
                 onSearchChange={setBusinessCountrySearch}
                 error={errors.businessCountry}
+                filter={({ options }) => options}
               />
             </Grid.Col>
 

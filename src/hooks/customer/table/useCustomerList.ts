@@ -21,7 +21,7 @@ export function useCustomerList() {
   const {
     data: customersResponse,
     isLoading,
-    isFetching,
+    isFetching,refetch,
   } = useQuery({
     queryKey: ['customers', debouncedSearch, page, pageSize, type],
     queryFn: () =>
@@ -70,6 +70,7 @@ export function useCustomerList() {
     isLoading,
     isFetching,
     search,
+    refetch,
     setSearch,
     type,
     setType,

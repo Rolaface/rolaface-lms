@@ -6,6 +6,8 @@ import { PlainCard, SectionHeader } from "../../../../components/shared/customer
 // once available. Kept as temporary UI data only — not part of the final
 // architecture.
 const RM_OPTIONS = [
+
+  { value: "", label: "test" },
   { value: "RM001", label: "RM001 - Bwalya Mumba" },
   { value: "RM002", label: "RM002 - Chanda Kunda" },
   { value: "RM003", label: "RM003 - Natasha Zulu" },

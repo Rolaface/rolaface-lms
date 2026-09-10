@@ -1,6 +1,14 @@
 import React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { IconCalendarClock, IconMail, IconTimelineEvent, IconUserCog } from "@tabler/icons-react";
+import {
+  IconCalendarClock,
+  IconMail,
+  IconSettingsCheck,
+  IconTimelineEvent,
+  IconUserCog,
+  IconLayersLinked,
+  IconSignature,
+} from "@tabler/icons-react";
 import {
   Box,
   Text,
@@ -34,7 +42,7 @@ import {
   IconArrowsExchange,
   IconReceipt,
   IconBox,
-  IconCoins,
+  IconCoins, IconBrandProducthunt
 } from "@tabler/icons-react";
 import type { PermissionAction } from "../store/Permissionstore";
 import { usePermission } from "../hooks/Usepermission";
@@ -58,7 +66,7 @@ interface NavItem {
   matchPrefix?: boolean;
   subItems?: NavItem[];
   modules?: LmsModule[];
-   action?: PermissionAction;
+  action?: PermissionAction;
 }
 
 const LOCAL_NAV_ITEMS: NavItem[] = [
@@ -96,8 +104,52 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails , modules:["Loan Demand Offset Order"]},
       { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt , modules:["Item"] },
       { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank ,modules: ["Loan Product"]},
+        { path: "/setup/contract-templates", label: "Contract Templates", icon: IconFileText },
+        { path: "/setup/map-products", label: "Map Loan Products", icon: IconLayersLinked },
     ],
   },
+   {
+        path: "/origination-setup",
+        label: "Origination Setup",
+        icon: IconSettings,
+         subItems: [
+          {
+            path: "/origination-setup/pre-screening",
+            label: "Pre-Screening",
+            icon: IconUsers,
+          }, 
+           {
+            path: "/origination-setup/eligibility-check",
+            label: "Loan Eligibility Check",
+            icon: IconSettingsCheck,
+          },
+           {
+            path: "/origination-setup/product-assignment",
+            label: "Loan Product Assignment",
+            icon: IconBrandProducthunt,
+          },  
+          //  {
+          //   path: "/origination-setup/product-temp",
+          //   label: "Temp Product Assignment",
+          //   icon: IconBrandProducthunt,
+          // },  
+           {
+            path: "/origination-setup/enrichment-stage",
+            label: "Enrichment Stage",
+            icon: IconBrandProducthunt,
+          }, 
+           {
+            path: "/origination-setup/loanApplication-tabs",
+            label: "Loan Application Tabs",
+            icon: IconBrandProducthunt,
+          }, 
+          {
+            path: "/origination-setup/pre-screening-stage",
+            label: "Pre-Screening Stage",
+            icon: IconBrandProducthunt,
+          }, 
+        ],
+      },
   {
     path: "/origination",
     label: "Origination",
@@ -106,6 +158,10 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     subItems: [
       { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText , modules:["Loan Application"]},
       { path: "/origination/workflow", label: "Workflow Configuration", icon: IconSettings, modules:["Workflow"] },
+      { path: "/origination/prescreening", label: "Prescreening", icon: IconFileText, modules: ["Loan Application"] },
+      { path: "/origination/enrichment", label: "Enrichment", icon: IconFileText, modules: ["Loan Application"] },
+      { path: "/origination/underwriting", label: "Underwriting", icon: IconFileText, modules: ["Loan Application"] },
+      { path: "/origination/offerIssuanceStage", label: "Offer Issuance", icon: IconSignature, modules: ["Loan Application"] },
     ],
   },
   {
@@ -138,7 +194,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
           {
             path: "/accounting/general-ledger/chart-of-accounts",
             label: "Chart of Accounts",
-            icon: IconHierarchy2, 
+            icon: IconHierarchy2,
             modules: ["Account"],
             action: "read",
           },
@@ -153,8 +209,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
             path: "/accounting/general-ledger/report",
             label: "General Ledger Report",
             icon: IconFileText,
-             modules: ["Account"],
-             action: "report",
+            modules: ["Account"],
+            action: "report",
           },
         ],
       },
@@ -224,18 +280,6 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         label: "Lending Configuration",
         icon: IconSettings,
       },
-       {
-        path: "/settings/los-configuration",
-        label: "LOS Configuration",
-        icon: IconSettings,
-         subItems: [
-          {
-            path: "/settings/los-configuration/pre-screening",
-            label: "Pre-Screening",
-            icon: IconUsers,
-          }, 
-        ],
-      },
       {
         path: "/settings/user",
         label: "User",
@@ -270,21 +314,21 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
 
 function filterNavItems(
   items: NavItem[],
-   can: (module: LmsModule, action: PermissionAction) => boolean
+  can: (module: LmsModule, action: PermissionAction) => boolean
 ): NavItem[] {
   const result: NavItem[] = [];
   for (const item of items) {
     if (item.subItems && item.subItems.length > 0) {
-     const filteredChildren = filterNavItems(item.subItems, can);
+      const filteredChildren = filterNavItems(item.subItems, can);
       if (filteredChildren.length > 0) {
         result.push({ ...item, subItems: filteredChildren });
       }
       continue;
     }
-     const allowed =
-     !item.modules ||
+    const allowed =
+      !item.modules ||
       item.modules.length === 0 ||
-     item.modules.some((mod) => can(mod, item.action ?? "read"));
+      item.modules.some((mod) => can(mod, item.action ?? "read"));
     if (allowed) result.push(item);
   }
   return result;
@@ -494,12 +538,19 @@ export function Sidebar({
   const { can, isAdmin, permissions } = usePermission();
   const visibleNavItems = React.useMemo(
     () => filterNavItems(LOCAL_NAV_ITEMS, can),
-   [can, isAdmin, permissions]
+    [can, isAdmin, permissions]
   );
 
   const user = useUserStore((s) => s.user);
   const clearUser = useUserStore((s) => s.clearUser);
   const [loggingOut, setLoggingOut] = React.useState(false);
+
+  // Show "Switch workspace" only if the company's plan actually has an
+  // ERP-side workspace enabled (erp OR hrms). If the company is
+  // lending-only, there's nowhere else to switch to.
+  const canSwitchWorkspace =
+    user?.subscribed_modules?.erp?.enabled === true ||
+    user?.subscribed_modules?.hrms?.enabled === true;
 
   const displayName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
@@ -601,19 +652,21 @@ export function Sidebar({
           </Box>
         )}
 
-        <Tooltip label="Switch workspace" position="bottom" disabled={isCollapsed}>
-          <ActionIcon
-            variant="subtle"
-            radius="md"
-            className="lms-focusable shrink-0"
-            onClick={() => {
-              window.location.href = `${ERP_FRONTEND}/select-app`;
-            }}
-            style={{ color: tk.iconDefault }}
-          >
-            <IconHome size={18} />
-          </ActionIcon>
-        </Tooltip>
+        {canSwitchWorkspace && (
+          <Tooltip label="Switch workspace" position="bottom" disabled={isCollapsed}>
+            <ActionIcon
+              variant="subtle"
+              radius="md"
+              className="lms-focusable shrink-0"
+              onClick={() => {
+                window.location.href = `${ERP_FRONTEND}/dashboard`;
+              }}
+              style={{ color: tk.iconDefault }}
+            >
+              <IconHome size={18} />
+            </ActionIcon>
+          </Tooltip>
+        )}
 
         {!isCollapsed && (
           <ActionIcon
@@ -814,3 +867,7 @@ export function Sidebar({
     </Box>
   );
 }
+
+
+
+

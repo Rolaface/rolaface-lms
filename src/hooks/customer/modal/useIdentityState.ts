@@ -28,12 +28,12 @@ function emptyDirector(): BusinessDirector {
 }
 
 export function useIdentityState() {
-  const [customerNumber] = useState(
+  const [customerNumber, setCustomerNumber] = useState(
     () =>
       `CUST-${String(Math.floor(1000000 + Math.random() * 9000000)).slice(0, 7)}`,
   );
   const [customerType, setCustomerType] = useState<string>("Individual");
-  const [customerCategory, setCustomerCategory] = useState<string | null>(null);
+const [customerGroup, setCustomerGroup] = useState<string | null>(null);
   const [isStaffCustomer, setIsStaffCustomer] = useState(false);
   const [staffId, setStaffId] = useState<string | null>(null);
 
@@ -63,12 +63,23 @@ export function useIdentityState() {
   const [legalStructure, setLegalStructure] = useState<string | null>(null);
   const [taxId, setTaxId] = useState("");
   const [vatNumber, setVatNumber] = useState("");
-  const [currency, setCurrency] = useState<string | null>("ZMW");
+  // Left null on purpose: IdentityStep fetches the company's base currency
+  // from the backend on mount and fills this in dynamically. Hardcoding a
+  // value here (e.g. "ZMW") would block that lookup, since the effect only
+  // applies the fetched default when this is still empty — and even if it
+  // didn't block it, a hardcoded value wouldn't exist in the Select's
+  // options list yet, so it would just render as a blank "Select".
+  const [currency, setCurrency] = useState<string | null>(null);
   const [fiscalYearEnd, setFiscalYearEnd] = useState("");
   const [businessCity, setBusinessCity] = useState("");
   const [businessProvince, setBusinessProvince] = useState<string | null>(null);
   const [businessCountry, setBusinessCountry] = useState<string | null>(null);
   const [businessPostalCode, setBusinessPostalCode] = useState("");
+  // Backend Address doc name for the Registered Office address — see
+  // matching comment in useContactState.ts.
+  const [registeredOfficeAddressId, setRegisteredOfficeAddressId] = useState<
+    string | undefined
+  >(undefined);
 
   const [directors, setDirectors] = useState<BusinessDirector[]>([]);
   const addDirector = (patch?: Partial<Omit<BusinessDirector, "id">>) =>
@@ -82,7 +93,7 @@ export function useIdentityState() {
 
   const reset = () => {
     setCustomerType("Individual");
-    setCustomerCategory(null);
+    setCustomerGroup(null);
     setIsStaffCustomer(false);
     setStaffId(null);
     setFirstName("");
@@ -108,12 +119,13 @@ export function useIdentityState() {
     setLegalStructure(null);
     setTaxId("");
     setVatNumber("");
-    setCurrency("ZMW");
+    setCurrency(null);
     setFiscalYearEnd("");
     setBusinessCity("");
     setBusinessProvince(null);
     setBusinessCountry(null);
     setBusinessPostalCode("");
+    setRegisteredOfficeAddressId(undefined);
     setNrcNumber("");
     setIndividualTaxId("");
     setIndustry(null);
@@ -122,10 +134,11 @@ export function useIdentityState() {
 
   return {
     customerNumber,
+    setCustomerNumber,
     customerType,
     setCustomerType,
-    customerCategory,
-    setCustomerCategory,
+    customerGroup,
+    setCustomerGroup,
     isStaffCustomer,
     setIsStaffCustomer,
     staffId,
@@ -192,7 +205,10 @@ export function useIdentityState() {
     setBusinessCountry,
     businessPostalCode,
     setBusinessPostalCode,
+    registeredOfficeAddressId,
+    setRegisteredOfficeAddressId,
     directors,
+    setDirectors, 
     addDirector,
     updateDirector,
     removeDirector,

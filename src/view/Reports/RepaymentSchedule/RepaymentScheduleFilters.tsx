@@ -12,8 +12,8 @@ interface RepaymentScheduleFiltersProps {
     customerSearch: string;
     setSelectedLoan: (v: string | null) => void;
     setSelectedCustomer: (v: string | null) => void;
-    setFromDate: (v: Date | null) => void;
-    setToDate: (v: Date | null) => void;
+    setFromDate: (v: Date | string | null) => void;
+    setToDate: (v: Date | string | null) => void;
     setLoanSearch: (v: string) => void;
     setCustomerSearch: (v: string) => void;
   };

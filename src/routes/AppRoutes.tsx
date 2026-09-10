@@ -1,9 +1,13 @@
+
+import { ContractTemplateManagement } from "../view/Setup/ContractTemplates/ContractTemplateManagement";
+import { CreateTemplateWizard } from "../view/Setup/ContractTemplates/CreateTemplate/CreateTemplateWizard";
 import {
   createRouter,
   createRoute,
   createRootRoute,
   Outlet,
   redirect,
+  Link,
 } from "@tanstack/react-router";
 import { AppLayout } from "../layout/AppLayout";
 import { PermissionGuard } from "../view/Permissionguard";
@@ -19,6 +23,9 @@ import { CollateralType } from "../view/Collateral/CollateralType/CollateralType
 import { Collateral } from "../view/Collateral/Collateral";
 import { LoanApplication } from "../view/Origination/LoanApplication";
 import { WorkflowConfiguration } from "../view/Origination/WorkflowConfiguration";
+import { PrescreeningTable } from "../view/Origination/Prescreening/PrescreeningTable";
+import { EnrichmentTable } from "../view/Origination/Enrichment/EnrichmentTable";
+import { UnderwritingTable } from "../view/Origination/Underwriting/UnderwritingTable";
 import { LoanStatement } from "../view/Reports/LoanStatement/LoanStatement";
 import { ArrearReports } from "../view/Reports/Arrear/ArrearReports";
 import { RepaymentSchedule } from "../view/Reports/RepaymentSchedule/RepaymentSchedule";
@@ -41,6 +48,8 @@ import { LoanCollectionSequenceOrder } from "../view/Setup/LoanCollectionSequenc
 import { FeeAndCharges } from "../view/Setup/FeeAndCharges/FeeAndCharges";
 import { LoanProduct } from "../view/Loan/Product/LoanProduct";
 import { LoanClassificationRanges } from "../view/Setup/LoanClassificationRanges/LoanClassificationRanges";
+
+import { MapLoanProducts } from "../view/Setup/MapLoanProducts/MapLoanProducts";
 
 //accounting
 import { ChartOfAccounts } from "../view/Accounting/chartofaccounting";
@@ -66,6 +75,13 @@ import { usePermission } from "../hooks/Usepermission";
 import type { PermissionAction } from "../store/Permissionstore";
 import type { LmsModule } from "../types/User/userRole";
 import LOSPreScreening from "../view/LosConfiguration/PreScreening/Losprescreening";
+import LOSEligibilityCheck from "../view/LosConfiguration/EligibilityCheck/LOSEligibilityCheck";
+import LoanProductAutoAssignment from "../view/LosConfiguration/ProductAssignment/LoanProductAssignment";
+import ProductAssignments from "../view/LosConfiguration/ProductAssignment/ProductAssignments";
+import { OfferIssuanceStage } from "../view/Origination/OfferIssuanceStage/OfferIssuanceStage";
+import EnrichmentStage from "../view/LosConfiguration/EnrichmentStage/EnrichmentStage";
+import LoanApplicationTabs from "../view/LosConfiguration/LoanApplicationtabs/LoanApplicationtabs";
+import PreScreeningStage from "../view/LosConfiguration/PreScreeningStage/PreScreeningStage";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -161,6 +177,63 @@ const setupProductRoute = createRoute({
   path: "/product",
   component: LoanProduct,
 });
+const originationSetupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/origination-setup",
+  component: Outlet,
+});
+const preScreeningRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/pre-screening",
+  component: LOSPreScreening,
+});
+const loanEligibilityCheckRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/eligibility-check",
+  component: LOSEligibilityCheck,
+});
+const loanProductAssignmentRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/product-assignment",
+  component: LoanProductAutoAssignment,
+});
+const enrichmentStageRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/enrichment-stage",
+  component: EnrichmentStage,
+});
+const loanApplicationTabsRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/loanApplication-tabs",
+  component: LoanApplicationTabs,
+});
+const preScreeningStageRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/pre-screening-stage",
+  component: PreScreeningStage,
+});
+// const tempProductAssignmentRoute = createRoute({
+//   getParentRoute: () => originationSetupRoute,
+//   path: "/product-temp",
+//   component: ProductAssignments,
+// });
+const setupContractTemplatesRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: "/contract-templates",
+  component: ContractTemplateManagement,
+});
+
+const setupContractTemplateCreateRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: "/contract-templates/create",
+  component: CreateTemplateWizard,
+});
+
+const setupMapProductsRoute = createRoute({
+  getParentRoute: () => setupRoute,
+  path: "/map-products",
+  component: MapLoanProducts,
+});
 
 /* ---------- Origination (layout + children) — ungated ---------- */
 const originationRoute = createRoute({
@@ -177,6 +250,25 @@ const originationWorkflowConfigurationRoute = createRoute({
   getParentRoute: () => originationRoute,
   path: "/workflow",
   component: WorkflowConfiguration,
+const originationPrescreeningRoute = createRoute({
+  getParentRoute: () => originationRoute,
+  path: "/prescreening",
+  component: PrescreeningTable,
+});
+const originationEnrichmentRoute = createRoute({
+  getParentRoute: () => originationRoute,
+  path: "/enrichment",
+  component: EnrichmentTable,
+});
+const originationUnderwritingRoute = createRoute({
+  getParentRoute: () => originationRoute,
+  path: "/underwriting",
+  component: UnderwritingTable,
+});
+const originationOfferIssuanceRoute = createRoute({
+  getParentRoute: () => originationRoute,
+  path: "/offerIssuanceStage",
+  component: OfferIssuanceStage,
 });
 // const originationApplicationRoute = createRoute({
 //   getParentRoute: () => originationRoute,
@@ -405,16 +497,6 @@ const userRoute = createRoute({
   path: "/user",
   component: Outlet,
 });
-const losConfigurationRoute = createRoute({
-  getParentRoute: () => settingsRoute,
-  path: "/los-configuration",
-  component: Outlet,
-});
-const preScreeningRoute = createRoute({
-  getParentRoute: () => settingsRoute,
-  path: "/los-configuration/pre-screening",
-  component: LOSPreScreening,
-});
 const emailTemplateRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/emailTemplate",
@@ -450,8 +532,11 @@ const routeTree = rootRoute.addChildren([
     setupCollectionRoute,
     setupFeesRoute,
     setupProductRoute,
+    setupContractTemplatesRoute,
+    setupContractTemplateCreateRoute,
+    setupMapProductsRoute,
   ]),
-  originationRoute.addChildren([originationLoanApplicationRoute, originationWorkflowConfigurationRoute]),
+  originationRoute.addChildren([originationLoanApplicationRoute,originationWorkflowConfigurationRoute, originationPrescreeningRoute, originationEnrichmentRoute, originationUnderwritingRoute , originationOfferIssuanceRoute]),
   operationsRoute.addChildren([
     operationsBookingRoute,
     operationsDisbursementRoute,
@@ -479,13 +564,13 @@ const routeTree = rootRoute.addChildren([
     balancesheetRoute,
     cashflowRoute,
   ]),
-
+// originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute]),
+originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, enrichmentStageRoute, loanApplicationTabsRoute, preScreeningStageRoute]),
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
   settingsRoute.addChildren([
     lendingConfigurationRoute,
 
     emailTemplateRoute,
-    losConfigurationRoute.addChildren([preScreeningRoute]),
     schedulerRoute,
     userRoute.addChildren([userManagementRoute, userRolesRoute]),
   ]),
@@ -498,3 +583,5 @@ declare module "@tanstack/react-router" {
     router: typeof router;
   }
 }
+
+
