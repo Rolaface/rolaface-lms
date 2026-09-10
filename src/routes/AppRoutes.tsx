@@ -247,9 +247,10 @@ const originationLoanApplicationRoute = createRoute({
   component: LoanApplication,
 });
 const originationWorkflowConfigurationRoute = createRoute({
-  getParentRoute: () => originationRoute,
+  getParentRoute: () => originationSetupRoute,
   path: "/workflow",
   component: WorkflowConfiguration,
+});
 const originationPrescreeningRoute = createRoute({
   getParentRoute: () => originationRoute,
   path: "/prescreening",
@@ -536,7 +537,7 @@ const routeTree = rootRoute.addChildren([
     setupContractTemplateCreateRoute,
     setupMapProductsRoute,
   ]),
-  originationRoute.addChildren([originationLoanApplicationRoute,originationWorkflowConfigurationRoute, originationPrescreeningRoute, originationEnrichmentRoute, originationUnderwritingRoute , originationOfferIssuanceRoute]),
+  originationRoute.addChildren([originationLoanApplicationRoute, originationPrescreeningRoute, originationEnrichmentRoute, originationUnderwritingRoute , originationOfferIssuanceRoute]),
   operationsRoute.addChildren([
     operationsBookingRoute,
     operationsDisbursementRoute,
@@ -564,8 +565,8 @@ const routeTree = rootRoute.addChildren([
     balancesheetRoute,
     cashflowRoute,
   ]),
-// originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute]),
-originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, enrichmentStageRoute, loanApplicationTabsRoute, preScreeningStageRoute]),
+// originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
+originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, enrichmentStageRoute, loanApplicationTabsRoute, preScreeningStageRoute, originationWorkflowConfigurationRoute]),
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
   settingsRoute.addChildren([
     lendingConfigurationRoute,
