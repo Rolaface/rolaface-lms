@@ -18,6 +18,7 @@ import { RoleManagement } from "../view/User/RoleManagement";
 import { CollateralType } from "../view/Collateral/CollateralType/CollateralType";
 import { Collateral } from "../view/Collateral/Collateral";
 import { LoanApplication } from "../view/Origination/LoanApplication";
+import { WorkflowConfiguration } from "../view/Origination/WorkflowConfiguration";
 import { LoanStatement } from "../view/Reports/LoanStatement/LoanStatement";
 import { ArrearReports } from "../view/Reports/Arrear/ArrearReports";
 import { RepaymentSchedule } from "../view/Reports/RepaymentSchedule/RepaymentSchedule";
@@ -171,6 +172,11 @@ const originationLoanApplicationRoute = createRoute({
   getParentRoute: () => originationRoute,
   path: "/loanApplication",
   component: LoanApplication,
+});
+const originationWorkflowConfigurationRoute = createRoute({
+  getParentRoute: () => originationRoute,
+  path: "/workflow",
+  component: WorkflowConfiguration,
 });
 // const originationApplicationRoute = createRoute({
 //   getParentRoute: () => originationRoute,
@@ -445,7 +451,7 @@ const routeTree = rootRoute.addChildren([
     setupFeesRoute,
     setupProductRoute,
   ]),
-  originationRoute.addChildren([originationLoanApplicationRoute]),
+  originationRoute.addChildren([originationLoanApplicationRoute, originationWorkflowConfigurationRoute]),
   operationsRoute.addChildren([
     operationsBookingRoute,
     operationsDisbursementRoute,

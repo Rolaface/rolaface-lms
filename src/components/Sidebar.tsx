@@ -105,6 +105,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     matchPrefix: true,
     subItems: [
       { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText , modules:["Loan Application"]},
+      { path: "/origination/workflow", label: "Workflow Configuration", icon: IconSettings, modules:["Workflow"] },
     ],
   },
   {

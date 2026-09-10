@@ -1,11 +1,17 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Badge, Button, Paper, Tabs, Text } from '@mantine/core';
-import { IconCheck, IconPencil, IconX } from '@tabler/icons-react';
+import { IconPencil } from '@tabler/icons-react';
+import { useDisclosure } from '@mantine/hooks';
 
 import type { LoanApplicationRow } from './LoanApplication';
 import { getDisplayStatus } from './LoanApplication';
 import { getLoanApplicationById } from '../../api/loanApplicationApi';
+import { getWorkflowActions, applyWorkflowAction } from '../../api/workflowApi';
+import { openCommonModal } from '../../components/Modal/AlertModal';
+import { parseFrappeError } from '../../utils/parseFrappeError';
+import { WorkflowActionModal } from '../../components/Modal/WorkflowActionModal';
+import { useUserStore } from '../../store/userStore';
 import {
   themeTokens,
   serif,
@@ -30,8 +36,11 @@ interface LoanApplicationDetailViewProps {
   application: LoanApplicationRow;
   onBack: () => void;
   onEdit?: () => void;
+  /** @deprecated — workflow actions are now driven by the backend */
   onApprove?: () => void;
+  /** @deprecated — workflow actions are now driven by the backend */
   onReject?: () => void;
+  /** @deprecated */
   isActionPending?: boolean;
 }
 
@@ -39,13 +48,51 @@ export function LoanApplicationDetailView({
   application,
   onBack,
   onEdit,
-  onApprove,
-  onReject,
-  isActionPending,
 }: LoanApplicationDetailViewProps) {
+  const queryClient = useQueryClient();
+  const email = useUserStore((s) => s.user?.email);
+  const [workflowOpened, { open: openWorkflow, close: closeWorkflow }] = useDisclosure(false);
+  const [preAction, setPreAction] = useState<string | undefined>(undefined);
+
   const { data: applicationDetailResponse } = useQuery({
     queryKey: ['loan-application-detail', application.name],
     queryFn: () => getLoanApplicationById(application.name),
+  });
+
+  /** Fresh workflow actions for this document — separate query so detail view is always current. */
+  const { data: workflowData } = useQuery({
+    queryKey: ['workflow-actions', application.name],
+    queryFn: () => getWorkflowActions('Custom Loan Application', application.name),
+    refetchOnWindowFocus: true,
+  });
+
+  const allowedActions = workflowData?.allowed_actions ?? [];
+
+  const workflowMutation = useMutation({
+    mutationFn: (payload: { action: string; comment?: string; assign_to_user?: string }) =>
+      applyWorkflowAction({ docname: application.name, ...payload }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['loan-application-detail', application.name] });
+      queryClient.invalidateQueries({ queryKey: ['workflow-actions', application.name] });
+      closeWorkflow();
+      openCommonModal({
+        heading: 'Action Applied',
+        subtitle: '',
+        body: `Workflow action '${variables.action}' applied successfully.`,
+        color: 'green',
+        buttons: [{ label: 'Close', color: 'green' }],
+      });
+    },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: 'Action Failed',
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: 'red',
+        buttons: [{ label: 'Close', color: 'red' }],
+      });
+    },
   });
 
   const apiData = applicationDetailResponse?.message?.data;
@@ -108,6 +155,19 @@ export function LoanApplicationDetailView({
 
   return (
     <div className="flex h-full min-h-[calc(100vh-140px)] -m-8">
+      {/* Generic workflow action modal */}
+      <WorkflowActionModal
+        opened={workflowOpened}
+        applicationId={application.name}
+        applicantName={detail.applicant.fullName || null}
+        allowedActions={allowedActions}
+        preselectedAction={preAction}
+        currentUserEmail={email}
+        onClose={closeWorkflow}
+        onConfirm={(payload) => workflowMutation.mutate(payload)}
+        isSubmitting={workflowMutation.isPending}
+      />
+
       <ApplicationSidebar
         application={application}
         detail={detail}
@@ -149,7 +209,7 @@ export function LoanApplicationDetailView({
                     </Text>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge
                       variant="light"
                       color={scale}
@@ -164,24 +224,23 @@ export function LoanApplicationDetailView({
                         Edit
                       </Button>
                     )}
-                    {isDraft && onApprove && (
-                      <Button size="xs" radius="md" color="success" leftSection={<IconCheck size={13} />} onClick={onApprove} loading={isActionPending}>
-                        Approve
-                      </Button>
-                    )}
-                    {isDraft && onReject && (
+                    {/* Dynamic workflow action buttons — one per allowed transition */}
+                    {allowedActions.map((wf) => (
                       <Button
+                        key={wf.action}
                         size="xs"
                         radius="md"
-                        color="danger"
                         variant="light"
-                        leftSection={<IconX size={13} />}
-                        onClick={onReject}
-                        loading={isActionPending}
+                        color="violet"
+                        loading={workflowMutation.isPending}
+                        onClick={() => {
+                          setPreAction(wf.action);
+                          openWorkflow();
+                        }}
                       >
-                        Reject
+                        {wf.action}
                       </Button>
-                    )}
+                    ))}
                   </div>
                 </div>
 
