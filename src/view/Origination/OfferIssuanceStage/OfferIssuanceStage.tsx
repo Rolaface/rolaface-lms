@@ -491,22 +491,9 @@ export function OfferIssuanceStage() {
       </Paper>
 
       {/* Data Table */}
-      <Paper
-        radius="lg"
-        p="sm"
-        style={{
-          background: "var(--mantine-color-slate-0)",
-          border: "1px solid var(--mantine-color-slate-2)",
-        }}
-      >
-        <Box
-          style={{
-            height: "clamp(320px, calc(100vh - 280px), 720px)",
-            overflowY: "auto",
-          }}
-        >
-          <Table
-            verticalSpacing="sm"
+      <Box style={{ overflowX: "auto" }}>
+        <Table
+          verticalSpacing="sm"
             horizontalSpacing="sm"
             fz="xs"
             w="100%"
@@ -665,7 +652,7 @@ export function OfferIssuanceStage() {
             radius="xl"
           />
         </Group>
-      </Paper>
+      </Box>
     </Stack>
   );
 }

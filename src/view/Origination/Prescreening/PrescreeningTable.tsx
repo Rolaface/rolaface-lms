@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
 import {
   Box,
   Button,
@@ -423,23 +424,13 @@ export function PrescreeningTable() {
             >
               Reset
             </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={() => {}}
-              leftSection={<IconPlus size={14} />}
-            >
-              Configure Prescreening
-            </Button>
           </Group>
         </Group>
       </Paper>
 
       {/* Table */}
-      <Paper radius="md" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
-        <Box style={{ overflowX: "auto" }}>
-          <Table verticalSpacing="sm" horizontalSpacing="md" fz="sm" striped>
+      <Box style={{ overflowX: "auto" }}>
+          <Table verticalSpacing="sm" horizontalSpacing="sm" fz="xs" w="100%" style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}>
             <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
               {table.getHeaderGroups().map((headerGroup) => (
                 <Table.Tr key={headerGroup.id}>
@@ -583,7 +574,6 @@ export function PrescreeningTable() {
             radius="xl"
           />
         </Group>
-      </Paper>
     </Box>
   );
 }
