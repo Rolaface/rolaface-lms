@@ -10,18 +10,26 @@ import {
   Loader,
   Badge,
   SimpleGrid,
+  Divider,
+  Button,
+  Pagination,
+  Select,
 } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import {
   IconSearch,
+  IconSearchOff,
   IconUser,
+  IconIdBadge2,
+  IconAdjustmentsHorizontal,
+  IconDiscount2,
   IconBuilding,
-  IconFileText,
   IconChevronRight,
   IconCheck,
   IconSparkles,
   IconInbox,
-  IconAlertCircle,
+  IconPencil,
+  IconArrowLeft,
 } from "@tabler/icons-react";
 import type { LoanApplicationValues, LoanType } from "./LoanApplicationModal";
 
@@ -29,7 +37,7 @@ interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
   readOnly?: boolean;
 }
- 
+
 export interface DummyCustomer {
   id: string;
   name: string;
@@ -158,24 +166,35 @@ const DUMMY_OFFERS: DummyOffer[] = [
     validity: "Valid until 05 Nov 2026",
     condition: "Subject to updated financials",
   },
+  {
+    id: "OF-4",
+    customerId: "CU-10234",
+    product: "Personal Loan — Education",
+    amount: 20000,
+    rate: 21,
+    tenure: 24,
+    purpose: "Education",
+    validity: "Valid until 20 Oct 2026",
+    condition: "Requires proof of enrollment",
+  },
 ];
+
+const OFFERS_PAGE_SIZE = 4;
 
 const zmw = (n: number) => "ZMW " + Math.round(n).toLocaleString();
 
-type LoanConfigTypeId = "personal" | "business" | "mortgage";
+type LoanConfigTypeId = "personal" | "business";
 
 const LOAN_CONFIG_TYPES: {
   id: LoanConfigTypeId;
   label: string;
   icon: React.FC<any>;
-  amountLabel: string;
   subtypes: { id: string; label: string; purposes: string[] }[];
 }[] = [
   {
     id: "personal",
     label: "Personal loan",
     icon: IconUser,
-    amountLabel: "ZMW 5,000–ZMW 100,000",
     subtypes: [
       {
         id: "salary",
@@ -199,7 +218,6 @@ const LOAN_CONFIG_TYPES: {
     id: "business",
     label: "Business loan",
     icon: IconBuilding,
-    amountLabel: "ZMW 20,000–ZMW 500,000",
     subtypes: [
       {
         id: "working-capital",
@@ -213,32 +231,18 @@ const LOAN_CONFIG_TYPES: {
       },
     ],
   },
-  {
-    id: "mortgage",
-    label: "Mortgage",
-    icon: IconFileText,
-    amountLabel: "ZMW 100,000–ZMW 2,000,000",
-    subtypes: [
-      {
-        id: "home-purchase",
-        label: "Home purchase",
-        purposes: ["Primary residence", "Investment property"],
-      },
-    ],
-  },
 ];
 
  const CONFIG_TO_APPLICANT_TYPE: Record<LoanConfigTypeId, LoanType> = {
   personal: "Personal",
   business: "Business",
-  mortgage: "Personal",
 };
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <Text
       fz={11}
-      fw={600}
+      fw={700}
       c="slate.5"
       tt="uppercase"
       style={{ letterSpacing: 0.3 }}
@@ -246,6 +250,52 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     >
       {children}
     </Text>
+  );
+}
+
+function SectionCard({
+  icon: Icon,
+  title,
+  description,
+  action,
+  children,
+}: {
+  icon: React.FC<any>;
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Box
+      p="md"
+      style={{
+        border: "1px solid var(--mantine-color-slate-2)",
+        borderRadius: "var(--mantine-radius-lg)",
+        background: "var(--mantine-color-white)",
+        height: "100%",
+      }}
+    >
+      <Group justify="space-between" align="center" mb={12} wrap="nowrap">
+        <Group gap={10} wrap="nowrap">
+          <ThemeIcon radius="md" size={28} variant="light" color="brand">
+            <Icon size={15} />
+          </ThemeIcon>
+          <Box>
+            <Text fz="sm" fw={700} c="slate.9">
+              {title}
+            </Text>
+            {description && (
+              <Text fz={11.5} c="slate.5" mt={1}>
+                {description}
+              </Text>
+            )}
+          </Box>
+        </Group>
+        {action}
+      </Group>
+      {children}
+    </Box>
   );
 }
 
@@ -303,12 +353,15 @@ function TypeCard({
     </UnstyledButton>
   );
 }
-function Chip({
+
+function IconChip({
+  icon: Icon,
   label,
   selected,
   onClick,
   readOnly,
 }: {
+  icon: React.FC<any>;
   label: string;
   selected: boolean;
   onClick: () => void;
@@ -317,38 +370,67 @@ function Chip({
   return (
     <UnstyledButton
       onClick={readOnly ? undefined : onClick}
-      px={14}
-      py={7}
+      px={16}
       style={{
-        borderRadius: 20,
-        fontSize: 12.5,
-        fontWeight: 500,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        height: 30,
+        borderRadius: "var(--mantine-radius-md)",
         border: `1.5px solid ${
           selected
             ? "var(--mantine-color-brand-6)"
             : "var(--mantine-color-slate-2)"
         }`,
         background: selected ? "var(--mantine-color-brand-6)" : "white",
-        color: selected ? "white" : "var(--mantine-color-slate-7)",
+        cursor: readOnly ? "default" : "pointer",
       }}
     >
-      {label}
+      <Icon
+        size={15}
+        color={selected ? "white" : "var(--mantine-color-slate-6)"}
+      />
+      <Text fz="sm" fw={600} c={selected ? "white" : "slate.7"}>
+        {label}
+      </Text>
     </UnstyledButton>
   );
 }
 
-function FieldError({ children }: { children: React.ReactNode }) {
+function OfferStat({ label, value }: { label: string; value: string }) {
   return (
-    <Group gap={6} mt={6} wrap="nowrap" align="flex-start">
-      <IconAlertCircle
-        size={13}
-        color="var(--mantine-color-red-6)"
-        style={{ marginTop: 2, flexShrink: 0 }}
-      />
-      <Text fz={12.5} c="red.6">
-        {children}
+    <Box>
+      <Text fz={10} fw={700} c="slate.4" tt="uppercase" style={{ letterSpacing: 0.3 }}>
+        {label}
       </Text>
-    </Group>
+      <Text fz={13} fw={700} c="slate.9" mt={1}>
+        {value}
+      </Text>
+    </Box>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.FC<any>;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Stack align="center" gap={6} py={14}>
+      <ThemeIcon radius="xl" size={40} variant="light" color="slate">
+        <Icon size={19} />
+      </ThemeIcon>
+      <Text fz="sm" fw={600} c="slate.9">
+        {title}
+      </Text>
+      <Text fz="xs" c="slate.5" ta="center" maw={280}>
+        {description}
+      </Text>
+    </Stack>
   );
 }
 
@@ -356,7 +438,10 @@ export function CustomerLoanStep({ form, readOnly = false }: StepProps) {
   const [query, setQuery] = useState("");
   const [customerLoading, setCustomerLoading] = useState(false);
   const [offersLoading, setOffersLoading] = useState(false);
-  const [useManualSelection, setUseManualSelection] = useState(false);
+  const [existingView, setExistingView] = useState<"offers" | "configure">(
+    "offers",
+  );
+  const [offersPage, setOffersPage] = useState(0);
   const [loanConfigTypeId, setLoanConfigTypeId] =
     useState<LoanConfigTypeId | null>(null);
   const [loanSubtypeId, setLoanSubtypeId] = useState<string | null>(null);
@@ -383,6 +468,14 @@ export function CustomerLoanStep({ form, readOnly = false }: StepProps) {
   const offersForCustomer = selectedCustomer
     ? DUMMY_OFFERS.filter((o) => o.customerId === selectedCustomer.id)
     : [];
+
+  const totalOffersPages = Math.ceil(
+    offersForCustomer.length / OFFERS_PAGE_SIZE,
+  );
+  const pagedOffers = offersForCustomer.slice(
+    offersPage * OFFERS_PAGE_SIZE,
+    offersPage * OFFERS_PAGE_SIZE + OFFERS_PAGE_SIZE,
+  );
 
   // Applies a dummy customer's record onto the shared form, including
   // their applicantType, so every downstream step (Applicant Info,
@@ -434,6 +527,8 @@ export function CustomerLoanStep({ form, readOnly = false }: StepProps) {
     setTimeout(() => {
       applyCustomerToForm(customer);
       setCustomerLoading(false);
+      setExistingView("offers");
+      setOffersPage(0);
       setOffersLoading(true);
       setTimeout(() => setOffersLoading(false), 500);
     }, 500);
@@ -445,7 +540,6 @@ export function CustomerLoanStep({ form, readOnly = false }: StepProps) {
     form.setFieldValue("tenureMonths", offer.tenure);
     form.setFieldValue("purposeOfLoan", offer.purpose);
     form.setFieldValue("principalObjective", offer.purpose);
-    setUseManualSelection(false);
   };
 
   const handleCustomerTypeChange = (value: "existing" | "new") => {
@@ -453,7 +547,16 @@ export function CustomerLoanStep({ form, readOnly = false }: StepProps) {
     form.setFieldValue("selectedCustomerId", "");
     form.setFieldValue("selectedOfferId", "");
     setQuery("");
-    setUseManualSelection(false);
+    setExistingView("offers");
+    setOffersPage(0);
+  };
+
+  const clearSelectedCustomer = () => {
+    form.setFieldValue("selectedCustomerId", "");
+    form.setFieldValue("selectedOfferId", "");
+    setQuery("");
+    setExistingView("offers");
+    setOffersPage(0);
   };
 
    const handleApplicantTypeChange = (value: LoanType) => {
@@ -473,377 +576,387 @@ export function CustomerLoanStep({ form, readOnly = false }: StepProps) {
     (t) => t.id === loanConfigTypeId,
   );
 
-  return (
-    <Stack gap={22}>
+  const loanConfigBody = (
+    <>
       <Box>
-        <SectionLabel>1. Customer type</SectionLabel>
-        <Group grow align="stretch" gap="lg">
-          <TypeCard
-            icon={IconUser}
-            label="Existing customer"
-            description="Search for a customer already in the system"
-            selected={customerType === "existing"}
-            onClick={() => handleCustomerTypeChange("existing")}
-          />
-          <TypeCard
+        <FieldLabel>Loan type</FieldLabel>
+        <Group gap={8}>
+          {LOAN_CONFIG_TYPES.map((t) => (
+            <IconChip
+              key={t.id}
+              icon={t.icon}
+              label={t.label}
+              selected={loanConfigTypeId === t.id}
+              onClick={() => handleLoanConfigTypeChange(t.id)}
+            />
+          ))}
+        </Group>
+      </Box>
+
+      {selectedLoanConfigType && (
+        <>
+          <Divider my={16} color="slate.1" />
+          <Group align="flex-start" gap={16} wrap="wrap">
+            <Box style={{ flex: "1 1 200px", maxWidth: 360 }}>
+              <FieldLabel>Loan sub-type</FieldLabel>
+              <Select
+                radius="md"
+                placeholder="Select a sub-type"
+                data={selectedLoanConfigType.subtypes.map((s) => ({
+                  value: s.id,
+                  label: s.label,
+                }))}
+                value={loanSubtypeId}
+                onChange={(value) => {
+                  setLoanSubtypeId(value);
+                  setLoanPurpose(null);
+                }}
+                disabled={readOnly}
+                comboboxProps={{ withinPortal: true }}
+              />
+            </Box>
+
+            {loanSubtypeId && (
+              <Box style={{ flex: "1 1 200px", maxWidth: 360 }}>
+                <FieldLabel>Loan purpose</FieldLabel>
+                <Select
+                  radius="md"
+                  placeholder="Select a purpose"
+                  data={selectedLoanConfigType.subtypes
+                    .find((s) => s.id === loanSubtypeId)!
+                    .purposes.map((p) => ({ value: p, label: p }))}
+                  value={loanPurpose}
+                  onChange={(value) => setLoanPurpose(value)}
+                  disabled={readOnly}
+                  comboboxProps={{ withinPortal: true }}
+                />
+              </Box>
+            )}
+          </Group>
+        </>
+      )}
+    </>
+  );
+
+  return (
+    <Stack gap={16}>
+      <Box
+        p="md"
+        style={{
+          border: "1px solid var(--mantine-color-slate-2)",
+          borderRadius: "var(--mantine-radius-lg)",
+          background: "var(--mantine-color-white)",
+        }}
+      >
+        <Group gap={10} wrap="nowrap" align="flex-start">
+          {customerType === "existing" ? (
+            !selectedCustomer ? (
+                <Box style={{ width: 340, maxWidth: "100%" }}>
+                  <TextInput
+                    radius="md"
+                    leftSection={<IconSearch size={15} />}
+                    placeholder="Search name, customer ID, phone, or NRC"
+                    value={query}
+                    onChange={(e) => setQuery(e.currentTarget.value)}
+                    readOnly={readOnly}
+                    autoFocus
+                  />
+
+                  {customerLoading && (
+                    <Group gap={8} c="slate.5" fz="sm" mt={10}>
+                      <Loader size={14} />
+                      <Text fz="sm">Loading customer…</Text>
+                    </Group>
+                  )}
+
+                  {!customerLoading && query.trim().length > 0 && (
+                    <Box
+                      mt={8}
+                      style={{
+                        border: "1px solid var(--mantine-color-slate-2)",
+                        borderRadius: "var(--mantine-radius-md)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {results.length === 0 ? (
+                        <EmptyState
+                          icon={IconSearchOff}
+                          title="No customer found"
+                          description="Try a different name, ID, or phone number — or continue as a new customer."
+                        />
+                      ) : (
+                        results.map((c, i) => (
+                          <UnstyledButton
+                            key={c.id}
+                            onClick={() => pickCustomer(c)}
+                            w="100%"
+                            px={14}
+                            py={11}
+                            className="hover:bg-slate-50 transition-colors"
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              borderTop:
+                                i > 0
+                                  ? "1px solid var(--mantine-color-slate-1)"
+                                  : "none",
+                            }}
+                          >
+                            <Box>
+                              <Text fz="sm" fw={600} c="slate.9">
+                                {c.name}
+                              </Text>
+                              <Text fz="xs" c="slate.5">
+                                {c.id} · {c.phone}
+                              </Text>
+                            </Box>
+                            <IconChevronRight
+                              size={15}
+                              color="var(--mantine-color-slate-4)"
+                            />
+                          </UnstyledButton>
+                        ))
+                      )}
+                    </Box>
+                  )}
+                </Box>
+            ) : (
+                <Group gap={12} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                  <ThemeIcon radius="xl" size={40} variant="light" color="brand">
+                    <Text fz="sm" fw={700}>
+                      {selectedCustomer.name
+                        .split(" ")
+                        .map((p) => p[0])
+                        .join("")
+                        .slice(0, 2)}
+                    </Text>
+                  </ThemeIcon>
+                  <Box style={{ flex: 1, minWidth: 0 }}>
+                    <Group gap={8}>
+                      <Text fz="sm" fw={600} c="slate.9">
+                        {selectedCustomer.name}
+                      </Text>
+                      <Badge size="xs" color="brand" variant="light">
+                        {selectedCustomer.id}
+                      </Badge>
+                      <Badge
+                        size="xs"
+                        color={
+                          selectedCustomer.applicantType === "Business"
+                            ? "grape"
+                            : "blue"
+                        }
+                        variant="light"
+                      >
+                        {selectedCustomer.applicantType}
+                      </Badge>
+                    </Group>
+                    <Text fz="xs" c="slate.5" mt={2}>
+                      {selectedCustomer.segment} · {selectedCustomer.since} ·{" "}
+                      {selectedCustomer.phone}
+                    </Text>
+                  </Box>
+                  {!readOnly && (
+                    <UnstyledButton
+                      onClick={clearSelectedCustomer}
+                      style={{ display: "flex", alignItems: "center", gap: 5 }}
+                    >
+                      <IconPencil size={12} color="var(--mantine-color-brand-6)" />
+                      <Text fz={12.5} fw={600} c="brand.6">
+                        Change
+                      </Text>
+                    </UnstyledButton>
+                  )}
+                  <ThemeIcon radius="xl" size={20} color="green" variant="light">
+                    <IconCheck size={12} />
+                  </ThemeIcon>
+                </Group>
+            )
+          ) : (
+            <IconChip
+              icon={IconSearch}
+              label="Existing customer"
+              selected={false}
+              onClick={() => handleCustomerTypeChange("existing")}
+              readOnly={readOnly}
+            />
+          )}
+
+          <IconChip
             icon={IconSparkles}
             label="New customer"
-            description="Start a fresh application"
             selected={customerType === "new"}
             onClick={() => handleCustomerTypeChange("new")}
+            readOnly={readOnly}
           />
         </Group>
       </Box>
 
-      {customerType === "existing" && (
-        <Box>
-          <SectionLabel>2. Find customer</SectionLabel>
-                   <TextInput
-            radius="md"
-            leftSection={<IconSearch size={15} />}
-            placeholder="Search by name, customer ID, phone, or national ID"
-            value={query}
-            onChange={(e) => setQuery(e.currentTarget.value)}
-            mb={selectedCustomer ? 18 : 8}
-            readOnly={readOnly}
-          />
-
-          {customerLoading && (
-            <Group gap={8} c="slate.5" fz="sm" mb={12}>
-              <Loader size={14} />
-              <Text fz="sm">Loading customer…</Text>
-            </Group>
-          )}
-
-          {!customerLoading &&
-            !selectedCustomer &&
-            query.trim().length > 0 && (
-              <Box
-                mb={16}
-                style={{
-                  border: "1px solid var(--mantine-color-slate-2)",
-                  borderRadius: "var(--mantine-radius-md)",
-                  overflow: "hidden",
-                }}
-              >
-                {results.length === 0 ? (
-                  <Box p="lg" ta="center">
-                    <Text fz="sm" fw={500} c="slate.9">
-                      No customer found
-                    </Text>
-                    <Text fz="xs" c="slate.5" mt={2}>
-                      Try a different name, ID, or phone number — or continue
-                      as a new customer.
-                    </Text>
-                  </Box>
-                ) : (
-                  results.map((c, i) => (
-                    <UnstyledButton
-                      key={c.id}
-                      onClick={() => pickCustomer(c)}
-                      w="100%"
-                      px={14}
-                      py={11}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        borderTop:
-                          i > 0
-                            ? "1px solid var(--mantine-color-slate-1)"
-                            : "none",
-                      }}
-                    >
-                      <Box>
-                        <Text fz="sm" fw={600} c="slate.9">
-                          {c.name}
-                        </Text>
-                        <Text fz="xs" c="slate.5">
-                          {c.id} · {c.phone}
-                        </Text>
-                      </Box>
-                      <IconChevronRight
-                        size={15}
-                        color="var(--mantine-color-slate-4)"
-                      />
-                    </UnstyledButton>
-                  ))
-                )}
-              </Box>
-            )}
-
-          {selectedCustomer && (
-            <Group
-              gap={14}
-              p="md"
-              mb={18}
-              style={{
-                border: "1px solid var(--mantine-color-slate-2)",
-                borderRadius: "var(--mantine-radius-lg)",
-              }}
-            >
-              <ThemeIcon radius="xl" size={42} variant="light" color="brand">
-                <Text fz="sm" fw={700}>
-                  {selectedCustomer.name
-                    .split(" ")
-                    .map((p) => p[0])
-                    .join("")
-                    .slice(0, 2)}
-                </Text>
-              </ThemeIcon>
-              <Box style={{ flex: 1, minWidth: 0 }}>
-                <Group gap={8}>
-                  <Text fz="sm" fw={600} c="slate.9">
-                    {selectedCustomer.name}
-                  </Text>
-                  <Badge size="xs" color="brand" variant="light">
-                    {selectedCustomer.id}
-                  </Badge>
-                  <Badge
-                    size="xs"
-                    color={
-                      selectedCustomer.applicantType === "Business"
-                        ? "grape"
-                        : "blue"
-                    }
-                    variant="light"
-                  >
-                    {selectedCustomer.applicantType}
-                  </Badge>
-                </Group>
-                <Text fz="xs" c="slate.5" mt={2}>
-                  {selectedCustomer.segment} · {selectedCustomer.since} ·{" "}
-                  {selectedCustomer.phone}
-                </Text>
-              </Box>
-              <ThemeIcon radius="xl" size={22} color="green" variant="light">
-                <IconCheck size={13} />
-              </ThemeIcon>
-            </Group>
-          )}
-
-          {selectedCustomer && (
-            <Box>
-              <SectionLabel>3. Pre-approved offers</SectionLabel>
-              <Box
-                p="md"
-                style={{
-                  border: "1px solid var(--mantine-color-slate-2)",
-                  borderRadius: "var(--mantine-radius-lg)",
-                }}
-              >
-                {offersLoading ? (
-                  <Group gap={8} c="slate.5" fz="sm">
-                    <Loader size={14} />
-                    <Text fz="sm">Checking for pre-approved offers…</Text>
-                  </Group>
-                ) : offersForCustomer.length === 0 ? (
-                  <Box ta="center" py={6}>
-                    <IconInbox
-                      size={22}
-                      color="var(--mantine-color-slate-3)"
-                    />
-                    <Text fz="sm" fw={500} c="slate.9" mt={6}>
-                      No pre-approved offers available
-                    </Text>
-                    <Text fz="xs" c="slate.5" mt={2}>
-                      Configure a loan for this customer in the next step.
-                    </Text>
-                  </Box>
-                ) : useManualSelection ? (
-                  <UnstyledButton
-                    onClick={() => setUseManualSelection(false)}
-                    fz={12.5}
-                    fw={500}
-                    c="brand.6"
-                  >
-                    ← Back to pre-approved offers
-                  </UnstyledButton>
-                ) : (
-                  <Stack gap={10}>
-                    {offersForCustomer.map((o) => {
-                      const selected = selectedOfferId === o.id;
-                      return (
-                                               <UnstyledButton
-                          key={o.id}
-                          onClick={readOnly ? undefined : () => applyOffer(o)}
-                          p="md"
-                          // style={{ }}
-                          style={{ cursor: readOnly ? "default" : "pointer" ,
-                            border: `1.5px solid ${
-                              selected
-                                ? "var(--mantine-color-brand-6)"
-                                : "var(--mantine-color-slate-2)"
-                            }`,
-                            background: selected
-                              ? "var(--mantine-color-brand-0)"
-                              : "white",
-                            borderRadius: "var(--mantine-radius-md)",
-                          }}
-                        >
-                          <Group justify="space-between" align="flex-start">
-                            <Box>
-                              <Text fz="sm" fw={600} c="slate.9">
-                                {o.product}
-                              </Text>
-                              <Text fz="xs" c="slate.5" mt={1}>
-                                {o.purpose} · {o.validity}
-                              </Text>
-                            </Box>
-                            {selected && (
-                              <ThemeIcon
-                                radius="xl"
-                                size={20}
-                                color="brand"
-                              >
-                                <IconCheck size={12} />
-                              </ThemeIcon>
-                            )}
-                          </Group>
-                          <Group gap={18} mt={10} fz={12.5}>
-                            <Text fz={12.5} c="slate.5">
-                              Amount up to{" "}
-                              <Text span fw={600} c="slate.9">
-                                {zmw(o.amount)}
-                              </Text>
-                            </Text>
-                            <Text fz={12.5} c="slate.5">
-                              Rate{" "}
-                              <Text span fw={600} c="slate.9">
-                                {o.rate}%
-                              </Text>
-                            </Text>
-                            <Text fz={12.5} c="slate.5">
-                              Tenure up to{" "}
-                              <Text span fw={600} c="slate.9">
-                                {o.tenure} mo
-                              </Text>
-                            </Text>
-                          </Group>
-                          <Text fz={11.5} c="slate.4" mt={6}>
-                            {o.condition}
-                          </Text>
-                        </UnstyledButton>
-                      );
-                    })}
-                    <UnstyledButton
-                      onClick={() => {
-                        form.setFieldValue("selectedOfferId", "");
-                        setUseManualSelection(true);
-                      }}
-                      fz={12.5}
-                      fw={500}
-                      c="brand.6"
-                      py={4}
-                    >
-                      Choose another loan product instead →
-                    </UnstyledButton>
-                  </Stack>
-                )}
-              </Box>
-            </Box>
-          )}
-        </Box>
-      )}
-
-            {customerType === "new" && (
-        <Box>
-          <SectionLabel>2. Applicant type</SectionLabel>
-          <Group grow align="stretch" gap="lg">
-            <TypeCard
-              icon={IconUser}
-              label="Individual"
-              description="Personal loan applicant"
-              selected={form.values.applicantType === "Personal"}
-              onClick={() => handleApplicantTypeChange("Personal")}
-            />
-            <TypeCard
-              icon={IconBuilding}
-              label="Business"
-              description="Registered business entity"
-              selected={form.values.applicantType === "Business"}
-              onClick={() => handleApplicantTypeChange("Business")}
-            />
-          </Group>
-        </Box>
-      )}
-
-      {((customerType === "existing" && selectedCustomer && !selectedOfferId) ||
-        (customerType === "new" && form.values.applicantType)) && (
-        <Box>
-          <SectionLabel>
-            {customerType === "existing"
-              ? "4. Loan configuration"
-              : "3. Loan configuration"}
-          </SectionLabel>
-
-          <Text fz={12.5} fw={500} c="slate.7" mb={8}>
-            Loan type
-          </Text>
-          <SimpleGrid
-            cols={3}
-            spacing={10}
-            mb={selectedLoanConfigType ? 16 : 0}
+      {customerType === "existing" && selectedCustomer && (
+        existingView === "offers" ? (
+          <SectionCard
+            icon={IconDiscount2}
+            title="Pre-approved offers"
+            action={
+              !offersLoading ? (
+                <Button
+                  variant="light"
+                  color="brand"
+                  size="xs"
+                  radius="md"
+                  onClick={() => setExistingView("configure")}
+                >
+                  Choose Another Product
+                </Button>
+              ) : undefined
+            }
           >
-            {LOAN_CONFIG_TYPES.map((t) => (
-              <TypeCard
-                key={t.id}
-                icon={t.icon}
-                label={t.label}
-                description={t.amountLabel}
-                selected={loanConfigTypeId === t.id}
-                onClick={() => handleLoanConfigTypeChange(t.id)}
+            {offersLoading ? (
+              <Group gap={8} c="slate.5" fz="sm">
+                <Loader size={14} />
+                <Text fz="sm">Checking for pre-approved offers…</Text>
+              </Group>
+            ) : offersForCustomer.length === 0 ? (
+              <EmptyState
+                icon={IconInbox}
+                title="No pre-approved offers available"
+                description="This customer has no pre-approved offers yet. Use “Choose Another Product” to configure a loan manually."
               />
-            ))}
-          </SimpleGrid>
+            ) : (
+              <Stack gap={12}>
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={10}>
+                  {pagedOffers.map((o) => {
+                    const selected = selectedOfferId === o.id;
+                    return (
+                      <UnstyledButton
+                        key={o.id}
+                        onClick={readOnly ? undefined : () => applyOffer(o)}
+                        p="md"
+                        style={{
+                          cursor: readOnly ? "default" : "pointer",
+                          border: `1.5px solid ${
+                            selected
+                              ? "var(--mantine-color-brand-6)"
+                              : "var(--mantine-color-slate-2)"
+                          }`,
+                          background: selected
+                            ? "var(--mantine-color-brand-0)"
+                            : "white",
+                          borderRadius: "var(--mantine-radius-md)",
+                        }}
+                      >
+                        <Group justify="space-between" align="flex-start" wrap="nowrap">
+                          <Box style={{ minWidth: 0 }}>
+                            <Text fz="sm" fw={700} c="slate.9">
+                              {o.product}
+                            </Text>
+                            <Text fz="xs" c="slate.5" mt={1}>
+                              {o.purpose} · {o.validity}
+                            </Text>
+                          </Box>
+                          {selected && (
+                            <ThemeIcon radius="xl" size={20} color="brand" style={{ flexShrink: 0 }}>
+                              <IconCheck size={12} />
+                            </ThemeIcon>
+                          )}
+                        </Group>
+                        <Divider my={10} color="slate.1" />
+                        <SimpleGrid cols={3} spacing={4}>
+                          <OfferStat label="Amount up to" value={zmw(o.amount)} />
+                          <OfferStat label="Rate" value={`${o.rate}%`} />
+                          <OfferStat label="Tenure up to" value={`${o.tenure} mo`} />
+                        </SimpleGrid>
+                        <Text fz={11.5} c="slate.4" mt={10}>
+                          {o.condition}
+                        </Text>
+                      </UnstyledButton>
+                    );
+                  })}
+                </SimpleGrid>
 
-          {selectedLoanConfigType && (
-            <Box mb={16}>
-              <Text fz={12.5} fw={500} c="slate.7" mb={8}>
-                Loan sub-type
-              </Text>
-              <Group gap={8}>
-                {selectedLoanConfigType.subtypes.map((s) => (
-                  <Chip
-                    key={s.id}
-                    label={s.label}
-                    selected={loanSubtypeId === s.id}
-                    onClick={() => {
-                      setLoanSubtypeId(s.id);
-                      setLoanPurpose(null);
-                    }}
-                  />
-                ))}
-              </Group>
-            </Box>
-          )}
-
-          {selectedLoanConfigType && loanSubtypeId && (
-            <Box>
-              <Text fz={12.5} fw={500} c="slate.7" mb={8}>
-                Loan purpose
-              </Text>
-              <Group gap={8}>
-                {selectedLoanConfigType.subtypes
-                  .find((s) => s.id === loanSubtypeId)!
-                  .purposes.map((p) => (
-                    <Chip
-                      key={p}
-                      label={p}
-                      selected={loanPurpose === p}
-                      onClick={() => setLoanPurpose(p)}
+                {totalOffersPages > 1 && (
+                  <Group justify="center" mt={2}>
+                    <Pagination
+                      total={totalOffersPages}
+                      value={offersPage + 1}
+                      onChange={(p) => setOffersPage(p - 1)}
+                      size="sm"
+                      radius="md"
+                      color="brand"
                     />
-                  ))}
-              </Group>
-            </Box>
-          )}
-        </Box>
+                  </Group>
+                )}
+              </Stack>
+            )}
+          </SectionCard>
+        ) : (
+          <SectionCard
+            icon={IconAdjustmentsHorizontal}
+            title="Loan configuration"
+            description="Narrow down the loan type, sub-type, and purpose"
+            action={
+              <Button
+                variant="subtle"
+                color="brand"
+                size="xs"
+                radius="md"
+                leftSection={<IconArrowLeft size={13} />}
+                onClick={() => setExistingView("offers")}
+              >
+                Back to Pre-approved Loans
+              </Button>
+            }
+          >
+            {loanConfigBody}
+          </SectionCard>
+        )
       )}
 
-      {!customerType && (
-        <FieldError>
-          Select a customer type to continue.
-        </FieldError>
+      {customerType === "new" && (
+        <Box
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <Box style={{ flex: "1 1 380px", minWidth: 320 }}>
+            <SectionCard
+              icon={IconIdBadge2}
+              title="Applicant type"
+              description="Choose who this application is for"
+            >
+              <Group grow align="stretch" gap="lg">
+                <TypeCard
+                  icon={IconUser}
+                  label="Individual"
+                  description="Personal loan applicant"
+                  selected={form.values.applicantType === "Personal"}
+                  onClick={() => handleApplicantTypeChange("Personal")}
+                />
+                <TypeCard
+                  icon={IconBuilding}
+                  label="Business"
+                  description="Registered business entity"
+                  selected={form.values.applicantType === "Business"}
+                  onClick={() => handleApplicantTypeChange("Business")}
+                />
+              </Group>
+            </SectionCard>
+          </Box>
+
+          <Box style={{ flex: "1 1 380px", minWidth: 320 }}>
+            <SectionCard
+              icon={IconAdjustmentsHorizontal}
+              title="Loan configuration"
+              description="Narrow down the loan type, sub-type, and purpose"
+            >
+              {loanConfigBody}
+            </SectionCard>
+          </Box>
+        </Box>
       )}
     </Stack>
   );
