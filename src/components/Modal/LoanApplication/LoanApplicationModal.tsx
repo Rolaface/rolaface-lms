@@ -1425,7 +1425,7 @@ export function LoanApplicationModal({
               </Box>
           </ScrollArea>
 
-            {loanTypeSelected && (
+            {loanTypeSelected && !readOnly &&  (
               <ApplicationSummary
                 values={form.values}
                 totalRepayable={totalRepayable}

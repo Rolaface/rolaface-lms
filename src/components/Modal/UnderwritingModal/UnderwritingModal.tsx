@@ -59,6 +59,8 @@ interface UnderwritingModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize: () => void;
+   embedded?: boolean;
+   readOnly?: boolean;
   applicationValues?: LoanApplicationValues;
 }
 
@@ -514,35 +516,60 @@ function DocumentsTable({ title, docs, setDocs }: { title: string; docs: AssetDo
           </Text>
         )}
         {docs.map((d, i) => (
-          <Box key={i} px="md" py={10} style={{ borderTop: i > 0 ? "1px solid var(--mantine-color-slate-1)" : "none" }}>
-            <Group justify="space-between" wrap="nowrap" gap={10}>
-              <Group gap={8} style={{ flex: 1, minWidth: 0 }}>
-                <IconFileText size={14} color="var(--mantine-color-slate-4)" style={{ flexShrink: 0 }} />
+          <Box key={i} px="md" py={12} style={{ borderTop: i > 0 ? "1px solid var(--mantine-color-slate-1)" : "none" }}>
+            <Group justify="space-between" wrap="nowrap" gap={14}>
+              <Group gap={10} style={{ flex: 1, minWidth: 0 }} wrap="nowrap" align="flex-start">
+                <IconFileText size={16} color="var(--mantine-color-slate-4)" style={{ flexShrink: 0, marginTop: 4 }} />
                 <Box style={{ flex: 1, minWidth: 0 }}>
                   <TextInput
-                    variant="unstyled"
                     value={d.name}
                     onChange={(e) => update(i, { name: e.currentTarget.value })}
-                    size="xs"
-                    styles={{ input: { fontWeight: 500, fontSize: 12.5, padding: 0, minHeight: "auto", height: "auto" } }}
+                    size="sm"
+                    variant="transparent"
+                    placeholder="Document name"
+                    styles={{
+                      input: {
+                        fontWeight: 600,
+                        fontSize: 13,
+                        color: "var(--mantine-color-slate-9)",
+                        padding: 0,
+                        minHeight: 24,
+                        height: 24,
+                        border: "none",
+                        background: "transparent",
+                      },
+                    }}
                   />
-                  <Group gap={6}>
+                  <Group gap={6} mt={2} wrap="nowrap">
                     <Select
                       data={["required", "optional"]}
                       value={d.tier}
                       onChange={(v) => update(i, { tier: (v as "required" | "optional") || "required" })}
-                      variant="unstyled"
                       size="xs"
-                      w={80}
-                      styles={{ input: { fontSize: 10.5, color: "var(--mantine-color-slate-4)", padding: 0, minHeight: "auto", height: "auto" } }}
+                      variant="transparent"
+                      allowDeselect={false}
+                      styles={{
+                        input: {
+                          fontSize: 11,
+                          color: "var(--mantine-color-slate-5)",
+                          padding: 0,
+                          minHeight: 18,
+                          height: 18,
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                        },
+                        wrapper: { width: 105 },
+                        rightSection: { width: 14 },
+                      }}
                     />
-                    <Text fz={10.5} c="slate.4">
-                      · uploaded {d.uploadedDate || "—"} by {d.uploadedBy || "—"}
+                    <Text fz={11} c="slate.4" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      · uploaded {d.uploadedDate || "—"} {d.uploadedBy ? `by ${d.uploadedBy}` : ""}
                     </Text>
                   </Group>
                 </Box>
               </Group>
-              <Group gap={8} wrap="nowrap">
+              <Group gap={8} wrap="nowrap" align="center">
                 <Button size="compact-xs" variant="light" radius="xl">
                   Preview
                 </Button>
@@ -552,7 +579,7 @@ function DocumentsTable({ title, docs, setDocs }: { title: string; docs: AssetDo
                   onChange={(v) => update(i, { status: v || d.status })}
                   size="xs"
                   radius="xl"
-                  w={120}
+                  w={110}
                   allowDeselect={false}
                 />
                 <ActionIcon variant="subtle" color="gray" onClick={() => removeDoc(i)}>
@@ -566,7 +593,7 @@ function DocumentsTable({ title, docs, setDocs }: { title: string; docs: AssetDo
               placeholder="Verification comment (optional)"
               size="xs"
               radius="md"
-              mt={8}
+              mt={10}
             />
           </Box>
         ))}
@@ -574,7 +601,6 @@ function DocumentsTable({ title, docs, setDocs }: { title: string; docs: AssetDo
     </Box>
   );
 }
-
 // ---------------------------------------------------------------------------
 // Readiness
 // ---------------------------------------------------------------------------
@@ -1424,6 +1450,8 @@ export function UnderwritingModal({
   onClose,
   applicationValues = DUMMY_PERSONAL_LOAN_APPLICATION,
   onMinimize,
+  embedded,
+  readOnly,
 }: UnderwritingModalProps) {
   const [section, setSection] = useState<Section>("underwriting");
 
@@ -1452,6 +1480,16 @@ export function UnderwritingModal({
   const handleSubmit = () => {
     submitRef.current();
   };
+
+  if (embedded) {
+    return (
+      <UnderwritingWorkspace 
+        finalAmount={finalAmount} 
+        onSubmitReady={handleSubmitReady} 
+        // If your UnderwritingWorkspace component uses readOnly, you can pass it here too
+      />
+    );
+  }
 
   return (
     <Modal
@@ -1537,8 +1575,8 @@ export function UnderwritingModal({
             )}
 
             {section === "prescreening" && (
-              <Box style={{ height: "100%" }}>
-                <PreScreeningModal embedded readOnly applicationValues={applicationValues} opened={false} onClose={() => {}} />
+             <Box style={{ height: "100%" }}>
+                <PreScreeningModal embedded readOnly applicationValues={applicationValues} opened={false} onClose={() => {}} onMinimize={() => {}} />
               </Box>
             )}
 
