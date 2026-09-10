@@ -40,11 +40,11 @@ import {
 export interface PrescreeningRow {
   id: string;
   name: string;
-  application_type: string;
-  amount: number;
-  customer: string;
-  status: string;
   applicant: string;
+  amount: number;
+  creditScore: number | null;
+  obligations: number | null;
+  status: string;
 }
 
 const MOCK_DATA: PrescreeningRow[] = [
@@ -53,8 +53,8 @@ const MOCK_DATA: PrescreeningRow[] = [
     name: "APP-58231",
     applicant: "Chanda Mwansa",
     amount: 76500,
-    application_type: "Personal loan",
-    customer: "Chanda Mwansa",
+    creditScore: 742,
+    obligations: 3850,
     status: "Pending",
   },
   {
@@ -62,8 +62,8 @@ const MOCK_DATA: PrescreeningRow[] = [
     name: "APP-58232",
     applicant: "Vinod Kumain",
     amount: 50000,
-    application_type: "Personal loan",
-    customer: "Vinod Kumain",
+    creditScore: 680,
+    obligations: 1200,
     status: "Passed",
   },
   {
@@ -71,8 +71,8 @@ const MOCK_DATA: PrescreeningRow[] = [
     name: "APP-58233",
     applicant: "Simon Zimba",
     amount: 5700,
-    application_type: "Personal loan",
-    customer: "Simon Zimba",
+    creditScore: 520,
+    obligations: 4500,
     status: "Failed",
   },
   {
@@ -80,8 +80,8 @@ const MOCK_DATA: PrescreeningRow[] = [
     name: "APP-58234",
     applicant: "Mwangi Zimba",
     amount: 100000,
-    application_type: "Personal loan",
-    customer: "Mwangi Zimba",
+    creditScore: null,
+    obligations: null,
     status: "Pending",
   },
 ];
@@ -179,8 +179,7 @@ export function PrescreeningTable() {
         const query = search.toLowerCase();
         return (
           item.name.toLowerCase().includes(query) ||
-          item.applicant.toLowerCase().includes(query) ||
-          item.customer.toLowerCase().includes(query)
+          item.applicant.toLowerCase().includes(query)
         );
       }
       return true;
@@ -202,28 +201,38 @@ export function PrescreeningTable() {
         ),
       }),
       columnHelper.accessor("amount", {
-        header: "Amount",
+        header: "Requested Amount",
         cell: (info) => (
           <Text fz="xs" fw={700} c="slate.7">
             ZMW {info.getValue().toLocaleString()}
           </Text>
         ),
       }),
-      columnHelper.accessor("application_type", {
-        header: "Type",
-        cell: (info) => (
-          <Badge variant="light" size="sm" color="brand" radius="sm">
-            {info.getValue()}
-          </Badge>
-        ),
+      columnHelper.accessor("creditScore", {
+        header: "Credit Score",
+        cell: (info) => {
+          const score = info.getValue();
+          if (!score) return <Text fz="xs" c="slate.4">Pending check</Text>;
+          return (
+            <Group gap={4}>
+              <Text fz="xs" fw={600} c={score > 650 ? "success.6" : "danger.6"}>
+                {score}
+              </Text>
+            </Group>
+          );
+        },
       }),
-      columnHelper.accessor("customer", {
-        header: "Customer",
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {info.getValue()}
-          </Text>
-        ),
+      columnHelper.accessor("obligations", {
+        header: "Monthly Obligations",
+        cell: (info) => {
+          const obs = info.getValue();
+          if (!obs) return <Text fz="xs" c="slate.4">Pending check</Text>;
+          return (
+            <Text fz="xs" fw={600} c="slate.7">
+              ZMW {obs.toLocaleString()}
+            </Text>
+          );
+        },
       }),
       columnHelper.accessor("status", {
         header: "Status",

@@ -40,11 +40,11 @@ import {
 export interface EnrichmentRow {
   id: string;
   name: string;
-  application_type: string;
-  amount: number;
-  customer: string;
-  status: string;
   applicant: string;
+  approvedAmount: number;
+  tenure: number;
+  rate: number;
+  status: string;
 }
 
 const MOCK_DATA: EnrichmentRow[] = [
@@ -52,27 +52,27 @@ const MOCK_DATA: EnrichmentRow[] = [
     id: "APP-58231",
     name: "APP-58231",
     applicant: "Chanda Mwansa",
-    amount: 76500,
-    application_type: "Personal loan",
-    customer: "Chanda Mwansa",
+    approvedAmount: 76500,
+    tenure: 24,
+    rate: 25,
     status: "Pending Data",
   },
   {
     id: "APP-58232",
     name: "APP-58232",
     applicant: "Vinod Kumain",
-    amount: 50000,
-    application_type: "Personal loan",
-    customer: "Vinod Kumain",
+    approvedAmount: 50000,
+    tenure: 12,
+    rate: 21,
     status: "Enriched",
   },
   {
     id: "APP-58233",
     name: "APP-58233",
     applicant: "Simon Zimba",
-    amount: 5700,
-    application_type: "Personal loan",
-    customer: "Simon Zimba",
+    approvedAmount: 5700,
+    tenure: 6,
+    rate: 28,
     status: "Failed",
   },
 ];
@@ -170,8 +170,7 @@ export function EnrichmentTable() {
         const query = search.toLowerCase();
         return (
           item.name.toLowerCase().includes(query) ||
-          item.applicant.toLowerCase().includes(query) ||
-          item.customer.toLowerCase().includes(query)
+          item.applicant.toLowerCase().includes(query)
         );
       }
       return true;
@@ -192,27 +191,27 @@ export function EnrichmentTable() {
           </Text>
         ),
       }),
-      columnHelper.accessor("amount", {
-        header: "Amount",
+      columnHelper.accessor("approvedAmount", {
+        header: "Approved Amount",
         cell: (info) => (
           <Text fz="xs" fw={700} c="slate.7">
             ZMW {info.getValue().toLocaleString()}
           </Text>
         ),
       }),
-      columnHelper.accessor("application_type", {
-        header: "Type",
+      columnHelper.accessor("tenure", {
+        header: "Tenure",
         cell: (info) => (
-          <Badge variant="light" size="sm" color="brand" radius="sm">
-            {info.getValue()}
-          </Badge>
+          <Text fz="xs" fw={600} c="slate.7">
+            {info.getValue()} Months
+          </Text>
         ),
       }),
-      columnHelper.accessor("customer", {
-        header: "Customer",
+      columnHelper.accessor("rate", {
+        header: "Interest Rate",
         cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {info.getValue()}
+          <Text fz="xs" fw={600} c="slate.7">
+            {info.getValue()}%
           </Text>
         ),
       }),
