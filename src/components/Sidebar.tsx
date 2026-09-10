@@ -7,6 +7,7 @@ import {
   IconTimelineEvent,
   IconUserCog,
   IconLayersLinked,
+  IconSignature,
 } from "@tabler/icons-react";
 import {
   Box,
@@ -144,6 +145,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/origination/prescreening", label: "Prescreening", icon: IconFileText, modules: ["Loan Application"] },
       { path: "/origination/enrichment", label: "Enrichment", icon: IconFileText, modules: ["Loan Application"] },
       { path: "/origination/underwriting", label: "Underwriting", icon: IconFileText, modules: ["Loan Application"] },
+      { path: "/origination/offerIssuanceStage", label: "Offer Issuance", icon: IconSignature, modules: ["Loan Application"] },
     ],
   },
   {

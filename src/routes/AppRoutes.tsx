@@ -77,6 +77,7 @@ import LOSPreScreening from "../view/LosConfiguration/PreScreening/Losprescreeni
 import LOSEligibilityCheck from "../view/LosConfiguration/EligibilityCheck/LOSEligibilityCheck";
 import LoanProductAutoAssignment from "../view/LosConfiguration/ProductAssignment/LoanProductAssignment";
 import ProductAssignments from "../view/LosConfiguration/ProductAssignment/ProductAssignments";
+import { OfferIssuanceStage } from "../view/Origination/OfferIssuanceStage/OfferIssuanceStage";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -240,6 +241,11 @@ const originationUnderwritingRoute = createRoute({
   getParentRoute: () => originationRoute,
   path: "/underwriting",
   component: UnderwritingTable,
+});
+const originationOfferIssuanceRoute = createRoute({
+  getParentRoute: () => originationRoute,
+  path: "/offerIssuanceStage",
+  component: OfferIssuanceStage,
 });
 // const originationApplicationRoute = createRoute({
 //   getParentRoute: () => originationRoute,
@@ -507,7 +513,7 @@ const routeTree = rootRoute.addChildren([
     setupContractTemplateCreateRoute,
     setupMapProductsRoute,
   ]),
-  originationRoute.addChildren([originationLoanApplicationRoute, originationPrescreeningRoute, originationEnrichmentRoute, originationUnderwritingRoute]),
+  originationRoute.addChildren([originationLoanApplicationRoute, originationPrescreeningRoute, originationEnrichmentRoute, originationUnderwritingRoute , originationOfferIssuanceRoute]),
   operationsRoute.addChildren([
     operationsBookingRoute,
     operationsDisbursementRoute,
