@@ -70,7 +70,7 @@ export function useContactState() {
     string | undefined
   >(undefined);
 
-const [sameAsRegisteredOffice, setSameAsRegisteredOffice] = useState(true);
+  const [sameAsRegisteredOffice, setSameAsRegisteredOffice] = useState(true);
   const [correspondenceAddressLine2, setCorrespondenceAddressLine2] =
     useState("");
   const [correspondenceCountry, setCorrespondenceCountry] = useState<
@@ -92,7 +92,7 @@ const [sameAsRegisteredOffice, setSameAsRegisteredOffice] = useState(true);
 
   const reset = () => {
     setPrimaryContactName("");
-setSameAsRegisteredOffice(true);
+    setSameAsRegisteredOffice(true);
     setResidentialAddressId(undefined);
     setMailingAddressId(undefined);
     setCorrespondenceAddressId(undefined);
@@ -131,9 +131,9 @@ setSameAsRegisteredOffice(true);
 
   return {
     primaryContactName,
-setPrimaryContactName,
-sameAsRegisteredOffice,
-setSameAsRegisteredOffice,
+    setPrimaryContactName,
+    sameAsRegisteredOffice,
+    setSameAsRegisteredOffice,
     residentialAddressId,
     setResidentialAddressId,
     mailingAddressId,

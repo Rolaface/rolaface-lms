@@ -63,7 +63,13 @@ const [customerGroup, setCustomerGroup] = useState<string | null>(null);
   const [legalStructure, setLegalStructure] = useState<string | null>(null);
   const [taxId, setTaxId] = useState("");
   const [vatNumber, setVatNumber] = useState("");
-  const [currency, setCurrency] = useState<string | null>("ZMW");
+  // Left null on purpose: IdentityStep fetches the company's base currency
+  // from the backend on mount and fills this in dynamically. Hardcoding a
+  // value here (e.g. "ZMW") would block that lookup, since the effect only
+  // applies the fetched default when this is still empty — and even if it
+  // didn't block it, a hardcoded value wouldn't exist in the Select's
+  // options list yet, so it would just render as a blank "Select".
+  const [currency, setCurrency] = useState<string | null>(null);
   const [fiscalYearEnd, setFiscalYearEnd] = useState("");
   const [businessCity, setBusinessCity] = useState("");
   const [businessProvince, setBusinessProvince] = useState<string | null>(null);
@@ -113,7 +119,7 @@ const [customerGroup, setCustomerGroup] = useState<string | null>(null);
     setLegalStructure(null);
     setTaxId("");
     setVatNumber("");
-    setCurrency("");
+    setCurrency(null);
     setFiscalYearEnd("");
     setBusinessCity("");
     setBusinessProvince(null);
