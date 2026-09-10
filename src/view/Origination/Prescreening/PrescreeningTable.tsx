@@ -16,6 +16,7 @@ import {
   Stack,
   useMantineTheme,
   SegmentedControl,
+  Menu,
 } from "@mantine/core";
 import {
   IconPencil,
@@ -27,6 +28,8 @@ import {
   IconFileText,
   IconEye,
   IconAdjustments,
+  IconTrash,
+  IconDotsVertical,
 } from "@tabler/icons-react";
 import {
   useReactTable,
@@ -258,11 +261,26 @@ export function PrescreeningTable() {
                 <IconEye size={14} />
               </ActionIcon>
             </Tooltip>
-            <Tooltip label="Run Prescreening" withArrow>
+            <Tooltip label="Edit" withArrow>
               <ActionIcon size="sm" variant="subtle" color="gray">
-                <IconAdjustments size={14} />
+                <IconPencil size={14} />
               </ActionIcon>
             </Tooltip>
+            <Tooltip label="Delete" withArrow>
+              <ActionIcon size="sm" variant="subtle" color="gray">
+                <IconTrash size={14} />
+              </ActionIcon>
+            </Tooltip>
+            <Menu position="bottom-end" shadow="sm" withArrow>
+              <Menu.Target>
+                <ActionIcon size="sm" variant="subtle" color="gray">
+                  <IconDotsVertical size={14} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item>More Options</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </Group>
         ),
       }),
