@@ -15,6 +15,7 @@ import {
   Title,
   Stack,
   useMantineTheme,
+  SegmentedControl,
 } from "@mantine/core";
 import {
   IconPencil,
@@ -161,11 +162,15 @@ export function EnrichmentTable() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
+  const [applicationType, setApplicationType] = useState<string | null>(null);
   
   // Filter data
   const filteredData = useMemo(() => {
     return MOCK_DATA.filter((item) => {
       if (status !== "All" && item.status !== status) return false;
+      if (applicationType && applicationType !== "All Types") {
+        // Mock data doesn't have application_type in Enrichment anymore. Skip for dummy logic.
+      }
       if (search) {
         const query = search.toLowerCase();
         return (
@@ -175,7 +180,7 @@ export function EnrichmentTable() {
       }
       return true;
     });
-  }, [search, status]);
+  }, [search, status, applicationType]);
 
   const columns = useMemo(
     () => [
@@ -227,14 +232,14 @@ export function EnrichmentTable() {
           </Text>
         ),
         cell: (info) => (
-          <Group gap={4} justify="flex-end" wrap="nowrap">
+          <Group gap={6} justify="flex-end" wrap="nowrap" className="lms-row-actions">
             <Tooltip label="View Details" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
+              <ActionIcon size="sm" variant="subtle" color="gray">
                 <IconEye size={14} />
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Perform Enrichment" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="brand" radius="md">
+              <ActionIcon size="sm" variant="subtle" color="gray">
                 <IconDatabase size={14} />
               </ActionIcon>
             </Tooltip>
@@ -288,52 +293,78 @@ export function EnrichmentTable() {
       </Group>
 
       {/* Toolbar */}
-      <Paper p="xs" radius="md" style={{ border: "1px solid var(--mantine-color-slate-2)" }} mb="md">
-        <Group justify="space-between" align="center">
-          <Group gap="sm" style={{ flex: 1 }}>
-            <TextInput
-              placeholder="Application / Applicant / Customer"
-              leftSection={<IconSearch size={14} color="var(--mantine-color-slate-4)" />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              radius="md"
-              size="sm"
-              w={300}
-            />
-            <Select
-              data={["All Types", "Personal Loan", "Business Loan", "Mortgage"]}
-              defaultValue="All Types"
-              radius="md"
-              size="sm"
-              w={160}
-            />
-          </Group>
-          <Group gap="sm">
-            <Group gap={6} p={4} style={{ background: "var(--mantine-color-slate-0)", borderRadius: "var(--mantine-radius-xl)", border: "1px solid var(--mantine-color-slate-2)" }}>
-              {["All", "Pending Data", "Enriched", "Failed"].map((tab) => (
-                <Button
-                  key={tab}
-                  variant={status === tab ? "filled" : "subtle"}
-                  color={status === tab ? "brand" : "slate"}
-                  size="xs"
-                  radius="xl"
-                  onClick={() => setStatus(tab)}
-                  style={{ height: 26, padding: "0 12px" }}
-                >
-                  {tab}
-                </Button>
-              ))}
-            </Group>
+      <Paper
+        radius="xl"
+        p="xs"
+        style={{
+          background: "var(--mantine-color-slate-0)",
+          border: "1px solid var(--mantine-color-slate-2)",
+        }}
+        mb="md"
+      >
+        <Group gap="sm" wrap="wrap" align="center">
+          <TextInput
+            className="lms-search"
+            size="sm"
+            radius="xl"
+            placeholder="Application / Applicant / Customer"
+            leftSection={<IconSearch size={14} />}
+            style={{ flex: 1, minWidth: 260 }}
+            styles={{
+              input: { border: "1px solid var(--mantine-color-slate-2)" },
+            }}
+            value={search}
+            onChange={(e) => setSearch(e.currentTarget.value)}
+          />
+          <Select
+            size="sm"
+            radius="xl"
+            placeholder="All Types"
+            data={["Personal loan", "Business loan", "Mortgage"]}
+            w={166}
+            searchable
+            clearable
+            rightSection={<IconChevronDown size={14} style={{ opacity: 0.6 }} />}
+            value={applicationType}
+            onChange={(v) => setApplicationType(v)}
+          />
+
+          <SegmentedControl
+            size="xs"
+            radius="xl"
+            color="brand"
+            value={status}
+            onChange={(v) => setStatus(v)}
+            data={[
+              { label: "All", value: "All" },
+              { label: "Pending", value: "Pending Data" },
+              { label: "Enriched", value: "Enriched" },
+              { label: "Failed", value: "Failed" },
+            ]}
+          />
+
+          <Group gap="xs" ml="auto">
             <Button
-              variant="default"
               size="sm"
-              radius="md"
+              radius="xl"
+              variant="default"
+              px="md"
               onClick={() => {
                 setSearch("");
+                setApplicationType(null);
                 setStatus("All");
               }}
             >
               Reset
+            </Button>
+            <Button
+              size="sm"
+              radius="xl"
+              color="brand"
+              onClick={() => {}}
+              leftSection={<IconPlus size={14} />}
+            >
+              Configure Enrichment
             </Button>
           </Group>
         </Group>
