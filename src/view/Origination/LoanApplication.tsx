@@ -54,18 +54,17 @@ import {
   deleteLoanApplication,
   updateLoanApplicationStatus,
   convertCustomLoanApplicationToLoan,
-  sendLoanApplicationForReview,
-  loanApplicationReviewOutcome
 } from "../../api/loanApplicationApi";
+import { applyWorkflowAction } from "../../api/workflowApi";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 import { useCompanyStore } from "../../store/companyStore";
 import { openCommonModal } from "../../components/Modal/AlertModal";
 import { CreateLoanBookingModal } from "../../components/Modal/CreateLoanBookingModal";
 import { getSymbol, formatAmount } from "../../store/currencyStore";
 import { loanAccountModal } from "../../components/Modal/LoanBooking/loanAccountModalStore";
-import { ReviewModal } from "../../components/Modal/ReviewModal";
+import { WorkflowActionModal } from "../../components/Modal/WorkflowActionModal";
 import { useUserStore } from "../../store/userStore";
-import { OutcomeModal } from "../../components/Modal/OutcomeModal";
+import type { WorkflowAction } from "../../types/workflow";
 export interface LoanApplicationRow {
   name: string;
   application_type: string;
@@ -77,8 +76,12 @@ export interface LoanApplicationRow {
   first_name: string | null;
   last_name: string | null;
   company_name: string | null;
-   _assign?: string | null;
-   _comments?: string | null;
+  _assign?: string | null;
+  _comments?: string | null;
+  /** Canonical workflow state returned by the backend (e.g. "Pending", "Under Review"). */
+  workflow_state?: string | null;
+  /** Actions the current user is allowed to take, pre-computed server-side. */
+  allowed_workflow_actions?: WorkflowAction[];
 }
 interface ParsedComment {
   comment: string;
@@ -153,14 +156,13 @@ const OUTCOME_STATUSES = [
   "Rejection",
 ];
 
+/** The canonical display status — prefers backend workflow_state (multi-tenant safe). */
 function getEffectiveStatus(row: LoanApplicationRow) {
-  return OUTCOME_STATUSES.includes(row.status)
-    ? row.status
-    : row.loan_application_status;
+  if (row.workflow_state) return row.workflow_state;
+  // Legacy fallback for rows without workflow configured
+  if (OUTCOME_STATUSES.includes(row.status)) return row.status;
+  return row.loan_application_status;
 }
-// function getEffectiveStatus(row: LoanApplicationRow) {
-//   return row.status === "Under Review" ? "Under Review" : row.loan_application_status;
-// }
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   const color = sorted
@@ -261,46 +263,31 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function LoanApplication() {
   const [bookingOpened, { open: openBooking, close: closeBooking }] =
     useDisclosure(false);
-   const [reviewOpened, { open: openReview, close: closeReviewDisclosure }] =
-  useDisclosure(false);
-  const closeReview = () => {
-    setIsResubmitFlow(false);
-    closeReviewDisclosure();
-  };
-  const [outcomeOpened, { open: openOutcome, close: closeOutcome }] =
-  useDisclosure(false);
-const [outcomeApplicationId, setOutcomeApplicationId] = useState
-  <string | null>(null);
-const [reviewApplicationId, setReviewApplicationId] = useState<string | null>(
-  null,
-);
-  const [bookingApplicationId, setBookingApplicationId] = useState<
-    string | null
-  >(null);
+  const [workflowOpened, { open: openWorkflow, close: closeWorkflow }] =
+    useDisclosure(false);
+
+  const [bookingApplicationId, setBookingApplicationId] = useState<string | null>(null);
+  /** Application targeted by the WorkflowActionModal */
+  const [workflowTargetId, setWorkflowTargetId] = useState<string | null>(null);
+  /** The specific action pre-selected when the user clicks a named menu item */
+  const [workflowPreAction, setWorkflowPreAction] = useState<string | undefined>(undefined);
+
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
   const companyName = useCompanyStore((state) => state.companyName);
-  const [isResubmitFlow, setIsResubmitFlow] = useState(false);
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencySymbol = getSymbol(companyCurrency);
   const [editingId, setEditingId] = useState<string | null>(null);
-const user = useUserStore((s) => s.user);
-const email = useUserStore((s) => s.user?.email);
-const firstName = useUserStore((s)=> s.user?.firstName);
- console.log("firstName",firstName);
+  const email = useUserStore((s) => s.user?.email);
+  const firstName = useUserStore((s) => s.user?.firstName);
 
-  const [viewingApplicationId, setViewingApplicationId] = useState<
-    string | null
-  >(null);
-
+  const [viewingApplicationId, setViewingApplicationId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [company, setCompany] = useState<string | null>(null);
   const [applicationType, setApplicationType] = useState<string | null>(null);
   const [status, setStatus] = useState("all");
 
-  const [sorting, setSorting] = useState([
-    { id: "application_date", desc: true },
-  ]);
+  const [sorting, setSorting] = useState([{ id: "application_date", desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
 
   const showSuccess = (heading: string, body: string) => {
@@ -341,54 +328,34 @@ const firstName = useUserStore((s)=> s.user?.firstName);
       });
     },
   });
-  
-  const reviewMutation = useMutation({
-  mutationFn: (payload: { application_id: string; assign_to_user: string; comment: string }) =>
-    sendLoanApplicationForReview(payload),
-  onSuccess: (_, variables) => {
-    queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
-    closeReview();
-    showSuccess(
-      "Sent for Review",
-      `Loan Application ${variables.application_id} was sent for review successfully.`,
-    );
-  },
-  onError: (error: any) => {
-    openCommonModal({
-      heading: "Action Failed",
-      subtitle: "We couldn't complete your request.",
-      body: parseFrappeError(error),
-      color: "red",
-      buttons: [{ label: "Close", color: "red" }],
-    });
-  },
-});
 
-const outcomeMutation = useMutation({
-  mutationFn: (payload: {
-    application_id: string;
-    action: string;
-    assign_to_user: string;
-    comment: string;
-  }) => loanApplicationReviewOutcome(payload),
-  onSuccess: (_, variables) => {
-    queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
-    closeOutcome();
-       showSuccess(
-      "Review Submitted",
-      `Loan Application ${variables.application_id} review (${variables.action}) was submitted successfully.`,
-    );
-  },
-  onError: (error: any) => {
-    openCommonModal({
-      heading: "Action Failed",
-      subtitle: "We couldn't complete your request.",
-      body: parseFrappeError(error),
-      color: "red",
-      buttons: [{ label: "Close", color: "red" }],
-    });
-  },
-});
+  /** Single generic mutation for ALL workflow transitions — backend-driven. */
+  const workflowMutation = useMutation({
+    mutationFn: (payload: {
+      docname: string;
+      action: string;
+      comment?: string;
+      assign_to_user?: string;
+    }) => applyWorkflowAction(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["loan-application-detail", variables.docname] });
+      closeWorkflow();
+      showSuccess(
+        "Action Applied",
+        `Workflow action '${variables.action}' applied to ${variables.docname} successfully.`,
+      );
+    },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      });
+    },
+  });
 
   const convertToLoanMutation = useMutation({
     mutationFn: ({ id, loan_product }: { id: string; loan_product: string }) =>
@@ -621,68 +588,21 @@ const outcomeMutation = useMutation({
     openBooking();
   };
 
-  const reviewApplication = data.find((a) => a.name === reviewApplicationId);
-const reviewApplicantName = reviewApplication
-  ? getApplicantDisplayName(reviewApplication)
-  : null;
+  /** Opens the WorkflowActionModal for a specific application, optionally pre-seeding a single action. */
+  const openWorkflowModal = (id: string, preAction?: string) => {
+    setWorkflowTargetId(id);
+    setWorkflowPreAction(preAction);
+    openWorkflow();
+  };
 
-{/* const handleSendForReview = (id: string) => {
-  setReviewApplicationId(id);
-  openReview();
-}; */}
-const handleSendForReview = (id: string) => {
-  setIsResubmitFlow(false);
-  setReviewApplicationId(id);
-  openReview();
-};
-const handleResubmit = (id: string) => {
-  setIsResubmitFlow(true);
-  setReviewApplicationId(id);
-  openReview();
-};
-
-{/* const handleConfirmReview = (payload: { assign_to_user: string; comment: string }) => {
-  if (!reviewApplicationId) return;
-  reviewMutation.mutate({ application_id: reviewApplicationId, ...payload });
-}; */}
-const handleConfirmReview = (payload: { assign_to_user: string; comment: string }) => {
-  if (!reviewApplicationId) return;
-  if (isResubmitFlow) {
-    outcomeMutation.mutate(
-      {
-        application_id: reviewApplicationId,
-        action: "Resubmit",
-        ...payload,
-      },
-      {
-        onSuccess: () => closeReview(),
-      },
-    );
-  } else {
-    reviewMutation.mutate({ application_id: reviewApplicationId, ...payload });
-  }
-};
-const outcomeApplication = data.find((a) => a.name === outcomeApplicationId);
-const outcomeApplicantName = outcomeApplication
-  ? getApplicantDisplayName(outcomeApplication)
-  : null;
-
-const handleOutcome = (id: string) => {
-  setOutcomeApplicationId(id);
-  openOutcome();
-};
-
-const handleConfirmOutcome = (payload: {
-  action: string;
-  assign_to_user: string;
-  comment: string;
-}) => {
-  if (!outcomeApplicationId) return;
-  outcomeMutation.mutate({
-    application_id: outcomeApplicationId,
-    ...payload,
-  });
-};
+  const handleConfirmWorkflow = (payload: {
+    action: string;
+    comment?: string;
+    assign_to_user?: string;
+  }) => {
+    if (!workflowTargetId) return;
+    workflowMutation.mutate({ docname: workflowTargetId, ...payload });
+  };
 
   const handleConfirmCreateBooking = (loanProduct: string) => {
     if (!bookingApplicationId) return;
@@ -787,24 +707,17 @@ const handleConfirmOutcome = (payload: {
         cell: (info) => {
           const row = info.row.original;
           const currentStatus = row.loan_application_status;
-const effectiveStatus = getEffectiveStatus(row);
-                const isPending = currentStatus === "Pending";
+          const isPending = currentStatus === "Pending";
           const isApproved = currentStatus === "Approved";
           const isCreated = currentStatus === "Created";
           const isRejected = currentStatus === "Rejected";
-  const isUnderReview = effectiveStatus === "Under Review";
-  const isReadyForApproval = effectiveStatus === "Ready for Approval";
-  const isRejectionOutcome = effectiveStatus === "Rejection";
 
-                   const hasMenuItems =
-            (effectiveStatus === "Pending" && firstName === "Administrator") ||
-            (isUnderReview && isAssignedToUser(row, email)) ||
-            isReadyForApproval ||
-            isRejectionOutcome ||
-            isApproved;
-const underReview = (isUnderReview && firstName === "Administrator") || (isApproved  && firstName != "Administrator") 
-|| (isReadyForApproval && firstName != "Administrator") || (isPending && firstName != "Administrator" && !isUnderReview)
-          const menuDisabled = isCreated || isRejected || underReview;
+          /**
+           * Backend-driven workflow actions — already filtered to this user's roles.
+           * No hardcoded role/status checks needed here.
+           */
+          const workflowActions = row.allowed_workflow_actions ?? [];
+          const hasWorkflowActions = workflowActions.length > 0;
 
           return (
             <Group
@@ -825,16 +738,14 @@ const underReview = (isUnderReview && firstName === "Administrator") || (isAppro
               </Tooltip>
 
               <Tooltip
-                label={
-                  isPending ? "Edit" : "Only Pending applications can be edited"
-                }
+                label={isPending ? "Edit" : "Only Pending applications can be edited"}
                 withArrow
               >
                 <ActionIcon
                   size="sm"
                   variant="subtle"
                   color={isPending ? "brand" : "gray"}
-                  disabled={!isPending || firstName !== "Administrator"}
+                  disabled={!isPending}
                   onClick={() => handleEdit(row.name)}
                 >
                   <IconPencil size={14} />
@@ -853,91 +764,38 @@ const underReview = (isUnderReview && firstName === "Administrator") || (isAppro
                   size="sm"
                   variant="subtle"
                   color={isPending || isRejected ? "danger" : "gray"}
-                  disabled={
-                    (!isPending && !isRejected) || deleteMutation.isPending || firstName !== "Administrator"
-                  }
+                  disabled={(!isPending && !isRejected) || deleteMutation.isPending}
                   onClick={() => confirmDelete(row.name)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
 
-              <Menu
-                shadow="md"
-                width={180}
-                position="bottom-end"
-                disabled={menuDisabled}
-              >
+              {/* Dynamic workflow action menu + static Create Loan action */}
+              <Menu shadow="md" width={200} position="bottom-end" disabled={!(hasWorkflowActions || isApproved)}>
                 <Menu.Target>
                   <ActionIcon
                     size="sm"
                     variant="subtle"
                     color="gray"
-                    disabled={menuDisabled}
+                    disabled={!(hasWorkflowActions || isApproved)}
                   >
                     <IconDotsVertical size={14} />
                   </ActionIcon>
                 </Menu.Target>
-                {/* <Menu.Dropdown>
-                  {isPending && (
-                    <>
-                      <Menu.Item onClick={() => confirmApprove(row.name)}>
-                        Approve
-                      </Menu.Item>
-                      <Menu.Item
-                        color="red"
-                        onClick={() => confirmReject(row.name)}
-                      >
-                        Reject
-                      </Menu.Item>
-                    </>
-                  )}
+                <Menu.Dropdown>
+                  {workflowActions.map((wf) => (
+                    <Menu.Item
+                      key={wf.action}
+                      onClick={() => openWorkflowModal(row.name, wf.action)}
+                    >
+                      {wf.action}
+                    </Menu.Item>
+                  ))}
+                  
                   {isApproved && (
                     <Menu.Item
                       onClick={() => confirmCreateLoanBooking(row.name)}
-                    >
-                      Create Loan
-                    </Menu.Item>
-                  )}
-                </Menu.Dropdown> */}
-                                <Menu.Dropdown>
-                  {effectiveStatus === "Pending" && firstName === "Administrator" && (
-                    <Menu.Item onClick={() => handleSendForReview(row.name)}>
-                      Send for Review
-                    </Menu.Item>
-                  )}                  {effectiveStatus === "Additional Information Required" && (
-                    <Menu.Item
-                      onClick={() => handleResubmit(row.name)}
-                      disabled={firstName !== "Administrator"}
-                    >
-                      Resubmit
-                    </Menu.Item>
-                  )}
-                  {isUnderReview && isAssignedToUser(row, email) && (
-                    <Menu.Item onClick={() => handleOutcome(row.name)}>
-                      Submit Review
-                    </Menu.Item>
-                  )}
-                  {isReadyForApproval && (
-                    <Menu.Item 
-                    onClick={() => confirmApprove(row.name)}
-                    disabled={firstName !== "Administrator"}>
-                      Approve
-                    </Menu.Item>
-                  )}
-                  {isRejectionOutcome && (
-                    <Menu.Item
-                      color="red"
-                      onClick={() => confirmReject(row.name)}
-                      disabled={firstName !== "Administrator"}
-                    >
-                      Reject
-                    </Menu.Item>
-                  )}
-                  {isApproved && (
-                    <Menu.Item
-                      onClick={() => confirmCreateLoanBooking(row.name)}
-                      disabled={firstName !== "Administrator"}
                     >
                       Create Loan
                     </Menu.Item>
@@ -949,7 +807,16 @@ const underReview = (isUnderReview && firstName === "Administrator") || (isAppro
         },
       }),
     ],
-    [firstName],
+    [
+      email,
+      companyCurrency,
+      deleteMutation.isPending,
+      openWorkflowModal,
+      confirmCreateLoanBooking,
+      confirmDelete,
+      handleEdit,
+      handleView,
+    ],
   );
 
   const table = useReactTable({
@@ -982,13 +849,6 @@ const underReview = (isUnderReview && firstName === "Administrator") || (isAppro
     if (application) {
       return (
         <Box p="xl" mt="xl">
-          {/* <LoanApplicationDetailView
-            application={application}
-            onBack={() => setViewingApplicationId(null)}
-            onEdit={() => {
-              setViewingApplicationId(null);
-              handleEdit(application.name);
-            }} */}
           <LoanApplicationDetailView
             application={application}
             onBack={() => setViewingApplicationId(null)}
@@ -998,9 +858,6 @@ const underReview = (isUnderReview && firstName === "Administrator") || (isAppro
                 loanApplicationId: application.name,
               });
             }}
-            onApprove={() => confirmApprove(application.name)}
-            onReject={() => confirmReject(application.name)}
-            isActionPending={statusMutation.isPending}
           />
         </Box>
       );
@@ -1010,7 +867,6 @@ const underReview = (isUnderReview && firstName === "Administrator") || (isAppro
 
   return (
     <Stack gap="lg" p="lg">
-      {/* <LoanApplicationModal opened={opened} onClose={handleModalClose} loanApplicationId={editingId} /> */}
       <CreateLoanBookingModal
         opened={bookingOpened}
         applicationId={bookingApplicationId}
@@ -1019,24 +875,24 @@ const underReview = (isUnderReview && firstName === "Administrator") || (isAppro
         onConfirm={handleConfirmCreateBooking}
         isSubmitting={convertToLoanMutation.isPending}
       />
-      <ReviewModal
-  opened={reviewOpened}
-  applicationId={reviewApplicationId}
-  applicantName={reviewApplicantName}
-  currentUserEmail={email}
-  onClose={closeReview}
-  onConfirm={handleConfirmReview}
-  isSubmitting={isResubmitFlow ? outcomeMutation.isPending : reviewMutation.isPending}
-/>
-<OutcomeModal
-  opened={outcomeOpened}
-  applicationId={outcomeApplicationId}
-  applicantName={outcomeApplicantName}
-  currentUserEmail={email}
-  onClose={closeOutcome}
-  onConfirm={handleConfirmOutcome}
-  isSubmitting={outcomeMutation.isPending}
-/>
+      {/* Generic workflow action modal — driven by backend allowed_workflow_actions */}
+      <WorkflowActionModal
+        opened={workflowOpened}
+        applicationId={workflowTargetId}
+        applicantName={
+          data.find((a) => a.name === workflowTargetId)
+            ? getApplicantDisplayName(data.find((a) => a.name === workflowTargetId)!)
+            : null
+        }
+        allowedActions={
+          data.find((a) => a.name === workflowTargetId)?.allowed_workflow_actions ?? []
+        }
+        preselectedAction={workflowPreAction}
+        currentUserEmail={email}
+        onClose={closeWorkflow}
+        onConfirm={handleConfirmWorkflow}
+        isSubmitting={workflowMutation.isPending}
+      />
       <style>{`
   .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
   .lms-row-actions { opacity: 1; }

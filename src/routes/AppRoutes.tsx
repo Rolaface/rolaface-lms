@@ -22,6 +22,7 @@ import { RoleManagement } from "../view/User/RoleManagement";
 import { CollateralType } from "../view/Collateral/CollateralType/CollateralType";
 import { Collateral } from "../view/Collateral/Collateral";
 import { LoanApplication } from "../view/Origination/LoanApplication";
+import { WorkflowConfiguration } from "../view/Origination/WorkflowConfiguration";
 import { PrescreeningTable } from "../view/Origination/Prescreening/PrescreeningTable";
 import { EnrichmentTable } from "../view/Origination/Enrichment/EnrichmentTable";
 import { UnderwritingTable } from "../view/Origination/Underwriting/UnderwritingTable";
@@ -245,6 +246,10 @@ const originationLoanApplicationRoute = createRoute({
   path: "/loanApplication",
   component: LoanApplication,
 });
+const originationWorkflowConfigurationRoute = createRoute({
+  getParentRoute: () => originationRoute,
+  path: "/workflow",
+  component: WorkflowConfiguration,
 const originationPrescreeningRoute = createRoute({
   getParentRoute: () => originationRoute,
   path: "/prescreening",
@@ -531,7 +536,7 @@ const routeTree = rootRoute.addChildren([
     setupContractTemplateCreateRoute,
     setupMapProductsRoute,
   ]),
-  originationRoute.addChildren([originationLoanApplicationRoute, originationPrescreeningRoute, originationEnrichmentRoute, originationUnderwritingRoute , originationOfferIssuanceRoute]),
+  originationRoute.addChildren([originationLoanApplicationRoute,originationWorkflowConfigurationRoute, originationPrescreeningRoute, originationEnrichmentRoute, originationUnderwritingRoute , originationOfferIssuanceRoute]),
   operationsRoute.addChildren([
     operationsBookingRoute,
     operationsDisbursementRoute,
