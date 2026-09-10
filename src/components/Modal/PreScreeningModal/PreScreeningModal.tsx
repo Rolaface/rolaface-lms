@@ -35,6 +35,7 @@ import {
   IconWallet,
   IconPercentage,
   IconArrowRight,
+  IconMinus,
 } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
@@ -46,7 +47,10 @@ import {
 interface PreScreeningModalProps {
   opened: boolean;
   onClose: () => void;
+  onMinimize: () => void;
   applicationValues?: LoanApplicationValues;
+  embedded?: boolean;
+  readOnly?: boolean;
 }
 
 const POLICY: Record<
@@ -553,6 +557,7 @@ function DataCard({
   onEnterManually,
   onUseSource,
   onRefresh,
+  readOnly,
   children,
 }: {
   title: string;
@@ -563,6 +568,7 @@ function DataCard({
   onEnterManually: () => void;
   onUseSource?: () => void;
   onRefresh?: () => void;
+  readOnly?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -577,42 +583,44 @@ function DataCard({
         {status === "loading" && <Loader size={13} />}
       </Group>
       {children}
-      <Group gap={8} mt={12} style={{ flexWrap: "wrap" }}>
-        {!manualMode && source !== "unavailable" && source !== "none" && onRefresh && (
-          <Button
-            size="xs"
-            variant="light"
-            color="brand"
-            radius="sm"
-            leftSection={<IconRefresh size={11} />}
-            onClick={onRefresh}
-          >
-            Refresh
-          </Button>
-        )}
-        {!manualMode && (
-          <Button
-            size="xs"
-            variant="default"
-            radius="sm"
-            leftSection={<IconPencil size={11} />}
-            onClick={onEnterManually}
-          >
-            Enter manually
-          </Button>
-        )}
-        {manualMode && onUseSource && (
-          <Button
-            size="xs"
-            variant="default"
-            radius="sm"
-            leftSection={<IconRefresh size={11} />}
-            onClick={onUseSource}
-          >
-            Use source value
-          </Button>
-        )}
-      </Group>
+      {!readOnly && (
+        <Group gap={8} mt={12} style={{ flexWrap: "wrap" }}>
+          {!manualMode && source !== "unavailable" && source !== "none" && onRefresh && (
+            <Button
+              size="xs"
+              variant="light"
+              color="brand"
+              radius="sm"
+              leftSection={<IconRefresh size={11} />}
+              onClick={onRefresh}
+            >
+              Refresh
+            </Button>
+          )}
+          {!manualMode && (
+            <Button
+              size="xs"
+              variant="default"
+              radius="sm"
+              leftSection={<IconPencil size={11} />}
+              onClick={onEnterManually}
+            >
+              Enter manually
+            </Button>
+          )}
+          {manualMode && onUseSource && (
+            <Button
+              size="xs"
+              variant="default"
+              radius="sm"
+              leftSection={<IconRefresh size={11} />}
+              onClick={onUseSource}
+            >
+              Use source value
+            </Button>
+          )}
+        </Group>
+      )}
     </Paper>
   );
 }
@@ -620,9 +628,11 @@ function DataCard({
 function CreditScoreCard({
   state,
   dispatch,
+  readOnly,
 }: {
   state: PrescreeningState;
   dispatch: (a: any) => void;
+  readOnly?: boolean;
 }) {
   const { value, source, status, manual, reason } = state.credit;
   return (
@@ -632,6 +642,7 @@ function CreditScoreCard({
       status={status}
       source={source}
       manualMode={manual}
+      readOnly={readOnly}
       onRefresh={() => dispatch({ type: "fetchCredit" })}
       onEnterManually={() => dispatch({ type: "manualCredit", on: true })}
       onUseSource={() => dispatch({ type: "manualCredit", on: false })}
@@ -691,9 +702,11 @@ function CreditScoreCard({
 function LiabilitiesCard({
   state,
   dispatch,
+  readOnly,
 }: {
   state: PrescreeningState;
   dispatch: (a: any) => void;
+  readOnly?: boolean;
 }) {
   const { obligations, activeLoans, outstanding, source, status, manual, reason } =
     state.liabilities;
@@ -704,6 +717,7 @@ function LiabilitiesCard({
       status={status}
       source={source}
       manualMode={manual}
+      readOnly={readOnly}
       onRefresh={() => dispatch({ type: "fetchLiabilities" })}
       onEnterManually={() => dispatch({ type: "manualLiabilities", on: true })}
       onUseSource={() => dispatch({ type: "manualLiabilities", on: false })}
@@ -771,9 +785,11 @@ function LiabilitiesCard({
 function IncomeCard({
   state,
   dispatch,
+  readOnly,
 }: {
   state: PrescreeningState;
   dispatch: (a: any) => void;
+  readOnly?: boolean;
 }) {
   const { value, source, status, manual, reason } = state.income;
   return (
@@ -783,6 +799,7 @@ function IncomeCard({
       status={status}
       source={source}
       manualMode={manual}
+      readOnly={readOnly}
       onRefresh={() => dispatch({ type: "fetchIncome" })}
       onEnterManually={() => dispatch({ type: "manualIncome", on: true })}
       onUseSource={() => dispatch({ type: "manualIncome", on: false })}
@@ -1159,10 +1176,6 @@ function EligibilitySection({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Decision card
-// ---------------------------------------------------------------------------
-
 function DecisionCard({
   calc,
   requested,
@@ -1170,6 +1183,7 @@ function DecisionCard({
   onUseEligible,
   onReview,
   confirm,
+  readOnly,
 }: {
   calc: EligibilityCalc | null;
   requested: number;
@@ -1177,6 +1191,7 @@ function DecisionCard({
   onUseEligible: (confirmed: boolean) => void;
   onReview: (action: "useEligible" | "review") => void;
   confirm: boolean;
+  readOnly?: boolean;
 }) {
   if (!calc) {
     return (
@@ -1248,7 +1263,7 @@ function DecisionCard({
         </Text>
       )}
 
-      {confirm && (
+           {confirm && !readOnly && (
         <Group
           gap={10}
           p="sm"
@@ -1260,7 +1275,7 @@ function DecisionCard({
           }}
         >
           <Text fz={12.5} style={{ flex: 1 }}>
-            Set requested amount to {zmw(eligibleAmount)}?
+            Set requested amount to {zmw(calc.eligibleAmount)}?
           </Text>
           <Button size="xs" color="dark" radius="sm" onClick={() => onUseEligible(true)}>
             Confirm
@@ -1271,28 +1286,30 @@ function DecisionCard({
         </Group>
       )}
 
-      <Group gap={10}>
-        {isEligible && (
-          <Button
-            color="green"
-            radius="md"
-            rightSection={<IconArrowRight size={14} />}
-            onClick={onContinue}
-          >
-            Continue to enrichment
-          </Button>
-        )}
-        {isPartial && !confirm && (
-          <>
-            <Button color="orange" radius="md" onClick={() => onReview("useEligible")}>
-              Use {zmw(eligibleAmount)}
+      {!readOnly && (
+        <Group gap={10}>
+          {isEligible && (
+            <Button
+              color="green"
+              radius="md"
+              rightSection={<IconArrowRight size={14} />}
+              onClick={onContinue}
+            >
+              Continue to enrichment
             </Button>
-            <Button variant="default" radius="md" onClick={() => onReview("review")}>
-              Review application
-            </Button>
-          </>
-        )}
-      </Group>
+          )}
+          {isPartial && !confirm && (
+            <>
+              <Button color="orange" radius="md" onClick={() => onReview("useEligible")}>
+                Use {zmw(eligibleAmount)}
+              </Button>
+              <Button variant="default" radius="md" onClick={() => onReview("review")}>
+                Review application
+              </Button>
+            </>
+          )}
+        </Group>
+      )}
     </Box>
   );
 }
@@ -1381,14 +1398,14 @@ function reducer(state: PrescreeningState, action: any): PrescreeningState {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Prescreening workspace
-// ---------------------------------------------------------------------------
-
 function PrescreeningWorkspace({
   values,
+  readOnly = false,
+  onSubmitReady,
 }: {
   values: LoanApplicationValues;
+  readOnly?: boolean;
+  onSubmitReady?: (canSubmit: boolean, submit: () => void) => void;
 }) {
   const loanTypeId = DUMMY_PRESCREENING_CONTEXT.loanTypeId;
   const policy = POLICY[loanTypeId];
@@ -1491,6 +1508,11 @@ function PrescreeningWorkspace({
     }
     setConfirm(false);
   }
+  const isEligible = !!calc && calc.mandatoryPassed && calc.eligibleAmount >= requested;
+
+  useEffect(() => {
+    onSubmitReady?.(isEligible, () => setContinued(true));
+  }, [isEligible]);
 
   if (continued) {
     return (
@@ -1511,10 +1533,10 @@ function PrescreeningWorkspace({
   return (
     <Box p={30}>
       <SectionLabel>Prescreening data</SectionLabel>
-      <SimpleGrid cols={3} spacing={14} mb={26}>
-        <CreditScoreCard state={state} dispatch={dispatch} />
-        <LiabilitiesCard state={state} dispatch={dispatch} />
-        <IncomeCard state={state} dispatch={dispatch} />
+            <SimpleGrid cols={3} spacing={14} mb={26}>
+        <CreditScoreCard state={state} dispatch={dispatch} readOnly={readOnly} />
+        <LiabilitiesCard state={state} dispatch={dispatch} readOnly={readOnly} />
+        <IncomeCard state={state} dispatch={dispatch} readOnly={readOnly} />
       </SimpleGrid>
 
       <SectionLabel>Eligibility calculation</SectionLabel>
@@ -1538,29 +1560,187 @@ function PrescreeningWorkspace({
 
       <Box mt={26}>
         <SectionLabel>Prescreening result</SectionLabel>
-        <DecisionCard
+                <DecisionCard
           calc={calc}
           requested={requested}
           onContinue={() => setContinued(true)}
           onUseEligible={handleUseEligible}
           onReview={(a) => a === "useEligible" && setConfirm(true)}
           confirm={confirm}
+          readOnly={readOnly}
         />
       </Box>
     </Box>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
-
 export function PreScreeningModal({
   opened,
   onClose,
   applicationValues = DUMMY_PERSONAL_LOAN_APPLICATION,
+  embedded = false,
+  readOnly = false,
+  onMinimize,
 }: PreScreeningModalProps) {
   const [section, setSection] = useState<Section>("prescreening");
+  const [canSubmit, setCanSubmit] = useState(false);
+  const submitRef = useRef<() => void>(() => {});
+
+  const handleSubmitReady = (ready: boolean, submit: () => void) => {
+    setCanSubmit(ready);
+    submitRef.current = submit;
+  };
+
+  const handleSubmit = () => {
+    submitRef.current();
+  };
+
+  // Add this early return for the embedded state
+  if (embedded) {
+    return (
+      <PrescreeningWorkspace
+        values={applicationValues}
+        readOnly={readOnly}
+        onSubmitReady={handleSubmitReady}
+      />
+    );
+  }
+  const bodyContent = (
+    <Box
+      style={{
+        position: "relative",
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+      }}
+    >
+           {!embedded && (
+        <Group
+          justify="space-between"
+          align="center"
+          px="xl"
+          py="sm"
+          bg="brand.6"
+          style={{
+            borderBottom: "1px solid var(--mantine-color-brand-7)",
+            flexShrink: 0,
+          }}
+        >
+          <Group gap="sm">
+            <ThemeIcon radius="md" size={34} variant="white" color="brand">
+              <IconGauge size={16} />
+            </ThemeIcon>
+            <Box>
+              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
+                Loan application workflow
+              </Text>
+              <Text size="xs" fw={500} c="brand.1">
+                Stage 2 — Prescreening
+              </Text>
+            </Box>
+          </Group>
+          <Group gap="xs" wrap="nowrap">
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={onMinimize}
+              aria-label="Minimize"
+            >
+              <IconMinus size={16} color="white" />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              radius="xl"
+              size="md"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
+        </Group>
+      )}
+
+      <ContextHeader
+        values={applicationValues}
+        applicationId={DUMMY_PRESCREENING_CONTEXT.applicationId}
+      />
+
+      <Box
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "row",
+          overflow: "hidden",
+        }}
+      >
+        <LeftNav section={section} setSection={setSection} />
+
+        <Box style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
+          {section === "application" ? (
+            <Box style={{ height: "100%" }}>
+              <Box style={{ height: "calc(100% - 70px)" }}>
+                <LoanApplicationModal
+                  embedded
+                  readOnly
+                  initialValues={applicationValues}
+                  opened={false}
+                  onClose={() => {}}
+                  onMinimize={() => {}}
+                />
+              </Box>
+            </Box>
+            
+          ) : (
+                        <PrescreeningWorkspace
+              values={applicationValues}
+              readOnly={readOnly}
+              onSubmitReady={handleSubmitReady}
+            />
+          )}
+        </Box>
+      </Box>
+            {!embedded && !readOnly && (
+        <Group
+          justify="space-between"
+          align="center"
+          px="xl"
+          py="md"
+          bg="white"
+          style={{
+            borderTop: "1px solid var(--mantine-color-gray-2)",
+            flexShrink: 0,
+          }}
+        >
+          <Button variant="transparent" c="dark.8" px={0} fw={600} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            color="brand"
+            radius="md"
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            rightSection={<IconArrowRight size={16} />}
+          >
+            Submit
+          </Button>
+        </Group>
+      )}
+    </Box>
+  );
+
+  if (embedded) {
+    return (
+      <Box style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+        {bodyContent}
+      </Box>
+    );
+  }
 
   return (
     <Modal
@@ -1588,107 +1768,7 @@ export function PreScreeningModal({
         },
       }}
     >
-      <Box
-        style={{
-          position: "relative",
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          minHeight: 0,
-        }}
-      >
-        <Group
-          justify="space-between"
-          align="center"
-          px="xl"
-          py="sm"
-          bg="brand.6"
-          style={{
-            borderBottom: "1px solid var(--mantine-color-brand-7)",
-            flexShrink: 0,
-          }}
-        >
-          <Group gap="sm">
-            <ThemeIcon radius="md" size={34} variant="white" color="brand">
-              <IconGauge size={16} />
-            </ThemeIcon>
-            <Box>
-              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
-                Loan application workflow
-              </Text>
-              <Text size="xs" fw={500} c="brand.1">
-                Stage 2 — Prescreening
-              </Text>
-            </Box>
-          </Group>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            radius="xl"
-            size="md"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <IconX size={16} color="white" />
-          </ActionIcon>
-        </Group>
-
-        <ContextHeader
-          values={applicationValues}
-          applicationId={DUMMY_PRESCREENING_CONTEXT.applicationId}
-        />
-
-        <Box
-          style={{
-            flex: 1,
-            minHeight: 0,
-            display: "flex",
-            flexDirection: "row",
-            overflow: "hidden",
-          }}
-        >
-          <LeftNav section={section} setSection={setSection} />
-
-          <Box style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
-            {section === "application" ? (
-              <Box style={{ height: "100%" }}>
-                {/* <Group
-                  gap={10}
-                  align="flex-start"
-                  m="md"
-                  p="sm"
-                  bg="brand.0"
-                  style={{
-                    border: "1px solid var(--mantine-color-brand-2)",
-                    borderRadius: "var(--mantine-radius-md)",
-                  }}
-                >
-                  <IconInfoCircle
-                    size={14}
-                    color="var(--mantine-color-brand-6)"
-                    style={{ marginTop: 2, flexShrink: 0 }}
-                  />
-                  <Text fz={12.5} c="brand.9">
-                    Submitted application data — read-only at this stage.
-                  </Text>
-                </Group> */}
-                <Box >
-                  <LoanApplicationModal
-                    embedded
-                    readOnly
-                    initialValues={applicationValues}
-                    opened={false}
-                    onClose={() => {}}
-                    onMinimize={() => {}}
-                  />
-                </Box>
-              </Box>
-            ) : (
-              <PrescreeningWorkspace values={applicationValues} />
-            )}
-          </Box>
-        </Box>
-      </Box>
+      {bodyContent}
     </Modal>
   );
 }

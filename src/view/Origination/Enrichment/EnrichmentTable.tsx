@@ -40,6 +40,7 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
+import { enrichmentModal } from "../../../components/Modal/Enrichment/enrichmentModalStore";
 
 // MOCK DATA for Enrichment
 export interface EnrichmentRow {
@@ -239,16 +240,27 @@ export function EnrichmentTable() {
         ),
         cell: () => (
           <Group gap={6} justify="flex-end" wrap="nowrap" className="lms-row-actions">
-            <Tooltip label="View Details" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="gray">
-                <IconEye size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Edit" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="gray">
+           <Tooltip label="View Details" withArrow>
+  <ActionIcon
+    size="sm"
+    variant="subtle"
+    color="gray"
+    onClick={() => enrichmentModal.open({ applicationValues: undefined })}
+  >
+    <IconEye size={14} />
+  </ActionIcon>
+</Tooltip>
+             <Tooltip label="Edit" withArrow>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="gray"
+                onClick={() => enrichmentModal.open({ applicationValues: undefined })}
+              >
                 <IconPencil size={14} />
               </ActionIcon>
             </Tooltip>
+
             <Tooltip label="Delete" withArrow>
               <ActionIcon size="sm" variant="subtle" color="gray">
                 <IconTrash size={14} />
