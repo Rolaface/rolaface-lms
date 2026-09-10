@@ -90,9 +90,15 @@ export function WorkflowActionModal({
     }
   }, [opened, preselectedAction, allowedActions]);
 
+  const activeTransition = allowedActions.find((a) => a.action === selectedAction);
+
+  // Determine allowed roles for the selected action's next state using the backend's assignable_role
+  const nextStateRole = activeTransition?.assignable_role;
+  const rolesToSearch = nextStateRole && nextStateRole !== "All" ? [nextStateRole] : undefined;
+
   const { data: usersResponse, isFetching } = useQuery({
-    queryKey: ["workflow-assign-users", debouncedSearch],
-    queryFn: () => getUsers(debouncedSearch, 1, 20),
+    queryKey: ["workflow-assign-users", debouncedSearch, rolesToSearch],
+    queryFn: () => getUsers(debouncedSearch, 1, 20, rolesToSearch),
     enabled: opened,
     placeholderData: (prev) => prev,
   });
@@ -109,8 +115,6 @@ export function WorkflowActionModal({
     value: a.action,
     label: a.action,
   }));
-
-  const activeTransition = allowedActions.find((a) => a.action === selectedAction);
   const commentRequired = selectedAction ? COMMENT_REQUIRED.has(selectedAction) : false;
 
   const canSubmit =

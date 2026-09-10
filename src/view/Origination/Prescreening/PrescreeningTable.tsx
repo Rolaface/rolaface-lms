@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
 import {
   Box,
   Button,
@@ -20,16 +21,15 @@ import {
 } from "@mantine/core";
 import {
   IconPencil,
-  IconPlus,
   IconChevronUp,
   IconChevronDown,
   IconSelector,
   IconSearch,
   IconFileText,
   IconEye,
-  IconAdjustments,
   IconTrash,
   IconDotsVertical,
+  IconClipboardCheck,
 } from "@tabler/icons-react";
 import {
   useReactTable,
@@ -41,6 +41,7 @@ import {
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
 import { preScreeningModal } from "../../../components/Modal/PreScreeningModal/preScreeningModalStore";
+
 export interface PrescreeningRow {
   id: string;
   name: string;
@@ -170,32 +171,29 @@ function ApplicationIdCell({ name }: { name: string }) {
   );
 }
 
+const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
+
 export function PrescreeningTable() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
-  const [applicationType, setApplicationType] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [applicationTypes, setApplicationTypes] = useState<string[]>([]);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
 
   // Filter data
   const filteredData = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return MOCK_DATA.filter((item) => {
-      if (status !== "All" && item.status !== status) return false;
-      if (applicationType && applicationType !== "All Types") {
-        // Mock data doesn't have application_type in Prescreening anymore since I removed it.
-        // Let's assume we don't filter it exactly for dummy, or we'll skip it for dummy logic if missing.
-      }
-      if (search) {
-        const query = search.toLowerCase();
-        return (
-          item.name.toLowerCase().includes(query) ||
-          item.applicant.toLowerCase().includes(query)
-        );
-      }
-      return true;
+      const matchesSearch =
+        !q ||
+        item.name.toLowerCase().includes(q) ||
+        item.applicant.toLowerCase().includes(q);
+      // Mock data doesn't carry application_type for Prescreening; kept for future wiring.
+      const matchesStatus = status === "All" || item.status === status;
+      return matchesSearch && matchesStatus;
     });
-  }, [search, status, applicationType]);
+  }, [search, status, applicationTypes]);
 
   const columns = useMemo(
     () => [
@@ -206,7 +204,12 @@ export function PrescreeningTable() {
       columnHelper.accessor("applicant", {
         header: "Applicant",
         cell: (info) => (
-          <Text fz="xs" fw={600} c="slate.8">
+          <Text
+            fz="xs"
+            fw={600}
+            c="slate.7"
+            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+          >
             {info.getValue()}
           </Text>
         ),
@@ -214,7 +217,12 @@ export function PrescreeningTable() {
       columnHelper.accessor("amount", {
         header: "Requested Amount",
         cell: (info) => (
-          <Text fz="xs" fw={700} c="slate.7">
+          <Text
+            fz="xs"
+            c="slate.8"
+            fw={600}
+            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+          >
             ZMW {info.getValue().toLocaleString()}
           </Text>
         ),
@@ -223,13 +231,16 @@ export function PrescreeningTable() {
         header: "Credit Score",
         cell: (info) => {
           const score = info.getValue();
-          if (!score) return <Text fz="xs" c="slate.4">Pending check</Text>;
-          return (
-            <Group gap={4}>
-              <Text fz="xs" fw={600} c={score > 650 ? "success.6" : "danger.6"}>
-                {score}
+          if (!score)
+            return (
+              <Text fz="xs" c="slate.4">
+                Pending check
               </Text>
-            </Group>
+            );
+          return (
+            <Text fz="xs" fw={700} c={score > 650 ? "success.6" : "danger.6"}>
+              {score}
+            </Text>
           );
         },
       }),
@@ -237,7 +248,12 @@ export function PrescreeningTable() {
         header: "Monthly Obligations",
         cell: (info) => {
           const obs = info.getValue();
-          if (!obs) return <Text fz="xs" c="slate.4">Pending check</Text>;
+          if (!obs)
+            return (
+              <Text fz="xs" c="slate.4">
+                Pending check
+              </Text>
+            );
           return (
             <Text fz="xs" fw={600} c="slate.7">
               ZMW {obs.toLocaleString()}
@@ -258,26 +274,26 @@ export function PrescreeningTable() {
         ),
         cell: () => (
           <Group gap={6} justify="flex-end" wrap="nowrap" className="lms-row-actions">
-           <Tooltip label="View Details" withArrow>
-  <ActionIcon
-    size="sm"
-    variant="subtle"
-    color="gray"
-    onClick={() => preScreeningModal.open({ applicationValues: undefined })}
-  >
-    <IconEye size={14} />
-  </ActionIcon>
-</Tooltip>
+            <Tooltip label="View Details" withArrow>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="gray"
+                onClick={() => preScreeningModal.open({ applicationValues: undefined })}
+              >
+                <IconEye size={14} />
+              </ActionIcon>
+            </Tooltip>
             <Tooltip label="Edit" withArrow>
-  <ActionIcon
-    size="sm"
-    variant="subtle"
-    color="gray"
-    onClick={() => preScreeningModal.open({ applicationValues: undefined })}
-  >
-    <IconPencil size={14} />
-  </ActionIcon>
-</Tooltip>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="gray"
+                onClick={() => preScreeningModal.open({ applicationValues: undefined })}
+              >
+                <IconPencil size={14} />
+              </ActionIcon>
+            </Tooltip>
             <Tooltip label="Delete" withArrow>
               <ActionIcon size="sm" variant="subtle" color="gray">
                 <IconTrash size={14} />
@@ -317,28 +333,48 @@ export function PrescreeningTable() {
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
+  const resetFilters = () => {
+    setSearch("");
+    setApplicationTypes([]);
+    setStatus("All");
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  };
+
   return (
-    <Box p="md">
+    <Stack gap="lg" p="lg">
+      <style>{`
+  .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
+  .lms-row-actions { opacity: 1; }
+  .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+  .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
+  .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+  .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+  .lms-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
+`}</style>
+
       {/* Header */}
-      <Group justify="space-between" align="flex-end" mb="lg">
-        <Group gap="md">
+      <Group justify="space-between" align="center" wrap="wrap" gap="md">
+        <Group gap="sm" align="center">
           <Box
-            w={44}
-            h={44}
             style={{
+              width: 40,
+              height: 40,
               borderRadius: "var(--mantine-radius-md)",
-              background: theme.other?.brandGradient || "var(--mantine-color-brand-6)",
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadow,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "white",
-              boxShadow: theme.other?.brandGlowShadow || "none",
             }}
           >
-            <IconFileText size={22} />
+            <IconClipboardCheck
+              size={20}
+              color="var(--mantine-color-white)"
+              stroke={1.8}
+            />
           </Box>
           <Stack gap={2}>
-            <Title order={2} fz={22} fw={800} c="slate.9">
+            <Title order={2} c="slate.8" fw={700}>
               Prescreening
             </Title>
             <Text fz="sm" c="slate.5">
@@ -356,7 +392,6 @@ export function PrescreeningTable() {
           background: "var(--mantine-color-slate-0)",
           border: "1px solid var(--mantine-color-slate-2)",
         }}
-        mb="md"
       >
         <Group gap="sm" wrap="wrap" align="center">
           <TextInput
@@ -375,20 +410,18 @@ export function PrescreeningTable() {
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
-          <Select
-            size="sm"
-            radius="xl"
+          <FilterMultiSelect
             placeholder="All Types"
-            data={["Personal loan", "Business loan", "Mortgage"]}
-            w={166}
-            searchable
-            clearable
-            rightSection={<IconChevronDown size={14} style={{ opacity: 0.6 }} />}
-            value={applicationType}
+            data={[
+              { label: "Personal loan", value: "Personal loan" },
+              { label: "Business loan", value: "Business loan" },
+            ]}
+            value={applicationTypes}
             onChange={(v) => {
-              setApplicationType(v);
+              setApplicationTypes(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
+            width={180}
           />
 
           <SegmentedControl
@@ -414,33 +447,25 @@ export function PrescreeningTable() {
               radius="xl"
               variant="default"
               px="md"
-              onClick={() => {
-                setSearch("");
-                setApplicationType(null);
-                setStatus("All");
-                setPagination((p) => ({ ...p, pageIndex: 0 }));
-              }}
+              onClick={resetFilters}
             >
               Reset
-            </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={() => {}}
-              leftSection={<IconPlus size={14} />}
-            >
-              Configure Prescreening
             </Button>
           </Group>
         </Group>
       </Paper>
 
-      {/* Table */}
-      <Paper radius="md" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
+      {/* Data Table + Pagination */}
+      <Stack gap="xs">
         <Box style={{ overflowX: "auto" }}>
-          <Table verticalSpacing="sm" horizontalSpacing="md" fz="sm" striped>
-            <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
+          <Table
+            verticalSpacing="sm"
+            horizontalSpacing="sm"
+            fz="xs"
+            w="100%"
+            style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+          >
+            <Table.Thead>
               {table.getHeaderGroups().map((headerGroup) => (
                 <Table.Tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
@@ -448,11 +473,19 @@ export function PrescreeningTable() {
                     return (
                       <Table.Th
                         key={header.id}
-                        onClick={header.column.getToggleSortingHandler()}
+                        className="lms-thead-cell"
+                        c="slate.5"
+                        fw={700}
                         style={{
-                          cursor: canSort ? "pointer" : "default",
+                          fontSize: "var(--mantine-font-size-xs)",
+                          padding: "0 10px 6px",
                           userSelect: "none",
+                          cursor: canSort ? "pointer" : "default",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                          border: "none",
                         }}
+                        onClick={header.column.getToggleSortingHandler()}
                       >
                         <Group
                           gap="xs"
@@ -525,6 +558,8 @@ export function PrescreeningTable() {
                           key={cell.id}
                           style={{
                             padding: "10px 10px",
+                            border: "none",
+                            boxShadow: "var(--mantine-shadow-xs)",
                             borderLeft:
                               idx === 0
                                 ? `3px solid var(--mantine-color-${scale}-4)`
@@ -546,7 +581,7 @@ export function PrescreeningTable() {
         </Box>
 
         {/* Pagination Footer */}
-        <Group justify="space-between" px="sm" pt="xs" pb="xs">
+        <Group justify="space-between" px="sm" pt="xs">
           <Group
             gap="sm"
             c="slate.6"
@@ -565,7 +600,7 @@ export function PrescreeningTable() {
                 onChange={(v) =>
                   setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
                 }
-                rightSection={<IconChevronDown size={14} style={{ opacity: 0.6 }} />}
+                rightSection={chevronDown}
                 size="xs"
                 radius="xl"
                 w={60}
@@ -583,7 +618,7 @@ export function PrescreeningTable() {
             radius="xl"
           />
         </Group>
-      </Paper>
-    </Box>
+      </Stack>
+    </Stack>
   );
 }
