@@ -286,7 +286,7 @@ export function EnrichmentTable() {
               Data Enrichment
             </Title>
             <Text fz="sm" c="slate.5">
-              Pull third-party data and enrich applicant profiles
+              Review and finalize loan terms for approved applications
             </Text>
           </Stack>
         </Group>
