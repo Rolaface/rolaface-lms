@@ -231,23 +231,25 @@ export function CustomerModal({
     }
 
    
-    const idDocs = editCustomer.documents ?? [];
-    if (idDocs.length > 0) {
-      identification.setIdDocuments(
-        idDocs.map((d, i) => ({
-          id: d.name,
-          idType: text(d.document_type || d.document_name),
-          docNumber: text(d.document_number),
-          issuingAuthority: text(d.issuing_authority),
-          
-          issuingCountry: nullableText(d.issuing_country),
-          issueDate: text(d.issue_date),
-          expiryDate: text(d.expiry_date),
-          verification: text(d.verification_status) || "Not verified",
-          isPrimary: i === 0,
-        })),
-      );
-    }
+ const idDocs = editCustomer.documents ?? [];
+
+if (idDocs.length > 0) {
+  identification.setIdDocuments(
+    idDocs.map((d, i) => ({
+      id: d.name,
+      idType: text(d.document_type || d.document_name),
+      docNumber: text(d.document_number),
+      issuingAuthority: text(d.issuing_authority),
+      issuingCountry: nullableText(d.issuing_country),
+      issueDate: text(d.issue_date),
+      expiryDate: text(d.expiry_date),
+      verification: text(d.verification_status) || "Not Verified",
+      documentUpload: null,
+      documentUploadRef: nullableText(d.document_upload),
+      isPrimary: i === 0,
+    })),
+  );
+}
 
     // --- directors / stakeholders (previously not read at all) ---
     if (isBusiness) {

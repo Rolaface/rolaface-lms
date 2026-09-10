@@ -252,6 +252,7 @@ export interface CustomerDocumentPayload {
   verification_status: string;
   issuing_authority: string;
   issuing_country: string;
+  document_upload?: string | null;
 }
 
 export interface IndividualBasicDetails {
@@ -410,4 +411,22 @@ export async function getCustomerGroups(): Promise<CustomerGroup[]> {
   );
 
   return response.data.data;
+}
+
+
+export async function uploadCustomerDocument(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("is_private", "1");
+
+  const response: AxiosResponse<{ message?: { file_url?: string } }> =
+    await api.post("/api/method/upload_file", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+  const fileUrl = response.data?.message?.file_url;
+  if (!fileUrl) {
+    throw new Error("Upload failed: no file_url returned from server.");
+  }
+  return fileUrl;
 }

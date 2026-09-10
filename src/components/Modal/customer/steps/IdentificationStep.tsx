@@ -31,6 +31,8 @@ import type { IdDocument } from "../../../../types/customer/types";
 import { DatePickerInput } from "@mantine/dates";
 import { useCountries } from "../../../../hooks/common/useLookups";
 import { useDebouncedValue } from "@mantine/hooks";
+import { DocumentUploadField } from "./Documentuploadfield";
+import { uploadCustomerDocument } from "../../../../api/Customer/customerApi";
 
 interface IdentificationStepProps {
   idDocuments: IdDocument[];
@@ -123,11 +125,7 @@ function DocRow({
   );
 }
 
-// Document Manager pattern: a scrollable document list on the left, the
-// selected document's field set on the right. Document type is now a
-// free-text field the user types — it's reflected live in the left list.
-// Layout/spacing mirrors the DocumentsStep upload screen (compact list
-// rows in a bordered Paper with its own header + ScrollArea).
+
 export function IdentificationStep({
   idDocuments,
   updateIdDocument,
@@ -141,8 +139,7 @@ export function IdentificationStep({
   );
   const prevCount = useRef(idDocuments.length);
 
-  // Issuing country lookup — same useCountries hook + debounced search
-  // pattern used for Nationality / Business Country in IdentityStep.
+
   const [issuingCountrySearch, setIssuingCountrySearch] = useState("");
   const [debouncedIssuingCountrySearch] = useDebouncedValue(
     issuingCountrySearch,
@@ -151,8 +148,7 @@ export function IdentificationStep({
   const { data: issuingCountryOptions, isLoading: issuingCountriesLoading } =
     useCountries(debouncedIssuingCountrySearch);
 
-  // Auto-select a newly added document; if the selected one was removed,
-  // fall back to the first document in the list.
+
   useEffect(() => {
     if (idDocuments.length > prevCount.current) {
       setSelectedDocId(idDocuments[idDocuments.length - 1].id);
@@ -166,10 +162,43 @@ export function IdentificationStep({
   const selectedDoc =
     idDocuments.find((d) => d.id === selectedDocId) ?? idDocuments[0];
 
+
+  const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
+  const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
+
+  const handleDocFileChange = async (docId: string, file: File) => {
+
+    updateIdDocument(docId, { documentUpload: file });
+    setUploadErrors((prev) => {
+      const next = { ...prev };
+      delete next[docId];
+      return next;
+    });
+    setUploadingDocId(docId);
+    try {
+      const fileUrl = await uploadCustomerDocument(file);
+      updateIdDocument(docId, { documentUploadRef: fileUrl });
+    } catch (err) {
+      setUploadErrors((prev) => ({
+        ...prev,
+        [docId]: "Upload failed. Please try again.",
+      }));
+    } finally {
+      setUploadingDocId((current) => (current === docId ? null : current));
+    }
+  };
+
+  const handleDocFileRemove = (docId: string) => {
+    updateIdDocument(docId, { documentUpload: null, documentUploadRef: null });
+    setUploadErrors((prev) => {
+      const next = { ...prev };
+      delete next[docId];
+      return next;
+    });
+  };
+
   const isMobile = useMediaQuery("(max-width: 768px)");
-  // Fixed regardless of item count — this is what stops the section from
-  // growing taller (and pushing the modal into its own scroll) as more
-  // documents get added. Only the list itself ever scrolls internally.
+
   const LIST_PANEL_HEIGHT = isMobile ? 200 : 300;
 
   return (
@@ -411,6 +440,19 @@ export function IdentificationStep({
                   disabled={issuingCountriesLoading && !issuingCountryOptions}
                 />
               </FieldRow>
+
+              <Box mt="sm">
+                <DocumentUploadField
+                  file={selectedDoc.documentUpload ?? null}
+                  fileUrl={selectedDoc.documentUploadRef ?? null}
+                  onFileChange={(file) =>
+                    handleDocFileChange(selectedDoc.id, file)
+                  }
+                  onRemove={() => handleDocFileRemove(selectedDoc.id)}
+                  isUploading={uploadingDocId === selectedDoc.id}
+                  uploadError={uploadErrors[selectedDoc.id] ?? null}
+                />
+              </Box>
 
               {duplicateDocMatch && (
                 <Alert

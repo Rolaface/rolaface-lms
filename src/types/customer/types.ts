@@ -87,6 +87,13 @@ interface IdentificationState {
     verification: string;
 
     issuingCountry?: string | null;
+    // Locally-held file for this document row, kept in real app state
+    // via updateIdDocument. Not sent to the server as a File — see the
+    // mapping below.
+    documentUpload?: File | null;
+    // Once a real upload endpoint exists, the returned reference
+    // (URL/path/id) should be stored here and sent instead of null.
+    documentUploadRef?: string | null;
   }>;
 }
 
@@ -138,6 +145,12 @@ export function buildCustomerPayload(
     issuing_authority: doc.issuingAuthority,
 
     issuing_country: doc.issuingCountry ?? "",
+    // Stays null (matching the sample payload) until a real upload
+    // endpoint exists and returns a reference for documentUploadRef.
+    // The picked File itself lives on doc.documentUpload in the
+    // meantime — see handleCreateCustomer for where a future
+    // pre-submit upload step would go.
+    document_upload: doc.documentUploadRef ?? null,
   }));
 
   const addresses = (
