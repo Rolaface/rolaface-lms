@@ -382,10 +382,7 @@ export interface IndividualCustomerPayload {
   documents: CustomerDocumentPayload[];
 }
 
-// Company has no basic_details entry — CHILD_TABLE_FIELDS["basic_details"]
-// doesn't contain registered_company_name / registration_number /
-// incorporation_date, so sending it there silently drops those 3 fields.
-// extended_details is the only table that accepts them.
+
 export interface CompanyExtendedDetails {
   registered_company_name: string;
   registration_number: string;
@@ -398,16 +395,12 @@ export interface CompanyExtendedDetails {
   existing_monthly_obligations: number;
 }
 
-// NEW (2026-09-09) — backend requirement: total_assets, total_liabilities,
-// net_worth, existing_monthly_obligations, annual_revenue and
-// number_of_employees are handled from basic_details. Company previously
-// sent these ONLY inside extended_details (no basic_details entry existed
-// for Company at all). Sent alongside extended_details, which keeps
-// carrying the same 6 values too — extended_details' child-table sync
-// looks like a full-row replace, so removing them there risks nulling out
-// anything else that still reads from that table (decision confirmed:
-// keep in both).
+
 export interface CompanyBasicDetails {
+  registered_company_name: string;
+  
+  registration_number: string;
+  incorporation_date: string;
   total_assets: number;
   total_liabilities: number;
   net_worth: number;
@@ -431,6 +424,11 @@ export interface CompanyCustomerPayload {
   mobile_no: string;
   tax_id: string;
   default_currency: string;
+  // Backend's ALLOWED_CUSTOMER_FIELDS (constant.py) has top-level
+  // "industry" for both customer types — confirmed against backend's own
+  // sample Company payload. "industry_type" is a *child-table* field
+  // (basic_details/extended_details), a different field entirely; using
+  // that name here meant this value was silently dropped on save.
   industry_type: string;
   is_npa: 0 | 1;
   // Backend maps this to `account_manager` (see FIELD_MAPPING).

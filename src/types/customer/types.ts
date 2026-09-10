@@ -267,9 +267,18 @@ export function buildCustomerPayload(
 
   const contacts = isCompany
     ? (() => {
-        const trimmed = contact.primaryContactName.trim();
+        // Sanitize before splitting — a stray comma (or other punctuation)
+        // in the free-text Primary Contact field was leaking straight into
+        // first_name (e.g. ",wasan"), and since edit-hydration rejoins
+        // first_name + last_name with a space, the corruption would persist
+        // across every subsequent edit once it got saved once.
+        const trimmed = contact.primaryContactName
+          .trim()
+          .replace(/,/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
         if (!trimmed) return [];
-        const [first, ...rest] = trimmed.split(/\s+/);
+        const [first, ...rest] = trimmed.split(" ");
         return [
           {
             name: contact.primaryContactId,
@@ -391,16 +400,21 @@ export function buildCustomerPayload(
     mobile_no: contact.mobileNumber,
     tax_id: identity.taxId,
     default_currency: identity.currency ?? "",
+   // Backend's ALLOWED_CUSTOMER_FIELDS (constant.py) has top-level
+   // "industry", not "industry_type" — confirmed against backend's own
+   // sample Company payload. Sending "industry_type" here was silently
+   // dropped by create_customer's field loop (it only copies fields that
+   // are in ALLOWED_CUSTOMER_FIELDS).
    industry_type: identity.businessIndustry ?? "",
     is_npa: 0, // TODO: no source field
     relationship_manager: financial.relationshipManager ?? undefined,
 
-    // NEW (2026-09-09) — backend requirement: these 6 fields are handled
-    // from basic_details. Company previously had no basic_details entry
-    // at all; this is additive and doesn't remove them from
-    // extended_details below (kept in both per confirmed decision).
+   
     basic_details: [
       {
+        registered_company_name: identity.companyName,
+        registration_number: identity.registrationNumber,
+        incorporation_date: identity.incorporationDate,
         total_assets: Number(financial.totalAssets) || 0,
         total_liabilities: Number(financial.totalLiabilities) || 0,
         net_worth: netWorth,
