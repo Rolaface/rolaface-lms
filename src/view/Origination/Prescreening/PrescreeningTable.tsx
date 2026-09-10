@@ -39,6 +39,7 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
+import type { SortingState } from "@tanstack/react-table";
 
 // MOCK DATA for Prescreening
 export interface PrescreeningRow {
@@ -170,23 +171,14 @@ function ApplicationIdCell({ name }: { name: string }) {
   );
 }
 
-: { sorted: false | "asc" | "desc" }) {
-  const color = sorted
-    ? "var(--mantine-color-brand-6)"
-    : "var(--mantine-color-slate-4)";
-  if (sorted === "asc") return <IconChevronUp size={12} color={color} />;
-  if (sorted === "desc") return <IconChevronDown size={12} color={color} />;
-  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
-}
-
 export function PrescreeningTable() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
   const [applicationType, setApplicationType] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  const [sorting, setSorting] = useState([]);
-  
+  const [sorting, setSorting] = useState<SortingState>([]);
+
   // Filter data
   const filteredData = useMemo(() => {
     return MOCK_DATA.filter((item) => {
@@ -265,7 +257,7 @@ export function PrescreeningTable() {
             Actions
           </Text>
         ),
-        cell: (info) => (
+        cell: () => (
           <Group gap={6} justify="flex-end" wrap="nowrap" className="lms-row-actions">
             <Tooltip label="View Details" withArrow>
               <ActionIcon size="sm" variant="subtle" color="gray">
@@ -310,6 +302,7 @@ export function PrescreeningTable() {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
+  const rows = table.getRowModel().rows;
   const totalRows = filteredData.length;
   const { pageIndex, pageSize } = pagination;
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
@@ -441,100 +434,108 @@ export function PrescreeningTable() {
             <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
               {table.getHeaderGroups().map((headerGroup) => (
                 <Table.Tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <Table.Th
-                      key={header.id}
-                      onClick={header.column.getToggleSortingHandler()}
-                      style={{
-                        cursor: header.column.getCanSort() ? "pointer" : "default",
-                    >
-                      <Group
-                        gap="xs"
-                        wrap="nowrap"
-                        justify={
-                          header.id === "actions"
-                            ? "flex-end"
-                            : "flex-start"
-                        }
-                      >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                        {canSort && (
-                          <SortIcon
-                            sorted={header.column.getIsSorted()}
-                          />
-                        )}
-                      </Group>
-                    </Table.Th>
-                  );
-                })}
-              </Table.Tr>
-            ))}
-          </Table.Thead>
-          <Table.Tbody>
-            {rows.length === 0 ? (
-              <Table.Tr>
-                <Table.Td
-                  colSpan={columns.length}
-                  style={{ border: "none" }}
-                >
-                  <Stack align="center" gap="xs" py="xl">
-                    <Box
-                      style={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: "50%",
-                        background: "var(--mantine-color-white)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        border: "1px solid var(--mantine-color-slate-2)",
-                      }}
-                    >
-                      <IconFileText
-                        size={26}
-                        color="var(--mantine-color-slate-4)"
-                      />
-                    </Box>
-                    <Text ta="center" c="slate.5" fz="xs">
-                      No prescreening applications match your filters.
-                    </Text>
-                  </Stack>
-                </Table.Td>
-              </Table.Tr>
-            ) : (
-              rows.map((row) => {
-                const scale = STATUS_COLOR[row.original.status] ?? "slate";
-                const cells = row.getVisibleCells();
-                return (
-                  <Table.Tr
-                    key={row.id}
-                    className="lms-row"
-                    style={{ cursor: "pointer", background: "var(--mantine-color-white)" }}
-                  >
-                    {cells.map((cell, idx) => (
-                      <Table.Td
-                        key={cell.id}
+                  {headerGroup.headers.map((header) => {
+                    const canSort = header.column.getCanSort();
+                    return (
+                      <Table.Th
+                        key={header.id}
+                        onClick={header.column.getToggleSortingHandler()}
                         style={{
-                          padding: "10px 10px",
-                          border: "none",
-                          boxShadow: "var(--mantine-shadow-xs)",
-                          borderLeft:
-                            idx === 0
-                              ? `3px solid var(--mantine-color-${scale}-4)`
-                              : undefined,
+                          cursor: canSort ? "pointer" : "default",
+                          userSelect: "none",
                         }}
                       >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </Table.Td>
-                    ))}
-                  </Table.Tr>
+                        <Group
+                          gap="xs"
+                          wrap="nowrap"
+                          justify={
+                            header.id === "actions"
+                              ? "flex-end"
+                              : "flex-start"
+                          }
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                          {canSort && (
+                            <SortIcon
+                              sorted={header.column.getIsSorted()}
+                            />
+                          )}
+                        </Group>
+                      </Table.Th>
+                    );
+                  })}
+                </Table.Tr>
+              ))}
+            </Table.Thead>
+            <Table.Tbody>
+              {rows.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td
+                    colSpan={columns.length}
+                    style={{ border: "none" }}
+                  >
+                    <Stack align="center" gap="xs" py="xl">
+                      <Box
+                        style={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: "50%",
+                          background: "var(--mantine-color-white)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          border: "1px solid var(--mantine-color-slate-2)",
+                        }}
+                      >
+                        <IconFileText
+                          size={26}
+                          color="var(--mantine-color-slate-4)"
+                        />
+                      </Box>
+                      <Text ta="center" c="slate.5" fz="xs">
+                        No prescreening applications match your filters.
+                      </Text>
+                    </Stack>
+                  </Table.Td>
+                </Table.Tr>
+              ) : (
+                rows.map((row) => {
+                  const scale = STATUS_COLOR[row.original.status] ?? "slate";
+                  const cells = row.getVisibleCells();
+                  return (
+                    <Table.Tr
+                      key={row.id}
+                      className="lms-row"
+                      style={{ cursor: "pointer" }}
+                    >
+                      {cells.map((cell, idx) => (
+                        <Table.Td
+                          key={cell.id}
+                          style={{
+                            padding: "10px 10px",
+                            borderLeft:
+                              idx === 0
+                                ? `3px solid var(--mantine-color-${scale}-4)`
+                                : undefined,
+                          }}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </Table.Td>
+                      ))}
+                    </Table.Tr>
+                  );
+                })
+              )}
+            </Table.Tbody>
+          </Table>
         </Box>
+
         {/* Pagination Footer */}
         <Group justify="space-between" px="sm" pt="xs" pb="xs">
           <Group
@@ -548,7 +549,7 @@ export function PrescreeningTable() {
                 : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
             </span>
             <Group gap="xs">
-              <span>Rows:</span>                  
+              <span>Rows:</span>
               <Select
                 data={["10", "20", "50"]}
                 value={String(pageSize)}

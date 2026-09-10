@@ -143,6 +143,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText, modules: ["Loan Application"] },
       { path: "/origination/prescreening", label: "Prescreening", icon: IconFileText, modules: ["Loan Application"] },
       { path: "/origination/enrichment", label: "Enrichment", icon: IconFileText, modules: ["Loan Application"] },
+      { path: "/origination/underwriting", label: "Underwriting", icon: IconFileText, modules: ["Loan Application"] },
     ],
   },
   {

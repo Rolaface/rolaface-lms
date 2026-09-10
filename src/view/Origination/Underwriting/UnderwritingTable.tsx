@@ -27,7 +27,6 @@ import {
   IconSearch,
   IconFileText,
   IconEye,
-  IconDatabase,
   IconTrash,
   IconDotsVertical,
   IconGavel,
@@ -40,6 +39,7 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
+import type { SortingState } from "@tanstack/react-table";
 
 // MOCK DATA for Underwriting
 export interface UnderwritingRow {
@@ -184,8 +184,8 @@ export function UnderwritingTable() {
   const [status, setStatus] = useState("All");
   const [applicationType, setApplicationType] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  const [sorting, setSorting] = useState([]);
-  
+  const [sorting, setSorting] = useState<SortingState>([]);
+
   // Filter data
   const filteredData = useMemo(() => {
     return MOCK_DATA.filter((item) => {
@@ -261,7 +261,7 @@ export function UnderwritingTable() {
             Actions
           </Text>
         ),
-        cell: (info) => (
+        cell: () => (
           <Group gap={6} justify="flex-end" wrap="nowrap" className="lms-row-actions">
             <Tooltip label="View Details" withArrow>
               <ActionIcon size="sm" variant="subtle" color="gray">
@@ -306,6 +306,7 @@ export function UnderwritingTable() {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
+  const rows = table.getRowModel().rows;
   const totalRows = filteredData.length;
   const { pageIndex, pageSize } = pagination;
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
@@ -315,30 +316,30 @@ export function UnderwritingTable() {
     <Box p="md">
       {/* Header */}
       <Group justify="space-between" align="flex-end" mb="lg">
-          <Group gap="sm">
-            <Box
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: "var(--mantine-radius-md)",
-                background: "var(--mantine-color-brand-0)",
-                color: "var(--mantine-color-brand-6)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <IconGavel size={22} />
-            </Box>
-            <Stack gap={2}>
-              <Title order={2} fz={22} fw={800} c="slate.9">
-                Underwriting
-              </Title>
-              <Text fz="sm" c="slate.5">
-                Review application risk and make final credit decisions
-              </Text>
-            </Stack>
-          </Group>
+        <Group gap="sm">
+          <Box
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: "var(--mantine-radius-md)",
+              background: "var(--mantine-color-brand-0)",
+              color: "var(--mantine-color-brand-6)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <IconGavel size={22} />
+          </Box>
+          <Stack gap={2}>
+            <Title order={2} fz={22} fw={800} c="slate.9">
+              Underwriting
+            </Title>
+            <Text fz="sm" c="slate.5">
+              Review application risk and make final credit decisions
+            </Text>
+          </Stack>
+        </Group>
       </Group>
 
       {/* Toolbar */}
@@ -395,9 +396,10 @@ export function UnderwritingTable() {
             }}
             data={[
               { label: "All", value: "All" },
-              { label: "Pending", value: "Pending Data" },
-              { label: "Enriched", value: "Enriched" },
-              { label: "Failed", value: "Failed" },
+              { label: "Not Started", value: "Not Started" },
+              { label: "In Progress", value: "In Progress" },
+              { label: "Ready", value: "Ready for Decision" },
+              { label: "Completed", value: "Completed" },
             ]}
           />
 
@@ -552,44 +554,45 @@ export function UnderwritingTable() {
           </Table.Tbody>
         </Table>
       </Box>
-        {/* Pagination Footer */}
-        <Group justify="space-between" px="sm" pt="xs" pb="xs">
-          <Group
-            gap="sm"
-            c="slate.6"
-            style={{ fontSize: "var(--mantine-font-size-xs)" }}
-          >
-            <span>
-              {totalRows === 0
-                ? "Showing 0 of 0"
-                : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-            </span>
-            <Group gap="xs">
-              <span>Rows:</span>                  
-              <Select
-                data={["10", "20", "50"]}
-                value={String(pageSize)}
-                onChange={(v) =>
-                  setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
-                }
-                rightSection={<IconChevronDown size={14} style={{ opacity: 0.6 }} />}
-                size="xs"
-                radius="xl"
-                w={60}
-              />
-            </Group>
+
+      {/* Pagination Footer */}
+      <Group justify="space-between" px="sm" pt="xs" pb="xs">
+        <Group
+          gap="sm"
+          c="slate.6"
+          style={{ fontSize: "var(--mantine-font-size-xs)" }}
+        >
+          <span>
+            {totalRows === 0
+              ? "Showing 0 of 0"
+              : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+          </span>
+          <Group gap="xs">
+            <span>Rows:</span>
+            <Select
+              data={["10", "20", "50"]}
+              value={String(pageSize)}
+              onChange={(v) =>
+                setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
+              }
+              rightSection={<IconChevronDown size={14} style={{ opacity: 0.6 }} />}
+              size="xs"
+              radius="xl"
+              w={60}
+            />
           </Group>
-          <Pagination
-            total={table.getPageCount() || 1}
-            value={pageIndex + 1}
-            onChange={(p) =>
-              setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
-            }
-            color="brand"
-            size="xs"
-            radius="xl"
-          />
         </Group>
+        <Pagination
+          total={table.getPageCount() || 1}
+          value={pageIndex + 1}
+          onChange={(p) =>
+            setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
+          }
+          color="brand"
+          size="xs"
+          radius="xl"
+        />
+      </Group>
     </Box>
   );
 }

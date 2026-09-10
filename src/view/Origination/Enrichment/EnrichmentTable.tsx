@@ -39,6 +39,7 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
+import type { SortingState } from "@tanstack/react-table";
 
 // MOCK DATA for Enrichment
 export interface EnrichmentRow {
@@ -159,15 +160,6 @@ function ApplicationIdCell({ name }: { name: string }) {
       </Text>
     </Group>
   );
-  }
-
-: { sorted: false | "asc" | "desc" }) {
-  const color = sorted
-    ? "var(--mantine-color-brand-6)"
-    : "var(--mantine-color-slate-4)";
-  if (sorted === "asc") return <IconChevronUp size={12} color={color} />;
-  if (sorted === "desc") return <IconChevronDown size={12} color={color} />;
-  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
 export function EnrichmentTable() {
@@ -176,8 +168,8 @@ export function EnrichmentTable() {
   const [status, setStatus] = useState("All");
   const [applicationType, setApplicationType] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  const [sorting, setSorting] = useState([]);
-  
+  const [sorting, setSorting] = useState<SortingState>([]);
+
   // Filter data
   const filteredData = useMemo(() => {
     return MOCK_DATA.filter((item) => {
@@ -245,7 +237,7 @@ export function EnrichmentTable() {
             Actions
           </Text>
         ),
-        cell: (info) => (
+        cell: () => (
           <Group gap={6} justify="flex-end" wrap="nowrap" className="lms-row-actions">
             <Tooltip label="View Details" withArrow>
               <ActionIcon size="sm" variant="subtle" color="gray">
@@ -290,6 +282,7 @@ export function EnrichmentTable() {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
+  const rows = table.getRowModel().rows;
   const totalRows = filteredData.length;
   const { pageIndex, pageSize } = pagination;
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
@@ -537,45 +530,45 @@ export function EnrichmentTable() {
           </Table.Tbody>
         </Table>
       </Box>
-        {/* Pagination Footer */}
-        <Group justify="space-between" px="sm" pt="xs" pb="xs">
-          <Group
-            gap="sm"
-            c="slate.6"
-            style={{ fontSize: "var(--mantine-font-size-xs)" }}
-          >
-            <span>
-              {totalRows === 0
-                ? "Showing 0 of 0"
-                : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-            </span>
-            <Group gap="xs">
-              <span>Rows:</span>                  
-              <Select
-                data={["10", "20", "50"]}
-                value={String(pageSize)}
-                onChange={(v) =>
-                  setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
-                }
-                rightSection={<IconChevronDown size={14} style={{ opacity: 0.6 }} />}
-                size="xs"
-                radius="xl"
-                w={60}
-              />
-            </Group>
+
+      {/* Pagination Footer */}
+      <Group justify="space-between" px="sm" pt="xs" pb="xs">
+        <Group
+          gap="sm"
+          c="slate.6"
+          style={{ fontSize: "var(--mantine-font-size-xs)" }}
+        >
+          <span>
+            {totalRows === 0
+              ? "Showing 0 of 0"
+              : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+          </span>
+          <Group gap="xs">
+            <span>Rows:</span>
+            <Select
+              data={["10", "20", "50"]}
+              value={String(pageSize)}
+              onChange={(v) =>
+                setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
+              }
+              rightSection={<IconChevronDown size={14} style={{ opacity: 0.6 }} />}
+              size="xs"
+              radius="xl"
+              w={60}
+            />
           </Group>
-          <Pagination
-            total={table.getPageCount() || 1}
-            value={pageIndex + 1}
-            onChange={(p) =>
-              setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
-            }
-            color="brand"
-            size="xs"
-            radius="xl"
-          />
         </Group>
-      </Paper>
+        <Pagination
+          total={table.getPageCount() || 1}
+          value={pageIndex + 1}
+          onChange={(p) =>
+            setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
+          }
+          color="brand"
+          size="xs"
+          radius="xl"
+        />
+      </Group>
     </Box>
   );
 }
