@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
 import {
   Box,
   Button,
@@ -20,7 +21,6 @@ import {
 } from "@mantine/core";
 import {
   IconPencil,
-  IconPlus,
   IconChevronUp,
   IconChevronDown,
   IconSelector,
@@ -219,7 +219,7 @@ export function OfferIssuanceStage() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState("");
   const [offerStatus, setOfferStatus] = useState("all");
-  const [applicationType, setApplicationType] = useState<string | null>(null);
+  const [applicationTypes, setApplicationTypes] = useState<string[]>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -231,11 +231,11 @@ export function OfferIssuanceStage() {
         !q ||
         item.name.toLowerCase().includes(q) ||
         item.applicant.toLowerCase().includes(q);
-      const matchesType = !applicationType || applicationType === "All Types";
+      // Mock data doesn't carry application_type for Offers; kept for future wiring.
       const matchesStatus = offerStatus === "all" || item.offerStatus === offerStatus;
-      return matchesSearch && matchesType && matchesStatus;
+      return matchesSearch && matchesStatus;
     });
-  }, [search, offerStatus, applicationType]);
+  }, [search, offerStatus, applicationTypes]);
 
   const columns = useMemo(
     () => [
@@ -355,8 +355,9 @@ export function OfferIssuanceStage() {
 
   const resetFilters = () => {
     setSearch("");
-    setApplicationType(null);
+    setApplicationTypes([]);
     setOfferStatus("all");
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
   };
 
   return (
@@ -394,7 +395,7 @@ export function OfferIssuanceStage() {
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
-              Offer &amp; Signing
+              Offers
             </Title>
             <Text fz="sm" c="slate.5">
               Issue offers, track acceptance, and manage contract execution
@@ -429,20 +430,18 @@ export function OfferIssuanceStage() {
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
-          <Select
-            size="sm"
-            radius="xl"
+          <FilterMultiSelect
             placeholder="All Types"
-            data={["Personal loan", "Business loan", "Mortgage"]}
-            w={166}
-            searchable
-            clearable
-            rightSection={chevronDown}
-            value={applicationType}
+            data={[
+              { label: "Personal loan", value: "Personal loan" },
+              { label: "Business loan", value: "Business loan" },
+            ]}
+            value={applicationTypes}
             onChange={(v) => {
-              setApplicationType(v);
+              setApplicationTypes(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
+            width={180}
           />
 
           <SegmentedControl
@@ -473,27 +472,15 @@ export function OfferIssuanceStage() {
             >
               Reset
             </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={() => {}}
-              leftSection={<IconPlus size={14} />}
-              style={{
-                background: theme.other.brandGradient,
-                boxShadow: theme.other.brandGlowShadowSm,
-              }}
-            >
-              Issue Offer
-            </Button>
           </Group>
         </Group>
       </Paper>
 
-      {/* Data Table */}
-      <Box style={{ overflowX: "auto" }}>
-        <Table
-          verticalSpacing="sm"
+      {/* Data Table + Pagination (tight gap so pagination sits close to table) */}
+      <Stack gap="xs">
+        <Box style={{ overflowX: "auto" }}>
+          <Table
+            verticalSpacing="sm"
             horizontalSpacing="sm"
             fz="xs"
             w="100%"
@@ -652,6 +639,7 @@ export function OfferIssuanceStage() {
             radius="xl"
           />
         </Group>
+      </Stack>
     </Stack>
   );
 }
