@@ -391,10 +391,17 @@ export async function updateCustomer(
   return response.data.message.data;
 }
 
-export async function deleteCustomer(customerId: string): Promise<void> {
-  await api.delete(CUSTOMER_ENDPOINTS.delete, {
-    params: { id: customerId },
-  });
+export async function deleteCustomer(customerId: string) {
+  const response = await api.delete(
+    CUSTOMER_ENDPOINTS.delete,
+    {
+      params: {
+        id: customerId,
+      },
+    },
+  );
+
+  return response.data;
 }
 
 export async function getCustomerById(id: string): Promise<CustomerDetailRaw> {
@@ -430,3 +437,5 @@ export async function uploadCustomerDocument(file: File): Promise<string> {
   }
   return fileUrl;
 }
+
+
