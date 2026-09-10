@@ -133,6 +133,21 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
           //   label: "Temp Product Assignment",
           //   icon: IconBrandProducthunt,
           // },  
+           {
+            path: "/origination-setup/enrichment-stage",
+            label: "Enrichment Stage",
+            icon: IconBrandProducthunt,
+          }, 
+           {
+            path: "/origination-setup/loanApplication-tabs",
+            label: "Loan Application Tabs",
+            icon: IconBrandProducthunt,
+          }, 
+          {
+            path: "/origination-setup/pre-screening-stage",
+            label: "Pre-Screening Stage",
+            icon: IconBrandProducthunt,
+          }, 
         ],
       },
   {
