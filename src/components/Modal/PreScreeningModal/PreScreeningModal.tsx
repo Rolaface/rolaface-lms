@@ -1603,37 +1603,41 @@ function DecisionCard({
       : { bg: "red.0", border: "red.2", icon: IconCircleX, color: "red.6" };
   const Icon = tone.icon;
 
-  // Compact pill-style status instead of a large card
+  // Full-width card status
   return (
     <Box
-      px="sm"
-      py={8}
+      p="md"
       bg={tone.bg}
       style={{
         border: `1px solid var(--mantine-color-${tone.border.replace(".", "-")})`,
         borderRadius: "var(--mantine-radius-md)",
-        display: "inline-flex",
       }}
     >
-      <Stack gap={8}>
+      <Stack gap={10}>
         <Group gap={8} wrap="nowrap">
-          <Icon size={16} color={`var(--mantine-color-${tone.color.replace(".", "-")})`} />
+          <Icon size={18} color={`var(--mantine-color-${tone.color.replace(".", "-")})`} />
           {isEligible && (
-            <Text fz={12.5} fw={700} c="green.8">
+            <Text fz={14.5} fw={700} c="slate.9">
               Prescreening passed
             </Text>
           )}
           {isPartial && (
-            <Text fz={12.5} fw={700} c="orange.8">
+            <Text fz={14.5} fw={700} c="orange.8">
               Amount adjustment required
             </Text>
           )}
           {isFailed && (
-            <Text fz={12.5} fw={700} c="red.7">
+            <Text fz={14.5} fw={700} c="red.7">
               Prescreening failed
             </Text>
           )}
         </Group>
+
+        {isEligible && (
+          <Text fz={12.5} fw={500} c="green.8">
+            The requested amount of {zmw(requested)} is within the customer's eligibility.
+          </Text>
+        )}
 
         {isPartial && (
           <Group gap={16}>
@@ -1665,29 +1669,40 @@ function DecisionCard({
         )}
 
         {!readOnly && (
-          <Group gap={10}>
+          <Box mt={4}>
             {isEligible && (
               <Button
-                size="xs"
-                color="green"
+                size="sm"
+                color="green.6"
                 radius="md"
-                rightSection={<IconArrowRight size={13} />}
                 onClick={onContinue}
+                rightSection={<IconArrowRight size={14} />}
               >
                 Continue to enrichment
               </Button>
             )}
             {isPartial && !confirm && (
-              <>
-                <Button size="xs" color="orange" radius="md" onClick={() => onReview("useEligible")}>
-                  Use {zmw(eligibleAmount)}
-                </Button>
-                <Button size="xs" variant="default" radius="md" onClick={() => onReview("review")}>
-                  Review application
-                </Button>
-              </>
+              <Button
+                size="sm"
+                variant="light"
+                color="orange"
+                radius="md"
+                onClick={() => onReview("useEligible")}
+              >
+                Use eligible amount
+              </Button>
             )}
-          </Group>
+            {isFailed && (
+              <Button
+                size="sm"
+                variant="default"
+                radius="md"
+                onClick={() => onReview("review")}
+              >
+                Review overrides
+              </Button>
+            )}
+          </Box>
         )}
       </Stack>
     </Box>
@@ -1985,17 +2000,15 @@ function PrescreeningWorkspace({
         setCalcOpen={setCalcOpen}
         recalcFlash={flash}
         decisionSlot={
-          <>
-            <DecisionCard
-              calc={calc}
-              requested={requested}
-              onContinue={() => setContinued(true)}
-              onUseEligible={handleUseEligible}
-              onReview={(a) => a === "useEligible" && setConfirm(true)}
-              confirm={confirm}
-              readOnly={readOnly}
-            />
-          </>
+          <DecisionCard
+            calc={calc}
+            requested={requested}
+            onContinue={() => setContinued(true)}
+            onUseEligible={handleUseEligible}
+            onReview={(a) => a === "useEligible" && setConfirm(true)}
+            confirm={confirm}
+            readOnly={readOnly}
+          />
         }
       />
 
