@@ -59,6 +59,15 @@ const POLICY: Record<
 
 type SourceKind = "bureau" | "hrms" | "application" | "manual" | "unavailable" | "none";
 
+interface LiabilityRecord {
+  institution: string;
+  facilityType: string;
+  outstanding: number;
+  monthlyPayment: number;
+  status: string;
+  source: SourceKind;
+}
+
 interface ScenarioDef {
   label: string;
   credit: number | null;
@@ -67,6 +76,11 @@ interface ScenarioDef {
   obligationsSource: SourceKind;
   income: number | null;
   incomeSource: SourceKind;
+  riskBand?: string;
+  activeAccounts?: number;
+  delinquentAccounts?: number;
+  recentEnquiries?: number;
+  liabilities?: LiabilityRecord[];
 }
 
 const SCENARIOS: Record<string, ScenarioDef> = {
@@ -78,6 +92,28 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     obligationsSource: "bureau",
     income: 13100,
     incomeSource: "hrms",
+    riskBand: "Low",
+    activeAccounts: 2,
+    delinquentAccounts: 0,
+    recentEnquiries: 1,
+    liabilities: [
+      {
+        institution: "Capital Finance",
+        facilityType: "Personal Loan",
+        outstanding: 24000,
+        monthlyPayment: 2400,
+        status: "Active",
+        source: "bureau",
+      },
+      {
+        institution: "Horizon Credit",
+        facilityType: "Credit Card",
+        outstanding: 14500,
+        monthlyPayment: 1450,
+        status: "Active",
+        source: "bureau",
+      },
+    ],
   },
   eligible: {
     label: "Fully eligible",
@@ -87,6 +123,20 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     obligationsSource: "bureau",
     income: 22000,
     incomeSource: "hrms",
+    riskBand: "Low",
+    activeAccounts: 1,
+    delinquentAccounts: 0,
+    recentEnquiries: 0,
+    liabilities: [
+      {
+        institution: "Metro Lending",
+        facilityType: "Auto Loan",
+        outstanding: 22000,
+        monthlyPayment: 2200,
+        status: "Active",
+        source: "bureau",
+      },
+    ],
   },
   failed: {
     label: "Failed — credit score below minimum",
@@ -96,6 +146,36 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     obligationsSource: "bureau",
     income: 13100,
     incomeSource: "hrms",
+    riskBand: "High",
+    activeAccounts: 3,
+    delinquentAccounts: 2,
+    recentEnquiries: 5,
+    liabilities: [
+      {
+        institution: "Capital Finance",
+        facilityType: "Personal Loan",
+        outstanding: 19000,
+        monthlyPayment: 1900,
+        status: "Active",
+        source: "bureau",
+      },
+      {
+        institution: "Horizon Credit",
+        facilityType: "Credit Card",
+        outstanding: 11000,
+        monthlyPayment: 1000,
+        status: "Delinquent",
+        source: "bureau",
+      },
+      {
+        institution: "Apex Lending",
+        facilityType: "Overdraft",
+        outstanding: 8500,
+        monthlyPayment: 950,
+        status: "Delinquent",
+        source: "bureau",
+      },
+    ],
   },
   bureauDown: {
     label: "Bureau unavailable — needs manual entry",
@@ -105,6 +185,7 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     obligationsSource: "unavailable",
     income: 13100,
     incomeSource: "hrms",
+    liabilities: [],
   },
   incomplete: {
     label: "Incomplete — income not yet available",
@@ -114,6 +195,28 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     obligationsSource: "bureau",
     income: null,
     incomeSource: "none",
+    riskBand: "Low",
+    activeAccounts: 2,
+    delinquentAccounts: 0,
+    recentEnquiries: 1,
+    liabilities: [
+      {
+        institution: "Capital Finance",
+        facilityType: "Personal Loan",
+        outstanding: 24000,
+        monthlyPayment: 2400,
+        status: "Active",
+        source: "bureau",
+      },
+      {
+        institution: "Horizon Credit",
+        facilityType: "Credit Card",
+        outstanding: 14500,
+        monthlyPayment: 1450,
+        status: "Active",
+        source: "bureau",
+      },
+    ],
   },
 };
 
@@ -497,12 +600,17 @@ interface FieldState {
 interface CreditState extends FieldState {
   value: number | null;
   source: SourceKind;
+  riskBand: string | null;
+  activeAccounts: number | null;
+  delinquentAccounts: number | null;
+  recentEnquiries: number | null;
 }
 interface LiabilitiesState extends FieldState {
   obligations: number | null;
   activeLoans: number | null;
   outstanding: number | null;
   source: SourceKind;
+  records: LiabilityRecord[];
 }
 interface IncomeState extends FieldState {
   value: number | null;
@@ -516,6 +624,7 @@ interface PrescreeningState {
 
 function buildInitialState(scenarioKey: string): PrescreeningState {
   const s = SCENARIOS[scenarioKey];
+  const records = s.liabilities ?? [];
   return {
     credit: {
       value: s.credit,
@@ -523,15 +632,20 @@ function buildInitialState(scenarioKey: string): PrescreeningState {
       status: "idle",
       manual: s.creditSource === "unavailable",
       reason: "",
+      riskBand: s.riskBand ?? null,
+      activeAccounts: s.activeAccounts ?? null,
+      delinquentAccounts: s.delinquentAccounts ?? null,
+      recentEnquiries: s.recentEnquiries ?? null,
     },
     liabilities: {
       obligations: s.obligations,
-      activeLoans: s.obligations != null ? 2 : null,
+      activeLoans: records.length || (s.obligations != null ? 2 : null),
       outstanding: s.obligations != null ? Math.round(s.obligations * 10) : null,
       source: s.obligationsSource,
       status: "idle",
       manual: s.obligationsSource === "unavailable",
       reason: "",
+      records,
     },
     income: {
       value: s.income,
@@ -600,7 +714,7 @@ function ComparisonBar({
           Eligible: {zmw(eligible)}
         </Text>
         <Text fz={11} c="slate.5">
-          Requested marker: {zmw(requested)}
+          Requested amount: {zmw(requested)}
         </Text>
       </Group>
     </Box>
@@ -757,6 +871,39 @@ function CompactRow({
         {action}
       </Group>
     </Box>
+  );
+}
+
+function StatMini({
+  icon: Icon,
+  label,
+  value,
+  sublabel,
+}: {
+  icon: React.FC<any>;
+  label: string;
+  value: React.ReactNode;
+  sublabel?: string;
+}) {
+  return (
+    <Group gap={8} align="flex-start" wrap="nowrap">
+      <ThemeIcon radius="sm" size={22} variant="light" color="slate">
+        <Icon size={12} color="var(--mantine-color-slate-6)" />
+      </ThemeIcon>
+      <Box style={{ minWidth: 0 }}>
+        <Text fz={10.5} c="slate.5" truncate>
+          {label}
+        </Text>
+        {sublabel && (
+          <Text fz={9.5} c="slate.4" mt={-2}>
+            · {sublabel}
+          </Text>
+        )}
+        <Text fz={13} fw={700} c="slate.9" mt={1}>
+          {value}
+        </Text>
+      </Box>
+    </Group>
   );
 }
 
@@ -939,7 +1086,7 @@ function PrescreeningOverview({
                 <IconGauge size={11} />
               </ThemeIcon>
               <Text fz={12} fw={700} c="slate.9">
-                Credit Score
+                Credit bureau summary
               </Text>
             </Group>
             {!readOnly && credit.status !== "loading" && (
@@ -960,83 +1107,191 @@ function PrescreeningOverview({
             loading={credit.status === "loading"}
           />
 
-          <Box mt={4}>
-            <CompactRow
-              last
-              label="Existing liabilities"
-              value={
-                liab.status === "loading"
-                  ? "Fetching…"
-                  : liab.manual
-                    ? (
-                      <TextInput
-                        radius="sm"
-                        size="xs"
-                        type="number"
-                        value={liab.obligations ?? ""}
-                        onChange={(e) =>
-                          dispatch({
-                            type: "setObligations",
-                            value: e.currentTarget.value === "" ? null : Number(e.currentTarget.value),
-                          })
-                        }
-                        placeholder="e.g. 5000"
-                        styles={{ input: { fontSize: 14, fontWeight: 700, height: 30 } }}
-                      />
-                    )
-                    : liab.source === "unavailable"
-                      ? "—"
-                      : `${zmw(liab.obligations)}/mo`
-              }
-              subtext={
-                liab.manual
-                  ? undefined
-                  : liab.source === "unavailable"
-                    ? "Bureau unavailable"
-                    : liab.status !== "loading"
-                      ? `${liab.activeLoans ?? "—"} active loans · ${zmw(liab.outstanding)} outstanding`
-                      : undefined
-              }
-              badge={
-                !liab.manual && liab.status !== "loading" ? (
-                  <SourceBadge source={liab.source} />
-                ) : liab.manual ? (
-                  <SourceBadge source="manual" />
-                ) : undefined
-              }
-              action={
-                !readOnly && liab.status !== "loading" ? (
-                  <Group gap={12} wrap="nowrap">
-                    {!liab.manual && (
-                      <UnstyledButton onClick={() => dispatch({ type: "fetchLiabilities" })}>
-                        <Group gap={4} wrap="nowrap">
-                          <IconRefresh size={11} color="var(--mantine-color-brand-6)" />
-                          <Text fz={11.5} fw={600} c="brand.6">
-                            Refresh
-                          </Text>
-                        </Group>
-                      </UnstyledButton>
-                    )}
-                    {liab.manual ? (
-                      <UnstyledButton onClick={() => dispatch({ type: "manualLiabilities", on: false })}>
-                        <Text fz={11.5} fw={600} c="brand.6">
-                          Use source value
-                        </Text>
-                      </UnstyledButton>
-                    ) : (
-                      <UnstyledButton onClick={() => dispatch({ type: "manualLiabilities", on: true })}>
-                        <Text fz={11.5} fw={600} c="brand.6">
-                          Enter manually
-                        </Text>
-                      </UnstyledButton>
-                    )}
-                  </Group>
-                ) : undefined
-              }
-            />
-          </Box>
+          {credit.status !== "loading" && credit.riskBand != null && (
+            <SimpleGrid cols={3} spacing={10} mt={8}>
+              <StatMini
+                icon={IconAlertCircle}
+                label="Risk Band"
+                sublabel="BUREAU"
+                value={credit.riskBand ?? "—"}
+              />
+              <StatMini
+                icon={IconFileText}
+                label="Active Accounts"
+                sublabel="BUREAU"
+                value={credit.activeAccounts ?? "—"}
+              />
+              <StatMini
+                icon={IconAlertTriangle}
+                label="Delinquent Accounts"
+                sublabel="BUREAU"
+                value={credit.delinquentAccounts ?? "—"}
+              />
+              <StatMini
+                icon={IconGauge}
+                label="Total Outstanding"
+                sublabel="BUREAU"
+                value={zmw(liab.outstanding)}
+              />
+              <StatMini
+                icon={IconRefresh}
+                label="Monthly Obligations"
+                sublabel="BUREAU"
+                value={zmw(liab.obligations)}
+              />
+              <StatMini
+                icon={IconHelp}
+                label="Recent Enquiries"
+                sublabel="BUREAU"
+                value={credit.recentEnquiries ?? "—"}
+              />
+            </SimpleGrid>
+          )}
         </Paper>
       </SimpleGrid>
+
+      {!liab.manual && (liab.records ?? []).length > 0 && liab.status !== "loading" && (
+        <Paper withBorder radius="md" mt={10} style={{ overflow: "hidden" }}>
+          <Group
+            justify="space-between"
+            px="sm"
+            py={8}
+            style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}
+          >
+            <Text fz={12} fw={700} c="slate.9">
+              Liabilities
+            </Text>
+            {!readOnly && (
+              <Group gap={14}>
+                <UnstyledButton onClick={() => dispatch({ type: "fetchLiabilities" })}>
+                  <Group gap={4} wrap="nowrap">
+                    <IconRefresh size={11} color="var(--mantine-color-brand-6)" />
+                    <Text fz={11.5} fw={600} c="brand.6">
+                      Refresh
+                    </Text>
+                  </Group>
+                </UnstyledButton>
+                <UnstyledButton onClick={() => dispatch({ type: "manualLiabilities", on: true })}>
+                  <Text fz={11.5} fw={600} c="brand.6">
+                    Enter manually
+                  </Text>
+                </UnstyledButton>
+              </Group>
+            )}
+          </Group>
+          <Table fz={12} verticalSpacing={8} horizontalSpacing="sm">
+            <Table.Thead bg="slate.0">
+              <Table.Tr>
+                <Table.Th>Source</Table.Th>
+                <Table.Th>Institution</Table.Th>
+                <Table.Th>Facility Type</Table.Th>
+                <Table.Th>Outstanding</Table.Th>
+                <Table.Th>Monthly Payment</Table.Th>
+                <Table.Th>Status</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {(liab.records ?? []).map((r, i) => (
+                <Table.Tr key={i}>
+                  <Table.Td>
+                    <Badge size="xs" radius="sm" color="orange" variant="light">
+                      Bureau
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text fz={12.5} c="slate.9">
+                      {r.institution}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text fz={12.5} c="slate.7">
+                      {r.facilityType}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text fz={12.5} c="slate.9">
+                      {zmw(r.outstanding)}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text fz={12.5} c="slate.9">
+                      {zmw(r.monthlyPayment)}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text
+                      fz={11.5}
+                      fw={600}
+                      c={r.status === "Active" ? "green.7" : "red.6"}
+                    >
+                      {r.status}
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Paper>
+      )}
+
+      {liab.status === "loading" && (
+        <Paper withBorder radius="md" mt={10} p="md" ta="center">
+          <Text fz={12.5} c="slate.5">
+            Fetching liabilities…
+          </Text>
+        </Paper>
+      )}
+
+      {liab.manual && (
+        <Paper withBorder radius="md" mt={10} p="sm">
+          <Group justify="space-between" mb={8}>
+            <Text fz={12} fw={700} c="slate.9">
+              Liabilities (manual entry)
+            </Text>
+            {!readOnly && (
+              <UnstyledButton onClick={() => dispatch({ type: "manualLiabilities", on: false })}>
+                <Text fz={11.5} fw={600} c="brand.6">
+                  Use source value
+                </Text>
+              </UnstyledButton>
+            )}
+          </Group>
+          <Text fz={11} c="slate.5" mb={4}>
+            Total monthly obligations
+          </Text>
+          <TextInput
+            radius="sm"
+            size="xs"
+            type="number"
+            value={liab.obligations ?? ""}
+            onChange={(e) =>
+              dispatch({
+                type: "setObligations",
+                value: e.currentTarget.value === "" ? null : Number(e.currentTarget.value),
+              })
+            }
+            placeholder="e.g. 5000"
+            styles={{ input: { fontSize: 14, fontWeight: 700, height: 30 } }}
+          />
+        </Paper>
+      )}
+
+      {liab.source === "unavailable" && !liab.manual && liab.status !== "loading" && (
+        <Paper withBorder radius="md" mt={10} p="sm" style={{ borderStyle: "dashed" }}>
+          <Group justify="space-between">
+            <Text fz={12} c="slate.5">
+              Liability data unavailable from the bureau.
+            </Text>
+            {!readOnly && (
+              <UnstyledButton onClick={() => dispatch({ type: "manualLiabilities", on: true })}>
+                <Text fz={11.5} fw={600} c="brand.6">
+                  Enter manually
+                </Text>
+              </UnstyledButton>
+            )}
+          </Group>
+        </Paper>
+      )}
     </Box>
   );
 }
@@ -1244,7 +1499,7 @@ function EligibilitySection({
             label="View calculation"
             onClick={() => setCalcOpen(true)}
           />
-          {decisionSlot}
+          {decisionSlot && <Box mt={4}>{decisionSlot}</Box>}
         </Stack>
       </SimpleGrid>
 
@@ -1509,7 +1764,16 @@ function reducer(state: PrescreeningState, action: any): PrescreeningState {
     case "resolveCreditFetch":
       return {
         ...state,
-        credit: { ...state.credit, status: "idle", value: action.value, source: action.source },
+        credit: {
+          ...state.credit,
+          status: "idle",
+          value: action.value,
+          source: action.source,
+          riskBand: action.riskBand ?? state.credit.riskBand,
+          activeAccounts: action.activeAccounts ?? state.credit.activeAccounts,
+          delinquentAccounts: action.delinquentAccounts ?? state.credit.delinquentAccounts,
+          recentEnquiries: action.recentEnquiries ?? state.credit.recentEnquiries,
+        },
       };
     case "manualCredit":
       return {
@@ -1537,6 +1801,7 @@ function reducer(state: PrescreeningState, action: any): PrescreeningState {
           activeLoans: action.activeLoans,
           outstanding: action.outstanding,
           source: action.source,
+          records: action.records ?? state.liabilities.records ?? [],
         },
       };
     case "manualLiabilities":
@@ -1613,7 +1878,15 @@ function PrescreeningWorkspace({
     if (state.credit.status === "loading") {
       const t = setTimeout(() => {
         const s = SCENARIOS[DEFAULT_SCENARIO];
-        dispatch({ type: "resolveCreditFetch", value: s.credit, source: s.creditSource });
+        dispatch({
+          type: "resolveCreditFetch",
+          value: s.credit,
+          source: s.creditSource,
+          riskBand: s.riskBand ?? null,
+          activeAccounts: s.activeAccounts ?? null,
+          delinquentAccounts: s.delinquentAccounts ?? null,
+          recentEnquiries: s.recentEnquiries ?? null,
+        });
       }, 700);
       return () => clearTimeout(t);
     }
@@ -1623,12 +1896,14 @@ function PrescreeningWorkspace({
     if (state.liabilities.status === "loading") {
       const t = setTimeout(() => {
         const s = SCENARIOS[DEFAULT_SCENARIO];
+        const records = s.liabilities ?? [];
         dispatch({
           type: "resolveLiabFetch",
           obligations: s.obligations,
-          activeLoans: s.obligations != null ? 2 : null,
+          activeLoans: records.length || (s.obligations != null ? 2 : null),
           outstanding: s.obligations != null ? Math.round(s.obligations * 10) : null,
           source: s.obligationsSource,
+          records,
         });
       }, 700);
       return () => clearTimeout(t);
@@ -1645,11 +1920,6 @@ function PrescreeningWorkspace({
     }
   }, [state.income.status]);
 
-  // NOTE: this no longer waits for every field's `status` to be "idle"
-  // before producing a result. It calculates off whatever values are
-  // currently held (which are never cleared while a single field is
-  // refreshing), so refreshing one field (e.g. credit score) doesn't
-  // blank out the eligibility section or the rest of the form.
   const calc = useMemo(() => {
     return calcEligibility({
       income: state.income.value,
@@ -1723,7 +1993,7 @@ function PrescreeningWorkspace({
         productMax={policy.productMax}
       />
 
-      {/* <SectionLabel>Eligibility calculation</SectionLabel> */}
+      <SectionLabel>Eligibility calculation</SectionLabel>
       <EligibilitySection
         calc={calc}
         requested={requested}
@@ -1742,7 +2012,7 @@ function PrescreeningWorkspace({
         recalcFlash={flash}
         decisionSlot={
           <>
-            {/* <SectionLabel>Prescreening result</SectionLabel> */}
+            <SectionLabel>Prescreening result</SectionLabel>
             <DecisionCard
               calc={calc}
               requested={requested}
