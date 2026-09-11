@@ -88,7 +88,7 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     label: "Eligible for a lower amount",
     credit: 742,
     creditSource: "bureau",
-    obligations: 3850,
+    obligations: 1200,
     obligationsSource: "bureau",
     income: 13100,
     incomeSource: "hrms",
@@ -98,18 +98,18 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     recentEnquiries: 1,
     liabilities: [
       {
-        institution: "Capital Finance",
+        institution: "Zanaco",
         facilityType: "Personal Loan",
-        outstanding: 24000,
-        monthlyPayment: 2400,
+        outstanding: 12500,
+        monthlyPayment: 850,
         status: "Active",
         source: "bureau",
       },
       {
-        institution: "Horizon Credit",
+        institution: "Absa",
         facilityType: "Credit Card",
-        outstanding: 14500,
-        monthlyPayment: 1450,
+        outstanding: 6000,
+        monthlyPayment: 350,
         status: "Active",
         source: "bureau",
       },
@@ -1045,7 +1045,7 @@ function PrescreeningOverview({
 
           {calc && calc.mandatoryPassed && (
             <Paper withBorder radius="md" p={8} style={{ flex: 1 }}>
-              <Group justify="space-between" mb={3}>
+              <Group justify="space-between" mb={3} mt={12}>
                 <Box>
                   <Text fz={10.5} c="slate.5">
                     Requested loan
@@ -1147,151 +1147,103 @@ function PrescreeningOverview({
               />
             </SimpleGrid>
           )}
+
+          {/* Existing liabilities — inside the credit bureau card */}
+          <Box
+            mt={8}
+            pt={8}
+            style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}
+          >
+            <CompactRow
+              last
+              label="Existing liabilities"
+              value={
+                liab.status === "loading"
+                  ? "Fetching…"
+                  : liab.manual
+                    ? (
+                      <TextInput
+                        radius="sm"
+                        size="xs"
+                        type="number"
+                        value={liab.obligations ?? ""}
+                        onChange={(e) =>
+                          dispatch({
+                            type: "setObligations",
+                            value: e.currentTarget.value === "" ? null : Number(e.currentTarget.value),
+                          })
+                        }
+                        placeholder="e.g. 5000"
+                        styles={{ input: { fontSize: 14, fontWeight: 700, height: 30 } }}
+                      />
+                    )
+                    : liab.source === "unavailable"
+                      ? "—"
+                      : `${zmw(liab.obligations)}/mo`
+              }
+              subtext={
+                liab.manual
+                  ? undefined
+                  : liab.source === "unavailable"
+                    ? "Bureau unavailable"
+                    : liab.status !== "loading"
+                      ? `${liab.activeLoans ?? "—"} active loans · ${zmw(liab.outstanding)} outstanding`
+                      : undefined
+              }
+              badge={
+                !liab.manual && liab.status !== "loading" ? (
+                  <SourceBadge source={liab.source} />
+                ) : liab.manual ? (
+                  <SourceBadge source="manual" />
+                ) : undefined
+              }
+              action={
+                !readOnly && liab.status !== "loading" ? (
+                  <Group gap={12} wrap="nowrap">
+                    {!liab.manual && (
+                      <UnstyledButton onClick={() => dispatch({ type: "fetchLiabilities" })}>
+                        <Group gap={4} wrap="nowrap">
+                          <IconRefresh size={11} color="var(--mantine-color-brand-6)" />
+                          <Text fz={11.5} fw={600} c="brand.6">
+                            Refresh
+                          </Text>
+                        </Group>
+                      </UnstyledButton>
+                    )}
+                    {liab.manual ? (
+                      <UnstyledButton onClick={() => dispatch({ type: "manualLiabilities", on: false })}>
+                        <Text fz={11.5} fw={600} c="brand.6">
+                          Use source value
+                        </Text>
+                      </UnstyledButton>
+                    ) : (
+                      <UnstyledButton onClick={() => dispatch({ type: "openLiabilitiesModal" })}>
+                        <Text fz={11.5} fw={600} c="brand.6">
+                          Enter manually
+                        </Text>
+                      </UnstyledButton>
+                    )}
+                  </Group>
+                ) : undefined
+              }
+            />
+            {(liab.records ?? []).length > 0 && !liab.manual && liab.status !== "loading" && (
+              <Box mt={4}>
+                <Badge
+                  size="xs"
+                  radius="xl"
+                  color="orange"
+                  variant="light"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => dispatch({ type: "openLiabilitiesModal" })}
+                >
+                  {(liab.records ?? []).length} facilities found
+                </Badge>
+              </Box>
+            )}
+          </Box>
         </Paper>
       </SimpleGrid>
-
-      {!liab.manual && (liab.records ?? []).length > 0 && liab.status !== "loading" && (
-        <Paper withBorder radius="md" mt={10} style={{ overflow: "hidden" }}>
-          <Group
-            justify="space-between"
-            px="sm"
-            py={8}
-            style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}
-          >
-            <Text fz={12} fw={700} c="slate.9">
-              Liabilities
-            </Text>
-            {!readOnly && (
-              <Group gap={14}>
-                <UnstyledButton onClick={() => dispatch({ type: "fetchLiabilities" })}>
-                  <Group gap={4} wrap="nowrap">
-                    <IconRefresh size={11} color="var(--mantine-color-brand-6)" />
-                    <Text fz={11.5} fw={600} c="brand.6">
-                      Refresh
-                    </Text>
-                  </Group>
-                </UnstyledButton>
-                <UnstyledButton onClick={() => dispatch({ type: "manualLiabilities", on: true })}>
-                  <Text fz={11.5} fw={600} c="brand.6">
-                    Enter manually
-                  </Text>
-                </UnstyledButton>
-              </Group>
-            )}
-          </Group>
-          <Table fz={12} verticalSpacing={8} horizontalSpacing="sm">
-            <Table.Thead bg="slate.0">
-              <Table.Tr>
-                <Table.Th>Source</Table.Th>
-                <Table.Th>Institution</Table.Th>
-                <Table.Th>Facility Type</Table.Th>
-                <Table.Th>Outstanding</Table.Th>
-                <Table.Th>Monthly Payment</Table.Th>
-                <Table.Th>Status</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {(liab.records ?? []).map((r, i) => (
-                <Table.Tr key={i}>
-                  <Table.Td>
-                    <Badge size="xs" radius="sm" color="orange" variant="light">
-                      Bureau
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz={12.5} c="slate.9">
-                      {r.institution}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz={12.5} c="slate.7">
-                      {r.facilityType}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz={12.5} c="slate.9">
-                      {zmw(r.outstanding)}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fz={12.5} c="slate.9">
-                      {zmw(r.monthlyPayment)}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text
-                      fz={11.5}
-                      fw={600}
-                      c={r.status === "Active" ? "green.7" : "red.6"}
-                    >
-                      {r.status}
-                    </Text>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Paper>
-      )}
-
-      {liab.status === "loading" && (
-        <Paper withBorder radius="md" mt={10} p="md" ta="center">
-          <Text fz={12.5} c="slate.5">
-            Fetching liabilities…
-          </Text>
-        </Paper>
-      )}
-
-      {liab.manual && (
-        <Paper withBorder radius="md" mt={10} p="sm">
-          <Group justify="space-between" mb={8}>
-            <Text fz={12} fw={700} c="slate.9">
-              Liabilities (manual entry)
-            </Text>
-            {!readOnly && (
-              <UnstyledButton onClick={() => dispatch({ type: "manualLiabilities", on: false })}>
-                <Text fz={11.5} fw={600} c="brand.6">
-                  Use source value
-                </Text>
-              </UnstyledButton>
-            )}
-          </Group>
-          <Text fz={11} c="slate.5" mb={4}>
-            Total monthly obligations
-          </Text>
-          <TextInput
-            radius="sm"
-            size="xs"
-            type="number"
-            value={liab.obligations ?? ""}
-            onChange={(e) =>
-              dispatch({
-                type: "setObligations",
-                value: e.currentTarget.value === "" ? null : Number(e.currentTarget.value),
-              })
-            }
-            placeholder="e.g. 5000"
-            styles={{ input: { fontSize: 14, fontWeight: 700, height: 30 } }}
-          />
-        </Paper>
-      )}
-
-      {liab.source === "unavailable" && !liab.manual && liab.status !== "loading" && (
-        <Paper withBorder radius="md" mt={10} p="sm" style={{ borderStyle: "dashed" }}>
-          <Group justify="space-between">
-            <Text fz={12} c="slate.5">
-              Liability data unavailable from the bureau.
-            </Text>
-            {!readOnly && (
-              <UnstyledButton onClick={() => dispatch({ type: "manualLiabilities", on: true })}>
-                <Text fz={11.5} fw={600} c="brand.6">
-                  Enter manually
-                </Text>
-              </UnstyledButton>
-            )}
-          </Group>
-        </Paper>
-      )}
     </Box>
   );
 }
@@ -1869,8 +1821,13 @@ function PrescreeningWorkspace({
   const [calcOpen, setCalcOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [continued, setContinued] = useState(false);
+  const [liabOpen, setLiabOpen] = useState(false);
 
   function dispatch(action: any) {
+    if (action.type === "openLiabilitiesModal") {
+      setLiabOpen(true);
+      return;
+    }
     setState((s) => reducer(s, action));
   }
 
@@ -1993,7 +1950,7 @@ function PrescreeningWorkspace({
         productMax={policy.productMax}
       />
 
-      <SectionLabel>Eligibility calculation</SectionLabel>
+
       <EligibilitySection
         calc={calc}
         requested={requested}
@@ -2025,6 +1982,126 @@ function PrescreeningWorkspace({
           </>
         }
       />
+
+      <Modal
+        opened={liabOpen}
+        onClose={() => setLiabOpen(false)}
+        title={
+          <Text fz={14.5} fw={700} c="slate.9">
+            Existing Liabilities
+          </Text>
+        }
+        radius="md"
+        size="lg"
+        centered
+        withCloseButton
+        closeButtonProps={{ icon: <IconX size={16} /> }}
+      >
+        <Box
+          style={{
+            border: "1px solid var(--mantine-color-slate-2)",
+            borderRadius: "var(--mantine-radius-md)",
+            overflow: "auto",
+          }}
+        >
+          <Table fz={12.5}>
+            <Table.Thead bg="slate.0">
+              <Table.Tr>
+                <Table.Th>Source</Table.Th>
+                <Table.Th>Institution</Table.Th>
+                <Table.Th>Facility Type</Table.Th>
+                <Table.Th>Outstanding</Table.Th>
+                <Table.Th>Monthly Payment</Table.Th>
+                <Table.Th>Status</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {state.liabilities.records && state.liabilities.records.length > 0 ? (
+                state.liabilities.records.map((r, i) => (
+                  <Table.Tr key={i}>
+                    <Table.Td>
+                      <Badge size="xs" radius="sm" color="orange" variant="light">
+                        Bureau
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text fz={12.5} c="slate.9">
+                        {r.institution}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text fz={12.5} c="slate.7">
+                        {r.facilityType}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text fz={12.5} c="slate.9">
+                        {zmw(r.outstanding)}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text fz={12.5} c="slate.9">
+                        {zmw(r.monthlyPayment)}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text
+                        fz={11.5}
+                        fw={600}
+                        c={r.status === "Active" ? "green.7" : "red.6"}
+                      >
+                        {r.status}
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ))
+              ) : (
+                <Table.Tr>
+                  <Table.Td colSpan={6}>
+                    <Text fz={12.5} c="slate.5" ta="center" py="md">
+                      No liabilities found.
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              )}
+            </Table.Tbody>
+          </Table>
+        </Box>
+        {!readOnly && (
+          <Box mt="md" p="sm" bg="slate.0" style={{ borderRadius: "var(--mantine-radius-md)" }}>
+            <Group justify="space-between" align="center">
+              <Box>
+                <Text fz={12.5} fw={600} c="slate.9">Total monthly obligations</Text>
+                <Text fz={11.5} c="slate.5">You can override the calculated total manually.</Text>
+              </Box>
+              {state.liabilities.manual ? (
+                <Group gap={8}>
+                  <TextInput
+                    size="xs"
+                    type="number"
+                    value={state.liabilities.obligations ?? ""}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "setObligations",
+                        value: e.currentTarget.value === "" ? null : Number(e.currentTarget.value),
+                      })
+                    }
+                    placeholder="e.g. 5000"
+                    styles={{ input: { fontSize: 13, fontWeight: 600, width: 100 } }}
+                  />
+                  <Button size="xs" variant="default" onClick={() => dispatch({ type: "manualLiabilities", on: false })}>
+                    Reset
+                  </Button>
+                </Group>
+              ) : (
+                <Button size="xs" variant="light" color="brand" onClick={() => dispatch({ type: "manualLiabilities", on: true })}>
+                  Override total
+                </Button>
+              )}
+            </Group>
+          </Box>
+        )}
+      </Modal>
     </Box>
   );
 }
