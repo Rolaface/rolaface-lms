@@ -38,6 +38,7 @@ import {
   IconUsers,
   IconArrowRight,
   IconMinus,
+  IconShieldCheck,
 } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
@@ -274,6 +275,329 @@ function CollapsibleStep({ index, title, status, summary, onEdit, active, childr
 const AMEND_FIELDS = ["Requested amount", "Tenure", "Interest rate", "Repayment frequency", "Other terms"];
 const ROUTE_STAGES = ["Enrichment", "Underwriting", "Prescreening"];
 
+// ---------------------------------------------------------------------------
+// Offer summary — top banner (matches reference design)
+// ---------------------------------------------------------------------------
+
+function OfferBannerStat({ label, value, sub, valueColor }: { label: string; value: string; sub?: string; valueColor?: string }) {
+  return (
+    <Box
+      px={14}
+      py={8}
+      style={{
+        background: "rgba(255,255,255,0.12)",
+        borderRadius: "var(--mantine-radius-md)",
+        minWidth: 108,
+      }}
+    >
+      <Text fz={10} fw={600} c="brand.1" tt="none" mb={2} style={{ whiteSpace: "nowrap" }}>
+        {label}
+      </Text>
+      <Text fz={14.5} fw={700} c={valueColor ?? "white"} lh={1.2}>
+        {value}
+      </Text>
+      {sub && (
+        <Text fz={10} c="brand.1" mt={1}>
+          {sub}
+        </Text>
+      )}
+    </Box>
+  );
+}
+
+function OfferSummaryBanner({ onViewSchedule }: { onViewSchedule?: () => void }) {
+  return (
+    <Box
+      p="md"
+      style={{
+        background: "linear-gradient(135deg, var(--mantine-color-brand-7), var(--mantine-color-brand-6))",
+        borderRadius: "var(--mantine-radius-lg)",
+      }}
+      mb={14}
+    >
+      <Group justify="space-between" align="center" wrap="wrap" gap={14}>
+        <Group gap={14} align="center" wrap="nowrap">
+          <ThemeIcon radius="xl" size={40} variant="light" color="green" style={{ background: "rgba(255,255,255,0.16)" }}>
+            <IconShieldCheck size={20} color="white" />
+          </ThemeIcon>
+          <Box>
+            <Group gap={8} align="center" mb={2}>
+              <Text fz={11} fw={600} c="brand.1" tt="uppercase" style={{ letterSpacing: 0.4 }}>
+                Approved loan amount
+              </Text>
+              <Badge size="xs" radius="xl" variant="light" color="green" style={{ textTransform: "none" }}>
+                Valid until {fmtDate(VALID_UNTIL)}
+              </Badge>
+            </Group>
+            <Group gap={6} align="baseline">
+              <Text fz={26} fw={800} c="white" lh={1}>
+                {zmw(FINAL_TERMS.amount)}
+              </Text>
+              <Text fz={12.5} c="brand.1">
+                /{APPLICATION.loan.purpose.replace(/\s+/g, "")}
+              </Text>
+            </Group>
+          </Box>
+        </Group>
+
+        <Group gap={8} wrap="wrap">
+          <OfferBannerStat label="Monthly Installment" value={zmw(FINAL_SIM.installment)} sub="Monthly deduction" />
+          <OfferBannerStat label="Interest Rate" value={`${FINAL_TERMS.rate}% p.a.`} sub="Fixed rate" valueColor="green.3" />
+          <OfferBannerStat label="Tenure" value={`${FINAL_TERMS.tenure} Months`} sub={`${Math.round(FINAL_TERMS.tenure / 12)} Years`} />
+          <OfferBannerStat label="Total Repayment" value={zmw(FINAL_SIM.totalRepayment)} sub="Principal + Interest" />
+        </Group>
+      </Group>
+    </Box>
+  );
+}
+
+function OfferCard({
+  dotColor,
+  title,
+  right,
+  children,
+  footer,
+}: {
+  dotColor: string;
+  title: string;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <Paper withBorder radius="md" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <Group justify="space-between" align="center" px="md" py={12} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+        <Group gap={8} align="center">
+          <Box w={7} h={7} style={{ borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+          <Text fz={11} fw={700} c="slate.7" tt="uppercase" style={{ letterSpacing: 0.3 }}>
+            {title}
+          </Text>
+        </Group>
+        {right}
+      </Group>
+      <Box px="md" pt={8} style={{ flex: 1 }}>
+        {children}
+      </Box>
+      {footer && (
+        <Box px="md" py={10} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
+          {footer}
+        </Box>
+      )}
+    </Paper>
+  );
+}
+
+function OfferPendingView({
+  onAccept,
+  onReject,
+  onAmend,
+  scheduleOpen,
+  setScheduleOpen,
+}: {
+  onAccept: () => void;
+  onReject: () => void;
+  onAmend: () => void;
+  scheduleOpen: boolean;
+  setScheduleOpen: (v: boolean) => void;
+}) {
+  const netDisbursed = FINAL_TERMS.amount - FINAL_FEES.total;
+  const condition = UNDERWRITING_DECISION.conditions[0];
+
+  return (
+    <Box>
+      <OfferSummaryBanner />
+
+      <SimpleGrid cols={3} spacing={14} mb={14}>
+        {/* Repayment structure */}
+        <OfferCard
+          dotColor="var(--mantine-color-brand-6)"
+          title="Repayment structure"
+          right={
+            <UnstyledButton onClick={() => setScheduleOpen(!scheduleOpen)}>
+              <Text fz={11.5} fw={600} c="brand.6">
+                {scheduleOpen ? "Hide schedule" : "View schedule"}
+              </Text>
+            </UnstyledButton>
+          }
+          footer={
+            <Group justify="space-between" align="center">
+              <Text fz={11.5} c="brand.6">
+                Repayment via payroll deduction
+              </Text>
+              <Badge size="xs" radius="xl" variant="light" color="green" style={{ textTransform: "none" }}>
+                Verified
+              </Badge>
+            </Group>
+          }
+        >
+          <SimRow label="First payment due" value={fmtDate(FINAL_SIM.first)} />
+          <SimRow label="Final maturity date" value={fmtDate(FINAL_SIM.final)} />
+          <SimRow label="Repayment frequency" value={FINAL_TERMS.frequency} />
+          <SimRow label="Total interest payable" value={zmw(FINAL_SIM.totalInterest)} />
+          <SimRow label="Disbursement method" value="Direct Bank Transfer" last strong />
+        </OfferCard>
+
+        {/* Fees & statutory charges */}
+        <OfferCard
+          dotColor="var(--mantine-color-green-6)"
+          title="Fees & statutory charges"
+          right={
+            <Badge size="xs" radius="sm" variant="light" color="gray" style={{ textTransform: "none" }}>
+              Pre-deducted
+            </Badge>
+          }
+          footer={
+            <Group justify="space-between" align="center">
+              <Text fz={12} c="slate.5">
+                Net Disbursed Amount:
+              </Text>
+              <Text fz={15} fw={800} c="brand.7">
+                {zmw(netDisbursed)}
+              </Text>
+            </Group>
+          }
+        >
+          <SimRow label={`Processing fee (${FINAL_TERMS.processingFeePct}%)`} value={zmw(FINAL_FEES.processingFee)} />
+          <SimRow label={`Credit life insurance (${FINAL_TERMS.insurancePct}%)`} value={zmw(FINAL_FEES.insurance)} />
+          <SimRow label={`Tax on fees (${FINAL_TERMS.taxPct}% VAT)`} value={zmw(FINAL_FEES.tax)} last />
+          <Box mt={8} pt={8} style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
+            <Group justify="space-between" py={4} px={8} bg="slate.0" style={{ borderRadius: "var(--mantine-radius-sm)" }}>
+              <Text fz={12.5} fw={700} c="slate.8">
+                Total fees and charges
+              </Text>
+              <Text fz={12.5} fw={800} c="slate.9">
+                {zmw(FINAL_FEES.total)}
+              </Text>
+            </Group>
+          </Box>
+        </OfferCard>
+
+        {/* Collateral & condition */}
+        <OfferCard
+          dotColor="var(--mantine-color-orange-6)"
+          title="Collateral & condition"
+          right={
+            <Badge size="xs" radius="sm" variant="light" color="orange" style={{ textTransform: "none" }}>
+              Action needed
+            </Badge>
+          }
+          footer={
+            <Group justify="space-between" align="center">
+              <Text fz={11.5} c="slate.4">
+                Responsible: {condition?.responsible ?? "—"}
+              </Text>
+              <Text fz={11.5} fw={600} c="brand.6" td="underline" style={{ cursor: "pointer" }}>
+                Upload Clearance Doc
+              </Text>
+            </Group>
+          }
+        >
+          {ASSETS_SUMMARY.map((a) => {
+            const regMatch = a.description.match(/registration\s+([A-Z0-9\s]+)$/i);
+            const regNo = regMatch ? regMatch[1].trim() : "";
+            const title = a.description.split(",")[0];
+            return (
+              <Box key={a.description} mb={12}>
+                <Group justify="space-between" align="flex-start" mb={2}>
+                  <Text fz={11} c="brand.6" fw={600}>
+                    Collateral / Security:
+                  </Text>
+                  {regNo && (
+                    <Text fz={10.5} c="slate.4" fw={600}>
+                      {regNo}
+                    </Text>
+                  )}
+                </Group>
+                <Text fz={12.5} fw={700} c="slate.9" mb={2}>
+                  {title}
+                </Text>
+                <Group justify="space-between" align="center">
+                  <Text fz={11} c="slate.5">
+                    Valuation: {zmw(a.value)}
+                  </Text>
+                  <Text fz={11} c="slate.5">
+                    LTV: {((FINAL_TERMS.amount / a.value) * 100).toFixed(1)}%
+                  </Text>
+                </Group>
+              </Box>
+            );
+          })}
+
+          {condition && (
+            <Group
+              align="flex-start"
+              gap={8}
+              p={10}
+              bg="orange.0"
+              style={{ border: "1px solid var(--mantine-color-orange-2)", borderRadius: 10 }}
+              wrap="nowrap"
+            >
+              <IconAlertTriangle size={14} color="var(--mantine-color-orange-7)" style={{ marginTop: 2, flexShrink: 0 }} />
+              <Box>
+                <Text fz={11.5} fw={700} c="orange.9">
+                  Key Pre-Disbursement Condition:
+                </Text>
+                <Text fz={11.5} c="orange.8" mt={2}>
+                  {condition.condition}
+                </Text>
+              </Box>
+            </Group>
+          )}
+        </OfferCard>
+      </SimpleGrid>
+
+      {scheduleOpen && (
+        <Paper withBorder radius="md" mb={14} style={{ overflow: "hidden", maxHeight: 260, overflowY: "auto" }}>
+          <Table fz={12} stickyHeader>
+            <Table.Thead bg="slate.0">
+              <Table.Tr>
+                <Table.Th style={th}>#</Table.Th><Table.Th style={th}>Due date</Table.Th><Table.Th style={th}>Installment</Table.Th><Table.Th style={th}>Principal</Table.Th><Table.Th style={th}>Interest</Table.Th><Table.Th style={th}>Balance</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {FINAL_SIM.schedule.map((row) => (
+                <Table.Tr key={row.n}>
+                  <Table.Td style={td}>{row.n}</Table.Td><Table.Td style={td}>{fmtDate(row.due)}</Table.Td><Table.Td style={td}>{zmw(row.installment)}</Table.Td><Table.Td style={td}>{zmw(row.principal)}</Table.Td><Table.Td style={td}>{zmw(row.interest)}</Table.Td><Table.Td style={td}>{zmw(row.balance)}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Paper>
+      )}
+
+      {/* Customer response & signing authorization bar */}
+      <Paper withBorder radius="md" p="md">
+        <Group justify="space-between" align="center" wrap="wrap" gap={14}>
+          <Group gap={10} align="center" wrap="nowrap">
+            <ThemeIcon radius="md" size={30} variant="light" color="brand">
+              <IconSignature size={15} />
+            </ThemeIcon>
+            <Box>
+              <Text fz={13} fw={700} c="slate.9">
+                Customer Response &amp; Signing Authorization
+              </Text>
+              <Text fz={11.5} c="slate.5">
+                Select borrower's response to generate and execute the electronic loan contract.
+              </Text>
+            </Box>
+          </Group>
+          <Group gap={8}>
+            <Button variant="outline" color="red" radius="md" size="sm" onClick={onReject}>
+              Reject Offer
+            </Button>
+            <Button variant="default" radius="md" size="sm" onClick={onAmend}>
+              Request Amendment
+            </Button>
+            <Button color="green" radius="md" size="sm" onClick={onAccept} leftSection={<IconCheck size={14} />}>
+              Accept Offer
+            </Button>
+          </Group>
+        </Group>
+      </Paper>
+    </Box>
+  );
+}
+
 function OfferWorkspace() {
   const [offerStatus, setOfferStatus] = useState("pending"); // pending | accepted | rejected | amendment
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -346,141 +670,55 @@ function OfferWorkspace() {
   }
 
   return (
-    <Box p={30}>
+    <Box p={28}>
       <Group justify="space-between" align="center" mb={18}>
         <Box>
           <Text fz={15} fw={700} c="slate.9">Offer &amp; signing</Text>
           <Text fz={12} c="slate.5" mt={2}>Issue the offer, capture the customer's response, then generate and execute the contract.</Text>
         </Box>
-        <StatusBadge status={overallStatus} />
+        <Group gap={8}>
+          <Button size="compact-sm" variant="light" color="brand" radius="md" onClick={downloadOffer} leftSection={<IconDownload size={13} />}>
+            Download offer
+          </Button>
+          <StatusBadge status={overallStatus} />
+        </Group>
       </Group>
 
-      <CollapsibleStep
-        index={1} title="Loan offer" active={offerStatus === "pending"}
-        status={offerStatus !== "pending" ? "done" : "active"}
-        summary={offerStatus === "accepted" ? "Offer accepted by customer" : offerStatus === "rejected" ? "Offer rejected by customer" : offerStatus === "amendment" ? "Amendment requested" : ""}
-        onEdit={() => { setOfferStatus("pending"); setContractStatus("not_generated"); setSigningMethod(null); setExecuted(false); }}
-      >
-        {offerStatus === "pending" && (
-          <Box>
-            <Group justify="space-between" mb={14}>
-              <Text fz={12} c="slate.4">Issued {fmtDate(ISSUED_DATE)} · Valid until {fmtDate(VALID_UNTIL)}</Text>
-              <Button size="compact-sm" variant="light" color="brand" radius="md" onClick={downloadOffer} leftSection={<IconDownload size={13} />}>
-                Download offer
-              </Button>
-            </Group>
+      {offerStatus === "pending" && !showRejectForm && !showAmendForm && (
+        <OfferPendingView
+          onAccept={() => setOfferStatus("accepted")}
+          onReject={() => setShowRejectForm(true)}
+          onAmend={() => setShowAmendForm(true)}
+          scheduleOpen={scheduleOpen}
+          setScheduleOpen={setScheduleOpen}
+        />
+      )}
 
-            <Paper bg="brand.0" p="lg" radius="md" style={{ border: "1px solid var(--mantine-color-brand-2)", textAlign: "center" }} mb={20}>
-              <Text fz={11.5} fw={600} c="brand.7" mb={4}>Approved loan amount</Text>
-              <Text fz={28} fw={800} c="brand.9">{zmw(FINAL_TERMS.amount)}</Text>
-              <Text fz={11.5} c="brand.7" mt={2}>for {APPLICATION.loan.purpose.toLowerCase()}</Text>
-            </Paper>
+      {offerStatus === "pending" && showRejectForm && (
+        <Paper bg="red.0" p="md" radius="md" style={{ border: "1px solid var(--mantine-color-red-2)" }}>
+          <SectionLabel>Reject offer</SectionLabel>
+          <Textarea label="Reason (required)" value={rejectReason} onChange={(e) => setRejectReason(e.currentTarget.value)} placeholder="Why is the customer rejecting this offer?" radius="md" />
+          <Group gap={10} mt={12}>
+            <Button color="red" radius="md" disabled={!rejectReason.trim()} onClick={() => setOfferStatus("rejected")}>Confirm rejection</Button>
+            <Button variant="default" radius="md" onClick={() => setShowRejectForm(false)}>Cancel</Button>
+          </Group>
+        </Paper>
+      )}
 
-            <SectionLabel>Customer &amp; loan</SectionLabel>
-            <Paper withBorder radius="md" px="md" mb={18}>
-              <SimRow label="Customer" value={`${APPLICATION.customer.name} (${APPLICATION.customer.id})`} />
-              <SimRow label="Loan type" value={`${APPLICATION.loan.product} — ${APPLICATION.loan.subtype}`} />
-              <SimRow label="Loan purpose" value={APPLICATION.loan.purpose} />
-              <SimRow label="Interest rate" value={`${FINAL_TERMS.rate}% p.a. (fixed)`} />
-              <SimRow label="Tenure" value={`${FINAL_TERMS.tenure} months`} />
-              <SimRow label="Repayment frequency" value={FINAL_TERMS.frequency} last />
-            </Paper>
-
-            <SectionLabel>Repayment</SectionLabel>
-            <Paper withBorder radius="md" px="md" mb={10}>
-              <SimRow label={`Estimated ${FINAL_TERMS.frequency.toLowerCase()} installment`} value={zmw(FINAL_SIM.installment)} strong />
-              <SimRow label="Total interest" value={zmw(FINAL_SIM.totalInterest)} />
-              <SimRow label="Total repayment" value={zmw(FINAL_SIM.totalRepayment)} />
-              <SimRow label="First payment due" value={fmtDate(FINAL_SIM.first)} />
-              <SimRow label="Final payment due" value={fmtDate(FINAL_SIM.final)} last />
-            </Paper>
-
-            <UnstyledButton onClick={() => setScheduleOpen(!scheduleOpen)} mb={18}>
-              <Group gap={4}>
-                <Text fz={12} fw={500} c="brand.6">{scheduleOpen ? "Hide full repayment schedule" : "View full repayment schedule"}</Text>
-                {scheduleOpen ? <IconChevronUp size={13} c="brand.6" /> : <IconChevronDown size={13} c="brand.6" />}
-              </Group>
-            </UnstyledButton>
-            {scheduleOpen && (
-              <Paper withBorder radius="md" mb={18} style={{ overflow: "hidden", maxHeight: 260, overflowY: "auto" }}>
-                <Table fz={12} stickyHeader>
-                  <Table.Thead bg="slate.0">
-                    <Table.Tr>
-                      <Table.Th style={th}>#</Table.Th><Table.Th style={th}>Due date</Table.Th><Table.Th style={th}>Installment</Table.Th><Table.Th style={th}>Principal</Table.Th><Table.Th style={th}>Interest</Table.Th><Table.Th style={th}>Balance</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {FINAL_SIM.schedule.map((row) => (
-                      <Table.Tr key={row.n}>
-                        <Table.Td style={td}>{row.n}</Table.Td><Table.Td style={td}>{fmtDate(row.due)}</Table.Td><Table.Td style={td}>{zmw(row.installment)}</Table.Td><Table.Td style={td}>{zmw(row.principal)}</Table.Td><Table.Td style={td}>{zmw(row.interest)}</Table.Td><Table.Td style={td}>{zmw(row.balance)}</Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Paper>
-            )}
-
-            <SectionLabel>Fees and charges</SectionLabel>
-            <Paper withBorder radius="md" px="md" mb={18}>
-              <SimRow label="Processing fee" value={zmw(FINAL_FEES.processingFee)} />
-              <SimRow label="Credit life insurance" value={zmw(FINAL_FEES.insurance)} />
-              <SimRow label="Tax on fees" value={zmw(FINAL_FEES.tax)} />
-              <SimRow label="Total fees and charges" value={zmw(FINAL_FEES.total)} last strong />
-            </Paper>
-
-            <SectionLabel>Collateral / security</SectionLabel>
-            <Paper withBorder radius="md" px="md" mb={18}>
-              {ASSETS_SUMMARY.map((a, i) => <SimRow key={a.description} label={a.type} value={a.description} last={i === ASSETS_SUMMARY.length - 1} />)}
-            </Paper>
-
-            <SectionLabel>Key conditions</SectionLabel>
-            <Box mb={20}>
-              {UNDERWRITING_DECISION.conditions.map((c, i) => (
-                <Group key={i} align="flex-start" gap={8} p="sm" bg="orange.0" style={{ border: "1px solid var(--mantine-color-orange-2)", borderRadius: 10, marginBottom: 8 }} wrap="nowrap">
-                  <IconAlertTriangle size={14} color="var(--mantine-color-orange-7)" style={{ marginTop: 2, flexShrink: 0 }} />
-                  <Text fz={12.5} c="orange.9">
-                    {c.condition} <Text component="span" c="orange.7">— {c.responsible}, due before {c.dueBefore.toLowerCase()}</Text>
-                  </Text>
-                </Group>
-              ))}
-            </Box>
-
-            {!showRejectForm && !showAmendForm && (
-              <Group gap={10}>
-                <Button color="green" radius="md" onClick={() => setOfferStatus("accepted")} leftSection={<IconCheck size={14} />}>Accept offer</Button>
-                <Button variant="default" radius="md" onClick={() => setShowAmendForm(true)}>Request amendment</Button>
-                <Button variant="outline" color="red" radius="md" onClick={() => setShowRejectForm(true)}>Reject offer</Button>
-              </Group>
-            )}
-
-            {showRejectForm && (
-              <Paper bg="red.0" p="md" radius="md" style={{ border: "1px solid var(--mantine-color-red-2)" }}>
-                <SectionLabel>Reject offer</SectionLabel>
-                <Textarea label="Reason (required)" value={rejectReason} onChange={(e) => setRejectReason(e.currentTarget.value)} placeholder="Why is the customer rejecting this offer?" radius="md" />
-                <Group gap={10} mt={12}>
-                  <Button color="red" radius="md" disabled={!rejectReason.trim()} onClick={() => setOfferStatus("rejected")}>Confirm rejection</Button>
-                  <Button variant="default" radius="md" onClick={() => setShowRejectForm(false)}>Cancel</Button>
-                </Group>
-              </Paper>
-            )}
-
-            {showAmendForm && (
-              <Paper bg="orange.0" p="md" radius="md" style={{ border: "1px solid var(--mantine-color-orange-2)" }}>
-                <SectionLabel>Request amendment</SectionLabel>
-                <SimpleGrid cols={2} spacing={14} mb={12}>
-                  <Select label="What is changing" value={amendField} onChange={(v) => setAmendField(v || AMEND_FIELDS[0])} data={AMEND_FIELDS} radius="md" />
-                  <Select label="Route back to" value={amendRoute} onChange={(v) => setAmendRoute(v || ROUTE_STAGES[0])} data={ROUTE_STAGES} radius="md" />
-                </SimpleGrid>
-                <Textarea label="Describe the requested change" value={amendDetail} onChange={(e) => setAmendDetail(e.currentTarget.value)} placeholder="e.g. Customer wants tenure extended to 36 months to lower the installment." radius="md" />
-                <Group gap={10} mt={12}>
-                  <Button color="orange" radius="md" disabled={!amendDetail.trim()} onClick={() => setOfferStatus("amendment")}>Submit amendment request</Button>
-                  <Button variant="default" radius="md" onClick={() => setShowAmendForm(false)}>Cancel</Button>
-                </Group>
-              </Paper>
-            )}
-          </Box>
-        )}
-      </CollapsibleStep>
+      {offerStatus === "pending" && showAmendForm && (
+        <Paper bg="orange.0" p="md" radius="md" style={{ border: "1px solid var(--mantine-color-orange-2)" }}>
+          <SectionLabel>Request amendment</SectionLabel>
+          <SimpleGrid cols={2} spacing={14} mb={12}>
+            <Select label="What is changing" value={amendField} onChange={(v) => setAmendField(v || AMEND_FIELDS[0])} data={AMEND_FIELDS} radius="md" />
+            <Select label="Route back to" value={amendRoute} onChange={(v) => setAmendRoute(v || ROUTE_STAGES[0])} data={ROUTE_STAGES} radius="md" />
+          </SimpleGrid>
+          <Textarea label="Describe the requested change" value={amendDetail} onChange={(e) => setAmendDetail(e.currentTarget.value)} placeholder="e.g. Customer wants tenure extended to 36 months to lower the installment." radius="md" />
+          <Group gap={10} mt={12}>
+            <Button color="orange" radius="md" disabled={!amendDetail.trim()} onClick={() => setOfferStatus("amendment")}>Submit amendment request</Button>
+            <Button variant="default" radius="md" onClick={() => setShowAmendForm(false)}>Cancel</Button>
+          </Group>
+        </Paper>
+      )}
 
       {offerStatus === "rejected" && (
         <Paper bg="red.0" p="lg" radius="md" style={{ border: "1.5px solid var(--mantine-color-red-3)" }}>
@@ -662,8 +900,8 @@ export function OfferModal({
               <IconSignature size={16} />
             </ThemeIcon>
             <Box>
-              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>Loan application</Text>
-              <Text size="xs" fw={500} c="brand.1">Stage 5 — Offer & signing</Text>
+              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>Loan Application</Text>
+              <Text size="xs" fw={500} c="brand.1">Stage 5 — Offer & Signing</Text>
             </Box>
           </Group>
           <Group gap="xs" wrap="nowrap">
