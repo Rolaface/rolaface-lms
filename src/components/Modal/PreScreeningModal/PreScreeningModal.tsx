@@ -1229,7 +1229,7 @@ function PrescreeningOverview({
                   style={{ cursor: "pointer" }}
                   onClick={() => dispatch({ type: "openLiabilitiesModal" })}
                 >
-                  {(liab.records ?? []).length} facilities found
+                  {(liab.records ?? []).length} liabilities found
                 </Badge>
               </Box>
             )}
