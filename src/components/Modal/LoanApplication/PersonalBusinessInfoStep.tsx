@@ -1,4 +1,4 @@
-import { SimpleGrid, TextInput, Select, NumberInput } from "@mantine/core";
+import { SimpleGrid, TextInput, Select, NumberInput, Group, Text, Box } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import type { LoanApplicationValues, LoanType } from "./LoanApplicationModal";
 import { DateInput } from "@mantine/dates";
@@ -216,7 +216,7 @@ export function PersonalBusinessInfoStep({ form, loanType, readOnly=false, }: St
     {...form.getInputProps("natureOfBusiness")}
     readOnly={readOnly}
   />
-
+{/* 
   <TextInput
     radius="md"
     styles={LABEL_STYLES}
@@ -225,7 +225,7 @@ export function PersonalBusinessInfoStep({ form, loanType, readOnly=false, }: St
     className="lg:col-span-2"
     {...form.getInputProps("registeredOffice")}
     readOnly={readOnly}
-  />
+  /> */}
 
   <NumberInput
     min={0}
@@ -240,12 +240,74 @@ export function PersonalBusinessInfoStep({ form, loanType, readOnly=false, }: St
     readOnly={readOnly}
   />
 
-  <TextInput
+  {/* <TextInput
     radius="md"
     styles={LABEL_STYLES}
     label={<Label text="Purpose of loan" required />}
     placeholder="e.g. Purchase of stock"
     {...form.getInputProps("purposeOfLoan")}
+    readOnly={readOnly}
+  /> */}
+ <Group gap="xs" mt="md" mb={0} wrap="nowrap" style={{ gridColumn: "1 / -1" }}>
+    <Text fz="sm" fw={700} c="slate.8" style={{ whiteSpace: "nowrap" }}>
+      Registered office address
+    </Text>
+    <Box
+      style={{
+        height: 1,
+        flex: 1,
+        backgroundColor: "var(--mantine-color-slate-2)",
+      }}
+    />
+  </Group>
+
+  <div style={{ display: "flex", gap: "16px", gridColumn: "1 / -1" }}>
+    <TextInput
+      radius="md"
+      label={<Label text="Address Line 1" required />}
+      placeholder="Plot / street, area"
+      readOnly={readOnly}
+      style={{ flex: 1 }}
+    />
+  
+    <TextInput
+      radius="md"
+      label={<Label text="Address Line 2" />}
+      placeholder="Apartment, suite, etc."
+      readOnly={readOnly}
+      style={{ flex: 1 }}
+    />
+  </div>
+  
+  <TextInput
+    radius="md"
+    label={<Label text="City / Town" required />}
+    placeholder="e.g. Lusaka"
+    readOnly={readOnly}
+  />
+  
+  <Select
+    radius="md"
+    searchable
+    label={<Label text="State / Province" />}
+    placeholder="Select"
+    disabled={readOnly}
+    data={["Lusaka", "Copperbelt", "Southern", "Eastern", "Northern"]}
+  />
+  
+  <Select
+    radius="md"
+    searchable
+    label={<Label text="Country" required />}
+    // placeholder={isCountriesLoading ? "Loading..." : "Select"}
+    // disabled={isCountriesLoading || readOnly}
+    // data={countryOptions}
+  />
+  
+  <TextInput
+    radius="md"
+    label={<Label text="Postal Code" />}
+    placeholder="e.g. 10101"
     readOnly={readOnly}
   />
 </SimpleGrid>

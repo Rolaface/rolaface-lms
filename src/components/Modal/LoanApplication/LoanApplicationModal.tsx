@@ -44,6 +44,8 @@ import { uploadFile } from "../../../api/loanApi";
 import { openCommonModal } from "../AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { ApplicationSummary } from "./ApplicationSummary";
+import { EmploymentDetails } from "./EmploymentDetails";
+import { Applicant } from "./Applicant";
 
 export type LoanType = "Personal" | "Business";
 
@@ -207,7 +209,8 @@ const STEP_LABELS: Record<LoanType, string[]> = {
     "Customer & Loan",
     "Eligibility & Simulation",
     "Applicant information",
-    "Residence & Employment",
+    "Residence Details",
+    "Employment Details",
     "Documents",
     "Review",
   ],
@@ -215,15 +218,16 @@ const STEP_LABELS: Record<LoanType, string[]> = {
     "Customer & Loan",
     "Eligibility & Simulation",
     "Business information",
-    "Directors & Applicant",
+    "Directors Details",
+    "Applicant Details",
     "Documents",
     "Review",
   ],
 };
 
 const STEP_ICONS: Record<LoanType, React.FC<any>[]> = {
-  Personal: [ IconUsers, IconFileInvoice, IconUser, IconBriefcase, IconFileText, IconCheck,],
-  Business: [IconUsers, IconFileInvoice, IconBuilding, IconUsers, IconFileText, IconCheck,],
+  Personal: [IconUsers, IconFileInvoice, IconUser, IconBriefcase, IconBriefcase, IconFileText, IconCheck],
+  Business: [IconUsers, IconFileInvoice, IconBuilding, IconBuilding,IconUsers, IconFileText, IconCheck],
 };
 
 function buildPersonalPayload(
@@ -719,96 +723,29 @@ export function LoanApplicationModal({
     if (activeStep === 0) {
       if (!form.values.customerType) {
         hasError = true;
-      } else if (
-        form.values.customerType === "existing" &&
-        !form.values.selectedCustomerId
-      ) {
+      } else if (form.values.customerType === "existing" && !form.values.selectedCustomerId) {
         hasError = true;
-      } else if (
-        form.values.customerType === "new" &&
-        !form.values.applicantType
-      ) {
+      } else if (form.values.customerType === "new" && !form.values.applicantType) {
         hasError = true;
       }
     }
 
-    // Step 1: Eligibility & Simulation
     if (activeStep === 1) {
-      if (!form.values.loanAmount || !form.values.tenureMonths) {
-        hasError = true;
-      }
+      if (!form.values.loanAmount || !form.values.tenureMonths) hasError = true;
     }
 
     if (loanType === "Personal") {
-      if (activeStep === 2)
-        fieldsToValidate = [
-          "firstName",
-          "surname",
-          "phone",
-          "email",
-          "nrc",
-          "gender",
-          "maritalStatus",
-          "birthDate",
-        ];
-      if (activeStep === 3)
-        fieldsToValidate = [
-          "residentialAddress",
-          "occupation",
-          "employerName",
-          "principalObjective",
-          "kinName",
-          "kinPhone",
-          "kinRelationship",
-          "kinEmail",
-          "nationality",
-        ];
-      if (activeStep === 4)
-        fieldsToValidate = [
-          "payslips",
-          "bankStatementsPersonal",
-          "nrcCopy",
-          "passportPhotoPersonal",
-          "tpinCertificate",
-        ];
+      if (activeStep === 2) fieldsToValidate = ["firstName", "surname", "phone", "email", "nrc", "gender", "maritalStatus", "birthDate"];
+      if (activeStep === 3) fieldsToValidate = ["residentialAddress", "occupation", "employerName", "principalObjective", "kinName", "kinPhone", "kinRelationship", "kinEmail", "nationality"];
+      // Step 4 is EmploymentDetails - validation handles dynamically
+      if (activeStep === 5) fieldsToValidate = ["payslips", "bankStatementsPersonal", "nrcCopy", "passportPhotoPersonal", "tpinCertificate"];
     } else {
-      if (activeStep === 2)
-        fieldsToValidate = [
-          "companyName",
-          "typeOfBusiness",
-          "establishedDate",
-          "natureOfBusiness",
-          "registeredOffice",
-          "collateralPledged",
-          "purposeOfLoan",
-        ];
-      if (activeStep === 3)
-        fieldsToValidate = [
-          "applicantFirstName",
-          "applicantLastName",
-          "applicantPhone",
-          "applicantEmail",
-          "applicantNrc",
-          "applicantBirthDate",
-          "applicantAddress",
-          "applicantPosition",
-          "applicantGender",
-          "applicantMaritalStatus",
-          "applicantNationality",
-        ];
-      if (activeStep === 4)
-        fieldsToValidate = [
-          "pacraCertificate",
-          "form2",
-          "taxClearanceCertificate",
-          "taxComplianceReturn",
-          "bankStatementsBusiness",
-          "applicantPassportPhoto",
-          "boardResolution",
-        ];
+      if (activeStep === 2) fieldsToValidate = ["companyName", "typeOfBusiness", "establishedDate", "natureOfBusiness", "registeredOffice", "collateralPledged", "purposeOfLoan"];
+      if (activeStep === 4) fieldsToValidate = ["applicantFirstName", "applicantLastName", "applicantPhone", "applicantEmail", "applicantNrc", "applicantBirthDate", "applicantAddress", "applicantPosition", "applicantGender", "applicantMaritalStatus", "applicantNationality"];
+      if (activeStep === 5) fieldsToValidate = ["pacraCertificate", "form2", "taxClearanceCertificate", "taxComplianceReturn", "bankStatementsBusiness", "applicantPassportPhoto", "boardResolution"];
     }
 
-    if (loanType === "Business" && activeStep === 4) {
+    if (loanType === "Business" && activeStep === 5) {
       if (form.values.directorDocuments.length === 0) {
         hasError = true;
         setDirectorDocsError("Please add at least one director's documents");
@@ -830,29 +767,22 @@ export function LoanApplicationModal({
           setDirectorsError(null);
         }
         form.values.directors.forEach((_, i) => {
-          if (form.validateField(`directors.${i}.name`).hasError)
-            hasError = true;
-          if (form.validateField(`directors.${i}.phone`).hasError)
-            hasError = true;
-          if (form.validateField(`directors.${i}.email`).hasError)
-            hasError = true;
-          if (form.validateField(`directors.${i}.nrc`).hasError)
-            hasError = true;
+          if (form.validateField(`directors.${i}.name`).hasError) hasError = true;
+          if (form.validateField(`directors.${i}.phone`).hasError) hasError = true;
+          if (form.validateField(`directors.${i}.email`).hasError) hasError = true;
+          if (form.validateField(`directors.${i}.nrc`).hasError) hasError = true;
         });
       }
-      if (activeStep === 4) {
+      if (activeStep === 5) {
         form.values.directorDocuments.forEach((_, i) => {
-          if (form.validateField(`directorDocuments.${i}.nrcFile`).hasError)
-            hasError = true;
-          if (form.validateField(`directorDocuments.${i}.photoFile`).hasError)
-            hasError = true;
+          if (form.validateField(`directorDocuments.${i}.nrcFile`).hasError) hasError = true;
+          if (form.validateField(`directorDocuments.${i}.photoFile`).hasError) hasError = true;
         });
       }
     }
 
-    // Move to next step only if the current step is valid
     if (!hasError) {
-      setActiveStep((s) => Math.min(s + 1, 5));
+      setActiveStep((s) => Math.min(s + 1, 6)); // Max step is now 6
     }
   };
   const handleBack = () => setActiveStep((s) => Math.max(s - 1, 0));
@@ -1189,7 +1119,7 @@ export function LoanApplicationModal({
     }
   };
 
-     const renderStep = () => {
+   const renderStep = () => {
     switch (activeStep) {
       case 0:
         return <CustomerLoanStep form={form} readOnly={readOnly} />;
@@ -1213,6 +1143,12 @@ export function LoanApplicationModal({
           />
         );
       case 4:
+        return loanType === "Personal" ? (
+          <EmploymentDetails form={form} readOnly={readOnly} />
+        ) : (
+          <Applicant form={form} readOnly={readOnly} />
+        );
+      case 5:
         return (
           <DocumentsStep
             form={form}
@@ -1222,7 +1158,7 @@ export function LoanApplicationModal({
             readOnly={readOnly}
           />
         );
-      case 5:
+      case 6:
         return <Review form={form} loanType={loanType} />;
       default:
         return null;
@@ -1482,15 +1418,15 @@ export function LoanApplicationModal({
                   color="brand"
                   radius="md"
                   onClick={
-                    activeStep < 5 ? handleNext : handleSubmitApplication
+                    activeStep < 6 ? handleNext : handleSubmitApplication
                   }
                   loading={
-                    activeStep === 5 &&
+                    activeStep === 6 &&
                     (isUploadingDocs || isSubmitting || isUpdating)
                   }
                   rightSection={<IconArrowRight size={16} />}
                 >
-                  {activeStep < 5
+                  {activeStep < 6
                     ? "Save & Continue"
                     : loanApplicationId
                       ? "Update Application"
@@ -1527,19 +1463,30 @@ export function LoanApplicationModal({
             onExited?.();
           },
         }}
-        size={1400}
+        // size={1400}
+         size="90vw"
         padding={0}
         lockScroll
         closeOnClickOutside={false}
         closeOnEscape={false}
-        styles={{
-          content: {
-            height: "92vh",
-            maxHeight: "95vh",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-          },
+        // styles={{
+        //   content: {
+        //     height: "92vh",
+        //     maxHeight: "95vh",
+        //     display: "flex",
+        //     flexDirection: "column",
+        //     overflow: "hidden",
+        //   },
+         styles={{
+        content: {
+          height: "92vh",
+          maxHeight: "99vh",
+          width: "90vw",
+          maxWidth: "1600px",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        },
           header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
           body: {
             flex: 1,

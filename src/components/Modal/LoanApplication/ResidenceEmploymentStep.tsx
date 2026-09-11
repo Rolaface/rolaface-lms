@@ -9,10 +9,12 @@ import {
   Button, 
   Stack, 
   Modal,
-  ActionIcon
+  ActionIcon,
+  Checkbox,
+  Collapse
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconPencil, IconTrash } from "@tabler/icons-react";
+import { IconChevronUp, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import type { UseFormReturnType } from "@mantine/form";
 import type { LoanApplicationValues, LoanType, DirectorEntry } from "./LoanApplicationModal";
 import { getAllCountries } from "../../../api/loanApplicationApi";
@@ -67,57 +69,40 @@ const countryOptions = useMemo(() => {
 if (loanType === "Personal") {
   return (
     <Stack gap="sm">
-      <SimpleGrid
-        cols={{ base: 1, sm: 3 }}
-        spacing="md"
-        verticalSpacing="sm"
-      >
-                <TextInput
-          radius="md"
-          label={<Label text="Residential address" required />}
-          placeholder="e.g. Plot 12, Kabulonga, Lusaka"
-          {...form.getInputProps("residentialAddress")}
-          style={{ gridColumn: "1 / -1" }}
-          readOnly={readOnly}
-        />
+      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" style={{ gridColumn: "1 / -1" }}>
+      {/* Present / Residential Address */}
+      <Box p="md" bd="1px solid var(--mantine-color-slate-3)" style={{ borderRadius: "var(--mantine-radius-md)" }}>
+        <Text fw={600} mb="md">Residential Address</Text>
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" verticalSpacing="sm">
+          <div style={{ display: "flex", gap: "16px", gridColumn: "1 / -1" }}>
+            <TextInput radius="md" label={<Label text="Address Line 1" required />} placeholder="Plot / street, area" readOnly={readOnly} style={{ flex: 1 }} />
+            <TextInput radius="md" label={<Label text="Address Line 2" />} placeholder="Apartment, suite, etc." readOnly={readOnly} style={{ flex: 1 }} />
+          </div>
+          <TextInput radius="md" label={<Label text="City / Town" required />} placeholder="e.g. Lusaka" readOnly={readOnly} />
+          <Select radius="md" searchable label={<Label text="State / Province" />} placeholder="Select" disabled={readOnly} data={["Lusaka", "Copperbelt", "Southern", "Eastern", "Northern"]} />
+          <Select radius="md" searchable label={<Label text="Country" required />} placeholder={isCountriesLoading ? "Loading..." : "Select"} disabled={isCountriesLoading || readOnly} data={countryOptions} />
+          <TextInput radius="md" label={<Label text="Postal Code" />} placeholder="e.g. 10101" readOnly={readOnly} />
+        </SimpleGrid>
+      </Box>
 
-        <TextInput
-          radius="md"
-          label={<Label text="Occupation" required />}
-          placeholder="e.g. Software Engineer"
-          {...form.getInputProps("occupation")}
-          readOnly={readOnly}
-        />
-
-        <TextInput
-          radius="md"
-          label={<Label text="Employer name" required />}
-          placeholder="e.g. ABC Enterprises Ltd"
-          {...form.getInputProps("employerName")}
-          readOnly={readOnly}
-        />
-
-        <Select
-          radius="md"
-          label={<Label text="Nationality" required />}
-          placeholder={isCountriesLoading ? "Loading..." : "Select nationality"}
-          searchable
-          clearable
-          data={countryOptions}
-          disabled={isCountriesLoading || readOnly}
-          {...form.getInputProps("nationality")}
-        />
-
-        <TextInput
-          radius="md"
-          label={<Label text="Principal objective of loan" required />}
-          placeholder="e.g. Home renovation"
-          {...form.getInputProps("principalObjective")}
-          style={{ gridColumn: "1 / -1" }}
-          readOnly={readOnly}
-        />
-      </SimpleGrid>
-
+      {/* Permanent / Mailing Address */}
+      <Box p="md" bd="1px solid var(--mantine-color-slate-3)" style={{ borderRadius: "var(--mantine-radius-md)" }}>
+        <Group justify="space-between" mb="md">
+          <Text fw={600}>Permanent Address</Text>
+          <Checkbox label="Same as residential" size="sm" />
+        </Group>
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" verticalSpacing="sm">
+          <div style={{ display: "flex", gap: "16px", gridColumn: "1 / -1" }}>
+            <TextInput radius="md" label={<Label text="Address Line 1" required />} placeholder="Plot / street, area" readOnly={readOnly} style={{ flex: 1 }} />
+            <TextInput radius="md" label={<Label text="Address Line 2" />} placeholder="Apartment, suite, etc." readOnly={readOnly} style={{ flex: 1 }} />
+          </div>
+          <TextInput radius="md" label={<Label text="City / Town" required />} placeholder="e.g. Lusaka" readOnly={readOnly} />
+          <Select radius="md" searchable label={<Label text="State / Province" />} placeholder="Select" disabled={readOnly} data={["Lusaka", "Copperbelt", "Southern", "Eastern", "Northern"]} />
+          <Select radius="md" searchable label={<Label text="Country" required />} placeholder={isCountriesLoading ? "Loading..." : "Select"} disabled={isCountriesLoading || readOnly} data={countryOptions} />
+          <TextInput radius="md" label={<Label text="Postal Code" />} placeholder="e.g. 10101" readOnly={readOnly} />
+        </SimpleGrid>
+      </Box>
+    </SimpleGrid>
       <Group gap="xs" mt={2} mb={0} wrap="nowrap">
         <Text fz="sm" fw={700} c="slate.8" style={{ whiteSpace: "nowrap" }}>
           Next of Kin Details
@@ -190,13 +175,24 @@ if (loanType === "Personal") {
 
   // --- Business: Directors & Applicant ---
   const directors = form.values.directors || [];
+  const [expandedDirectors, setExpandedDirectors] = useState<number[]>([]);
+
+  const toggleDirector = (index: number) => {
+    setExpandedDirectors((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    );
+  };
 
   const handleAddDirector = () => {
     if (directors.length >= MAX_DIRECTORS) return;
     const newIndex = directors.length;
     form.insertListItem("directors", { id: nextId(), name: "", phone: "", email: "", nrc: "" });
-    setEditingIndex(newIndex);
-    open();
+    setExpandedDirectors((prev) => [...prev, newIndex]);
+  };
+
+  const handleDeleteDirector = (index: number) => {
+    form.removeListItem("directors", index);
+    setExpandedDirectors((prev) => prev.filter((i) => i !== index).map(i => i > index ? i - 1 : i));
   };
 
   const handleEditDirector = (index: number) => {
@@ -204,9 +200,6 @@ if (loanType === "Personal") {
     open();
   };
 
-  const handleDeleteDirector = (index: number) => {
-    form.removeListItem("directors", index);
-  };
   const handleDone = () => {
     if (editingIndex === null) return;
     const nameErr = form.validateField(`directors.${editingIndex}.name`).hasError;
@@ -235,271 +228,199 @@ if (loanType === "Personal") {
   return (
     <>
       <Stack gap="sm">
-               <Group justify="space-between" align="center">
-            {/* Replaced Box with Group and added align="center" for perfect vertical alignment */}
-            {/* <Group gap="sm" align="center">
-              <Text fz="sm" fw={700} c="slate.8">
-                Directors ({directors.length}/{MAX_DIRECTORS})
-              </Text>
-              <Text fz="xs" c="slate.5">
+          {/* Directors Section */}
+        <Box p="xl" bd="1px solid var(--mantine-color-slate-2)" style={{ borderRadius: "var(--mantine-radius-md)" }}>
+          <Group justify="space-between" align="flex-start" mb="xs">
+            <Box>
+              <Group gap="xs" align="center">
+                <Text fz="lg" fw={700} c="dark.9" style={{ letterSpacing: "-0.5px" }}>
+                  Active Directors
+                </Text>
+                <Box px={10} py={2} bg="slate.1" c="slate.7" fw={600} style={{ borderRadius: "var(--mantine-radius-xl)", fontSize: "12px" }}>
+                  {directors.length}/{MAX_DIRECTORS} Recorded
+                </Box>
+              </Group>
+              <Text fz="sm" c="slate.5" mt={4}>
                 Add up to 3 directors. Each director requires a name, phone, email, and NRC.
               </Text>
-            </Group>
-             */}
-             <Box>
-              <Group gap="sm" align="center">
-                <Text fz="sm" fw={700} c="slate.8">
-                  Directors ({directors.length}/{MAX_DIRECTORS})
-                </Text>
-                <Text fz="xs" c="slate.5">
-                  Add up to 3 directors. Each director requires a name, phone, email, and NRC.
-                </Text>
-              </Group>
               {directorsError && (
                 <Text fz="xs" c="red.6" mt={4}>
                   {directorsError}
                 </Text>
               )}
             </Box>
-                       {!readOnly && (
+            {!readOnly && (
               <Button
-                variant="light"
-                color="brand"
+                variant="default"
                 radius="md"
                 size="sm"
+                leftSection={<IconPlus size={16} color="var(--mantine-color-slate-4)" />}
                 onClick={handleAddDirector}
                 disabled={directors.length >= MAX_DIRECTORS}
+                style={{ color: "var(--mantine-color-slate-4)", borderColor: "var(--mantine-color-slate-2)" }}
               >
                 Add Director
               </Button>
             )}
           </Group>
 
-          {directors.length > 0 && (
-            <Stack gap="sm">
-              {directors.map((dir, idx) => (
-                <Group 
-                  key={dir.id} 
-                  justify="space-between" 
-                  align="center"
-                  className="border border-slate-200 bg-slate-50 rounded-md p-2"
+          <Box style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", margin: "20px 0" }} />
+
+         <Stack gap="sm">
+            {directors.map((dir, idx) => {
+              const getInitials = (name: string) => name ? name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "D";
+              const colors = [
+                { bg: "indigo.1", c: "indigo.8" },
+                { bg: "teal.1", c: "teal.8" },
+                { bg: "grape.1", c: "grape.8" },
+              ];
+              const colorTheme = colors[idx % colors.length];
+              const isExpanded = expandedDirectors.includes(idx);
+
+              return (
+                <Box
+                  key={dir.id}
+                  bd="1px solid var(--mantine-color-slate-2)"
+                  style={{ borderRadius: "var(--mantine-radius-md)", overflow: "hidden" }}
                 >
-                  <Box>
-                    <Text fz="sm" fw={600} c="slate.8">
-                      {dir.name || `Director ${idx + 1} (Incomplete)`}
-                    </Text>
-                    <Text fz="xs" c="slate.5">
-                      {dir.nrc ? `NRC: ${dir.nrc}` : "NRC pending"} • {dir.phone || "Phone pending"}
-                    </Text>
-                  </Box>
-                                   {!readOnly && (
-                    <Group gap="xs">
-                      <ActionIcon
-                        variant="subtle"
-                        color="brand"
-                        onClick={() => handleEditDirector(idx)}
-                        aria-label="Edit director"
-                      >
-                        <IconPencil size={18} />
-                      </ActionIcon>
-                      <ActionIcon
-                        variant="subtle"
-                        color="red"
-                        onClick={() => handleDeleteDirector(idx)}
-                        aria-label="Delete director"
-                      >
-                        <IconTrash size={18} />
-                      </ActionIcon>
+                  {isExpanded ? (
+                    /* Expanded Form Fields */
+                    <Box p="md" bg="slate.0">
+                      <Group justify="space-between" mb="md">
+                        <Text fz="sm" fw={600} c="dark.9">Director {idx + 1} Details</Text>
+                        <ActionIcon
+                          variant="subtle"
+                          color="gray"
+                          onClick={() => toggleDirector(idx)}
+                        >
+                          <IconChevronUp size={18} stroke={1.5} color="var(--mantine-color-slate-4)" />
+                        </ActionIcon>
+                      </Group>
+                      
+                      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg" verticalSpacing="md">
+                        <TextInput
+                          radius="md"
+                          label={<Label text="Director name" required />}
+                          placeholder="e.g. John Doe"
+                          {...form.getInputProps(`directors.${idx}.name`)}
+                          onBlur={() => form.validateField(`directors.${idx}.name`)}
+                        />
+                        <TextInput
+                          radius="md"
+                          type="tel"
+                          label={<Label text="Director phone" required />}
+                          placeholder="e.g. 0971234567"
+                          value={form.values.directors[idx].phone}
+                          onChange={(e) =>
+                            form.setFieldValue(`directors.${idx}.phone`, e.currentTarget.value.replace(/\D/g, ""))
+                          }
+                          onBlur={() => form.validateField(`directors.${idx}.phone`)}
+                          error={form.errors[`directors.${idx}.phone`]}
+                        />
+                        <TextInput
+                          radius="md"
+                          type="email"
+                          label={<Label text="Director email" required />}
+                          placeholder="e.g. jane.doe@example.com"
+                          value={form.values.directors[idx].email}
+                          onChange={(e) => {
+                            form.setFieldValue(`directors.${idx}.email`, e.currentTarget.value);
+                            form.validateField(`directors.${idx}.email`);
+                          }}
+                          onBlur={() => form.validateField(`directors.${idx}.email`)}
+                          error={form.errors[`directors.${idx}.email`]}
+                        />
+                        <TextInput
+                          radius="md"
+                          label={<Label text="Director NRC" required />}
+                          placeholder="e.g. 123456/78/1"
+                          {...form.getInputProps(`directors.${idx}.nrc`)}
+                          onBlur={() => form.validateField(`directors.${idx}.nrc`)}
+                        />
+                      </SimpleGrid>
+
+                      <Group justify="flex-end" mt="md">
+                        <Button variant="default" radius="md" onClick={() => toggleDirector(idx)}>
+                          Done
+                        </Button>
+                      </Group>
+                    </Box>
+                  ) : (
+                    /* Summary Row */
+                    <Group 
+                      wrap="nowrap"
+                      justify="space-between" 
+                      align="center"
+                      p="md"
+                      bg="transparent"
+                    >
+                      <Group wrap="nowrap" gap="md" style={{ flex: 1, minWidth: 0 }}>
+                        <Box 
+                          w={42} 
+                          h={42} 
+                          bg={colorTheme.bg} 
+                          c={colorTheme.c} 
+                          fz="sm"
+                          fw={700} 
+                          style={{ borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                        >
+                          {getInitials(dir.name)}
+                        </Box>
+                        <Box style={{ overflow: "hidden", flex: 1 }}>
+                          <Group gap="sm" mb={6} align="center">
+                            <Text fz="15px" fw={600} c="dark.9" truncate>
+                              {dir.name || `Director ${idx + 1} (Incomplete)`}
+                            </Text>
+                            {dir.name && (
+                              <Box px={8} py={2} bg="indigo.0" c="indigo.8" fw={600} style={{ borderRadius: "var(--mantine-radius-sm)", fontSize: "11px" }}>
+                                Director
+                              </Box>
+                            )}
+                          </Group>
+                          <Group gap="lg" align="center" wrap="nowrap">
+                            <Text fz="sm" c="slate.5" truncate>
+                              <span style={{ color: "var(--mantine-color-slate-4)" }}>NRC:</span> {dir.nrc || "Pending"} 
+                            </Text>
+                            <Text fz="xs" c="slate.3">•</Text>
+                            <Text fz="sm" c="slate.6" truncate>
+                              {dir.email || "Email pending"}
+                            </Text>
+                            <Text fz="xs" c="slate.3">•</Text>
+                            <Text fz="sm" c="slate.6" truncate>
+                              {dir.phone || "Phone pending"}
+                            </Text>
+                          </Group>
+                        </Box>
+                      </Group>
+
+                      {!readOnly && (
+                        <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
+                          <ActionIcon
+                            variant="subtle"
+                            color="gray"
+                            onClick={() => toggleDirector(idx)}
+                            aria-label="Edit director"
+                          >
+                            <IconPencil size={18} stroke={1.5} color="var(--mantine-color-slate-4)" />
+                          </ActionIcon>
+                          <ActionIcon
+                            variant="subtle"
+                            color="gray"
+                            onClick={() => handleDeleteDirector(idx)}
+                            aria-label="Delete director"
+                          >
+                            <IconTrash size={18} stroke={1.5} color="var(--mantine-color-slate-4)" />
+                          </ActionIcon>
+                        </Group>
+                      )}
                     </Group>
                   )}
-                </Group>
-              ))}
-            </Stack>
-          )}
-        {/* </Box> */}
-
-        {/* Applicant Details */}
-        <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" verticalSpacing="md">
-                    <TextInput
-  radius="md"
-  label={<Label text="Applicant first name" required />}
-  placeholder="e.g. John"
-  {...form.getInputProps("applicantFirstName")}
-  readOnly={readOnly}
-/>
-<TextInput
-  radius="md"
-  label={<Label text="Applicant middle name" optional />}
-  placeholder="e.g. K."
-  {...form.getInputProps("applicantMiddleName")}
-  readOnly={readOnly}
-/>
-<TextInput
-  radius="md"
-  label={<Label text="Applicant last name" required />}
-  placeholder="e.g. Doe"
-  {...form.getInputProps("applicantLastName")}
-  readOnly={readOnly}
-/>
-
-<TextInput
-  radius="md"
-  type="tel"
-  label={<Label text="Applicant phone" required />}
-  placeholder="e.g. 0971234567"
-  value={form.values.applicantPhone}
-  onChange={(e) => form.setFieldValue("applicantPhone", e.currentTarget.value.replace(/\D/g, ""))}
-  error={form.errors.applicantPhone}
-  readOnly={readOnly}
-/>
-<TextInput
-  radius="md"
-  type="email"
-  label={<Label text="Applicant email" required />}
-  placeholder="e.g. john.doe@example.com"
-  value={form.values.applicantEmail}
-  onChange={(e) => {
-    form.setFieldValue("applicantEmail", e.currentTarget.value);
-    form.validateField("applicantEmail");
-  }}
-  error={form.errors.applicantEmail}
-  readOnly={readOnly}
-/>
-<TextInput
-  radius="md"
-  label={<Label text="Applicant NRC" required />}
-  placeholder="e.g. 123456/78/1"
-  {...form.getInputProps("applicantNrc")}
-  readOnly={readOnly}
-/>
-
-          <Select
-            radius="md"
-            label={<Label text="Applicant gender" required />}
-            placeholder="Select"
-            data={GENDERS}
-            {...form.getInputProps("applicantGender")}
-            disabled={readOnly}
-          />
-          <Select
-            radius="md"
-            label={<Label text="Marital status" required />}
-            placeholder="Select"
-            data={MARITAL_STATUSES}
-            {...form.getInputProps("applicantMaritalStatus")}
-            disabled={readOnly}
-          />
-          <DateInput
-  radius="md"
-  label={<Label text="Birth date" required />}
-  valueFormat="DD-MMM-YYYY"
-  placeholder="DD-MMM-YYYY"
-  value={form.values.applicantBirthDate ? new Date(form.values.applicantBirthDate) : null}
-  onChange={(date) =>
-    form.setFieldValue(
-      "applicantBirthDate",
-      date ? new Date(date).toISOString().slice(0, 10) : ""
-    )
-  }
-  error={form.errors.applicantBirthDate}
-  readOnly={readOnly}
-/>
-
-          <TextInput
-  radius="md"
-  label={<Label text="Applicant address" required />}
-  placeholder="e.g. Plot 12, Kabulonga, Lusaka"
-  {...form.getInputProps("applicantAddress")}
-  readOnly={readOnly}
-/>
-<TextInput
-  radius="md"
-  label={<Label text="Applicant position" required />}
-  placeholder="e.g. Managing Director"
-  {...form.getInputProps("applicantPosition")}
-  readOnly={readOnly}
-/>
-          <Select
-  radius="md"
-  label={<Label text="Applicant nationality" required />}
-  placeholder={isCountriesLoading ? "Loading..." : "Select"}
-  searchable
-  clearable
-  data={countryOptions}
-  disabled={isCountriesLoading || readOnly}
-  {...form.getInputProps("applicantNationality")}
-/>
-        </SimpleGrid>
+                </Box>
+              );
+            })}
+          </Stack>
+        </Box>
        </Stack>
-
-      {/* Director Edit/Add Modal */}
-      <Modal 
-        opened={opened && editingIndex !== null} 
-        onClose={handleCloseModal} 
-        size="lg" 
-        title={
-          <Text fz="lg" fw={700} c="slate.8">
-            {editingIndex !== null && form.values.directors[editingIndex]?.name 
-              ? "Edit Director" 
-              : "Add Director"}
-          </Text>
-        }
-      >
-        {editingIndex !== null && (
-          <Box>
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" verticalSpacing="md" mb="xl">
-             <TextInput
-  radius="md"
-  label={<Label text="Director name" required />}
-  placeholder="e.g. John Doe"
-  {...form.getInputProps(`directors.${editingIndex}.name`)}
-  onBlur={() => form.validateField(`directors.${editingIndex}.name`)}
-/>
-<TextInput
-  radius="md"
-  type="tel"
-  label={<Label text="Director phone" required />}
-  placeholder="e.g. 0971234567"
-  value={form.values.directors[editingIndex].phone}
-  onChange={(e) =>
-    form.setFieldValue(`directors.${editingIndex}.phone`, e.currentTarget.value.replace(/\D/g, ""))
-  }
-  onBlur={() => form.validateField(`directors.${editingIndex}.phone`)}
-  error={form.errors[`directors.${editingIndex}.phone`]}
-/>
-<TextInput
-  radius="md"
-  type="email"
-  label={<Label text="Director email" required />}
-  placeholder="e.g. jane.doe@example.com"
-  value={form.values.directors[editingIndex].email}
-  onChange={(e) => {
-    form.setFieldValue(`directors.${editingIndex}.email`, e.currentTarget.value);
-    form.validateField(`directors.${editingIndex}.email`);
-  }}
-  onBlur={() => form.validateField(`directors.${editingIndex}.email`)}
-  error={form.errors[`directors.${editingIndex}.email`]}
-/>
-<TextInput
-  radius="md"
-  label={<Label text="Director NRC" required />}
-  placeholder="e.g. 123456/78/1"
-  {...form.getInputProps(`directors.${editingIndex}.nrc`)}
-  onBlur={() => form.validateField(`directors.${editingIndex}.nrc`)}
-/>
-            </SimpleGrid>
-
-            <Group justify="flex-end">
-              <Button variant="default" radius="md" onClick={handleCloseModal}>
-                Close
-              </Button>
-              <Button color="brand" radius="md" onClick={handleDone}>
-                Done
-              </Button>
-            </Group>
-          </Box>
-        )}
-      </Modal>
     </>
   );
 }
