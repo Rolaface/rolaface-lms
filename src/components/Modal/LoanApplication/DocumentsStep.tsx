@@ -79,7 +79,6 @@ interface DocTile {
 }
 
 const nextId = () => Math.random().toString(36).slice(2, 10);
-const MAX_DIRECTOR_DOCS = 3;
 
 const DEFAULT_GUIDELINES = [
   "File must be clear, legible and unedited",
@@ -304,7 +303,6 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
 } | null>(null);
 
   const handleAddDirectorDoc = () => {
-    if (directorDocs.length >= MAX_DIRECTOR_DOCS) return;
     const newIndex = directorDocs.length;
     form.insertListItem("directorDocuments", {
       id: nextId(),
@@ -562,10 +560,10 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
           <Group justify="space-between" align="center" mb="sm">
             <Group gap="sm" align="center">
               <Text fz="sm" fw={700} c="slate.8">
-                Director documents ({directorDocs.length}/{MAX_DIRECTOR_DOCS})
+                Director documents ({directorDocs.length})
               </Text>
               <Text fz="xs" c="slate.5">
-                Add up to 3 director NRC and passport photo uploads.
+                Add director NRC and passport photo uploads.
               </Text>
             </Group>
                         {!readOnly && (
@@ -575,7 +573,6 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
                 radius="md"
                 color="brand"
                 onClick={handleAddDirectorDoc}
-                disabled={directorDocs.length >= MAX_DIRECTOR_DOCS}
               >
                 Add Director Docs
               </Button>

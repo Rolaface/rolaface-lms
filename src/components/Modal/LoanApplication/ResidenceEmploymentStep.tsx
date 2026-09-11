@@ -40,7 +40,6 @@ const MARITAL_STATUSES = [
 ];
 
 const nextId = () => Math.random().toString(36).slice(2, 10);
-const MAX_DIRECTORS = 3;
 
 function Label({ text, required, optional }: { text: string; required?: boolean; optional?: boolean }) {
   return (
@@ -184,7 +183,6 @@ if (loanType === "Personal") {
   };
 
   const handleAddDirector = () => {
-    if (directors.length >= MAX_DIRECTORS) return;
     const newIndex = directors.length;
     form.insertListItem("directors", { id: nextId(), name: "", phone: "", email: "", nrc: "" });
     setExpandedDirectors((prev) => [...prev, newIndex]);
@@ -237,11 +235,11 @@ if (loanType === "Personal") {
                   Active Directors
                 </Text>
                 <Box px={10} py={2} bg="slate.1" c="slate.7" fw={600} style={{ borderRadius: "var(--mantine-radius-xl)", fontSize: "12px" }}>
-                  {directors.length}/{MAX_DIRECTORS} Recorded
+                  {directors.length} Recorded
                 </Box>
               </Group>
               <Text fz="sm" c="slate.5" mt={4}>
-                Add up to 3 directors. Each director requires a name, phone, email, and NRC.
+                Add directors. Each director requires a name, phone, email, and NRC.
               </Text>
               {directorsError && (
                 <Text fz="xs" c="red.6" mt={4}>
@@ -256,7 +254,6 @@ if (loanType === "Personal") {
                 size="sm"
                 leftSection={<IconPlus size={16} color="var(--mantine-color-slate-4)" />}
                 onClick={handleAddDirector}
-                disabled={directors.length >= MAX_DIRECTORS}
                 style={{ color: "var(--mantine-color-slate-4)", borderColor: "var(--mantine-color-slate-2)" }}
               >
                 Add Director
