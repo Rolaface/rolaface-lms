@@ -8,21 +8,17 @@ import {
   Slider,
   NumberInput,
   Table,
-  ThemeIcon,
   UnstyledButton,
   Badge,
 } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import {
-  IconWallet,
-  IconClock,
-  IconPercentage,
-  IconShieldCheck,
-  IconUsers,
   IconCheck,
+  IconCalendar,
+  IconCircleCheck,
+  IconInfoCircle,
   IconChevronUp,
   IconChevronDown,
-  IconAlertCircle,
 } from "@tabler/icons-react";
 import type { LoanApplicationValues, LoanType } from "./LoanApplicationModal";
 
@@ -83,7 +79,13 @@ const LOAN_RULES: Record<LoanType, LoanProductRules> = {
   },
 };
 
-const FREQUENCIES: Array<"Monthly" | "Bi-weekly"> = ["Monthly", "Bi-weekly"];
+const FREQUENCIES: Array<{ value: "Monthly" | "Bi-weekly"; label: string }> = [
+  { value: "Monthly", label: "Monthly (Recommended)" },
+  { value: "Bi-weekly", label: "Bi-Weekly (Fortnightly)" },
+];
+
+const AMOUNT_PRESETS = [1000, 2500, 4000, 8000];
+const TENURE_PRESETS = [3, 6, 12, 24];
 
 const zmw = (n: number) => "ZMW " + Math.round(n).toLocaleString();
 const fmtDate = (d: Date) =>
@@ -147,128 +149,140 @@ function computeSimulation(
   };
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function HeaderPill({
+  color,
+  bg,
+  border,
+  children,
+}: {
+  color: string;
+  bg: string;
+  border: string;
+  children: React.ReactNode;
+}) {
   return (
-    <Text
-      fz={11}
-      fw={600}
-      c="slate.5"
-      tt="uppercase"
-      style={{ letterSpacing: 0.3 }}
-      mb={10}
+    <Box
+      px={10}
+      py={5}
+      style={{
+        background: bg,
+        border: `1px solid ${border}`,
+        borderRadius: "var(--mantine-radius-md)",
+        whiteSpace: "nowrap",
+      }}
     >
-      {children}
-    </Text>
-  );
-}
-
-function FieldError({ children }: { children: React.ReactNode }) {
-  return (
-    <Group gap={6} mt={6} wrap="nowrap" align="flex-start">
-      <IconAlertCircle
-        size={13}
-        color="var(--mantine-color-red-6)"
-        style={{ marginTop: 2, flexShrink: 0 }}
-      />
-      <Text fz={12.5} c="red.6">
+      <Text fz={12} fw={600} c={color} lh={1.3}>
         {children}
       </Text>
-    </Group>
+    </Box>
   );
 }
 
-function MiniStat({
+function PresetChip({
+  label,
+  active,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <UnstyledButton
+      onClick={disabled ? undefined : onClick}
+      px={8}
+      py={3}
+      style={{
+        borderRadius: "var(--mantine-radius-sm)",
+        fontSize: 11.5,
+        fontWeight: 600,
+        border: `1px solid ${
+          active ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-2)"
+        }`,
+        background: active ? "var(--mantine-color-brand-6)" : "white",
+        color: active ? "white" : "var(--mantine-color-slate-7)",
+        cursor: disabled ? "default" : "pointer",
+      }}
+    >
+      {label}
+    </UnstyledButton>
+  );
+}
+
+function OutcomeStat({
   icon: Icon,
   label,
   value,
+  sub,
+  valueColor,
 }: {
   icon: React.FC<any>;
   label: string;
-  value: string;
+  value: React.ReactNode;
+  sub?: string;
+  valueColor?: string;
 }) {
   return (
-    <Box>
-      <Group gap={5} fz={11.5} c="slate.5" mb={3}>
-        <Icon size={12} />
-        <Text fz={11.5} c="slate.5">
+    <Box
+      px="sm"
+      py={8}
+      style={{
+        background: "white",
+        border: "1px solid var(--mantine-color-slate-2)",
+        borderRadius: "var(--mantine-radius-md)",
+      }}
+    >
+      {/* Line 1: label + icon */}
+      <Group justify="space-between" align="center" mb={2} wrap="nowrap">
+        <Text fz={10.5} fw={600} c="slate.5" tt="uppercase" style={{ letterSpacing: 0.3 }}>
           {label}
         </Text>
+        <Box
+          w={20}
+          h={20}
+          style={{
+            borderRadius: "50%",
+            border: "1px solid var(--mantine-color-slate-2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          <Icon size={11} color="var(--mantine-color-slate-5)" />
+        </Box>
       </Group>
-      <Text fz="sm" fw={600} c="slate.9">
-        {value}
-      </Text>
+      {/* Line 2: value + sub note, same line */}
+      <Group gap={6} align="baseline" wrap="nowrap">
+        <Text fz={19} fw={700} c={valueColor ?? "slate.9"} lh={1.2} style={{ whiteSpace: "nowrap" }}>
+          {value}
+        </Text>
+        {sub && (
+          <Text fz={10.5} c="slate.4" lh={1.2} truncate>
+            {sub}
+          </Text>
+        )}
+      </Group>
     </Box>
   );
 }
 
-function RequirementTag({
-  icon: Icon,
-  label,
-  ok,
-}: {
-  icon: React.FC<any>;
-  label: string;
-  ok: boolean;
-}) {
-  return (
-    <Badge
-      size="md"
-      radius="xl"
-      variant="light"
-      color={ok ? "green" : "orange"}
-      leftSection={<Icon size={12} />}
-      style={{ textTransform: "none", fontWeight: 500 }}
-    >
-      {label}
-    </Badge>
-  );
-}
-
-function DocGroup({
-  label,
-  items,
-  color,
-}: {
-  label: string;
-  items: string[];
-  color: string;
-}) {
-  if (!items.length) return null;
+function MicroStat({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
     <Box>
-      <Text fz={11} fw={600} c={color} mb={4}>
+      <Text fz={9.5} fw={600} c="slate.4" tt="uppercase" style={{ letterSpacing: 0.2 }} mb={2}>
         {label}
       </Text>
-      <Box component="ul" pl={18} m={0}>
-        {items.map((it) => (
-          <Text component="li" fz={12} c="slate.7" key={it} mb={2}>
-            {it}
-          </Text>
-        ))}
-      </Box>
+      <Text fz={12} fw={700} c={valueColor ?? "slate.9"}>
+        {value}
+      </Text>
     </Box>
   );
 }
 
-function SimRow({ label, value }: { label: string; value: string }) {
-  return (
-    <Group
-      justify="space-between"
-      py={9}
-      style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}
-    >
-      <Text fz={12.5} c="slate.5">
-        {label}
-      </Text>
-      <Text fz={12.5} fw={600} c="slate.9">
-        {value}
-      </Text>
-    </Group>
-  );
-}
-
-export function EligibilitySimulationStep({ form,  readOnly = false,}: StepProps) {
-  const [reqExpanded, setReqExpanded] = useState(false);
+export function EligibilitySimulationStep({ form, readOnly = false }: StepProps) {
   const [scheduleExpanded, setScheduleExpanded] = useState(false);
 
   const applicantType = form.values.applicantType ?? "Personal";
@@ -288,94 +302,125 @@ export function EligibilitySimulationStep({ form,  readOnly = false,}: StepProps
       ? `Enter a tenure between ${rules.tenure.min} and ${rules.tenure.max} months.`
       : null;
 
+  const rate = (rules.rate.min + rules.rate.max) / 2;
+
   const simulation = useMemo(() => {
     if (amountError || tenureError || !amount || !tenure) return null;
-    const rate = (rules.rate.min + rules.rate.max) / 2;
     return { ...computeSimulation(amount, tenure, rate, frequency), rate };
-  }, [amount, tenure, frequency, rules, amountError, tenureError]);
+  }, [amount, tenure, frequency, rules, amountError, tenureError, rate]);
+
+  const tenurePresetOptions = TENURE_PRESETS.filter(
+    (t) => t >= rules.tenure.min && t <= rules.tenure.max,
+  );
 
   return (
-    <Stack gap={22}>
-      <Box>
-        <SectionLabel>Eligibility</SectionLabel>
-        <Box
-          p="md"
-          style={{
-            background: "var(--mantine-color-slate-0)",
-            border: "1px solid var(--mantine-color-slate-2)",
-            borderRadius: "var(--mantine-radius-lg)",
-          }}
-        >
-          <SimpleGrid cols={3} spacing="md" mb={12}>
-            <MiniStat
-              icon={IconWallet}
-              label="Loan amount"
-              value={`${zmw(rules.amount.min)} – ${zmw(rules.amount.max)}`}
-            />
-            <MiniStat
-              icon={IconClock}
-              label="Tenure"
-              value={`${rules.tenure.min} – ${rules.tenure.max} months`}
-            />
-            <MiniStat
-              icon={IconPercentage}
-              label="Interest rate (p.a.)"
-              value={`${rules.rate.min}% – ${rules.rate.max}% · ${rules.rate.kind}`}
-            />
-          </SimpleGrid>
-
-          <Group gap={8} mb={reqExpanded ? 12 : 0}>
-            <RequirementTag
-              icon={IconShieldCheck}
-              label={rules.requirements.collateral ? "Collateral required" : "No collateral required"}
-              ok={!rules.requirements.collateral}
-            />
-            <RequirementTag
-              icon={IconUsers}
-              label={rules.requirements.guarantor ? "Guarantor required" : "No guarantor required"}
-              ok={!rules.requirements.guarantor}
-            />
-            <RequirementTag icon={IconCheck} label={rules.requirements.income} ok />
-          </Group>
-
-          <UnstyledButton
-            onClick={() => setReqExpanded((v) => !v)}
-            fz={12}
-            fw={500}
-            c="brand.6"
-          >
-            <Group gap={4}>
-              {reqExpanded ? "Hide details" : "View documents and full requirements"}
-              {reqExpanded ? <IconChevronUp size={13} /> : <IconChevronDown size={13} />}
-            </Group>
-          </UnstyledButton>
-
-          {reqExpanded && (
-            <Stack gap={10} mt={12}>
-              <DocGroup label="Required" items={rules.docs.required} color="slate.9" />
-              <DocGroup label="Optional" items={rules.docs.optional} color="slate.5" />
-              <DocGroup label="Conditional" items={rules.docs.conditional} color="orange.7" />
-              <Text fz={12} c="slate.5" mt={2}>
-                Employment: {rules.requirements.employment}
+    <Stack gap={10}>
+      {/* Header card */}
+      <Box
+        p="sm"
+        style={{
+          border: "1px solid var(--mantine-color-slate-2)",
+          borderRadius: "var(--mantine-radius-lg)",
+        }}
+      >
+        <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <Box style={{ flex: 1, minWidth: 0 }}>
+            <Group gap={8} align="center" mb={2}>
+              <Text fz={15} fw={700} c="slate.9">
+                Eligibility &amp; Loan Simulation
               </Text>
-            </Stack>
-          )}
-        </Box>
+              <Badge size="sm" radius="xl" variant="light" color="brand" style={{ textTransform: "none" }}>
+                Step 2 of 7
+              </Badge>
+            </Group>
+            <Text fz={12} c="slate.5">
+              Adjust requested amount and tenure to simulate instant repayment breakdown.
+            </Text>
+          </Box>
+          <Group gap={6} wrap="nowrap">
+            <HeaderPill color="green.7" bg="var(--mantine-color-green-0)" border="var(--mantine-color-green-2)">
+              <Group gap={5} wrap="nowrap">
+                <IconCheck size={13} />
+                <span>No collateral required</span>
+              </Group>
+            </HeaderPill>
+            <HeaderPill color="green.7" bg="var(--mantine-color-green-0)" border="var(--mantine-color-green-2)">
+              <Group gap={5} wrap="nowrap">
+                <IconCheck size={13} />
+                <span>No guarantor required</span>
+              </Group>
+            </HeaderPill>
+            <HeaderPill color="slate.7" bg="var(--mantine-color-slate-0)" border="var(--mantine-color-slate-2)">
+              Min. Income: {rules.requirements.income}
+            </HeaderPill>
+          </Group>
+        </Group>
       </Box>
 
-      <Box>
-        <SectionLabel>Configure your loan</SectionLabel>
-        <SimpleGrid cols={2} spacing="lg">
-          <Box>
-            <Group justify="space-between" fz={12.5} fw={500} c="slate.7" mb={6}>
-              <Text fz={12.5} fw={500} c="slate.7">
-                Requested amount
-              </Text>
-              <Text fz={12.5} c="slate.4">
+      {/* Configure loan parameters card */}
+      <Box
+        p="sm"
+        style={{
+          border: "1px solid var(--mantine-color-slate-2)",
+          borderRadius: "var(--mantine-radius-lg)",
+        }}
+      >
+        <Group justify="space-between" align="center" mb={10} wrap="wrap">
+          <Text fz={12} fw={700} c="slate.8" tt="uppercase" style={{ letterSpacing: 0.3 }}>
+            Configure Loan Parameters
+          </Text>
+          <Group gap={6} fz={12}>
+            <Text fz={12} c="slate.5">
+              Allowable Range:{" "}
+              <Text component="span" fw={600} c="slate.7">
                 {zmw(rules.amount.min)} – {zmw(rules.amount.max)}
               </Text>
+            </Text>
+            <Text fz={12} c="slate.3">
+              ·
+            </Text>
+            <Text fz={12} c="slate.5">
+              Tenure Range:{" "}
+              <Text component="span" fw={600} c="slate.7">
+                {rules.tenure.min} – {rules.tenure.max} Mos
+              </Text>
+            </Text>
+            <Text fz={12} c="slate.3">
+              ·
+            </Text>
+            <Text fz={12} c="slate.5">
+              {rules.rate.kind === "Fixed" ? "Fixed" : "Variable"} APR:{" "}
+              <Text component="span" fw={700} c="brand.6">
+                {rate.toFixed(1)}% p.a.
+              </Text>
+            </Text>
+          </Group>
+        </Group>
+
+        <SimpleGrid cols={2} spacing="lg">
+          {/* Amount */}
+          <Box>
+            <Group justify="space-between" align="center" mb={6}>
+              <Text fz={12.5} fw={600} c="slate.8">
+                Requested Amount
+              </Text>
+              <NumberInput
+                radius="sm"
+                size="xs"
+                w={130}
+                value={amount ?? undefined}
+                onChange={(v) =>
+                  form.setFieldValue("loanAmount", typeof v === "number" ? v : 0)
+                }
+                thousandSeparator=","
+                prefix="ZMW "
+                hideControls
+                error={amountError ? true : undefined}
+                readOnly={readOnly}
+                styles={{ input: { fontWeight: 600, textAlign: "right" } }}
+              />
             </Group>
-                        <Slider
+            <Slider
               min={rules.amount.min}
               max={rules.amount.max}
               step={100}
@@ -386,31 +431,52 @@ export function EligibilitySimulationStep({ form,  readOnly = false,}: StepProps
               )}
               onChange={(v) => form.setFieldValue("loanAmount", v)}
               label={(v) => zmw(v)}
-              mb={10}
+              mb={8}
               disabled={readOnly}
             />
-            <NumberInput
-              radius="md"
-              value={amount ?? undefined}
-              onChange={(v) =>
-                form.setFieldValue("loanAmount", typeof v === "number" ? v : 0)
-              }
-              thousandSeparator=","
-              hideControls
-              error={amountError}
-              readOnly={readOnly}
-            />
-          </Box>
-          <Box>
-            <Group justify="space-between" fz={12.5} fw={500} c="slate.7" mb={6}>
-              <Text fz={12.5} fw={500} c="slate.7">
-                Tenure (months)
+            <Group gap={6} align="center">
+              <Text fz={10.5} c="slate.4">
+                Quick Presets:
               </Text>
-              <Text fz={12.5} c="slate.4">
-                {rules.tenure.min} – {rules.tenure.max}
-              </Text>
+              {AMOUNT_PRESETS.map((p) => (
+                <PresetChip
+                  key={p}
+                  label={p.toLocaleString()}
+                  active={amount === p}
+                  onClick={() => form.setFieldValue("loanAmount", p)}
+                  disabled={readOnly}
+                />
+              ))}
             </Group>
-                       <Slider
+            {amountError && (
+              <Text fz={11} c="red.6" mt={4}>
+                {amountError}
+              </Text>
+            )}
+          </Box>
+
+          {/* Tenure */}
+          <Box>
+            <Group justify="space-between" align="center" mb={6}>
+              <Text fz={12.5} fw={600} c="slate.8">
+                Tenure Duration
+              </Text>
+              <NumberInput
+                radius="sm"
+                size="xs"
+                w={130}
+                value={tenure ?? undefined}
+                onChange={(v) =>
+                  form.setFieldValue("tenureMonths", typeof v === "number" ? v : "")
+                }
+                suffix=" Months"
+                hideControls
+                error={tenureError ? true : undefined}
+                readOnly={readOnly}
+                styles={{ input: { fontWeight: 600, textAlign: "right" } }}
+              />
+            </Group>
+            <Slider
               min={rules.tenure.min}
               max={rules.tenure.max}
               step={1}
@@ -421,141 +487,187 @@ export function EligibilitySimulationStep({ form,  readOnly = false,}: StepProps
               )}
               onChange={(v) => form.setFieldValue("tenureMonths", v)}
               label={(v) => `${v} mo`}
-              mb={10}
+              mb={8}
               disabled={readOnly}
             />
-            <NumberInput
-              radius="md"
-              value={tenure ?? undefined}
-              onChange={(v) =>
-                form.setFieldValue(
-                  "tenureMonths",
-                  typeof v === "number" ? v : "",
-                )
-              }
-              hideControls
-              error={tenureError}
-              readOnly={readOnly}
-            />
-          </Box>
-          <Box style={{ gridColumn: "1 / -1" }}>
-            <Text fz={12.5} fw={500} c="slate.7" mb={6}>
-              Repayment frequency
-            </Text>
-            <Group gap={8}>
-              {FREQUENCIES.map((f) => (
-                               <UnstyledButton
-                  key={f}
-                  onClick={
-                    readOnly
-                      ? undefined
-                      : () => form.setFieldValue("repaymentFrequency", f)
-                  }
-                  px={14}
-                  py={7}
-                  style={{
-                    borderRadius: 20,
-                    fontSize: 12.5,
-                    fontWeight: 500,
-                    border: `1.5px solid ${
-                      frequency === f
-                        ? "var(--mantine-color-brand-6)"
-                        : "var(--mantine-color-slate-2)"
-                    }`,
-                    background:
-                      frequency === f ? "var(--mantine-color-brand-6)" : "white",
-                    color: frequency === f ? "white" : "var(--mantine-color-slate-7)",
-                    cursor: readOnly ? "default" : "pointer",
-                  }}
-                >
-                  {f}
-                </UnstyledButton>
+            <Group gap={6} align="center">
+              <Text fz={10.5} c="slate.4">
+                Common Terms:
+              </Text>
+              {tenurePresetOptions.map((t) => (
+                <PresetChip
+                  key={t}
+                  label={`${t} mos`}
+                  active={tenure === t}
+                  onClick={() => form.setFieldValue("tenureMonths", t)}
+                  disabled={readOnly}
+                />
               ))}
             </Group>
+            {tenureError && (
+              <Text fz={11} c="red.6" mt={4}>
+                {tenureError}
+              </Text>
+            )}
           </Box>
         </SimpleGrid>
-      </Box>
 
-      {simulation && (
-        <Box>
-          <SectionLabel>Loan simulation</SectionLabel>
-          <Box
-            p="md"
+        {/* Repayment frequency bar */}
+        <Group
+          justify="space-between"
+          align="center"
+          mt={10}
+          p={8}
+          style={{
+            background: "var(--mantine-color-slate-0)",
+            borderRadius: "var(--mantine-radius-md)",
+          }}
+        >
+          <Box>
+            <Text fz={12} fw={600} c="slate.8">
+              Repayment Frequency:
+            </Text>
+          </Box>
+          <Group gap={6} fz={12} align="center" style={{ flex: 1 }}>
+            <Text fz={11} c="slate.4">
+              Affects interest amortization intervals
+            </Text>
+          </Group>
+          <Group
+            gap={2}
+            p={2}
             style={{
-              border: "1.5px solid var(--mantine-color-brand-2)",
-              borderRadius: "var(--mantine-radius-lg)",
-              background: "var(--mantine-color-brand-0)",
+              background: "white",
+              border: "1px solid var(--mantine-color-slate-2)",
+              borderRadius: "var(--mantine-radius-xl)",
             }}
           >
-            <Group justify="flex-end" mb={10}>
-              <Badge size="xs" color="brand" variant="light" radius="xl">
-                Indicative — not final terms
-              </Badge>
-            </Group>
+            {FREQUENCIES.map((f) => (
+              <UnstyledButton
+                key={f.value}
+                onClick={
+                  readOnly ? undefined : () => form.setFieldValue("repaymentFrequency", f.value)
+                }
+                px={12}
+                py={5}
+                style={{
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background:
+                    frequency === f.value ? "var(--mantine-color-brand-6)" : "transparent",
+                  color: frequency === f.value ? "white" : "var(--mantine-color-slate-6)",
+                  cursor: readOnly ? "default" : "pointer",
+                  transition: "background 120ms ease",
+                }}
+              >
+                {f.label}
+              </UnstyledButton>
+            ))}
+          </Group>
+        </Group>
+      </Box>
 
-            <SimpleGrid cols={2} spacing="md" mb={14}>
-              <Box p="md" bg="white" style={{ borderRadius: "var(--mantine-radius-md)" }}>
-                <Text fz={11.5} c="slate.5">
-                  Estimated {frequency.toLowerCase()} installment
-                </Text>
-                <Text fz={20} fw={700} c="slate.9" mt={2}>
-                  {zmw(simulation.installment)}
-                </Text>
-              </Box>
-              <Box p="md" bg="white" style={{ borderRadius: "var(--mantine-radius-md)" }}>
-                <Text fz={11.5} c="slate.5">
-                  Total repayment
-                </Text>
-                <Text fz={20} fw={700} c="slate.9" mt={2}>
-                  {zmw(simulation.totalRepayment)}
-                </Text>
-              </Box>
+      {/* Instant simulation outcome */}
+      <Box
+        p="sm"
+        style={{
+          border: "1px solid var(--mantine-color-slate-2)",
+          borderRadius: "var(--mantine-radius-lg)",
+        }}
+      >
+        <Group justify="space-between" align="center" mb={8} wrap="wrap">
+          <Group gap={8} align="center">
+            <Text fz={12} fw={700} c="slate.8" tt="uppercase" style={{ letterSpacing: 0.3 }}>
+              Instant Simulation Outcome
+            </Text>
+            <Badge size="sm" radius="xl" variant="light" color="green" style={{ textTransform: "none" }}>
+              Pre-Approved Estimate
+            </Badge>
+          </Group>
+          <Text fz={11} c="slate.4">
+            Indicative estimate • No hidden fees
+          </Text>
+        </Group>
+
+        {simulation ? (
+          <>
+            <SimpleGrid cols={2} spacing="sm" mb={8}>
+              <OutcomeStat
+                icon={IconCalendar}
+                label="Estimated Monthly EMI"
+                value={
+                  <>
+                    {zmw(simulation.installment)}{" "}
+                    <Text component="span" fz={11.5} fw={500} c="slate.4">
+                      /mo
+                    </Text>
+                  </>
+                }
+                sub="Principal + interest incl."
+                valueColor="brand.6"
+              />
+              <OutcomeStat
+                icon={IconCircleCheck}
+                label="Total Repayment Obligation"
+                value={zmw(simulation.totalRepayment)}
+                sub={`Interest: ${zmw(simulation.totalInterest)} (${rules.rate.kind})`}
+              />
             </SimpleGrid>
 
-            <Box
-              px="md"
-              bg="white"
-              mb={14}
-              style={{ borderRadius: "var(--mantine-radius-md)" }}
+            <SimpleGrid
+              cols={6}
+              spacing={0}
+              mb={8}
+              style={{
+                border: "1px solid var(--mantine-color-slate-2)",
+                borderRadius: "var(--mantine-radius-md)",
+                overflow: "hidden",
+              }}
             >
-              <SimRow label="Loan amount" value={zmw(amount)} />
-              <SimRow label="Interest rate" value={`${simulation.rate.toFixed(1)}% p.a.`} />
-              <SimRow label="Tenure" value={`${tenure} months`} />
-              <SimRow label="Repayment frequency" value={frequency} />
-              <SimRow label="Estimated installment" value={zmw(simulation.installment)} />
-              <SimRow label="Total interest" value={zmw(simulation.totalInterest)} />
-              <SimRow label="Total repayment" value={zmw(simulation.totalRepayment)} />
-              <SimRow
-                label="Fees and charges"
-                value={simulation.fee > 0 ? `${zmw(simulation.fee)} facility fee` : "None applicable"}
-              />
-              <SimRow label="First repayment date" value={fmtDate(simulation.first)} />
-              <Group justify="space-between" py={9}>
-                <Text fz={12.5} c="slate.5">
-                  Final repayment date
-                </Text>
-                <Text fz={12.5} fw={600} c="slate.9">
-                  {fmtDate(simulation.final)}
-                </Text>
-              </Group>
-            </Box>
+              {[
+                { label: "Principal", value: zmw(amount) },
+                { label: "Interest Rate", value: `${simulation.rate.toFixed(1)}% p.a.`, color: "brand.6" },
+                { label: "Tenure", value: `${tenure} Months` },
+                {
+                  label: "Admin Fee",
+                  value: simulation.fee > 0 ? zmw(simulation.fee) : "Free",
+                  color: simulation.fee > 0 ? undefined : "green.6",
+                },
+                { label: "Disbursal", value: zmw(amount) },
+                { label: "Method", value: "Auto-Debit" },
+              ].map((cell, i) => (
+                <Box
+                  key={cell.label}
+                  px={8}
+                  py={6}
+                  style={{
+                    borderLeft: i === 0 ? undefined : "1px solid var(--mantine-color-slate-2)",
+                  }}
+                >
+                  <MicroStat label={cell.label} value={cell.value} valueColor={cell.color} />
+                </Box>
+              ))}
+            </SimpleGrid>
 
-            <UnstyledButton
-              onClick={() => setScheduleExpanded((v) => !v)}
-              fz={12}
-              fw={500}
-              c="brand.6"
-            >
-              <Group gap={4}>
-                {scheduleExpanded ? "Hide repayment schedule" : "Preview repayment schedule"}
-                {scheduleExpanded ? <IconChevronUp size={13} /> : <IconChevronDown size={13} />}
+            <Group justify="space-between" align="center" wrap="wrap">
+              <Group gap={5} align="center">
+                <IconInfoCircle size={12} color="var(--mantine-color-slate-4)" />
+                <Text fz={10.5} c="slate.4">
+                  Calculated with reducing balance formula. Final sanction subject to Step 5 (Income verification).
+                </Text>
               </Group>
-            </UnstyledButton>
+              <UnstyledButton onClick={() => setScheduleExpanded((v) => !v)} fz={10.5} fw={600} c="brand.6">
+                <Group gap={4}>
+                  {scheduleExpanded ? "Hide full amortization schedule" : "View full amortization schedule"}
+                  {scheduleExpanded ? <IconChevronUp size={12} /> : <IconChevronDown size={12} />}
+                </Group>
+              </UnstyledButton>
+            </Group>
 
             {scheduleExpanded && (
               <Box
-                mt={10}
-                bg="white"
+                mt={12}
                 style={{
                   borderRadius: "var(--mantine-radius-md)",
                   border: "1px solid var(--mantine-color-slate-2)",
@@ -591,13 +703,15 @@ export function EligibilitySimulationStep({ form,  readOnly = false,}: StepProps
                 )}
               </Box>
             )}
-          </Box>
-        </Box>
-      )}
-
-      {!simulation && (amountError || tenureError) && (
-        <FieldError>{amountError || tenureError}</FieldError>
-      )}
+          </>
+        ) : (
+          (amountError || tenureError) && (
+            <Text fz={12.5} c="red.6">
+              {amountError || tenureError}
+            </Text>
+          )
+        )}
+      </Box>
     </Stack>
   );
 }
