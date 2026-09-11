@@ -925,7 +925,7 @@ function PrescreeningOverview({
         cols={{ base: 1, sm: 2 }}
         spacing={24}
         style={{
-          alignItems: "stretch",
+          alignItems: "start",
           gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
         }}
       >
@@ -1061,7 +1061,7 @@ function PrescreeningOverview({
             </Paper>
           )}
 
-          {leftSlot && <Box mt={16}>{leftSlot}</Box>}
+          {leftSlot && <Box mt={8}>{leftSlot}</Box>}
         </Stack>
 
         <Stack gap={10} w="100%" style={{ minWidth: 0 }}>
@@ -1070,7 +1070,7 @@ function PrescreeningOverview({
             radius="md"
             p={8}
             w="100%"
-            style={{ minWidth: 0, overflow: "visible", flex: 1 }}
+            style={{ minWidth: 0, overflow: "visible" }}
           >
           <Group justify="space-between" align="center" mb={2}>
             <Group gap={6}>
@@ -1235,7 +1235,7 @@ function PrescreeningOverview({
             )}
           </Box>
         </Paper>
-        {rightSlot && <Box mt={16}>{rightSlot}</Box>}
+        {rightSlot && <Box mt={8}>{rightSlot}</Box>}
         </Stack>
       </SimpleGrid>
     </Box>
@@ -1372,7 +1372,7 @@ function useEligibilityUI({
   const leftNode = (
     <Box>
       {isEligible && (
-        <Box mb={24}>
+        <Box mb={16}>
           <Text fz={12.5} fw={600} c="slate.9" mb={8}>
             Why this passes
           </Text>
@@ -1386,7 +1386,7 @@ function useEligibilityUI({
       )}
 
       {isFailed && (
-        <Box mb={24}>
+        <Box mb={16}>
           <Text fz={12.5} fw={600} c="slate.9" mb={8}>
             Why this fails
           </Text>
