@@ -919,7 +919,7 @@ function PrescreeningOverview({
   const income = state.income;
 
   return (
-    <Box mb={10}>
+    <Box mb={6}>
       {/* Left: Monthly Income + DTI | Right: Credit Score + Liabilities in ONE card */}
       <SimpleGrid
         cols={{ base: 1, sm: 2 }}
@@ -929,7 +929,7 @@ function PrescreeningOverview({
           gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
         }}
       >
-        <Stack gap={8} w="100%" style={{ minWidth: 0 }}>
+        <Stack gap={6} w="100%" style={{ minWidth: 0 }}>
           <Paper withBorder radius="md" p={8}>
             <CompactRow
               last
@@ -1272,7 +1272,7 @@ function ActionRow({
         transition: "background 0.15s ease, border-color 0.15s ease",
       }}
     >
-      <Group justify="space-between" wrap="nowrap">
+      <Group justify="space-between" align="center" wrap="nowrap">
         <Group gap={8} wrap="nowrap">
           <Icon size={15} color="var(--mantine-color-brand-6)" />
           <Text fz={12.5} fw={600} c="slate.9">
@@ -1348,10 +1348,9 @@ function useEligibilityUI({
               the calculation.
             </Text>
           </Paper>
-          {decisionSlot && <Box mt={16}>{decisionSlot}</Box>}
         </Box>
       ),
-      rightNode: null,
+      rightNode: decisionSlot ? <Box>{decisionSlot}</Box> : null,
       modals: null,
     };
   }
@@ -1372,11 +1371,11 @@ function useEligibilityUI({
   const leftNode = (
     <Box>
       {isEligible && (
-        <Box mb={16}>
-          <Text fz={12.5} fw={600} c="slate.9" mb={8}>
+        <Box mb={10}>
+          <Text fz={12.5} fw={600} c="slate.9" mb={6}>
             Why this passes
           </Text>
-          <Stack gap={6}>
+          <Stack gap={4}>
             <CheckLine ok>Credit score meets minimum requirement</CheckLine>
             <CheckLine ok>Debt-to-income ratio is within the allowed limit</CheckLine>
             <CheckLine ok>Monthly repayment is within the affordability limit</CheckLine>
@@ -1386,11 +1385,11 @@ function useEligibilityUI({
       )}
 
       {isFailed && (
-        <Box mb={16}>
-          <Text fz={12.5} fw={600} c="slate.9" mb={8}>
+        <Box mb={10}>
+          <Text fz={12.5} fw={600} c="slate.9" mb={6}>
             Why this fails
           </Text>
-          <Stack gap={6}>
+          <Stack gap={4}>
             <CheckLine ok={creditPassed}>
               Credit score {creditPassed ? "meets" : "is below"} the minimum
               requirement ({minCreditScore})
@@ -1403,24 +1402,22 @@ function useEligibilityUI({
         </Box>
       )}
 
-      {decisionSlot && <Box>{decisionSlot}</Box>}
+      <Stack gap={10}>
+        <ActionRow
+          icon={IconPercentage}
+          label="View calculation"
+          onClick={() => setCalcOpen(true)}
+        />
+        <ActionRow
+          icon={IconInfoCircle}
+          label="How was eligibility calculated?"
+          onClick={() => setRulesOpen(true)}
+        />
+      </Stack>
     </Box>
   );
 
-  const rightNode = (
-    <Stack gap={10}>
-      <ActionRow
-        icon={IconInfoCircle}
-        label="How was eligibility calculated?"
-        onClick={() => setRulesOpen(true)}
-      />
-      <ActionRow
-        icon={IconPercentage}
-        label="View calculation"
-        onClick={() => setCalcOpen(true)}
-      />
-    </Stack>
-  );
+  const rightNode = <Stack gap={10}>{decisionSlot}</Stack>;
 
   const modals = (
     <>
@@ -1622,105 +1619,111 @@ function DecisionCard({
   // Full-width card status
   return (
     <Box
-      p="md"
+      p="sm"
       bg={tone.bg}
       style={{
         border: `1px solid var(--mantine-color-${tone.border.replace(".", "-")})`,
         borderRadius: "var(--mantine-radius-md)",
       }}
     >
-      <Stack gap={10}>
-        <Group gap={8} wrap="nowrap">
-          <Icon size={18} color={`var(--mantine-color-${tone.color.replace(".", "-")})`} />
-          {isEligible && (
-            <Text fz={14.5} fw={700} c="slate.9">
-              Prescreening passed
+      {isEligible ? (
+        <Group justify="space-between" align="center" wrap="nowrap" gap={16}>
+          <Box style={{ flex: 1, minWidth: 0 }}>
+            <Group gap={8} wrap="nowrap">
+              <Icon size={18} color={`var(--mantine-color-${tone.color.replace(".", "-")})`} />
+              <Text fz={14.5} fw={700} c="slate.9">
+                Prescreening passed
+              </Text>
+            </Group>
+            <Text fz={12.5} fw={500} c="green.8" mt={4}>
+              The requested amount of {zmw(requested)} is within the customer's eligibility.
             </Text>
-          )}
-          {isPartial && (
-            <Text fz={14.5} fw={700} c="orange.8">
-              Amount adjustment required
-            </Text>
-          )}
-          {isFailed && (
-            <Text fz={14.5} fw={700} c="red.7">
-              Prescreening failed
-            </Text>
+          </Box>
+          {!readOnly && (
+            <Button
+              size="xs"
+              color="green.6"
+              radius="md"
+              onClick={onContinue}
+              rightSection={<IconArrowRight size={14} />}
+              style={{ flexShrink: 0 }}
+            >
+              Continue to enrichment
+            </Button>
           )}
         </Group>
-
-        {isEligible && (
-          <Text fz={12.5} fw={500} c="green.8">
-            The requested amount of {zmw(requested)} is within the customer's eligibility.
-          </Text>
-        )}
-
-        {isPartial && (
-          <Group gap={16}>
-            <MiniStat label="Requested" value={zmw(requested)} />
-            <MiniStat label="Eligible" value={zmw(eligibleAmount)} accent />
-          </Group>
-        )}
-
-        {confirm && !readOnly && (
-          <Group
-            gap={10}
-            p="xs"
-            bg="white"
-            style={{
-              border: "1px solid var(--mantine-color-slate-2)",
-              borderRadius: "var(--mantine-radius-sm)",
-            }}
-          >
-            <Text fz={11.5} style={{ flex: 1 }}>
-              Set requested amount to {zmw(calc.eligibleAmount)}?
-            </Text>
-            <Button size="xs" color="dark" radius="sm" onClick={() => onUseEligible(true)}>
-              Confirm
-            </Button>
-            <Button size="xs" variant="default" radius="sm" onClick={() => onUseEligible(false)}>
-              Cancel
-            </Button>
-          </Group>
-        )}
-
-        {!readOnly && (
-          <Box mt={4}>
-            {isEligible && (
-              <Button
-                size="sm"
-                color="green.6"
-                radius="md"
-                onClick={onContinue}
-                rightSection={<IconArrowRight size={14} />}
-              >
-                Continue to enrichment
-              </Button>
-            )}
-            {isPartial && !confirm && (
-              <Button
-                size="sm"
-                variant="light"
-                color="orange"
-                radius="md"
-                onClick={() => onReview("useEligible")}
-              >
-                Use eligible amount
-              </Button>
+      ) : (
+        <Stack gap={6}>
+          <Group gap={8} wrap="nowrap">
+            <Icon size={18} color={`var(--mantine-color-${tone.color.replace(".", "-")})`} />
+            {isPartial && (
+              <Text fz={14.5} fw={700} c="orange.8">
+                Amount adjustment required
+              </Text>
             )}
             {isFailed && (
-              <Button
-                size="sm"
-                variant="default"
-                radius="md"
-                onClick={() => onReview("review")}
-              >
-                Review overrides
-              </Button>
+              <Text fz={14.5} fw={700} c="red.7">
+                Prescreening failed
+              </Text>
             )}
-          </Box>
-        )}
-      </Stack>
+          </Group>
+
+          {isPartial && (
+            <Group gap={16}>
+              <MiniStat label="Requested" value={zmw(requested)} />
+              <MiniStat label="Eligible" value={zmw(eligibleAmount)} accent />
+            </Group>
+          )}
+
+          {confirm && !readOnly && (
+            <Group
+              gap={10}
+              p="xs"
+              bg="white"
+              style={{
+                border: "1px solid var(--mantine-color-slate-2)",
+                borderRadius: "var(--mantine-radius-sm)",
+              }}
+            >
+              <Text fz={11.5} style={{ flex: 1 }}>
+                Set requested amount to {zmw(calc.eligibleAmount)}?
+              </Text>
+              <Button size="xs" color="dark" radius="sm" onClick={() => onUseEligible(true)}>
+                Confirm
+              </Button>
+              <Button size="xs" variant="default" radius="sm" onClick={() => onUseEligible(false)}>
+                Cancel
+              </Button>
+            </Group>
+          )}
+
+          {!readOnly && (
+            <Box mt={2}>
+              {isPartial && !confirm && (
+                <Button
+                  size="sm"
+                  variant="light"
+                  color="orange"
+                  radius="md"
+                  onClick={() => onReview("useEligible")}
+                >
+                  Use eligible amount
+                </Button>
+              )}
+              {isFailed && (
+                <Button
+                  size="sm"
+                  variant="default"
+                  radius="md"
+                  onClick={() => onReview("review")}
+                >
+                  Review overrides
+                </Button>
+              )}
+            </Box>
+          )}
+        </Stack>
+      )}
     </Box>
   );
 }
@@ -2016,7 +2019,7 @@ function PrescreeningWorkspace({
   });
 
   return (
-    <Box px={30} pt={12} pb={30}>
+    <Box px={30} pt={12} pb={16}>
       <PrescreeningOverview
         state={state}
         dispatch={dispatch}
