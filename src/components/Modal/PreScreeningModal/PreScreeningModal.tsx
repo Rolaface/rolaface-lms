@@ -561,7 +561,7 @@ function ComparisonBar({
   const requestedPct = Math.min(100, (requested / scale) * 100);
   const tone = eligible >= requested ? "green" : "orange";
   return (
-    <Box my={16}>
+    <Box my={8}>
       <Box
         pos="relative"
         style={{
@@ -767,6 +767,7 @@ function PrescreeningOverview({
   calc,
   requested,
   maxDTI,
+  productMax,
 }: {
   state: PrescreeningState;
   dispatch: (a: any) => void;
@@ -774,24 +775,25 @@ function PrescreeningOverview({
   calc: EligibilityCalc | null;
   requested: number;
   maxDTI: number;
+  productMax: number;
 }) {
   const credit = state.credit;
   const liab = state.liabilities;
   const income = state.income;
 
   return (
-    <Box mb={16}>
+    <Box mb={10}>
       {/* Left: Monthly Income + DTI | Right: Credit Score + Liabilities in ONE card */}
       <SimpleGrid
         cols={{ base: 1, sm: 2 }}
-        spacing={14}
+        spacing={10}
         style={{
           alignItems: "stretch",
           gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
         }}
       >
-        <Stack gap={14} w="100%" style={{ minWidth: 0 }}>
-          <Paper withBorder radius="md" p="sm">
+        <Stack gap={8} w="100%" style={{ minWidth: 0 }}>
+          <Paper withBorder radius="md" p={8}>
             <CompactRow
               last
               label="Monthly income"
@@ -869,7 +871,7 @@ function PrescreeningOverview({
             />
           </Paper>
 
-          <Paper withBorder radius="md" px="sm" py={7}>
+          <Paper withBorder radius="md" px={8} py={5}>
             <Group justify="space-between">
               <Text fz={12} c="slate.5">
                 Debt-to-Income Ratio
@@ -893,12 +895,40 @@ function PrescreeningOverview({
               </Group>
             </Group>
           </Paper>
+
+          {calc && calc.mandatoryPassed && (
+            <Paper withBorder radius="md" p={8} style={{ flex: 1 }}>
+              <Group justify="space-between" mb={3}>
+                <Box>
+                  <Text fz={10.5} c="slate.5">
+                    Requested loan
+                  </Text>
+                  <Text fz={14} fw={700} c="slate.9">
+                    {zmw(requested)}
+                  </Text>
+                </Box>
+                <Box ta="right">
+                  <Text fz={10.5} c="slate.5">
+                    Maximum eligible amount
+                  </Text>
+                  <Text fz={14} fw={700} c="slate.9">
+                    {zmw(calc.eligibleAmount)}
+                  </Text>
+                </Box>
+              </Group>
+              <ComparisonBar
+                requested={requested}
+                eligible={calc.eligibleAmount}
+                productMax={productMax}
+              />
+            </Paper>
+          )}
         </Stack>
 
         <Paper
           withBorder
           radius="md"
-          p="sm"
+          p={8}
           h="100%"
           w="100%"
           style={{ minWidth: 0, overflow: "visible" }}
@@ -930,7 +960,7 @@ function PrescreeningOverview({
             loading={credit.status === "loading"}
           />
 
-          <Box mt={8}>
+          <Box mt={4}>
             <CompactRow
               last
               label="Existing liabilities"
@@ -1074,6 +1104,7 @@ function EligibilitySection({
   calcOpen,
   setCalcOpen,
   recalcFlash,
+  decisionSlot,
 }: {
   calc: EligibilityCalc | null;
   requested: number;
@@ -1090,6 +1121,7 @@ function EligibilitySection({
   calcOpen: boolean;
   setCalcOpen: (v: boolean) => void;
   recalcFlash: boolean;
+  decisionSlot?: React.ReactNode;
 }) {
   if (!calc) {
     const missing: string[] = [];
@@ -1097,22 +1129,25 @@ function EligibilitySection({
     if (obligations == null) missing.push("Liability information");
     if (income == null) missing.push("Income");
     return (
-      <Paper
-        withBorder
-        radius="md"
-        p="xl"
-        ta="center"
-        style={{ borderStyle: "dashed" }}
-      >
-        <IconHelp size={22} color="var(--mantine-color-slate-4)" />
-        <Text fz={13.5} fw={600} c="slate.9" mt={6}>
-          Prescreening incomplete
-        </Text>
-        <Text fz={12.5} c="slate.5" mt={4}>
-          Missing: {missing.join(", ")}. Fetch or enter these above to run
-          the calculation.
-        </Text>
-      </Paper>
+      <Box>
+        <Paper
+          withBorder
+          radius="md"
+          p="xl"
+          ta="center"
+          style={{ borderStyle: "dashed" }}
+        >
+          <IconHelp size={22} color="var(--mantine-color-slate-4)" />
+          <Text fz={13.5} fw={600} c="slate.9" mt={6}>
+            Prescreening incomplete
+          </Text>
+          <Text fz={12.5} c="slate.5" mt={4}>
+            Missing: {missing.join(", ")}. Fetch or enter these above to run
+            the calculation.
+          </Text>
+        </Paper>
+        {decisionSlot && <Box mt={16}>{decisionSlot}</Box>}
+      </Box>
     );
   }
 
@@ -1144,77 +1179,74 @@ function EligibilitySection({
         </Badge>
       )}
 
-      <SimpleGrid cols={2} spacing={18} mb={4}>
-        <Box>
-          <Text fz={11.5} c="slate.5">
-            Requested loan
-          </Text>
-          <Text fz={24} fw={700} c="slate.9">
-            {zmw(requested)}
-          </Text>
-        </Box>
-        <Box>
-          <Text fz={11.5} c="slate.5">
-            Maximum eligible amount
-          </Text>
-          <Text fz={24} fw={700} c={isFailed ? "slate.4" : "slate.9"}>
-            {isFailed ? "—" : zmw(eligibleAmount)}
-          </Text>
-        </Box>
-      </SimpleGrid>
-
-      {!isFailed && (
-        <ComparisonBar
-          requested={requested}
-          eligible={eligibleAmount}
-          productMax={productMax}
-        />
-      )}
-
-      {isEligible && (
-        <Box mb={20}>
-          <Text fz={12.5} fw={600} c="slate.9" mb={8}>
-            Why this passes
-          </Text>
-          <SimpleGrid cols={2} spacing={8}>
-            <CheckLine ok>Credit score meets minimum requirement</CheckLine>
-            <CheckLine ok>Debt-to-income ratio is within the allowed limit</CheckLine>
-            <CheckLine ok>Monthly repayment is within the affordability limit</CheckLine>
-            <CheckLine ok>Requested amount is within the product and customer limit</CheckLine>
-          </SimpleGrid>
-        </Box>
-      )}
-
       {isFailed && (
-        <Box mb={20}>
-          <Text fz={12.5} fw={600} c="slate.9" mb={8}>
-            Why this fails
-          </Text>
-          <SimpleGrid cols={2} spacing={8}>
-            <CheckLine ok={creditPassed}>
-              Credit score {creditPassed ? "meets" : "is below"} the minimum
-              requirement ({minCreditScore})
-            </CheckLine>
-            <CheckLine ok={dtiPassed}>
-              Debt-to-income ratio {dtiPassed ? "is within" : "exceeds"} the
-              allowed limit ({maxDTI}%)
-            </CheckLine>
-          </SimpleGrid>
-        </Box>
+        <SimpleGrid cols={2} spacing={18} mb={4}>
+          <Box>
+            <Text fz={11.5} c="slate.5">
+              Requested loan
+            </Text>
+            <Text fz={16} fw={700} c="slate.9">
+              {zmw(requested)}
+            </Text>
+          </Box>
+          <Box>
+            <Text fz={11.5} c="slate.5">
+              Maximum eligible amount
+            </Text>
+            <Text fz={16} fw={700} c="slate.4">
+              —
+            </Text>
+          </Box>
+        </SimpleGrid>
       )}
 
-      <Group grow gap={10} mt={4}>
-        <ActionRow
-          icon={IconInfoCircle}
-          label="How was eligibility calculated?"
-          onClick={() => setRulesOpen(true)}
-        />
-        <ActionRow
-          icon={IconPercentage}
-          label="View calculation"
-          onClick={() => setCalcOpen(true)}
-        />
-      </Group>
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={24} mb={4}>
+        {isEligible && (
+          <Box>
+            <Text fz={12.5} fw={600} c="slate.9" mb={8}>
+              Why this passes
+            </Text>
+            <Stack gap={6}>
+              <CheckLine ok>Credit score meets minimum requirement</CheckLine>
+              <CheckLine ok>Debt-to-income ratio is within the allowed limit</CheckLine>
+              <CheckLine ok>Monthly repayment is within the affordability limit</CheckLine>
+              <CheckLine ok>Requested amount is within the product and customer limit</CheckLine>
+            </Stack>
+          </Box>
+        )}
+
+        {isFailed && (
+          <Box>
+            <Text fz={12.5} fw={600} c="slate.9" mb={8}>
+              Why this fails
+            </Text>
+            <Stack gap={6}>
+              <CheckLine ok={creditPassed}>
+                Credit score {creditPassed ? "meets" : "is below"} the minimum
+                requirement ({minCreditScore})
+              </CheckLine>
+              <CheckLine ok={dtiPassed}>
+                Debt-to-income ratio {dtiPassed ? "is within" : "exceeds"} the
+                allowed limit ({maxDTI}%)
+              </CheckLine>
+            </Stack>
+          </Box>
+        )}
+
+        <Stack gap={10}>
+          <ActionRow
+            icon={IconInfoCircle}
+            label="How was eligibility calculated?"
+            onClick={() => setRulesOpen(true)}
+          />
+          <ActionRow
+            icon={IconPercentage}
+            label="View calculation"
+            onClick={() => setCalcOpen(true)}
+          />
+          {decisionSlot}
+        </Stack>
+      </SimpleGrid>
 
       <Modal
         opened={rulesOpen}
@@ -1369,99 +1401,99 @@ function DecisionCard({
   const isFailed = !mandatoryPassed;
 
   const tone = isEligible
-    ? { bg: "green.0", border: "green.2", icon: IconCircleCheck, color: "green.7", title: "Prescreening passed" }
+    ? { bg: "green.0", border: "green.2", icon: IconCircleCheck, color: "green.7" }
     : isPartial
-      ? { bg: "orange.0", border: "orange.2", icon: IconAlertTriangle, color: "orange.7", title: "Amount adjustment required" }
-      : { bg: "red.0", border: "red.2", icon: IconCircleX, color: "red.6", title: "Prescreening failed" };
+      ? { bg: "orange.0", border: "orange.2", icon: IconAlertTriangle, color: "orange.7" }
+      : { bg: "red.0", border: "red.2", icon: IconCircleX, color: "red.6" };
   const Icon = tone.icon;
 
+  // Compact pill-style status instead of a large card
   return (
     <Box
-      p="lg"
+      px="sm"
+      py={8}
       bg={tone.bg}
       style={{
-        border: `1.5px solid var(--mantine-color-${tone.border.replace(".", "-")})`,
-        borderRadius: "var(--mantine-radius-lg)",
+        border: `1px solid var(--mantine-color-${tone.border.replace(".", "-")})`,
+        borderRadius: "var(--mantine-radius-md)",
+        display: "inline-flex",
       }}
     >
-      <Group gap={10} mb={8}>
-        <Icon size={20} color={`var(--mantine-color-${tone.color.replace(".", "-")})`} />
-        <Text fz="md" fw={700} c="slate.9">
-          {tone.title}
-        </Text>
-      </Group>
+      <Stack gap={8}>
+        <Group gap={8} wrap="nowrap">
+          <Icon size={16} color={`var(--mantine-color-${tone.color.replace(".", "-")})`} />
+          {isEligible && (
+            <Text fz={12.5} fw={700} c="green.8">
+              Prescreening passed
+            </Text>
+          )}
+          {isPartial && (
+            <Text fz={12.5} fw={700} c="orange.8">
+              Amount adjustment required
+            </Text>
+          )}
+          {isFailed && (
+            <Text fz={12.5} fw={700} c="red.7">
+              Prescreening failed
+            </Text>
+          )}
+        </Group>
 
-      {isEligible && (
-        <Text fz={12.5} c="green.8" mb={14}>
-          The requested amount of {zmw(requested)} is within the customer's
-          eligibility.
-        </Text>
-      )}
-      {isPartial && (
-        <>
-          <Text fz={12.5} c="orange.8" mb={10}>
-            The requested amount exceeds the customer's current eligibility.
-          </Text>
-          <Group gap={20} mb={14}>
+        {isPartial && (
+          <Group gap={16}>
             <MiniStat label="Requested" value={zmw(requested)} />
             <MiniStat label="Eligible" value={zmw(eligibleAmount)} accent />
           </Group>
-        </>
-      )}
-      {isFailed && (
-        <Text fz={12.5} c="red.8" mb={14}>
-          The customer does not meet one or more mandatory prescreening
-          rules. See the rule breakdown above for details.
-        </Text>
-      )}
+        )}
 
-      {confirm && !readOnly && (
-        <Group
-          gap={10}
-          p="sm"
-          mb={12}
-          bg="white"
-          style={{
-            border: "1px solid var(--mantine-color-slate-2)",
-            borderRadius: "var(--mantine-radius-sm)",
-          }}
-        >
-          <Text fz={12.5} style={{ flex: 1 }}>
-            Set requested amount to {zmw(calc.eligibleAmount)}?
-          </Text>
-          <Button size="xs" color="dark" radius="sm" onClick={() => onUseEligible(true)}>
-            Confirm
-          </Button>
-          <Button size="xs" variant="default" radius="sm" onClick={() => onUseEligible(false)}>
-            Cancel
-          </Button>
-        </Group>
-      )}
-
-      {!readOnly && (
-        <Group gap={10}>
-          {isEligible && (
-            <Button
-              color="green"
-              radius="md"
-              rightSection={<IconArrowRight size={14} />}
-              onClick={onContinue}
-            >
-              Continue to enrichment
+        {confirm && !readOnly && (
+          <Group
+            gap={10}
+            p="xs"
+            bg="white"
+            style={{
+              border: "1px solid var(--mantine-color-slate-2)",
+              borderRadius: "var(--mantine-radius-sm)",
+            }}
+          >
+            <Text fz={11.5} style={{ flex: 1 }}>
+              Set requested amount to {zmw(calc.eligibleAmount)}?
+            </Text>
+            <Button size="xs" color="dark" radius="sm" onClick={() => onUseEligible(true)}>
+              Confirm
             </Button>
-          )}
-          {isPartial && !confirm && (
-            <>
-              <Button color="orange" radius="md" onClick={() => onReview("useEligible")}>
-                Use {zmw(eligibleAmount)}
+            <Button size="xs" variant="default" radius="sm" onClick={() => onUseEligible(false)}>
+              Cancel
+            </Button>
+          </Group>
+        )}
+
+        {!readOnly && (
+          <Group gap={10}>
+            {isEligible && (
+              <Button
+                size="xs"
+                color="green"
+                radius="md"
+                rightSection={<IconArrowRight size={13} />}
+                onClick={onContinue}
+              >
+                Continue to enrichment
               </Button>
-              <Button variant="default" radius="md" onClick={() => onReview("review")}>
-                Review application
-              </Button>
-            </>
-          )}
-        </Group>
-      )}
+            )}
+            {isPartial && !confirm && (
+              <>
+                <Button size="xs" color="orange" radius="md" onClick={() => onReview("useEligible")}>
+                  Use {zmw(eligibleAmount)}
+                </Button>
+                <Button size="xs" variant="default" radius="md" onClick={() => onReview("review")}>
+                  Review application
+                </Button>
+              </>
+            )}
+          </Group>
+        )}
+      </Stack>
     </Box>
   );
 }
@@ -1679,7 +1711,7 @@ function PrescreeningWorkspace({
   }
 
   return (
-    <Box p={30}>
+    <Box px={30} pt={12} pb={30}>
       <SectionLabel>Prescreening data</SectionLabel>
       <PrescreeningOverview
         state={state}
@@ -1688,9 +1720,10 @@ function PrescreeningWorkspace({
         calc={calc}
         requested={requested}
         maxDTI={policy.maxDTI}
+        productMax={policy.productMax}
       />
 
-      <SectionLabel>Eligibility calculation</SectionLabel>
+      {/* <SectionLabel>Eligibility calculation</SectionLabel> */}
       <EligibilitySection
         calc={calc}
         requested={requested}
@@ -1707,20 +1740,21 @@ function PrescreeningWorkspace({
         calcOpen={calcOpen}
         setCalcOpen={setCalcOpen}
         recalcFlash={flash}
+        decisionSlot={
+          <>
+            {/* <SectionLabel>Prescreening result</SectionLabel> */}
+            <DecisionCard
+              calc={calc}
+              requested={requested}
+              onContinue={() => setContinued(true)}
+              onUseEligible={handleUseEligible}
+              onReview={(a) => a === "useEligible" && setConfirm(true)}
+              confirm={confirm}
+              readOnly={readOnly}
+            />
+          </>
+        }
       />
-
-      <Box mt={26}>
-        <SectionLabel>Prescreening result</SectionLabel>
-        <DecisionCard
-          calc={calc}
-          requested={requested}
-          onContinue={() => setContinued(true)}
-          onUseEligible={handleUseEligible}
-          onReview={(a) => a === "useEligible" && setConfirm(true)}
-          confirm={confirm}
-          readOnly={readOnly}
-        />
-      </Box>
     </Box>
   );
 }
