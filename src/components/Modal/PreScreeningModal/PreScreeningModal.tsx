@@ -648,15 +648,14 @@ function CreditGaugeVisual({
           display: "flex",
           justifyContent: "center",
           width: "100%",
-          marginTop: -6,
         }}
       >
         <svg
           width="100%"
-          height="70"
+          height="76"
           viewBox="0 0 148 82"
           preserveAspectRatio="xMidYMid meet"
-          style={{ maxWidth: 140 }}
+          style={{ maxWidth: 144, overflow: "visible" }}
         >
           {segments.map((s) => (
             <path
@@ -689,7 +688,7 @@ function CreditGaugeVisual({
         </svg>
       </Box>
 
-      <Group justify="center" gap={6} mt={-8}>
+      <Group justify="center" gap={6} mt={10}>
         <Text fz={18} fw={700} c="slate.9">
           {loading ? "…" : (score ?? "—")}
         </Text>
@@ -902,9 +901,9 @@ function PrescreeningOverview({
           p="sm"
           h="100%"
           w="100%"
-          style={{ minWidth: 0 }}
+          style={{ minWidth: 0, overflow: "visible" }}
         >
-          <Group justify="space-between" align="center" mb={-4}>
+          <Group justify="space-between" align="center" mb={2}>
             <Group gap={6}>
               <ThemeIcon radius="sm" size={20} variant="light" color="brand">
                 <IconGauge size={11} />
