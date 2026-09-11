@@ -10,11 +10,14 @@ import {
   Badge,
   ActionIcon,
   ThemeIcon,
+  Pagination,
 } from '@mantine/core';
 import { IconSearch, IconX, IconGripVertical, IconInfoCircle, IconArrowRight, IconStack2, IconLink, IconFileText, IconEye, IconTrash } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useLoanProductStore } from '../../../store/loanProductStore';
 import { ModalFooter } from '../../../components/shared/ModalFooter';
+
+const PAGE_SIZE = 6;
 
 export function MapLoanProducts() {
   const navigate = useNavigate();
@@ -24,6 +27,7 @@ export function MapLoanProducts() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetchProducts();
@@ -52,6 +56,22 @@ export function MapLoanProducts() {
     }
     return filtered;
   }, [products, activeFilter, searchQuery]);
+
+  // Reset to page 1 whenever the filtered set changes (new search/filter)
+  useEffect(() => {
+    setPage(1);
+  }, [activeFilter, searchQuery]);
+
+  const totalProducts = availableProducts.length;
+  const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const firstRow = totalProducts === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const lastRow = Math.min(totalProducts, currentPage * PAGE_SIZE);
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return availableProducts.slice(start, start + PAGE_SIZE);
+  }, [availableProducts, currentPage]);
 
   const selectedProducts = products.filter(p => selectedIds.includes(p.id));
 
@@ -188,11 +208,11 @@ export function MapLoanProducts() {
           </Box>
 
           <div className="px-2 py-1 bg-white">
-            {availableProducts.length === 0 ? (
+            {paginatedProducts.length === 0 ? (
               <Text size="sm" c="dimmed" ta="center" py="xl">No products found.</Text>
             ) : (
               <div className="flex flex-col">
-                {availableProducts.map(product => {
+                {paginatedProducts.map(product => {
                   const isSelected = selectedIds.includes(product.id);
                   const type = getDisplayType(product.category, product.name);
                   const code = getCode(product);
@@ -248,7 +268,23 @@ export function MapLoanProducts() {
             )}
           </div>
 
-          <Box className="p-4 bg-white border-t border-slate-100">
+          {/* Pagination Footer */}
+          <Box className="px-5 py-3 bg-white border-t border-slate-100 flex items-center justify-between">
+            <Text size="xs" c="slate.5">
+              {totalProducts === 0
+                ? 'Showing 0 of 0 products'
+                : `Showing ${firstRow}-${lastRow} of ${totalProducts} products`}
+            </Text>
+            {totalPages > 1 && (
+              <Pagination
+                total={totalPages}
+                value={currentPage}
+                onChange={setPage}
+                color="brand"
+                size="sm"
+                radius="xl"
+              />
+            )}
           </Box>
         </Paper>
 
