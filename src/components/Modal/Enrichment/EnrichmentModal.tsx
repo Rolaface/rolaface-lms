@@ -144,7 +144,7 @@ function computeSimulation(
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <Text fz={11} fw={600} c="slate.5" tt="uppercase" style={{ letterSpacing: 0.3 }} mb={10}>
+    <Text fz={11} fw={600} c="slate.5" tt="uppercase" style={{ letterSpacing: 0.3 }} mb={6}>
       {children}
     </Text>
   );
@@ -367,11 +367,11 @@ function EnrichmentWorkspace({
   }
 
   return (
-    <Box p={30}>
+    <Box p={24}>
       <Group
         gap={10}
         align="flex-start"
-        mb={22}
+        mb={16}
         p="sm"
         bg="brand.0"
         style={{ border: "1px solid var(--mantine-color-brand-2)", borderRadius: "var(--mantine-radius-md)" }}
@@ -384,7 +384,7 @@ function EnrichmentWorkspace({
       </Group>
 
       <SectionLabel>Interest details</SectionLabel>
-      <SimpleGrid cols={2} spacing={14} mb={22}>
+      <SimpleGrid cols={4} spacing={12} mb={16}>
         <Box>
           <NumberInput
             label="Interest rate"
@@ -396,10 +396,11 @@ function EnrichmentWorkspace({
             max={PRODUCT_LIMITS.rateMax}
             step={0.5}
             radius="md"
+            size="xs"
           />
           {!rateError && (
-            <Text fz={11} c="slate.4" mt={4}>
-              Product range: {PRODUCT_LIMITS.rateMin}%–{PRODUCT_LIMITS.rateMax}%
+            <Text fz={10} c="slate.4" mt={4}>
+              Range: {PRODUCT_LIMITS.rateMin}%–{PRODUCT_LIMITS.rateMax}%
             </Text>
           )}
         </Box>
@@ -409,6 +410,7 @@ function EnrichmentWorkspace({
           onChange={(v) => setInterestType(v || "Fixed")}
           data={["Fixed", "Variable"]}
           radius="md"
+          size="xs"
         />
         <Select
           label="Calculation method"
@@ -416,6 +418,7 @@ function EnrichmentWorkspace({
           onChange={(v) => setCalcMethod(v || "Reducing balance")}
           data={["Reducing balance", "Flat rate"]}
           radius="md"
+          size="xs"
         />
         <TextInput
           type="date"
@@ -423,12 +426,13 @@ function EnrichmentWorkspace({
           value={effectiveDate}
           onChange={(e) => setEffectiveDate(e.currentTarget.value)}
           radius="md"
+          size="xs"
         />
       </SimpleGrid>
 
       <SectionLabel>Charges and fees</SectionLabel>
-      <Paper withBorder radius="md" p="md" mb={22}>
-        <SimpleGrid cols={2} spacing={14} mb={14}>
+      <Paper withBorder radius="md" p="sm" mb={16}>
+        <SimpleGrid cols={4} spacing={12} mb={12}>
           <Box>
             <NumberInput
               label="Processing fee"
@@ -439,9 +443,10 @@ function EnrichmentWorkspace({
               max={10}
               step={0.5}
               radius="md"
+              size="xs"
             />
             {figures && (
-              <Text fz={11} c="slate.4" mt={4}>
+              <Text fz={10} c="slate.4" mt={4}>
                 = {zmw(figures.processingFee)}
               </Text>
             )}
@@ -456,49 +461,53 @@ function EnrichmentWorkspace({
               max={30}
               step={1}
               radius="md"
+              size="xs"
             />
             {figures && (
-              <Text fz={11} c="slate.4" mt={4}>
+              <Text fz={10} c="slate.4" mt={4}>
                 = {zmw(figures.tax)}
               </Text>
             )}
           </Box>
+          {insuranceEnabled && (
+            <Box>
+              <NumberInput
+                label="Insurance premium"
+                value={insurancePct}
+                onChange={(v) => setInsurancePct(Number(v) || 0)}
+                suffix="%"
+                min={0}
+                max={5}
+                step={0.25}
+                radius="md"
+                size="xs"
+              />
+              {figures && (
+                <Text fz={10} c="slate.4" mt={4}>
+                  = {zmw(figures.insurance)}
+                </Text>
+              )}
+            </Box>
+          )}
         </SimpleGrid>
 
-        <Checkbox
-          checked={insuranceEnabled}
-          onChange={(e) => setInsuranceEnabled(e.currentTarget.checked)}
-          label="Credit life insurance applicable"
-          mb={10}
-        />
-        {insuranceEnabled && (
-          <Box mb={14} maw={240}>
-            <NumberInput
-              label="Insurance premium"
-              value={insurancePct}
-              onChange={(v) => setInsurancePct(Number(v) || 0)}
-              suffix="%"
-              min={0}
-              max={5}
-              step={0.25}
-              radius="md"
-            />
-            {figures && (
-              <Text fz={11} c="slate.4" mt={4}>
-                = {zmw(figures.insurance)}
-              </Text>
-            )}
-          </Box>
-        )}
+        <Group gap={20} mb={10}>
+          <Checkbox
+            size="xs"
+            checked={insuranceEnabled}
+            onChange={(e) => setInsuranceEnabled(e.currentTarget.checked)}
+            label="Credit life insurance applicable"
+          />
+          <Checkbox
+            size="xs"
+            checked={waiverEnabled}
+            onChange={(e) => setWaiverEnabled(e.currentTarget.checked)}
+            label="Apply a waiver or discount"
+          />
+        </Group>
 
-        <Checkbox
-          checked={waiverEnabled}
-          onChange={(e) => setWaiverEnabled(e.currentTarget.checked)}
-          label="Apply a waiver or discount"
-          mb={10}
-        />
         {waiverEnabled && (
-          <SimpleGrid cols={2} spacing={14} mb={4}>
+          <SimpleGrid cols={4} spacing={12} mb={4}>
             <NumberInput
               label="Waiver amount"
               value={waiverAmount}
@@ -506,6 +515,7 @@ function EnrichmentWorkspace({
               suffix=" ZMW"
               min={0}
               radius="md"
+              size="xs"
             />
             <TextInput
               label="Reason"
@@ -513,19 +523,20 @@ function EnrichmentWorkspace({
               onChange={(e) => setWaiverReason(e.currentTarget.value)}
               placeholder="e.g. loyalty discount"
               radius="md"
+              size="xs"
             />
           </SimpleGrid>
         )}
 
         {figures && (
-          <Box mt={14} pt={12} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
+          <Box mt={10} pt={10} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
             <SimRow label="Total charges (net of waiver)" value={zmw(figures.netCharges)} last strong />
           </Box>
         )}
       </Paper>
 
       <SectionLabel>Final loan terms</SectionLabel>
-      <SimpleGrid cols={3} spacing={14} mb={22}>
+      <SimpleGrid cols={3} spacing={12} mb={16}>
         <Box>
           <NumberInput
             label="Amount"
@@ -537,9 +548,10 @@ function EnrichmentWorkspace({
             max={approvedAmount}
             step={500}
             radius="md"
+            size="xs"
           />
           {!amountError && (
-            <Text fz={11} c="slate.4" mt={4}>
+            <Text fz={10} c="slate.4" mt={4}>
               Capped at approved amount: {zmw(approvedAmount)}
             </Text>
           )}
@@ -554,9 +566,10 @@ function EnrichmentWorkspace({
             min={PRODUCT_LIMITS.tenureMin}
             max={PRODUCT_LIMITS.tenureMax}
             radius="md"
+            size="xs"
           />
           {!tenureError && (
-            <Text fz={11} c="slate.4" mt={4}>
+            <Text fz={10} c="slate.4" mt={4}>
               {PRODUCT_LIMITS.tenureMin}–{PRODUCT_LIMITS.tenureMax}
             </Text>
           )}
@@ -567,6 +580,7 @@ function EnrichmentWorkspace({
           onChange={(v) => setFrequency(v || "Monthly")}
           data={["Monthly", "Bi-weekly"]}
           radius="md"
+          size="xs"
         />
       </SimpleGrid>
 
@@ -575,43 +589,51 @@ function EnrichmentWorkspace({
           <SectionLabel>Final repayment schedule</SectionLabel>
           <Box
             style={{ border: "1.5px solid var(--mantine-color-brand-2)", borderRadius: "var(--mantine-radius-md)" }}
-            p="md"
+            p="sm"
             bg="brand.0"
-            mb={24}
+            mb={16}
           >
-            <Group justify="flex-end" mb={10}>
+            <Group justify="space-between" mb={12}>
+              <Text fz={13} fw={600} c="brand.9">Summary of Terms</Text>
               <Badge size="xs" radius="xl" color="brand" variant="light">
                 Final terms for underwriting
               </Badge>
             </Group>
-            <SimpleGrid cols={2} spacing={12} mb={14}>
-              <Paper radius="md" p="md" bg="white">
-                <Text fz={11.5} c="slate.5">
-                  Estimated {frequency.toLowerCase()} installment
-                </Text>
-                <Text fz={20} fw={700} c="slate.9" mt={2}>
-                  {zmw(figures.sim.installment)}
-                </Text>
-              </Paper>
-              <Paper radius="md" p="md" bg="white">
-                <Text fz={11.5} c="slate.5">
-                  Net disbursement
-                </Text>
-                <Text fz={20} fw={700} c="slate.9" mt={2}>
-                  {zmw(figures.netDisbursement)}
-                </Text>
-              </Paper>
-            </SimpleGrid>
-            <Paper radius="md" px="md" bg="white" mb={14}>
-              <SimRow label="Gross loan amount" value={zmw(amount)} />
-              <SimRow label="Total charges and fees" value={zmw(figures.netCharges)} />
-              <SimRow label="Net disbursement" value={zmw(figures.netDisbursement)} />
-              <SimRow label="Estimated installment" value={zmw(figures.sim.installment)} />
-              <SimRow label="Total interest" value={zmw(figures.sim.totalInterest)} />
-              <SimRow label="Total repayment (principal + interest)" value={zmw(figures.sim.totalRepayment)} />
-              <SimRow label="Total cost of credit" value={zmw(figures.totalCostOfCredit)} />
-              <SimRow label="First repayment date" value={fmtDate(figures.sim.first)} />
-              <SimRow label="Final repayment date" value={fmtDate(figures.sim.final)} last />
+            <Paper radius="md" p="sm" bg="white" mb={12}>
+              <SimpleGrid cols={4} spacing="md" verticalSpacing="sm">
+                <Box>
+                  <Text fz={11} c="slate.5">Gross loan amount</Text>
+                  <Text fz={13} fw={600} c="slate.9">{zmw(amount)}</Text>
+                </Box>
+                <Box>
+                  <Text fz={11} c="slate.5">Total charges & fees</Text>
+                  <Text fz={13} fw={600} c="slate.9">{zmw(figures.netCharges)}</Text>
+                </Box>
+                <Box>
+                  <Text fz={11} c="slate.5">Total interest</Text>
+                  <Text fz={13} fw={600} c="slate.9">{zmw(figures.sim.totalInterest)}</Text>
+                </Box>
+                <Box>
+                  <Text fz={11} c="slate.5">Total cost of credit</Text>
+                  <Text fz={13} fw={600} c="slate.9">{zmw(figures.totalCostOfCredit)}</Text>
+                </Box>
+                <Box style={{ borderTop: "1px dashed var(--mantine-color-slate-2)", paddingTop: 8 }}>
+                  <Text fz={11} c="slate.5">Net disbursement</Text>
+                  <Text fz={14} fw={700} c="brand.7">{zmw(figures.netDisbursement)}</Text>
+                </Box>
+                <Box style={{ borderTop: "1px dashed var(--mantine-color-slate-2)", paddingTop: 8 }}>
+                  <Text fz={11} c="slate.5">Est. {frequency.toLowerCase()} installment</Text>
+                  <Text fz={14} fw={700} c="brand.7">{zmw(figures.sim.installment)}</Text>
+                </Box>
+                <Box style={{ borderTop: "1px dashed var(--mantine-color-slate-2)", paddingTop: 8 }}>
+                  <Text fz={11} c="slate.5">First repayment</Text>
+                  <Text fz={13} fw={600} c="slate.9">{fmtDate(figures.sim.first)}</Text>
+                </Box>
+                <Box style={{ borderTop: "1px dashed var(--mantine-color-slate-2)", paddingTop: 8 }}>
+                  <Text fz={11} c="slate.5">Final repayment</Text>
+                  <Text fz={13} fw={600} c="slate.9">{fmtDate(figures.sim.final)}</Text>
+                </Box>
+              </SimpleGrid>
             </Paper>
             <UnstyledButton onClick={() => setScheduleOpen(!scheduleOpen)}>
               <Group gap={4}>
