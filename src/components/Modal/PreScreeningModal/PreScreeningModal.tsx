@@ -1393,40 +1393,42 @@ function EligibilitySection({
         </SimpleGrid>
       )}
 
-      <Stack gap={24} mb={4}>
-        {isEligible && (
-          <Box>
-            <Text fz={12.5} fw={600} c="slate.9" mb={8}>
-              Why this passes
-            </Text>
-            <Stack gap={6}>
-              <CheckLine ok>Credit score meets minimum requirement</CheckLine>
-              <CheckLine ok>Debt-to-income ratio is within the allowed limit</CheckLine>
-              <CheckLine ok>Monthly repayment is within the affordability limit</CheckLine>
-              <CheckLine ok>Requested amount is within the product and customer limit</CheckLine>
-            </Stack>
-          </Box>
-        )}
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={24} mb={4}>
+        <Box>
+          {isEligible && (
+            <Box mb={24}>
+              <Text fz={12.5} fw={600} c="slate.9" mb={8}>
+                Why this passes
+              </Text>
+              <Stack gap={6}>
+                <CheckLine ok>Credit score meets minimum requirement</CheckLine>
+                <CheckLine ok>Debt-to-income ratio is within the allowed limit</CheckLine>
+                <CheckLine ok>Monthly repayment is within the affordability limit</CheckLine>
+                <CheckLine ok>Requested amount is within the product and customer limit</CheckLine>
+              </Stack>
+            </Box>
+          )}
 
-        {isFailed && (
-          <Box>
-            <Text fz={12.5} fw={600} c="slate.9" mb={8}>
-              Why this fails
-            </Text>
-            <Stack gap={6}>
-              <CheckLine ok={creditPassed}>
-                Credit score {creditPassed ? "meets" : "is below"} the minimum
-                requirement ({minCreditScore})
-              </CheckLine>
-              <CheckLine ok={dtiPassed}>
-                Debt-to-income ratio {dtiPassed ? "is within" : "exceeds"} the
-                allowed limit ({maxDTI}%)
-              </CheckLine>
-            </Stack>
-          </Box>
-        )}
+          {isFailed && (
+            <Box mb={24}>
+              <Text fz={12.5} fw={600} c="slate.9" mb={8}>
+                Why this fails
+              </Text>
+              <Stack gap={6}>
+                <CheckLine ok={creditPassed}>
+                  Credit score {creditPassed ? "meets" : "is below"} the minimum
+                  requirement ({minCreditScore})
+                </CheckLine>
+                <CheckLine ok={dtiPassed}>
+                  Debt-to-income ratio {dtiPassed ? "is within" : "exceeds"} the
+                  allowed limit ({maxDTI}%)
+                </CheckLine>
+              </Stack>
+            </Box>
+          )}
 
-        {decisionSlot && <Box>{decisionSlot}</Box>}
+          {decisionSlot && <Box>{decisionSlot}</Box>}
+        </Box>
 
         <Stack gap={10}>
           <ActionRow
@@ -1440,7 +1442,7 @@ function EligibilitySection({
             onClick={() => setCalcOpen(true)}
           />
         </Stack>
-      </Stack>
+      </SimpleGrid>
 
       <Modal
         opened={rulesOpen}
