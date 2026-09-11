@@ -2060,7 +2060,7 @@ function PrescreeningWorkspace({
               <Table.Tr>
                 <Table.Th>Source</Table.Th>
                 <Table.Th>Institution</Table.Th>
-                <Table.Th>Facility Type</Table.Th>
+                <Table.Th>liabilities  Type</Table.Th>
                 <Table.Th>Outstanding</Table.Th>
                 <Table.Th>Monthly Payment</Table.Th>
                 <Table.Th>Status</Table.Th>
