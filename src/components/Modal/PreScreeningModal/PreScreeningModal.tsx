@@ -284,22 +284,6 @@ function calcEligibility({
     mandatoryPassed: creditPassed && dtiPassed,
   };
 }
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <Text
-      fz={11}
-      fw={600}
-      c="slate.5"
-      tt="uppercase"
-      style={{ letterSpacing: 0.3 }}
-      mb={10}
-    >
-      {children}
-    </Text>
-  );
-}
-
 const SOURCE_MAP: Record<
   SourceKind,
   { label: string; color: string }
@@ -611,6 +595,7 @@ interface LiabilitiesState extends FieldState {
   outstanding: number | null;
   source: SourceKind;
   records: LiabilityRecord[];
+  manualRecords: LiabilityRecord[];
 }
 interface IncomeState extends FieldState {
   value: number | null;
@@ -646,6 +631,7 @@ function buildInitialState(scenarioKey: string): PrescreeningState {
       manual: s.obligationsSource === "unavailable",
       reason: "",
       records,
+      manualRecords: [],
     },
     income: {
       value: s.income,
@@ -851,10 +837,10 @@ function CompactRow({
     >
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Box style={{ flex: 1, minWidth: 0 }}>
-          <Text fz={11} c="slate.5">
+          <Text fz={12.5} fw={600} c="slate.9">
             {label}
           </Text>
-          <Text fz={14} fw={700} c="slate.9" mt={1}>
+          <Text fz={14} fw={500} c="slate.7" mt={1}>
             {value}
           </Text>
           {(subtext || badge) && (
@@ -1020,11 +1006,11 @@ function PrescreeningOverview({
 
           <Paper withBorder radius="md" px={8} py={5}>
             <Group justify="space-between">
-              <Text fz={12} c="slate.5">
+              <Text fz={12.5} fw={600} c="slate.9">
                 Debt-to-Income Ratio
               </Text>
               <Group gap={6}>
-                <Text fz={13.5} fw={700} c="slate.9">
+                <Text fz={14} fw={500} c="slate.7">
                   {calc ? `${calc.customerDTI.toFixed(0)}%` : "—"}
                 </Text>
                 {calc && (
@@ -1044,21 +1030,21 @@ function PrescreeningOverview({
           </Paper>
 
           {calc && calc.mandatoryPassed && (
-            <Paper withBorder radius="md" p={8} style={{ flex: 1 }}>
-              <Group justify="space-between" mb={3} mt={12}>
+            <Paper withBorder radius="md" p={8}>
+              <Group justify="space-between" mb={3}>
                 <Box>
-                  <Text fz={10.5} c="slate.5">
+                  <Text fz={12.5} fw={600} c="slate.9">
                     Requested loan
                   </Text>
-                  <Text fz={14} fw={700} c="slate.9">
+                  <Text fz={14} fw={500} c="slate.7">
                     {zmw(requested)}
                   </Text>
                 </Box>
                 <Box ta="right">
-                  <Text fz={10.5} c="slate.5">
+                  <Text fz={12.5} fw={600} c="slate.9">
                     Maximum eligible amount
                   </Text>
-                  <Text fz={14} fw={700} c="slate.9">
+                  <Text fz={14} fw={500} c="slate.7">
                     {zmw(calc.eligibleAmount)}
                   </Text>
                 </Box>
@@ -1407,7 +1393,7 @@ function EligibilitySection({
         </SimpleGrid>
       )}
 
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={24} mb={4}>
+      <Stack gap={24} mb={4}>
         {isEligible && (
           <Box>
             <Text fz={12.5} fw={600} c="slate.9" mb={8}>
@@ -1440,6 +1426,8 @@ function EligibilitySection({
           </Box>
         )}
 
+        {decisionSlot && <Box>{decisionSlot}</Box>}
+
         <Stack gap={10}>
           <ActionRow
             icon={IconInfoCircle}
@@ -1451,9 +1439,8 @@ function EligibilitySection({
             label="View calculation"
             onClick={() => setCalcOpen(true)}
           />
-          {decisionSlot && <Box mt={4}>{decisionSlot}</Box>}
         </Stack>
-      </SimpleGrid>
+      </Stack>
 
       <Modal
         opened={rulesOpen}
@@ -1762,8 +1749,37 @@ function reducer(state: PrescreeningState, action: any): PrescreeningState {
         liabilities: {
           ...state.liabilities,
           manual: action.on,
-          source: action.on ? "manual" : state.liabilities.source,
+          source: action.on ? "manual" : (state.liabilities.records.length > 0 ? "bureau" : "unavailable"),
+          manualRecords: state.liabilities.manualRecords.length > 0
+            ? state.liabilities.manualRecords
+            : (state.liabilities.records || []).map(r => ({ ...r, source: "manual" as SourceKind })),
         },
+      };
+    case "addManualRecord":
+      return {
+        ...state,
+        liabilities: {
+          ...state.liabilities,
+          manualRecords: [
+            ...state.liabilities.manualRecords,
+            { institution: "", facilityType: "Personal Loan", outstanding: 0, monthlyPayment: 0, status: "Active", source: "manual" }
+          ]
+        }
+      };
+    case "updateManualRecord":
+      const updated = [...state.liabilities.manualRecords];
+      updated[action.index] = { ...updated[action.index], ...action.changes };
+      return {
+        ...state,
+        liabilities: { ...state.liabilities, manualRecords: updated }
+      };
+    case "removeManualRecord":
+      return {
+        ...state,
+        liabilities: {
+          ...state.liabilities,
+          manualRecords: state.liabilities.manualRecords.filter((_, i) => i !== action.index)
+        }
       };
     case "setObligations":
       return {
@@ -1939,7 +1955,6 @@ function PrescreeningWorkspace({
 
   return (
     <Box px={30} pt={12} pb={30}>
-      <SectionLabel>Prescreening data</SectionLabel>
       <PrescreeningOverview
         state={state}
         dispatch={dispatch}
@@ -1969,7 +1984,6 @@ function PrescreeningWorkspace({
         recalcFlash={flash}
         decisionSlot={
           <>
-            <SectionLabel>Prescreening result</SectionLabel>
             <DecisionCard
               calc={calc}
               requested={requested}
@@ -2016,53 +2030,92 @@ function PrescreeningWorkspace({
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {state.liabilities.records && state.liabilities.records.length > 0 ? (
-                state.liabilities.records.map((r, i) => (
+              {state.liabilities.manual ? (
+                state.liabilities.manualRecords.map((r, i) => (
                   <Table.Tr key={i}>
                     <Table.Td>
                       <Badge size="xs" radius="sm" color="orange" variant="light">
-                        Bureau
+                        Manual
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      <Text fz={12.5} c="slate.9">
-                        {r.institution}
-                      </Text>
+                      <TextInput
+                        size="xs"
+                        value={r.institution}
+                        onChange={(e) => dispatch({ type: "updateManualRecord", index: i, changes: { institution: e.currentTarget.value } })}
+                        placeholder="Institution"
+                      />
                     </Table.Td>
                     <Table.Td>
-                      <Text fz={12.5} c="slate.7">
-                        {r.facilityType}
-                      </Text>
+                      <TextInput
+                        size="xs"
+                        value={r.facilityType}
+                        onChange={(e) => dispatch({ type: "updateManualRecord", index: i, changes: { facilityType: e.currentTarget.value } })}
+                        placeholder="Type"
+                      />
                     </Table.Td>
                     <Table.Td>
-                      <Text fz={12.5} c="slate.9">
-                        {zmw(r.outstanding)}
-                      </Text>
+                      <TextInput
+                        size="xs"
+                        type="number"
+                        value={r.outstanding || ""}
+                        onChange={(e) => dispatch({ type: "updateManualRecord", index: i, changes: { outstanding: Number(e.currentTarget.value) } })}
+                        placeholder="0"
+                      />
                     </Table.Td>
                     <Table.Td>
-                      <Text fz={12.5} c="slate.9">
-                        {zmw(r.monthlyPayment)}
-                      </Text>
+                      <TextInput
+                        size="xs"
+                        type="number"
+                        value={r.monthlyPayment || ""}
+                        onChange={(e) => dispatch({ type: "updateManualRecord", index: i, changes: { monthlyPayment: Number(e.currentTarget.value) } })}
+                        placeholder="0"
+                      />
                     </Table.Td>
                     <Table.Td>
-                      <Text
-                        fz={11.5}
-                        fw={600}
-                        c={r.status === "Active" ? "green.7" : "red.6"}
-                      >
-                        {r.status}
-                      </Text>
+                      <ActionIcon size="sm" color="red" variant="subtle" onClick={() => dispatch({ type: "removeManualRecord", index: i })}>
+                        <IconX size={14} />
+                      </ActionIcon>
                     </Table.Td>
                   </Table.Tr>
                 ))
               ) : (
-                <Table.Tr>
-                  <Table.Td colSpan={6}>
-                    <Text fz={12.5} c="slate.5" ta="center" py="md">
-                      No liabilities found.
-                    </Text>
-                  </Table.Td>
-                </Table.Tr>
+                state.liabilities.records && state.liabilities.records.length > 0 ? (
+                  state.liabilities.records.map((r, i) => (
+                    <Table.Tr key={i}>
+                      <Table.Td>
+                        <Badge size="xs" radius="sm" color="orange" variant="light">
+                          Bureau
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fz={12.5} c="slate.9">{r.institution}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fz={12.5} c="slate.7">{r.facilityType}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fz={12.5} c="slate.9">{zmw(r.outstanding)}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fz={12.5} c="slate.9">{zmw(r.monthlyPayment)}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fz={11.5} fw={600} c={r.status === "Active" ? "green.7" : "red.6"}>
+                          {r.status}
+                        </Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))
+                ) : (
+                  <Table.Tr>
+                    <Table.Td colSpan={6}>
+                      <Text fz={12.5} c="slate.5" ta="center" py="md">
+                        No liabilities found.
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                )
               )}
             </Table.Tbody>
           </Table>
@@ -2071,31 +2124,25 @@ function PrescreeningWorkspace({
           <Box mt="md" p="sm" bg="slate.0" style={{ borderRadius: "var(--mantine-radius-md)" }}>
             <Group justify="space-between" align="center">
               <Box>
-                <Text fz={12.5} fw={600} c="slate.9">Total monthly obligations</Text>
-                <Text fz={11.5} c="slate.5">You can override the calculated total manually.</Text>
+                <Text fz={12.5} fw={600} c="slate.9">Manual Entry Mode</Text>
+                <Text fz={11.5} c="slate.5">
+                  {state.liabilities.manual 
+                    ? "Add or edit multiple liabilities manually." 
+                    : "If bureau data is incorrect, you can manually enter multiple liabilities."}
+                </Text>
               </Box>
               {state.liabilities.manual ? (
                 <Group gap={8}>
-                  <TextInput
-                    size="xs"
-                    type="number"
-                    value={state.liabilities.obligations ?? ""}
-                    onChange={(e) =>
-                      dispatch({
-                        type: "setObligations",
-                        value: e.currentTarget.value === "" ? null : Number(e.currentTarget.value),
-                      })
-                    }
-                    placeholder="e.g. 5000"
-                    styles={{ input: { fontSize: 13, fontWeight: 600, width: 100 } }}
-                  />
-                  <Button size="xs" variant="default" onClick={() => dispatch({ type: "manualLiabilities", on: false })}>
-                    Reset
+                  <Button size="xs" variant="default" onClick={() => dispatch({ type: "addManualRecord" })}>
+                    Add liability
+                  </Button>
+                  <Button size="xs" variant="light" color="red" onClick={() => dispatch({ type: "manualLiabilities", on: false })}>
+                    Cancel manual entry
                   </Button>
                 </Group>
               ) : (
                 <Button size="xs" variant="light" color="brand" onClick={() => dispatch({ type: "manualLiabilities", on: true })}>
-                  Override total
+                  Enter manually
                 </Button>
               )}
             </Group>
