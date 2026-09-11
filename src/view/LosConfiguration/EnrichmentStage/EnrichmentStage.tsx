@@ -802,7 +802,7 @@ export default function EnrichmentStage() {
             <Landmark size={17} color="#fff" />
           </div>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>Loan application workflow</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>Loan application</div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 1 }}>Stage 3 — Loan enrichment</div>
           </div>
         </div>

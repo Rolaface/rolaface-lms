@@ -1530,7 +1530,7 @@ export function UnderwritingModal({
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
-                Loan application workflow
+                Loan application
               </Text>
               <Text size="xs" fw={500} c="brand.1">
                 Stage 4 — Underwriting

@@ -662,7 +662,7 @@ export function OfferModal({
               <IconSignature size={16} />
             </ThemeIcon>
             <Box>
-              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>Loan application workflow</Text>
+              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>Loan application</Text>
               <Text size="xs" fw={500} c="brand.1">Stage 5 — Offer & signing</Text>
             </Box>
           </Group>

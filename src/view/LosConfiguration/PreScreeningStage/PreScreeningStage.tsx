@@ -638,7 +638,7 @@ export default function OfferIssuanceStage() {
       <div style={{ width: "100%", maxWidth: 1080, background: "#fff", borderRadius: 16, boxShadow: "0 8px 30px rgba(0,0,0,0.12)", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, background: "#4f46e5", padding: "16px 26px" }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}><FileSignature size={17} color="#fff" /></div>
-          <div><div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>Loan application workflow</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 1 }}>Stage 5 — Offer issuance &amp; signing</div></div>
+          <div><div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>Loan application</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 1 }}>Stage 5 — Offer issuance &amp; signing</div></div>
         </div>
         <ContextHeader />
         <div style={{ display: "flex", alignItems: "stretch", minHeight: 560 }}>
