@@ -70,7 +70,10 @@ export function WorkflowConfiguration() {
   const { data: dbActions = [] } = useQuery({ queryKey: ["workflow-actions"], queryFn: getWorkflowActionMasters });
   const { data: dbRoles = ["All"] } = useQuery({ queryKey: ["roles"], queryFn: getRoles });
 
-  const roleOptions = dbRoles.map((r: string) => ({ value: r, label: r }));
+  const roleOptions = [
+    { value: "All", label: "All" },
+    ...dbRoles.filter((r: string) => r !== "All").map((r: string) => ({ value: r, label: r }))
+  ];
 
   const docStatusOptions = [
     { value: "0", label: "In progress" },

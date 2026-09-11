@@ -7,7 +7,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 
-const ERP_BASE = (import.meta.env.VITE_API_BASE_URL ?? "") as string;
+import { ERP_BASE } from "../../../config/api";
 
 export function formatFileSize(bytes: number) {
   if (!bytes) return "0 KB";

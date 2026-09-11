@@ -261,6 +261,8 @@ export const API = {
     applyAction: `${ERP_BASE}/api/method/rolaface_lms_app.modules.workflow.api.process_dynamic_workflow_action`,
     getWorkflow: `${ERP_BASE}/api/method/rolaface_lms_app.modules.workflow.api.get_workflow`,
     saveWorkflow: `${ERP_BASE}/api/method/rolaface_lms_app.modules.workflow.api.save_workflow`,
+    getStates: `${ERP_BASE}/api/resource/Workflow State`,
+    getActionMasters: `${ERP_BASE}/api/resource/Workflow Action Master`,
   },
 
   // =========================

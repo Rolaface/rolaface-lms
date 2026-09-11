@@ -18,6 +18,7 @@ import {
 import type { LoanApplicationRow } from './LoanApplication';
 import { STATUS_COLOR, getDisplayStatus } from './LoanApplication';
 import { themeTokens, serif, OverviewField, SectionHeading } from '../LoanAccount/LoanView/SharedUI';
+import { ERP_BASE } from '../../config/api';
 import { useState } from 'react';
 import { useCompanyStore } from '../../store/companyStore';
 import { getSymbol } from '../../store/currencyStore';
@@ -386,9 +387,6 @@ export function DocumentCard({ doc }: { doc: ApplicationDocument }) {
   const accent = missing
     ? { bg: themeTokens.dangerSoft, fg: themeTokens.danger }
     : { bg: themeTokens.infoSoft, fg: themeTokens.info };
-  
-  const ERP_BASE = (import.meta.env.VITE_API_BASE_URL ?? "") as string;
-
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isImage, setIsImage] = useState(false);

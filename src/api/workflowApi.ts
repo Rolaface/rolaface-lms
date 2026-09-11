@@ -44,25 +44,24 @@ export async function getWorkflow(doctype: string) {
 }
 
 export async function getWorkflowStates() {
-  const { data } = await apiClient.get(`${import.meta.env.VITE_ERP_BASE_URL || ""}/api/resource/Workflow State`, {
+  const { data } = await apiClient.get(API.workflow.getStates, {
     params: { fields: '["name"]', limit_page_length: 0 }
   });
   return data?.data?.map((d: any) => d.name) || [];
 }
 
 export async function getWorkflowActionMasters() {
-  const { data } = await apiClient.get(`${import.meta.env.VITE_ERP_BASE_URL || ""}/api/resource/Workflow Action Master`, {
+  const { data } = await apiClient.get(API.workflow.getActionMasters, {
     params: { fields: '["name"]', limit_page_length: 0 }
   });
   return data?.data?.map((d: any) => d.name) || [];
 }
 
 export async function getRoles() {
-  const { data } = await apiClient.get(`${import.meta.env.VITE_ERP_BASE_URL || ""}/api/resource/Role`, {
-    params: { fields: '["name"]', limit_page_length: 0 }
+  const { data } = await apiClient.get(API.RoleManagement.getUserRoles, {
+    params: { page_size: 1000 }
   });
-  // Exclude some technical roles if necessary, but returning all is fine
-  return data?.data?.map((d: any) => d.name) || ["All", "System Manager"];
+  return data?.data?.map((r: any) => r.Id) || ["All", "System Manager"];
 }
 
 export interface SaveWorkflowPayload {
