@@ -901,6 +901,8 @@ function PrescreeningOverview({
   requested,
   maxDTI,
   productMax,
+  leftSlot,
+  rightSlot,
 }: {
   state: PrescreeningState;
   dispatch: (a: any) => void;
@@ -909,6 +911,8 @@ function PrescreeningOverview({
   requested: number;
   maxDTI: number;
   productMax: number;
+  leftSlot?: React.ReactNode;
+  rightSlot?: React.ReactNode;
 }) {
   const credit = state.credit;
   const liab = state.liabilities;
@@ -919,7 +923,7 @@ function PrescreeningOverview({
       {/* Left: Monthly Income + DTI | Right: Credit Score + Liabilities in ONE card */}
       <SimpleGrid
         cols={{ base: 1, sm: 2 }}
-        spacing={10}
+        spacing={24}
         style={{
           alignItems: "stretch",
           gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
@@ -1056,16 +1060,18 @@ function PrescreeningOverview({
               />
             </Paper>
           )}
+
+          {leftSlot && <Box mt={16}>{leftSlot}</Box>}
         </Stack>
 
-        <Paper
-          withBorder
-          radius="md"
-          p={8}
-          h="100%"
-          w="100%"
-          style={{ minWidth: 0, overflow: "visible" }}
-        >
+        <Stack gap={10} w="100%" style={{ minWidth: 0 }}>
+          <Paper
+            withBorder
+            radius="md"
+            p={8}
+            w="100%"
+            style={{ minWidth: 0, overflow: "visible", flex: 1 }}
+          >
           <Group justify="space-between" align="center" mb={2}>
             <Group gap={6}>
               <ThemeIcon radius="sm" size={20} variant="light" color="brand">
@@ -1229,6 +1235,8 @@ function PrescreeningOverview({
             )}
           </Box>
         </Paper>
+        {rightSlot && <Box mt={16}>{rightSlot}</Box>}
+        </Stack>
       </SimpleGrid>
     </Box>
   );
@@ -1281,7 +1289,7 @@ function ActionRow({
 // Eligibility calculation section
 // ---------------------------------------------------------------------------
 
-function EligibilitySection({
+function useEligibilityUI({
   calc,
   requested,
   tenure,
@@ -1321,27 +1329,31 @@ function EligibilitySection({
     if (creditScore == null) missing.push("Credit score");
     if (obligations == null) missing.push("Liability information");
     if (income == null) missing.push("Income");
-    return (
-      <Box>
-        <Paper
-          withBorder
-          radius="md"
-          p="xl"
-          ta="center"
-          style={{ borderStyle: "dashed" }}
-        >
-          <IconHelp size={22} color="var(--mantine-color-slate-4)" />
-          <Text fz={13.5} fw={600} c="slate.9" mt={6}>
-            Prescreening incomplete
-          </Text>
-          <Text fz={12.5} c="slate.5" mt={4}>
-            Missing: {missing.join(", ")}. Fetch or enter these above to run
-            the calculation.
-          </Text>
-        </Paper>
-        {decisionSlot && <Box mt={16}>{decisionSlot}</Box>}
-      </Box>
-    );
+    return {
+      leftNode: (
+        <Box>
+          <Paper
+            withBorder
+            radius="md"
+            p="xl"
+            ta="center"
+            style={{ borderStyle: "dashed" }}
+          >
+            <IconHelp size={22} color="var(--mantine-color-slate-4)" />
+            <Text fz={13.5} fw={600} c="slate.9" mt={6}>
+              Prescreening incomplete
+            </Text>
+            <Text fz={12.5} c="slate.5" mt={4}>
+              Missing: {missing.join(", ")}. Fetch or enter these above to run
+              the calculation.
+            </Text>
+          </Paper>
+          {decisionSlot && <Box mt={16}>{decisionSlot}</Box>}
+        </Box>
+      ),
+      rightNode: null,
+      modals: null,
+    };
   }
 
   const {
@@ -1357,8 +1369,61 @@ function EligibilitySection({
   const isEligible = mandatoryPassed && eligibleAmount >= requested;
   const isFailed = !mandatoryPassed;
 
-  return (
+  const leftNode = (
     <Box>
+      {isEligible && (
+        <Box mb={24}>
+          <Text fz={12.5} fw={600} c="slate.9" mb={8}>
+            Why this passes
+          </Text>
+          <Stack gap={6}>
+            <CheckLine ok>Credit score meets minimum requirement</CheckLine>
+            <CheckLine ok>Debt-to-income ratio is within the allowed limit</CheckLine>
+            <CheckLine ok>Monthly repayment is within the affordability limit</CheckLine>
+            <CheckLine ok>Requested amount is within the product and customer limit</CheckLine>
+          </Stack>
+        </Box>
+      )}
+
+      {isFailed && (
+        <Box mb={24}>
+          <Text fz={12.5} fw={600} c="slate.9" mb={8}>
+            Why this fails
+          </Text>
+          <Stack gap={6}>
+            <CheckLine ok={creditPassed}>
+              Credit score {creditPassed ? "meets" : "is below"} the minimum
+              requirement ({minCreditScore})
+            </CheckLine>
+            <CheckLine ok={dtiPassed}>
+              Debt-to-income ratio {dtiPassed ? "is within" : "exceeds"} the
+              allowed limit ({maxDTI}%)
+            </CheckLine>
+          </Stack>
+        </Box>
+      )}
+
+      {decisionSlot && <Box>{decisionSlot}</Box>}
+    </Box>
+  );
+
+  const rightNode = (
+    <Stack gap={10}>
+      <ActionRow
+        icon={IconInfoCircle}
+        label="How was eligibility calculated?"
+        onClick={() => setRulesOpen(true)}
+      />
+      <ActionRow
+        icon={IconPercentage}
+        label="View calculation"
+        onClick={() => setCalcOpen(true)}
+      />
+    </Stack>
+  );
+
+  const modals = (
+    <>
       {recalcFlash && (
         <Badge
           size="xs"
@@ -1373,7 +1438,7 @@ function EligibilitySection({
       )}
 
       {isFailed && (
-        <SimpleGrid cols={2} spacing={18} mb={4}>
+        <SimpleGrid cols={2} spacing={18} mb={16}>
           <Box>
             <Text fz={11.5} c="slate.5">
               Requested loan
@@ -1392,57 +1457,6 @@ function EligibilitySection({
           </Box>
         </SimpleGrid>
       )}
-
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={24} mb={4}>
-        <Box>
-          {isEligible && (
-            <Box mb={24}>
-              <Text fz={12.5} fw={600} c="slate.9" mb={8}>
-                Why this passes
-              </Text>
-              <Stack gap={6}>
-                <CheckLine ok>Credit score meets minimum requirement</CheckLine>
-                <CheckLine ok>Debt-to-income ratio is within the allowed limit</CheckLine>
-                <CheckLine ok>Monthly repayment is within the affordability limit</CheckLine>
-                <CheckLine ok>Requested amount is within the product and customer limit</CheckLine>
-              </Stack>
-            </Box>
-          )}
-
-          {isFailed && (
-            <Box mb={24}>
-              <Text fz={12.5} fw={600} c="slate.9" mb={8}>
-                Why this fails
-              </Text>
-              <Stack gap={6}>
-                <CheckLine ok={creditPassed}>
-                  Credit score {creditPassed ? "meets" : "is below"} the minimum
-                  requirement ({minCreditScore})
-                </CheckLine>
-                <CheckLine ok={dtiPassed}>
-                  Debt-to-income ratio {dtiPassed ? "is within" : "exceeds"} the
-                  allowed limit ({maxDTI}%)
-                </CheckLine>
-              </Stack>
-            </Box>
-          )}
-
-          {decisionSlot && <Box>{decisionSlot}</Box>}
-        </Box>
-
-        <Stack gap={10}>
-          <ActionRow
-            icon={IconInfoCircle}
-            label="How was eligibility calculated?"
-            onClick={() => setRulesOpen(true)}
-          />
-          <ActionRow
-            icon={IconPercentage}
-            label="View calculation"
-            onClick={() => setCalcOpen(true)}
-          />
-        </Stack>
-      </SimpleGrid>
 
       <Modal
         opened={rulesOpen}
@@ -1552,8 +1566,10 @@ function EligibilitySection({
           />
         </Box>
       </Modal>
-    </Box>
+    </>
   );
+
+  return { leftNode, rightNode, modals };
 }
 
 function DecisionCard({
@@ -1970,6 +1986,35 @@ function PrescreeningWorkspace({
     );
   }
 
+  const { leftNode, rightNode, modals } = useEligibilityUI({
+    calc,
+    requested,
+    tenure,
+    rate,
+    maxDTI: policy.maxDTI,
+    minCreditScore: policy.minCreditScore,
+    productMax: policy.productMax,
+    income: state.income.value,
+    obligations: state.liabilities.obligations,
+    creditScore: state.credit.value,
+    rulesOpen,
+    setRulesOpen,
+    calcOpen,
+    setCalcOpen,
+    recalcFlash: flash,
+    decisionSlot: (
+      <DecisionCard
+        calc={calc}
+        requested={requested}
+        onContinue={() => setContinued(true)}
+        onUseEligible={handleUseEligible}
+        onReview={(a) => a === "useEligible" && setConfirm(true)}
+        confirm={confirm}
+        readOnly={readOnly}
+      />
+    ),
+  });
+
   return (
     <Box px={30} pt={12} pb={30}>
       <PrescreeningOverview
@@ -1980,37 +2025,11 @@ function PrescreeningWorkspace({
         requested={requested}
         maxDTI={policy.maxDTI}
         productMax={policy.productMax}
+        leftSlot={leftNode}
+        rightSlot={rightNode}
       />
 
-
-      <EligibilitySection
-        calc={calc}
-        requested={requested}
-        tenure={tenure}
-        rate={rate}
-        maxDTI={policy.maxDTI}
-        minCreditScore={policy.minCreditScore}
-        productMax={policy.productMax}
-        income={state.income.value}
-        obligations={state.liabilities.obligations}
-        creditScore={state.credit.value}
-        rulesOpen={rulesOpen}
-        setRulesOpen={setRulesOpen}
-        calcOpen={calcOpen}
-        setCalcOpen={setCalcOpen}
-        recalcFlash={flash}
-        decisionSlot={
-          <DecisionCard
-            calc={calc}
-            requested={requested}
-            onContinue={() => setContinued(true)}
-            onUseEligible={handleUseEligible}
-            onReview={(a) => a === "useEligible" && setConfirm(true)}
-            confirm={confirm}
-            readOnly={readOnly}
-          />
-        }
-      />
+      {modals}
 
       <Modal
         opened={liabOpen}
