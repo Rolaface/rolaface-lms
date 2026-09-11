@@ -59,6 +59,15 @@ const POLICY: Record<
 
 type SourceKind = "bureau" | "hrms" | "application" | "manual" | "unavailable" | "none";
 
+interface LiabilityRecord {
+  institution: string;
+  facilityType: string;
+  outstanding: number;
+  monthlyPayment: number;
+  status: string;
+  source: SourceKind;
+}
+
 interface ScenarioDef {
   label: string;
   credit: number | null;
@@ -67,6 +76,11 @@ interface ScenarioDef {
   obligationsSource: SourceKind;
   income: number | null;
   incomeSource: SourceKind;
+  riskBand?: string;
+  activeAccounts?: number;
+  delinquentAccounts?: number;
+  recentEnquiries?: number;
+  liabilities?: LiabilityRecord[];
 }
 
 const SCENARIOS: Record<string, ScenarioDef> = {
@@ -74,10 +88,32 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     label: "Eligible for a lower amount",
     credit: 742,
     creditSource: "bureau",
-    obligations: 3850,
+    obligations: 1200,
     obligationsSource: "bureau",
     income: 13100,
     incomeSource: "hrms",
+    riskBand: "Low",
+    activeAccounts: 2,
+    delinquentAccounts: 0,
+    recentEnquiries: 1,
+    liabilities: [
+      {
+        institution: "Zanaco",
+        facilityType: "Personal Loan",
+        outstanding: 12500,
+        monthlyPayment: 850,
+        status: "Active",
+        source: "bureau",
+      },
+      {
+        institution: "Absa",
+        facilityType: "Credit Card",
+        outstanding: 6000,
+        monthlyPayment: 350,
+        status: "Active",
+        source: "bureau",
+      },
+    ],
   },
   eligible: {
     label: "Fully eligible",
@@ -87,6 +123,20 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     obligationsSource: "bureau",
     income: 22000,
     incomeSource: "hrms",
+    riskBand: "Low",
+    activeAccounts: 1,
+    delinquentAccounts: 0,
+    recentEnquiries: 0,
+    liabilities: [
+      {
+        institution: "Metro Lending",
+        facilityType: "Auto Loan",
+        outstanding: 22000,
+        monthlyPayment: 2200,
+        status: "Active",
+        source: "bureau",
+      },
+    ],
   },
   failed: {
     label: "Failed — credit score below minimum",
@@ -96,6 +146,36 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     obligationsSource: "bureau",
     income: 13100,
     incomeSource: "hrms",
+    riskBand: "High",
+    activeAccounts: 3,
+    delinquentAccounts: 2,
+    recentEnquiries: 5,
+    liabilities: [
+      {
+        institution: "Capital Finance",
+        facilityType: "Personal Loan",
+        outstanding: 19000,
+        monthlyPayment: 1900,
+        status: "Active",
+        source: "bureau",
+      },
+      {
+        institution: "Horizon Credit",
+        facilityType: "Credit Card",
+        outstanding: 11000,
+        monthlyPayment: 1000,
+        status: "Delinquent",
+        source: "bureau",
+      },
+      {
+        institution: "Apex Lending",
+        facilityType: "Overdraft",
+        outstanding: 8500,
+        monthlyPayment: 950,
+        status: "Delinquent",
+        source: "bureau",
+      },
+    ],
   },
   bureauDown: {
     label: "Bureau unavailable — needs manual entry",
@@ -105,6 +185,7 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     obligationsSource: "unavailable",
     income: 13100,
     incomeSource: "hrms",
+    liabilities: [],
   },
   incomplete: {
     label: "Incomplete — income not yet available",
@@ -114,6 +195,28 @@ const SCENARIOS: Record<string, ScenarioDef> = {
     obligationsSource: "bureau",
     income: null,
     incomeSource: "none",
+    riskBand: "Low",
+    activeAccounts: 2,
+    delinquentAccounts: 0,
+    recentEnquiries: 1,
+    liabilities: [
+      {
+        institution: "Capital Finance",
+        facilityType: "Personal Loan",
+        outstanding: 24000,
+        monthlyPayment: 2400,
+        status: "Active",
+        source: "bureau",
+      },
+      {
+        institution: "Horizon Credit",
+        facilityType: "Credit Card",
+        outstanding: 14500,
+        monthlyPayment: 1450,
+        status: "Active",
+        source: "bureau",
+      },
+    ],
   },
 };
 
@@ -181,22 +284,6 @@ function calcEligibility({
     mandatoryPassed: creditPassed && dtiPassed,
   };
 }
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <Text
-      fz={11}
-      fw={600}
-      c="slate.5"
-      tt="uppercase"
-      style={{ letterSpacing: 0.3 }}
-      mb={10}
-    >
-      {children}
-    </Text>
-  );
-}
-
 const SOURCE_MAP: Record<
   SourceKind,
   { label: string; color: string }
@@ -497,12 +584,18 @@ interface FieldState {
 interface CreditState extends FieldState {
   value: number | null;
   source: SourceKind;
+  riskBand: string | null;
+  activeAccounts: number | null;
+  delinquentAccounts: number | null;
+  recentEnquiries: number | null;
 }
 interface LiabilitiesState extends FieldState {
   obligations: number | null;
   activeLoans: number | null;
   outstanding: number | null;
   source: SourceKind;
+  records: LiabilityRecord[];
+  manualRecords: LiabilityRecord[];
 }
 interface IncomeState extends FieldState {
   value: number | null;
@@ -516,6 +609,7 @@ interface PrescreeningState {
 
 function buildInitialState(scenarioKey: string): PrescreeningState {
   const s = SCENARIOS[scenarioKey];
+  const records = s.liabilities ?? [];
   return {
     credit: {
       value: s.credit,
@@ -523,15 +617,21 @@ function buildInitialState(scenarioKey: string): PrescreeningState {
       status: "idle",
       manual: s.creditSource === "unavailable",
       reason: "",
+      riskBand: s.riskBand ?? null,
+      activeAccounts: s.activeAccounts ?? null,
+      delinquentAccounts: s.delinquentAccounts ?? null,
+      recentEnquiries: s.recentEnquiries ?? null,
     },
     liabilities: {
       obligations: s.obligations,
-      activeLoans: s.obligations != null ? 2 : null,
+      activeLoans: records.length || (s.obligations != null ? 2 : null),
       outstanding: s.obligations != null ? Math.round(s.obligations * 10) : null,
       source: s.obligationsSource,
       status: "idle",
       manual: s.obligationsSource === "unavailable",
       reason: "",
+      records,
+      manualRecords: [],
     },
     income: {
       value: s.income,
@@ -600,7 +700,7 @@ function ComparisonBar({
           Eligible: {zmw(eligible)}
         </Text>
         <Text fz={11} c="slate.5">
-          Requested marker: {zmw(requested)}
+          Requested amount: {zmw(requested)}
         </Text>
       </Group>
     </Box>
@@ -737,10 +837,10 @@ function CompactRow({
     >
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Box style={{ flex: 1, minWidth: 0 }}>
-          <Text fz={11} c="slate.5">
+          <Text fz={12.5} fw={600} c="slate.9">
             {label}
           </Text>
-          <Text fz={14} fw={700} c="slate.9" mt={1}>
+          <Text fz={14} fw={500} c="slate.7" mt={1}>
             {value}
           </Text>
           {(subtext || badge) && (
@@ -760,6 +860,39 @@ function CompactRow({
   );
 }
 
+function StatMini({
+  icon: Icon,
+  label,
+  value,
+  sublabel,
+}: {
+  icon: React.FC<any>;
+  label: string;
+  value: React.ReactNode;
+  sublabel?: string;
+}) {
+  return (
+    <Group gap={8} align="flex-start" wrap="nowrap">
+      <ThemeIcon radius="sm" size={22} variant="light" color="slate">
+        <Icon size={12} color="var(--mantine-color-slate-6)" />
+      </ThemeIcon>
+      <Box style={{ minWidth: 0 }}>
+        <Text fz={10.5} c="slate.5" truncate>
+          {label}
+        </Text>
+        {sublabel && (
+          <Text fz={9.5} c="slate.4" mt={-2}>
+            · {sublabel}
+          </Text>
+        )}
+        <Text fz={13} fw={700} c="slate.9" mt={1}>
+          {value}
+        </Text>
+      </Box>
+    </Group>
+  );
+}
+
 function PrescreeningOverview({
   state,
   dispatch,
@@ -768,6 +901,8 @@ function PrescreeningOverview({
   requested,
   maxDTI,
   productMax,
+  leftSlot,
+  rightSlot,
 }: {
   state: PrescreeningState;
   dispatch: (a: any) => void;
@@ -776,23 +911,25 @@ function PrescreeningOverview({
   requested: number;
   maxDTI: number;
   productMax: number;
+  leftSlot?: React.ReactNode;
+  rightSlot?: React.ReactNode;
 }) {
   const credit = state.credit;
   const liab = state.liabilities;
   const income = state.income;
 
   return (
-    <Box mb={10}>
+    <Box mb={6}>
       {/* Left: Monthly Income + DTI | Right: Credit Score + Liabilities in ONE card */}
       <SimpleGrid
         cols={{ base: 1, sm: 2 }}
-        spacing={10}
+        spacing={24}
         style={{
-          alignItems: "stretch",
+          alignItems: "start",
           gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
         }}
       >
-        <Stack gap={8} w="100%" style={{ minWidth: 0 }}>
+        <Stack gap={6} w="100%" style={{ minWidth: 0 }}>
           <Paper withBorder radius="md" p={8}>
             <CompactRow
               last
@@ -873,11 +1010,11 @@ function PrescreeningOverview({
 
           <Paper withBorder radius="md" px={8} py={5}>
             <Group justify="space-between">
-              <Text fz={12} c="slate.5">
+              <Text fz={12.5} fw={600} c="slate.9">
                 Debt-to-Income Ratio
               </Text>
               <Group gap={6}>
-                <Text fz={13.5} fw={700} c="slate.9">
+                <Text fz={14} fw={500} c="slate.7">
                   {calc ? `${calc.customerDTI.toFixed(0)}%` : "—"}
                 </Text>
                 {calc && (
@@ -897,21 +1034,21 @@ function PrescreeningOverview({
           </Paper>
 
           {calc && calc.mandatoryPassed && (
-            <Paper withBorder radius="md" p={8} style={{ flex: 1 }}>
+            <Paper withBorder radius="md" p={8}>
               <Group justify="space-between" mb={3}>
                 <Box>
-                  <Text fz={10.5} c="slate.5">
+                  <Text fz={12.5} fw={600} c="slate.9">
                     Requested loan
                   </Text>
-                  <Text fz={14} fw={700} c="slate.9">
+                  <Text fz={14} fw={500} c="slate.7">
                     {zmw(requested)}
                   </Text>
                 </Box>
                 <Box ta="right">
-                  <Text fz={10.5} c="slate.5">
+                  <Text fz={12.5} fw={600} c="slate.9">
                     Maximum eligible amount
                   </Text>
-                  <Text fz={14} fw={700} c="slate.9">
+                  <Text fz={14} fw={500} c="slate.7">
                     {zmw(calc.eligibleAmount)}
                   </Text>
                 </Box>
@@ -923,23 +1060,25 @@ function PrescreeningOverview({
               />
             </Paper>
           )}
+
+          {leftSlot && <Box mt={8}>{leftSlot}</Box>}
         </Stack>
 
-        <Paper
-          withBorder
-          radius="md"
-          p={8}
-          h="100%"
-          w="100%"
-          style={{ minWidth: 0, overflow: "visible" }}
-        >
+        <Stack gap={10} w="100%" style={{ minWidth: 0 }}>
+          <Paper
+            withBorder
+            radius="md"
+            p={8}
+            w="100%"
+            style={{ minWidth: 0, overflow: "visible" }}
+          >
           <Group justify="space-between" align="center" mb={2}>
             <Group gap={6}>
               <ThemeIcon radius="sm" size={20} variant="light" color="brand">
                 <IconGauge size={11} />
               </ThemeIcon>
               <Text fz={12} fw={700} c="slate.9">
-                Credit Score
+                Credit bureau summary
               </Text>
             </Group>
             {!readOnly && credit.status !== "loading" && (
@@ -960,7 +1099,53 @@ function PrescreeningOverview({
             loading={credit.status === "loading"}
           />
 
-          <Box mt={4}>
+          {credit.status !== "loading" && credit.riskBand != null && (
+            <SimpleGrid cols={3} spacing={10} mt={8}>
+              <StatMini
+                icon={IconAlertCircle}
+                label="Risk Band"
+                sublabel="BUREAU"
+                value={credit.riskBand ?? "—"}
+              />
+              <StatMini
+                icon={IconFileText}
+                label="Active Accounts"
+                sublabel="BUREAU"
+                value={credit.activeAccounts ?? "—"}
+              />
+              <StatMini
+                icon={IconAlertTriangle}
+                label="Delinquent Accounts"
+                sublabel="BUREAU"
+                value={credit.delinquentAccounts ?? "—"}
+              />
+              <StatMini
+                icon={IconGauge}
+                label="Total Outstanding"
+                sublabel="BUREAU"
+                value={zmw(liab.outstanding)}
+              />
+              <StatMini
+                icon={IconRefresh}
+                label="Monthly Obligations"
+                sublabel="BUREAU"
+                value={zmw(liab.obligations)}
+              />
+              <StatMini
+                icon={IconHelp}
+                label="Recent Enquiries"
+                sublabel="BUREAU"
+                value={credit.recentEnquiries ?? "—"}
+              />
+            </SimpleGrid>
+          )}
+
+          {/* Existing liabilities — inside the credit bureau card */}
+          <Box
+            mt={8}
+            pt={8}
+            style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}
+          >
             <CompactRow
               last
               label="Existing liabilities"
@@ -1024,7 +1209,7 @@ function PrescreeningOverview({
                         </Text>
                       </UnstyledButton>
                     ) : (
-                      <UnstyledButton onClick={() => dispatch({ type: "manualLiabilities", on: true })}>
+                      <UnstyledButton onClick={() => dispatch({ type: "openLiabilitiesModal" })}>
                         <Text fz={11.5} fw={600} c="brand.6">
                           Enter manually
                         </Text>
@@ -1034,8 +1219,24 @@ function PrescreeningOverview({
                 ) : undefined
               }
             />
+            {(liab.records ?? []).length > 0 && !liab.manual && liab.status !== "loading" && (
+              <Box mt={4}>
+                <Badge
+                  size="xs"
+                  radius="xl"
+                  color="orange"
+                  variant="light"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => dispatch({ type: "openLiabilitiesModal" })}
+                >
+                  {(liab.records ?? []).length} facilities found
+                </Badge>
+              </Box>
+            )}
           </Box>
         </Paper>
+        {rightSlot && <Box mt={8}>{rightSlot}</Box>}
+        </Stack>
       </SimpleGrid>
     </Box>
   );
@@ -1071,7 +1272,7 @@ function ActionRow({
         transition: "background 0.15s ease, border-color 0.15s ease",
       }}
     >
-      <Group justify="space-between" wrap="nowrap">
+      <Group justify="space-between" align="center" wrap="nowrap">
         <Group gap={8} wrap="nowrap">
           <Icon size={15} color="var(--mantine-color-brand-6)" />
           <Text fz={12.5} fw={600} c="slate.9">
@@ -1088,7 +1289,7 @@ function ActionRow({
 // Eligibility calculation section
 // ---------------------------------------------------------------------------
 
-function EligibilitySection({
+function useEligibilityUI({
   calc,
   requested,
   tenure,
@@ -1128,27 +1329,30 @@ function EligibilitySection({
     if (creditScore == null) missing.push("Credit score");
     if (obligations == null) missing.push("Liability information");
     if (income == null) missing.push("Income");
-    return (
-      <Box>
-        <Paper
-          withBorder
-          radius="md"
-          p="xl"
-          ta="center"
-          style={{ borderStyle: "dashed" }}
-        >
-          <IconHelp size={22} color="var(--mantine-color-slate-4)" />
-          <Text fz={13.5} fw={600} c="slate.9" mt={6}>
-            Prescreening incomplete
-          </Text>
-          <Text fz={12.5} c="slate.5" mt={4}>
-            Missing: {missing.join(", ")}. Fetch or enter these above to run
-            the calculation.
-          </Text>
-        </Paper>
-        {decisionSlot && <Box mt={16}>{decisionSlot}</Box>}
-      </Box>
-    );
+    return {
+      leftNode: (
+        <Box>
+          <Paper
+            withBorder
+            radius="md"
+            p="xl"
+            ta="center"
+            style={{ borderStyle: "dashed" }}
+          >
+            <IconHelp size={22} color="var(--mantine-color-slate-4)" />
+            <Text fz={13.5} fw={600} c="slate.9" mt={6}>
+              Prescreening incomplete
+            </Text>
+            <Text fz={12.5} c="slate.5" mt={4}>
+              Missing: {missing.join(", ")}. Fetch or enter these above to run
+              the calculation.
+            </Text>
+          </Paper>
+        </Box>
+      ),
+      rightNode: decisionSlot ? <Box>{decisionSlot}</Box> : null,
+      modals: null,
+    };
   }
 
   const {
@@ -1164,8 +1368,59 @@ function EligibilitySection({
   const isEligible = mandatoryPassed && eligibleAmount >= requested;
   const isFailed = !mandatoryPassed;
 
-  return (
+  const leftNode = (
     <Box>
+      {isEligible && (
+        <Box mb={10}>
+          <Text fz={12.5} fw={600} c="slate.9" mb={6}>
+            Why this passes
+          </Text>
+          <Stack gap={4}>
+            <CheckLine ok>Credit score meets minimum requirement</CheckLine>
+            <CheckLine ok>Debt-to-income ratio is within the allowed limit</CheckLine>
+            <CheckLine ok>Monthly repayment is within the affordability limit</CheckLine>
+            <CheckLine ok>Requested amount is within the product and customer limit</CheckLine>
+          </Stack>
+        </Box>
+      )}
+
+      {isFailed && (
+        <Box mb={10}>
+          <Text fz={12.5} fw={600} c="slate.9" mb={6}>
+            Why this fails
+          </Text>
+          <Stack gap={4}>
+            <CheckLine ok={creditPassed}>
+              Credit score {creditPassed ? "meets" : "is below"} the minimum
+              requirement ({minCreditScore})
+            </CheckLine>
+            <CheckLine ok={dtiPassed}>
+              Debt-to-income ratio {dtiPassed ? "is within" : "exceeds"} the
+              allowed limit ({maxDTI}%)
+            </CheckLine>
+          </Stack>
+        </Box>
+      )}
+
+      <Stack gap={10}>
+        <ActionRow
+          icon={IconPercentage}
+          label="View calculation"
+          onClick={() => setCalcOpen(true)}
+        />
+        <ActionRow
+          icon={IconInfoCircle}
+          label="How was eligibility calculated?"
+          onClick={() => setRulesOpen(true)}
+        />
+      </Stack>
+    </Box>
+  );
+
+  const rightNode = <Stack gap={10}>{decisionSlot}</Stack>;
+
+  const modals = (
+    <>
       {recalcFlash && (
         <Badge
           size="xs"
@@ -1180,7 +1435,7 @@ function EligibilitySection({
       )}
 
       {isFailed && (
-        <SimpleGrid cols={2} spacing={18} mb={4}>
+        <SimpleGrid cols={2} spacing={18} mb={16}>
           <Box>
             <Text fz={11.5} c="slate.5">
               Requested loan
@@ -1199,54 +1454,6 @@ function EligibilitySection({
           </Box>
         </SimpleGrid>
       )}
-
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={24} mb={4}>
-        {isEligible && (
-          <Box>
-            <Text fz={12.5} fw={600} c="slate.9" mb={8}>
-              Why this passes
-            </Text>
-            <Stack gap={6}>
-              <CheckLine ok>Credit score meets minimum requirement</CheckLine>
-              <CheckLine ok>Debt-to-income ratio is within the allowed limit</CheckLine>
-              <CheckLine ok>Monthly repayment is within the affordability limit</CheckLine>
-              <CheckLine ok>Requested amount is within the product and customer limit</CheckLine>
-            </Stack>
-          </Box>
-        )}
-
-        {isFailed && (
-          <Box>
-            <Text fz={12.5} fw={600} c="slate.9" mb={8}>
-              Why this fails
-            </Text>
-            <Stack gap={6}>
-              <CheckLine ok={creditPassed}>
-                Credit score {creditPassed ? "meets" : "is below"} the minimum
-                requirement ({minCreditScore})
-              </CheckLine>
-              <CheckLine ok={dtiPassed}>
-                Debt-to-income ratio {dtiPassed ? "is within" : "exceeds"} the
-                allowed limit ({maxDTI}%)
-              </CheckLine>
-            </Stack>
-          </Box>
-        )}
-
-        <Stack gap={10}>
-          <ActionRow
-            icon={IconInfoCircle}
-            label="How was eligibility calculated?"
-            onClick={() => setRulesOpen(true)}
-          />
-          <ActionRow
-            icon={IconPercentage}
-            label="View calculation"
-            onClick={() => setCalcOpen(true)}
-          />
-          {decisionSlot}
-        </Stack>
-      </SimpleGrid>
 
       <Modal
         opened={rulesOpen}
@@ -1356,8 +1563,10 @@ function EligibilitySection({
           />
         </Box>
       </Modal>
-    </Box>
+    </>
   );
+
+  return { leftNode, rightNode, modals };
 }
 
 function DecisionCard({
@@ -1407,93 +1616,114 @@ function DecisionCard({
       : { bg: "red.0", border: "red.2", icon: IconCircleX, color: "red.6" };
   const Icon = tone.icon;
 
-  // Compact pill-style status instead of a large card
+  // Full-width card status
   return (
     <Box
-      px="sm"
-      py={8}
+      p="sm"
       bg={tone.bg}
       style={{
         border: `1px solid var(--mantine-color-${tone.border.replace(".", "-")})`,
         borderRadius: "var(--mantine-radius-md)",
-        display: "inline-flex",
       }}
     >
-      <Stack gap={8}>
-        <Group gap={8} wrap="nowrap">
-          <Icon size={16} color={`var(--mantine-color-${tone.color.replace(".", "-")})`} />
-          {isEligible && (
-            <Text fz={12.5} fw={700} c="green.8">
-              Prescreening passed
+      {isEligible ? (
+        <Group justify="space-between" align="center" wrap="nowrap" gap={16}>
+          <Box style={{ flex: 1, minWidth: 0 }}>
+            <Group gap={8} wrap="nowrap">
+              <Icon size={18} color={`var(--mantine-color-${tone.color.replace(".", "-")})`} />
+              <Text fz={14.5} fw={700} c="slate.9">
+                Prescreening passed
+              </Text>
+            </Group>
+            <Text fz={12.5} fw={500} c="green.8" mt={4}>
+              The requested amount of {zmw(requested)} is within the customer's eligibility.
             </Text>
-          )}
-          {isPartial && (
-            <Text fz={12.5} fw={700} c="orange.8">
-              Amount adjustment required
-            </Text>
-          )}
-          {isFailed && (
-            <Text fz={12.5} fw={700} c="red.7">
-              Prescreening failed
-            </Text>
+          </Box>
+          {!readOnly && (
+            <Button
+              size="xs"
+              color="green.6"
+              radius="md"
+              onClick={onContinue}
+              rightSection={<IconArrowRight size={14} />}
+              style={{ flexShrink: 0 }}
+            >
+              Continue to enrichment
+            </Button>
           )}
         </Group>
-
-        {isPartial && (
-          <Group gap={16}>
-            <MiniStat label="Requested" value={zmw(requested)} />
-            <MiniStat label="Eligible" value={zmw(eligibleAmount)} accent />
+      ) : (
+        <Stack gap={6}>
+          <Group gap={8} wrap="nowrap">
+            <Icon size={18} color={`var(--mantine-color-${tone.color.replace(".", "-")})`} />
+            {isPartial && (
+              <Text fz={14.5} fw={700} c="orange.8">
+                Amount adjustment required
+              </Text>
+            )}
+            {isFailed && (
+              <Text fz={14.5} fw={700} c="red.7">
+                Prescreening failed
+              </Text>
+            )}
           </Group>
-        )}
 
-        {confirm && !readOnly && (
-          <Group
-            gap={10}
-            p="xs"
-            bg="white"
-            style={{
-              border: "1px solid var(--mantine-color-slate-2)",
-              borderRadius: "var(--mantine-radius-sm)",
-            }}
-          >
-            <Text fz={11.5} style={{ flex: 1 }}>
-              Set requested amount to {zmw(calc.eligibleAmount)}?
-            </Text>
-            <Button size="xs" color="dark" radius="sm" onClick={() => onUseEligible(true)}>
-              Confirm
-            </Button>
-            <Button size="xs" variant="default" radius="sm" onClick={() => onUseEligible(false)}>
-              Cancel
-            </Button>
-          </Group>
-        )}
+          {isPartial && (
+            <Group gap={16}>
+              <MiniStat label="Requested" value={zmw(requested)} />
+              <MiniStat label="Eligible" value={zmw(eligibleAmount)} accent />
+            </Group>
+          )}
 
-        {!readOnly && (
-          <Group gap={10}>
-            {isEligible && (
-              <Button
-                size="xs"
-                color="green"
-                radius="md"
-                rightSection={<IconArrowRight size={13} />}
-                onClick={onContinue}
-              >
-                Continue to enrichment
+          {confirm && !readOnly && (
+            <Group
+              gap={10}
+              p="xs"
+              bg="white"
+              style={{
+                border: "1px solid var(--mantine-color-slate-2)",
+                borderRadius: "var(--mantine-radius-sm)",
+              }}
+            >
+              <Text fz={11.5} style={{ flex: 1 }}>
+                Set requested amount to {zmw(calc.eligibleAmount)}?
+              </Text>
+              <Button size="xs" color="dark" radius="sm" onClick={() => onUseEligible(true)}>
+                Confirm
               </Button>
-            )}
-            {isPartial && !confirm && (
-              <>
-                <Button size="xs" color="orange" radius="md" onClick={() => onReview("useEligible")}>
-                  Use {zmw(eligibleAmount)}
+              <Button size="xs" variant="default" radius="sm" onClick={() => onUseEligible(false)}>
+                Cancel
+              </Button>
+            </Group>
+          )}
+
+          {!readOnly && (
+            <Box mt={2}>
+              {isPartial && !confirm && (
+                <Button
+                  size="sm"
+                  variant="light"
+                  color="orange"
+                  radius="md"
+                  onClick={() => onReview("useEligible")}
+                >
+                  Use eligible amount
                 </Button>
-                <Button size="xs" variant="default" radius="md" onClick={() => onReview("review")}>
-                  Review application
+              )}
+              {isFailed && (
+                <Button
+                  size="sm"
+                  variant="default"
+                  radius="md"
+                  onClick={() => onReview("review")}
+                >
+                  Review overrides
                 </Button>
-              </>
-            )}
-          </Group>
-        )}
-      </Stack>
+              )}
+            </Box>
+          )}
+        </Stack>
+      )}
     </Box>
   );
 }
@@ -1509,7 +1739,16 @@ function reducer(state: PrescreeningState, action: any): PrescreeningState {
     case "resolveCreditFetch":
       return {
         ...state,
-        credit: { ...state.credit, status: "idle", value: action.value, source: action.source },
+        credit: {
+          ...state.credit,
+          status: "idle",
+          value: action.value,
+          source: action.source,
+          riskBand: action.riskBand ?? state.credit.riskBand,
+          activeAccounts: action.activeAccounts ?? state.credit.activeAccounts,
+          delinquentAccounts: action.delinquentAccounts ?? state.credit.delinquentAccounts,
+          recentEnquiries: action.recentEnquiries ?? state.credit.recentEnquiries,
+        },
       };
     case "manualCredit":
       return {
@@ -1537,6 +1776,7 @@ function reducer(state: PrescreeningState, action: any): PrescreeningState {
           activeLoans: action.activeLoans,
           outstanding: action.outstanding,
           source: action.source,
+          records: action.records ?? state.liabilities.records ?? [],
         },
       };
     case "manualLiabilities":
@@ -1545,8 +1785,37 @@ function reducer(state: PrescreeningState, action: any): PrescreeningState {
         liabilities: {
           ...state.liabilities,
           manual: action.on,
-          source: action.on ? "manual" : state.liabilities.source,
+          source: action.on ? "manual" : (state.liabilities.records.length > 0 ? "bureau" : "unavailable"),
+          manualRecords: state.liabilities.manualRecords.length > 0
+            ? state.liabilities.manualRecords
+            : (state.liabilities.records || []).map(r => ({ ...r, source: "manual" as SourceKind })),
         },
+      };
+    case "addManualRecord":
+      return {
+        ...state,
+        liabilities: {
+          ...state.liabilities,
+          manualRecords: [
+            ...state.liabilities.manualRecords,
+            { institution: "", facilityType: "Personal Loan", outstanding: 0, monthlyPayment: 0, status: "Active", source: "manual" }
+          ]
+        }
+      };
+    case "updateManualRecord":
+      const updated = [...state.liabilities.manualRecords];
+      updated[action.index] = { ...updated[action.index], ...action.changes };
+      return {
+        ...state,
+        liabilities: { ...state.liabilities, manualRecords: updated }
+      };
+    case "removeManualRecord":
+      return {
+        ...state,
+        liabilities: {
+          ...state.liabilities,
+          manualRecords: state.liabilities.manualRecords.filter((_, i) => i !== action.index)
+        }
       };
     case "setObligations":
       return {
@@ -1604,8 +1873,13 @@ function PrescreeningWorkspace({
   const [calcOpen, setCalcOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [continued, setContinued] = useState(false);
+  const [liabOpen, setLiabOpen] = useState(false);
 
   function dispatch(action: any) {
+    if (action.type === "openLiabilitiesModal") {
+      setLiabOpen(true);
+      return;
+    }
     setState((s) => reducer(s, action));
   }
 
@@ -1613,7 +1887,15 @@ function PrescreeningWorkspace({
     if (state.credit.status === "loading") {
       const t = setTimeout(() => {
         const s = SCENARIOS[DEFAULT_SCENARIO];
-        dispatch({ type: "resolveCreditFetch", value: s.credit, source: s.creditSource });
+        dispatch({
+          type: "resolveCreditFetch",
+          value: s.credit,
+          source: s.creditSource,
+          riskBand: s.riskBand ?? null,
+          activeAccounts: s.activeAccounts ?? null,
+          delinquentAccounts: s.delinquentAccounts ?? null,
+          recentEnquiries: s.recentEnquiries ?? null,
+        });
       }, 700);
       return () => clearTimeout(t);
     }
@@ -1623,12 +1905,14 @@ function PrescreeningWorkspace({
     if (state.liabilities.status === "loading") {
       const t = setTimeout(() => {
         const s = SCENARIOS[DEFAULT_SCENARIO];
+        const records = s.liabilities ?? [];
         dispatch({
           type: "resolveLiabFetch",
           obligations: s.obligations,
-          activeLoans: s.obligations != null ? 2 : null,
+          activeLoans: records.length || (s.obligations != null ? 2 : null),
           outstanding: s.obligations != null ? Math.round(s.obligations * 10) : null,
           source: s.obligationsSource,
+          records,
         });
       }, 700);
       return () => clearTimeout(t);
@@ -1645,11 +1929,6 @@ function PrescreeningWorkspace({
     }
   }, [state.income.status]);
 
-  // NOTE: this no longer waits for every field's `status` to be "idle"
-  // before producing a result. It calculates off whatever values are
-  // currently held (which are never cleared while a single field is
-  // refreshing), so refreshing one field (e.g. credit score) doesn't
-  // blank out the eligibility section or the rest of the form.
   const calc = useMemo(() => {
     return calcEligibility({
       income: state.income.value,
@@ -1710,9 +1989,37 @@ function PrescreeningWorkspace({
     );
   }
 
+  const { leftNode, rightNode, modals } = useEligibilityUI({
+    calc,
+    requested,
+    tenure,
+    rate,
+    maxDTI: policy.maxDTI,
+    minCreditScore: policy.minCreditScore,
+    productMax: policy.productMax,
+    income: state.income.value,
+    obligations: state.liabilities.obligations,
+    creditScore: state.credit.value,
+    rulesOpen,
+    setRulesOpen,
+    calcOpen,
+    setCalcOpen,
+    recalcFlash: flash,
+    decisionSlot: (
+      <DecisionCard
+        calc={calc}
+        requested={requested}
+        onContinue={() => setContinued(true)}
+        onUseEligible={handleUseEligible}
+        onReview={(a) => a === "useEligible" && setConfirm(true)}
+        confirm={confirm}
+        readOnly={readOnly}
+      />
+    ),
+  });
+
   return (
-    <Box px={30} pt={12} pb={30}>
-      <SectionLabel>Prescreening data</SectionLabel>
+    <Box px={30} pt={12} pb={16}>
       <PrescreeningOverview
         state={state}
         dispatch={dispatch}
@@ -1721,40 +2028,164 @@ function PrescreeningWorkspace({
         requested={requested}
         maxDTI={policy.maxDTI}
         productMax={policy.productMax}
+        leftSlot={leftNode}
+        rightSlot={rightNode}
       />
 
-      {/* <SectionLabel>Eligibility calculation</SectionLabel> */}
-      <EligibilitySection
-        calc={calc}
-        requested={requested}
-        tenure={tenure}
-        rate={rate}
-        maxDTI={policy.maxDTI}
-        minCreditScore={policy.minCreditScore}
-        productMax={policy.productMax}
-        income={state.income.value}
-        obligations={state.liabilities.obligations}
-        creditScore={state.credit.value}
-        rulesOpen={rulesOpen}
-        setRulesOpen={setRulesOpen}
-        calcOpen={calcOpen}
-        setCalcOpen={setCalcOpen}
-        recalcFlash={flash}
-        decisionSlot={
-          <>
-            {/* <SectionLabel>Prescreening result</SectionLabel> */}
-            <DecisionCard
-              calc={calc}
-              requested={requested}
-              onContinue={() => setContinued(true)}
-              onUseEligible={handleUseEligible}
-              onReview={(a) => a === "useEligible" && setConfirm(true)}
-              confirm={confirm}
-              readOnly={readOnly}
-            />
-          </>
+      {modals}
+
+      <Modal
+        opened={liabOpen}
+        onClose={() => setLiabOpen(false)}
+        title={
+          <Text fz={14.5} fw={700} c="slate.9">
+            Existing Liabilities
+          </Text>
         }
-      />
+        radius="md"
+        size="lg"
+        centered
+        withCloseButton
+        closeButtonProps={{ icon: <IconX size={16} /> }}
+      >
+        <Box
+          style={{
+            border: "1px solid var(--mantine-color-slate-2)",
+            borderRadius: "var(--mantine-radius-md)",
+            overflow: "auto",
+          }}
+        >
+          <Table fz={12.5}>
+            <Table.Thead bg="slate.0">
+              <Table.Tr>
+                <Table.Th>Source</Table.Th>
+                <Table.Th>Institution</Table.Th>
+                <Table.Th>Facility Type</Table.Th>
+                <Table.Th>Outstanding</Table.Th>
+                <Table.Th>Monthly Payment</Table.Th>
+                <Table.Th>Status</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {state.liabilities.manual ? (
+                state.liabilities.manualRecords.map((r, i) => (
+                  <Table.Tr key={i}>
+                    <Table.Td>
+                      <Badge size="xs" radius="sm" color="orange" variant="light">
+                        Manual
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <TextInput
+                        size="xs"
+                        value={r.institution}
+                        onChange={(e) => dispatch({ type: "updateManualRecord", index: i, changes: { institution: e.currentTarget.value } })}
+                        placeholder="Institution"
+                      />
+                    </Table.Td>
+                    <Table.Td>
+                      <TextInput
+                        size="xs"
+                        value={r.facilityType}
+                        onChange={(e) => dispatch({ type: "updateManualRecord", index: i, changes: { facilityType: e.currentTarget.value } })}
+                        placeholder="Type"
+                      />
+                    </Table.Td>
+                    <Table.Td>
+                      <TextInput
+                        size="xs"
+                        type="number"
+                        value={r.outstanding || ""}
+                        onChange={(e) => dispatch({ type: "updateManualRecord", index: i, changes: { outstanding: Number(e.currentTarget.value) } })}
+                        placeholder="0"
+                      />
+                    </Table.Td>
+                    <Table.Td>
+                      <TextInput
+                        size="xs"
+                        type="number"
+                        value={r.monthlyPayment || ""}
+                        onChange={(e) => dispatch({ type: "updateManualRecord", index: i, changes: { monthlyPayment: Number(e.currentTarget.value) } })}
+                        placeholder="0"
+                      />
+                    </Table.Td>
+                    <Table.Td>
+                      <ActionIcon size="sm" color="red" variant="subtle" onClick={() => dispatch({ type: "removeManualRecord", index: i })}>
+                        <IconX size={14} />
+                      </ActionIcon>
+                    </Table.Td>
+                  </Table.Tr>
+                ))
+              ) : (
+                state.liabilities.records && state.liabilities.records.length > 0 ? (
+                  state.liabilities.records.map((r, i) => (
+                    <Table.Tr key={i}>
+                      <Table.Td>
+                        <Badge size="xs" radius="sm" color="orange" variant="light">
+                          Bureau
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fz={12.5} c="slate.9">{r.institution}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fz={12.5} c="slate.7">{r.facilityType}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fz={12.5} c="slate.9">{zmw(r.outstanding)}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fz={12.5} c="slate.9">{zmw(r.monthlyPayment)}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fz={11.5} fw={600} c={r.status === "Active" ? "green.7" : "red.6"}>
+                          {r.status}
+                        </Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))
+                ) : (
+                  <Table.Tr>
+                    <Table.Td colSpan={6}>
+                      <Text fz={12.5} c="slate.5" ta="center" py="md">
+                        No liabilities found.
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                )
+              )}
+            </Table.Tbody>
+          </Table>
+        </Box>
+        {!readOnly && (
+          <Box mt="md" p="sm" bg="slate.0" style={{ borderRadius: "var(--mantine-radius-md)" }}>
+            <Group justify="space-between" align="center">
+              <Box>
+                <Text fz={12.5} fw={600} c="slate.9">Manual Entry Mode</Text>
+                <Text fz={11.5} c="slate.5">
+                  {state.liabilities.manual 
+                    ? "Add or edit multiple liabilities manually." 
+                    : "If bureau data is incorrect, you can manually enter multiple liabilities."}
+                </Text>
+              </Box>
+              {state.liabilities.manual ? (
+                <Group gap={8}>
+                  <Button size="xs" variant="default" onClick={() => dispatch({ type: "addManualRecord" })}>
+                    Add liability
+                  </Button>
+                  <Button size="xs" variant="light" color="red" onClick={() => dispatch({ type: "manualLiabilities", on: false })}>
+                    Cancel manual entry
+                  </Button>
+                </Group>
+              ) : (
+                <Button size="xs" variant="light" color="brand" onClick={() => dispatch({ type: "manualLiabilities", on: true })}>
+                  Enter manually
+                </Button>
+              )}
+            </Group>
+          </Box>
+        )}
+      </Modal>
     </Box>
   );
 }
