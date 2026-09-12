@@ -102,23 +102,23 @@ export function MapLoanProducts() {
   };
 
   return (
-    <Box className="w-full px-6 pt-0 pb-3">      {/* Page header */}
-      <Box className="mb-4">
+    <Box className="w-full px-6 pt-0 pb-2">      {/* Page header */}
+      <Box className="mb-2">
         <Text size="xl" fw={700} c="slate.9">
           Map Loan Products
         </Text>
-        <Text size="sm" c="slate.5" className="mt-1">
+        <Text size="sm" c="slate.5" className="mt-0.5">
           Select the loan products from the available list and map them to the selected contract template.        </Text>
       </Box>
 
       {/* Contract Template Card */}
-      <Paper radius="md" p="sm" px="md" mb="md" style={{ border: "1px solid var(--mantine-color-brand-2)", background: "var(--mantine-color-brand-0)" }}>
+      <Paper radius="md" p={8} px="sm" mb="xs" style={{ border: "1px solid var(--mantine-color-brand-2)", background: "var(--mantine-color-brand-0)" }}>
         <Group justify="space-between" align="center">
-          <Group gap="md">
+          <Group gap="sm">
             <Box
               style={{
-                width: 42,
-                height: 42,
+                width: 32,
+                height: 32,
                 borderRadius: "var(--mantine-radius-md)",
                 background: "var(--mantine-color-brand-1)",
                 display: "flex",
@@ -127,42 +127,38 @@ export function MapLoanProducts() {
                 color: "var(--mantine-color-brand-7)"
               }}
             >
-              <IconFileText size={22} />
+              <IconFileText size={16} />
             </Box>
             <Box>
-              <Text size="10px" fw={700} c="brand.6" className="uppercase tracking-wider">
+              <Text size="9px" fw={700} c="brand.6" className="uppercase tracking-wider">
                 Contract Template
               </Text>
-              <Text size="md" fw={700} c="slate.9" mt={1}>
-                Standard Personal Loan Agreement
-              </Text>
-              <Group gap={6} mt={1}>
-                <Text size="xs" fw={500} c="slate.5">Agreement Version: 1.0</Text>
-                <Text size="xs" c="slate.3">•</Text>
-                <Badge variant="light" color="success" size="sm" radius="sm">Active</Badge>
+              <Group gap={6} align="center" wrap="nowrap">
+                <Text size="sm" fw={700} c="slate.9" mt={0}>
+                  Standard Personal Loan Agreement
+                </Text>
+                <Text size="xs" fw={500} c="slate.5">· Agreement Version: 1.0</Text>
+                <Badge variant="light" color="success" size="xs" radius="sm">Active</Badge>
               </Group>
             </Box>
           </Group>
-          <Button variant="default" size="sm" radius="md" leftSection={<IconEye size={16} />}>
+          <Button variant="default" size="xs" radius="md" leftSection={<IconEye size={14} />}>
             View Template
           </Button>
         </Group>
       </Paper>
 
       {/* Body */}
-      <div className="flex gap-4 items-start">
+      <div className="flex gap-3 items-start">
         {/* Left Column: Available Products */}
         <Paper className="flex-[1.3] border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-          <Box className="p-5 border-b border-slate-100">
-            <Group gap="sm" mb="md" wrap="nowrap">
-              <ThemeIcon size={38} radius="xl" variant="light" color="brand">
-                <IconStack2 size={19} />
+          <Box className="p-3 border-b border-slate-100">
+            <Group gap="xs" mb="xs" wrap="nowrap">
+              <ThemeIcon size={30} radius="xl" variant="light" color="brand">
+                <IconStack2 size={16} />
               </ThemeIcon>
               <Box>
                 <Text fw={600} size="sm" c="slate.9">Available Loan Products</Text>
-                <Text size="xs" c="slate.5">
-                  Browse and select loan products to map with this template.
-                </Text>
               </Box>
             </Group>
 
@@ -171,12 +167,12 @@ export function MapLoanProducts() {
               leftSection={<IconSearch size={16} />}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.currentTarget.value)}
-              mb="sm"
+              mb="xs"
               radius="md"
               size="sm"
             />
 
-            <Group gap={8} wrap="wrap" pb={2}>
+            <Group gap={6} wrap="wrap">
               {filters.map(f => (
                 <Button
                   key={f}
@@ -194,7 +190,7 @@ export function MapLoanProducts() {
           </Box>
 
           {/* List Header */}
-          <Box className="px-5 py-2.5 border-b border-slate-100 flex items-center bg-slate-0">
+          <Box className="px-4 py-1.5 border-b border-slate-100 flex items-center bg-slate-0">
             <Box style={{ width: 32 }} />
             <Box className="flex-1 min-w-0 pr-4">
               <Text size="xs" fw={700} c="slate.4" className="uppercase tracking-wider">Product Name</Text>
@@ -220,7 +216,7 @@ export function MapLoanProducts() {
                   return (
                     <Box
                       key={product.id}
-                      className={`px-3 py-3 border-b border-slate-100 flex items-center transition-colors ${isSelected ? 'bg-brand-0' : 'hover:bg-slate-50'
+                      className={`px-3 py-1.5 border-b border-slate-100 flex items-center transition-colors ${isSelected ? 'bg-brand-0' : 'hover:bg-slate-50'
                         }`}
                     >
                       <Box style={{ width: 32 }}>
@@ -269,7 +265,7 @@ export function MapLoanProducts() {
           </div>
 
           {/* Pagination Footer */}
-          <Box className="px-5 py-3 bg-white border-t border-slate-100 flex items-center justify-between">
+          <Box className="px-4 py-2 bg-white border-t border-slate-100 flex items-center justify-between">
             <Text size="xs" c="slate.5">
               {totalProducts === 0
                 ? 'Showing 0 of 0 products'
@@ -290,17 +286,14 @@ export function MapLoanProducts() {
 
         {/* Right Column: Mapped Products */}
         <Paper className="flex-1 border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white flex flex-col">
-          <Box className="p-5 border-b border-slate-100">
-            <Group justify="space-between" align="flex-start" wrap="nowrap">
-              <Group gap="sm" wrap="nowrap">
-                <ThemeIcon size={38} radius="xl" variant="light" color="brand">
-                  <IconLink size={19} />
+          <Box className="p-3 border-b border-slate-100">
+            <Group justify="space-between" align="center" wrap="nowrap">
+              <Group gap="xs" wrap="nowrap">
+                <ThemeIcon size={30} radius="xl" variant="light" color="brand">
+                  <IconLink size={16} />
                 </ThemeIcon>
                 <Box>
                   <Text fw={600} size="sm" c="slate.9">Products Using This Template</Text>
-                  <Text size="xs" c="slate.5">
-                    These loan products will use this contract template for document generation.
-                  </Text>
                 </Box>
               </Group>
               <Badge variant="light" color="brand" size="md" radius="sm">
@@ -309,7 +302,7 @@ export function MapLoanProducts() {
             </Group>
           </Box>
 
-          <Box className="px-5 py-2.5 border-b border-slate-100 flex items-center bg-slate-0">
+          <Box className="px-4 py-1.5 border-b border-slate-100 flex items-center bg-slate-0">
             <Box className="flex-1 min-w-0 pr-4">
               <Text size="xs" fw={700} c="slate.4" className="uppercase tracking-wider">Product Name</Text>
             </Box>
@@ -336,7 +329,7 @@ export function MapLoanProducts() {
                   return (
                     <Box
                       key={product.id}
-                      className="px-3 py-3 border-b border-slate-100 flex items-center transition-colors hover:bg-slate-50"
+                      className="px-3 py-1.5 border-b border-slate-100 flex items-center transition-colors hover:bg-slate-50"
                     >
                       <div className="flex-1 min-w-0 pr-4">
                         <Text size="sm" fw={600} c="slate.8" truncate>{product.name}</Text>
@@ -388,7 +381,7 @@ export function MapLoanProducts() {
       </div>
 
       {/* Footer */}
-      <Paper radius="xl" p="md" mt="lg" className="border border-slate-200 shadow-sm bg-white">
+      <Paper radius="xl" p="xs" px="md" mt="xs" className="border border-slate-200 shadow-sm bg-white">
         <Group justify="space-between">
           <Button variant="default" size="md" radius="xl" onClick={handleBack}>
             Back
