@@ -31,6 +31,7 @@ import { OverviewPanel } from './OverviewPanel';
 import { ApplicantBusinessPanel } from './ApplicantBusinessPanel';
 import { DocumentsPanel } from './Documentspanel';
 import { ActivityPanel } from './Activitypanel';
+import { FormPreviewPanel } from './FormPreviewPanel';
 
 interface LoanApplicationDetailViewProps {
   application: LoanApplicationRow;
@@ -272,6 +273,7 @@ export function LoanApplicationDetailView({
                   <Tabs.Tab value="applicant">Applicant &amp; Business</Tabs.Tab>
                   <Tabs.Tab value="documents">Documents</Tabs.Tab>
                   <Tabs.Tab value="activity">Activity</Tabs.Tab>
+                  <Tabs.Tab value="preview">Form Preview</Tabs.Tab>
                 </Tabs.List>
 
                 <Tabs.Panel value="overview">
@@ -288,6 +290,10 @@ export function LoanApplicationDetailView({
 
                 <Tabs.Panel value="activity">
                   <ActivityPanel activity={filteredActivity} />
+                </Tabs.Panel>
+
+                <Tabs.Panel value="preview">
+                  <FormPreviewPanel application={application} detail={detail} />
                 </Tabs.Panel>
               </Tabs>
             </div>

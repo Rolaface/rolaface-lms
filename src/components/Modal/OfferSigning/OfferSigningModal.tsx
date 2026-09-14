@@ -17,6 +17,7 @@ import {
   Button,
   ActionIcon,
   SimpleGrid,
+  Grid,
 } from "@mantine/core";
 import {
   IconBuildingBank,
@@ -279,72 +280,47 @@ const ROUTE_STAGES = ["Enrichment", "Underwriting", "Prescreening"];
 // Offer summary — top banner (matches reference design)
 // ---------------------------------------------------------------------------
 
-function OfferBannerStat({ label, value, sub, valueColor }: { label: string; value: string; sub?: string; valueColor?: string }) {
-  return (
-    <Box
-      px={14}
-      py={8}
-      style={{
-        background: "rgba(255,255,255,0.12)",
-        borderRadius: "var(--mantine-radius-md)",
-        minWidth: 108,
-      }}
-    >
-      <Text fz={10} fw={600} c="brand.1" tt="none" mb={2} style={{ whiteSpace: "nowrap" }}>
-        {label}
-      </Text>
-      <Text fz={14.5} fw={700} c={valueColor ?? "white"} lh={1.2}>
-        {value}
-      </Text>
-      {sub && (
-        <Text fz={10} c="brand.1" mt={1}>
-          {sub}
-        </Text>
-      )}
-    </Box>
-  );
-}
-
 function OfferSummaryBanner({ onViewSchedule }: { onViewSchedule?: () => void }) {
   return (
     <Box
-      p="md"
+      p="xl"
       style={{
-        background: "linear-gradient(135deg, var(--mantine-color-brand-7), var(--mantine-color-brand-6))",
-        borderRadius: "var(--mantine-radius-lg)",
+        backgroundColor: "var(--mantine-color-brand-7)",
+        borderTopLeftRadius: "var(--mantine-radius-md)",
+        borderTopRightRadius: "var(--mantine-radius-md)",
       }}
-      mb={14}
+      mb={0}
     >
-      <Group justify="space-between" align="center" wrap="wrap" gap={14}>
-        <Group gap={14} align="center" wrap="nowrap">
-          <ThemeIcon radius="xl" size={40} variant="light" color="green" style={{ background: "rgba(255,255,255,0.16)" }}>
-            <IconShieldCheck size={20} color="white" />
-          </ThemeIcon>
-          <Box>
-            <Group gap={8} align="center" mb={2}>
-              <Text fz={11} fw={600} c="brand.1" tt="uppercase" style={{ letterSpacing: 0.4 }}>
-                Approved loan amount
-              </Text>
-              <Badge size="xs" radius="xl" variant="light" color="green" style={{ textTransform: "none" }}>
-                Valid until {fmtDate(VALID_UNTIL)}
-              </Badge>
-            </Group>
-            <Group gap={6} align="baseline">
-              <Text fz={26} fw={800} c="white" lh={1}>
-                {zmw(FINAL_TERMS.amount)}
-              </Text>
-              <Text fz={12.5} c="brand.1">
-                /{APPLICATION.loan.purpose.replace(/\s+/g, "")}
-              </Text>
-            </Group>
-          </Box>
-        </Group>
+      <Group justify="space-between" align="center" wrap="wrap">
+        <Box>
+          <Text fz={12} c="brand.1" mb={4}>
+            Approved amount · {APPLICATION.loan.purpose}
+          </Text>
+          <Text fz={32} fw={400} c="white" lh={1} style={{ fontFamily: "serif" }}>
+            {zmw(FINAL_TERMS.amount)}
+          </Text>
+          <Text fz={11} c="brand.1" mt={8}>
+            Valid until <Text span fw={700} c="white">{fmtDate(VALID_UNTIL)}</Text>
+          </Text>
+        </Box>
 
-        <Group gap={8} wrap="wrap">
-          <OfferBannerStat label="Monthly Installment" value={zmw(FINAL_SIM.installment)} sub="Monthly deduction" />
-          <OfferBannerStat label="Interest Rate" value={`${FINAL_TERMS.rate}% p.a.`} sub="Fixed rate" valueColor="green.3" />
-          <OfferBannerStat label="Tenure" value={`${FINAL_TERMS.tenure} Months`} sub={`${Math.round(FINAL_TERMS.tenure / 12)} Years`} />
-          <OfferBannerStat label="Total Repayment" value={zmw(FINAL_SIM.totalRepayment)} sub="Principal + Interest" />
+        <Group gap={40} wrap="nowrap">
+          <Box>
+            <Text fz={11} c="brand.1" mb={2}>Monthly installment</Text>
+            <Text fz={16} fw={600} c="white">{zmw(FINAL_SIM.installment)}</Text>
+          </Box>
+          <Box>
+            <Text fz={11} c="brand.1" mb={2}>Interest rate</Text>
+            <Text fz={16} fw={600} c="green.3">{FINAL_TERMS.rate}% p.a.</Text>
+          </Box>
+          <Box>
+            <Text fz={11} c="brand.1" mb={2}>Tenure</Text>
+            <Text fz={16} fw={600} c="white">{FINAL_TERMS.tenure} months</Text>
+          </Box>
+          <Box>
+            <Text fz={11} c="brand.1" mb={2}>Total repayment</Text>
+            <Text fz={16} fw={600} c="white">{zmw(FINAL_SIM.totalRepayment)}</Text>
+          </Box>
         </Group>
       </Group>
     </Box>
@@ -387,6 +363,60 @@ function OfferCard({
   );
 }
 
+// Inject CSS for the precise layout
+const offerCss = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap');
+  .os-intro { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+  .os-intro h1 { font-family: 'Source Serif 4', serif; font-size: 16px; font-weight: 600; margin: 0; color: #1B1730; }
+  .os-intro p { margin: 1px 0 0; color: #605B78; font-size: 12px; }
+  .os-status-pill { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 100px; background: #EFECFC; color: #2A1F94; white-space: nowrap; flex: none; }
+
+  .os-headline { background: linear-gradient(155deg, #2A1F94, #3F2FC7); border-radius: 12px; padding: 13px 18px; color: #fff; display: flex; align-items: center; gap: 18px; flex: none; margin-bottom: 24px; }
+  .os-headline .main-fig { flex: none; }
+  .os-headline .label { font-size: 10.5px; color: #C9C2F2; margin-bottom: 2px; }
+  .os-headline .amount { font-family: 'Source Serif 4', serif; font-size: 24px; font-weight: 600; line-height: 1; }
+  .os-headline .valid { font-size: 10px; color: #C9C2F2; margin-top: 4px; }
+  .os-headline .valid b { color: #fff; font-weight: 600; }
+  .os-headline .divider { width: 1px; align-self: stretch; background: rgba(255,255,255,.18); flex: none; }
+  .os-headline .stats { display: flex; gap: 20px; flex: 1; }
+  .os-headline .stat .k { font-size: 10px; color: #C9C2F2; margin-bottom: 2px; }
+  .os-headline .stat .v { font-size: 14px; font-weight: 700; }
+  .os-headline .stat .v.accent { color: #8DE8B4; }
+
+  .os-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; flex: 1; min-height: 0; margin-bottom: 24px; }
+  .os-section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+  .os-section-head h2 { font-size: 12px; font-weight: 700; margin: 0; color: #605B78; }
+  .os-section-head a { font-size: 11px; color: #3F2FC7; text-decoration: none; font-weight: 600; cursor: pointer; }
+  .os-section-head .note { font-size: 10.5px; color: #9E99B0; }
+  .os-rows { border-top: 1px solid #E7E4EF; }
+  .os-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 1px; border-bottom: 1px solid #E7E4EF; font-size: 12px; }
+  .os-row .k { color: #605B78; }
+  .os-row .v { font-weight: 600; text-align: right; color: #1B1730; }
+  .os-row .v.muted { font-weight: 500; color: #605B78; }
+  .os-row.total { background: #F7F6F9; margin: 5px -1px 0; padding: 7px 9px; border-radius: 8px; border-bottom: none; }
+  .os-row.total .k, .os-row.total .v { font-weight: 700; color: #1B1730; font-size: 12px; }
+  .os-tag { font-size: 9.5px; font-weight: 600; padding: 2px 8px; border-radius: 100px; background: #EAF6EF; color: #1E7F4F; }
+
+  .os-collateral { flex: none; border: 1px solid #F0CE96; background: #FDF3E4; border-radius: 12px; display: flex; align-items: center; gap: 14px; padding: 9px 14px; margin-bottom: 24px; }
+  .os-collateral .veh { flex: none; min-width: 190px; }
+  .os-collateral .veh .name { font-weight: 700; font-size: 12px; color: #1B1730; }
+  .os-collateral .veh .sub { font-size: 10.5px; color: #605B78; margin-top: 1px; }
+  .os-collateral .sep { width: 1px; align-self: stretch; background: #F0CE96; flex: none; }
+  .os-collateral .warn { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+  .os-collateral .warn .ic { font-size: 13px; flex: none; }
+  .os-collateral .warn .txt strong { display: block; font-size: 11.5px; color: #7C3A0C; }
+  .os-collateral .warn .txt p { margin: 0; font-size: 10.5px; color: #8A4A12; line-height: 1.3; }
+  .os-collateral .cta button { background: #B45309; color: #fff; border: none; border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+
+  .os-decision { flex: none; border: 1px solid #E7E4EF; border-radius: 12px; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #F7F6F9; }
+  .os-decision .txt strong { display: block; font-size: 12px; color: #1B1730; }
+  .os-decision .txt p { margin: 1px 0 0; font-size: 10.5px; color: #605B78; }
+  .os-decision .btns { display: flex; gap: 8px; flex: none; }
+  .os-decision button { border-radius: 8px; font-size: 11.5px; font-weight: 600; padding: 7px 12px; cursor: pointer; border: 1px solid #E7E4EF; background: #fff; color: #1B1730; }
+  .os-decision button.reject { color: #B3261E; border-color: #F3D3CF; }
+  .os-decision button.accept { background: #1E7F4F; color: #fff; border: none; }
+`;
+
 function OfferPendingView({
   onAccept,
   onReject,
@@ -401,199 +431,83 @@ function OfferPendingView({
   setScheduleOpen: (v: boolean) => void;
 }) {
   const netDisbursed = FINAL_TERMS.amount - FINAL_FEES.total;
-  const condition = UNDERWRITING_DECISION.conditions[0];
-
+  
   return (
     <Box>
-      <OfferSummaryBanner />
+      <style>{offerCss}</style>
+      
+      <div className="os-headline">
+        <div className="main-fig">
+          <div className="label">Approved amount · {APPLICATION.loan.purpose}</div>
+          <div className="amount">{zmw(FINAL_TERMS.amount)}</div>
+          <div className="valid">Valid until <b>{fmtDate(VALID_UNTIL)}</b></div>
+        </div>
+        <div className="divider"></div>
+        <div className="stats">
+          <div className="stat"><div className="k">Monthly installment</div><div className="v">{zmw(FINAL_SIM.installment)}</div></div>
+          <div className="stat"><div className="k">Interest rate</div><div className="v accent">{FINAL_TERMS.rate}% p.a.</div></div>
+          <div className="stat"><div className="k">Tenure</div><div className="v">{FINAL_TERMS.tenure} months</div></div>
+          <div className="stat"><div className="k">Total repayment</div><div className="v">{zmw(FINAL_SIM.totalRepayment)}</div></div>
+        </div>
+      </div>
 
-      <SimpleGrid cols={3} spacing={14} mb={14}>
-        {/* Repayment structure */}
-        <OfferCard
-          dotColor="var(--mantine-color-brand-6)"
-          title="Repayment structure"
-          right={
-            <UnstyledButton onClick={() => setScheduleOpen(!scheduleOpen)}>
-              <Text fz={11.5} fw={600} c="brand.6">
-                {scheduleOpen ? "Hide schedule" : "View schedule"}
-              </Text>
-            </UnstyledButton>
-          }
-          footer={
-            <Group justify="space-between" align="center">
-              <Text fz={11.5} c="brand.6">
-                Repayment via payroll deduction
-              </Text>
-              <Badge size="xs" radius="xl" variant="light" color="green" style={{ textTransform: "none" }}>
-                Verified
-              </Badge>
-            </Group>
-          }
-        >
-          <SimRow label="First payment due" value={fmtDate(FINAL_SIM.first)} />
-          <SimRow label="Final maturity date" value={fmtDate(FINAL_SIM.final)} />
-          <SimRow label="Repayment frequency" value={FINAL_TERMS.frequency} />
-          <SimRow label="Total interest payable" value={zmw(FINAL_SIM.totalInterest)} />
-          <SimRow label="Disbursement method" value="Direct Bank Transfer" last strong />
-        </OfferCard>
+      <div className="os-two-col">
+        <div>
+          <div className="os-section-head">
+            <h2>Repayment structure</h2>
+            <a onClick={(e) => { e.preventDefault(); setScheduleOpen(!scheduleOpen); }}>{scheduleOpen ? "Hide schedule" : "View schedule"}</a>
+          </div>
+          <div className="os-rows">
+            <div className="os-row"><span className="k">First payment due</span><span className="v">{fmtDate(FINAL_SIM.first)}</span></div>
+            <div className="os-row"><span className="k">Final maturity date</span><span className="v">{fmtDate(FINAL_SIM.final)}</span></div>
+            <div className="os-row"><span className="k">Frequency</span><span className="v muted">{FINAL_TERMS.frequency}</span></div>
+            <div className="os-row"><span className="k">Total interest payable</span><span className="v">{zmw(FINAL_SIM.totalInterest)}</span></div>
+            <div className="os-row"><span className="k">Disbursement method</span><span className="v muted">Direct bank transfer</span></div>
+            <div className="os-row"><span className="k">Payroll deduction</span><span className="os-tag">Verified</span></div>
+          </div>
+        </div>
 
-        {/* Fees & statutory charges */}
-        <OfferCard
-          dotColor="var(--mantine-color-green-6)"
-          title="Fees & statutory charges"
-          right={
-            <Badge size="xs" radius="sm" variant="light" color="gray" style={{ textTransform: "none" }}>
-              Pre-deducted
-            </Badge>
-          }
-          footer={
-            <Group justify="space-between" align="center">
-              <Text fz={12} c="slate.5">
-                Net Disbursed Amount:
-              </Text>
-              <Text fz={15} fw={800} c="brand.7">
-                {zmw(netDisbursed)}
-              </Text>
-            </Group>
-          }
-        >
-          <SimRow label={`Processing fee (${FINAL_TERMS.processingFeePct}%)`} value={zmw(FINAL_FEES.processingFee)} />
-          <SimRow label={`Credit life insurance (${FINAL_TERMS.insurancePct}%)`} value={zmw(FINAL_FEES.insurance)} />
-          <SimRow label={`Tax on fees (${FINAL_TERMS.taxPct}% VAT)`} value={zmw(FINAL_FEES.tax)} last />
-          <Box mt={8} pt={8} style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
-            <Group justify="space-between" py={4} px={8} bg="slate.0" style={{ borderRadius: "var(--mantine-radius-sm)" }}>
-              <Text fz={12.5} fw={700} c="slate.8">
-                Total fees and charges
-              </Text>
-              <Text fz={12.5} fw={800} c="slate.9">
-                {zmw(FINAL_FEES.total)}
-              </Text>
-            </Group>
-          </Box>
-        </OfferCard>
+        <div>
+          <div className="os-section-head">
+            <h2>Fees & statutory charges</h2>
+            <span className="note">Pre-deducted</span>
+          </div>
+          <div className="os-rows">
+            <div className="os-row"><span className="k">Processing fee ({FINAL_TERMS.processingFeePct}%)</span><span className="v">{zmw(FINAL_FEES.processingFee)}</span></div>
+            <div className="os-row"><span className="k">Credit life insurance ({FINAL_TERMS.insurancePct}%)</span><span className="v">{zmw(FINAL_FEES.insurance)}</span></div>
+            <div className="os-row"><span className="k">Tax on fees ({FINAL_TERMS.taxPct}% VAT)</span><span className="v">{zmw(FINAL_FEES.tax)}</span></div>
+            <div className="os-row total"><span className="k">Net disbursed amount</span><span className="v">{zmw(netDisbursed)}</span></div>
+          </div>
+        </div>
+      </div>
 
-        {/* Collateral & condition */}
-        <OfferCard
-          dotColor="var(--mantine-color-orange-6)"
-          title="Collateral & condition"
-          right={
-            <Badge size="xs" radius="sm" variant="light" color="orange" style={{ textTransform: "none" }}>
-              Action needed
-            </Badge>
-          }
-          footer={
-            <Group justify="space-between" align="center">
-              <Text fz={11.5} c="slate.4">
-                Responsible: {condition?.responsible ?? "—"}
-              </Text>
-              <Text fz={11.5} fw={600} c="brand.6" td="underline" style={{ cursor: "pointer" }}>
-                Upload Clearance Doc
-              </Text>
-            </Group>
-          }
-        >
-          {ASSETS_SUMMARY.map((a) => {
-            const regMatch = a.description.match(/registration\s+([A-Z0-9\s]+)$/i);
-            const regNo = regMatch ? regMatch[1].trim() : "";
-            const title = a.description.split(",")[0];
-            return (
-              <Box key={a.description} mb={12}>
-                <Group justify="space-between" align="flex-start" mb={2}>
-                  <Text fz={11} c="brand.6" fw={600}>
-                    Collateral / Security:
-                  </Text>
-                  {regNo && (
-                    <Text fz={10.5} c="slate.4" fw={600}>
-                      {regNo}
-                    </Text>
-                  )}
-                </Group>
-                <Text fz={12.5} fw={700} c="slate.9" mb={2}>
-                  {title}
-                </Text>
-                <Group justify="space-between" align="center">
-                  <Text fz={11} c="slate.5">
-                    Valuation: {zmw(a.value)}
-                  </Text>
-                  <Text fz={11} c="slate.5">
-                    LTV: {((FINAL_TERMS.amount / a.value) * 100).toFixed(1)}%
-                  </Text>
-                </Group>
-              </Box>
-            );
-          })}
+      <div className="os-collateral">
+        <div className="veh">
+          <div className="name">{ASSETS_SUMMARY[0].description.split(',')[0]}</div>
+          <div className="sub">ABC 1234 ZM · Value ZMW {ASSETS_SUMMARY[0].value.toLocaleString()} · LTV 42.3%</div>
+        </div>
+        <div className="sep"></div>
+        <div className="warn">
+          <div className="ic">⚠️</div>
+          <div className="txt">
+            <strong>Clearance letter needed</strong>
+            <p>{UNDERWRITING_DECISION.conditions[0].condition}</p>
+          </div>
+        </div>
+        <div className="cta"><button>Upload doc</button></div>
+      </div>
 
-          {condition && (
-            <Group
-              align="flex-start"
-              gap={8}
-              p={10}
-              bg="orange.0"
-              style={{ border: "1px solid var(--mantine-color-orange-2)", borderRadius: 10 }}
-              wrap="nowrap"
-            >
-              <IconAlertTriangle size={14} color="var(--mantine-color-orange-7)" style={{ marginTop: 2, flexShrink: 0 }} />
-              <Box>
-                <Text fz={11.5} fw={700} c="orange.9">
-                  Key Pre-Disbursement Condition:
-                </Text>
-                <Text fz={11.5} c="orange.8" mt={2}>
-                  {condition.condition}
-                </Text>
-              </Box>
-            </Group>
-          )}
-        </OfferCard>
-      </SimpleGrid>
-
-      {scheduleOpen && (
-        <Paper withBorder radius="md" mb={14} style={{ overflow: "hidden", maxHeight: 260, overflowY: "auto" }}>
-          <Table fz={12} stickyHeader>
-            <Table.Thead bg="slate.0">
-              <Table.Tr>
-                <Table.Th style={th}>#</Table.Th><Table.Th style={th}>Due date</Table.Th><Table.Th style={th}>Installment</Table.Th><Table.Th style={th}>Principal</Table.Th><Table.Th style={th}>Interest</Table.Th><Table.Th style={th}>Balance</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {FINAL_SIM.schedule.map((row) => (
-                <Table.Tr key={row.n}>
-                  <Table.Td style={td}>{row.n}</Table.Td><Table.Td style={td}>{fmtDate(row.due)}</Table.Td><Table.Td style={td}>{zmw(row.installment)}</Table.Td><Table.Td style={td}>{zmw(row.principal)}</Table.Td><Table.Td style={td}>{zmw(row.interest)}</Table.Td><Table.Td style={td}>{zmw(row.balance)}</Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Paper>
-      )}
-
-      {/* Customer response & signing authorization bar */}
-      <Paper withBorder radius="md" p="md">
-        <Group justify="space-between" align="center" wrap="wrap" gap={14}>
-          <Group gap={10} align="center" wrap="nowrap">
-            <ThemeIcon radius="md" size={30} variant="light" color="brand">
-              <IconSignature size={15} />
-            </ThemeIcon>
-            <Box>
-              <Text fz={13} fw={700} c="slate.9">
-                Customer Response &amp; Signing Authorization
-              </Text>
-              <Text fz={11.5} c="slate.5">
-                Select borrower's response to generate and execute the electronic loan contract.
-              </Text>
-            </Box>
-          </Group>
-          <Group gap={8}>
-            <Button variant="outline" color="red" radius="md" size="sm" onClick={onReject}>
-              Reject Offer
-            </Button>
-            <Button variant="default" radius="md" size="sm" onClick={onAmend}>
-              Request Amendment
-            </Button>
-            <Button color="green" radius="md" size="sm" onClick={onAccept} leftSection={<IconCheck size={14} />}>
-              Accept Offer
-            </Button>
-          </Group>
-        </Group>
-      </Paper>
+      <div className="os-decision">
+        <div className="txt">
+          <strong>Customer response & signing authorization</strong>
+          <p>Select the borrower's response to generate and execute the contract.</p>
+        </div>
+        <div className="btns">
+          <button className="reject" onClick={onReject}>Reject offer</button>
+          <button onClick={onAmend}>Request amendment</button>
+          <button className="accept" onClick={onAccept}>Accept offer</button>
+        </div>
+      </div>
     </Box>
   );
 }
@@ -630,43 +544,8 @@ function OfferWorkspace() {
     setSignatories(signatories.map((s, idx) => (idx === i ? { ...s, status: s.status === "Signed" ? "Pending" : "Signed" } : s)));
   }
 
-  function downloadOffer() {
-    const lines = [
-      `LOAN OFFER — ${APPLICATION.id}`,
-      `Issued ${fmtDate(ISSUED_DATE)} · Valid until ${fmtDate(VALID_UNTIL)}`,
-      "",
-      `Customer: ${APPLICATION.customer.name} (${APPLICATION.customer.id})`,
-      `Loan type: ${APPLICATION.loan.product} — ${APPLICATION.loan.subtype}`,
-      `Purpose: ${APPLICATION.loan.purpose}`,
-      "",
-      `Approved amount: ${zmw(FINAL_TERMS.amount)}`,
-      `Interest rate: ${FINAL_TERMS.rate}% p.a. (fixed)`,
-      `Tenure: ${FINAL_TERMS.tenure} months`,
-      `Repayment frequency: ${FINAL_TERMS.frequency}`,
-      "",
-      `Estimated ${FINAL_TERMS.frequency.toLowerCase()} installment: ${zmw(FINAL_SIM.installment)}`,
-      `Total interest: ${zmw(FINAL_SIM.totalInterest)}`,
-      `Total repayment: ${zmw(FINAL_SIM.totalRepayment)}`,
-      `First payment due: ${fmtDate(FINAL_SIM.first)}`,
-      `Final payment due: ${fmtDate(FINAL_SIM.final)}`,
-      "",
-      `Processing fee: ${zmw(FINAL_FEES.processingFee)}`,
-      `Credit life insurance: ${zmw(FINAL_FEES.insurance)}`,
-      `Tax on fees: ${zmw(FINAL_FEES.tax)}`,
-      `Total fees and charges: ${zmw(FINAL_FEES.total)}`,
-      "",
-      "Collateral / security:",
-      ...ASSETS_SUMMARY.map((a) => `  - ${a.type}: ${a.description}`),
-      "",
-      "Key conditions:",
-      ...UNDERWRITING_DECISION.conditions.map((c) => `  - ${c.condition} (${c.responsible}, due before ${c.dueBefore.toLowerCase()})`),
-    ];
-    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `Loan-Offer-${APPLICATION.id}.txt`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    function downloadOffer() {
+    window.print();
   }
 
   return (
@@ -864,6 +743,192 @@ function OfferWorkspace() {
           )}
         </CollapsibleStep>
       )}
+      {/* PRINTABLE LEGAL OFFER (Hidden on screen, visible on print) */}
+      <div className="print-only-offer">
+        <Paper
+          radius={0}
+          p={24}
+          style={{
+            border: '2px solid #000',
+            backgroundColor: '#fff',
+            maxWidth: '850px',
+            margin: '0 auto',
+            width: '100%',
+            fontFamily: '"Times New Roman", Times, serif',
+          }}
+        >
+          <Box mb={20} className="text-center" style={{ position: 'relative' }}>
+            <Text fz={22} fw={900} c="black" tt="uppercase" style={{ letterSpacing: '1px', textDecoration: 'underline' }}>
+              OFFICIAL LOAN OFFER CONTRACT
+            </Text>
+            <Text fz={10} c="black" mt={4}>
+              Reference Number: <strong>{APPLICATION.id}</strong> &nbsp;|&nbsp; Issued: <strong>{fmtDate(ISSUED_DATE)}</strong> &nbsp;|&nbsp; Valid Until: <strong>{fmtDate(VALID_UNTIL)}</strong>
+            </Text>
+          </Box>
+
+          <Box bg="gray.2" p="4px 8px" style={{ border: '1px solid #000', margin: '-0.5px', marginTop: '16px' }} className="page-break-inside-avoid">
+            <Text fz={11} fw={800} tt="uppercase" c="black" style={{ letterSpacing: '0.5px' }}>
+              1. Customer & Loan Purpose
+            </Text>
+          </Box>
+          <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
+            <Grid.Col span={{ base: 12, sm: 8 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Customer Name</Text>
+              <Text fz={11} fw={600} c="black">{APPLICATION.customer.name}</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Customer ID</Text>
+              <Text fz={11} fw={600} c="black">{APPLICATION.customer.id}</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Loan Type</Text>
+              <Text fz={11} fw={600} c="black">{APPLICATION.loan.product}</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 8 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Purpose</Text>
+              <Text fz={11} fw={600} c="black">{APPLICATION.loan.purpose}</Text>
+            </Grid.Col>
+          </Grid>
+
+          <Box bg="gray.2" p="4px 8px" style={{ border: '1px solid #000', margin: '-0.5px', marginTop: '16px' }} className="page-break-inside-avoid">
+            <Text fz={11} fw={800} tt="uppercase" c="black" style={{ letterSpacing: '0.5px' }}>
+              2. Approved Financial Terms
+            </Text>
+          </Box>
+          <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
+            <Grid.Col span={{ base: 12, sm: 4 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Approved Amount</Text>
+              <Text fz={11} fw={600} c="black">{zmw(FINAL_TERMS.amount)}</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Interest Rate</Text>
+              <Text fz={11} fw={600} c="black">{FINAL_TERMS.rate}% p.a. (Fixed)</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Tenure</Text>
+              <Text fz={11} fw={600} c="black">{FINAL_TERMS.tenure} Months</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Repayment Frequency</Text>
+              <Text fz={11} fw={600} c="black">{FINAL_TERMS.frequency}</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">First Payment Due</Text>
+              <Text fz={11} fw={600} c="black">{fmtDate(FINAL_SIM.first)}</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Final Payment Due</Text>
+              <Text fz={11} fw={600} c="black">{fmtDate(FINAL_SIM.final)}</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Estimated Installment</Text>
+              <Text fz={11} fw={600} c="black">{zmw(FINAL_SIM.installment)}</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Total Interest</Text>
+              <Text fz={11} fw={600} c="black">{zmw(FINAL_SIM.totalInterest)}</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Total Repayment</Text>
+              <Text fz={11} fw={600} c="black">{zmw(FINAL_SIM.totalRepayment)}</Text>
+            </Grid.Col>
+          </Grid>
+
+          <Box bg="gray.2" p="4px 8px" style={{ border: '1px solid #000', margin: '-0.5px', marginTop: '16px' }} className="page-break-inside-avoid">
+            <Text fz={11} fw={800} tt="uppercase" c="black" style={{ letterSpacing: '0.5px' }}>
+              3. Applicable Fees & Charges
+            </Text>
+          </Box>
+          <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
+            <Grid.Col span={{ base: 12, sm: 3 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Processing Fee</Text>
+              <Text fz={11} fw={600} c="black">{zmw(FINAL_FEES.processingFee)}</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 3 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Credit Life Insurance</Text>
+              <Text fz={11} fw={600} c="black">{zmw(FINAL_FEES.insurance)}</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 3 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Tax on Fees</Text>
+              <Text fz={11} fw={600} c="black">{zmw(FINAL_FEES.tax)}</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 3 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px', backgroundColor: '#f8f9fa' }}>
+              <Text fz={9} fw={800} tt="uppercase" c="black">Total Fees</Text>
+              <Text fz={12} fw={700} c="black">{zmw(FINAL_FEES.total)}</Text>
+            </Grid.Col>
+          </Grid>
+
+          <Box bg="gray.2" p="4px 8px" style={{ border: '1px solid #000', margin: '-0.5px', marginTop: '16px' }} className="page-break-inside-avoid">
+            <Text fz={11} fw={800} tt="uppercase" c="black" style={{ letterSpacing: '0.5px' }}>
+              4. Collateral & Security
+            </Text>
+          </Box>
+          <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
+            {ASSETS_SUMMARY.map((asset, idx) => (
+              <Grid.Col key={idx} span={12} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+                <Text fz={9} fw={700} tt="uppercase" c="gray.7">{asset.type}</Text>
+                <Text fz={11} fw={600} c="black">{asset.description}</Text>
+              </Grid.Col>
+            ))}
+          </Grid>
+
+          <Box bg="gray.2" p="4px 8px" style={{ border: '1px solid #000', margin: '-0.5px', marginTop: '16px' }} className="page-break-inside-avoid">
+            <Text fz={11} fw={800} tt="uppercase" c="black" style={{ letterSpacing: '0.5px' }}>
+              5. Key Conditions Precedent
+            </Text>
+          </Box>
+          <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
+            {UNDERWRITING_DECISION.conditions.map((cond, idx) => (
+              <Grid.Col key={idx} span={12} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+                <Text fz={11} fw={600} c="black">• {cond.condition} (Due: {cond.dueBefore})</Text>
+              </Grid.Col>
+            ))}
+          </Grid>
+
+          <Box mt={24} className="page-break-inside-avoid">
+            <Box bg="gray.2" p="4px 8px" style={{ border: '1px solid #000', margin: '-0.5px' }}>
+              <Text fz={11} fw={800} tt="uppercase" c="black" style={{ letterSpacing: '0.5px' }}>
+                Declaration & Signatures
+              </Text>
+            </Box>
+            <Box style={{ border: '1px solid #000', margin: '-0.5px', padding: '12px' }}>
+              <Text fz={9} c="black" style={{ textAlign: 'justify', lineHeight: 1.4 }}>
+                I/We confirm that I/we have read, fully understood, and agree to the terms and conditions set out in this Loan Offer. I/We accept this offer and authorize the Lender to proceed with the execution of the final Loan Agreement based on these terms. I/We understand that this offer is subject to the fulfillment of all conditions precedent and does not constitute a final disbursement guarantee until the Loan Agreement is fully executed.
+              </Text>
+              
+              <Grid mt={30}>
+                <Grid.Col span={6}>
+                  <Box style={{ borderBottom: '1px solid #000', height: 20, width: '90%' }} mb="4px"></Box>
+                  <Text fz={9} fw={700} c="black">Applicant(s) Authorized Signature</Text>
+                </Grid.Col>
+                <Grid.Col span={6}>
+                  <Box style={{ borderBottom: '1px solid #000', height: 20, width: '90%' }} mb="4px"></Box>
+                  <Text fz={9} fw={700} c="black">Date (DD/MM/YYYY)</Text>
+                </Grid.Col>
+              </Grid>
+            </Box>
+          </Box>
+        </Paper>
+
+        <style>{`
+          .print-only-offer { display: none; }
+          @media print {
+            body * { visibility: hidden; }
+            .print-only-offer, .print-only-offer * { visibility: visible; }
+            .print-only-offer {
+              display: block !important;
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            .page-break-inside-avoid {
+              page-break-inside: avoid;
+            }
+          }
+        `}</style>
+      </div>
+
     </Box>
   );
 }

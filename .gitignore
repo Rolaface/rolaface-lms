@@ -15,3 +15,6 @@ dist/
 
 # Vite config
 vite.config.ts
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
