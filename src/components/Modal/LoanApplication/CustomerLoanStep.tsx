@@ -183,29 +183,34 @@ const OFFERS_PAGE_SIZE = 4;
 
 const zmw = (n: number) => "ZMW " + Math.round(n).toLocaleString();
 
-type LoanConfigTypeId = "personal" | "business";
+// type LoanConfigTypeId = "personal" | "business";
+
+type LoanConfigTypeId = 
+  | "personal" 
+  | "house" 
+  | "car" 
+  | "working-capital" 
+  | "term" 
+  | "machinery";
 
 const LOAN_CONFIG_TYPES: {
   id: LoanConfigTypeId;
+  applicantType: LoanType;
   label: string;
   icon: React.FC<any>;
   subtypes: { id: string; label: string; purposes: string[] }[];
 }[] = [
+  // Personal (Individual) Loans
   {
     id: "personal",
-    label: "Personal loan",
+    applicantType: "Personal",
+    label: "Personal Loan",
     icon: IconUser,
     subtypes: [
       {
         id: "salary",
         label: "Salary-backed",
-        purposes: [
-          "Home improvement",
-          "Education",
-          "Medical",
-          "Debt consolidation",
-          "Other",
-        ],
+        purposes: ["Home improvement", "Education", "Medical", "Debt consolidation", "Other"],
       },
       {
         id: "consumer",
@@ -215,20 +220,49 @@ const LOAN_CONFIG_TYPES: {
     ],
   },
   {
-    id: "business",
-    label: "Business loan",
+    id: "house",
+    applicantType: "Personal",
+    label: "House Loan",
     icon: IconBuilding,
     subtypes: [
-      {
-        id: "working-capital",
-        label: "Working capital",
-        purposes: ["Stock purchase", "Cash flow support", "Other"],
-      },
-      {
-        id: "asset-finance",
-        label: "Asset finance",
-        purposes: ["Equipment purchase", "Vehicle fleet", "Other"],
-      },
+      { id: "home-purchase", label: "Home Purchase", purposes: ["New property", "Old property", "Construction"] }
+    ],
+  },
+  {
+    id: "car",
+    applicantType: "Personal",
+    label: "Car Loan",
+    icon: IconUser,
+    subtypes: [
+      { id: "vehicle", label: "Vehicle Purchase", purposes: ["New Car", "Used Car"] }
+    ],
+  },
+  // Business Loans
+  {
+    id: "working-capital",
+    applicantType: "Business",
+    label: "Working Capital Loan",
+    icon: IconBuilding,
+    subtypes: [
+      { id: "cash-flow", label: "Cash Flow Support", purposes: ["Stock purchase", "Operations"] }
+    ],
+  },
+  {
+    id: "term",
+    applicantType: "Business",
+    label: "Term Loan",
+    icon: IconBuilding,
+    subtypes: [
+      { id: "expansion", label: "Business Expansion", purposes: ["New branch", "Infrastructure"] }
+    ],
+  },
+  {
+    id: "machinery",
+    applicantType: "Business",
+    label: "Machinery Loan",
+    icon: IconBuilding,
+    subtypes: [
+      { id: "equipment", label: "Equipment Finance", purposes: ["Heavy machinery", "IT equipment"] }
     ],
   },
 ];
@@ -559,17 +593,17 @@ export function CustomerLoanStep({ form, readOnly = false }: StepProps) {
     setOffersPage(0);
   };
 
-   const handleApplicantTypeChange = (value: LoanType) => {
+  const handleApplicantTypeChange = (value: LoanType) => {
     form.setFieldValue("applicantType", value);
     form.setFieldValue("loanType", value);
+    setLoanConfigTypeId(null);
+    setLoanSubtypeId(null);
+    setLoanPurpose(null);
   };
-
   const handleLoanConfigTypeChange = (id: LoanConfigTypeId) => {
     setLoanConfigTypeId(id);
     setLoanSubtypeId(null);
     setLoanPurpose(null);
-    form.setFieldValue("applicantType", CONFIG_TO_APPLICANT_TYPE[id]);
-    form.setFieldValue("loanType", CONFIG_TO_APPLICANT_TYPE[id]);
   };
 
   const selectedLoanConfigType = LOAN_CONFIG_TYPES.find(
@@ -581,7 +615,7 @@ export function CustomerLoanStep({ form, readOnly = false }: StepProps) {
       <Box>
         <FieldLabel>Loan type</FieldLabel>
         <Group gap={8}>
-          {LOAN_CONFIG_TYPES.map((t) => (
+          {LOAN_CONFIG_TYPES.filter((t) => t.applicantType === form.values.applicantType).map((t) => (
             <IconChip
               key={t.id}
               icon={t.icon}
@@ -825,55 +859,63 @@ export function CustomerLoanStep({ form, readOnly = false }: StepProps) {
               />
             ) : (
               <Stack gap={12}>
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={10}>
-                  {pagedOffers.map((o) => {
-                    const selected = selectedOfferId === o.id;
-                    return (
-                      <UnstyledButton
-                        key={o.id}
-                        onClick={readOnly ? undefined : () => applyOffer(o)}
-                        p="md"
-                        style={{
-                          cursor: readOnly ? "default" : "pointer",
-                          border: `1.5px solid ${
-                            selected
-                              ? "var(--mantine-color-brand-6)"
-                              : "var(--mantine-color-slate-2)"
-                          }`,
-                          background: selected
-                            ? "var(--mantine-color-brand-0)"
-                            : "white",
-                          borderRadius: "var(--mantine-radius-md)",
-                        }}
-                      >
-                        <Group justify="space-between" align="flex-start" wrap="nowrap">
-                          <Box style={{ minWidth: 0 }}>
-                            <Text fz="sm" fw={700} c="slate.9">
-                              {o.product}
-                            </Text>
-                            <Text fz="xs" c="slate.5" mt={1}>
-                              {o.purpose} · {o.validity}
-                            </Text>
-                          </Box>
-                          {selected && (
-                            <ThemeIcon radius="xl" size={20} color="brand" style={{ flexShrink: 0 }}>
-                              <IconCheck size={12} />
-                            </ThemeIcon>
-                          )}
-                        </Group>
-                        <Divider my={10} color="slate.1" />
-                        <SimpleGrid cols={3} spacing={4}>
-                          <OfferStat label="Amount up to" value={zmw(o.amount)} />
-                          <OfferStat label="Rate" value={`${o.rate}%`} />
-                          <OfferStat label="Tenure up to" value={`${o.tenure} mo`} />
-                        </SimpleGrid>
-                        <Text fz={11.5} c="slate.4" mt={10}>
-                          {o.condition}
-                        </Text>
-                      </UnstyledButton>
-                    );
-                  })}
-                </SimpleGrid>
+                <SimpleGrid cols={2} spacing={10}>
+  {pagedOffers.map((o) => {
+    const selected = selectedOfferId === o.id;
+    return (
+      <UnstyledButton
+        key={o.id}
+        onClick={readOnly ? undefined : () => applyOffer(o)}
+        p="md"
+        style={{
+          cursor: readOnly ? "default" : "pointer",
+          border: `1.5px solid ${
+            selected
+              ? "var(--mantine-color-brand-6)"
+              : "var(--mantine-color-slate-2)"
+          }`,
+          background: selected
+            ? "var(--mantine-color-brand-0)"
+            : "white",
+          borderRadius: "var(--mantine-radius-md)",
+        }}
+      >
+        <Group justify="space-between" align="center" wrap="nowrap">
+          {/* Left Side: Top Data */}
+          <Box style={{ flex: 1, minWidth: 0, paddingRight: 16 }}>
+            <Group gap={8} wrap="wrap">
+              <Text fz="sm" fw={700} c="slate.9">
+                {o.product}
+              </Text>
+              <Badge 
+                size="sm" 
+                color="slate.1" 
+                c="slate.6" 
+                variant="filled" 
+                style={{ textTransform: "none", fontWeight: 500 }}
+              >
+                {o.purpose} · {o.validity}
+              </Badge>
+            </Group>
+          </Box>
+
+          {/* Right Side: Bottom Data (Stats) */}
+          <Group gap={24} wrap="nowrap" style={{ flexShrink: 0 }}>
+            <OfferStat label="Amount up to" value={zmw(o.amount)} />
+            <OfferStat label="Rate" value={`${o.rate}% p.a.`} />
+            <OfferStat label="Tenure up to" value={`${o.tenure} mo`} />
+            
+            {selected && (
+              <ThemeIcon radius="xl" size={20} color="brand" style={{ flexShrink: 0 }}>
+                <IconCheck size={12} />
+              </ThemeIcon>
+            )}
+          </Group>
+        </Group>
+      </UnstyledButton>
+    );
+  })}
+</SimpleGrid>
 
                 {totalOffersPages > 1 && (
                   <Group justify="center" mt={2}>
