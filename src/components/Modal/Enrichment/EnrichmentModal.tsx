@@ -434,9 +434,9 @@ function EnrichmentWorkspace({
 
           {tab === "terms" && (
             <>
-              <Paper withBorder radius="md" p="sm" mb={14}>
+              <Paper withBorder radius="md" p="sm" mb={10}>
                 <SectionLabel>Final loan terms</SectionLabel>
-                <SimpleGrid cols={3} spacing={12}>
+                <SimpleGrid cols={3} spacing={10}>
                   <Box>
                     <NumberInput
                       label="Requested Principal"
@@ -450,16 +450,17 @@ function EnrichmentWorkspace({
                       radius="md"
                       size="xs"
                     />
-                    {!amountError && (
+                    {/* {!amountError && (
                       <Text fz={10} c="green.6" mt={4} fw={600}>
                         100% Capped Limit
                       </Text>
-                    )}
+                    )} */}
                   </Box>
                   <Box>
                     <NumberInput
                       label="Tenure"
                       value={tenure}
+                      hideControls
                       onChange={(v) => setTenure(Number(v) || 0)}
                       suffix=" months"
                       error={tenureError}
@@ -468,11 +469,11 @@ function EnrichmentWorkspace({
                       radius="md"
                       size="xs"
                     />
-                    {!tenureError && (
+                    {/* {!tenureError && (
                       <Text fz={10} c="slate.4" mt={4}>
                         Range: {PRODUCT_LIMITS.tenureMin}–{PRODUCT_LIMITS.tenureMax} mos
                       </Text>
-                    )}
+                    )} */}
                   </Box>
                   <Select
                     label="Frequency"
@@ -485,13 +486,14 @@ function EnrichmentWorkspace({
                 </SimpleGrid>
               </Paper>
 
-              <Paper withBorder radius="md" p="sm" mb={14}>
+              <Paper withBorder radius="md" p="sm" mb={10}>
                 <SectionLabel>Interest rate & calculation method</SectionLabel>
-                <SimpleGrid cols={3} spacing={12}>
+                <SimpleGrid cols={3} spacing={10}>
                   <Box>
                     <NumberInput
                       label="Interest Rate"
                       value={rate}
+                      hideControls
                       onChange={(v) => setRate(Number(v) || 0)}
                       suffix=" % p.a."
                       error={rateError}
@@ -501,11 +503,11 @@ function EnrichmentWorkspace({
                       radius="md"
                       size="xs"
                     />
-                    {!rateError && (
+                    {/* {!rateError && (
                       <Text fz={10} c="slate.4" mt={4}>
                         {PRODUCT_LIMITS.rateMin}% · {PRODUCT_LIMITS.rateMax}%
                       </Text>
-                    )}
+                    )} */}
                   </Box>
                   <Select
                     label="Interest Type"
@@ -543,11 +545,12 @@ function EnrichmentWorkspace({
                     Deducted at Disbursement
                   </Badge>
                 </Group>
-                <SimpleGrid cols={3} spacing={12} mb={10}>
+                <SimpleGrid cols={3} spacing={10} mb={10}>
                   <Box>
                     <NumberInput
                       label="Processing Fee"
                       value={processingFeePct}
+                      hideControls
                       onChange={(v) => setProcessingFeePct(Number(v) || 0)}
                       suffix=" %"
                       min={0}
@@ -566,6 +569,7 @@ function EnrichmentWorkspace({
                     <NumberInput
                       label="VAT on Fees"
                       value={taxPct}
+                      hideControls
                       onChange={(v) => setTaxPct(Number(v) || 0)}
                       suffix=" %"
                       min={0}
@@ -584,6 +588,7 @@ function EnrichmentWorkspace({
                     <NumberInput
                       label="Credit Life Ins."
                       value={insurancePct}
+                      hideControls
                       onChange={(v) => setInsurancePct(Number(v) || 0)}
                       suffix=" %"
                       min={0}
@@ -622,10 +627,11 @@ function EnrichmentWorkspace({
                   label="Apply a waiver or discount"
                 />
                 {waiverEnabled && (
-                  <SimpleGrid cols={2} spacing={12} mt={10}>
+                  <SimpleGrid cols={2} spacing={10} mt={10}>
                     <NumberInput
                       label="Waiver amount"
                       value={waiverAmount}
+                      hideControls
                       onChange={(v) => setWaiverAmount(Number(v) || 0)}
                       suffix=" ZMW"
                       min={0}
@@ -769,11 +775,11 @@ function EnrichmentWorkspace({
   </Group>
 </Box>
 
-             <Group justify="space-between" mb={8}>
+             {/* <Group justify="space-between" mb={8}>
   <Text fz={10} fw={600} c="slate.4">REPAYMENT MILESTONES PREVIEW</Text>
   <Text fz={10} fw={600} c="brand.5">{tenure}M Amortization</Text>
-</Group>
-              <Group gap={8} mb={14} wrap="nowrap">
+</Group> */}
+              {/* <Group gap={8} mb={14} wrap="nowrap">
                {[1, 6, 12, figures.sim.nPeriods].map((n, i) => {
   const row = figures.sim.schedule.find((r) => r.n === n) ?? figures.sim.schedule[figures.sim.schedule.length - 1];
   return (
@@ -786,14 +792,14 @@ function EnrichmentWorkspace({
     />
   );
 })}
-              </Group>
+              </Group> */}
 
               <Group justify="space-between" mb={4} pt={10} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
   <Box>
-    <Text fz={10} c="slate.4">First Repayment:</Text>
+    <Text fz={12} c="slate.4">First Repayment:</Text>
   </Box>
   <Box ta="right">
-    <Text fz={10} c="slate.4">Final Maturity:</Text>
+    <Text fz={12} c="slate.4">Final Maturity:</Text>
   </Box>
 </Group>
 <Group justify="space-between" mb={10}>
