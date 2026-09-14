@@ -1,15 +1,9 @@
 import React from 'react';
 import { Paper, Text, Button, Grid, Box } from '@mantine/core';
 import { IconPrinter } from '@tabler/icons-react';
-import type { UseFormReturnType } from "@mantine/form";
-import type { LoanApplicationValues, LoanType } from "./LoanApplicationModal";
-
-interface StepProps {
-  form: UseFormReturnType<LoanApplicationValues>;
-  loanType: LoanType;
-}
-
-const zmw = (n: number) => "ZMW " + Math.round(n).toLocaleString();
+import type { LoanApplicationRow } from './LoanApplication';
+import type { LoanApplicationDetail } from './LoanApplicationDetailParts';
+import { formatCurrency, formatDate } from './LoanApplicationDetailParts';
 
 const Field = ({ label, value, span = 6 }: { label: string; value: string | number | undefined | null; span?: number }) => (
   <Grid.Col span={{ base: 12, sm: span }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
@@ -30,11 +24,12 @@ const SectionHeading = ({ title }: { title: string }) => (
   </Box>
 );
 
-export function Review({ form, loanType }: StepProps) {
-  const values = form.values;
-  const isBusiness = loanType === "Business";
+export function FormPreviewPanel({ detail, application }: { detail: LoanApplicationDetail; application: LoanApplicationRow }) {
+  const handlePrint = () => {
+    window.print();
+  };
 
-  const handlePrint = () => window.print();
+  const isBusiness = detail.business?.isBusinessLoan;
 
   return (
     <div className="flex flex-col w-full">
@@ -62,72 +57,59 @@ export function Review({ form, loanType }: StepProps) {
             Official Loan Application Form
           </Text>
           <Text fz={10} c="black" mt={4}>
-            Reference Number: <strong>[ OFFICE USE ]</strong> &nbsp;|&nbsp; Date: <strong>[ DD / MM / YYYY ]</strong>
+            Reference: <strong>{application.name || '[ TBD ]'}</strong> &nbsp;|&nbsp; Date: <strong>{application.application_date ? formatDate(application.application_date) : '[ DD/MM/YYYY ]'}</strong>
           </Text>
         </Box>
 
         <SectionHeading title="1. Loan Request Specifics" />
         <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
-          <Field label="Loan Product Type" value={loanType + " Loan"} span={4} />
-          <Field label="Amount Requested" value={zmw(values.loanAmount)} span={4} />
-          <Field label="Tenure" value={`${values.tenureMonths} months`} span={4} />
-          <Field label="Repayment Frequency" value={values.repaymentFrequency} span={4} />
-          <Field label="Purpose of Loan" value={values.purposeOfLoan} span={8} />
-          <Field label="Collateral Offered" value={values.collateralPledged} span={12} />
+          <Field label="Loan Product Type" value={application.application_type} span={4} />
+          <Field label="Amount Requested" value={formatCurrency(detail.loanTerms.amountRequested)} span={4} />
+          <Field label="Tenure" value={`${detail.loanTerms.tenureMonths} months`} span={4} />
+          <Field label="Repayment Frequency" value={detail.loanTerms.proposedRepaymentFrequency} span={4} />
+          <Field label="Purpose of Loan" value={detail.loanTerms.purpose} span={8} />
+          <Field label="Collateral Offered" value={detail.loanTerms.collateralPledged} span={12} />
         </Grid>
 
-        {!isBusiness ? (
+        <SectionHeading title={isBusiness ? "2. Principal Applicant / Representative" : "2. Applicant Personal Information"} />
+        <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
+          <Field label="Full Legal Name" value={detail.applicant.fullName} span={8} />
+          <Field label="Date of Birth" value={detail.applicant.birthDate ? formatDate(detail.applicant.birthDate) : null} span={4} />
+          <Field label="Gender" value={detail.applicant.gender} span={3} />
+          <Field label="Marital Status" value={detail.applicant.maritalStatus} span={3} />
+          <Field label="NRC / ID Number" value={detail.applicant.nrc} span={3} />
+          <Field label="Nationality" value={detail.applicant.nationality} span={3} />
+          <Field label="Primary Phone" value={detail.applicant.phone} span={4} />
+          <Field label="Email Address" value={detail.applicant.email} span={8} />
+          <Field label="Residential Address (Full)" value={detail.applicant.residentialAddress} span={12} />
+        </Grid>
+
+        {isBusiness && detail.business && (
           <>
-            <SectionHeading title="2. Applicant Personal Information" />
+            <SectionHeading title="3. Business / Entity Details" />
             <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
-              <Field label="Full Legal Name" value={[values.firstName, values.middleName, values.surname].filter(Boolean).join(" ")} span={8} />
-              <Field label="Date of Birth (DD/MM/YYYY)" value={values.birthDate} span={4} />
-              <Field label="Gender" value={values.gender} span={3} />
-              <Field label="Marital Status" value={values.maritalStatus} span={3} />
-              <Field label="NRC / ID Number" value={values.nrc} span={3} />
-              <Field label="Nationality" value={values.nationality} span={3} />
-              <Field label="Primary Phone" value={values.phone} span={4} />
-              <Field label="Email Address" value={values.email} span={8} />
-              <Field label="Residential Address (Full)" value={values.residentialAddress} span={12} />
+              <Field label="Registered Company Name" value={detail.business.companyName} span={8} />
+              <Field label="Entity Type" value={detail.business.typeOfBusiness} span={4} />
+              <Field label="Date of Incorporation" value={detail.business.establishedDate ? formatDate(detail.business.establishedDate) : null} span={4} />
+              <Field label="Nature of Business" value={detail.business.natureOfBusiness} span={8} />
+              <Field label="Registered Office Address" value={detail.business.registeredOffice} span={12} />
             </Grid>
           </>
-        ) : (
+        )}
+
+        {detail.directors && detail.directors.length > 0 && (
           <>
-            <SectionHeading title="2. Business / Entity Details" />
+            <SectionHeading title={isBusiness ? "4. Directors & Partners" : "3. Additional Directors"} />
             <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
-              <Field label="Registered Company Name" value={values.companyName} span={8} />
-              <Field label="Entity Type" value={values.typeOfBusiness} span={4} />
-              <Field label="Date of Incorporation" value={values.establishedDate} span={4} />
-              <Field label="Nature of Business" value={values.natureOfBusiness} span={8} />
-              <Field label="Registered Office Address" value={values.registeredOffice} span={12} />
+              {detail.directors.map((director, idx) => (
+                <React.Fragment key={idx}>
+                  <Field label={`Director ${idx + 1} Name`} value={director.fullName || director.name} span={4} />
+                  <Field label="NRC" value={director.nrc} span={3} />
+                  <Field label="Phone" value={director.phone} span={3} />
+                  <Field label="Email" value={director.email} span={2} />
+                </React.Fragment>
+              ))}
             </Grid>
-
-            <SectionHeading title="3. Principal Applicant / Representative" />
-            <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
-              <Field label="Full Legal Name" value={[values.applicantFirstName, values.applicantMiddleName, values.applicantLastName].filter(Boolean).join(" ")} span={8} />
-              <Field label="Position / Title" value={values.applicantPosition} span={4} />
-              <Field label="NRC / ID Number" value={values.applicantNrc} span={4} />
-              <Field label="Nationality" value={values.applicantNationality} span={4} />
-              <Field label="Contact Phone" value={values.applicantPhone} span={4} />
-              <Field label="Email Address" value={values.applicantEmail} span={12} />
-              <Field label="Residential Address" value={values.applicantAddress} span={12} />
-            </Grid>
-
-            {values.directors && values.directors.length > 0 && (
-              <>
-                <SectionHeading title="4. Directors & Partners" />
-                <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
-                  {values.directors.map((director, idx) => (
-                    <React.Fragment key={idx}>
-                      <Field label={`Director ${idx + 1} Name`} value={director.name} span={4} />
-                      <Field label="NRC" value={director.nrc} span={3} />
-                      <Field label="Phone" value={director.phone} span={3} />
-                      <Field label="Email" value={director.email} span={2} />
-                    </React.Fragment>
-                  ))}
-                </Grid>
-              </>
-            )}
           </>
         )}
 
@@ -135,19 +117,19 @@ export function Review({ form, loanType }: StepProps) {
           <>
             <SectionHeading title="3. Employment & Financials" />
             <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
-              <Field label="Current Occupation / Title" value={values.occupation} span={6} />
-              <Field label="Employer Name / Business" value={values.employerName} span={6} />
+              <Field label="Current Occupation / Title" value={detail.applicant.occupation} span={6} />
+              <Field label="Employer Name / Business" value={detail.applicant.employerName} span={6} />
             </Grid>
           </>
         )}
 
-        {values.kinName && (
+        {detail.nextOfKin && (
           <>
             <SectionHeading title={isBusiness ? "5. Emergency Contact / Next of Kin" : "4. Emergency Contact / Next of Kin"} />
             <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
-              <Field label="Full Name" value={values.kinName} span={5} />
-              <Field label="Relationship to Applicant" value={values.kinRelationship} span={4} />
-              <Field label="Contact Phone" value={values.kinPhone} span={3} />
+              <Field label="Full Name" value={detail.nextOfKin.name} span={5} />
+              <Field label="Relationship to Applicant" value={detail.nextOfKin.relationship} span={4} />
+              <Field label="Contact Phone" value={detail.nextOfKin.phone} span={3} />
             </Grid>
           </>
         )}
@@ -175,8 +157,8 @@ export function Review({ form, loanType }: StepProps) {
         <Box mt={24} className="page-break-inside-avoid">
           <SectionHeading title="For Official Use Only" />
           <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
-            <Field label="Application Status" value="Pending / Under Review" span={6} />
-            <Field label="Receiving Officer" value="" span={6} />
+            <Field label="Application Stage" value={detail.stage || "Under Review"} span={6} />
+            <Field label="Receiving Officer" value={detail.reviewer ? `${detail.reviewer.name} (${detail.reviewer.branch})` : ""} span={6} />
             <Field label="Initial Remarks" value="" span={12} />
           </Grid>
           <Box style={{ border: '1px solid #000', borderTop: 'none', margin: '-0.5px', padding: '24px 12px 12px' }}>

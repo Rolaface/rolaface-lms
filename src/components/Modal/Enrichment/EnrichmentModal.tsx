@@ -166,6 +166,45 @@ function SimRow({ label, value, last, strong }: { label: string; value: string; 
     </Group>
   );
 }
+function EnrichmentTabs({ tab, setTab }: { tab: "terms" | "schedule"; setTab: (t: "terms" | "schedule") => void }) {
+  return (
+    <Group gap={4} mb={16}>
+      {(["terms", "schedule"] as const).map((t) => (
+        <UnstyledButton
+          key={t}
+          onClick={() => setTab(t)}
+          px={14}
+          py={7}
+          style={{
+            borderRadius: "var(--mantine-radius-md)",
+            background: tab === t ? "var(--mantine-color-brand-6)" : "transparent",
+          }}
+        >
+          <Text fz={12.5} fw={600} c={tab === t ? "white" : "slate.6"}>
+            {t === "terms" ? "Loan Terms" : "Repayment Schedule"}
+          </Text>
+        </UnstyledButton>
+      ))}
+    </Group>
+  );
+}
+
+function MilestoneCard({ label, value, sub, highlight }: { label: string; value: string; sub?: string; highlight?: boolean }) {
+  return (
+    <Box
+      p={10}
+      style={{
+        border: highlight ? "1.5px solid var(--mantine-color-brand-4)" : "1px solid var(--mantine-color-slate-2)",
+        borderRadius: "var(--mantine-radius-md)",
+        flex: 1,
+      }}
+    >
+      <Text fz={10} fw={600} c="slate.4">{label}</Text>
+      <Text fz={13} fw={700} c="slate.9" mt={2}>{value}</Text>
+      {sub && <Text fz={9.5} c={highlight ? "green.6" : "slate.4"} mt={2}>{sub}</Text>}
+    </Box>
+  );
+}
 
 const th = { textAlign: "left" as const, padding: "8px 12px", fontWeight: 600, color: "var(--mantine-color-slate-5)", fontSize: 11 };
 const td = { padding: "8px 12px", color: "var(--mantine-color-slate-7)" };
@@ -299,6 +338,7 @@ function EnrichmentWorkspace({
   onSubmitReady?: (canSubmit: boolean, submit: () => void) => void;
 }) {
   const [amount, setAmount] = useState<number>(approvedAmount);
+  const [tab, setTab] = useState<"terms" | "schedule">("terms");
   const [tenure, setTenure] = useState<number>(Number(values.tenureMonths) || 0);
   const [frequency, setFrequency] = useState<string>(values.repaymentFrequency);
   const [rate, setRate] = useState<number>(DUMMY_PRESCREENING_CONTEXT.loanRate);
@@ -366,9 +406,9 @@ function EnrichmentWorkspace({
     );
   }
 
-  return (
-    <Box p={24}>
-      <Group
+   return (
+    <Box p={20}>
+      {/* <Group
         gap={10}
         align="flex-start"
         mb={16}
@@ -377,323 +417,416 @@ function EnrichmentWorkspace({
         style={{ border: "1px solid var(--mantine-color-brand-2)", borderRadius: "var(--mantine-radius-md)" }}
       >
         <IconInfoCircle size={15} color="var(--mantine-color-brand-6)" style={{ marginTop: 2, flexShrink: 0 }} />
-        <Text fz={13} c="brand.9">
-          These are the final commercial terms being prepared for underwriting and the customer
-          offer — not yet final approved terms.
-        </Text>
-      </Group>
-
-      <SectionLabel>Interest details</SectionLabel>
-      <SimpleGrid cols={4} spacing={12} mb={16}>
-        <Box>
-          <NumberInput
-            label="Interest rate"
-            value={rate}
-            onChange={(v) => setRate(Number(v) || 0)}
-            suffix="% p.a."
-            error={rateError}
-            min={PRODUCT_LIMITS.rateMin}
-            max={PRODUCT_LIMITS.rateMax}
-            step={0.5}
-            radius="md"
-            size="xs"
-          />
-          {!rateError && (
-            <Text fz={10} c="slate.4" mt={4}>
-              Range: {PRODUCT_LIMITS.rateMin}%–{PRODUCT_LIMITS.rateMax}%
-            </Text>
-          )}
-        </Box>
-        <Select
-          label="Interest type"
-          value={interestType}
-          onChange={(v) => setInterestType(v || "Fixed")}
-          data={["Fixed", "Variable"]}
-          radius="md"
-          size="xs"
-        />
-        <Select
-          label="Calculation method"
-          value={calcMethod}
-          onChange={(v) => setCalcMethod(v || "Reducing balance")}
-          data={["Reducing balance", "Flat rate"]}
-          radius="md"
-          size="xs"
-        />
-        <TextInput
-          type="date"
-          label="Effective date"
-          value={effectiveDate}
-          onChange={(e) => setEffectiveDate(e.currentTarget.value)}
-          radius="md"
-          size="xs"
-        />
-      </SimpleGrid>
-
-      <SectionLabel>Charges and fees</SectionLabel>
-      <Paper withBorder radius="md" p="sm" mb={16}>
-        <SimpleGrid cols={4} spacing={12} mb={12}>
-          <Box>
-            <NumberInput
-              label="Processing fee"
-              value={processingFeePct}
-              onChange={(v) => setProcessingFeePct(Number(v) || 0)}
-              suffix="%"
-              min={0}
-              max={10}
-              step={0.5}
-              radius="md"
-              size="xs"
-            />
-            {figures && (
-              <Text fz={10} c="slate.4" mt={4}>
-                = {zmw(figures.processingFee)}
-              </Text>
-            )}
-          </Box>
-          <Box>
-            <NumberInput
-              label="Tax (VAT) on fees"
-              value={taxPct}
-              onChange={(v) => setTaxPct(Number(v) || 0)}
-              suffix="%"
-              min={0}
-              max={30}
-              step={1}
-              radius="md"
-              size="xs"
-            />
-            {figures && (
-              <Text fz={10} c="slate.4" mt={4}>
-                = {zmw(figures.tax)}
-              </Text>
-            )}
-          </Box>
-          {insuranceEnabled && (
-            <Box>
-              <NumberInput
-                label="Insurance premium"
-                value={insurancePct}
-                onChange={(v) => setInsurancePct(Number(v) || 0)}
-                suffix="%"
-                min={0}
-                max={5}
-                step={0.25}
-                radius="md"
-                size="xs"
-              />
-              {figures && (
-                <Text fz={10} c="slate.4" mt={4}>
-                  = {zmw(figures.insurance)}
-                </Text>
-              )}
-            </Box>
-          )}
-        </SimpleGrid>
-
-        <Group gap={20} mb={10}>
-          <Checkbox
-            size="xs"
-            checked={insuranceEnabled}
-            onChange={(e) => setInsuranceEnabled(e.currentTarget.checked)}
-            label="Credit life insurance applicable"
-          />
-          <Checkbox
-            size="xs"
-            checked={waiverEnabled}
-            onChange={(e) => setWaiverEnabled(e.currentTarget.checked)}
-            label="Apply a waiver or discount"
-          />
-        </Group>
-
-        {waiverEnabled && (
-          <SimpleGrid cols={4} spacing={12} mb={4}>
-            <NumberInput
-              label="Waiver amount"
-              value={waiverAmount}
-              onChange={(v) => setWaiverAmount(Number(v) || 0)}
-              suffix=" ZMW"
-              min={0}
-              radius="md"
-              size="xs"
-            />
-            <TextInput
-              label="Reason"
-              value={waiverReason}
-              onChange={(e) => setWaiverReason(e.currentTarget.value)}
-              placeholder="e.g. loyalty discount"
-              radius="md"
-              size="xs"
-            />
-          </SimpleGrid>
-        )}
-
-        {figures && (
-          <Box mt={10} pt={10} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
-            <SimRow label="Total charges (net of waiver)" value={zmw(figures.netCharges)} last strong />
-          </Box>
-        )}
-      </Paper>
-
-      <SectionLabel>Final loan terms</SectionLabel>
-      <SimpleGrid cols={3} spacing={12} mb={16}>
-        <Box>
-          <NumberInput
-            label="Amount"
-            value={amount}
-            onChange={(v) => setAmount(Number(v) || 0)}
-            suffix=" ZMW"
-            error={amountError}
-            min={PRODUCT_LIMITS.amountMin}
-            max={approvedAmount}
-            step={500}
-            radius="md"
-            size="xs"
-          />
-          {!amountError && (
-            <Text fz={10} c="slate.4" mt={4}>
-              Capped at approved amount: {zmw(approvedAmount)}
-            </Text>
-          )}
-        </Box>
-        <Box>
-          <NumberInput
-            label="Tenure"
-            value={tenure}
-            onChange={(v) => setTenure(Number(v) || 0)}
-            suffix=" months"
-            error={tenureError}
-            min={PRODUCT_LIMITS.tenureMin}
-            max={PRODUCT_LIMITS.tenureMax}
-            radius="md"
-            size="xs"
-          />
-          {!tenureError && (
-            <Text fz={10} c="slate.4" mt={4}>
-              {PRODUCT_LIMITS.tenureMin}–{PRODUCT_LIMITS.tenureMax}
-            </Text>
-          )}
-        </Box>
-        <Select
-          label="Repayment frequency"
-          value={frequency}
-          onChange={(v) => setFrequency(v || "Monthly")}
-          data={["Monthly", "Bi-weekly"]}
-          radius="md"
-          size="xs"
-        />
-      </SimpleGrid>
-
-      {figures ? (
-        <>
-          <SectionLabel>Final repayment schedule</SectionLabel>
-          <Box
-            style={{ border: "1.5px solid var(--mantine-color-brand-2)", borderRadius: "var(--mantine-radius-md)" }}
-            p="sm"
-            bg="brand.0"
-            mb={16}
-          >
-            <Group justify="space-between" mb={12}>
-              <Text fz={13} fw={600} c="brand.9">Summary of Terms</Text>
-              <Badge size="xs" radius="xl" color="brand" variant="light">
-                Final terms for underwriting
-              </Badge>
-            </Group>
-            <Paper radius="md" p="sm" bg="white" mb={12}>
-              <SimpleGrid cols={4} spacing="md" verticalSpacing="sm">
-                <Box>
-                  <Text fz={11} c="slate.5">Gross loan amount</Text>
-                  <Text fz={13} fw={600} c="slate.9">{zmw(amount)}</Text>
-                </Box>
-                <Box>
-                  <Text fz={11} c="slate.5">Total charges & fees</Text>
-                  <Text fz={13} fw={600} c="slate.9">{zmw(figures.netCharges)}</Text>
-                </Box>
-                <Box>
-                  <Text fz={11} c="slate.5">Total interest</Text>
-                  <Text fz={13} fw={600} c="slate.9">{zmw(figures.sim.totalInterest)}</Text>
-                </Box>
-                <Box>
-                  <Text fz={11} c="slate.5">Total cost of credit</Text>
-                  <Text fz={13} fw={600} c="slate.9">{zmw(figures.totalCostOfCredit)}</Text>
-                </Box>
-                <Box style={{ borderTop: "1px dashed var(--mantine-color-slate-2)", paddingTop: 8 }}>
-                  <Text fz={11} c="slate.5">Net disbursement</Text>
-                  <Text fz={14} fw={700} c="brand.7">{zmw(figures.netDisbursement)}</Text>
-                </Box>
-                <Box style={{ borderTop: "1px dashed var(--mantine-color-slate-2)", paddingTop: 8 }}>
-                  <Text fz={11} c="slate.5">Est. {frequency.toLowerCase()} installment</Text>
-                  <Text fz={14} fw={700} c="brand.7">{zmw(figures.sim.installment)}</Text>
-                </Box>
-                <Box style={{ borderTop: "1px dashed var(--mantine-color-slate-2)", paddingTop: 8 }}>
-                  <Text fz={11} c="slate.5">First repayment</Text>
-                  <Text fz={13} fw={600} c="slate.9">{fmtDate(figures.sim.first)}</Text>
-                </Box>
-                <Box style={{ borderTop: "1px dashed var(--mantine-color-slate-2)", paddingTop: 8 }}>
-                  <Text fz={11} c="slate.5">Final repayment</Text>
-                  <Text fz={13} fw={600} c="slate.9">{fmtDate(figures.sim.final)}</Text>
-                </Box>
-              </SimpleGrid>
-            </Paper>
-            <UnstyledButton onClick={() => setScheduleOpen(!scheduleOpen)}>
-              <Group gap={4}>
-                <Text fz={12} fw={500} c="brand.6">
-                  {scheduleOpen ? "Hide repayment schedule" : "Preview repayment schedule"}
-                </Text>
-                {scheduleOpen ? <IconChevronUp size={13} /> : <IconChevronDown size={13} />}
-              </Group>
-            </UnstyledButton>
-            {scheduleOpen && (
-              <Box mt={10} style={{ border: "1px solid var(--mantine-color-slate-2)", borderRadius: "var(--mantine-radius-md)", overflow: "hidden" }} bg="white">
-                <Table fz={12}>
-                  <Table.Thead bg="slate.0">
-                    <Table.Tr>
-                      <Table.Th style={th}>#</Table.Th>
-                      <Table.Th style={th}>Due date</Table.Th>
-                      <Table.Th style={th}>Principal</Table.Th>
-                      <Table.Th style={th}>Interest</Table.Th>
-                      <Table.Th style={th}>Balance</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {figures.sim.schedule.map((row) => (
-                      <Table.Tr key={row.n}>
-                        <Table.Td style={td}>{row.n}</Table.Td>
-                        <Table.Td style={td}>{fmtDate(row.due)}</Table.Td>
-                        <Table.Td style={td}>{zmw(row.principal)}</Table.Td>
-                        <Table.Td style={td}>{zmw(row.interest)}</Table.Td>
-                        <Table.Td style={td}>{zmw(row.balance)}</Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-                {figures.sim.nPeriods > 6 && (
-                  <Text fz={11.5} c="slate.4" px="sm" py={8}>
-                    Showing first 6 of {figures.sim.nPeriods} payments.
-                  </Text>
-                )}
-              </Box>
-            )}
-          </Box>
-        </>
-      ) : (
-        <Paper withBorder radius="md" p="xl" ta="center" mb={24} style={{ borderStyle: "dashed" }}>
-          <IconHelp size={20} color="var(--mantine-color-slate-4)" />
-          <Text fz={13} fw={600} c="slate.9" mt={6}>
-            Fix the highlighted fields above to calculate the final schedule.
+        <Group justify="space-between" style={{ flex: 1 }}>
+          <Text fz={13} c="brand.9">
+            Commercial terms prepared for underwriting and offer generation — subject to final risk approval.
           </Text>
-        </Paper>
-      )}
+          <Badge size="xs" radius="xl" color="gray" variant="light">
+            Non-Binding Simulation
+          </Badge>
+        </Group>
+      </Group> */}
 
-      <Button
-        disabled={!valid}
-        onClick={() => valid && setContinued(true)}
-        color="brand"
-        radius="md"
-        rightSection={<IconArrowRight size={16} />}
-      >
-        Review and continue
-      </Button>
+      <SimpleGrid cols={2} spacing={16}>
+        {/* LEFT COLUMN */}
+        <Box>
+          <EnrichmentTabs tab={tab} setTab={setTab} />
+
+          {tab === "terms" && (
+            <>
+              <Paper withBorder radius="md" p="sm" mb={10}>
+                <SectionLabel>Final loan terms</SectionLabel>
+                <SimpleGrid cols={3} spacing={10}>
+                  <Box>
+                    <NumberInput
+                      label="Requested Principal"
+                      value={amount}
+                      onChange={(v) => setAmount(Number(v) || 0)}
+                      prefix="ZMW "
+                      error={amountError}
+                      min={PRODUCT_LIMITS.amountMin}
+                      max={approvedAmount}
+                      step={500}
+                      radius="md"
+                      size="xs"
+                    />
+                    {/* {!amountError && (
+                      <Text fz={10} c="green.6" mt={4} fw={600}>
+                        100% Capped Limit
+                      </Text>
+                    )} */}
+                  </Box>
+                  <Box>
+                    <NumberInput
+                      label="Tenure"
+                      value={tenure}
+                      hideControls
+                      onChange={(v) => setTenure(Number(v) || 0)}
+                      suffix=" months"
+                      error={tenureError}
+                      min={PRODUCT_LIMITS.tenureMin}
+                      max={PRODUCT_LIMITS.tenureMax}
+                      radius="md"
+                      size="xs"
+                    />
+                    {/* {!tenureError && (
+                      <Text fz={10} c="slate.4" mt={4}>
+                        Range: {PRODUCT_LIMITS.tenureMin}–{PRODUCT_LIMITS.tenureMax} mos
+                      </Text>
+                    )} */}
+                  </Box>
+                  <Select
+                    label="Frequency"
+                    value={frequency}
+                    onChange={(v) => setFrequency(v || "Monthly")}
+                    data={["Monthly", "Bi-weekly"]}
+                    radius="md"
+                    size="xs"
+                  />
+                </SimpleGrid>
+              </Paper>
+
+              <Paper withBorder radius="md" p="sm" mb={10}>
+                <SectionLabel>Interest rate & calculation method</SectionLabel>
+                <SimpleGrid cols={3} spacing={10}>
+                  <Box>
+                    <NumberInput
+                      label="Interest Rate"
+                      value={rate}
+                      hideControls
+                      onChange={(v) => setRate(Number(v) || 0)}
+                      suffix=" % p.a."
+                      error={rateError}
+                      min={PRODUCT_LIMITS.rateMin}
+                      max={PRODUCT_LIMITS.rateMax}
+                      step={0.5}
+                      radius="md"
+                      size="xs"
+                    />
+                    {/* {!rateError && (
+                      <Text fz={10} c="slate.4" mt={4}>
+                        {PRODUCT_LIMITS.rateMin}% · {PRODUCT_LIMITS.rateMax}%
+                      </Text>
+                    )} */}
+                  </Box>
+                  <Select
+                    label="Interest Type"
+                    value={interestType}
+                    onChange={(v) => setInterestType(v || "Fixed")}
+                    data={["Fixed", "Variable"]}
+                    radius="md"
+                    size="xs"
+                  />
+                  <Select
+                    label="Calculation method"
+                    value={calcMethod}
+                    onChange={(v) => setCalcMethod(v || "Reducing balance")}
+                    data={["Reducing balance", "Flat rate"]}
+                    radius="md"
+                    size="xs"
+                  />
+                </SimpleGrid>
+                <TextInput
+                  type="date"
+                  label="Effective Date"
+                  value={effectiveDate}
+                  onChange={(e) => setEffectiveDate(e.currentTarget.value)}
+                  radius="md"
+                  size="xs"
+                  mt={8}
+                  w="33%"
+                />
+              </Paper>
+
+              <Paper withBorder radius="md" p="sm">
+                <Group justify="space-between" mb={4}>
+                  <SectionLabel>Statutory charges & deductions</SectionLabel>
+                  <Badge size="xs" radius="xl" color="green" variant="light">
+                    Deducted at Disbursement
+                  </Badge>
+                </Group>
+                <SimpleGrid cols={3} spacing={10} mb={10}>
+                  <Box>
+                    <NumberInput
+                      label="Processing Fee"
+                      value={processingFeePct}
+                      hideControls
+                      onChange={(v) => setProcessingFeePct(Number(v) || 0)}
+                      suffix=" %"
+                      min={0}
+                      max={10}
+                      step={0.5}
+                      radius="md"
+                      size="xs"
+                    />
+                    {figures && (
+                      <Text fz={10} c="slate.4" mt={4}>
+                        Amount: {zmw(figures.processingFee)}
+                      </Text>
+                    )}
+                  </Box>
+                  <Box>
+                    <NumberInput
+                      label="VAT on Fees"
+                      value={taxPct}
+                      hideControls
+                      onChange={(v) => setTaxPct(Number(v) || 0)}
+                      suffix=" %"
+                      min={0}
+                      max={30}
+                      step={1}
+                      radius="md"
+                      size="xs"
+                    />
+                    {figures && (
+                      <Text fz={10} c="slate.4" mt={4}>
+                        Amount: {zmw(figures.tax)}
+                      </Text>
+                    )}
+                  </Box>
+                  <Box>
+                    <NumberInput
+                      label="Credit Life Ins."
+                      value={insurancePct}
+                      hideControls
+                      onChange={(v) => setInsurancePct(Number(v) || 0)}
+                      suffix=" %"
+                      min={0}
+                      max={5}
+                      step={0.25}
+                      radius="md"
+                      size="xs"
+                      disabled={!insuranceEnabled}
+                    />
+                    {figures && (
+                      <Text fz={10} c="slate.4" mt={4}>
+                        Amount: {zmw(figures.insurance)}
+                      </Text>
+                    )}
+                  </Box>
+                </SimpleGrid>
+
+                <Group justify="space-between" align="center">
+                  <Checkbox
+                    size="xs"
+                    checked={insuranceEnabled}
+                    onChange={(e) => setInsuranceEnabled(e.currentTarget.checked)}
+                    label="Credit life insurance applicable"
+                  />
+                  {figures && (
+                    <Text fz={12} fw={700} c="slate.9">
+                      Total Deductions: {zmw(figures.netCharges)}
+                    </Text>
+                  )}
+                </Group>
+                <Checkbox
+                  size="xs"
+                  mt={8}
+                  checked={waiverEnabled}
+                  onChange={(e) => setWaiverEnabled(e.currentTarget.checked)}
+                  label="Apply a waiver or discount"
+                />
+                {waiverEnabled && (
+                  <SimpleGrid cols={2} spacing={10} mt={10}>
+                    <NumberInput
+                      label="Waiver amount"
+                      value={waiverAmount}
+                      hideControls
+                      onChange={(v) => setWaiverAmount(Number(v) || 0)}
+                      suffix=" ZMW"
+                      min={0}
+                      radius="md"
+                      size="xs"
+                    />
+                    <TextInput
+                      label="Reason"
+                      value={waiverReason}
+                      onChange={(e) => setWaiverReason(e.currentTarget.value)}
+                      placeholder="e.g. loyalty discount"
+                      radius="md"
+                      size="xs"
+                    />
+                  </SimpleGrid>
+                )}
+              </Paper>
+            </>
+          )}
+
+          {tab === "schedule" && (
+            <Paper withBorder radius="md" p="sm">
+              <SectionLabel>Repayment schedule</SectionLabel>
+              {figures ? (
+                <Box style={{ border: "1px solid var(--mantine-color-slate-2)", borderRadius: "var(--mantine-radius-md)", overflow: "hidden" }}>
+                  <Table fz={12}>
+                    <Table.Thead bg="slate.0">
+                      <Table.Tr>
+                        <Table.Th style={th}>#</Table.Th>
+                        <Table.Th style={th}>Due date</Table.Th>
+                        <Table.Th style={th}>Principal</Table.Th>
+                        <Table.Th style={th}>Interest</Table.Th>
+                        <Table.Th style={th}>Balance</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {figures.sim.schedule.map((row) => (
+                        <Table.Tr key={row.n}>
+                          <Table.Td style={td}>{row.n}</Table.Td>
+                          <Table.Td style={td}>{fmtDate(row.due)}</Table.Td>
+                          <Table.Td style={td}>{zmw(row.principal)}</Table.Td>
+                          <Table.Td style={td}>{zmw(row.interest)}</Table.Td>
+                          <Table.Td style={td}>{zmw(row.balance)}</Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                  {figures.sim.nPeriods > 6 && (
+                    <Text fz={11.5} c="slate.4" px="sm" py={8}>
+                      Showing first 6 of {figures.sim.nPeriods} payments.
+                    </Text>
+                  )}
+                </Box>
+              ) : (
+                <Text fz={12.5} c="slate.5">Fix the highlighted fields in Loan Terms to view the schedule.</Text>
+              )}
+            </Paper>
+          )}
+
+          {/* <Button
+            disabled={!valid}
+            onClick={() => valid && setContinued(true)}
+            color="brand"
+            radius="md"
+            mt={16}
+            rightSection={<IconArrowRight size={16} />}
+          >
+            Review and continue
+          </Button> */}
+        </Box>
+
+        {/* RIGHT COLUMN — SIMULATION MATRIX */}
+        <Box
+  p={16}
+  style={{
+    borderRadius: "var(--mantine-radius-md)",
+    background: "white",
+    border: "1px solid var(--mantine-color-slate-2)",
+  }}
+>
+         <Box
+  p={14}
+  mx={-16}
+  mt={-16}
+  mb={14}
+  style={{
+    background: "linear-gradient(180deg, #4338CA 0%, #3730A3 100%)",
+    borderRadius: "var(--mantine-radius-md) var(--mantine-radius-md) 0 0",
+  }}
+>
+  <Group justify="space-between">
+    <Box>
+      {/* <Text fz={10} fw={600} c="rgba(255,255,255,0.65)">SIMULATION MATRIX</Text> */}
+      <Text fz={14} fw={700} c="white">Summary of Terms</Text>
+    </Box>
+    {/* <Badge size="xs" radius="xl" color="grape" variant="filled">
+      Tier-1 Terms
+    </Badge> */}
+  </Group>
+</Box>
+
+          {figures ? (
+            <>
+        <SimpleGrid cols={2} spacing={10} mb={10}>
+  <Box p={10} bg="green.0" style={{ borderRadius: "var(--mantine-radius-md)", border: "1px solid var(--mantine-color-green-2)" }}>
+    <Text fz={9.5} fw={600} c="green.7">NET DISBURSED TO CLIENT</Text>
+    <Group justify="space-between" align="flex-end" mt={2} gap={4} wrap="nowrap">
+      <Text fz={17} fw={700} c="slate.9">{zmw(figures.netDisbursement)}</Text>
+      <Text fz={9.5} c="green.7">After {zmw(figures.netCharges)} fees</Text>
+    </Group>
+  </Box>
+  <Box p={10} bg="brand.0" style={{ borderRadius: "var(--mantine-radius-md)", border: "1px solid var(--mantine-color-brand-2)" }}>
+    <Text fz={9.5} fw={600} c="brand.7">EST. {frequency.toUpperCase()} INSTALLMENT</Text>
+    <Group justify="space-between" align="flex-end" mt={2} gap={4} wrap="nowrap">
+      <Text fz={17} fw={700} c="slate.9">{zmw(figures.sim.installment)}</Text>
+      <Text fz={9.5} c="brand.7">{figures.sim.nPeriods} installments</Text>
+    </Group>
+  </Box>
+</SimpleGrid>
+
+              <Box mb={14}>
+  <Group justify="space-between" py={6} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+    <Text fz={12} c="slate.5">Gross loan amount</Text>
+    <Text fz={12} fw={600} c="slate.9">{zmw(amount)}</Text>
+  </Group>
+  <Group justify="space-between" py={6} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+    <Text fz={12} c="slate.5">Total charges & fees</Text>
+    <Text fz={12} fw={600} c="red.6">- {zmw(figures.netCharges)}</Text>
+  </Group>
+  <Group justify="space-between" py={6} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+    <Text fz={12} c="slate.5">Total interest</Text>
+    <Text fz={12} fw={600} c="slate.9">{zmw(figures.sim.totalInterest)}</Text>
+  </Group>
+  <Group justify="space-between" py={6} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+    <Text fz={12} c="slate.5">Total cost of credit</Text>
+    <Text fz={12} fw={600} c="slate.9">{zmw(figures.totalCostOfCredit)}</Text>
+  </Group>
+  <Group justify="space-between" py={8} bg="slate.0" px={8} mt={4} style={{ borderRadius: "var(--mantine-radius-sm)" }}>
+    <Text fz={12.5} fw={700} c="slate.9">Total Customer Repayment Commitment</Text>
+    <Text fz={12.5} fw={700} c="brand.7">{zmw(amount + figures.totalCostOfCredit)}</Text>
+  </Group>
+</Box>
+
+             {/* <Group justify="space-between" mb={8}>
+  <Text fz={10} fw={600} c="slate.4">REPAYMENT MILESTONES PREVIEW</Text>
+  <Text fz={10} fw={600} c="brand.5">{tenure}M Amortization</Text>
+</Group> */}
+              {/* <Group gap={8} mb={14} wrap="nowrap">
+               {[1, 6, 12, figures.sim.nPeriods].map((n, i) => {
+  const row = figures.sim.schedule.find((r) => r.n === n) ?? figures.sim.schedule[figures.sim.schedule.length - 1];
+  return (
+    <MilestoneCard
+      key={i}
+      label={`Month ${n}`}
+      value={zmw(figures.sim.installment)}
+      sub={`Bal ${zmw(row.balance)}`}
+      highlight={i === 3}
+    />
+  );
+})}
+              </Group> */}
+
+              <Group justify="space-between" mb={4} pt={10} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
+  <Box>
+    <Text fz={12} c="slate.4">First Repayment:</Text>
+  </Box>
+  <Box ta="right">
+    <Text fz={12} c="slate.4">Final Maturity:</Text>
+  </Box>
+</Group>
+<Group justify="space-between" mb={10}>
+  <Text fz={12.5} fw={700} c="slate.9">{fmtDate(figures.sim.first)}</Text>
+  <Text fz={12.5} fw={700} c="slate.9">{fmtDate(figures.sim.final)}</Text>
+</Group>
+
+            <UnstyledButton
+  onClick={() => setTab("schedule")}
+  mt={4}
+  mb={12}
+  p={10}
+  w="100%"
+  style={{ background: "var(--mantine-color-brand-0)", borderRadius: "var(--mantine-radius-md)" }}
+>
+  <Group justify="space-between">
+    <Text fz={12} fw={600} c="brand.7">Preview {tenure}-Month Amortization Schedule</Text>
+    <IconChevronDown size={13} color="var(--mantine-color-brand-7)" />
+  </Group>
+</UnstyledButton>
+
+            </>
+          ) : (
+            <Text fz={12.5} c="rgba(255,255,255,0.7)">Fix the highlighted fields to see the simulation.</Text>
+          )}
+        </Box>
+      </SimpleGrid>
     </Box>
   );
 }
@@ -747,11 +880,22 @@ export function EnrichmentModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      size={1400}
+      // size={1400}
+       size="90vw"
       padding={0}
       lockScroll
-      styles={{
+      // styles={{
+      //   content: {
+      //     display: "flex",
+      //     flexDirection: "column",
+      //     overflow: "hidden",
+      //   },
+       styles={{
         content: {
+          height: "92vh",
+          maxHeight: "99vh",
+          width: "90vw",
+          maxWidth: "1600px",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
