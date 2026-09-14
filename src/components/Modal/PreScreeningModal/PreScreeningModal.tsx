@@ -85,6 +85,7 @@ function PrescreeningOverview({
   productMax,
   leftSlot,
   rightSlot,
+  decisionSlot,
 }: {
   state: PrescreeningState;
   dispatch: (a: any) => void;
@@ -95,6 +96,7 @@ function PrescreeningOverview({
   productMax: number;
   leftSlot?: React.ReactNode;
   rightSlot?: React.ReactNode;
+  decisionSlot?: React.ReactNode;
 }) {
   const credit = state.credit;
   const liab = state.liabilities;
@@ -714,11 +716,16 @@ function useEligibilityUI({
   );
 
   const rightNode = (
-    <Stack gap={4}>
-      <RiskMeter riskBand={riskBand} />
-      {decisionSlot}
-    </Stack>
-  );
+  <Stack gap={10}>
+    <RiskMeter riskBand={riskBand} />
+
+    {decisionSlot && (
+      <Box>
+        {decisionSlot}
+      </Box>
+    )}
+  </Stack>
+);
 
   const modals = (
     <>
