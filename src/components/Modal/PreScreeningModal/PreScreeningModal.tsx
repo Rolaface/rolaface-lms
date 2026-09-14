@@ -31,6 +31,7 @@ import {
   IconPercentage,
   IconArrowRight,
   IconMinus,
+  IconCircleDot,
 } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
@@ -39,860 +40,41 @@ import {
   DUMMY_PRESCREENING_CONTEXT,
 } from "./Dummyloanapplicationdata";
 
-interface PreScreeningModalProps {
-  opened: boolean;
-  onClose: () => void;
-  onMinimize: () => void;
-  applicationValues?: LoanApplicationValues;
-  embedded?: boolean;
-  readOnly?: boolean;
-}
-
-const POLICY: Record<
-  "personal" | "business" | "mortgage",
-  { minCreditScore: number; maxDTI: number; productMax: number }
-> = {
-  personal: { minCreditScore: 650, maxDTI: 50, productMax: 100000 },
-  business: { minCreditScore: 620, maxDTI: 55, productMax: 500000 },
-  mortgage: { minCreditScore: 680, maxDTI: 45, productMax: 2000000 },
-};
-
-type SourceKind = "bureau" | "hrms" | "application" | "manual" | "unavailable" | "none";
-
-interface LiabilityRecord {
-  institution: string;
-  facilityType: string;
-  outstanding: number;
-  monthlyPayment: number;
-  status: string;
-  source: SourceKind;
-}
-
-interface ScenarioDef {
-  label: string;
-  credit: number | null;
-  creditSource: SourceKind;
-  obligations: number | null;
-  obligationsSource: SourceKind;
-  income: number | null;
-  incomeSource: SourceKind;
-  riskBand?: string;
-  activeAccounts?: number;
-  delinquentAccounts?: number;
-  recentEnquiries?: number;
-  liabilities?: LiabilityRecord[];
-}
-
-const SCENARIOS: Record<string, ScenarioDef> = {
-  lower: {
-    label: "Eligible for a lower amount",
-    credit: 742,
-    creditSource: "bureau",
-    obligations: 1200,
-    obligationsSource: "bureau",
-    income: 13100,
-    incomeSource: "hrms",
-    riskBand: "Low",
-    activeAccounts: 2,
-    delinquentAccounts: 0,
-    recentEnquiries: 1,
-    liabilities: [
-      {
-        institution: "Zanaco",
-        facilityType: "Personal Loan",
-        outstanding: 12500,
-        monthlyPayment: 850,
-        status: "Active",
-        source: "bureau",
-      },
-      {
-        institution: "Absa",
-        facilityType: "Credit Card",
-        outstanding: 6000,
-        monthlyPayment: 350,
-        status: "Active",
-        source: "bureau",
-      },
-    ],
-  },
-  eligible: {
-    label: "Fully eligible",
-    credit: 742,
-    creditSource: "bureau",
-    obligations: 2200,
-    obligationsSource: "bureau",
-    income: 22000,
-    incomeSource: "hrms",
-    riskBand: "Low",
-    activeAccounts: 1,
-    delinquentAccounts: 0,
-    recentEnquiries: 0,
-    liabilities: [
-      {
-        institution: "Metro Lending",
-        facilityType: "Auto Loan",
-        outstanding: 22000,
-        monthlyPayment: 2200,
-        status: "Active",
-        source: "bureau",
-      },
-    ],
-  },
-  failed: {
-    label: "Failed — credit score below minimum",
-    credit: 590,
-    creditSource: "bureau",
-    obligations: 3850,
-    obligationsSource: "bureau",
-    income: 13100,
-    incomeSource: "hrms",
-    riskBand: "High",
-    activeAccounts: 3,
-    delinquentAccounts: 2,
-    recentEnquiries: 5,
-    liabilities: [
-      {
-        institution: "Capital Finance",
-        facilityType: "Personal Loan",
-        outstanding: 19000,
-        monthlyPayment: 1900,
-        status: "Active",
-        source: "bureau",
-      },
-      {
-        institution: "Horizon Credit",
-        facilityType: "Credit Card",
-        outstanding: 11000,
-        monthlyPayment: 1000,
-        status: "Delinquent",
-        source: "bureau",
-      },
-      {
-        institution: "Apex Lending",
-        facilityType: "Overdraft",
-        outstanding: 8500,
-        monthlyPayment: 950,
-        status: "Delinquent",
-        source: "bureau",
-      },
-    ],
-  },
-  bureauDown: {
-    label: "Bureau unavailable — needs manual entry",
-    credit: null,
-    creditSource: "unavailable",
-    obligations: null,
-    obligationsSource: "unavailable",
-    income: 13100,
-    incomeSource: "hrms",
-    liabilities: [],
-  },
-  incomplete: {
-    label: "Incomplete — income not yet available",
-    credit: 742,
-    creditSource: "bureau",
-    obligations: 3850,
-    obligationsSource: "bureau",
-    income: null,
-    incomeSource: "none",
-    riskBand: "Low",
-    activeAccounts: 2,
-    delinquentAccounts: 0,
-    recentEnquiries: 1,
-    liabilities: [
-      {
-        institution: "Capital Finance",
-        facilityType: "Personal Loan",
-        outstanding: 24000,
-        monthlyPayment: 2400,
-        status: "Active",
-        source: "bureau",
-      },
-      {
-        institution: "Horizon Credit",
-        facilityType: "Credit Card",
-        outstanding: 14500,
-        monthlyPayment: 1450,
-        status: "Active",
-        source: "bureau",
-      },
-    ],
-  },
-};
-
-const DEFAULT_SCENARIO = "lower";
-
-const zmw = (n: number | null) =>
-  n == null ? "—" : "ZMW " + Math.round(n).toLocaleString();
-
-const fmtDate = (d: Date) =>
-  d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-
-interface EligibilityCalc {
-  customerDTI: number;
-  creditPassed: boolean;
-  dtiPassed: boolean;
-  maxAffordableMonthly: number;
-  capacity: number;
-  affordabilityAmount: number;
-  eligibleAmount: number;
-  productMax: number;
-  mandatoryPassed: boolean;
-}
-
-function calcEligibility({
-  income,
-  obligations,
-  maxDTI,
-  annualRate,
-  tenureMonths,
-  productMax,
-  creditScore,
-  minCreditScore,
-}: {
-  income: number | null;
-  obligations: number | null;
-  maxDTI: number;
-  annualRate: number;
-  tenureMonths: number;
-  productMax: number;
-  creditScore: number | null;
-  minCreditScore: number;
-}): EligibilityCalc | null {
-  if (income == null || obligations == null || creditScore == null) return null;
-  const customerDTI = income > 0 ? (obligations / income) * 100 : 100;
-  const creditPassed = creditScore >= minCreditScore;
-  const dtiPassed = customerDTI <= maxDTI;
-  const maxAffordableMonthly = income * (maxDTI / 100);
-  const capacity = Math.max(0, maxAffordableMonthly - obligations);
-  const r = annualRate / 100 / 12;
-  const affordabilityAmount =
-    r > 0
-      ? capacity * ((1 - Math.pow(1 + r, -tenureMonths)) / r)
-      : capacity * tenureMonths;
-  const eligibleAmount =
-    creditPassed && dtiPassed ? Math.min(affordabilityAmount, productMax) : 0;
-  return {
-    customerDTI,
-    creditPassed,
-    dtiPassed,
-    maxAffordableMonthly,
-    capacity,
-    affordabilityAmount,
-    eligibleAmount,
-    productMax,
-    mandatoryPassed: creditPassed && dtiPassed,
-  };
-}
-const SOURCE_MAP: Record<
+import type {
+  PreScreeningModalProps,
   SourceKind,
-  { label: string; color: string }
-> = {
-  bureau: { label: "Credit bureau", color: "brand" },
-  hrms: { label: "HRMS", color: "brand" },
-  application: { label: "From application", color: "teal" },
-  manual: { label: "Manually entered", color: "orange" },
-  unavailable: { label: "Unavailable", color: "gray" },
-  none: { label: "Not available", color: "gray" },
-};
-
-function SourceBadge({ source }: { source: SourceKind }) {
-  const s = SOURCE_MAP[source] ?? SOURCE_MAP.manual;
-  return (
-    <Badge size="xs" radius="xl" color={s.color} variant="light">
-      {s.label}
-    </Badge>
-  );
-}
-
-function MiniStat({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
-  return (
-    <Box>
-      <Text fz={11} c="slate.5">
-        {label}
-      </Text>
-      <Text fz={16} fw={700} c={accent ? "orange.7" : "slate.9"}>
-        {value}
-      </Text>
-    </Box>
-  );
-}
-
-function CalcRow({
-  label,
-  value,
-  last,
-  strong,
-}: {
-  label: string;
-  value: string;
-  last?: boolean;
-  strong?: boolean;
-}) {
-  return (
-    <Group
-      justify="space-between"
-      py={9}
-      style={{
-        borderBottom: last
-          ? "none"
-          : "1px solid var(--mantine-color-slate-1)",
-      }}
-    >
-      <Text fz={12.5} c="slate.5">
-        {label}
-      </Text>
-      <Text fz={12.5} fw={strong ? 700 : 600} c="slate.9">
-        {value}
-      </Text>
-    </Group>
-  );
-}
-
-function CheckLine({ ok, children }: { ok: boolean; children: React.ReactNode }) {
-  return (
-    <Group gap={7} align="flex-start" wrap="nowrap">
-      {ok ? (
-        <IconCheck
-          size={14}
-          color="var(--mantine-color-green-6)"
-          style={{ marginTop: 1, flexShrink: 0 }}
-        />
-      ) : (
-        <IconX
-          size={14}
-          color="var(--mantine-color-red-6)"
-          style={{ marginTop: 1, flexShrink: 0 }}
-        />
-      )}
-      <Text fz={12.5} c="slate.7">
-        {children}
-      </Text>
-    </Group>
-  );
-}
-
-function RuleRow({
-  rule,
-  req,
-  customer,
-  pass,
-  calculated,
-}: {
-  rule: string;
-  req: string;
-  customer: string;
-  pass: boolean;
-  calculated?: boolean;
-}) {
-  return (
-    <Table.Tr>
-      <Table.Td>{rule}</Table.Td>
-      <Table.Td>{req}</Table.Td>
-      <Table.Td>{customer}</Table.Td>
-      <Table.Td>
-        <Group gap={4} wrap="nowrap">
-          {calculated ? (
-            <>
-              <IconPercentage size={11} color="var(--mantine-color-brand-6)" />
-              <Text fz={11.5} fw={600} c="brand.6">
-                Calculated
-              </Text>
-            </>
-          ) : pass ? (
-            <>
-              <IconCheck size={11} color="var(--mantine-color-green-6)" />
-              <Text fz={11.5} fw={600} c="green.7">
-                Passed
-              </Text>
-            </>
-          ) : (
-            <>
-              <IconX size={11} color="var(--mantine-color-red-6)" />
-              <Text fz={11.5} fw={600} c="red.6">
-                Failed
-              </Text>
-            </>
-          )}
-        </Group>
-      </Table.Td>
-    </Table.Tr>
-  );
-}
-
-function ContextHeader({
-  values,
-  applicationId,
-}: {
-  values: LoanApplicationValues;
-  applicationId: string;
-}) {
-  const isBusiness = values.loanType === "Business";
-  const name = isBusiness
-    ? values.companyName
-    : [values.firstName, values.surname].filter(Boolean).join(" ");
-  const initials = name
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
-  return (
-    <Group
-      justify="space-between"
-      align="center"
-      px="xl"
-      py="sm"
-      bg="white"
-      style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
-    >
-      <Group gap={12}>
-        <ThemeIcon radius="xl" size={36} variant="light" color="brand">
-          <Text fz="sm" fw={700}>
-            {initials || "—"}
-          </Text>
-        </ThemeIcon>
-        <Box>
-          <Text fz="sm" fw={700} c="slate.9">
-            {name || "—"}
-          </Text>
-          <Text fz="xs" c="slate.5">
-            {isBusiness ? "Business Loan" : "Personal Loan"}
-          </Text>
-        </Box>
-      </Group>
-      <Group gap={26}>
-        <Box ta="right">
-          <Text fz={10.5} c="slate.4">
-            Requested amount
-          </Text>
-          <Text fz={13.5} fw={700} c="slate.9">
-            {zmw(values.loanAmount)}
-          </Text>
-        </Box>
-        <Box ta="right">
-          <Text fz={10.5} c="slate.4">
-            Application ID
-          </Text>
-          <Text fz={13.5} fw={700} c="slate.9">
-            {applicationId}
-          </Text>
-        </Box>
-      </Group>
-    </Group>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Left navigation
-// ---------------------------------------------------------------------------
-
-type Section = "application" | "prescreening";
-
-function LeftNav({
-  section,
-  setSection,
-}: {
-  section: Section;
-  setSection: (s: Section) => void;
-}) {
-  const items: { id: Section; label: string; icon: React.FC<any> }[] = [
-    { id: "application", label: "Loan application", icon: IconFileText },
-    { id: "prescreening", label: "Prescreening", icon: IconGauge },
-  ];
-  return (
-    <Box
-      w={216}
-      style={{
-        flexShrink: 0,
-        background: "white",
-        borderRight: "1px solid var(--mantine-color-slate-2)",
-      }}
-      p={12}
-    >
-      <Text
-        fz={10.5}
-        fw={600}
-        c="slate.4"
-        tt="uppercase"
-        px={10}
-        mb={10}
-        style={{ letterSpacing: 0.4 }}
-      >
-        Stage 2 of 5
-      </Text>
-      <Stack gap={4}>
-        {items.map((it) => {
-          const active = section === it.id;
-          const Icon = it.icon;
-          return (
-            <UnstyledButton
-              key={it.id}
-              onClick={() => setSection(it.id)}
-              px={12}
-              py={10}
-              style={{
-                borderRadius: "var(--mantine-radius-md)",
-                background: active
-                  ? "var(--mantine-color-brand-0)"
-                  : "transparent",
-              }}
-            >
-              <Group gap={10}>
-                <Icon
-                  size={16}
-                  color={
-                    active
-                      ? "var(--mantine-color-brand-7)"
-                      : "var(--mantine-color-slate-6)"
-                  }
-                />
-                <Text
-                  fz="sm"
-                  fw={active ? 600 : 500}
-                  c={active ? "brand.7" : "slate.7"}
-                >
-                  {it.label}
-                </Text>
-              </Group>
-            </UnstyledButton>
-          );
-        })}
-      </Stack>
-    </Box>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Data source cards (credit score / liabilities / income)
-// ---------------------------------------------------------------------------
-
-interface FieldState {
-  status: "idle" | "loading";
-  manual: boolean;
-  reason: string;
-}
-interface CreditState extends FieldState {
-  value: number | null;
-  source: SourceKind;
-  riskBand: string | null;
-  activeAccounts: number | null;
-  delinquentAccounts: number | null;
-  recentEnquiries: number | null;
-}
-interface LiabilitiesState extends FieldState {
-  obligations: number | null;
-  activeLoans: number | null;
-  outstanding: number | null;
-  source: SourceKind;
-  records: LiabilityRecord[];
-  manualRecords: LiabilityRecord[];
-}
-interface IncomeState extends FieldState {
-  value: number | null;
-  source: SourceKind;
-}
-interface PrescreeningState {
-  credit: CreditState;
-  liabilities: LiabilitiesState;
-  income: IncomeState;
-}
-
-function buildInitialState(scenarioKey: string): PrescreeningState {
-  const s = SCENARIOS[scenarioKey];
-  const records = s.liabilities ?? [];
-  return {
-    credit: {
-      value: s.credit,
-      source: s.creditSource,
-      status: "idle",
-      manual: s.creditSource === "unavailable",
-      reason: "",
-      riskBand: s.riskBand ?? null,
-      activeAccounts: s.activeAccounts ?? null,
-      delinquentAccounts: s.delinquentAccounts ?? null,
-      recentEnquiries: s.recentEnquiries ?? null,
-    },
-    liabilities: {
-      obligations: s.obligations,
-      activeLoans: records.length || (s.obligations != null ? 2 : null),
-      outstanding: s.obligations != null ? Math.round(s.obligations * 10) : null,
-      source: s.obligationsSource,
-      status: "idle",
-      manual: s.obligationsSource === "unavailable",
-      reason: "",
-      records,
-      manualRecords: [],
-    },
-    income: {
-      value: s.income,
-      source: s.incomeSource,
-      status: "idle",
-      manual: false,
-      reason: "",
-    },
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Comparison bar
-// ---------------------------------------------------------------------------
-
-function ComparisonBar({
-  requested,
-  eligible,
-  productMax,
-}: {
-  requested: number;
-  eligible: number;
-  productMax: number;
-}) {
-  const scale = Math.max(requested, eligible, productMax * 0.4) * 1.05;
-  const eligiblePct = Math.min(100, (eligible / scale) * 100);
-  const requestedPct = Math.min(100, (requested / scale) * 100);
-  const tone = eligible >= requested ? "green" : "orange";
-  return (
-    <Box my={8}>
-      <Box
-        pos="relative"
-        style={{
-          height: 10,
-          background: "var(--mantine-color-slate-1)",
-          borderRadius: 6,
-        }}
-      >
-        <Box
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            height: "100%",
-            width: `${eligiblePct}%`,
-            background: `var(--mantine-color-${tone}-6)`,
-            borderRadius: 6,
-          }}
-        />
-        <Box
-          style={{
-            position: "absolute",
-            left: `calc(${requestedPct}% - 1px)`,
-            top: -4,
-            width: 2,
-            height: 18,
-            background: "var(--mantine-color-slate-9)",
-          }}
-        />
-      </Box>
-      <Group justify="space-between" mt={6}>
-        <Text fz={11} c="slate.5">
-          ZMW 0
-        </Text>
-        <Text fz={11} c="slate.5">
-          Eligible: {zmw(eligible)}
-        </Text>
-        <Text fz={11} c="slate.5">
-          Requested amount: {zmw(requested)}
-        </Text>
-      </Group>
-    </Box>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Compact overview — Credit Score, Liabilities, Income in one row + DTI row
-// ---------------------------------------------------------------------------
-
-function creditScoreBand(score: number): { label: string; color: string } {
-  if (score < 600) return { label: "Poor", color: "red" };
-  if (score < 680) return { label: "Fair", color: "orange" };
-  if (score < 740) return { label: "Good", color: "yellow" };
-  return { label: "Excellent", color: "green" };
-}
-
-function CreditGaugeVisual({
-  score,
-  unavailable,
-  loading,
-}: {
-  score: number | null;
-  unavailable?: boolean;
-  loading?: boolean;
-}) {
-  const min = 300;
-  const max = 850;
-  const clamped = score == null ? min : Math.min(max, Math.max(min, score));
-  const pct = (clamped - min) / (max - min);
-  const needleAngle = -90 + pct * 180;
-  const band = score != null ? creditScoreBand(score) : null;
-
-  const segments = [
-    { d: "M10 76 A64 64 0 0 1 28.75 30.75", color: "red" },
-    { d: "M28.75 30.75 A64 64 0 0 1 74 12", color: "orange" },
-    { d: "M74 12 A64 64 0 0 1 119.25 30.75", color: "yellow" },
-    { d: "M119.25 30.75 A64 64 0 0 1 138 76", color: "green" },
-  ];
-
-  return (
-    <>
-      <Box
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          width: "100%",
-        }}
-      >
-        <svg
-          width="100%"
-          height="76"
-          viewBox="0 0 148 82"
-          preserveAspectRatio="xMidYMid meet"
-          style={{ maxWidth: 144, overflow: "visible" }}
-        >
-          {segments.map((s) => (
-            <path
-              key={s.color}
-              d={s.d}
-              fill="none"
-              stroke={`var(--mantine-color-${s.color}-6)`}
-              strokeWidth="10"
-              strokeLinecap="round"
-              opacity={score == null ? 0.35 : 1}
-            />
-          ))}
-          {score != null && (
-            <g
-              transform={`rotate(${needleAngle} 74 76)`}
-              style={{ transition: "transform 0.5s ease" }}
-            >
-              <line
-                x1="74"
-                y1="76"
-                x2="74"
-                y2="26"
-                stroke="var(--mantine-color-slate-9)"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-            </g>
-          )}
-          <circle cx="74" cy="76" r="5" fill="var(--mantine-color-slate-9)" />
-        </svg>
-      </Box>
-
-      <Group justify="center" gap={6} mt={10}>
-        <Text fz={18} fw={700} c="slate.9">
-          {loading ? "…" : (score ?? "—")}
-        </Text>
-        <Box
-          px={7}
-          py={1}
-          bg={band ? `${band.color}.0` : "slate.1"}
-          style={{ borderRadius: 999 }}
-        >
-          <Text fz={10} fw={600} c={band ? `${band.color}.7` : "slate.5"}>
-            {loading
-              ? "Fetching…"
-              : unavailable
-                ? "Unavailable"
-                : band
-                  ? band.label
-                  : "Not fetched"}
-          </Text>
-        </Box>
-      </Group>
-    </>
-  );
-}
-
-function CompactRow({
-  label,
-  value,
-  subtext,
-  badge,
-  last,
-  action,
-}: {
-  label: string;
-  value: React.ReactNode;
-  subtext?: React.ReactNode;
-  badge?: React.ReactNode;
-  last?: boolean;
-  action?: React.ReactNode;
-}) {
-  return (
-    <Box
-      py={4}
-      style={{
-        borderBottom: last ? "none" : "1px solid var(--mantine-color-slate-1)",
-      }}
-    >
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <Text fz={12.5} fw={600} c="slate.9">
-            {label}
-          </Text>
-          <Text fz={14} fw={500} c="slate.7" mt={1}>
-            {value}
-          </Text>
-          {(subtext || badge) && (
-            <Group gap={6} mt={2}>
-              {subtext && (
-                <Text fz={10.5} c="slate.5">
-                  {subtext}
-                </Text>
-              )}
-              {badge}
-            </Group>
-          )}
-        </Box>
-        {action}
-      </Group>
-    </Box>
-  );
-}
-
-function StatMini({
-  icon: Icon,
-  label,
-  value,
-  sublabel,
-}: {
-  icon: React.FC<any>;
-  label: string;
-  value: React.ReactNode;
-  sublabel?: string;
-}) {
-  return (
-    <Group gap={8} align="flex-start" wrap="nowrap">
-      <ThemeIcon radius="sm" size={22} variant="light" color="slate">
-        <Icon size={12} color="var(--mantine-color-slate-6)" />
-      </ThemeIcon>
-      <Box style={{ minWidth: 0 }}>
-        <Text fz={10.5} c="slate.5" truncate>
-          {label}
-        </Text>
-        {sublabel && (
-          <Text fz={9.5} c="slate.4" mt={-2}>
-            · {sublabel}
-          </Text>
-        )}
-        <Text fz={13} fw={700} c="slate.9" mt={1}>
-          {value}
-        </Text>
-      </Box>
-    </Group>
-  );
-}
-
+  LiabilityRecord,
+  ScenarioDef,
+  EligibilityCalc,
+  Section,
+  FieldState,
+  CreditState,
+  LiabilitiesState,
+  IncomeState,
+  PrescreeningState
+} from './PreScreeningShared';
+import {
+  POLICY,
+  SCENARIOS,
+  DEFAULT_SCENARIO,
+  zmw,
+  fmtDate,
+  calcEligibility,
+  SOURCE_MAP,
+  SourceBadge,
+  MiniStat,
+  CalcRow,
+  CheckLine,
+  RuleRow,
+  ContextHeader,
+  LeftNav,
+  buildInitialState,
+  ComparisonBar,
+  creditScoreBand,
+  CreditGaugeVisual,
+  CompactRow,
+  StatMini
+} from './PreScreeningShared';
 function PrescreeningOverview({
   state,
   dispatch,
@@ -1061,7 +243,7 @@ function PrescreeningOverview({
             </Paper>
           )}
 
-          {leftSlot && <Box mt={8}>{leftSlot}</Box>}
+          {leftSlot && <Box mt={6}>{leftSlot}</Box>}
         </Stack>
 
         <Stack gap={10} w="100%" style={{ minWidth: 0 }}>
@@ -1072,7 +254,7 @@ function PrescreeningOverview({
             w="100%"
             style={{ minWidth: 0, overflow: "visible" }}
           >
-          <Group justify="space-between" align="center" mb={2}>
+          <Group justify="space-between" align="center" mb={0}>
             <Group gap={6}>
               <ThemeIcon radius="sm" size={20} variant="light" color="brand">
                 <IconGauge size={11} />
@@ -1100,7 +282,7 @@ function PrescreeningOverview({
           />
 
           {credit.status !== "loading" && credit.riskBand != null && (
-            <SimpleGrid cols={3} spacing={10} mt={8}>
+            <SimpleGrid cols={3} spacing={10} mt={6}>
               <StatMini
                 icon={IconAlertCircle}
                 label="Risk Band"
@@ -1140,15 +322,58 @@ function PrescreeningOverview({
             </SimpleGrid>
           )}
 
-          {/* Existing liabilities — inside the credit bureau card */}
-          <Box
-            mt={8}
-            pt={8}
-            style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}
-          >
+        </Paper>
+
+        {/* Existing liabilities — separate card */}
+        <Paper
+          withBorder
+          radius="md"
+          p={10}
+          bg="white"
+          style={{ border: "1px solid var(--mantine-color-slate-2)" }}
+        >
+          <Group justify="space-between" mb={8}>
+            <Group gap={6}>
+              <ThemeIcon size={20} radius="xl" variant="light" color="indigo">
+                <IconCircleDot size={12} stroke={2.5} />
+              </ThemeIcon>
+              <Text fz={13.5} fw={700} c="slate.9">
+                Existing liabilities
+              </Text>
+            </Group>
+            {/* The action buttons used to be inside CompactRow action, let's put them here */}
+            {!readOnly && liab.status !== "loading" && (
+              <Group gap={12} wrap="nowrap">
+                {!liab.manual && (
+                  <UnstyledButton onClick={() => dispatch({ type: "fetchLiabilities" })}>
+                    <Group gap={4} wrap="nowrap">
+                      <IconRefresh size={11} color="var(--mantine-color-brand-6)" />
+                      <Text fz={11.5} fw={600} c="brand.6">
+                        Refresh
+                      </Text>
+                    </Group>
+                  </UnstyledButton>
+                )}
+                {liab.manual ? (
+                  <UnstyledButton onClick={() => dispatch({ type: "manualLiabilities", on: false })}>
+                    <Text fz={11.5} fw={600} c="brand.6">
+                      Use source value
+                    </Text>
+                  </UnstyledButton>
+                ) : (
+                  <UnstyledButton onClick={() => dispatch({ type: "openLiabilitiesModal" })}>
+                    <Text fz={11.5} fw={600} c="brand.6">
+                      Additional liabilities
+                    </Text>
+                  </UnstyledButton>
+                )}
+              </Group>
+            )}
+          </Group>
+          <Box>
             <CompactRow
               last
-              label="Existing liabilities"
+              label=""
               value={
                 liab.status === "loading"
                   ? "Fetching…"
@@ -1189,35 +414,7 @@ function PrescreeningOverview({
                   <SourceBadge source="manual" />
                 ) : undefined
               }
-              action={
-                !readOnly && liab.status !== "loading" ? (
-                  <Group gap={12} wrap="nowrap">
-                    {!liab.manual && (
-                      <UnstyledButton onClick={() => dispatch({ type: "fetchLiabilities" })}>
-                        <Group gap={4} wrap="nowrap">
-                          <IconRefresh size={11} color="var(--mantine-color-brand-6)" />
-                          <Text fz={11.5} fw={600} c="brand.6">
-                            Refresh
-                          </Text>
-                        </Group>
-                      </UnstyledButton>
-                    )}
-                    {liab.manual ? (
-                      <UnstyledButton onClick={() => dispatch({ type: "manualLiabilities", on: false })}>
-                        <Text fz={11.5} fw={600} c="brand.6">
-                          Use source value
-                        </Text>
-                      </UnstyledButton>
-                    ) : (
-                      <UnstyledButton onClick={() => dispatch({ type: "openLiabilitiesModal" })}>
-                        <Text fz={11.5} fw={600} c="brand.6">
-                          Enter manually
-                        </Text>
-                      </UnstyledButton>
-                    )}
-                  </Group>
-                ) : undefined
-              }
+
             />
             {(liab.records ?? []).length > 0 && !liab.manual && liab.status !== "loading" && (
               <Box mt={4}>
@@ -1235,7 +432,7 @@ function PrescreeningOverview({
             )}
           </Box>
         </Paper>
-        {rightSlot && <Box mt={8}>{rightSlot}</Box>}
+        {rightSlot && <Box mt={4}>{rightSlot}</Box>}
         </Stack>
       </SimpleGrid>
     </Box>
@@ -1285,6 +482,103 @@ function ActionRow({
   );
 }
 
+function RiskMeter({ riskBand }: { riskBand: string | null }) {
+  if (!riskBand) return null;
+  const isLow = riskBand.toLowerCase() === "low";
+  const isMedium = riskBand.toLowerCase() === "medium";
+  const isHigh = riskBand.toLowerCase() === "high";
+
+  let color = "gray";
+  let title = "Unknown risk";
+  let desc = "Risk profile could not be determined.";
+  let markerLeft = "0%";
+  let badgeColor = "gray";
+  
+  if (isLow) {
+    color = "green";
+    badgeColor = "green";
+    title = "Low risk";
+    desc = "The customer shows a healthy credit profile with low risk of default.";
+    markerLeft = "16%"; // center of first third
+  } else if (isMedium) {
+    color = "orange";
+    badgeColor = "orange";
+    title = "Medium risk";
+    desc = "The customer shows an acceptable credit profile with moderate risk of default.";
+    markerLeft = "50%"; // center of middle third
+  } else if (isHigh) {
+    color = "red";
+    badgeColor = "red";
+    title = "High risk";
+    desc = "The customer shows a concerning credit profile with high risk of default.";
+    markerLeft = "83.3%"; // center of last third
+  }
+
+  return (
+    <Paper
+          withBorder
+          radius="md"
+          p={10}
+      bg="white"
+      style={{ border: "1px solid var(--mantine-color-slate-2)" }}
+    >
+      <Group justify="space-between" mb={6}>
+        <Group gap={8}>
+          <ThemeIcon size={20} radius="xl" variant="light" color="indigo">
+            <IconGauge size={12} stroke={2.5} />
+          </ThemeIcon>
+          <Text fz={13.5} fw={700} c="slate.9">
+            Risk Meter
+          </Text>
+          <Badge color={badgeColor} variant="light" radius="sm" size="sm">
+            {title}
+          </Badge>
+        </Group>
+        <UnstyledButton>
+          <Group gap={4}>
+            <IconRefresh size={12} stroke={2.5} color="var(--mantine-color-brand-6)" />
+            <Text fz={11.5} fw={600} c="brand.6">
+              Refresh
+            </Text>
+          </Group>
+        </UnstyledButton>
+      </Group>
+
+      {/* Marker Triangle */}
+      <Box style={{ position: "relative", height: 5, width: "100%", marginBottom: 2 }}>
+        <Box
+          style={{
+            position: "absolute",
+            left: markerLeft,
+            transform: "translateX(-50%)",
+            width: 0,
+            height: 0,
+            borderLeft: "6px solid transparent",
+            borderRight: "6px solid transparent",
+            borderTop: `5px solid var(--mantine-color-${color}-6)`,
+          }}
+        />
+      </Box>
+
+      {/* Segmented Bar */}
+      <Box style={{ display: "flex", gap: 3, height: 5, width: "100%", marginBottom: 12 }}>
+        <Box style={{ flex: 1, backgroundColor: "var(--mantine-color-green-5)", borderTopLeftRadius: 6, borderBottomLeftRadius: 6 }} />
+        <Box style={{ flex: 1, backgroundColor: "var(--mantine-color-yellow-4)" }} />
+        <Box style={{ flex: 1, backgroundColor: "var(--mantine-color-red-4)", borderTopRightRadius: 6, borderBottomRightRadius: 6 }} />
+      </Box>
+
+      <Box>
+        <Text fz={12.5} fw={700} c="slate.9" mb={0}>
+          {title}
+        </Text>
+        <Text fz={11.5} c="slate.5">
+          {desc}
+        </Text>
+      </Box>
+    </Paper>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Eligibility calculation section
 // ---------------------------------------------------------------------------
@@ -1300,6 +594,7 @@ function useEligibilityUI({
   income,
   obligations,
   creditScore,
+  riskBand,
   rulesOpen,
   setRulesOpen,
   calcOpen,
@@ -1317,6 +612,7 @@ function useEligibilityUI({
   income: number | null;
   obligations: number | null;
   creditScore: number | null;
+  riskBand: string | null;
   rulesOpen: boolean;
   setRulesOpen: (v: boolean) => void;
   calcOpen: boolean;
@@ -1402,7 +698,7 @@ function useEligibilityUI({
         </Box>
       )}
 
-      <Stack gap={10}>
+      <Stack gap={4}>
         <ActionRow
           icon={IconPercentage}
           label="View calculation"
@@ -1417,7 +713,12 @@ function useEligibilityUI({
     </Box>
   );
 
-  const rightNode = <Stack gap={10}>{decisionSlot}</Stack>;
+  const rightNode = (
+    <Stack gap={4}>
+      <RiskMeter riskBand={riskBand} />
+      {decisionSlot}
+    </Stack>
+  );
 
   const modals = (
     <>
@@ -1427,7 +728,7 @@ function useEligibilityUI({
           radius="xl"
           color="brand"
           variant="light"
-          mb={12}
+          mb={8}
           leftSection={<IconRefresh size={11} />}
         >
           Recalculated
@@ -1619,7 +920,7 @@ function DecisionCard({
   // Full-width card status
   return (
     <Box
-      p="sm"
+      p={10}
       bg={tone.bg}
       style={{
         border: `1px solid var(--mantine-color-${tone.border.replace(".", "-")})`,
@@ -1653,7 +954,7 @@ function DecisionCard({
           )}
         </Group>
       ) : (
-        <Stack gap={6}>
+        <Stack gap={4}>
           <Group gap={8} wrap="nowrap">
             <Icon size={18} color={`var(--mantine-color-${tone.color.replace(".", "-")})`} />
             {isPartial && (
@@ -2000,6 +1301,7 @@ function PrescreeningWorkspace({
     income: state.income.value,
     obligations: state.liabilities.obligations,
     creditScore: state.credit.value,
+    riskBand: state.credit.riskBand,
     rulesOpen,
     setRulesOpen,
     calcOpen,
@@ -2158,7 +1460,7 @@ function PrescreeningWorkspace({
           </Table>
         </Box>
         {!readOnly && (
-          <Box mt="md" p="sm" bg="slate.0" style={{ borderRadius: "var(--mantine-radius-md)" }}>
+          <Box mt="md" p={10} bg="slate.0" style={{ borderRadius: "var(--mantine-radius-md)" }}>
             <Group justify="space-between" align="center">
               <Box>
                 <Text fz={12.5} fw={600} c="slate.9">Manual Entry Mode</Text>
@@ -2243,7 +1545,7 @@ export function PreScreeningModal({
             flexShrink: 0,
           }}
         >
-          <Group gap="sm">
+          <Group gap={10}>
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
               <IconGauge size={16} />
             </ThemeIcon>
