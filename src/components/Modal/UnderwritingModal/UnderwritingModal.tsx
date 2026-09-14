@@ -380,14 +380,16 @@ interface Asset {
   source: "application" | "manual";
   base: DummyAssetBase;
   valuation: {
-    amount: string;
-    currency: string;
-    method: string;
-    marketValue: string;
-    forcedSaleValue: string;
-    notes: string;
-  };
-  valuer: { name: string; company: string; license: string; contact: string; verified: boolean };
+  amount: string;
+  currency: string;
+  method: string;
+  marketValue: string;
+  forcedSaleValue: string;
+  notes: string;
+  condition: string;
+  mileage: string;
+};
+ valuer: { name: string; company: string; license: string; contact: string; verified: boolean; certificateFile: string; certificateSize: string };
   valuationDate: string;
   expiryDays: number;
   status: string;
@@ -630,51 +632,120 @@ function ReadinessRow({ label, ok, note }: { label: string; ok: boolean; note: s
   );
 }
 
-function ReadinessPanel({ readiness }: { readiness: Readiness }) {
+function StatusPill({
+  color,
+  label,
+  value,
+}: {
+  color: string;
+  label: string;
+  value: string;
+}) {
   return (
-    <Paper withBorder radius="md" p="md" mb={22}>
-      <SectionLabel>Underwriting readiness</SectionLabel>
-      <ReadinessRow label="Asset valuation" ok={readiness.valuationOk} note={readiness.valuationOk ? "Completed" : "Not completed"} />
-      <ReadinessRow label="Title verification" ok={readiness.titleOk} note={readiness.titleOk ? "Completed" : "Unresolved item(s)"} />
-      <ReadinessRow label="Legal checks" ok={readiness.legalOk} note={readiness.legalOk ? "Completed" : "Unresolved item(s)"} />
-      <Box style={{ borderBottom: "none" }}>
-        <ReadinessRow label="Supporting documents" ok={readiness.docsOk} note={readiness.docsOk ? "Complete" : "Missing required document(s)"} />
-      </Box>
-
+    <Box
+      px={9}
+      py={3}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        borderRadius: 999,
+        background: `var(--mantine-color-${color}-0)`,
+        border: `1px solid var(--mantine-color-${color}-2)`,
+        width: "fit-content",
+        flex: "0 0 auto",
+      }}
+    >
       <Box
-        mt={12}
-        p="sm"
         style={{
-          borderRadius: 9,
-          background: readiness.ready ? "var(--mantine-color-green-0)" : "var(--mantine-color-yellow-0)",
-          border: `1px solid ${readiness.ready ? "var(--mantine-color-green-2)" : "var(--mantine-color-yellow-3)"}`,
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          background: `var(--mantine-color-${color}-6)`,
+          flexShrink: 0,
         }}
-      >
-        {readiness.ready ? (
-          <Group gap={7}>
-            <IconCircleCheck size={14} color="var(--mantine-color-green-7)" />
-            <Text fz={12.5} fw={600} c="green.7">
-              Ready for decision
-            </Text>
-          </Group>
-        ) : (
-          <>
-            <Group gap={7} mb={4}>
-              <IconAlertTriangle size={14} color="var(--mantine-color-orange-7)" />
-              <Text fz={12.5} fw={600} c="orange.8">
-                Not ready for decision
+      />
+      <Text fz={11} c="slate.7" lh={1.2} style={{ whiteSpace: "nowrap" }}>
+        {label}:{" "}
+        <Text component="span" fz={11} fw={700} c={`${color}.7`}>
+          {value}
+        </Text>
+      </Text>
+    </Box>
+  );
+}
+function ReadinessPanel({
+  readiness,
+  legalCounts,
+  totalAssetValue,
+  missingDocsCount,
+  onQuickRemediation,
+}: {
+  readiness: Readiness;
+  legalCounts: { passed: number; exception: number; failed: number };
+  totalAssetValue: number;
+  missingDocsCount: number;
+  onQuickRemediation: () => void;
+}) {
+  return (
+    <Paper withBorder radius="md" p="sm" mb={16}>
+      <Group justify="space-between" align="center" mb={8}>
+        <Text fz={12.5} fw={700} c="slate.9">
+          Underwriting Readiness Matrix
+        </Text>
+        {!readiness.ready && (
+          <Badge size="xs" radius="xl" color="orange" variant="light">
+            Requires Underwriter Clearance
+          </Badge>
+        )}
+      </Group>
+
+      <Group gap={6} wrap="wrap" mb={8} align="center" style={{ rowGap: 6 }}>
+  <StatusPill color="teal" label="Asset Valuation" value={readiness.valuationOk ? `Verified (${zmw(totalAssetValue)})` : "Not completed"} />
+  <StatusPill color="orange" label="Title Verification" value={readiness.titleOk ? "Verified" : "1 Unresolved Item"} />
+  <StatusPill color="indigo" label="Legal Checks" value={`${legalCounts.passed} Passed · ${legalCounts.exception} Exception`} />
+  <StatusPill color="pink" label="Docs" value={readiness.docsOk ? "Complete" : `${missingDocsCount} Required Pending`} />
+</Group>
+
+      <Text fz={11} c="slate.5" mb={8}>
+        Review security asset, encumbrance liabilities, and statutory checks before consolidating loan approval.
+      </Text>
+
+      {readiness.ready ? (
+        <Group gap={5} px={10} py={7} bg="green.0" style={{ border: "1px solid var(--mantine-color-green-2)", borderRadius: 8 }}>
+          <IconCircleCheck size={12} color="var(--mantine-color-green-7)" />
+          <Text fz={11.5} fw={600} c="green.7">
+            Ready for decision
+          </Text>
+        </Group>
+      ) : (
+        <Group
+          justify="space-between"
+          align="flex-start"
+          px={10}
+          py={8}
+          bg="yellow.0"
+          style={{ border: "1px solid var(--mantine-color-yellow-3)", borderRadius: 8 }}
+          wrap="nowrap"
+        >
+          <Box style={{ flex: 1, minWidth: 0 }}>
+            <Group gap={5} mb={3}>
+              <IconAlertTriangle size={12} color="var(--mantine-color-orange-7)" />
+              <Text fz={11} fw={700} c="red.8">
+                UNDERWRITING DECISION BLOCKED
               </Text>
             </Group>
-            <Box component="ul" pl={20} m={0}>
-              {readiness.blockers.map((b) => (
-                <Text component="li" key={b} fz={12} c="orange.8">
-                  {b}
-                </Text>
-              ))}
-            </Box>
-          </>
-        )}
-      </Box>
+            {readiness.blockers.map((b, i) => (
+              <Text key={i} fz={11} c="orange.8" mb={1} lh={1.4}>
+                {b}
+              </Text>
+            ))}
+          </Box>
+          <Button size="compact-xs" color="yellow" radius="xl" onClick={onQuickRemediation} style={{ flexShrink: 0 }}>
+            Quick Remediation
+          </Button>
+        </Group>
+      )}
     </Paper>
   );
 }
@@ -1145,7 +1216,7 @@ function UnderwritingWorkspace({
 
   return (
     <Box p={30}>
-      <Group justify="space-between" align="center" mb={18}>
+      {/* <Group justify="space-between" align="center" mb={14}>
         <Box>
           <Text fz={15} fw={700} c="slate.9">
             Underwriting workspace
@@ -1154,9 +1225,18 @@ function UnderwritingWorkspace({
             Review security, verify title, and complete legal checks before a consolidated decision.
           </Text>
         </Box>
-      </Group>
+      </Group> */}
 
-      <ReadinessPanel readiness={readiness} />
+      <ReadinessPanel
+  readiness={readiness}
+  legalCounts={legalCounts}
+  totalAssetValue={totalAssetValue}
+  missingDocsCount={
+    assets.flatMap((a) => [...a.docs, ...a.titleDocs])
+      .filter((d) => d.tier === "required" && d.status !== "Verified").length
+  }
+  onQuickRemediation={() => setTab("checks")}
+/>
 
       <AssetSwitcher assets={assets} selectedId={selected.id} onSelect={setSelectedId} onAdd={addAsset} />
 
@@ -1181,90 +1261,118 @@ function UnderwritingWorkspace({
           </Text>
 
           {tab === "asset" && (
-            <Stack gap={22}>
-              <Box>
-                <SectionLabel right={<SourceBadge source={selected.source} />}>Asset details</SectionLabel>
-                {selected.source === "application" ? (
-                  <SimpleGrid cols={2} spacing={14} bg="slate.0" p="md" style={{ borderRadius: 12, border: "1px solid var(--mantine-color-slate-2)" }}>
-                    <ReadRow label="Asset type" value={selected.base.type} />
-                    <ReadRow label="Asset ID" value={selected.base.assetId} />
-                    <ReadRow label="Location" value={selected.base.location} />
-                    <ReadRow label="Owner" value={selected.base.owner} />
-                    <ReadRow label="Description" value={selected.base.description} span={2} />
-                    <ReadRow label="Acquisition information" value={selected.base.acquisition} span={2} />
-                  </SimpleGrid>
-                ) : (
-                  <SimpleGrid cols={2} spacing={14} bg="slate.0" p="md" style={{ borderRadius: 12, border: "1px solid var(--mantine-color-slate-2)" }}>
-                    <Select label="Asset type" value={selected.base.type} onChange={(v) => updateSelected({ base: { ...selected.base, type: v || selected.base.type } })} data={DUMMY_ASSET_TYPES} radius="md" />
-                    <TextInput label="Asset ID / reference" value={selected.base.assetId} onChange={(e) => updateSelected({ base: { ...selected.base, assetId: e.currentTarget.value } })} placeholder="e.g. AST-33022" radius="md" />
-                    <TextInput label="Location" value={selected.base.location} onChange={(e) => updateSelected({ base: { ...selected.base, location: e.currentTarget.value } })} placeholder="e.g. Lusaka, Zambia" radius="md" />
-                    <TextInput label="Owner" value={selected.base.owner} onChange={(e) => updateSelected({ base: { ...selected.base, owner: e.currentTarget.value } })} radius="md" />
-                    <TextInput label="Description" value={selected.base.description} onChange={(e) => updateSelected({ base: { ...selected.base, description: e.currentTarget.value } })} style={{ gridColumn: "1 / -1" }} radius="md" />
-                    <TextInput label="Acquisition / value information" value={selected.base.acquisition} onChange={(e) => updateSelected({ base: { ...selected.base, acquisition: e.currentTarget.value } })} style={{ gridColumn: "1 / -1" }} radius="md" />
-                  </SimpleGrid>
-                )}
-              </Box>
+            <Stack gap={16}>
+  {/* ASSET DETAILS */}
+  <Paper withBorder radius="md" p="lg">
+    <Group justify="space-between" align="center" mb={16}>
+      <Group gap={8}>
+        <Box style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--mantine-color-violet-6)" }} />
+        <Text fz={11} fw={700} c="slate.7" tt="uppercase" style={{ letterSpacing: 0.3 }}>Asset Details</Text>
+      </Group>
+      {selected.source === "application" && (
+        <Badge size="xs" radius="xl" color="green" variant="light" leftSection={<IconCheck size={10} />}>
+          From application · Verified
+        </Badge>
+      )}
+    </Group>
+    <SimpleGrid cols={2} spacing={18}>
+      <ReadRow label="Asset Category / Type" value={selected.base.type} />
+      <ReadRow label="Asset ID" value={<Text fz={13.5} fw={700} c="indigo.7">{selected.base.assetId}</Text>} />
+      <ReadRow label="Location & Custody" value={selected.base.location} />
+      <ReadRow label="Registered Owner" value={<Text fz={13.5} fw={700} c="indigo.9">{selected.base.owner}</Text>} />
+    </SimpleGrid>
+    <Box mt={14}>
+      <Text fz={11} c="slate.4" mb={4}>Asset Description</Text>
+      <Box p="sm" bg="slate.0" style={{ borderRadius: 8 }}>
+        <Text fz={13} fw={600} c="slate.9">{selected.base.description}</Text>
+      </Box>
+    </Box>
+    <Box mt={12}>
+      <Text fz={11} c="slate.4" mb={4}>Acquisition Information</Text>
+      <Text fz={12.5} c="slate.7">• {selected.base.acquisition}</Text>
+    </Box>
+  </Paper>
 
-              <Box>
-                <SectionLabel
-                  right={
-                    <Badge size="sm" radius="xl" color="orange" variant="light">
-                      Underwriter verified
-                    </Badge>
-                  }
-                >
-                  Valuation
-                </SectionLabel>
-                <SimpleGrid cols={2} spacing={14} mb={14}>
-                  <NumberInput label="Valuation amount" value={selected.valuation.amount ? Number(selected.valuation.amount) : undefined} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, amount: v ? String(v) : "" } })} placeholder="e.g. 95000" suffix=" ZMW" radius="md" />
-                  <Select label="Valuation method" value={selected.valuation.method} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, method: v || selected.valuation.method } })} data={["Market comparison", "Cost approach", "Income approach"]} radius="md" />
-                  <NumberInput label="Market value" value={selected.valuation.marketValue ? Number(selected.valuation.marketValue) : undefined} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, marketValue: v ? String(v) : "" } })} placeholder="e.g. 98000" suffix=" ZMW" radius="md" />
-                  <NumberInput label="Forced sale / realizable value" value={selected.valuation.forcedSaleValue ? Number(selected.valuation.forcedSaleValue) : undefined} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, forcedSaleValue: v ? String(v) : "" } })} placeholder="e.g. 76000" suffix=" ZMW" radius="md" />
-                </SimpleGrid>
-                <Textarea label="Valuation notes" value={selected.valuation.notes} onChange={(e) => updateSelected({ valuation: { ...selected.valuation, notes: e.currentTarget.value } })} placeholder="Condition, mileage, any relevant observations…" minRows={2} radius="md" />
+  {/* VALUATION & APPRAISAL DETAILS */}
+  <Paper withBorder radius="md" p="lg">
+    <Group justify="space-between" align="center" mb={16}>
+      <Group gap={8}>
+        <Box style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--mantine-color-violet-6)" }} />
+        <Text fz={11} fw={700} c="slate.7" tt="uppercase" style={{ letterSpacing: 0.3 }}>Valuation &amp; Appraisal Details</Text>
+      </Group>
+      <Badge size="xs" radius="xl" color="orange" variant="light">Underwriter verified</Badge>
+    </Group>
+    <SimpleGrid cols={2} spacing={18} mb={16}>
+      <Box>
+        <Text fz={11} c="slate.4" mb={4}>Valuation Amount / Market Value</Text>
+        <NumberInput value={selected.valuation.amount ? Number(selected.valuation.amount) : undefined} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, amount: v ? String(v) : "" } })} prefix="ZMW " radius="md" styles={{ input: { fontWeight: 700 } }} />
+        <Text fz={10.5} c="slate.4" mt={3}>Base valuation agreed for underwriting assessment</Text>
+      </Box>
+      <Box>
+        <Text fz={11} c="slate.4" mb={4}>Forced Sale / Realizable Value</Text>
+        <NumberInput value={selected.valuation.forcedSaleValue ? Number(selected.valuation.forcedSaleValue) : undefined} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, forcedSaleValue: v ? String(v) : "" } })} prefix="ZMW " radius="md" styles={{ input: { fontWeight: 700 } }} />
+        <Text fz={10.5} c="slate.4" mt={3}>80% realisation factor applied per credit policy</Text>
+      </Box>
+    </SimpleGrid>
+    <SimpleGrid cols={2} spacing={18} mb={16}>
+      <Box>
+        <Text fz={11} c="slate.4" mb={4}>Valuation Method</Text>
+        <Select value={selected.valuation.method} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, method: v || selected.valuation.method } })} data={["Market comparison & physical inspection audit", "Market comparison", "Cost approach", "Income approach"]} radius="md" />
+      </Box>
+      <Box>
+        <Text fz={11} c="slate.4" mb={4}>Physical Condition &amp; Mileage</Text>
+        <Group gap={8}>
+          <Badge size="sm" radius="sm" color="green" variant="light">{selected.valuation.condition || "—"}</Badge>
+          <Badge size="sm" radius="sm" color="gray" variant="light">{selected.valuation.mileage || "—"}</Badge>
+        </Group>
+      </Box>
+    </SimpleGrid>
+    <Box>
+      <Text fz={11} c="slate.4" mb={4}>Valuation Notes &amp; Observations</Text>
+      <Box p="sm" bg="blue.0" style={{ borderRadius: 8, border: "1px solid var(--mantine-color-blue-1)" }}>
+        <Textarea value={selected.valuation.notes} onChange={(e) => updateSelected({ valuation: { ...selected.valuation, notes: e.currentTarget.value } })} variant="unstyled" minRows={2} styles={{ input: { fontSize: 12.5, color: "var(--mantine-color-blue-9)" } }} />
+      </Box>
+    </Box>
+  </Paper>
 
-                {coverage != null && (
-                  <Group mt={14} p="sm" gap={26} bg="brand.0" style={{ border: "1px solid var(--mantine-color-brand-2)", borderRadius: 10 }}>
-                    <MiniStat label="This asset's value" value={zmw(selected.valuation.amount)} />
-                    <MiniStat label="Final loan amount" value={zmw(finalAmount)} />
-                    <MiniStat label="Coverage" value={`${coverage}%`} accent={coverage < 120} />
-                  </Group>
-                )}
-              </Box>
-
-              <Box>
-                <SectionLabel>Valuer information</SectionLabel>
-                <SimpleGrid cols={2} spacing={14} mb={10}>
-                  <TextInput label="Valuer name" value={selected.valuer.name} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, name: e.currentTarget.value } })} placeholder="e.g. K. Zulu" radius="md" />
-                  <TextInput label="Valuer / company" value={selected.valuer.company} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, company: e.currentTarget.value } })} placeholder="e.g. Apex Valuers Ltd" radius="md" />
-                  <TextInput label="Registration / license number" value={selected.valuer.license} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, license: e.currentTarget.value } })} placeholder="e.g. VAL-2291" radius="md" />
-                  <TextInput label="Contact" value={selected.valuer.contact} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, contact: e.currentTarget.value } })} placeholder="Phone or email" radius="md" />
-                </SimpleGrid>
-                <Checkbox checked={selected.valuer.verified} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, verified: e.currentTarget.checked } })} label="Valuer meets the configured panel requirements" />
-              </Box>
-
-              <Box>
-                <SectionLabel>Valuation date</SectionLabel>
-                <SimpleGrid cols={2} spacing={14}>
-                  <TextInput type="date" label="Valuation date" value={selected.valuationDate} onChange={(e) => updateSelected({ valuationDate: e.currentTarget.value })} radius="md" />
-                  <Box>
-                    <Text fz={12} fw={500} c="slate.7" mb={5}>
-                      Validity
-                    </Text>
-                    <ValidityNote date={selected.valuationDate} days={selected.expiryDays} />
-                  </Box>
-                </SimpleGrid>
-              </Box>
-
-              <Box>
-                <SectionLabel right={<StatusSelect value={selected.status} onChange={(v) => updateSelected({ status: v })} />}>Valuation status</SectionLabel>
-                {["Failed", "Exception"].includes(selected.status) && (
-                  <Textarea label="Finding / reason (required)" value={selected.reason} onChange={(e) => updateSelected({ reason: e.currentTarget.value })} placeholder="Explain why the valuation failed or is an exception…" minRows={2} radius="md" />
-                )}
-              </Box>
-
-              <DocumentsTable title="Supporting documents" docs={selected.docs} setDocs={(docs) => updateSelected({ docs })} />
-            </Stack>
+  {/* VALUER & PANEL CERTIFICATION */}
+  <Paper withBorder radius="md" p="lg">
+    <Group justify="space-between" align="center" mb={16}>
+      <Group gap={8}>
+        <Box style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--mantine-color-violet-6)" }} />
+        <Text fz={11} fw={700} c="slate.7" tt="uppercase" style={{ letterSpacing: 0.3 }}>Valuer &amp; Panel Certification</Text>
+      </Group>
+      <Text fz={11} c="slate.4">Accredited Panel Expert</Text>
+    </Group>
+    <SimpleGrid cols={2} spacing={18} mb={14}>
+      <Box>
+        <Text fz={11} c="slate.4" mb={4}>Valuer Name</Text>
+        <TextInput value={selected.valuer.name} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, name: e.currentTarget.value } })} radius="md" styles={{ input: { fontWeight: 600, color: "var(--mantine-color-indigo-8)" } }} />
+      </Box>
+      <Box>
+        <Text fz={11} c="slate.4" mb={4}>Valuer Firm / Company</Text>
+        <TextInput value={selected.valuer.company} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, company: e.currentTarget.value } })} radius="md" styles={{ input: { fontWeight: 600 } }} />
+      </Box>
+      <Box>
+        <Text fz={11} c="slate.4" mb={4}>Registration / License Number</Text>
+        <TextInput value={selected.valuer.license} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, license: e.currentTarget.value } })} radius="md" styles={{ input: { fontWeight: 700 } }} />
+      </Box>
+      <Box>
+        <Text fz={11} c="slate.4" mb={4}>Contact Details</Text>
+        <TextInput value={selected.valuer.contact} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, contact: e.currentTarget.value } })} radius="md" />
+      </Box>
+    </SimpleGrid>
+    <Group gap={10} p="sm" bg="slate.0" style={{ borderRadius: 8 }} wrap="nowrap">
+      <IconFileText size={20} color="var(--mantine-color-slate-4)" style={{ flexShrink: 0 }} />
+      <Box style={{ flex: 1, minWidth: 0 }}>
+        <Text fz={12.5} fw={600} c="slate.9">{selected.valuer.certificateFile || "No certificate uploaded"}</Text>
+        <Text fz={10.5} c="slate.4">Official digital seal &amp; photo audit included {selected.valuer.certificateSize ? `(${selected.valuer.certificateSize})` : ""}</Text>
+      </Box>
+      <Badge size="xs" radius="xl" color="green" variant="light">Verified</Badge>
+      <Button size="compact-xs" variant="subtle">View PDF</Button>
+    </Group>
+  </Paper>
+</Stack>
           )}
 
           {tab === "title" && (
