@@ -35,7 +35,7 @@ function NumberField({ label, value, onChange, prefix = "ZMW" }: { label: string
 const DEFAULT_INPUTS: EligibilityInputs = {
   basicSalary: 15000, netSalary: 12500, otherIncome: 3000, existingEMI: 2000,
   existingBalance: 20000, creditScore: 735, onTime: 94, maxDPD: 12, npa: false,
-  collateral: 100000, tenure: 24, productMax: 100000,
+  tenure: 24, productMax: 100000,
 };
 
 export function Simulator() {
@@ -59,7 +59,6 @@ export function Simulator() {
               <NumberField label="Other Income" value={inputs.otherIncome} onChange={set("otherIncome")} />
               <NumberField label="Existing Monthly EMI" value={inputs.existingEMI} onChange={set("existingEMI")} />
               <NumberField label="Existing Loan Balance" value={inputs.existingBalance} onChange={set("existingBalance")} />
-              <NumberField label="Collateral Value" value={inputs.collateral} onChange={set("collateral")} />
               <NumberField label="Credit Score" prefix="" value={inputs.creditScore} onChange={set("creditScore")} />
               <NumberField label="On-Time Payment %" prefix="" value={inputs.onTime} onChange={set("onTime")} />
               <NumberField label="Maximum DPD (days)" prefix="" value={inputs.maxDPD} onChange={set("maxDPD")} />
