@@ -114,11 +114,11 @@ function CommentsPopover({ row }: { row: LoanApplicationRow }) {
             {comments.map((c, idx) => (
               <Box key={c.name}>
                 <Group gap={6} justify="space-between">
-                  <Text fz="xs" fw={700} c="slate.7">
+                  <Text fz={11} fw={700} c="slate.7">
                     {c.by}
                   </Text>
                 </Group>
-                <Text fz="xs" c="slate.6" style={{ whiteSpace: "pre-wrap" }}>
+                <Text fz={11} c="slate.6" style={{ whiteSpace: "pre-wrap" }}>
                   {c.comment}
                 </Text>
                 {idx < comments.length - 1 && <Divider my={6} />}
@@ -239,7 +239,7 @@ function ApplicationIdCell({ name }: { name: string }) {
         <IconFileText size={14} color="var(--mantine-color-brand-6)" />
       </Box>
       <Text
-        fz="xs"
+        fz={11}
         fw={700}
         c="slate.8"
         style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
@@ -623,7 +623,7 @@ export function LoanApplication() {
         header: "Applicant",
         cell: (info) => (
           <Text
-            fz="xs"
+            fz={11}
             fw={600}
             c="slate.7"
             style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
@@ -639,7 +639,7 @@ export function LoanApplication() {
 
           if (value === null || value === undefined) {
             return (
-              <Text fz="xs" c="slate.6">
+              <Text fz={11} c="slate.6">
                 —
               </Text>
             );
@@ -650,7 +650,7 @@ export function LoanApplication() {
     });
           return (
             <Text
-              fz="xs"
+              fz={11}
               c="slate.8"
               fw={600}
               style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
@@ -678,7 +678,7 @@ export function LoanApplication() {
         header: "Customer",
         cell: (info) => (
           <Text
-            fz="xs"
+            fz={11}
             c="slate.6"
             style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
           >
@@ -700,7 +700,7 @@ export function LoanApplication() {
  columnHelper.display({
         id: "actions",
         header: () => (
-          <Text fz="xs" fw={600} ta="right" w="100%">
+          <Text fz={11} fw={600} ta="right" w="100%">
             Actions
           </Text>
         ),
@@ -1031,7 +1031,7 @@ export function LoanApplication() {
         {isLoading ? (
           <Stack align="center" gap="xs" py="xl">
             <Loader size="sm" color="brand" />
-            <Text ta="center" c="slate.5" fz="xs">
+            <Text ta="center" c="slate.5" fz={11}>
               Loading loan applications…
             </Text>
           </Stack>
@@ -1041,7 +1041,7 @@ export function LoanApplication() {
               size={26}
               color="var(--mantine-color-danger-5)"
             />
-            <Text ta="center" c="danger.6" fz="xs">
+            <Text ta="center" c="danger.6" fz={11}>
               Couldn't load loan applications. Please try again.
             </Text>
           </Stack>
@@ -1054,11 +1054,11 @@ export function LoanApplication() {
               }}
             >
               <Table
-                verticalSpacing="sm"
+                verticalSpacing={6}
                 horizontalSpacing="sm"
-                fz="xs"
+                fz={11}
                 w="100%"
-                style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+                style={{ borderCollapse: "separate", borderSpacing: "0 6px" }}
               >
                 <Table.Thead>
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -1072,8 +1072,8 @@ export function LoanApplication() {
                             c="slate.5"
                             fw={700}
                             style={{
-                              fontSize: "var(--mantine-font-size-xs)",
-                              padding: "0 10px 6px",
+                              fontSize: 10,
+                              padding: "0 12px 4px",
                               userSelect: "none",
                               cursor: canSort ? "pointer" : "default",
                               textTransform: "uppercase",
@@ -1132,7 +1132,7 @@ export function LoanApplication() {
                               color="var(--mantine-color-slate-4)"
                             />
                           </Box>
-                          <Text ta="center" c="slate.5" fz="xs">
+                          <Text ta="center" c="slate.5" fz={11}>
                             No loan applications match your filters.
                           </Text>
                         </Stack>
@@ -1154,7 +1154,7 @@ export function LoanApplication() {
                             <Table.Td
                               key={cell.id}
                               style={{
-                                padding: "10px 10px",
+                                padding: "8px 12px",
                                 border: "none",
                                 boxShadow: "var(--mantine-shadow-xs)",
                                 borderLeft:

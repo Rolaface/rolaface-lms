@@ -104,7 +104,7 @@ export const RULES: RuleRow[] = [
    WIZARD STEP LIST (Create Rule tab)
    ============================================================ */
 export const STEPS = [
-  "Basic Information", "Customer Parameters", "Income Assessment", "Existing Obligations",
+  "Basic Information", "Income Assessment", "Existing Obligations",
   "Credit & Payment History", "Collateral", "Risk Scoring", "Eligibility Formula",
   "Pre-Approval Limits", "Decision Rules", "Review & Publish",
 ];
@@ -115,17 +115,10 @@ export interface WeightItem {
 }
 
 export const DEFAULT_WEIGHTS: WeightItem[] = [
-  { name: "Credit Score", w: 30 }, { name: "Payment History", w: 20 }, { name: "Income Stability", w: 15 },
-  { name: "Debt-to-Income", w: 15 }, { name: "Employment Stability", w: 10 }, { name: "Collateral", w: 5 },
+  { name: "Credit Score", w: 35 }, { name: "Payment History", w: 20 }, { name: "Income Stability", w: 15 },
+  { name: "Debt-to-Income", w: 15 }, { name: "Employment Stability", w: 10 },
   { name: "Customer Relationship", w: 5 },
 ];
-
-export const DEFAULT_PARAMS: Record<string, string> = {
-  "Employment Type": "Required", "Employer": "Optional", "Employment Sector": "Optional",
-  "Employment Duration": "Required", "Years of Service": "Required", "Probation Status": "Optional",
-  "Retirement Age": "Ignored", "Basic Salary": "Required", "Net Salary": "Required",
-  "Salary Stability": "Optional", "Salary Growth": "Ignored",
-};
 
 /* ============================================================
    ELIGIBILITY CALCULATION (Simulator tab)
@@ -151,11 +144,11 @@ export interface RiskTier {
 }
 
 export function riskTier(score: number, onTime: number, dpd: number, npa: boolean): RiskTier {
-  if (npa) return { label: "Manual Review", pct: 0, tone: "high" };
+  if (npa) return { label: "Not Acceptable", pct: 0, tone: "high" };
   if (score >= 750 && onTime >= 95 && dpd <= 15) return { label: "Low Risk", pct: 0.9, tone: "low" };
   if (score >= 650 && onTime >= 85) return { label: "Medium Risk", pct: 0.75, tone: "medium" };
   if (score >= 550) return { label: "High Risk", pct: 0.5, tone: "high" };
-  return { label: "Manual Review", pct: 0, tone: "high" };
+  return { label: "Not Acceptable", pct: 0, tone: "high" };
 }
 
 export interface EligibilityInputs {
@@ -168,7 +161,6 @@ export interface EligibilityInputs {
   onTime: number;
   maxDPD: number;
   npa: boolean;
-  collateral: number;
   tenure: number;
   productMax: number;
 }
@@ -179,7 +171,7 @@ export interface LimitItem {
 }
 
 export function computeEligibility(inputs: EligibilityInputs) {
-  const { basicSalary, netSalary, otherIncome, existingEMI, existingBalance, creditScore, onTime, maxDPD, npa, collateral, tenure, productMax } = inputs;
+  const { basicSalary, netSalary, otherIncome, existingEMI, existingBalance, creditScore, onTime, maxDPD, npa, tenure, productMax } = inputs;
 
   const eligibleIncome = netSalary + otherIncome * 0.7;
   const salaryLimit = basicSalary * 5;
@@ -194,8 +186,6 @@ export function computeEligibility(inputs: EligibilityInputs) {
   const exposureRatio = Math.min(existingBalance / (eligibleIncome * 12 || 1), 0.6);
   const exposureLimit = affordabilityLimit * (1 - exposureRatio);
 
-  const collateralLimit = collateral * 0.8 * 0.7;
-
   let onTimeAdj = 1;
   if (onTime < 70) onTimeAdj = 0.7;
 
@@ -204,7 +194,6 @@ export function computeEligibility(inputs: EligibilityInputs) {
     { name: "Affordability Limit", value: affordabilityLimit * onTimeAdj },
     { name: "Credit Score Limit", value: creditLimit },
     { name: "Existing Exposure Limit", value: exposureLimit },
-    { name: "Collateral Limit", value: collateralLimit },
     { name: "Product Maximum", value: productMax },
   ];
 
@@ -212,10 +201,12 @@ export function computeEligibility(inputs: EligibilityInputs) {
   let limitingFactor = limits.find((l) => l.value === final)?.name || "";
   let decision: "Eligible" | "Decline" = "Eligible";
 
+  const risk = riskTier(creditScore, onTime, maxDPD, npa);
+
   if (npa) { final = 0; limitingFactor = "Active NPA — Hard Stop"; decision = "Decline"; }
   else if (creditScore < 500) { final = 0; limitingFactor = "Credit Score Below Minimum"; decision = "Decline"; }
+  else if (risk.label === "Not Acceptable") { final = 0; limitingFactor = "Risk Profile Not Acceptable — Hard Stop"; decision = "Decline"; }
 
-  const risk = riskTier(creditScore, onTime, maxDPD, npa);
   const preApproved = decision === "Eligible" ? final * risk.pct : 0;
   const maxEMIOut = (preApproved / tenure) * 1.1;
 
