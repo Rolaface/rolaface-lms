@@ -224,9 +224,9 @@ function ContextHeader({ values, applicationId }: { values: LoanApplicationValue
   const initials = name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 
   return (
-    <Group justify="space-between" align="center" px="xl" py="sm" bg="white" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
+    <Group justify="space-between" align="center" px="xl" py={6} bg="white" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
       <Group gap={12}>
-        <ThemeIcon radius="xl" size={36} variant="light" color="brand">
+        <ThemeIcon radius="xl" size={32} variant="light" color="brand">
           <Text fz="sm" fw={700}>{initials || "—"}</Text>
         </ThemeIcon>
         <Box>
@@ -366,16 +366,16 @@ function OfferCard({
 // Inject CSS for the precise layout
 const offerCss = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap');
-  .os-intro { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+  .os-intro { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
   .os-intro h1 { font-family: 'Source Serif 4', serif; font-size: 16px; font-weight: 600; margin: 0; color: #1B1730; }
   .os-intro p { margin: 1px 0 0; color: #605B78; font-size: 12px; }
   .os-status-pill { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 100px; background: #EFECFC; color: #2A1F94; white-space: nowrap; flex: none; }
 
-  .os-headline { background: linear-gradient(155deg, #2A1F94, #3F2FC7); border-radius: 12px; padding: 13px 18px; color: #fff; display: flex; align-items: center; gap: 18px; flex: none; margin-bottom: 24px; }
+  .os-headline { background: linear-gradient(155deg, #2A1F94, #3F2FC7); border-radius: 12px; padding: 8px 18px; color: #fff; display: flex; align-items: center; gap: 18px; flex: none; margin-bottom: 10px; }
   .os-headline .main-fig { flex: none; }
   .os-headline .label { font-size: 10.5px; color: #C9C2F2; margin-bottom: 2px; }
-  .os-headline .amount { font-family: 'Source Serif 4', serif; font-size: 24px; font-weight: 600; line-height: 1; }
-  .os-headline .valid { font-size: 10px; color: #C9C2F2; margin-top: 4px; }
+  .os-headline .amount { font-family: 'Source Serif 4', serif; font-size: 22px; font-weight: 600; line-height: 1; }
+  .os-headline .valid { font-size: 10px; color: #C9C2F2; margin-top: 3px; }
   .os-headline .valid b { color: #fff; font-weight: 600; }
   .os-headline .divider { width: 1px; align-self: stretch; background: rgba(255,255,255,.18); flex: none; }
   .os-headline .stats { display: flex; gap: 20px; flex: 1; }
@@ -383,21 +383,21 @@ const offerCss = `
   .os-headline .stat .v { font-size: 14px; font-weight: 700; }
   .os-headline .stat .v.accent { color: #8DE8B4; }
 
-  .os-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; flex: 1; min-height: 0; margin-bottom: 24px; }
+  .os-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; flex: 1; min-height: 0; margin-bottom: 10px; }
   .os-section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
   .os-section-head h2 { font-size: 12px; font-weight: 700; margin: 0; color: #605B78; }
   .os-section-head a { font-size: 11px; color: #3F2FC7; text-decoration: none; font-weight: 600; cursor: pointer; }
   .os-section-head .note { font-size: 10.5px; color: #9E99B0; }
   .os-rows { border-top: 1px solid #E7E4EF; }
-  .os-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 1px; border-bottom: 1px solid #E7E4EF; font-size: 12px; }
+  .os-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 1px; border-bottom: 1px solid #E7E4EF; font-size: 12px; }
   .os-row .k { color: #605B78; }
   .os-row .v { font-weight: 600; text-align: right; color: #1B1730; }
   .os-row .v.muted { font-weight: 500; color: #605B78; }
-  .os-row.total { background: #F7F6F9; margin: 5px -1px 0; padding: 7px 9px; border-radius: 8px; border-bottom: none; }
+  .os-row.total { background: #F7F6F9; margin: 4px -1px 0; padding: 6px 9px; border-radius: 8px; border-bottom: none; }
   .os-row.total .k, .os-row.total .v { font-weight: 700; color: #1B1730; font-size: 12px; }
   .os-tag { font-size: 9.5px; font-weight: 600; padding: 2px 8px; border-radius: 100px; background: #EAF6EF; color: #1E7F4F; }
 
-  .os-collateral { flex: none; border: 1px solid #F0CE96; background: #FDF3E4; border-radius: 12px; display: flex; align-items: center; gap: 14px; padding: 9px 14px; margin-bottom: 24px; }
+  .os-collateral { flex: none; border: 1px solid #F0CE96; background: #FDF3E4; border-radius: 12px; display: flex; align-items: center; gap: 14px; padding: 6px 14px; margin-bottom: 10px; }
   .os-collateral .veh { flex: none; min-width: 190px; }
   .os-collateral .veh .name { font-weight: 700; font-size: 12px; color: #1B1730; }
   .os-collateral .veh .sub { font-size: 10.5px; color: #605B78; margin-top: 1px; }
@@ -408,7 +408,7 @@ const offerCss = `
   .os-collateral .warn .txt p { margin: 0; font-size: 10.5px; color: #8A4A12; line-height: 1.3; }
   .os-collateral .cta button { background: #B45309; color: #fff; border: none; border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 
-  .os-decision { flex: none; border: 1px solid #E7E4EF; border-radius: 12px; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #F7F6F9; }
+  .os-decision { flex: none; border: 1px solid #E7E4EF; border-radius: 12px; padding: 7px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #F7F6F9; }
   .os-decision .txt strong { display: block; font-size: 12px; color: #1B1730; }
   .os-decision .txt p { margin: 1px 0 0; font-size: 10.5px; color: #605B78; }
   .os-decision .btns { display: flex; gap: 8px; flex: none; }
@@ -549,8 +549,8 @@ function OfferWorkspace() {
   }
 
   return (
-    <Box p={28}>
-      <Group justify="space-between" align="center" mb={18}>
+    <Box p={16}>
+      <Group justify="space-between" align="center" mb={10}>
         <Box>
           <Text fz={15} fw={700} c="slate.9">Offer &amp; signing</Text>
           <Text fz={12} c="slate.5" mt={2}>Issue the offer, capture the customer's response, then generate and execute the contract.</Text>
@@ -953,7 +953,7 @@ export function OfferModal({
       padding={0}
       lockScroll
       styles={{
-        content: { display: "flex", flexDirection: "column", overflow: "hidden" },
+        content: { display: "flex", flexDirection: "column", overflow: "hidden", height: "90vh", maxHeight: "90vh" },
         header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
         body: { flex: 1, display: "flex", flexDirection: "column", padding: 0, minHeight: 0, overflow: "hidden" },
       }}
