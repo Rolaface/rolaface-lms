@@ -75,28 +75,32 @@ export function EligibilityRules({ onCreateRule, onSimulate }: { onCreateRule: (
         />
       </Group>
 
-      <Paper radius="md" p="sm" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}>
+      <Paper radius="lg" p="sm" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}>
+        <style>{`
+  .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+  .lms-row:hover td { background: var(--mantine-color-slate-0) !important; }
+        `}</style>
         <Table verticalSpacing={6} horizontalSpacing="sm" fz={11} w="100%" style={{ borderCollapse: "separate", borderSpacing: "0 6px" }}>
           <Table.Thead>
             <Table.Tr>
               {["Rule Name", "Loan Product", "Customer Type", "Risk", "Priority", "Status", "Version", "Updated", "By", ""].map((h) => (
-                <Table.Th key={h} c="slate.5" fw={600} fz={10} tt="uppercase" style={{ border: "none", whiteSpace: "nowrap", letterSpacing: '0.04em', padding: '0 12px 4px' }}>{h}</Table.Th>
+                <Table.Th key={h} c="slate.5" fw={700} style={{ fontSize: 10, padding: "0 12px 4px", textTransform: "uppercase", letterSpacing: "0.04em", border: "none", whiteSpace: "nowrap" }}>{h}</Table.Th>
               ))}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {filtered.map((r) => (
-              <Table.Tr key={r.name}>
-                <Table.Td fw={600} c="slate.8" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", borderTopLeftRadius: "var(--mantine-radius-sm)", borderBottomLeftRadius: "var(--mantine-radius-sm)", padding: '8px 12px', borderLeft: r.status === "active" ? "3px solid var(--mantine-color-green-4)" : r.status === "draft" ? "3px solid var(--mantine-color-yellow-4)" : "3px solid var(--mantine-color-slate-3)" }}>{r.name}</Table.Td>
-                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", padding: '8px 12px' }}>{r.product}</Table.Td>
-                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", padding: '8px 12px' }}>{r.type}</Table.Td>
-                <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", padding: '8px 12px' }}><Pill tone={r.risk}>{r.risk === "low" ? "Low Risk" : r.risk === "medium" ? "Medium Risk" : "High Risk"}</Pill></Table.Td>
-                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", padding: '8px 12px' }}>{r.priority}</Table.Td>
-                <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", padding: '8px 12px' }}><Pill tone={r.status}>{r.status[0].toUpperCase() + r.status.slice(1)}</Pill></Table.Td>
-                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", padding: '8px 12px' }}>{r.version}</Table.Td>
-                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", whiteSpace: "nowrap", padding: '8px 12px' }}>{r.updated}</Table.Td>
-                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", padding: '8px 12px' }}>{r.by}</Table.Td>
-                <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", borderTopRightRadius: "var(--mantine-radius-sm)", borderBottomRightRadius: "var(--mantine-radius-sm)", padding: '8px 12px' }}>
+              <Table.Tr key={r.name} className="lms-row">
+                <Table.Td fw={600} c="slate.8" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", borderTopLeftRadius: "var(--mantine-radius-md)", borderBottomLeftRadius: "var(--mantine-radius-md)", padding: "8px 12px", borderLeft: r.status === "active" ? "3px solid var(--mantine-color-green-4)" : r.status === "draft" ? "3px solid var(--mantine-color-yellow-4)" : "3px solid var(--mantine-color-slate-3)" }}>{r.name}</Table.Td>
+                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.product}</Table.Td>
+                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.type}</Table.Td>
+                <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}><Pill tone={r.risk}>{r.risk === "low" ? "Low Risk" : r.risk === "medium" ? "Medium Risk" : "High Risk"}</Pill></Table.Td>
+                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.priority}</Table.Td>
+                <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}><Pill tone={r.status}>{r.status[0].toUpperCase() + r.status.slice(1)}</Pill></Table.Td>
+                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.version}</Table.Td>
+                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", whiteSpace: "nowrap", padding: "8px 12px" }}>{r.updated}</Table.Td>
+                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.by}</Table.Td>
+                <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", borderTopRightRadius: "var(--mantine-radius-md)", borderBottomRightRadius: "var(--mantine-radius-md)", padding: "8px 12px" }}>
                   <Group gap={2} wrap="nowrap" justify="flex-end">
                     <Tooltip label="View" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconEye size={14} /></ActionIcon></Tooltip>
                     <Tooltip label="Edit" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconFileText size={14} /></ActionIcon></Tooltip>

@@ -127,11 +127,11 @@ function RuleSetList({
           p="sm"
           style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}
         >
-          <Table verticalSpacing="sm" horizontalSpacing="sm" fz="xs" w="100%" style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}>
+          <Table verticalSpacing={6} horizontalSpacing="sm" fz={11} w="100%" style={{ borderCollapse: "separate", borderSpacing: "0 6px" }}>
             <Table.Thead>
               <Table.Tr>
                 {["Rule Set", "Product", "Rules", "Version", "Last modified", ""].map((h) => (
-                  <Table.Th key={h} c="slate.5" fw={700} style={{ fontSize: "var(--mantine-font-size-xs)", padding: "0 10px 6px", textTransform: "uppercase", letterSpacing: "0.04em", border: "none" }}>
+                  <Table.Th key={h} c="slate.5" fw={700} style={{ fontSize: 10, padding: "0 12px 4px", textTransform: "uppercase", letterSpacing: "0.04em", border: "none" }}>
                     {h}
                   </Table.Th>
                 ))}
@@ -140,15 +140,17 @@ function RuleSetList({
             <Table.Tbody>
               {rows.map((r) => (
                 <Table.Tr key={r.id} onClick={() => onOpen(r.id)} style={{ cursor: "pointer" }}>
-                  <Table.Td style={{ padding: "10px 10px", border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", borderLeft: "3px solid var(--mantine-color-brand-4)", borderTopLeftRadius: "var(--mantine-radius-md)", borderBottomLeftRadius: "var(--mantine-radius-md)" }}>
-                    <Text fz="sm" fw={600} c="slate.8">{r.name}</Text>
-                    <Box mt={4}><StatusBadge status={r.status} /></Box>
+                  <Table.Td style={{ padding: "8px 12px", border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", borderLeft: "3px solid var(--mantine-color-brand-4)", borderTopLeftRadius: "var(--mantine-radius-md)", borderBottomLeftRadius: "var(--mantine-radius-md)" }}>
+                    <Group gap="xs">
+                      <Text fz={11} fw={600} c="slate.8">{r.name}</Text>
+                      <StatusBadge status={r.status} />
+                    </Group>
                   </Table.Td>
-                  <Table.Td style={{ padding: "10px 10px", border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)" }}><Text fz="xs" c="slate.6">{r.product}</Text></Table.Td>
-                  <Table.Td style={{ padding: "10px 10px", border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)" }}><Text fz="xs" c="slate.6">{r.rulesCount}</Text></Table.Td>
-                  <Table.Td style={{ padding: "10px 10px", border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)" }}><Text fz="xs" c="slate.6">v{r.version}</Text></Table.Td>
-                  <Table.Td style={{ padding: "10px 10px", border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)" }}><Text fz="xs" c="slate.6">{r.modifiedDate} · {r.modifiedBy}</Text></Table.Td>
-                  <Table.Td style={{ padding: "10px 10px", border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", borderTopRightRadius: "var(--mantine-radius-md)", borderBottomRightRadius: "var(--mantine-radius-md)", textAlign: "right", color: "var(--mantine-color-slate-4)" }}>
+                  <Table.Td style={{ padding: "8px 12px", border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)" }}><Text fz={11} c="slate.6">{r.product}</Text></Table.Td>
+                  <Table.Td style={{ padding: "8px 12px", border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)" }}><Text fz={11} c="slate.6">{r.rulesCount}</Text></Table.Td>
+                  <Table.Td style={{ padding: "8px 12px", border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)" }}><Text fz={11} c="slate.6">v{r.version}</Text></Table.Td>
+                  <Table.Td style={{ padding: "8px 12px", border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)" }}><Text fz={11} c="slate.6">{r.modifiedDate} · {r.modifiedBy}</Text></Table.Td>
+                  <Table.Td style={{ padding: "8px 12px", border: "none", boxShadow: "var(--mantine-shadow-xs)", background: "var(--mantine-color-white)", borderTopRightRadius: "var(--mantine-radius-md)", borderBottomRightRadius: "var(--mantine-radius-md)", textAlign: "right", color: "var(--mantine-color-slate-4)" }}>
                     <IconChevronRight size={14} />
                   </Table.Td>
                 </Table.Tr>

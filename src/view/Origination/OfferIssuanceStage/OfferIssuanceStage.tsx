@@ -202,7 +202,7 @@ function ApplicationIdCell({ name }: { name: string }) {
         <IconFileText size={14} color="var(--mantine-color-brand-6)" />
       </Box>
       <Text
-        fz="xs"
+        fz={11}
         fw={700}
         c="slate.8"
         style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
@@ -247,7 +247,7 @@ export function OfferIssuanceStage() {
         header: "Applicant",
         cell: (info) => (
           <Text
-            fz="xs"
+            fz={11}
             fw={600}
             c="slate.7"
             style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
@@ -260,7 +260,7 @@ export function OfferIssuanceStage() {
         header: "Approved Amount",
         cell: (info) => (
           <Text
-            fz="xs"
+            fz={11}
             c="slate.8"
             fw={600}
             style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
@@ -280,7 +280,7 @@ export function OfferIssuanceStage() {
       columnHelper.accessor("signingMethod", {
         header: "Signing Method",
         cell: (info) => (
-          <Text fz="xs" c="slate.6">
+          <Text fz={11} c="slate.6">
             {info.getValue()}
           </Text>
         ),
@@ -288,7 +288,7 @@ export function OfferIssuanceStage() {
       columnHelper.display({
         id: "actions",
         header: () => (
-          <Text fz="xs" fw={600} ta="right" w="100%">
+          <Text fz={11} fw={600} ta="right" w="100%">
             Actions
           </Text>
         ),
@@ -480,11 +480,11 @@ export function OfferIssuanceStage() {
       <Stack gap="xs">
         <Box style={{ overflowX: "auto" }}>
           <Table
-            verticalSpacing="sm"
+            verticalSpacing={6}
             horizontalSpacing="sm"
-            fz="xs"
+            fz={11}
             w="100%"
-            style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+            style={{ borderCollapse: "separate", borderSpacing: "0 6px" }}
           >
             <Table.Thead>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -498,8 +498,8 @@ export function OfferIssuanceStage() {
                         c="slate.5"
                         fw={700}
                         style={{
-                          fontSize: "var(--mantine-font-size-xs)",
-                          padding: "0 10px 6px",
+                          fontSize: 10,
+                          padding: "0 12px 4px",
                           userSelect: "none",
                           cursor: canSort ? "pointer" : "default",
                           textTransform: "uppercase",
@@ -558,7 +558,7 @@ export function OfferIssuanceStage() {
                           color="var(--mantine-color-slate-4)"
                         />
                       </Box>
-                      <Text ta="center" c="slate.5" fz="xs">
+                      <Text ta="center" c="slate.5" fz={11}>
                         No applications match your filters.
                       </Text>
                     </Stack>
@@ -578,7 +578,7 @@ export function OfferIssuanceStage() {
                         <Table.Td
                           key={cell.id}
                           style={{
-                            padding: "10px 10px",
+                            padding: "8px 12px",
                             border: "none",
                             boxShadow: "var(--mantine-shadow-xs)",
                             borderLeft:

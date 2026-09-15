@@ -395,7 +395,7 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
               <Box>
                 <SectionHead title="Income Assessment" description="Add every income source this rule recognizes and the percentage counted towards eligibility." />
                 <Paper radius="sm" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
-                  <Table verticalSpacing="xs" fz="xs" highlightOnHover>
+                  <Table verticalSpacing="xs" fz={11} highlightOnHover>
                     <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
                       <Table.Tr>
                         {["Income Source", "Recognition %", "Verification Required", "Included"].map((h) => (
@@ -406,7 +406,7 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                     <Table.Tbody>
                       {INCOME_SOURCES.map(([n, pct, ver, inc]) => (
                         <Table.Tr key={n}>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Text fz="xs" fw={500} c="slate.7">{n}</Text></Table.Td>
+                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Text fz={11} fw={500} c="slate.7">{n}</Text></Table.Td>
                           <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", width: 200 }}>
                             <Group gap={8} wrap="nowrap" align="center">
                               <Slider defaultValue={pct as number} min={0} max={100} w={110} size="xs" color="brand" label={(v) => `${v}%`} />
@@ -464,7 +464,7 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
               <Box>
                 <SectionHead title="Credit & Payment History" description="Define credit bands — each band's minimum score, multiple and decision routing are fully editable." />
                 <Paper radius="sm" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
-                  <Table verticalSpacing="xs" fz="xs" style={{ tableLayout: "fixed" }}>
+                  <Table verticalSpacing="xs" fz={11} style={{ tableLayout: "fixed" }}>
                     <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
                       <Table.Tr>
                         {[["Min Score", 100], ["Range", 170], ["Grade", 70], ["Loan Multiple", 200], ["Decision", 185], ["", 38]].map(([h, w]) => (
@@ -524,7 +524,7 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
               <Box>
                 <SectionHead title="Collateral" description="Add every collateral item this rule accepts. Market value, haircut and max LTV convert to a live limit." />
                 <Paper radius="sm" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
-                  <Table verticalSpacing="xs" fz="xs" style={{ tableLayout: "fixed" }}>
+                  <Table verticalSpacing="xs" fz={11} style={{ tableLayout: "fixed" }}>
                     <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
                       <Table.Tr>
                         {[["Type", 150], ["Market Value", 130], ["Haircut %", 150], ["Max LTV %", 150], ["Limit", 120], ["", 38]].map(([h, w]) => (
@@ -549,12 +549,12 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                               <Text fz={10} fw={600} c="brand.6" w={26}>{item.maxLtvPct}%</Text>
                             </Group>
                           </Table.Td>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Text fz="xs" fw={700} c="brand.6">ZMW {Math.round(collateralItemLimit(item)).toLocaleString()}</Text></Table.Td>
+                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Text fz={11} fw={700} c="brand.6">ZMW {Math.round(collateralItemLimit(item)).toLocaleString()}</Text></Table.Td>
                           <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><ActionIcon variant="subtle" color="red" size="xs" onClick={() => removeCollateralItem(item.id)}><IconTrash size={11} /></ActionIcon></Table.Td>
                         </Table.Tr>
                       ))}
                       {collateralItems.length === 0 && (
-                        <Table.Tr><Table.Td colSpan={6}><Text fz="xs" c="slate.5" ta="center" py="sm">No collateral configured — this rule evaluates as unsecured.</Text></Table.Td></Table.Tr>
+                        <Table.Tr><Table.Td colSpan={6}><Text fz={11} c="slate.5" ta="center" py="sm">No collateral configured — this rule evaluates as unsecured.</Text></Table.Td></Table.Tr>
                       )}
                     </Table.Tbody>
                   </Table>

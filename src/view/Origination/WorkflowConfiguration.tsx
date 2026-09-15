@@ -266,11 +266,11 @@ export function WorkflowConfiguration() {
           <Table verticalSpacing="xs" horizontalSpacing="sm">
             <Table.Thead bg="slate.0">
               <Table.Tr>
-                <Table.Th w={50}><Text fz="xs" fw={600} c="dimmed">NO.</Text></Table.Th>
-                <Table.Th w="25%"><Text fz="xs" fw={600} c="dimmed">STATE NAME</Text></Table.Th>
-                <Table.Th w="15%"><Text fz="xs" fw={600} c="dimmed">DOCUMENT STATUS</Text></Table.Th>
-                <Table.Th w="20%"><Text fz="xs" fw={600} c="dimmed">WHO CAN EDIT</Text></Table.Th>
-                <Table.Th w="35%"><Text fz="xs" fw={600} c="dimmed">MESSAGE</Text></Table.Th>
+                <Table.Th w={50}><Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: "0.04em" }}>No.</Text></Table.Th>
+                <Table.Th w="25%"><Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: "0.04em" }}>State Name</Text></Table.Th>
+                <Table.Th w="15%"><Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: "0.04em" }}>Document Status</Text></Table.Th>
+                <Table.Th w="20%"><Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: "0.04em" }}>Who Can Edit</Text></Table.Th>
+                <Table.Th w="35%"><Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: "0.04em" }}>Message</Text></Table.Th>
                 <Table.Th w={50}></Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -306,7 +306,7 @@ export function WorkflowConfiguration() {
                   <Table.Td>
                     <Group gap={4} align="center" wrap="nowrap">
                       <IconGripVertical size={14} color="var(--mantine-color-slate-4)" style={{ cursor: 'grab' }} />
-                      <Text fz="xs" c="dimmed">{idx + 1}</Text>
+                      <Text fz={11} c="dimmed">{idx + 1}</Text>
                     </Group>
                   </Table.Td>
                   <Table.Td>
@@ -356,7 +356,7 @@ export function WorkflowConfiguration() {
               {states.length === 0 && (
                 <Table.Tr>
                   <Table.Td colSpan={6} align="center">
-                    <Text p="xs" c="dimmed" fz="xs">No states defined.</Text>
+                    <Text p="xs" c="dimmed" fz={11}>No states defined.</Text>
                   </Table.Td>
                 </Table.Tr>
               )}
@@ -378,11 +378,11 @@ export function WorkflowConfiguration() {
           <Table verticalSpacing="xs" horizontalSpacing="sm">
             <Table.Thead bg="slate.0">
               <Table.Tr>
-                <Table.Th w={50}><Text fz="xs" fw={600} c="dimmed">NO.</Text></Table.Th>
-                <Table.Th w="25%"><Text fz="xs" fw={600} c="dimmed">FROM STATE</Text></Table.Th>
-                <Table.Th w="25%"><Text fz="xs" fw={600} c="dimmed">ACTION</Text></Table.Th>
-                <Table.Th w="25%"><Text fz="xs" fw={600} c="dimmed">TO STATE</Text></Table.Th>
-                <Table.Th w="25%"><Text fz="xs" fw={600} c="dimmed">WHO CAN EXECUTE</Text></Table.Th>
+                <Table.Th w={50}><Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: "0.04em" }}>No.</Text></Table.Th>
+                <Table.Th w="25%"><Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: "0.04em" }}>From State</Text></Table.Th>
+                <Table.Th w="25%"><Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: "0.04em" }}>Action</Text></Table.Th>
+                <Table.Th w="25%"><Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: "0.04em" }}>To State</Text></Table.Th>
+                <Table.Th w="25%"><Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: "0.04em" }}>Who Can Execute</Text></Table.Th>
                 <Table.Th w={50}></Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -418,7 +418,7 @@ export function WorkflowConfiguration() {
                   <Table.Td>
                     <Group gap={4} align="center" wrap="nowrap">
                       <IconGripVertical size={14} color="var(--mantine-color-slate-4)" style={{ cursor: 'grab' }} />
-                      <Text fz="xs" c="dimmed">{idx + 1}</Text>
+                      <Text fz={11} c="dimmed">{idx + 1}</Text>
                     </Group>
                   </Table.Td>
                   <Table.Td>
@@ -472,7 +472,7 @@ export function WorkflowConfiguration() {
               {transitions.length === 0 && (
                 <Table.Tr>
                   <Table.Td colSpan={6} align="center">
-                    <Text p="xs" c="dimmed" fz="xs">No transitions defined.</Text>
+                    <Text p="xs" c="dimmed" fz={11}>No transitions defined.</Text>
                   </Table.Td>
                 </Table.Tr>
               )}
