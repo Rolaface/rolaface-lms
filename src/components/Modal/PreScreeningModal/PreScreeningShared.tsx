@@ -68,6 +68,11 @@ export interface LiabilityRecord {
   source: SourceKind;
 }
 
+export interface IncomeRecord {
+  type: string; // e.g. Rental, Pension, Business, Other
+  amount: number;
+}
+
 export interface ScenarioDef {
   label: string;
   credit: number | null;
@@ -284,6 +289,49 @@ export function calcEligibility({
     mandatoryPassed: creditPassed && dtiPassed,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Internal risk score — our own read on default risk, built from the bureau's
+// underlying signals (credit score, delinquencies, enquiries, repayment
+// history on existing facilities) rather than the bureau's own risk label.
+// ---------------------------------------------------------------------------
+
+export interface RiskScoreResult {
+  score: number; // 0-100, higher = MORE risk (0 = safest, 100 = riskiest)
+  band: "Low" | "Medium" | "High";
+}
+
+export function calcRiskScore({
+  creditScore,
+  delinquentAccounts,
+  recentEnquiries,
+  liabilityRecords,
+}: {
+  creditScore: number | null;
+  delinquentAccounts: number | null;
+  recentEnquiries: number | null;
+  liabilityRecords: LiabilityRecord[];
+}): RiskScoreResult | null {
+  if (creditScore == null) return null;
+
+  // Base risk from the credit score (300-850 -> 100-0: a low credit score means high risk).
+  const baseRisk = Math.max(0, Math.min(100, 100 - ((creditScore - 300) / (850 - 300)) * 100));
+
+  // Repayment history: facilities currently in default push risk up —
+  // this is the "any defaults" / "previous repayment" signal.
+  const defaultedFacilities = liabilityRecords.filter((r) => r.status !== "Active").length;
+  const repaymentPenalty =
+    defaultedFacilities * 12 + (delinquentAccounts ?? 0) * 8;
+
+  // Recent credit-seeking behaviour — a burst of enquiries reads as elevated risk.
+  const enquiryPenalty = Math.max(0, (recentEnquiries ?? 0) - 1) * 3;
+
+  const score = Math.max(0, Math.min(100, Math.round(baseRisk + repaymentPenalty + enquiryPenalty)));
+  const band = score <= 30 ? "Low" : score <= 69 ? "Medium" : "High";
+
+  return { score, band };
+}
+
 export const SOURCE_MAP: Record<
   SourceKind,
   { label: string; color: string }
@@ -595,11 +643,12 @@ export interface LiabilitiesState extends FieldState {
   outstanding: number | null;
   source: SourceKind;
   records: LiabilityRecord[];
-  manualRecords: LiabilityRecord[];
+  additionalRecords: LiabilityRecord[];
 }
 export interface IncomeState extends FieldState {
   value: number | null;
   source: SourceKind;
+  additionalIncome: IncomeRecord[];
 }
 export interface PrescreeningState {
   credit: CreditState;
@@ -631,7 +680,7 @@ export function buildInitialState(scenarioKey: string): PrescreeningState {
       manual: s.obligationsSource === "unavailable",
       reason: "",
       records,
-      manualRecords: [],
+      additionalRecords: [],
     },
     income: {
       value: s.income,
@@ -639,6 +688,7 @@ export function buildInitialState(scenarioKey: string): PrescreeningState {
       status: "idle",
       manual: false,
       reason: "",
+      additionalIncome: [],
     },
   };
 }
@@ -788,7 +838,7 @@ export function CreditGaugeVisual({
         </svg>
       </Box>
 
-      <Group justify="center" gap={6} mt={10}>
+      <Group justify="center" gap={6} mt={4}>
         <Text fz={18} fw={700} c="slate.9">
           {loading ? "…" : (score ?? "—")}
         </Text>
