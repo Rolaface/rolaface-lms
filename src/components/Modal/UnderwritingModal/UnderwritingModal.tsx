@@ -30,7 +30,6 @@ import {
   IconShieldCheck,
   IconCar,
   IconIdBadge2,
-  IconCalendar,
   IconUserCircle,
   IconClipboardCheck,
   IconCheck,
@@ -40,7 +39,6 @@ import {
   IconAlertTriangle,
   IconCircleCheck,
   IconCircleX,
-  IconArrowLeft,
   IconArrowRight,
   IconMinus,
 } from "@tabler/icons-react";
@@ -140,7 +138,7 @@ function MiniStat({ label, value, accent }: { label: string; value: string; acce
 
 function SimRow({ label, value, last, strong }: { label: string; value: string; last?: boolean; strong?: boolean }) {
   return (
-    <Group justify="space-between" py={9} style={{ borderBottom: last ? "none" : "1px solid var(--mantine-color-gray-1)" }}>
+    <Group justify="space-between" py={6} style={{ borderBottom: last ? "none" : "1px solid var(--mantine-color-gray-1)" }}>
       <Text fz={12.5} c="dimmed">
         {label}
       </Text>
@@ -164,12 +162,12 @@ function CardHeader({ icon: Icon, title, right, color = "brand" }: { icon: React
     <Group
       justify="space-between"
       align="center"
-      mb={12}
-      pb={10}
+      mb={8}
+      pb={7}
       style={{ borderBottom: "1px solid var(--mantine-color-gray-1)" }}
     >
-      <Group gap={8}>
-        <ThemeIcon radius="md" size={24} variant="light" color={color}>
+      <Group gap={7}>
+        <ThemeIcon radius="md" size={22} variant="light" color={color}>
           <Icon size={13} />
         </ThemeIcon>
         <SectionLabel>{title}</SectionLabel>
@@ -193,9 +191,8 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <Paper withBorder shadow="xs" radius="lg" style={{ overflow: "hidden" }}>
-      <Box style={{ height: 3, background: `var(--mantine-color-${color}-5)` }} />
-      <Box p="md">
+    <Paper withBorder shadow="xs" radius="md" style={{ overflow: "hidden" }}>
+      <Box p="sm">
         <CardHeader icon={icon} title={title} right={right} color={color} />
         {children}
       </Box>
@@ -221,13 +218,6 @@ function StatusBadge({ status }: { status: string }) {
     </Badge>
   );
 }
-
-const OVERALL_STATUS_COLORS: Record<string, string> = {
-  "Not Started": "gray",
-  "In Progress": "brand",
-  "Ready for Decision": "orange",
-  Completed: "green",
-};
 
 const CHECK_STATUSES = ["Pending", "In Progress", "Passed", "Failed", "Exception"];
 const DOC_STATUSES = ["Missing", "Uploaded", "Verified", "Rejected"];
@@ -553,7 +543,7 @@ function CompactCheckRow({
   onNoteChange: (v: string) => void;
 }) {
   return (
-    <Box py={7} style={{ borderBottom: "1px solid var(--mantine-color-gray-1)" }}>
+    <Box py={5} style={{ borderBottom: "1px solid var(--mantine-color-gray-1)" }}>
       <Group gap={8} wrap="nowrap" align="center">
         <Checkbox checked={checked} disabled={exception} onChange={onToggle} size="xs" />
         <Text fz={12.5} c={exception ? "orange.8" : "dark.6"} style={{ flex: 1 }}>
@@ -609,7 +599,7 @@ function DocumentsTable({ title, docs, setDocs }: { title: string; docs: AssetDo
           </Text>
         )}
         {docs.map((d, i) => (
-          <Box key={i} py={12} style={{ borderTop: i > 0 ? "1px solid var(--mantine-color-gray-1)" : "none" }}>
+          <Box key={i} py={8} style={{ borderTop: i > 0 ? "1px solid var(--mantine-color-gray-1)" : "none" }}>
             <Group justify="space-between" wrap="nowrap" gap={14}>
               <Group gap={10} style={{ flex: 1, minWidth: 0 }} wrap="nowrap" align="flex-start">
                 <ThemeIcon radius="md" size={30} variant="light" color={STATUS_COLORS[d.status] || "blue"} style={{ flexShrink: 0 }}>
@@ -673,7 +663,7 @@ function DocumentsTable({ title, docs, setDocs }: { title: string; docs: AssetDo
                 </ActionIcon>
               </Group>
             </Group>
-            <TextInput value={d.comment} onChange={(e) => update(i, { comment: e.currentTarget.value })} placeholder="Verification comment (optional)" size="xs" radius="md" mt={10} />
+            <TextInput value={d.comment} onChange={(e) => update(i, { comment: e.currentTarget.value })} placeholder="Verification comment (optional)" size="xs" radius="md" mt={6} />
           </Box>
         ))}
       </Stack>
@@ -708,13 +698,13 @@ function AssetSwitcher({
   }
 
   return (
-    <Box mb={20}>
-      <Group justify="space-between" mb={10}>
+    <Box mb={14}>
+      <Group justify="space-between" mb={8}>
         <Text fz={13} fw={700} c="dark.7">
           Assets offered as security ({assets.length})
         </Text>
       </Group>
-      <Group gap={8} mb={adding ? 10 : 0} wrap="wrap">
+      <Group gap={8} mb={adding ? 8 : 0} wrap="wrap">
         {assets.map((a, i) => {
           const active = a.id === selectedId;
           return (
@@ -722,7 +712,7 @@ function AssetSwitcher({
               key={a.id}
               onClick={() => onSelect(a.id)}
               px={12}
-              py={8}
+              py={6}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -766,7 +756,7 @@ function AssetSwitcher({
 function ValidityNote({ date, days }: { date: string; days: number }) {
   if (!date)
     return (
-      <Text fz={12.5} c="dimmed" py={9}>
+      <Text fz={12.5} c="dimmed" py={6}>
         Set a valuation date to see validity
       </Text>
     );
@@ -776,7 +766,7 @@ function ValidityNote({ date, days }: { date: string; days: number }) {
   const daysLeft = Math.round((expiry.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
   const expired = daysLeft < 0;
   return (
-    <Group gap={6} py={9}>
+    <Group gap={6} py={6}>
       {expired ? <IconCircleX size={14} color="var(--mantine-color-red-6)" /> : <IconCircleCheck size={14} color="var(--mantine-color-green-6)" />}
       <Text fz={12.5} fw={600} c={expired ? "red.6" : "green.7"}>
         {expired ? "Valuation expired" : `Valid for ${daysLeft} more days`}
@@ -836,7 +826,7 @@ function DecisionButton({
     <UnstyledButton
       onClick={onClick}
       disabled={disabled}
-      p={12}
+      p={10}
       style={{
         borderRadius: "var(--mantine-radius-md)",
         border: `1.5px solid var(--mantine-color-${color}-3)`,
@@ -845,7 +835,7 @@ function DecisionButton({
         transition: "transform 120ms ease, box-shadow 120ms ease",
       }}
     >
-      <ThemeIcon radius="xl" size={26} variant="light" color={color} mb={8}>
+      <ThemeIcon radius="xl" size={24} variant="light" color={color} mb={6}>
         <Icon size={14} />
       </ThemeIcon>
       <Text fz={12.5} fw={700} c={`${color}.8`}>
@@ -866,9 +856,6 @@ function DecisionButton({
 
 function UnderwritingWorkspace({
   finalAmount,
-  applicationId,
-  loanTypeLabel,
-  onBack,
   onSubmitReady,
 }: {
   finalAmount: number;
@@ -966,18 +953,12 @@ function UnderwritingWorkspace({
     return { valuationOk, titleOk, legalOk, docsOk, ready: valuationOk && titleOk && legalOk && docsOk, blockers };
   }, [assets]);
 
-  const anyTouched = assets.some(
-    (a) => a.status !== "Pending" || a.titleChecklist.some((i) => i.status !== "Pending") || a.legalChecks.some((c) => c.comment),
-  );
-  const overallStatus = completed ? "Completed" : readiness.ready ? "Ready for Decision" : anyTouched ? "In Progress" : "Not Started";
-
   const allLegalChecks = assets.flatMap((a) => a.legalChecks);
   const legalCounts = {
     passed: allLegalChecks.filter((c) => c.status === "Passed").length,
     exception: allLegalChecks.filter((c) => c.status === "Exception").length,
     failed: allLegalChecks.filter((c) => c.status === "Failed").length,
   };
-  const legalStatusLabel = `${legalCounts.passed} passed · ${legalCounts.exception} exception · ${legalCounts.failed} failed`;
 
   const decisionReady =
     decision === "approve" ||
@@ -1014,83 +995,17 @@ function UnderwritingWorkspace({
   }
 
   return (
-    <Box p={30}>
-      {/* Hero header */}
-      <Box
-        mb={20}
-        p={20}
-        style={{
-          borderRadius: 16,
-          background: "linear-gradient(120deg, #4338CA 0%, #3730A3 55%, #312E81 100%)",
-          boxShadow: "0 8px 24px rgba(55,48,163,0.25)",
-        }}
-      >
-        <Group justify="space-between" align="flex-start">
-          <Group gap={14}>
-            <ThemeIcon radius="md" size={42} variant="white" color="brand">
-              <IconClipboardCheck size={21} />
-            </ThemeIcon>
-            <Box>
-              <Text fz={19} fw={700} c="white">
-                Underwriting Workspace
-              </Text>
-              <Text fz={12.5} c="rgba(255,255,255,0.72)" mt={2}>
-                Review, validate, verify, and complete legal, financial, and collateral details.
-              </Text>
-            </Box>
-          </Group>
-          <Group gap={10}>
-            {onBack && (
-              <Button variant="white" color="brand" radius="xl" size="sm" leftSection={<IconArrowLeft size={14} />} onClick={onBack}>
-                Back
-              </Button>
-            )}
-            <Badge
-              size="lg"
-              radius="xl"
-              variant="filled"
-              color={OVERALL_STATUS_COLORS[overallStatus]}
-              leftSection={<IconCircleCheck size={12} />}
-            >
-              {overallStatus}
-            </Badge>
-          </Group>
-        </Group>
-      </Box>
-
-      {/* Info strip */}
-      <SimpleGrid
-        cols={3}
-        spacing={0}
-        p="md"
-        mb={20}
-        style={{
-          borderRadius: 12,
-          border: "1px solid var(--mantine-color-gray-2)",
-          background: "linear-gradient(90deg, var(--mantine-color-brand-0) 0%, white 60%)",
-        }}
-      >
-        <Box style={{ borderRight: "1px solid var(--mantine-color-gray-2)" }} pr="md">
-          <ReadRow label="Application ID" value={applicationId} />
-        </Box>
-        <Box style={{ borderRight: "1px solid var(--mantine-color-gray-2)" }} px="md">
-          <ReadRow label="Loan Amount" value={zmw(finalAmount)} />
-        </Box>
-        <Box pl="md">
-          <ReadRow label="Loan Type" value={loanTypeLabel} />
-        </Box>
-      </SimpleGrid>
-
+    <Box p={18}>
       {/* Asset switcher */}
       <AssetSwitcher assets={assets} selectedId={selected.id} onSelect={setSelectedId} onAdd={addAsset} />
 
       {/* Tabs */}
-      <Paper withBorder radius="xl" p={5} mb={20} bg="gray.0">
+      <Paper withBorder radius="xl" p={4} mb={14} bg="gray.0">
         <Group gap={4}>
           <UnstyledButton
             onClick={() => setTab("asset")}
-            px={16}
-            py={9}
+            px={14}
+            py={6}
             style={{
               borderRadius: 999,
               background: tab === "asset" ? "white" : "transparent",
@@ -1100,16 +1015,16 @@ function UnderwritingWorkspace({
             }}
           >
             <Group gap={7} justify="center">
-              <IconCircleCheck size={15} color={tab === "asset" ? "var(--mantine-color-brand-7)" : "var(--mantine-color-gray-5)"} />
-              <Text fz={13} fw={tab === "asset" ? 700 : 500} c={tab === "asset" ? "brand.7" : "dark.5"}>
+              <IconCircleCheck size={14} color={tab === "asset" ? "var(--mantine-color-brand-7)" : "var(--mantine-color-gray-5)"} />
+              <Text fz={12.5} fw={tab === "asset" ? 700 : 500} c={tab === "asset" ? "brand.7" : "dark.5"}>
                 Asset Validation
               </Text>
             </Group>
           </UnstyledButton>
           <UnstyledButton
             onClick={() => setTab("legal")}
-            px={16}
-            py={9}
+            px={14}
+            py={6}
             style={{
               borderRadius: 999,
               background: tab === "legal" ? "white" : "transparent",
@@ -1119,8 +1034,8 @@ function UnderwritingWorkspace({
             }}
           >
             <Group gap={7} justify="center">
-              <IconShieldCheck size={15} color={tab === "legal" ? "var(--mantine-color-brand-7)" : "var(--mantine-color-gray-5)"} />
-              <Text fz={13} fw={tab === "legal" ? 700 : 500} c={tab === "legal" ? "brand.7" : "dark.5"}>
+              <IconShieldCheck size={14} color={tab === "legal" ? "var(--mantine-color-brand-7)" : "var(--mantine-color-gray-5)"} />
+              <Text fz={12.5} fw={tab === "legal" ? 700 : 500} c={tab === "legal" ? "brand.7" : "dark.5"}>
                 Legal &amp; Title Verification
               </Text>
             </Group>
@@ -1128,11 +1043,7 @@ function UnderwritingWorkspace({
         </Group>
       </Paper>
 
-      <Text fz={12} fw={600} c="brand.6" mb={12}>
-        Reviewing: {selected.base.description}
-      </Text>
-
-      <Stack gap={14}>
+      <Stack gap={10}>
         {tab === "asset" && (
           <>
             <Card
@@ -1155,23 +1066,31 @@ function UnderwritingWorkspace({
               }
             >
               {selected.source === "application" ? (
-                <SimpleGrid cols={4} spacing={10}>
-                  <ReadRow label="Asset Type" value={selected.base.type} />
-                  <ReadRow label="Asset ID" value={selected.base.assetId} />
-                  <ReadRow label="Location" value={selected.base.location} />
-                  <ReadRow label="Owner" value={selected.base.owner} />
-                  <ReadRow label="Description" value={selected.base.description} span={2} />
-                  <ReadRow label="Acquisition information" value={selected.base.acquisition} span={2} />
-                </SimpleGrid>
+                <>
+                  <SimpleGrid cols={4} spacing={8}>
+                    <ReadRow label="Asset Type" value={selected.base.type} />
+                    <ReadRow label="Asset ID" value={selected.base.assetId} />
+                    <ReadRow label="Location" value={selected.base.location} />
+                    <ReadRow label="Owner" value={selected.base.owner} />
+                  </SimpleGrid>
+                  <SimpleGrid cols={2} spacing={8} mt={8}>
+                    <ReadRow label="Description" value={selected.base.description} />
+                    <ReadRow label="Acquisition information" value={selected.base.acquisition} />
+                  </SimpleGrid>
+                </>
               ) : (
-                <SimpleGrid cols={4} spacing={10}>
-                  <Select size="xs" label="Asset type" value={selected.base.type} onChange={(v) => updateSelected({ base: { ...selected.base, type: v || selected.base.type } })} data={DUMMY_ASSET_TYPES} radius="md" />
-                  <TextInput size="xs" label="Asset ID / reference" value={selected.base.assetId} onChange={(e) => updateSelected({ base: { ...selected.base, assetId: e.currentTarget.value } })} placeholder="e.g. AST-33022" radius="md" />
-                  <TextInput size="xs" label="Location" value={selected.base.location} onChange={(e) => updateSelected({ base: { ...selected.base, location: e.currentTarget.value } })} placeholder="e.g. Lusaka, Zambia" radius="md" />
-                  <TextInput size="xs" label="Owner" value={selected.base.owner} onChange={(e) => updateSelected({ base: { ...selected.base, owner: e.currentTarget.value } })} radius="md" />
-                  <TextInput size="xs" label="Description" value={selected.base.description} onChange={(e) => updateSelected({ base: { ...selected.base, description: e.currentTarget.value } })} style={{ gridColumn: "1 / -1" }} radius="md" />
-                  <TextInput size="xs" label="Acquisition / value information" value={selected.base.acquisition} onChange={(e) => updateSelected({ base: { ...selected.base, acquisition: e.currentTarget.value } })} style={{ gridColumn: "1 / -1" }} radius="md" />
-                </SimpleGrid>
+                <>
+                  <SimpleGrid cols={4} spacing={8}>
+                    <Select size="xs" label="Asset type" value={selected.base.type} onChange={(v) => updateSelected({ base: { ...selected.base, type: v || selected.base.type } })} data={DUMMY_ASSET_TYPES} radius="md" />
+                    <TextInput size="xs" label="Asset ID / reference" value={selected.base.assetId} onChange={(e) => updateSelected({ base: { ...selected.base, assetId: e.currentTarget.value } })} placeholder="e.g. AST-33022" radius="md" />
+                    <TextInput size="xs" label="Location" value={selected.base.location} onChange={(e) => updateSelected({ base: { ...selected.base, location: e.currentTarget.value } })} placeholder="e.g. Lusaka, Zambia" radius="md" />
+                    <TextInput size="xs" label="Owner" value={selected.base.owner} onChange={(e) => updateSelected({ base: { ...selected.base, owner: e.currentTarget.value } })} radius="md" />
+                  </SimpleGrid>
+                  <SimpleGrid cols={2} spacing={8} mt={8}>
+                    <TextInput size="xs" label="Description" value={selected.base.description} onChange={(e) => updateSelected({ base: { ...selected.base, description: e.currentTarget.value } })} radius="md" />
+                    <TextInput size="xs" label="Acquisition / value information" value={selected.base.acquisition} onChange={(e) => updateSelected({ base: { ...selected.base, acquisition: e.currentTarget.value } })} radius="md" />
+                  </SimpleGrid>
+                </>
               )}
             </Card>
 
@@ -1185,17 +1104,17 @@ function UnderwritingWorkspace({
                 </Badge>
               }
             >
-              <SimpleGrid cols={4} spacing={10} mb={14}>
+              <SimpleGrid cols={4} spacing={8} mb={10}>
                 <NumberInput size="xs" label="Valuation amount" value={selected.valuation.amount ? Number(selected.valuation.amount) : undefined} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, amount: v ? String(v) : "" } })} placeholder="e.g. 95000" prefix="ZMW " radius="md" thousandSeparator="," />
                 <Select size="xs" label="Valuation method" value={selected.valuation.method} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, method: v || selected.valuation.method } })} data={["Market comparison", "Cost approach", "Income approach"]} radius="md" />
                 <NumberInput size="xs" label="Market value" value={selected.valuation.marketValue ? Number(selected.valuation.marketValue) : undefined} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, marketValue: v ? String(v) : "" } })} placeholder="e.g. 98000" prefix="ZMW " radius="md" thousandSeparator="," />
                 <NumberInput size="xs" label="Forced sale value" value={selected.valuation.forcedSaleValue ? Number(selected.valuation.forcedSaleValue) : undefined} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, forcedSaleValue: v ? String(v) : "" } })} placeholder="e.g. 76000" prefix="ZMW " radius="md" thousandSeparator="," />
               </SimpleGrid>
-              <SimpleGrid cols={coverage != null ? 2 : 1} spacing={12}>
+              <SimpleGrid cols={coverage != null ? 2 : 1} spacing={10} mb={12}>
                 <Textarea size="xs" label="Valuation notes" value={selected.valuation.notes} onChange={(e) => updateSelected({ valuation: { ...selected.valuation, notes: e.currentTarget.value } })} placeholder="Condition, mileage, any relevant observations…" minRows={2} radius="md" />
                 {coverage != null && (
-                  <Paper bg="brand.0" p="sm" radius="md" style={{ border: "1px solid var(--mantine-color-brand-2)" }}>
-                    <Stack gap={8}>
+                  <Paper bg="brand.0" p={8} radius="md" style={{ border: "1px solid var(--mantine-color-brand-2)" }}>
+                    <Stack gap={6}>
                       <MiniStat label="This asset's value" value={zmw(selected.valuation.amount)} />
                       <MiniStat label="Final loan amount" value={zmw(finalAmount)} />
                       <MiniStat label="Coverage" value={`${coverage}%`} accent={coverage < 120} />
@@ -1203,16 +1122,16 @@ function UnderwritingWorkspace({
                   </Paper>
                 )}
               </SimpleGrid>
-            </Card>
 
-            <Card icon={IconIdBadge2} title="Valuer Information" color="violet">
-              <SimpleGrid cols={4} spacing={10} mb={12}>
+              <Divider mb={10} />
+              <SectionLabel>Valuer information</SectionLabel>
+              <SimpleGrid cols={4} spacing={8} mt={8} mb={8}>
                 <TextInput size="xs" label="Valuer name" value={selected.valuer.name} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, name: e.currentTarget.value } })} placeholder="e.g. K. Zulu" radius="md" />
                 <TextInput size="xs" label="Valuer / company" value={selected.valuer.company} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, company: e.currentTarget.value } })} placeholder="e.g. Apex Valuers Ltd" radius="md" />
                 <TextInput size="xs" label="License number" value={selected.valuer.license} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, license: e.currentTarget.value } })} placeholder="e.g. VAL-2321" radius="md" />
                 <TextInput size="xs" label="Contact" value={selected.valuer.contact} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, contact: e.currentTarget.value } })} placeholder="Phone or email" radius="md" />
               </SimpleGrid>
-              <Group gap={8} p="sm" bg={selected.valuer.verified ? "brand.0" : "gray.0"} style={{ border: `1px solid var(--mantine-color-${selected.valuer.verified ? "brand" : "gray"}-2)`, borderRadius: 9 }}>
+              <Group gap={8} p={8} bg={selected.valuer.verified ? "brand.0" : "gray.0"} style={{ border: `1px solid var(--mantine-color-${selected.valuer.verified ? "brand" : "gray"}-2)`, borderRadius: 9 }}>
                 <IconInfoCircle size={14} color="var(--mantine-color-brand-6)" style={{ flexShrink: 0 }} />
                 <Text fz={12} c="dark.6" style={{ flex: 1 }}>
                   Confirm the valuer meets the configured panel requirement before relying on this valuation.
@@ -1224,10 +1143,13 @@ function UnderwritingWorkspace({
                   size="sm"
                 />
               </Group>
-            </Card>
 
-            <Card icon={IconCalendar} title="Valuation date and status" color="orange" right={<Select data={CHECK_STATUSES} value={selected.status} onChange={(v) => updateSelected({ status: v || selected.status })} size="xs" radius="xl" w={140} allowDeselect={false} />}>
-              <SimpleGrid cols={["Failed", "Exception"].includes(selected.status) ? 3 : 2} spacing={10}>
+              <Divider my={10} />
+              <Group justify="space-between" mb={8}>
+                <SectionLabel>Valuation date &amp; status</SectionLabel>
+                <Select data={CHECK_STATUSES} value={selected.status} onChange={(v) => updateSelected({ status: v || selected.status })} size="xs" radius="xl" w={140} allowDeselect={false} />
+              </Group>
+              <SimpleGrid cols={["Failed", "Exception"].includes(selected.status) ? 3 : 2} spacing={8}>
                 <TextInput size="xs" type="date" label="Valuation date" value={selected.valuationDate} onChange={(e) => updateSelected({ valuationDate: e.currentTarget.value })} radius="md" />
                 <Box>
                   <Text fz={12} fw={500} c="dark.6" mb={5}>
@@ -1247,51 +1169,19 @@ function UnderwritingWorkspace({
 
         {tab === "legal" && (
           <>
-            <Card icon={IconIdBadge2} title="Verifier Information" color="violet">
-              <SimpleGrid cols={4} spacing={10}>
+            <Card icon={IconIdBadge2} title="Legal & Title Verification" color="violet">
+              <SectionLabel>Verifier information</SectionLabel>
+              <SimpleGrid cols={4} spacing={8} mt={8}>
                 <TextInput size="xs" label="Verifier name" value={selected.legalVerifier.name} onChange={(e) => updateSelected({ legalVerifier: { ...selected.legalVerifier, name: e.currentTarget.value } })} placeholder="e.g. M. Tembo" radius="md" />
                 <TextInput size="xs" label="Company / firm" value={selected.legalVerifier.company} onChange={(e) => updateSelected({ legalVerifier: { ...selected.legalVerifier, company: e.currentTarget.value } })} placeholder="e.g. Tembo & Associates" radius="md" />
                 <TextInput size="xs" label="Role" value={selected.legalVerifier.role} onChange={(e) => updateSelected({ legalVerifier: { ...selected.legalVerifier, role: e.currentTarget.value } })} placeholder="e.g. Internal legal officer" radius="md" />
                 <TextInput size="xs" label="License number" value={selected.legalVerifier.license} onChange={(e) => updateSelected({ legalVerifier: { ...selected.legalVerifier, license: e.currentTarget.value } })} placeholder="e.g. LZ-4471" radius="md" />
               </SimpleGrid>
-            </Card>
 
-            <Card icon={IconShieldCheck} title="Title Information" color="teal">
-              {(() => {
-                const title = selected.title ?? {
-                  titleNumber: "",
-                  propertyRef: selected.base?.assetId || "",
-                  propertyType: selected.base?.type || "",
-                  location: selected.base?.location || "",
-                  registrationInfo: "",
-                  registeredOwner: selected.base?.owner || "",
-                };
-                return selected.source === "application" ? (
-                  <SimpleGrid cols={3} spacing={10}>
-                    <ReadRow label="Title number" value={title.titleNumber} />
-                    <ReadRow label="Property reference" value={title.propertyRef} />
-                    <ReadRow label="Property type" value={title.propertyType} />
-                    <ReadRow label="Location" value={title.location} />
-                    <ReadRow label="Registered owner" value={title.registeredOwner} />
-                    <ReadRow label="Registration information" value={title.registrationInfo} />
-                  </SimpleGrid>
-                ) : (
-                  <SimpleGrid cols={3} spacing={10}>
-                    <TextInput size="xs" label="Title number" value={title.titleNumber} onChange={(e) => updateSelected({ title: { ...title, titleNumber: e.currentTarget.value } })} placeholder="e.g. MV-ZM-119284" radius="md" />
-                    <TextInput size="xs" label="Property reference" value={title.propertyRef} onChange={(e) => updateSelected({ title: { ...title, propertyRef: e.currentTarget.value } })} radius="md" />
-                    <TextInput size="xs" label="Property type" value={title.propertyType} onChange={(e) => updateSelected({ title: { ...title, propertyType: e.currentTarget.value } })} radius="md" />
-                    <TextInput size="xs" label="Location" value={title.location} onChange={(e) => updateSelected({ title: { ...title, location: e.currentTarget.value } })} radius="md" />
-                    <TextInput size="xs" label="Registered owner" value={title.registeredOwner} onChange={(e) => updateSelected({ title: { ...title, registeredOwner: e.currentTarget.value } })} radius="md" />
-                    <TextInput size="xs" label="Registration information" value={title.registrationInfo} onChange={(e) => updateSelected({ title: { ...title, registrationInfo: e.currentTarget.value } })} radius="md" />
-                  </SimpleGrid>
-                );
-              })()}
-            </Card>
+              <Divider my={10} />
 
-            <SimpleGrid cols={2} spacing={10}>
-              <Paper withBorder shadow="xs" radius="lg" pb={6} style={{ overflow: "hidden" }}>
-                <Box style={{ height: 3, background: "var(--mantine-color-teal-5)" }} />
-                <Box p="md" pb={6}>
+              <SimpleGrid cols={2} spacing={20}>
+                <Box>
                   <SectionLabel>Title verification</SectionLabel>
                   <Box mt={6}>
                     {selected.titleChecklist.map((item) => (
@@ -1308,32 +1198,29 @@ function UnderwritingWorkspace({
                     ))}
                   </Box>
                 </Box>
-              </Paper>
 
-              <Paper withBorder shadow="xs" radius="lg" pb={6} style={{ overflow: "hidden" }}>
-                <Box style={{ height: 3, background: "var(--mantine-color-violet-5)" }} />
-                <Box p="md" pb={6}>
-                <Group justify="space-between" mb={6}>
-                  <SectionLabel>Legal checks</SectionLabel>
-                  <Text fz={10.5} c="dimmed">
-                    for {selected.base.type}
-                  </Text>
-                </Group>
-                {selected.legalChecks.map((c) => (
-                  <CompactCheckRow
-                    key={c.id}
-                    label={c.name}
-                    checked={c.status === "Passed"}
-                    exception={["Failed", "Exception"].includes(c.status)}
-                    note={c.comment}
-                    onToggle={() => updateLegalCheck(selected.id, c.id, { status: c.status === "Passed" ? "Pending" : "Passed" })}
-                    onFlag={() => updateLegalCheck(selected.id, c.id, { status: ["Failed", "Exception"].includes(c.status) ? "Pending" : "Exception" })}
-                    onNoteChange={(v) => updateLegalCheck(selected.id, c.id, { comment: v })}
-                  />
-                ))}
+                <Box style={{ borderLeft: "1px solid var(--mantine-color-gray-2)", paddingLeft: 20 }}>
+                  <Group justify="space-between" mb={4}>
+                    <SectionLabel>Legal checks</SectionLabel>
+                    <Text fz={10.5} c="dimmed">
+                      for {selected.base.type}
+                    </Text>
+                  </Group>
+                  {selected.legalChecks.map((c) => (
+                    <CompactCheckRow
+                      key={c.id}
+                      label={c.name}
+                      checked={c.status === "Passed"}
+                      exception={["Failed", "Exception"].includes(c.status)}
+                      note={c.comment}
+                      onToggle={() => updateLegalCheck(selected.id, c.id, { status: c.status === "Passed" ? "Pending" : "Passed" })}
+                      onFlag={() => updateLegalCheck(selected.id, c.id, { status: ["Failed", "Exception"].includes(c.status) ? "Pending" : "Exception" })}
+                      onNoteChange={(v) => updateLegalCheck(selected.id, c.id, { comment: v })}
+                    />
+                  ))}
                 </Box>
-              </Paper>
-            </SimpleGrid>
+              </SimpleGrid>
+            </Card>
 
             <DocumentsTable title="Supporting Documents" docs={selected.titleDocs} setDocs={(titleDocs) => updateSelected({ titleDocs })} />
           </>
@@ -1352,83 +1239,69 @@ function UnderwritingWorkspace({
           </Text>
         </Card>
 
-        <Paper withBorder shadow="sm" radius="lg" style={{ overflow: "hidden" }}>
-          <Box
-            p={16}
-            style={{ background: "linear-gradient(120deg, #4338CA 0%, #3730A3 100%)" }}
-          >
-            <Group gap={9}>
-              <IconClipboardCheck size={16} color="white" />
-              <Text fz={13.5} fw={700} c="white" style={{ letterSpacing: 0.2 }}>
-                Conclusion by Underwriting Decision
-              </Text>
-            </Group>
-          </Box>
-
-          <Box p="md">
-            <SimpleGrid cols={3} spacing={10} mb={16}>
-              <Box p={10} bg={readiness.valuationOk ? "green.0" : "orange.0"} style={{ borderRadius: "var(--mantine-radius-md)", border: `1px solid var(--mantine-color-${readiness.valuationOk ? "green" : "orange"}-2)` }}>
+        <Card icon={IconClipboardCheck} title="Conclusion by Underwriting Decision" color="brand">
+            <SimpleGrid cols={3} spacing={8} mb={10}>
+              <Box p={8} bg={readiness.valuationOk ? "green.0" : "orange.0"} style={{ borderRadius: "var(--mantine-radius-md)", border: `1px solid var(--mantine-color-${readiness.valuationOk ? "green" : "orange"}-2)` }}>
                 <Text fz={9.5} fw={600} c={readiness.valuationOk ? "green.7" : "orange.7"} tt="uppercase">
                   Assets ({assets.length})
                 </Text>
-                <Text fz={16} fw={700} c="dark.8" mt={2}>
+                <Text fz={15} fw={700} c="dark.8" mt={1}>
                   {zmw(totalAssetValue)}
                 </Text>
-                <Text fz={10.5} c="dimmed" mt={2}>
+                <Text fz={10.5} c="dimmed" mt={1}>
                   {totalCoverage != null ? `${totalCoverage}% coverage` : "—"}
                 </Text>
               </Box>
-              <Box p={10} bg={readiness.titleOk ? "green.0" : "orange.0"} style={{ borderRadius: "var(--mantine-radius-md)", border: `1px solid var(--mantine-color-${readiness.titleOk ? "green" : "orange"}-2)` }}>
+              <Box p={8} bg={readiness.titleOk ? "green.0" : "orange.0"} style={{ borderRadius: "var(--mantine-radius-md)", border: `1px solid var(--mantine-color-${readiness.titleOk ? "green" : "orange"}-2)` }}>
                 <Text fz={9.5} fw={600} c={readiness.titleOk ? "green.7" : "orange.7"} tt="uppercase">
                   Title
                 </Text>
-                <Text fz={16} fw={700} c="dark.8" mt={2}>
+                <Text fz={15} fw={700} c="dark.8" mt={1}>
                   {readiness.titleOk ? "Verified" : "Unresolved"}
                 </Text>
-                <Text fz={10.5} c="dimmed" mt={2}>
+                <Text fz={10.5} c="dimmed" mt={1}>
                   {readiness.titleOk ? "No open items" : "Action needed"}
                 </Text>
               </Box>
               <Box
-                p={10}
+                p={8}
                 bg={legalCounts.failed ? "red.0" : legalCounts.exception ? "orange.0" : "green.0"}
                 style={{ borderRadius: "var(--mantine-radius-md)", border: `1px solid var(--mantine-color-${legalCounts.failed ? "red" : legalCounts.exception ? "orange" : "green"}-2)` }}
               >
                 <Text fz={9.5} fw={600} c={legalCounts.failed ? "red.7" : legalCounts.exception ? "orange.7" : "green.7"} tt="uppercase">
                   Legal checks
                 </Text>
-                <Text fz={16} fw={700} c="dark.8" mt={2}>
+                <Text fz={15} fw={700} c="dark.8" mt={1}>
                   {legalCounts.passed} passed
                 </Text>
-                <Text fz={10.5} c="dimmed" mt={2}>
+                <Text fz={10.5} c="dimmed" mt={1}>
                   {legalCounts.exception} exception · {legalCounts.failed} failed
                 </Text>
               </Box>
             </SimpleGrid>
 
-            <SimpleGrid cols={3} spacing={10} mb={16}>
+            <SimpleGrid cols={2} spacing={8} mb={10}>
               <Select size="xs" label="Assignee" data={["ZMW", "Internal team", "Legal"]} value={assignee} onChange={(v) => setAssignee(v || assignee)} radius="md" />
               <Select size="xs" label="Status" data={["Review Required", "In Progress", "Ready for Decision"]} value={decisionStatus} onChange={(v) => setDecisionStatus(v || decisionStatus)} radius="md" />
-              <TextInput size="xs" label="Legal status" value={legalStatusLabel} readOnly radius="md" />
             </SimpleGrid>
 
           {!decision ? (
             <>
-              <SimpleGrid cols={4} spacing={10} style={{ opacity: readiness.ready ? 1 : 0.45, pointerEvents: readiness.ready ? "auto" : "none" }}>
+              <SimpleGrid cols={4} spacing={8} style={{ opacity: readiness.ready ? 1 : 0.45, pointerEvents: readiness.ready ? "auto" : "none" }}>
                 <DecisionButton label="Approve / Proceed" caption="No conditions" color="green" icon={IconCircleCheck} active={false} onClick={() => setDecision("approve")} />
                 <DecisionButton label="Approve with Conditions" caption="Add pre-disbursement terms" color="orange" icon={IconAlertTriangle} active={false} onClick={() => setDecision("conditions")} />
                 <DecisionButton label="Refer / Further Revision" caption="Send back for more info" color="brand" icon={IconArrowRight} active={false} onClick={() => setDecision("refer")} />
                 <DecisionButton label="Reject" caption="Close the application" color="red" icon={IconCircleX} active={false} onClick={() => setDecision("reject")} />
               </SimpleGrid>
               {!readiness.ready && (
-                <Text fz={11.5} c="dimmed" mt={10}>
+                <Text fz={11.5} c="dimmed" mt={8}>
                   Approve options unlock once valuation, title and legal checks have no unresolved items. You can still refer or reject at any point.
                 </Text>
               )}
             </>
           ) : (
             <Box>
-              <Group justify="space-between" mb={14}>
+              <Group justify="space-between" mb={10}>
                 <Text fz={13} fw={700} c="dark.8">
                   {DECISION_LABEL[decision]}
                 </Text>
@@ -1438,10 +1311,10 @@ function UnderwritingWorkspace({
               </Group>
 
               {decision === "conditions" && (
-                <Box mb={16}>
-                  <Divider mb={14} />
+                <Box mb={12}>
+                  <Divider mb={10} />
                   {conditions.map((c, i) => (
-                    <Group key={i} align="flex-end" gap={10} mb={10} wrap="nowrap">
+                    <Group key={i} align="flex-end" gap={10} mb={8} wrap="nowrap">
                       <TextInput size="xs"
                         label="Condition"
                         value={c.condition}
@@ -1464,12 +1337,12 @@ function UnderwritingWorkspace({
               )}
 
               {(decision === "refer" || decision === "reject") && (
-                <Box mb={16}>
-                  <Divider mb={14} />
-                  <Text fz={11} fw={600} c="dimmed" tt="uppercase" mb={10}>
+                <Box mb={12}>
+                  <Divider mb={10} />
+                  <Text fz={11} fw={600} c="dimmed" tt="uppercase" mb={8}>
                     Reason
                   </Text>
-                  <Group gap={8} mb={12} wrap="wrap">
+                  <Group gap={8} mb={10} wrap="wrap">
                     {REJECT_REASONS.map((r) => (
                       <Button key={r} size="compact-sm" radius="xl" variant={reasonCategory === r ? "light" : "outline"} color={reasonCategory === r ? "brand" : "gray"} onClick={() => setReasonCategory(r)}>
                         {r}
@@ -1480,8 +1353,8 @@ function UnderwritingWorkspace({
                 </Box>
               )}
 
-              <Paper withBorder radius="md" p="md" mb={16} bg="gray.0">
-                <Text fz={12} fw={600} c="dark.8" mb={8}>
+              <Paper withBorder radius="md" p="sm" mb={12} bg="gray.0">
+                <Text fz={12} fw={600} c="dark.8" mb={6}>
                   Decision summary
                 </Text>
                 <SimRow label="Decision" value={DECISION_LABEL[decision]} />
@@ -1502,8 +1375,7 @@ function UnderwritingWorkspace({
               )}
             </Box>
           )}
-          </Box>
-        </Paper>
+        </Card>
       </Stack>
     </Box>
   );
