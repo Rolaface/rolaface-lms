@@ -28,6 +28,7 @@ import { EnrichmentTable } from "../view/Origination/Enrichment/EnrichmentTable"
 import { UnderwritingTable } from "../view/Origination/Underwriting/UnderwritingTable";
 import { LoanStatement } from "../view/Reports/LoanStatement/LoanStatement";
 import { ArrearReports } from "../view/Reports/Arrear/ArrearReports";
+import { LoanOriginationReports } from "../view/Reports/LoanOrigination/LoanOriginationReports";
 import { RepaymentSchedule } from "../view/Reports/RepaymentSchedule/RepaymentSchedule";
 
 import { LoanAccount } from "../view/LoanAccount/LoanAccount";
@@ -478,6 +479,11 @@ const reportsArrearsRoute = createRoute({
   path: "/arrears",
   component: ArrearReports,
 });
+const reportsLoanOriginationRoute = createRoute({
+  getParentRoute: () => reportsRoute,
+  path: "/loan-origination",
+  component: LoanOriginationReports,
+});
 const reportsScheduleRoute = createRoute({
   getParentRoute: () => reportsRoute,
   path: "/schedule",
@@ -568,7 +574,7 @@ const routeTree = rootRoute.addChildren([
 // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
 originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute]),
 // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, enrichmentStageRoute, loanApplicationTabsRoute, preScreeningStageRoute]),
-  reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
+  reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsLoanOriginationRoute, reportsScheduleRoute]),
   settingsRoute.addChildren([
     lendingConfigurationRoute,
 
