@@ -104,8 +104,8 @@ export const RULES: RuleRow[] = [
    WIZARD STEP LIST (Create Rule tab)
    ============================================================ */
 export const STEPS = [
-  "Basic Information", "Income Assessment", "Existing Obligations",
-  "Credit & Payment History", "Collateral", "Risk Scoring", "Eligibility Formula",
+  "Basic Information", "Income Assessment", "Obligation Assessment",
+  "Credit Score Limit", "Collateral Limit", "Internal Scoring Limit", "Eligibility Formula",
   "Pre-Approval Limits", "Decision Rules", "Review & Publish",
 ];
 

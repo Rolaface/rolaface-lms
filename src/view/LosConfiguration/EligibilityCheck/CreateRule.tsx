@@ -211,7 +211,8 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
   const [ruleStatus, setRuleStatus] = useState<string | null>("Draft");
   const [weights, setWeights] = useState<WeightItem[]>(DEFAULT_WEIGHTS);
   const totalWeight = weights.reduce((s, x) => s + Number(x.w || 0), 0);
-  const [formulaMode, setFormulaMode] = useState<"flow" | "advanced">("flow");
+  const [formulaMode, setFormulaMode] = useState<"flow" | "simulator">("flow");
+  const [limitOverrides, setLimitOverrides] = useState<Record<string, number>>({});
   const [formulaParams, setFormulaParams] = useState<FormulaParams>(DEFAULT_FORMULA_PARAMS);
   const setFormulaParam = (k: keyof FormulaParams) => (v: number) => setFormulaParams((p) => ({ ...p, [k]: v }));
   const [creditBands, setCreditBands] = useState<CreditBand[]>(DEFAULT_CREDIT_BANDS);
@@ -224,6 +225,22 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
     setCreditBands((bands) => [...bands, { id: "cb" + Date.now(), grade: "New", min: Math.max(lowestMin - 100, 0), multiple: 0, decision: "Manual Review" }]);
   };
   const removeCreditBand = (id: string) => setCreditBands((bands) => (bands.length > 1 ? bands.filter((b) => b.id !== id) : bands));
+
+  const [internalBands, setInternalBands] = useState<CreditBand[]>([
+    { id: "ib1", grade: "A", min: 80, multiple: 7, decision: "Eligible" },
+    { id: "ib2", grade: "B", min: 60, multiple: 4, decision: "Eligible" },
+    { id: "ib3", grade: "C", min: 40, multiple: 2.5, decision: "Conditional" },
+    { id: "ib4", grade: "D", min: 20, multiple: 1, decision: "Manual Review" },
+    { id: "ib5", grade: "E", min: 0, multiple: 0, decision: "Decline" },
+  ]);
+  const sortedInternalBands = useMemo(() => [...internalBands].sort((a, b) => b.min - a.min), [internalBands]);
+  const updateInternalBand = (id: string, patch: Partial<CreditBand>) =>
+    setInternalBands((bands) => bands.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  const addInternalBand = () => {
+    const lowestMin = Math.min(...internalBands.map((b) => b.min));
+    setInternalBands((bands) => [...bands, { id: "ib" + Date.now(), grade: "New", min: Math.max(lowestMin - 10, 0), multiple: 0, decision: "Manual Review" }]);
+  };
+  const removeInternalBand = (id: string) => setInternalBands((bands) => (bands.length > 1 ? bands.filter((b) => b.id !== id) : bands));
   const [collateralItems, setCollateralItems] = useState<CollateralItem[]>(DEFAULT_COLLATERAL_ITEMS);
   const updateCollateralItem = (id: string, patch: Partial<CollateralItem>) =>
     setCollateralItems((items) => items.map((it) => (it.id === id ? { ...it, ...patch } : it)));
@@ -367,6 +384,7 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                 <Box mb="md">
                   <SimpleGrid cols={2} spacing="md">
                     <Field label="Loan Product"><Select size="xs" value={loanProduct} onChange={setLoanProduct} data={["Personal Loan", "Staff Loan", "SME Loan", "Salary Advance", "Asset Finance", "Emergency Loan"]} /></Field>
+                    <Field label="Max Product Limit"><TextInput size="xs" type="number" value={formulaParams.productMax} onChange={(e) => setFormulaParam("productMax")(e.target.value === "" ? 0 : Number(e.target.value))} /></Field>
                     <Field label="Customer Type"><Select size="xs" defaultValue="Individual" data={["Individual", "Employee", "SME", "Corporate"]} /></Field>
                     <Field label="Customer Segment"><Select size="xs" defaultValue="New Customer" data={["New Customer", "Existing Customer", "Repeat Borrower", "Preferred Customer"]} /></Field>
                     <Field label="Risk Category"><Select size="xs" value={riskCategory} onChange={setRiskCategory} data={["Low Risk", "Medium Risk", "High Risk"]} /></Field>
@@ -426,10 +444,10 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
               </Box>
             )}
 
-            {/* 2 — Existing Obligations */}
+            {/* 2 — Obligation Assessment */}
             {step === 2 && (
               <Box>
-                <SectionHead title="Existing Obligations" description="Cap how much of a customer's income can already be committed elsewhere." />
+                <SectionHead title="Obligation Assessment" description="Cap how much of a customer's income can already be committed elsewhere." />
                 <SimpleGrid cols={2} spacing="sm" mb="md">
                   <Paper px="sm" py="sm" radius="sm" style={{ border: "1px solid var(--mantine-color-slate-2)" }}>
                     <Field label="Maximum Debt-to-Income Ratio" hint="Total monthly debt divided by eligible monthly income x 100">
@@ -459,10 +477,10 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
               </Box>
             )}
 
-            {/* 3 — Credit & Payment History */}
+            {/* 3 — Credit Score Limit */}
             {step === 3 && (
               <Box>
-                <SectionHead title="Credit & Payment History" description="Define credit bands — each band's minimum score, multiple and decision routing are fully editable." />
+                <SectionHead title="Credit Score Limit" description="Define credit bands — each band's minimum score, multiple and decision routing are fully editable." />
                 <Paper radius="sm" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
                   <Table verticalSpacing="xs" fz={11} style={{ tableLayout: "fixed" }}>
                     <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
@@ -474,29 +492,24 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                     </Table.Thead>
                     <Table.Tbody>
                       {sortedCreditBands.map((band, i) => {
-                        const isSample = band.id === sampleCreditBand.id;
                         const upper = i > 0 ? sortedCreditBands[i - 1].min - 1 : null;
                         const rangeLabel = upper === null ? `${band.min}+` : `${band.min}–${upper}`;
                         const dotColor = DECISION_DOT[DECISION_TONE[band.decision] as string];
                         return (
-                          <Table.Tr key={band.id} style={{ background: isSample ? "var(--mantine-color-yellow-0)" : undefined }}>
+                          <Table.Tr key={band.id}>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
                               <TextInput size="xs" type="number" value={band.min} onChange={(e) => updateCreditBand(band.id, { min: e.target.value === "" ? 0 : Number(e.target.value) })} />
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
                               <Group gap={4} wrap="nowrap">
                                 <Text fz={10} c="slate.5">{rangeLabel}</Text>
-                                {isSample && <Pill tone="medium">Sample</Pill>}
                               </Group>
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
                               <TextInput size="xs" value={band.grade} onChange={(e) => updateCreditBand(band.id, { grade: e.target.value })} />
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <Group gap={6} wrap="nowrap">
-                                <Slider value={band.multiple} onChange={(v) => updateCreditBand(band.id, { multiple: v })} min={0} max={10} step={0.5} w={110} size="xs" color="brand" label={null} />
-                                <Text fz={10} fw={600} c="brand.6" w={28}>{band.multiple}x</Text>
-                              </Group>
+                              <TextInput size="xs" type="number" value={band.multiple} onChange={(e) => updateCreditBand(band.id, { multiple: e.target.value === "" ? 0 : Number(e.target.value) })} rightSection={<Text fz={10} c="dimmed">x</Text>} />
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
                               <Group gap={5} wrap="nowrap">
@@ -519,15 +532,15 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
               </Box>
             )}
 
-            {/* 4 — Collateral */}
+            {/* 4 — Collateral Limit */}
             {step === 4 && (
               <Box>
-                <SectionHead title="Collateral" description="Add every collateral item this rule accepts. Market value, haircut and max LTV convert to a live limit." />
+                <SectionHead title="Collateral Limit" description="Add every collateral item this rule accepts. Market value, haircut and max LTV convert to a live limit." />
                 <Paper radius="sm" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
                   <Table verticalSpacing="xs" fz={11} style={{ tableLayout: "fixed" }}>
                     <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
                       <Table.Tr>
-                        {[["Type", 150], ["Market Value", 130], ["Haircut %", 150], ["Max LTV %", 150], ["Limit", 120], ["", 38]].map(([h, w]) => (
+                        {[["Type", 150], ["Haircut %", 150], ["Loan to Value %", 150], ["", 38]].map(([h, w]) => (
                           <Table.Th key={h} style={{ borderColor: "var(--mantine-color-slate-2)", width: w, fontSize: 10, fontWeight: 700, color: "var(--mantine-color-slate-5)", textTransform: "uppercase", letterSpacing: ".04em" }}>{h}</Table.Th>
                         ))}
                       </Table.Tr>
@@ -536,20 +549,8 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                       {collateralItems.map((item) => (
                         <Table.Tr key={item.id}>
                           <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Select size="xs" value={item.type} onChange={(v) => v && updateCollateralItem(item.id, { type: v })} data={COLLATERAL_TYPES} /></Table.Td>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><TextInput size="xs" type="number" value={item.marketValue} onChange={(e) => updateCollateralItem(item.id, { marketValue: e.target.value === "" ? 0 : Number(e.target.value) })} /></Table.Td>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                            <Group gap={6} wrap="nowrap">
-                              <Slider value={item.haircutPct} onChange={(v) => updateCollateralItem(item.id, { haircutPct: v })} min={0} max={100} w={80} size="xs" color="orange" label={null} />
-                              <Text fz={10} fw={600} c="orange.6" w={26}>{item.haircutPct}%</Text>
-                            </Group>
-                          </Table.Td>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                            <Group gap={6} wrap="nowrap">
-                              <Slider value={item.maxLtvPct} onChange={(v) => updateCollateralItem(item.id, { maxLtvPct: v })} min={0} max={100} w={80} size="xs" color="brand" label={null} />
-                              <Text fz={10} fw={600} c="brand.6" w={26}>{item.maxLtvPct}%</Text>
-                            </Group>
-                          </Table.Td>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Text fz={11} fw={700} c="brand.6">ZMW {Math.round(collateralItemLimit(item)).toLocaleString()}</Text></Table.Td>
+                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Text fz={11} fw={500}>{item.haircutPct}%</Text></Table.Td>
+                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Text fz={11} fw={500}>{item.maxLtvPct}%</Text></Table.Td>
                           <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><ActionIcon variant="subtle" color="red" size="xs" onClick={() => removeCollateralItem(item.id)}><IconTrash size={11} /></ActionIcon></Table.Td>
                         </Table.Tr>
                       ))}
@@ -559,62 +560,70 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                     </Table.Tbody>
                   </Table>
                 </Paper>
-                <Group justify="space-between" align="center">
+                <Group justify="flex-start" align="center">
                   <Button variant="subtle" color="slate" size="xs" leftSection={<IconPlus size={11} />} onClick={addCollateralItem}>Add Collateral</Button>
-                  <InfoCard color="brand">
-                    <Group gap={6}><Text fz={10} c="slate.5">Total Limit</Text><Text fz={12} fw={700} c="brand.6">ZMW {Math.round(totalCollateralLimit).toLocaleString()}</Text></Group>
-                  </InfoCard>
                 </Group>
-                <Text fz={10} c="slate.4" mt={6}>Limit = Sum (Market Value x (1 - Haircut %) x Max LTV %). This total feeds the Eligibility Formula section.</Text>
+                <InfoCard color="brand" mt="sm">
+                  <Group gap={6}>
+                    <IconInfoCircle size={14} color="var(--mantine-color-brand-6)" />
+                    <Text fz={12} fw={500} c="brand.8">Collateral Limit = sum of each included item's Market Value x (1 - Haircut %) x Loan to Value %.</Text>
+                  </Group>
+                </InfoCard>
               </Box>
             )}
 
-            {/* 5 — Risk Scoring */}
+            {/* 5 — Internal Scoring Limit */}
             {step === 5 && (
               <Box>
-                <SectionHead title="Risk Scoring" description="Weight the factors that make up the composite risk score. Weights must total 100%." />
-                <SimpleGrid cols={2} spacing="md">
-                  <Stack gap={6}>
-                    {weights.map((w, i) => (
-                      <Paper key={w.name} px="sm" py={8} radius="sm" style={{ border: "1px solid var(--mantine-color-slate-2)" }}>
-                        <Group gap="sm" wrap="nowrap" align="center">
-                          <IconGripVertical size={12} color="var(--mantine-color-slate-4)" style={{ cursor: "grab", flexShrink: 0 }} />
-                          <Text fz="xs" c="slate.7" fw={500} style={{ flex: 1 }}>{w.name}</Text>
-                          <Slider value={w.w} min={0} max={50} color="brand" style={{ width: 110 }} size="xs" label={null} onChange={(v) => setWeights((ws) => ws.map((x, j) => (j === i ? { ...x, w: v } : x)))} />
-                          <Text fz="xs" fw={700} c="brand.6" w={32} ta="right">{w.w}%</Text>
-                        </Group>
-                      </Paper>
-                    ))}
-                  </Stack>
-                  <Box>
-                    <Paper p="md" radius="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", textAlign: "center" }}>
-                      <RingProgress
-                        size={120}
-                        thickness={10}
-                        roundCaps
-                        sections={weights.map((w, i) => ({ value: w.w, color: `hsl(213, 55%, ${30 + i * 8}%)`, tooltip: `${w.name}: ${w.w}%` }))}
-                        label={
-                          <Box ta="center">
-                            <Text fz={18} fw={800} c={totalWeight === 100 ? "brand.6" : "red.6"}>{totalWeight}%</Text>
-                            <Text fz={9} c="slate.5">of 100%</Text>
-                          </Box>
-                        }
-                      />
-                      <Text fz={11} fw={600} mt={6} c={totalWeight === 100 ? "green.7" : "red.6"}>
-                        {totalWeight === 100 ? "Weights balanced" : `${100 - totalWeight > 0 ? "+" : ""}${100 - totalWeight}% to balance`}
-                      </Text>
-                    </Paper>
-                    <Stack gap={3} mt="xs">
-                      {weights.map((w, i) => (
-                        <Group key={w.name} gap={6} align="center">
-                          <Box style={{ width: 8, height: 8, borderRadius: 2, background: `hsl(213, 55%, ${30 + i * 8}%)`, flexShrink: 0 }} />
-                          <Text fz={10} c="slate.6" style={{ flex: 1 }}>{w.name}</Text>
-                          <Text fz={10} fw={600} c="slate.7">{w.w}%</Text>
-                        </Group>
-                      ))}
-                    </Stack>
-                  </Box>
-                </SimpleGrid>
+                <SectionHead title="Internal Scoring Limit" description="Define scoring bands — each band's minimum score, multiple and decision routing are fully editable. Score is out of 100." />
+                <Paper radius="sm" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
+                  <Table verticalSpacing="xs" fz={11} style={{ tableLayout: "fixed" }}>
+                    <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
+                      <Table.Tr>
+                        {[["Min Score", 100], ["Range", 170], ["Grade", 70], ["Loan Multiple", 200], ["Decision", 185], ["", 38]].map(([h, w]) => (
+                          <Table.Th key={h} style={{ borderColor: "var(--mantine-color-slate-2)", width: w, fontSize: 10, fontWeight: 700, color: "var(--mantine-color-slate-5)", textTransform: "uppercase", letterSpacing: ".04em" }}>{h}</Table.Th>
+                        ))}
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {sortedInternalBands.map((band, i) => {
+                        const upper = i > 0 ? sortedInternalBands[i - 1].min - 1 : null;
+                        const rangeLabel = upper === null ? `${band.min}+` : `${band.min}–${upper}`;
+                        const dotColor = DECISION_DOT[DECISION_TONE[band.decision] as string];
+                        return (
+                          <Table.Tr key={band.id}>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
+                              <TextInput size="xs" type="number" value={band.min} onChange={(e) => updateInternalBand(band.id, { min: e.target.value === "" ? 0 : Number(e.target.value) })} />
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
+                              <Group gap={4} wrap="nowrap">
+                                <Text fz={10} c="slate.5">{rangeLabel}</Text>
+                              </Group>
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
+                              <TextInput size="xs" value={band.grade} onChange={(e) => updateInternalBand(band.id, { grade: e.target.value })} />
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
+                              <TextInput size="xs" type="number" value={band.multiple} onChange={(e) => updateInternalBand(band.id, { multiple: e.target.value === "" ? 0 : Number(e.target.value) })} rightSection={<Text fz={10} c="dimmed">x</Text>} />
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
+                              <Group gap={5} wrap="nowrap">
+                                <Box style={{ width: 6, height: 6, borderRadius: 99, flexShrink: 0, background: `var(--mantine-color-${dotColor}-5)` }} />
+                                <Select size="xs" w={130} value={band.decision} onChange={(v) => v && updateInternalBand(band.id, { decision: v })} data={DECISION_OPTIONS} />
+                              </Group>
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
+                              <ActionIcon variant="subtle" color="red" size="xs" disabled={internalBands.length <= 1} onClick={() => removeInternalBand(band.id)}>
+                                <IconTrash size={11} />
+                              </ActionIcon>
+                            </Table.Td>
+                          </Table.Tr>
+                        );
+                      })}
+                    </Table.Tbody>
+                  </Table>
+                </Paper>
+                <Button variant="subtle" color="slate" size="xs" leftSection={<IconPlus size={11} />} onClick={addInternalBand}>Add Band</Button>
               </Box>
             )}
 
@@ -623,30 +632,24 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
               <Box>
                 <Group justify="space-between" align="flex-start" mb="sm">
                   <SectionHead title="Eligibility Formula" description="The eligible amount is always the lowest of the limits below. Values update live." />
-                  <SegmentedControl size="xs" color="brand" value={formulaMode} onChange={(v) => setFormulaMode(v as "flow" | "advanced")} data={[{ label: "Flow view", value: "flow" }, { label: "Advanced", value: "advanced" }]} />
+                  <SegmentedControl size="xs" color="brand" value={formulaMode} onChange={(v) => setFormulaMode(v as "flow" | "simulator")} data={[{ label: "Flow view", value: "flow" }, { label: "Simulator", value: "simulator" }]} />
                 </Group>
                 {formulaMode === "flow" ? (
                   <>
                     <Stack gap={0}>
                       {FORMULA_ITEMS.map(([name, formula], i, arr) => {
-                        const limit = formulaPreview.limits.find((l) => l.name === name)!;
-                        const isLimiting = name === formulaPreview.limitingFactor;
                         return (
                           <Box key={name}>
-                            <Paper px="sm" py={7} radius="sm" style={{ border: `1px solid ${isLimiting ? "var(--mantine-color-yellow-3)" : "var(--mantine-color-slate-2)"}`, background: isLimiting ? "var(--mantine-color-yellow-0)" : "var(--mantine-color-white)" }}>
+                            <Paper px="sm" py={7} radius="sm" style={{ border: `1px solid var(--mantine-color-slate-2)`, background: "var(--mantine-color-white)" }}>
                               <Group justify="space-between" wrap="nowrap">
                                 <Group gap="sm" wrap="nowrap">
-                                  <ThemeIcon size={18} radius="sm" variant="light" color={isLimiting ? "yellow" : "brand"}>
+                                  <ThemeIcon size={18} radius="sm" variant="light" color="brand">
                                     <Text fz={9} fw={700}>{i + 1}</Text>
                                   </ThemeIcon>
                                   <Box>
-                                    <Text fz="xs" fw={600} c={isLimiting ? "yellow.9" : "slate.8"}>{name}</Text>
+                                    <Text fz="xs" fw={600} c="slate.8">{name}</Text>
                                     <Text fz={9} c="slate.4" ff="monospace">{formula}</Text>
                                   </Box>
-                                </Group>
-                                <Group gap={6} wrap="nowrap">
-                                  <Text fz="xs" fw={700} c={isLimiting ? "yellow.9" : "slate.8"}>ZMW {Math.round(limit.value).toLocaleString()}</Text>
-                                  {isLimiting && <Pill tone="medium">Binding</Pill>}
                                 </Group>
                               </Group>
                             </Paper>
@@ -658,53 +661,60 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                     <Paper px="sm" py={8} mt="sm" radius="sm" style={{ background: "linear-gradient(135deg, var(--mantine-color-brand-6) 0%, var(--mantine-color-brand-5) 100%)" }}>
                       <Group justify="space-between">
                         <Group gap={6}><IconShieldCheck size={13} color="rgba(255,255,255,0.9)" /><Text fz="xs" fw={600} c="white">Final Eligible Amount = MIN(all limits above)</Text></Group>
-                        <Text fz="sm" fw={800} c="white">ZMW {Math.round(formulaPreview.final).toLocaleString()}</Text>
                       </Group>
                     </Paper>
                     <Text fz={10} c="slate.4" mt={4}>Worked example: Basic Salary ZMW 15,000 · Net Salary ZMW 12,500 · Other Income ZMW 3,000 · Credit Score 735 · Tenure 24 months.</Text>
                   </>
                 ) : (
                   <SimpleGrid cols={2} spacing="md">
-                    <Paper radius="sm" p="sm" style={{ border: "1px solid var(--mantine-color-slate-2)" }}>
-                      <Text fz={12} fw={700} mb="sm" c="slate.8">Formula Coefficients</Text>
-                      <Stack gap="sm">
-                        {[
-                          { label: "Other Income Recognition %", key: "otherIncomeRecognition" as const, min: 0, max: 100, suffix: "%", hint: "Share of non-salary income counted." },
-                          { label: "Salary Multiple", key: "salaryMultiple" as const, min: 1, max: 10, step: 0.5, suffix: "x", hint: "Basic Salary x this = Salary Limit." },
-                          { label: "Max EMI-to-Income Ratio %", key: "maxEmiRatio" as const, min: 10, max: 60, suffix: "%", hint: "Share of income for EMI." },
-                          { label: "Affordability Buffer %", key: "affordabilityBuffer" as const, min: 50, max: 100, suffix: "%", hint: "Safety margin on affordability." },
-                          { label: "Existing Exposure Cap %", key: "exposureCap" as const, min: 10, max: 90, suffix: "%", hint: "Max income consumed by existing debt." },
-                        ].map(({ label, key, min, max, step: s, suffix, hint }) => (
-                          <Field key={key} label={label} hint={hint}>
-                            <Group gap="sm" wrap="nowrap" mt={3}>
-                              <Slider value={formulaParams[key]} onChange={setFormulaParam(key)} min={min} max={max} step={s} color="brand" style={{ flex: 1 }} size="xs" label={(v) => `${v}${suffix}`} />
-                              <Text fz="xs" fw={600} c="brand.6" w={36}>{formulaParams[key]}{suffix}</Text>
-                            </Group>
-                          </Field>
-                        ))}
-                        <Field label="Product Maximum (ZMW)" hint="Hard cap set by the loan product.">
-                          <TextInput size="xs" type="number" value={formulaParams.productMax} onChange={(e) => setFormulaParam("productMax")(e.target.value === "" ? 0 : Number(e.target.value))} mt={3} />
-                        </Field>
-                      </Stack>
-                    </Paper>
-                    <Paper radius="sm" p="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", alignSelf: "start" }}>
-                      <Text fz={12} fw={700} mb="sm" c="slate.8">Live Preview</Text>
-                      <Stack gap={4}>
-                        {formulaPreview.limits.map((l) => {
-                          const isLimiting = l.name === formulaPreview.limitingFactor;
-                          return (
-                            <Group key={l.name} justify="space-between" px="sm" py={6} style={{ border: `1px solid ${isLimiting ? "var(--mantine-color-yellow-3)" : "var(--mantine-color-slate-2)"}`, background: isLimiting ? "var(--mantine-color-yellow-0)" : "transparent", borderRadius: "var(--mantine-radius-xs)" }}>
-                              <Text fz="xs" c="slate.7">{l.name}</Text>
-                              <Group gap={5}><Text fz="xs" fw={700} c="slate.8">ZMW {Math.round(l.value).toLocaleString()}</Text>{isLimiting && <Pill tone="medium">Binding</Pill>}</Group>
-                            </Group>
-                          );
-                        })}
-                      </Stack>
-                      <Paper px="sm" py={7} mt="sm" radius="sm" style={{ background: "linear-gradient(135deg, var(--mantine-color-brand-6) 0%, var(--mantine-color-brand-5) 100%)" }}>
-                        <Group justify="space-between"><Text fz="xs" fw={600} c="white">Final Eligible Amount</Text><Text fz="sm" fw={800} c="white">ZMW {Math.round(formulaPreview.final).toLocaleString()}</Text></Group>
-                      </Paper>
-                      <Text fz={10} c="slate.5" mt={6}>Recalculated instantly against the same sample applicant as the flow view.</Text>
-                    </Paper>
+                    {(() => {
+                      const effectiveLimits = formulaPreview.limits.map(l => ({
+                        ...l,
+                        value: limitOverrides[l.name] !== undefined ? limitOverrides[l.name] : Math.round(l.value)
+                      }));
+                      const effectiveFinal = Math.min(...effectiveLimits.map(l => l.value));
+                      const effectiveLimitingFactor = effectiveLimits.find(l => l.value === effectiveFinal)?.name;
+                      
+                      return (
+                        <>
+                          <Paper radius="sm" p="sm" style={{ border: "1px solid var(--mantine-color-slate-2)" }}>
+                            <Text fz={12} fw={700} mb="sm" c="slate.8">Simulator Inputs</Text>
+                            <Stack gap="sm">
+                              {effectiveLimits.map((l) => (
+                                <Field key={l.name} label={l.name}>
+                                  <TextInput 
+                                    size="xs" 
+                                    type="number" 
+                                    value={l.value} 
+                                    onChange={(e) => setLimitOverrides(prev => ({ ...prev, [l.name]: e.target.value === "" ? 0 : Number(e.target.value) }))}
+                                    mt={3}
+                                  />
+                                </Field>
+                              ))}
+                            </Stack>
+                          </Paper>
+                          
+                          <Paper radius="sm" p="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", alignSelf: "start" }}>
+                            <Text fz={12} fw={700} mb="sm" c="slate.8">Live Preview</Text>
+                            <Stack gap={4}>
+                              {effectiveLimits.map((l) => {
+                                const isLimiting = l.name === effectiveLimitingFactor;
+                                return (
+                                  <Group key={l.name} justify="space-between" px="sm" py={6} style={{ border: `1px solid ${isLimiting ? "var(--mantine-color-yellow-3)" : "var(--mantine-color-slate-2)"}`, background: isLimiting ? "var(--mantine-color-yellow-0)" : "transparent", borderRadius: "var(--mantine-radius-xs)" }}>
+                                    <Text fz="xs" c="slate.7">{l.name}</Text>
+                                    <Group gap={5}><Text fz="xs" fw={700} c="slate.8">ZMW {l.value.toLocaleString()}</Text>{isLimiting && <Pill tone="medium">Binding</Pill>}</Group>
+                                  </Group>
+                                );
+                              })}
+                            </Stack>
+                            <Paper px="sm" py={7} mt="sm" radius="sm" style={{ background: "linear-gradient(135deg, var(--mantine-color-brand-6) 0%, var(--mantine-color-brand-5) 100%)" }}>
+                              <Group justify="space-between"><Text fz="xs" fw={600} c="white">Final Eligible Amount</Text><Text fz="sm" fw={800} c="white">ZMW {effectiveFinal.toLocaleString()}</Text></Group>
+                            </Paper>
+                            <Text fz={10} c="slate.5" mt={6}>Recalculated instantly against the overridden limits.</Text>
+                          </Paper>
+                        </>
+                      );
+                    })()}
                   </SimpleGrid>
                 )}
               </Box>

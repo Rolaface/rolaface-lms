@@ -52,7 +52,7 @@ export function LosEligibilityCheck() {
 
                 <Stack gap={2}>
                   <Title order={2} c="slate.8" fw={700}>
-                    Loan Eligibility Check
+                    Eligibility Rules & Formula
                   </Title>
                   <Text fz="sm" c="slate.5">
                     Configure the rules used to determine customer eligibility, risk category and pre-approved loan amount.

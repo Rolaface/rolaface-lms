@@ -125,7 +125,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
           }, 
            {
             path: "/origination-setup/eligibility-check",
-            label: "Loan Eligibility Check",
+            label: "Eligibility Rules & Formula",
             icon: IconSettingsCheck,
           },
            {
