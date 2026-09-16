@@ -307,14 +307,7 @@ function ContextHeader({
         </Box>
       </Group>
       <Group gap={26}>
-        <Box ta="right">
-          <Text fz={10.5} c="slate.4">
-            Approved amount
-          </Text>
-          <Text fz={13.5} fw={700} c="slate.9">
-            {zmw(approvedAmount)}
-          </Text>
-        </Box>
+
         <Box ta="right">
           <Text fz={10.5} c="slate.4">
             Application ID
@@ -330,14 +323,15 @@ function ContextHeader({
 
 function EnrichmentWorkspace({
   values,
-  approvedAmount,
+  approvedAmount: initialApprovedAmount,
   onSubmitReady,
 }: {
   values: LoanApplicationValues;
   approvedAmount: number;
   onSubmitReady?: (canSubmit: boolean, submit: () => void) => void;
 }) {
-  const [amount, setAmount] = useState<number>(approvedAmount);
+  const [approvedAmount, setApprovedAmount] = useState<number>(initialApprovedAmount);
+  const [amount, setAmount] = useState<number>(initialApprovedAmount);
   const [tab, setTab] = useState<"terms" | "schedule">("terms");
   const [tenure, setTenure] = useState<number>(Number(values.tenureMonths) || 0);
   const [frequency, setFrequency] = useState<string>(values.repaymentFrequency);
@@ -427,7 +421,7 @@ function EnrichmentWorkspace({
         </Group>
       </Group> */}
 
-      <SimpleGrid cols={2} spacing={12}>
+      <div style={{ display: 'grid', gridTemplateColumns: '7fr 5fr', gap: 12 }}>
         {/* LEFT COLUMN */}
         <Box>
           <EnrichmentTabs tab={tab} setTab={setTab} />
@@ -436,7 +430,7 @@ function EnrichmentWorkspace({
             <>
               <Paper withBorder radius="md" p="sm" mb={8}>
                 <SectionLabel>Final loan terms</SectionLabel>
-                <SimpleGrid cols={3} spacing={10}>
+                <SimpleGrid cols={4} spacing={10}>
                   <Box>
                     <NumberInput
                       label="Requested Principal"
@@ -450,11 +444,18 @@ function EnrichmentWorkspace({
                       radius="md"
                       size="xs"
                     />
-                    {/* {!amountError && (
-                      <Text fz={10} c="green.6" mt={4} fw={600}>
-                        100% Capped Limit
-                      </Text>
-                    )} */}
+                  </Box>
+                  <Box>
+                    <NumberInput
+                      label="Approved Amount"
+                      value={approvedAmount}
+                      onChange={(v) => setApprovedAmount(Number(v) || 0)}
+                      prefix="ZMW "
+                      min={0}
+                      step={500}
+                      radius="md"
+                      size="xs"
+                    />
                   </Box>
                   <Box>
                     <NumberInput
@@ -705,7 +706,7 @@ function EnrichmentWorkspace({
 
         {/* RIGHT COLUMN — SIMULATION MATRIX */}
         <Box
-  p={14}
+  p={12}
   style={{
     borderRadius: "var(--mantine-radius-md)",
     background: "white",
@@ -714,9 +715,9 @@ function EnrichmentWorkspace({
   }}
 >
          <Box
-  p={12}
-  mx={-14}
-  mt={-14}
+  p={10}
+  mx={-12}
+  mt={-12}
   mb={10}
   style={{
     background: "linear-gradient(180deg, #4338CA 0%, #3730A3 100%)",
@@ -725,12 +726,8 @@ function EnrichmentWorkspace({
 >
   <Group justify="space-between">
     <Box>
-      {/* <Text fz={10} fw={600} c="rgba(255,255,255,0.65)">SIMULATION MATRIX</Text> */}
-      <Text fz={14} fw={700} c="white">Summary of Terms</Text>
+      <Text fz={13} fw={700} c="white">Summary of Terms</Text>
     </Box>
-    {/* <Badge size="xs" radius="xl" color="grape" variant="filled">
-      Tier-1 Terms
-    </Badge> */}
   </Group>
 </Box>
 
@@ -738,18 +735,14 @@ function EnrichmentWorkspace({
             <>
         <SimpleGrid cols={2} spacing={8} mb={8}>
   <Box p={10} bg="green.0" style={{ borderRadius: "var(--mantine-radius-md)", border: "1px solid var(--mantine-color-green-2)" }}>
-    <Text fz={9.5} fw={600} c="green.7">NET DISBURSED TO CLIENT</Text>
-    <Group justify="space-between" align="flex-end" mt={2} gap={4} wrap="nowrap">
-      <Text fz={17} fw={700} c="slate.9">{zmw(figures.netDisbursement)}</Text>
-      <Text fz={9.5} c="green.7">After {zmw(figures.netCharges)} fees</Text>
-    </Group>
+    <Text fz={9} fw={700} c="green.7" mb={4}>NET DISBURSED TO CLIENT</Text>
+    <Text fz={15} fw={800} c="slate.9" lh={1} style={{ whiteSpace: "nowrap" }}>{zmw(figures.netDisbursement)}</Text>
+    <Text fz={9.5} c="green.7" mt={4}>After {zmw(figures.netCharges)} fees</Text>
   </Box>
   <Box p={10} bg="brand.0" style={{ borderRadius: "var(--mantine-radius-md)", border: "1px solid var(--mantine-color-brand-2)" }}>
-    <Text fz={9.5} fw={600} c="brand.7">EST. {frequency.toUpperCase()} INSTALLMENT</Text>
-    <Group justify="space-between" align="flex-end" mt={2} gap={4} wrap="nowrap">
-      <Text fz={17} fw={700} c="slate.9">{zmw(figures.sim.installment)}</Text>
-      <Text fz={9.5} c="brand.7">{figures.sim.nPeriods} installments</Text>
-    </Group>
+    <Text fz={9} fw={700} c="brand.7" mb={4}>EST. {frequency.toUpperCase()} INSTALLMENT</Text>
+    <Text fz={15} fw={800} c="slate.9" lh={1} style={{ whiteSpace: "nowrap" }}>{zmw(figures.sim.installment)}</Text>
+    <Text fz={9.5} c="brand.7" mt={4}>{figures.sim.nPeriods} installments</Text>
   </Box>
 </SimpleGrid>
 
@@ -827,7 +820,7 @@ function EnrichmentWorkspace({
             <Text fz={12.5} c="rgba(255,255,255,0.7)">Fix the highlighted fields to see the simulation.</Text>
           )}
         </Box>
-      </SimpleGrid>
+      </div>
     </Box>
   );
 }

@@ -203,10 +203,7 @@ function ContextHeader() {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 10.5, color: "#9ca3af" }}>Approved amount</div>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: "#111827" }}>{zmw(APPROVED_AMOUNT)}</div>
-        </div>
+
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 10.5, color: "#9ca3af" }}>Application ID</div>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: "#111827" }}>{id}</div>
@@ -605,6 +602,7 @@ function SelectField({ label, value, onChange, options }) {
 }
 
 function EnrichmentWorkspace() {
+  const [approvedAmount, setApprovedAmount] = useState(APPROVED_AMOUNT);
   const [amount, setAmount] = useState(APPROVED_AMOUNT);
   const [tenure, setTenure] = useState(APPLICATION.loan.tenure);
   const [frequency, setFrequency] = useState(APPLICATION.loan.frequency);
@@ -624,8 +622,8 @@ function EnrichmentWorkspace() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [continued, setContinued] = useState(false);
 
-  const amountError = amount != null && (amount < PRODUCT_LIMITS.amountMin || amount > APPROVED_AMOUNT)
-    ? `Enter an amount between ${zmw(PRODUCT_LIMITS.amountMin)} and ${zmw(APPROVED_AMOUNT)} (the amount approved at prescreening).` : null;
+  const amountError = amount != null && (amount < PRODUCT_LIMITS.amountMin || amount > approvedAmount)
+    ? `Enter an amount between ${zmw(PRODUCT_LIMITS.amountMin)} and ${zmw(approvedAmount)} (the amount approved at prescreening).` : null;
   const tenureError = tenure != null && (tenure < PRODUCT_LIMITS.tenureMin || tenure > PRODUCT_LIMITS.tenureMax)
     ? `Enter a tenure between ${PRODUCT_LIMITS.tenureMin} and ${PRODUCT_LIMITS.tenureMax} months.` : null;
   const rateError = rate != null && (rate < PRODUCT_LIMITS.rateMin || rate > PRODUCT_LIMITS.rateMax)
@@ -715,8 +713,9 @@ function EnrichmentWorkspace() {
       </div>
 
       <SectionLabel>Final loan terms</SectionLabel>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 12, padding: "16px 18px", marginBottom: 22 }}>
-        <NumberField label="Amount" value={amount} onChange={setAmount} suffix="ZMW" hint={`Capped at approved amount: ${zmw(APPROVED_AMOUNT)}`} error={amountError} min={PRODUCT_LIMITS.amountMin} max={APPROVED_AMOUNT} step={500} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 12, padding: "16px 18px", marginBottom: 22 }}>
+        <NumberField label="Requested Principal" value={amount} onChange={setAmount} suffix="ZMW" hint={`Capped at approved amount: ${zmw(approvedAmount)}`} error={amountError} min={PRODUCT_LIMITS.amountMin} max={approvedAmount} step={500} />
+        <NumberField label="Approved Amount" value={approvedAmount} onChange={setApprovedAmount} suffix="ZMW" min={0} />
         <NumberField label="Tenure" value={tenure} onChange={setTenure} suffix="months" hint={`${PRODUCT_LIMITS.tenureMin}–${PRODUCT_LIMITS.tenureMax}`} error={tenureError} min={PRODUCT_LIMITS.tenureMin} max={PRODUCT_LIMITS.tenureMax} />
         <SelectField label="Repayment frequency" value={frequency} onChange={setFrequency} options={["Monthly", "Bi-weekly"]} />
       </div>

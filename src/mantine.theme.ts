@@ -410,12 +410,29 @@ export const mantineTheme = createTheme({
 
     NumberInput: {
       defaultProps: { radius: "lg", size: "xs" },
+      styles: {
+        input: {
+          borderColor: "var(--mantine-color-slate-3)",
+          fontSize: rem(14.5),
+          "&:focus": { borderColor: "var(--mantine-color-brand-5)" },
+        },
+        label: {
+          fontSize: rem(13.5),
+          fontWeight: 600,
+          color: "var(--mantine-color-slate-6)",
+          marginBottom: rem(6),
+        },
+      },
     },
 
     Select: {
       defaultProps: { radius: "lg", size: "xs" },
       styles: {
-        input: { borderColor: "var(--mantine-color-slate-3)" },
+        input: { 
+          borderColor: "var(--mantine-color-slate-3)",
+          fontSize: rem(14.5),
+          "&:focus": { borderColor: "var(--mantine-color-brand-5)" },
+        },
         label: {
           fontSize: rem(13.5),
           fontWeight: 600,
