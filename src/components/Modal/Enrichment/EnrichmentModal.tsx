@@ -144,7 +144,7 @@ function computeSimulation(
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <Text fz={11} fw={600} c="slate.5" tt="uppercase" style={{ letterSpacing: 0.3 }} mb={6}>
+    <Text fz={11} fw={600} c="slate.5" tt="uppercase" style={{ letterSpacing: 0.3 }} mb={4}>
       {children}
     </Text>
   );
@@ -168,7 +168,7 @@ function SimRow({ label, value, last, strong }: { label: string; value: string; 
 }
 function EnrichmentTabs({ tab, setTab }: { tab: "terms" | "schedule"; setTab: (t: "terms" | "schedule") => void }) {
   return (
-    <Group gap={4} mb={16}>
+    <Group gap={4} mb={10}>
       {(["terms", "schedule"] as const).map((t) => (
         <UnstyledButton
           key={t}
@@ -287,7 +287,7 @@ function ContextHeader({
       justify="space-between"
       align="center"
       px="xl"
-      py="sm"
+      py={8}
       bg="white"
       style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
     >
@@ -407,7 +407,7 @@ function EnrichmentWorkspace({
   }
 
    return (
-    <Box p={20}>
+    <Box p={14}>
       {/* <Group
         gap={10}
         align="flex-start"
@@ -427,14 +427,14 @@ function EnrichmentWorkspace({
         </Group>
       </Group> */}
 
-      <SimpleGrid cols={2} spacing={16}>
+      <SimpleGrid cols={2} spacing={12}>
         {/* LEFT COLUMN */}
         <Box>
           <EnrichmentTabs tab={tab} setTab={setTab} />
 
           {tab === "terms" && (
             <>
-              <Paper withBorder radius="md" p="sm" mb={10}>
+              <Paper withBorder radius="md" p="sm" mb={8}>
                 <SectionLabel>Final loan terms</SectionLabel>
                 <SimpleGrid cols={3} spacing={10}>
                   <Box>
@@ -486,7 +486,7 @@ function EnrichmentWorkspace({
                 </SimpleGrid>
               </Paper>
 
-              <Paper withBorder radius="md" p="sm" mb={10}>
+              <Paper withBorder radius="md" p="sm" mb={8}>
                 <SectionLabel>Interest rate & calculation method</SectionLabel>
                 <SimpleGrid cols={3} spacing={10}>
                   <Box>
@@ -545,7 +545,7 @@ function EnrichmentWorkspace({
                     Deducted at Disbursement
                   </Badge>
                 </Group>
-                <SimpleGrid cols={3} spacing={10} mb={10}>
+                <SimpleGrid cols={3} spacing={10} mb={8}>
                   <Box>
                     <NumberInput
                       label="Processing Fee"
@@ -705,18 +705,19 @@ function EnrichmentWorkspace({
 
         {/* RIGHT COLUMN — SIMULATION MATRIX */}
         <Box
-  p={16}
+  p={14}
   style={{
     borderRadius: "var(--mantine-radius-md)",
     background: "white",
     border: "1px solid var(--mantine-color-slate-2)",
+    overflow: "hidden",
   }}
 >
          <Box
-  p={14}
-  mx={-16}
-  mt={-16}
-  mb={14}
+  p={12}
+  mx={-14}
+  mt={-14}
+  mb={10}
   style={{
     background: "linear-gradient(180deg, #4338CA 0%, #3730A3 100%)",
     borderRadius: "var(--mantine-radius-md) var(--mantine-radius-md) 0 0",
@@ -735,7 +736,7 @@ function EnrichmentWorkspace({
 
           {figures ? (
             <>
-        <SimpleGrid cols={2} spacing={10} mb={10}>
+        <SimpleGrid cols={2} spacing={8} mb={8}>
   <Box p={10} bg="green.0" style={{ borderRadius: "var(--mantine-radius-md)", border: "1px solid var(--mantine-color-green-2)" }}>
     <Text fz={9.5} fw={600} c="green.7">NET DISBURSED TO CLIENT</Text>
     <Group justify="space-between" align="flex-end" mt={2} gap={4} wrap="nowrap">
@@ -752,28 +753,41 @@ function EnrichmentWorkspace({
   </Box>
 </SimpleGrid>
 
-              <Box mb={14}>
-  <Group justify="space-between" py={6} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+              <Box mb={10}>
+  <Group justify="space-between" py={5} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
     <Text fz={12} c="slate.5">Gross loan amount</Text>
     <Text fz={12} fw={600} c="slate.9">{zmw(amount)}</Text>
   </Group>
-  <Group justify="space-between" py={6} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+  <Group justify="space-between" py={5} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
     <Text fz={12} c="slate.5">Total charges & fees</Text>
     <Text fz={12} fw={600} c="red.6">- {zmw(figures.netCharges)}</Text>
   </Group>
-  <Group justify="space-between" py={6} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+  <Group justify="space-between" py={5} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
     <Text fz={12} c="slate.5">Total interest</Text>
     <Text fz={12} fw={600} c="slate.9">{zmw(figures.sim.totalInterest)}</Text>
   </Group>
-  <Group justify="space-between" py={6} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+  <Group justify="space-between" py={5} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
     <Text fz={12} c="slate.5">Total cost of credit</Text>
     <Text fz={12} fw={600} c="slate.9">{zmw(figures.totalCostOfCredit)}</Text>
   </Group>
-  <Group justify="space-between" py={8} bg="slate.0" px={8} mt={4} style={{ borderRadius: "var(--mantine-radius-sm)" }}>
+  <Group justify="space-between" py={6} bg="slate.0" px={8} mt={4} style={{ borderRadius: "var(--mantine-radius-sm)" }}>
     <Text fz={12.5} fw={700} c="slate.9">Total Customer Repayment Commitment</Text>
     <Text fz={12.5} fw={700} c="brand.7">{zmw(amount + figures.totalCostOfCredit)}</Text>
   </Group>
 </Box>
+
+              <Group justify="space-between" mb={4} pt={8} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
+  <Box>
+    <Text fz={12} c="slate.4">First Repayment:</Text>
+  </Box>
+  <Box ta="right">
+    <Text fz={12} c="slate.4">Final Maturity:</Text>
+  </Box>
+</Group>
+<Group justify="space-between" mb={8}>
+  <Text fz={12.5} fw={700} c="slate.9">{fmtDate(figures.sim.first)}</Text>
+  <Text fz={12.5} fw={700} c="slate.9">{fmtDate(figures.sim.final)}</Text>
+</Group>
 
              {/* <Group justify="space-between" mb={8}>
   <Text fz={10} fw={600} c="slate.4">REPAYMENT MILESTONES PREVIEW</Text>
@@ -794,24 +808,11 @@ function EnrichmentWorkspace({
 })}
               </Group> */}
 
-              <Group justify="space-between" mb={4} pt={10} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
-  <Box>
-    <Text fz={12} c="slate.4">First Repayment:</Text>
-  </Box>
-  <Box ta="right">
-    <Text fz={12} c="slate.4">Final Maturity:</Text>
-  </Box>
-</Group>
-<Group justify="space-between" mb={10}>
-  <Text fz={12.5} fw={700} c="slate.9">{fmtDate(figures.sim.first)}</Text>
-  <Text fz={12.5} fw={700} c="slate.9">{fmtDate(figures.sim.final)}</Text>
-</Group>
-
             <UnstyledButton
   onClick={() => setTab("schedule")}
-  mt={4}
-  mb={12}
-  p={10}
+  mt={2}
+  mb={0}
+  p={8}
   w="100%"
   style={{ background: "var(--mantine-color-brand-0)", borderRadius: "var(--mantine-radius-md)" }}
 >
@@ -880,17 +881,10 @@ export function EnrichmentModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      // size={1400}
-       size="90vw"
+      size="90vw"
       padding={0}
       lockScroll
-      // styles={{
-      //   content: {
-      //     display: "flex",
-      //     flexDirection: "column",
-      //     overflow: "hidden",
-      //   },
-       styles={{
+      styles={{
         content: {
           height: "92vh",
           maxHeight: "99vh",
@@ -916,7 +910,7 @@ export function EnrichmentModal({
           justify="space-between"
           align="center"
           px="xl"
-          py="sm"
+          py={8}
           bg="brand.6"
           style={{ borderBottom: "1px solid var(--mantine-color-brand-7)", flexShrink: 0 }}
         >
@@ -1013,7 +1007,7 @@ export function EnrichmentModal({
           justify="space-between"
           align="center"
           px="xl"
-          py="md"
+          py={10}
           bg="white"
           style={{ borderTop: "1px solid var(--mantine-color-gray-2)", flexShrink: 0 }}
         >
