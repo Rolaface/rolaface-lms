@@ -63,7 +63,7 @@ export function EligibilityRules({ onCreateRule, onSimulate }: { onCreateRule: (
 
       <Group justify="space-between" mt="lg" mb="sm">
         <Text fz="sm" fw={600} c="slate.8">Configured rules</Text>
-        <TextInput
+        <TextInput radius="md"
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
           placeholder="Search rules"

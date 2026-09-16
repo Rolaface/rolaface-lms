@@ -110,17 +110,18 @@ const INCOME_SOURCES: [string, number, boolean, boolean][] = [
   ["Other Income", 50, true, true],
 ];
 
-interface CreditBand { id: string; grade: string; min: number; multiple: number; decision: string; }
+interface CreditBand { id: string; grade: string; min: number | string; multiple: number | string; basis: string; decision: string; }
 const DECISION_OPTIONS = ["Eligible", "Conditional", "Manual Review", "Decline"];
+const MULTIPLE_BASIS_OPTIONS = ["Basic Salary", "Net Salary", "Gross Income", "Total Income"];
 const DECISION_TONE: Record<string, Tone> = { Eligible: "low", Conditional: "medium", "Manual Review": "medium", Decline: "high" };
 const DECISION_DOT: Record<string, string> = { low: "green", medium: "yellow", high: "red" };
 
 const DEFAULT_CREDIT_BANDS: CreditBand[] = [
-  { id: "cb1", grade: "A", min: 800, multiple: 7, decision: "Eligible" },
-  { id: "cb2", grade: "B", min: 700, multiple: 4, decision: "Eligible" },
-  { id: "cb3", grade: "C", min: 600, multiple: 2.5, decision: "Conditional" },
-  { id: "cb4", grade: "D", min: 500, multiple: 1, decision: "Manual Review" },
-  { id: "cb5", grade: "E", min: 0, multiple: 0, decision: "Decline" },
+  { id: "cb1", grade: "A", min: 800, multiple: 7, basis: "Basic Salary", decision: "Eligible" },
+  { id: "cb2", grade: "B", min: 700, multiple: 4, basis: "Basic Salary", decision: "Eligible" },
+  { id: "cb3", grade: "C", min: 600, multiple: 2.5, basis: "Basic Salary", decision: "Conditional" },
+  { id: "cb4", grade: "D", min: 500, multiple: 1, basis: "Basic Salary", decision: "Manual Review" },
+  { id: "cb5", grade: "E", min: 0, multiple: 0, basis: "Basic Salary", decision: "Decline" },
 ];
 
 function creditBandFor(score: number, bands: CreditBand[]): CreditBand {
@@ -216,29 +217,29 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
   const [formulaParams, setFormulaParams] = useState<FormulaParams>(DEFAULT_FORMULA_PARAMS);
   const setFormulaParam = (k: keyof FormulaParams) => (v: number) => setFormulaParams((p) => ({ ...p, [k]: v }));
   const [creditBands, setCreditBands] = useState<CreditBand[]>(DEFAULT_CREDIT_BANDS);
-  const sortedCreditBands = useMemo(() => [...creditBands].sort((a, b) => b.min - a.min), [creditBands]);
+  const sortedCreditBands = useMemo(() => [...creditBands].sort((a, b) => Number(b.min) - Number(a.min)), [creditBands]);
   const sampleCreditBand = useMemo(() => creditBandFor(FORMULA_SAMPLE.creditScore, creditBands), [creditBands]);
   const updateCreditBand = (id: string, patch: Partial<CreditBand>) =>
     setCreditBands((bands) => bands.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   const addCreditBand = () => {
-    const lowestMin = Math.min(...creditBands.map((b) => b.min));
-    setCreditBands((bands) => [...bands, { id: "cb" + Date.now(), grade: "New", min: Math.max(lowestMin - 100, 0), multiple: 0, decision: "Manual Review" }]);
+    const lowestMin = Math.min(...creditBands.map((b) => Number(b.min) || 0));
+    setCreditBands((bands) => [...bands, { id: "cb" + Date.now(), grade: "New", min: Math.max(lowestMin - 100, 0), multiple: 0, basis: "Basic Salary", decision: "Manual Review" }]);
   };
   const removeCreditBand = (id: string) => setCreditBands((bands) => (bands.length > 1 ? bands.filter((b) => b.id !== id) : bands));
 
   const [internalBands, setInternalBands] = useState<CreditBand[]>([
-    { id: "ib1", grade: "A", min: 80, multiple: 7, decision: "Eligible" },
-    { id: "ib2", grade: "B", min: 60, multiple: 4, decision: "Eligible" },
-    { id: "ib3", grade: "C", min: 40, multiple: 2.5, decision: "Conditional" },
-    { id: "ib4", grade: "D", min: 20, multiple: 1, decision: "Manual Review" },
-    { id: "ib5", grade: "E", min: 0, multiple: 0, decision: "Decline" },
+    { id: "ib1", grade: "A", min: 80, multiple: 5, basis: "Basic Salary", decision: "Eligible" },
+    { id: "ib2", grade: "B", min: 60, multiple: 3, basis: "Basic Salary", decision: "Eligible" },
+    { id: "ib3", grade: "C", min: 40, multiple: 1.5, basis: "Basic Salary", decision: "Conditional" },
+    { id: "ib4", grade: "D", min: 20, multiple: 0.5, basis: "Basic Salary", decision: "Manual Review" },
+    { id: "ib5", grade: "E", min: 0, multiple: 0, basis: "Basic Salary", decision: "Decline" },
   ]);
-  const sortedInternalBands = useMemo(() => [...internalBands].sort((a, b) => b.min - a.min), [internalBands]);
+  const sortedInternalBands = useMemo(() => [...internalBands].sort((a, b) => Number(b.min) - Number(a.min)), [internalBands]);
   const updateInternalBand = (id: string, patch: Partial<CreditBand>) =>
     setInternalBands((bands) => bands.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   const addInternalBand = () => {
-    const lowestMin = Math.min(...internalBands.map((b) => b.min));
-    setInternalBands((bands) => [...bands, { id: "ib" + Date.now(), grade: "New", min: Math.max(lowestMin - 10, 0), multiple: 0, decision: "Manual Review" }]);
+    const lowestMin = Math.min(...internalBands.map((b) => Number(b.min) || 0));
+    setInternalBands((bands) => [...bands, { id: "ib" + Date.now(), grade: "New", min: Math.max(lowestMin - 10, 0), multiple: 0, basis: "Basic Salary", decision: "Manual Review" }]);
   };
   const removeInternalBand = (id: string) => setInternalBands((bands) => (bands.length > 1 ? bands.filter((b) => b.id !== id) : bands));
   const [collateralItems, setCollateralItems] = useState<CollateralItem[]>(DEFAULT_COLLATERAL_ITEMS);
@@ -365,46 +366,87 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
             {/* 0 — Basic Information */}
             {step === 0 && (
               <Box>
-                <SectionHead title="Basic Information" description="Identify the rule, scope it to a product, and set its operational status." />
-                <Box mb="md">
-                  <Grid gutter="md">
-                    <Grid.Col span={9}>
-                      <Field label="Rule Name" required description="Customer-facing identifier applied across evaluation traces.">
-                        <TextInput size="xs" value={ruleName} onChange={(e) => setRuleName(e.target.value)} placeholder="Standard Personal Loan Eligibility" />
-                      </Field>
+                <Paper radius="md" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
+                  <Box py={8} px="sm" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", background: "transparent" }}>
+                    <Title order={6} c="slate.8" fw={600}>Basic information</Title>
+                  </Box>
+
+                  <Grid gutter={10} py={10} px="sm" align="flex-start" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", margin: 0 }}>
+                    <Grid.Col span={2}>
+                      <Text fz={11} fw={600} c="slate.6">Identity</Text>
                     </Grid.Col>
-                    <Grid.Col span={3}>
-                      <Field label="Rule Version" description="Auto-incremented.">
-                        <TextInput size="xs" defaultValue="v1.0" disabled leftSection={<IconTag size={12} color="var(--mantine-color-slate-4)" />} />
-                      </Field>
+                    <Grid.Col span={10}>
+                      <Grid gutter={10}>
+                        <Grid.Col span={8}>
+                          <Box mb={1}><Text fz={10} fw={500} c="slate.7">Rule name <span style={{ color: "var(--mantine-color-red-6)" }}>*</span></Text></Box>
+                          <TextInput radius="md" size="xs" value={ruleName} onChange={(e) => setRuleName(e.target.value)} placeholder="Standard Personal Loan Eligibility" styles={{ input: { minHeight: 26, height: 26 } }} />
+                        </Grid.Col>
+                        <Grid.Col span={2}>
+                          <Box mb={1}><Text fz={10} fw={500} c="slate.7">Version</Text></Box>
+                          <TextInput radius="md" size="xs" defaultValue="1.0" disabled styles={{ input: { minHeight: 26, height: 26 } }} />
+                        </Grid.Col>
+                        <Grid.Col span={2}>
+                          <Box mb={1}><Text fz={10} fw={500} c="slate.7">Priority</Text></Box>
+                          <TextInput radius="md" size="xs" type="number" defaultValue={1} styles={{ input: { minHeight: 26, height: 26 } }} />
+                        </Grid.Col>
+                      </Grid>
                     </Grid.Col>
                   </Grid>
-                </Box>
-                <Divider mb="md" color="slate.1" />
-                <Box mb="md">
-                  <SimpleGrid cols={2} spacing="md">
-                    <Field label="Loan Product"><Select size="xs" value={loanProduct} onChange={setLoanProduct} data={["Personal Loan", "Staff Loan", "SME Loan", "Salary Advance", "Asset Finance", "Emergency Loan"]} /></Field>
-                    <Field label="Max Product Limit"><TextInput size="xs" type="number" value={formulaParams.productMax} onChange={(e) => setFormulaParam("productMax")(e.target.value === "" ? 0 : Number(e.target.value))} /></Field>
-                    <Field label="Customer Type"><Select size="xs" defaultValue="Individual" data={["Individual", "Employee", "SME", "Corporate"]} /></Field>
-                    <Field label="Customer Segment"><Select size="xs" defaultValue="New Customer" data={["New Customer", "Existing Customer", "Repeat Borrower", "Preferred Customer"]} /></Field>
-                    <Field label="Risk Category"><Select size="xs" value={riskCategory} onChange={setRiskCategory} data={["Low Risk", "Medium Risk", "High Risk"]} /></Field>
-                  </SimpleGrid>
-                </Box>
-                <Divider mb="md" color="slate.1" />
-                <Grid gutter="md">
-                   <Grid.Col span={2}>
-                     <Field label="Priority" hint="Lower number is evaluated first when multiple rules match."><TextInput size="xs" type="number" defaultValue={1} /></Field>
-                   </Grid.Col>
-                   <Grid.Col span={4}>
-                     <Field label="Rule Status"><Select size="xs" value={ruleStatus} onChange={setRuleStatus} data={["Draft", "Active", "Disabled"]} /></Field>
-                   </Grid.Col>
-                   <Grid.Col span={4}>
-                     <Field label="Effective From"><TextInput size="xs" type="date" defaultValue={new Date().toISOString().split('T')[0]} /></Field>
-                   </Grid.Col>
-                   <Grid.Col span={4}>
-                     <Field label="Effective Until"><TextInput size="xs" type="date" /></Field>
-                   </Grid.Col>
-                </Grid>
+
+                  <Grid gutter={10} py={10} px="sm" align="flex-start" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", margin: 0 }}>
+                    <Grid.Col span={2}>
+                      <Text fz={11} fw={600} c="slate.6">Applies to</Text>
+                    </Grid.Col>
+                    <Grid.Col span={10}>
+                      <Grid gutter={10} mb={8}>
+                        <Grid.Col span={6}>
+                          <Box mb={1}><Text fz={10} fw={500} c="slate.7">Loan product</Text></Box>
+                          <Select radius="md" size="xs" value={loanProduct} onChange={setLoanProduct} data={["Personal Loan", "Staff Loan", "SME Loan", "Salary Advance", "Asset Finance", "Emergency Loan"]} styles={{ input: { minHeight: 26, height: 26 } }} />
+                        </Grid.Col>
+                        <Grid.Col span={3}>
+                          <Box mb={1}><Text fz={10} fw={500} c="slate.7">Maximum amount</Text></Box>
+                          <TextInput radius="md" size="xs" type="number" value={formulaParams.productMax} onChange={(e) => setFormulaParam("productMax")(e.target.value === "" ? 0 : Number(e.target.value))} rightSection={<Text fz={9} c="dimmed" mr={8}>ZMW</Text>} rightSectionWidth={36} styles={{ input: { minHeight: 26, height: 26 } }} />
+                        </Grid.Col>
+                        <Grid.Col span={3}>
+                          <Box mb={1}><Text fz={10} fw={500} c="slate.7">Risk category</Text></Box>
+                          <Select radius="md" size="xs" value={riskCategory} onChange={setRiskCategory} data={["Low Risk", "Medium Risk", "High Risk"]} styles={{ input: { minHeight: 26, height: 26 } }} />
+                        </Grid.Col>
+                      </Grid>
+                      <Grid gutter={10}>
+                        <Grid.Col span={3}>
+                          <Box mb={1}><Text fz={10} fw={500} c="slate.7">Customer type</Text></Box>
+                          <Select radius="md" size="xs" defaultValue="Individual" data={["Individual", "Employee", "SME", "Corporate"]} styles={{ input: { minHeight: 26, height: 26 } }} />
+                        </Grid.Col>
+                        <Grid.Col span={3}>
+                          <Box mb={1}><Text fz={10} fw={500} c="slate.7">Customer segment</Text></Box>
+                          <Select radius="md" size="xs" defaultValue="New Customer" data={["New Customer", "Existing Customer", "Repeat Borrower", "Preferred Customer"]} styles={{ input: { minHeight: 26, height: 26 } }} />
+                        </Grid.Col>
+                      </Grid>
+                    </Grid.Col>
+                  </Grid>
+
+                  <Grid gutter={10} py={10} px="sm" align="flex-start" style={{ margin: 0 }}>
+                    <Grid.Col span={2}>
+                      <Text fz={11} fw={600} c="slate.6">In force</Text>
+                    </Grid.Col>
+                    <Grid.Col span={10}>
+                      <Grid gutter={10}>
+                        <Grid.Col span={4}>
+                          <Box mb={1}><Text fz={10} fw={500} c="slate.7">Status</Text></Box>
+                          <Select radius="md" size="xs" value={ruleStatus} onChange={setRuleStatus} data={["Draft", "Active", "Disabled"]} styles={{ input: { minHeight: 26, height: 26 } }} />
+                        </Grid.Col>
+                        <Grid.Col span={4}>
+                          <Box mb={1}><Text fz={10} fw={500} c="slate.7">Effective from</Text></Box>
+                          <TextInput radius="md" size="xs" type="date" defaultValue={new Date().toISOString().split('T')[0]} styles={{ input: { minHeight: 26, height: 26 } }} />
+                        </Grid.Col>
+                        <Grid.Col span={4}>
+                          <Box mb={1}><Text fz={10} fw={500} c="slate.7">Effective until</Text></Box>
+                          <TextInput radius="md" size="xs" type="date" styles={{ input: { minHeight: 26, height: 26 } }} />
+                        </Grid.Col>
+                      </Grid>
+                    </Grid.Col>
+                  </Grid>
+                </Paper>
               </Box>
             )}
 
@@ -480,14 +522,22 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
             {/* 3 — Credit Score Limit */}
             {step === 3 && (
               <Box>
-                <SectionHead title="Credit Score Limit" description="Define credit bands — each band's minimum score, multiple and decision routing are fully editable." />
-                <Paper radius="sm" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
+                <Paper radius="md" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden", background: "transparent" }}>
+                  <Box py={10} px="md" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", background: "transparent" }}>
+                    <Title order={6} c="slate.8" fw={600} mb={1}>Credit Score Limit</Title>
+                    <Text fz={11} c="slate.5">Define credit bands — each band's minimum score and loan cap are fully editable.</Text>
+                  </Box>
                   <Table verticalSpacing="xs" fz={11} style={{ tableLayout: "fixed" }}>
-                    <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
+                    <Table.Thead style={{ background: "transparent" }}>
                       <Table.Tr>
-                        {[["Min Score", 100], ["Range", 170], ["Grade", 70], ["Loan Multiple", 200], ["Decision", 185], ["", 38]].map(([h, w]) => (
-                          <Table.Th key={h} style={{ borderColor: "var(--mantine-color-slate-2)", width: w, fontSize: 10, fontWeight: 700, color: "var(--mantine-color-slate-5)", textTransform: "uppercase", letterSpacing: ".04em" }}>{h}</Table.Th>
-                        ))}
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 100, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Min score</Table.Th>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 160, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Range</Table.Th>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 80, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Grade</Table.Th>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 250, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>
+                          <Box>Loan cap</Box>
+                        </Table.Th>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 170, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Decision</Table.Th>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 38 }}></Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
@@ -497,29 +547,30 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                         const dotColor = DECISION_DOT[DECISION_TONE[band.decision] as string];
                         return (
                           <Table.Tr key={band.id}>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <TextInput size="xs" type="number" value={band.min} onChange={(e) => updateCreditBand(band.id, { min: e.target.value === "" ? 0 : Number(e.target.value) })} />
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+                              <TextInput radius="md" size="xs" type="number" value={band.min} onChange={(e) => updateCreditBand(band.id, { min: e.target.value })} styles={{ input: { minHeight: 30, height: 30, textAlign: "center", background: "transparent", borderColor: "var(--mantine-color-slate-3)", fontWeight: 600 } }} />
                             </Table.Td>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <Group gap={4} wrap="nowrap">
-                                <Text fz={10} c="slate.5">{rangeLabel}</Text>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)", color: "var(--mantine-color-slate-5)" }}>
+                              {rangeLabel}
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+                              <Box w={40} h={30} style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--mantine-color-slate-3)", borderRadius: "var(--mantine-radius-md)", fontWeight: 700, color: "var(--mantine-color-slate-8)" }}>{band.grade}</Box>
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+                              <Group gap={0} wrap="nowrap" style={{ border: "1px solid var(--mantine-color-slate-3)", borderRadius: "var(--mantine-radius-md)", overflow: "hidden" }}>
+                                <TextInput radius={0} size="xs" variant="unstyled" w={46} type="number" value={band.multiple} onChange={(e) => updateCreditBand(band.id, { multiple: e.target.value })} styles={{ input: { minHeight: 30, height: 30, textAlign: "center", fontWeight: 600 } }} />
+                                <Box px={8} style={{ height: 30, borderLeft: "1px solid var(--mantine-color-slate-3)", borderRight: "1px solid var(--mantine-color-slate-3)", background: "transparent", display: "flex", alignItems: "center" }}>
+                                  <Text fz={10} c="dimmed">×</Text>
+                                </Box>
+                                <Select radius={0} size="xs" variant="unstyled" style={{ flex: 1 }} value={band.basis} onChange={(v) => v && updateCreditBand(band.id, { basis: v })} data={MULTIPLE_BASIS_OPTIONS} styles={{ input: { minHeight: 30, height: 30, paddingLeft: 10 } }} />
                               </Group>
                             </Table.Td>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <TextInput size="xs" value={band.grade} onChange={(e) => updateCreditBand(band.id, { grade: e.target.value })} />
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+                              <Select radius="md" size="xs" value={band.decision} onChange={(v) => v && updateCreditBand(band.id, { decision: v })} data={DECISION_OPTIONS} styles={{ input: { minHeight: 30, height: 30, background: "transparent", borderColor: "var(--mantine-color-slate-3)" } }} leftSection={<Box style={{ width: 6, height: 6, borderRadius: 99, background: `var(--mantine-color-${dotColor}-5)` }} />} />
                             </Table.Td>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <TextInput size="xs" type="number" value={band.multiple} onChange={(e) => updateCreditBand(band.id, { multiple: e.target.value === "" ? 0 : Number(e.target.value) })} rightSection={<Text fz={10} c="dimmed">x</Text>} />
-                            </Table.Td>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <Group gap={5} wrap="nowrap">
-                                <Box style={{ width: 6, height: 6, borderRadius: 99, flexShrink: 0, background: `var(--mantine-color-${dotColor}-5)` }} />
-                                <Select size="xs" w={130} value={band.decision} onChange={(v) => v && updateCreditBand(band.id, { decision: v })} data={DECISION_OPTIONS} />
-                              </Group>
-                            </Table.Td>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <ActionIcon variant="subtle" color="red" size="xs" disabled={creditBands.length <= 1} onClick={() => removeCreditBand(band.id)}>
-                                <IconTrash size={11} />
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+                              <ActionIcon variant="subtle" color="slate" size="sm" disabled={creditBands.length <= 1} onClick={() => removeCreditBand(band.id)}>
+                                <IconTrash size={13} />
                               </ActionIcon>
                             </Table.Td>
                           </Table.Tr>
@@ -527,8 +578,10 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                       })}
                     </Table.Tbody>
                   </Table>
+                  <Box p="sm" style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
+                    <Button variant="subtle" color="slate" size="xs" leftSection={<IconPlus size={11} />} onClick={addCreditBand}>Add band</Button>
+                  </Box>
                 </Paper>
-                <Button variant="subtle" color="slate" size="xs" leftSection={<IconPlus size={11} />} onClick={addCreditBand}>Add Band</Button>
               </Box>
             )}
 
@@ -548,7 +601,7 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                     <Table.Tbody>
                       {collateralItems.map((item) => (
                         <Table.Tr key={item.id}>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Select size="xs" value={item.type} onChange={(v) => v && updateCollateralItem(item.id, { type: v })} data={COLLATERAL_TYPES} /></Table.Td>
+                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Select radius="md" size="xs" value={item.type} onChange={(v) => v && updateCollateralItem(item.id, { type: v })} data={COLLATERAL_TYPES} /></Table.Td>
                           <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Text fz={11} fw={500}>{item.haircutPct}%</Text></Table.Td>
                           <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Text fz={11} fw={500}>{item.maxLtvPct}%</Text></Table.Td>
                           <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><ActionIcon variant="subtle" color="red" size="xs" onClick={() => removeCollateralItem(item.id)}><IconTrash size={11} /></ActionIcon></Table.Td>
@@ -575,14 +628,22 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
             {/* 5 — Internal Scoring Limit */}
             {step === 5 && (
               <Box>
-                <SectionHead title="Internal Scoring Limit" description="Define scoring bands — each band's minimum score, multiple and decision routing are fully editable. Score is out of 100." />
-                <Paper radius="sm" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
+                <Paper radius="md" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden", background: "transparent" }}>
+                  <Box py={10} px="md" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", background: "transparent" }}>
+                    <Title order={6} c="slate.8" fw={600} mb={1}>Internal Scoring Limit</Title>
+                    <Text fz={11} c="slate.5">Define scoring bands — each band's minimum score and loan cap are fully editable. Score is out of 100.</Text>
+                  </Box>
                   <Table verticalSpacing="xs" fz={11} style={{ tableLayout: "fixed" }}>
-                    <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
+                    <Table.Thead style={{ background: "transparent" }}>
                       <Table.Tr>
-                        {[["Min Score", 100], ["Range", 170], ["Grade", 70], ["Loan Multiple", 200], ["Decision", 185], ["", 38]].map(([h, w]) => (
-                          <Table.Th key={h} style={{ borderColor: "var(--mantine-color-slate-2)", width: w, fontSize: 10, fontWeight: 700, color: "var(--mantine-color-slate-5)", textTransform: "uppercase", letterSpacing: ".04em" }}>{h}</Table.Th>
-                        ))}
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 100, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Min score</Table.Th>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 160, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Range</Table.Th>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 80, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Grade</Table.Th>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 250, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>
+                          <Box>Loan cap</Box>
+                        </Table.Th>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 170, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Decision</Table.Th>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 38 }}></Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
@@ -592,29 +653,30 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                         const dotColor = DECISION_DOT[DECISION_TONE[band.decision] as string];
                         return (
                           <Table.Tr key={band.id}>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <TextInput size="xs" type="number" value={band.min} onChange={(e) => updateInternalBand(band.id, { min: e.target.value === "" ? 0 : Number(e.target.value) })} />
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+                              <TextInput radius="md" size="xs" type="number" value={band.min} onChange={(e) => updateInternalBand(band.id, { min: e.target.value })} styles={{ input: { minHeight: 30, height: 30, textAlign: "center", background: "transparent", borderColor: "var(--mantine-color-slate-3)", fontWeight: 600 } }} />
                             </Table.Td>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <Group gap={4} wrap="nowrap">
-                                <Text fz={10} c="slate.5">{rangeLabel}</Text>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)", color: "var(--mantine-color-slate-5)" }}>
+                              {rangeLabel}
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+                              <Box w={40} h={30} style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--mantine-color-slate-3)", borderRadius: "var(--mantine-radius-md)", fontWeight: 700, color: "var(--mantine-color-slate-8)" }}>{band.grade}</Box>
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+                              <Group gap={0} wrap="nowrap" style={{ border: "1px solid var(--mantine-color-slate-3)", borderRadius: "var(--mantine-radius-md)", overflow: "hidden" }}>
+                                <TextInput radius={0} size="xs" variant="unstyled" w={46} type="number" value={band.multiple} onChange={(e) => updateInternalBand(band.id, { multiple: e.target.value })} styles={{ input: { minHeight: 30, height: 30, textAlign: "center", fontWeight: 600 } }} />
+                                <Box px={8} style={{ height: 30, borderLeft: "1px solid var(--mantine-color-slate-3)", borderRight: "1px solid var(--mantine-color-slate-3)", background: "transparent", display: "flex", alignItems: "center" }}>
+                                  <Text fz={10} c="dimmed">×</Text>
+                                </Box>
+                                <Select radius={0} size="xs" variant="unstyled" style={{ flex: 1 }} value={band.basis} onChange={(v) => v && updateInternalBand(band.id, { basis: v })} data={MULTIPLE_BASIS_OPTIONS} styles={{ input: { minHeight: 30, height: 30, paddingLeft: 10 } }} />
                               </Group>
                             </Table.Td>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <TextInput size="xs" value={band.grade} onChange={(e) => updateInternalBand(band.id, { grade: e.target.value })} />
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+                              <Select radius="md" size="xs" value={band.decision} onChange={(v) => v && updateInternalBand(band.id, { decision: v })} data={DECISION_OPTIONS} styles={{ input: { minHeight: 30, height: 30, background: "transparent", borderColor: "var(--mantine-color-slate-3)" } }} leftSection={<Box style={{ width: 6, height: 6, borderRadius: 99, background: `var(--mantine-color-${dotColor}-5)` }} />} />
                             </Table.Td>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <TextInput size="xs" type="number" value={band.multiple} onChange={(e) => updateInternalBand(band.id, { multiple: e.target.value === "" ? 0 : Number(e.target.value) })} rightSection={<Text fz={10} c="dimmed">x</Text>} />
-                            </Table.Td>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <Group gap={5} wrap="nowrap">
-                                <Box style={{ width: 6, height: 6, borderRadius: 99, flexShrink: 0, background: `var(--mantine-color-${dotColor}-5)` }} />
-                                <Select size="xs" w={130} value={band.decision} onChange={(v) => v && updateInternalBand(band.id, { decision: v })} data={DECISION_OPTIONS} />
-                              </Group>
-                            </Table.Td>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}>
-                              <ActionIcon variant="subtle" color="red" size="xs" disabled={internalBands.length <= 1} onClick={() => removeInternalBand(band.id)}>
-                                <IconTrash size={11} />
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
+                              <ActionIcon variant="subtle" color="slate" size="sm" disabled={internalBands.length <= 1} onClick={() => removeInternalBand(band.id)}>
+                                <IconTrash size={13} />
                               </ActionIcon>
                             </Table.Td>
                           </Table.Tr>
@@ -622,8 +684,10 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                       })}
                     </Table.Tbody>
                   </Table>
+                  <Box p="sm" style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
+                    <Button variant="subtle" color="slate" size="xs" leftSection={<IconPlus size={11} />} onClick={addInternalBand}>Add band</Button>
+                  </Box>
                 </Paper>
-                <Button variant="subtle" color="slate" size="xs" leftSection={<IconPlus size={11} />} onClick={addInternalBand}>Add Band</Button>
               </Box>
             )}
 
@@ -682,11 +746,11 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                             <Stack gap="sm">
                               {effectiveLimits.map((l) => (
                                 <Field key={l.name} label={l.name}>
-                                  <TextInput 
+                                  <TextInput radius="md" 
                                     size="xs" 
                                     type="number" 
                                     value={l.value} 
-                                    onChange={(e) => setLimitOverrides(prev => ({ ...prev, [l.name]: e.target.value === "" ? 0 : Number(e.target.value) }))}
+                                    onChange={(e) => setLimitOverrides(prev => ({ ...prev, [l.name]: e.target.value }))}
                                     mt={3}
                                   />
                                 </Field>
@@ -775,9 +839,9 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                       <Paper key={hs.id} radius="sm" px={8} py={4} style={{ background: 'white', border: '1px solid var(--mantine-color-slate-2)' }}>
                         <Group wrap="nowrap" gap="xs" align="center">
                           <Text fz={10} fw={700} c="slate.4" w={16} ta="center">{(i+1).toString().padStart(2, '0')}</Text>
-                          <Select size="xs" value={hs.factor} onChange={(v) => v && updateHardStop(hs.id, { factor: v })} data={RULE_FACTORS} style={{ flex: 1.5 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
-                          <Select size="xs" value={hs.operator} onChange={(v) => v && updateHardStop(hs.id, { operator: v })} data={RULE_OPERATORS} style={{ flex: 1 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
-                          <TextInput size="xs" value={hs.value} onChange={(e) => updateHardStop(hs.id, { value: e.target.value })} rightSection={hs.hint ? <Text fz={9} c="slate.4" mr="xs">{hs.hint}</Text> : undefined} rightSectionWidth={80} style={{ flex: 1.5 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
+                          <Select radius="md" size="xs" value={hs.factor} onChange={(v) => v && updateHardStop(hs.id, { factor: v })} data={RULE_FACTORS} style={{ flex: 1.5 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
+                          <Select radius="md" size="xs" value={hs.operator} onChange={(v) => v && updateHardStop(hs.id, { operator: v })} data={RULE_OPERATORS} style={{ flex: 1 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
+                          <TextInput radius="md" size="xs" value={hs.value} onChange={(e) => updateHardStop(hs.id, { value: e.target.value })} rightSection={hs.hint ? <Text fz={9} c="slate.4" mr="xs">{hs.hint}</Text> : undefined} rightSectionWidth={80} style={{ flex: 1.5 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
                           <ActionIcon variant="subtle" color="red" size="sm" onClick={() => removeHardStop(hs.id)}><IconTrash size={14} /></ActionIcon>
                         </Group>
                       </Paper>
@@ -807,14 +871,14 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                       <Paper key={mr.id} radius="sm" px={8} py={4} style={{ background: 'white', border: '1px solid var(--mantine-color-slate-2)' }}>
                         <Group wrap="nowrap" gap="xs" align="center">
                           <Text fz={10} fw={700} c="slate.4" w={16} ta="center">{(i+1).toString().padStart(2, '0')}</Text>
-                          <Select size="xs" value={mr.factor} onChange={(v) => v && updateManualReview(mr.id, { factor: v })} data={RULE_FACTORS} style={{ flex: 1.5 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
-                          <Select size="xs" value={mr.operator} onChange={(v) => v && updateManualReview(mr.id, { operator: v })} data={RULE_OPERATORS} style={{ flex: 1 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
+                          <Select radius="md" size="xs" value={mr.factor} onChange={(v) => v && updateManualReview(mr.id, { factor: v })} data={RULE_FACTORS} style={{ flex: 1.5 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
+                          <Select radius="md" size="xs" value={mr.operator} onChange={(v) => v && updateManualReview(mr.id, { operator: v })} data={RULE_OPERATORS} style={{ flex: 1 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
                           <Group gap="xs" wrap="nowrap" style={{ flex: 1.5 }}>
-                            <TextInput size="xs" value={mr.value1} onChange={(e) => updateManualReview(mr.id, { value1: e.target.value })} style={{ flex: 1 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
+                            <TextInput radius="md" size="xs" value={mr.value1} onChange={(e) => updateManualReview(mr.id, { value1: e.target.value })} style={{ flex: 1 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
                             {mr.operator === "Between" && (
                               <>
                                 <Text fz={9} fw={700} c="slate.5">AND</Text>
-                                <TextInput size="xs" value={mr.value2} onChange={(e) => updateManualReview(mr.id, { value2: e.target.value })} style={{ flex: 1 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
+                                <TextInput radius="md" size="xs" value={mr.value2} onChange={(e) => updateManualReview(mr.id, { value2: e.target.value })} style={{ flex: 1 }} styles={{ input: { height: 24, minHeight: 24, fontSize: 11, borderRadius: 2 } }} />
                               </>
                             )}
                           </Group>
