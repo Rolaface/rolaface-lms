@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
 import {
   Box,
   Button,
@@ -40,6 +41,7 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
+import { enrichmentModal } from "../../../components/Modal/Enrichment/enrichmentModalStore";
 
 // MOCK DATA for Enrichment
 export interface EnrichmentRow {
@@ -151,7 +153,7 @@ function ApplicationIdCell({ name }: { name: string }) {
         <IconFileText size={14} color="var(--mantine-color-brand-6)" />
       </Box>
       <Text
-        fz="xs"
+        fz={11}
         fw={700}
         c="slate.8"
         style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
@@ -166,15 +168,15 @@ export function EnrichmentTable() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
-  const [applicationType, setApplicationType] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [applicationTypes, setApplicationTypes] = useState<string[]>([]);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
 
   // Filter data
   const filteredData = useMemo(() => {
     return MOCK_DATA.filter((item) => {
       if (status !== "All" && item.status !== status) return false;
-      if (applicationType && applicationType !== "All Types") {
+      if (applicationTypes.length > 0) {
         // Mock data doesn't have application_type in Enrichment anymore. Skip for dummy logic.
       }
       if (search) {
@@ -186,7 +188,7 @@ export function EnrichmentTable() {
       }
       return true;
     });
-  }, [search, status, applicationType]);
+  }, [search, status, applicationTypes]);
 
   const columns = useMemo(
     () => [
@@ -197,7 +199,7 @@ export function EnrichmentTable() {
       columnHelper.accessor("applicant", {
         header: "Applicant",
         cell: (info) => (
-          <Text fz="xs" fw={600} c="slate.8">
+          <Text fz={11} fw={600} c="slate.8">
             {info.getValue()}
           </Text>
         ),
@@ -205,7 +207,7 @@ export function EnrichmentTable() {
       columnHelper.accessor("approvedAmount", {
         header: "Approved Amount",
         cell: (info) => (
-          <Text fz="xs" fw={700} c="slate.7">
+          <Text fz={11} fw={700} c="slate.7">
             ZMW {info.getValue().toLocaleString()}
           </Text>
         ),
@@ -213,7 +215,7 @@ export function EnrichmentTable() {
       columnHelper.accessor("tenure", {
         header: "Tenure",
         cell: (info) => (
-          <Text fz="xs" fw={600} c="slate.7">
+          <Text fz={11} fw={600} c="slate.7">
             {info.getValue()} Months
           </Text>
         ),
@@ -221,7 +223,7 @@ export function EnrichmentTable() {
       columnHelper.accessor("rate", {
         header: "Interest Rate",
         cell: (info) => (
-          <Text fz="xs" fw={600} c="slate.7">
+          <Text fz={11} fw={600} c="slate.7">
             {info.getValue()}%
           </Text>
         ),
@@ -233,22 +235,33 @@ export function EnrichmentTable() {
       columnHelper.display({
         id: "actions",
         header: () => (
-          <Text fz="xs" fw={600} ta="right" w="100%">
+          <Text fz={11} fw={600} ta="right" w="100%">
             Actions
           </Text>
         ),
         cell: () => (
           <Group gap={6} justify="flex-end" wrap="nowrap" className="lms-row-actions">
-            <Tooltip label="View Details" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="gray">
-                <IconEye size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Edit" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="gray">
+           <Tooltip label="View Details" withArrow>
+  <ActionIcon
+    size="sm"
+    variant="subtle"
+    color="gray"
+    onClick={() => enrichmentModal.open({ applicationValues: undefined })}
+  >
+    <IconEye size={14} />
+  </ActionIcon>
+</Tooltip>
+             <Tooltip label="Edit" withArrow>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="gray"
+                onClick={() => enrichmentModal.open({ applicationValues: undefined })}
+              >
                 <IconPencil size={14} />
               </ActionIcon>
             </Tooltip>
+
             <Tooltip label="Delete" withArrow>
               <ActionIcon size="sm" variant="subtle" color="gray">
                 <IconTrash size={14} />
@@ -290,23 +303,32 @@ export function EnrichmentTable() {
 
   return (
     <Box p="md">
+      <style>{`
+  .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
+  .lms-row-actions { opacity: 1; }
+  .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+  .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
+  .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+  .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+  .lms-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
+      `}</style>
       {/* Header */}
       <Group justify="space-between" align="flex-end" mb="lg">
         <Group gap="md">
           <Box
-            w={44}
-            h={44}
+            w={40}
+            h={40}
             style={{
               borderRadius: "var(--mantine-radius-md)",
-              background: theme.other?.brandGradient || "var(--mantine-color-brand-6)",
+              background: theme.other.brandGradient,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: "white",
-              boxShadow: theme.other?.brandGlowShadow || "none",
+              boxShadow: theme.other.brandGlowShadow,
             }}
           >
-            <IconDatabase size={22} />
+            <IconDatabase size={20} stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} fz={22} fw={800} c="slate.9">
@@ -346,21 +368,19 @@ export function EnrichmentTable() {
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
-          <Select
-            size="sm"
-            radius="xl"
-            placeholder="All Types"
-            data={["Personal loan", "Business loan", "Mortgage"]}
-            w={166}
-            searchable
-            clearable
-            rightSection={<IconChevronDown size={14} style={{ opacity: 0.6 }} />}
-            value={applicationType}
-            onChange={(v) => {
-              setApplicationType(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-          />
+          <FilterMultiSelect
+              placeholder="All Types"
+              data={[
+                { label: "Personal loan", value: "Personal loan" },
+                { label: "Business loan", value: "Business loan" }
+              ]}
+              value={applicationTypes}
+              onChange={(v) => {
+                setApplicationTypes(v);
+                setPagination((p) => ({ ...p, pageIndex: 0 }));
+              }}
+              width={180}
+            />
 
           <SegmentedControl
             size="xs"
@@ -387,21 +407,12 @@ export function EnrichmentTable() {
               px="md"
               onClick={() => {
                 setSearch("");
-                setApplicationType(null);
+                setApplicationTypes([]);
                 setStatus("All");
                 setPagination((p) => ({ ...p, pageIndex: 0 }));
               }}
             >
               Reset
-            </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={() => {}}
-              leftSection={<IconPlus size={14} />}
-            >
-              Configure Enrichment
             </Button>
           </Group>
         </Group>
@@ -409,35 +420,35 @@ export function EnrichmentTable() {
 
       {/* Data Table */}
       <Box style={{ overflowX: "auto" }}>
-        <Table
-          verticalSpacing="sm"
-          horizontalSpacing="sm"
-          fz="xs"
-          w="100%"
-          style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
-        >
+          <Table
+            verticalSpacing={6}
+            horizontalSpacing="sm"
+            fz={11}
+            w="100%"
+            style={{ borderCollapse: "separate", borderSpacing: "0 6px" }}
+          >
           <Table.Thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <Table.Tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   const canSort = header.column.getCanSort();
                   return (
-                    <Table.Th
-                      key={header.id}
-                      className="lms-thead-cell"
-                      c="slate.5"
-                      fw={700}
-                      style={{
-                        fontSize: "var(--mantine-font-size-xs)",
-                        padding: "0 10px 6px",
-                        userSelect: "none",
-                        cursor: canSort ? "pointer" : "default",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.04em",
-                        border: "none",
-                      }}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
+                      <Table.Th
+                        key={header.id}
+                        className="lms-thead-cell"
+                        c="slate.5"
+                        fw={700}
+                        style={{
+                          fontSize: 10,
+                          padding: "0 12px 4px",
+                          userSelect: "none",
+                          cursor: canSort ? "pointer" : "default",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                          border: "none",
+                        }}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
                       <Group
                         gap="xs"
                         wrap="nowrap"
@@ -488,7 +499,7 @@ export function EnrichmentTable() {
                         color="var(--mantine-color-slate-4)"
                       />
                     </Box>
-                    <Text ta="center" c="slate.5" fz="xs">
+                    <Text ta="center" c="slate.5" fz={11}>
                       No enrichment applications match your filters.
                     </Text>
                   </Stack>
@@ -507,15 +518,15 @@ export function EnrichmentTable() {
                     {cells.map((cell, idx) => (
                       <Table.Td
                         key={cell.id}
-                        style={{
-                          padding: "10px 10px",
-                          border: "none",
-                          boxShadow: "var(--mantine-shadow-xs)",
-                          borderLeft:
-                            idx === 0
-                              ? `3px solid var(--mantine-color-${scale}-4)`
-                              : undefined,
-                        }}
+                          style={{
+                            padding: "8px 12px",
+                            border: "none",
+                            boxShadow: "var(--mantine-shadow-xs)",
+                            borderLeft:
+                              idx === 0
+                                ? `3px solid var(--mantine-color-${scale}-4)`
+                                : undefined,
+                          }}
                       >
                         {flexRender(
                           cell.column.columnDef.cell,

@@ -1,5 +1,7 @@
 // LoanApplicationModal.tsx
 import { useMemo, useState } from "react";
+import { FormPreviewPanel } from "../../view/Origination/FormPreviewPanel";
+import { buildFallbackDetail } from "../../view/Origination/LoanApplicationDetailParts";
 import {
   Box,
   Text,
@@ -116,7 +118,7 @@ const TAB_ITEMS: { value: string; label: string; icon: React.ReactNode }[] = [
   { value: "collateral", label: "Collateral", icon: <IconBriefcase size={14} /> },
   { value: "coapplicant", label: "Co-applicant", icon: <IconUsers size={14} /> },
   { value: "documents", label: "Documents", icon: <IconFileUpload size={14} /> },
-  { value: "simulator", label: "Loan Simulator", icon: <IconCalculator size={14} /> },
+  { value: "preview", label: "Form Preview", icon: <IconCalculator size={14} /> },
 ];
 
 export function LoanApplicationModal({ opened, onClose }: LoanApplicationModalProps) {
@@ -915,6 +917,34 @@ function TenureField({
     </div>
   );
 
+  
+  const renderFormPreview = () => {
+    const fakeApp: any = {
+      name: refNumber,
+      application_type: productCode || "Loan Product",
+      amount: Number(loanAmount) || 0,
+      customer: customerNumber || "Unknown",
+      loan_application_status: "Draft",
+      status: "Draft",
+      application_date: new Date().toISOString(),
+      first_name: customerNumber ? "Test" : "",
+      last_name: customerNumber ? "Customer" : "",
+    };
+    const fakeDetail = buildFallbackDetail(fakeApp);
+    fakeDetail.loanTerms.amountRequested = Number(loanAmount) || 0;
+    fakeDetail.loanTerms.tenureMonths = tenureMonths;
+    fakeDetail.loanTerms.proposedRepaymentFrequency = frequency || "Monthly";
+    if (collaterals.length > 0) {
+      fakeDetail.loanTerms.collateralPledged = collaterals.map(c => c.name).join(", ");
+    }
+    
+    return (
+      <div className="p-2">
+        <FormPreviewPanel application={fakeApp} detail={fakeDetail} />
+      </div>
+    );
+  };
+
   const SummaryRow = ({ label, value, bold }: { label: string; value: string; bold?: boolean }) => (
     <div className="flex justify-between items-center border-b border-dashed border-blue-200/70 py-2">
       <Text size="xs" c="blue.7">
@@ -985,7 +1015,7 @@ function TenureField({
             {activeTab === "collateral" && renderCollateral()}
             {activeTab === "coapplicant" && renderCoApplicant()}
             {activeTab === "documents" && renderDocuments()}
-            {activeTab === "simulator" && renderSimulator()}
+            {activeTab === "preview" && renderFormPreview()}
           </div>
 
           {/* Live Preview Sidebar */}

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
 import {
   Box,
   Button,
@@ -20,7 +21,6 @@ import {
 } from "@mantine/core";
 import {
   IconPencil,
-  IconPlus,
   IconChevronUp,
   IconChevronDown,
   IconSelector,
@@ -40,6 +40,7 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
+import { offerModal } from "../../../components/Modal/OfferSigning/offerSigningModalStore";
 
 // MOCK DATA for Offer & Signing
 export interface OfferRow {
@@ -201,7 +202,7 @@ function ApplicationIdCell({ name }: { name: string }) {
         <IconFileText size={14} color="var(--mantine-color-brand-6)" />
       </Box>
       <Text
-        fz="xs"
+        fz={11}
         fw={700}
         c="slate.8"
         style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
@@ -218,7 +219,7 @@ export function OfferIssuanceStage() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState("");
   const [offerStatus, setOfferStatus] = useState("all");
-  const [applicationType, setApplicationType] = useState<string | null>(null);
+  const [applicationTypes, setApplicationTypes] = useState<string[]>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -230,11 +231,11 @@ export function OfferIssuanceStage() {
         !q ||
         item.name.toLowerCase().includes(q) ||
         item.applicant.toLowerCase().includes(q);
-      const matchesType = !applicationType || applicationType === "All Types";
+      // Mock data doesn't carry application_type for Offers; kept for future wiring.
       const matchesStatus = offerStatus === "all" || item.offerStatus === offerStatus;
-      return matchesSearch && matchesType && matchesStatus;
+      return matchesSearch && matchesStatus;
     });
-  }, [search, offerStatus, applicationType]);
+  }, [search, offerStatus, applicationTypes]);
 
   const columns = useMemo(
     () => [
@@ -246,7 +247,7 @@ export function OfferIssuanceStage() {
         header: "Applicant",
         cell: (info) => (
           <Text
-            fz="xs"
+            fz={11}
             fw={600}
             c="slate.7"
             style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
@@ -259,7 +260,7 @@ export function OfferIssuanceStage() {
         header: "Approved Amount",
         cell: (info) => (
           <Text
-            fz="xs"
+            fz={11}
             c="slate.8"
             fw={600}
             style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
@@ -279,7 +280,7 @@ export function OfferIssuanceStage() {
       columnHelper.accessor("signingMethod", {
         header: "Signing Method",
         cell: (info) => (
-          <Text fz="xs" c="slate.6">
+          <Text fz={11} c="slate.6">
             {info.getValue()}
           </Text>
         ),
@@ -287,22 +288,32 @@ export function OfferIssuanceStage() {
       columnHelper.display({
         id: "actions",
         header: () => (
-          <Text fz="xs" fw={600} ta="right" w="100%">
+          <Text fz={11} fw={600} ta="right" w="100%">
             Actions
           </Text>
         ),
         cell: () => (
           <Group gap={6} justify="flex-end" wrap="nowrap" className="lms-row-actions">
-            <Tooltip label="View Details" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="gray">
-                <IconEye size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Edit" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="gray">
-                <IconPencil size={14} />
-              </ActionIcon>
-            </Tooltip>
+             <Tooltip label="View Details" withArrow>
+                         <ActionIcon
+                           size="sm"
+                           variant="subtle"
+                           color="gray"
+                           onClick={() => offerModal.open({ applicationValues: undefined })}
+                         >
+                           <IconEye size={14} />
+                         </ActionIcon>
+                       </Tooltip>
+                                    <Tooltip label="Edit" withArrow>
+                                     <ActionIcon
+                                       size="sm"
+                                       variant="subtle"
+                                       color="gray"
+                                       onClick={() => offerModal.open({ applicationValues: undefined })}
+                                     >
+                                       <IconPencil size={14} />
+                                     </ActionIcon>
+                                   </Tooltip>
             <Tooltip label="Delete" withArrow>
               <ActionIcon size="sm" variant="subtle" color="gray">
                 <IconTrash size={14} />
@@ -344,8 +355,9 @@ export function OfferIssuanceStage() {
 
   const resetFilters = () => {
     setSearch("");
-    setApplicationType(null);
+    setApplicationTypes([]);
     setOfferStatus("all");
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
   };
 
   return (
@@ -383,7 +395,7 @@ export function OfferIssuanceStage() {
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
-              Offer &amp; Signing
+              Offers
             </Title>
             <Text fz="sm" c="slate.5">
               Issue offers, track acceptance, and manage contract execution
@@ -418,20 +430,18 @@ export function OfferIssuanceStage() {
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
           />
-          <Select
-            size="sm"
-            radius="xl"
+          <FilterMultiSelect
             placeholder="All Types"
-            data={["Personal loan", "Business loan", "Mortgage"]}
-            w={166}
-            searchable
-            clearable
-            rightSection={chevronDown}
-            value={applicationType}
+            data={[
+              { label: "Personal loan", value: "Personal loan" },
+              { label: "Business loan", value: "Business loan" },
+            ]}
+            value={applicationTypes}
             onChange={(v) => {
-              setApplicationType(v);
+              setApplicationTypes(v);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
+            width={180}
           />
 
           <SegmentedControl
@@ -462,44 +472,19 @@ export function OfferIssuanceStage() {
             >
               Reset
             </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              onClick={() => {}}
-              leftSection={<IconPlus size={14} />}
-              style={{
-                background: theme.other.brandGradient,
-                boxShadow: theme.other.brandGlowShadowSm,
-              }}
-            >
-              Issue Offer
-            </Button>
           </Group>
         </Group>
       </Paper>
 
-      {/* Data Table */}
-      <Paper
-        radius="lg"
-        p="sm"
-        style={{
-          background: "var(--mantine-color-slate-0)",
-          border: "1px solid var(--mantine-color-slate-2)",
-        }}
-      >
-        <Box
-          style={{
-            height: "clamp(320px, calc(100vh - 280px), 720px)",
-            overflowY: "auto",
-          }}
-        >
+      {/* Data Table + Pagination (tight gap so pagination sits close to table) */}
+      <Stack gap="xs">
+        <Box style={{ overflowX: "auto" }}>
           <Table
-            verticalSpacing="sm"
+            verticalSpacing={6}
             horizontalSpacing="sm"
-            fz="xs"
+            fz={11}
             w="100%"
-            style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+            style={{ borderCollapse: "separate", borderSpacing: "0 6px" }}
           >
             <Table.Thead>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -513,8 +498,8 @@ export function OfferIssuanceStage() {
                         c="slate.5"
                         fw={700}
                         style={{
-                          fontSize: "var(--mantine-font-size-xs)",
-                          padding: "0 10px 6px",
+                          fontSize: 10,
+                          padding: "0 12px 4px",
                           userSelect: "none",
                           cursor: canSort ? "pointer" : "default",
                           textTransform: "uppercase",
@@ -573,7 +558,7 @@ export function OfferIssuanceStage() {
                           color="var(--mantine-color-slate-4)"
                         />
                       </Box>
-                      <Text ta="center" c="slate.5" fz="xs">
+                      <Text ta="center" c="slate.5" fz={11}>
                         No applications match your filters.
                       </Text>
                     </Stack>
@@ -593,7 +578,7 @@ export function OfferIssuanceStage() {
                         <Table.Td
                           key={cell.id}
                           style={{
-                            padding: "10px 10px",
+                            padding: "8px 12px",
                             border: "none",
                             boxShadow: "var(--mantine-shadow-xs)",
                             borderLeft:
@@ -654,7 +639,7 @@ export function OfferIssuanceStage() {
             radius="xl"
           />
         </Group>
-      </Paper>
+      </Stack>
     </Stack>
   );
 }

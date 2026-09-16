@@ -113,6 +113,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         label: "Origination Setup",
         icon: IconSettings,
          subItems: [
+                    {
+            path: "/origination-setup/workflow",
+            label: "Workflow Configuration",
+            icon: IconSettings,
+          },
           {
             path: "/origination-setup/pre-screening",
             label: "Pre-Screening",
@@ -133,6 +138,21 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
           //   label: "Temp Product Assignment",
           //   icon: IconBrandProducthunt,
           // },  
+          //  {
+          //   path: "/origination-setup/enrichment-stage",
+          //   label: "Enrichment Stage",
+          //   icon: IconBrandProducthunt,
+          // }, 
+          //  {
+          //   path: "/origination-setup/loanApplication-tabs",
+          //   label: "Loan Application Tabs",
+          //   icon: IconBrandProducthunt,
+          // }, 
+          // {
+          //   path: "/origination-setup/pre-screening-stage",
+          //   label: "Pre-Screening Stage",
+          //   icon: IconBrandProducthunt,
+          // }, 
         ],
       },
   {
@@ -141,7 +161,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconFileText,
     matchPrefix: true,
     subItems: [
-      { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText, modules: ["Loan Application"] },
+      { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText , modules:["Loan Application"]},
       { path: "/origination/prescreening", label: "Prescreening", icon: IconFileText, modules: ["Loan Application"] },
       { path: "/origination/enrichment", label: "Enrichment", icon: IconFileText, modules: ["Loan Application"] },
       { path: "/origination/underwriting", label: "Underwriting", icon: IconFileText, modules: ["Loan Application"] },

@@ -22,6 +22,7 @@ import { RoleManagement } from "../view/User/RoleManagement";
 import { CollateralType } from "../view/Collateral/CollateralType/CollateralType";
 import { Collateral } from "../view/Collateral/Collateral";
 import { LoanApplication } from "../view/Origination/LoanApplication";
+import { WorkflowConfiguration } from "../view/Origination/WorkflowConfiguration";
 import { PrescreeningTable } from "../view/Origination/Prescreening/PrescreeningTable";
 import { EnrichmentTable } from "../view/Origination/Enrichment/EnrichmentTable";
 import { UnderwritingTable } from "../view/Origination/Underwriting/UnderwritingTable";
@@ -78,6 +79,9 @@ import LOSEligibilityCheck from "../view/LosConfiguration/EligibilityCheck/LOSEl
 import LoanProductAutoAssignment from "../view/LosConfiguration/ProductAssignment/LoanProductAssignment";
 import ProductAssignments from "../view/LosConfiguration/ProductAssignment/ProductAssignments";
 import { OfferIssuanceStage } from "../view/Origination/OfferIssuanceStage/OfferIssuanceStage";
+import EnrichmentStage from "../view/LosConfiguration/EnrichmentStage/EnrichmentStage";
+import LoanApplicationTabs from "../view/LosConfiguration/LoanApplicationtabs/LoanApplicationtabs";
+import PreScreeningStage from "../view/LosConfiguration/PreScreeningStage/PreScreeningStage";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -193,6 +197,21 @@ const loanProductAssignmentRoute = createRoute({
   path: "/product-assignment",
   component: LoanProductAutoAssignment,
 });
+const enrichmentStageRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/enrichment-stage",
+  component: EnrichmentStage,
+});
+const loanApplicationTabsRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/loanApplication-tabs",
+  component: LoanApplicationTabs,
+});
+const preScreeningStageRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/pre-screening-stage",
+  component: PreScreeningStage,
+});
 // const tempProductAssignmentRoute = createRoute({
 //   getParentRoute: () => originationSetupRoute,
 //   path: "/product-temp",
@@ -226,6 +245,11 @@ const originationLoanApplicationRoute = createRoute({
   getParentRoute: () => originationRoute,
   path: "/loanApplication",
   component: LoanApplication,
+});
+const originationWorkflowConfigurationRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/workflow",
+  component: WorkflowConfiguration,
 });
 const originationPrescreeningRoute = createRoute({
   getParentRoute: () => originationRoute,
@@ -541,8 +565,9 @@ const routeTree = rootRoute.addChildren([
     balancesheetRoute,
     cashflowRoute,
   ]),
-// originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute]),
-originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute]),
+// originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
+originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute]),
+// originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, enrichmentStageRoute, loanApplicationTabsRoute, preScreeningStageRoute]),
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
   settingsRoute.addChildren([
     lendingConfigurationRoute,

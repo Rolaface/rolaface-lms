@@ -24,11 +24,12 @@ import {
   IconArrowRight,
   IconMinus,IconCheck
 } from "@tabler/icons-react";
-
 import { PersonalBusinessInfoStep } from "./PersonalBusinessInfoStep";
 import { ResidenceEmploymentStep } from "./ResidenceEmploymentStep";
 import { DocumentsStep } from "./DocumentsStep";
-import { LoanTermsStep } from "./LoanTermsStep";
+import { CustomerLoanStep } from "./CustomerLoanStep";
+import { EligibilitySimulationStep } from "./EligibilitySimulationStep";
+import { Review } from "./Review";
 import {
   createLoanApplication,
   getLoanApplicationById,
@@ -43,6 +44,8 @@ import { uploadFile } from "../../../api/loanApi";
 import { openCommonModal } from "../AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { ApplicationSummary } from "./ApplicationSummary";
+import { EmploymentDetails } from "./EmploymentDetails";
+import { Applicant } from "./Applicant";
 
 export type LoanType = "Personal" | "Business";
 
@@ -62,6 +65,11 @@ export interface DirectorDocEntry {
 
 export interface LoanApplicationValues {
   loanType: LoanType;
+  customerType: "existing" | "new" | null;
+  selectedCustomerId: string;
+  selectedOfferId: string;
+  applicantType: LoanType | null;
+  repaymentFrequency: "Monthly" | "Bi-weekly";
   firstName: string;
   middleName: string;
   surname: string;
@@ -124,7 +132,11 @@ const nextId = () => Math.random().toString(36).slice(2, 10);
 
 const INITIAL_VALUES: LoanApplicationValues = {
   loanType: "Personal",
-
+  customerType: null,
+  selectedCustomerId: "",
+  selectedOfferId: "",
+  applicantType: "Personal",
+  repaymentFrequency: "Monthly",
   firstName: "",
   middleName: "",
   surname: "",
@@ -194,22 +206,28 @@ const LOAN_RANGE: Record<LoanType, { min: number; max: number }> = {
 
 const STEP_LABELS: Record<LoanType, string[]> = {
   Personal: [
+    "Customer & Loan",
+    "Eligibility & Simulation",
     "Applicant information",
-    "Residence & Employment",
+    "Residence Details",
+    "Employment Details",
     "Documents",
-    "Loan Terms",
+    "Review",
   ],
   Business: [
+    "Customer & Loan",
+    "Eligibility & Simulation",
     "Business information",
-    "Directors & Applicant",
+    "Directors Details",
+    "Applicant Details",
     "Documents",
-    "Loan Terms",
+    "Review",
   ],
 };
 
 const STEP_ICONS: Record<LoanType, React.FC<any>[]> = {
-  Personal: [IconUser, IconBriefcase, IconFileText, IconFileInvoice],
-  Business: [IconBuilding, IconUsers, IconFileText, IconFileInvoice],
+  Personal: [IconUsers, IconFileInvoice, IconUser, IconBriefcase, IconBriefcase, IconFileText, IconCheck],
+  Business: [IconUsers, IconFileInvoice, IconBuilding, IconBuilding,IconUsers, IconFileText, IconCheck],
 };
 
 function buildPersonalPayload(
@@ -406,6 +424,9 @@ interface LoanApplicationModalProps {
   onMinimize: () => void;
   onExited?: () => void;
   loanApplicationId?: string | null;
+  readOnly?: boolean;
+  embedded?: boolean;
+  initialValues?: LoanApplicationValues;
 }
 
 export function LoanApplicationModal({
@@ -414,6 +435,9 @@ export function LoanApplicationModal({
   onMinimize,
   onExited,
   loanApplicationId,
+  readOnly = false,
+  embedded = false,
+  initialValues,
 }: LoanApplicationModalProps) {
   const originalDocumentUrls = useRef<Record<string, string>>({});
   const [directorsError, setDirectorsError] = useState<string | null>(null);
@@ -439,7 +463,7 @@ export function LoanApplicationModal({
   };
 
   const form = useForm<LoanApplicationValues>({
-    initialValues: INITIAL_VALUES,
+    initialValues: embedded && initialValues ? initialValues : INITIAL_VALUES,
     validate: {
       firstName: (v, values) =>
         values.loanType === "Personal" && !v?.trim() ? "Required" : null,
@@ -667,12 +691,11 @@ export function LoanApplicationModal({
 
   const loanType = form.values.loanType;
   const stepLabels = STEP_LABELS[loanType];
-
   const handleToggleLoanType = (value: string) => {
     const nextType = value as LoanType;
     form.setFieldValue("loanType", nextType);
+    form.setFieldValue("applicantType", nextType);
 
-    // Clamp loan amount into the new type's range so the Step 4 slider stays valid.
     const range = LOAN_RANGE[nextType];
     const amount = form.values.loanAmount;
     if (amount < range.min) form.setFieldValue("loanAmount", range.min);
@@ -697,77 +720,32 @@ export function LoanApplicationModal({
     let hasError = false;
     let fieldsToValidate: string[] = [];
 
-    if (loanType === "Personal") {
-      if (activeStep === 0)
-        fieldsToValidate = [
-          "firstName",
-          "surname",
-          "phone",
-          "email",
-          "nrc",
-          "gender",
-          "maritalStatus",
-          "birthDate",
-        ];
-      if (activeStep === 1)
-        fieldsToValidate = [
-          "residentialAddress",
-          "occupation",
-          "employerName",
-          "principalObjective",
-          "kinName",
-          "kinPhone",
-          "kinRelationship",
-          "kinEmail",
-          "nationality",
-        ];
-      if (activeStep === 2)
-        fieldsToValidate = [
-          "payslips",
-          "bankStatementsPersonal",
-          "nrcCopy",
-          "passportPhotoPersonal",
-          "tpinCertificate",
-        ];
-    } else {
-      if (activeStep === 0)
-        fieldsToValidate = [
-          "companyName",
-          "typeOfBusiness",
-          "establishedDate",
-          "natureOfBusiness",
-          "registeredOffice",
-          "collateralPledged",
-          "purposeOfLoan",
-        ];
-      if (activeStep === 1)
-        fieldsToValidate = [
-          "applicantFirstName",
-          "applicantLastName",
-          "applicantPhone",
-          "applicantEmail",
-          "applicantNrc",
-          "applicantBirthDate",
-          "applicantAddress",
-          "applicantPosition",
-          "applicantGender",
-          "applicantMaritalStatus",
-          "applicantNationality",
-        ];
-      // if (activeStep === 2) fieldsToValidate = ["pacraCertificate", "form2", "taxClearanceCertificate", "taxComplianceReturn", "bankStatementsBusiness", "applicantPassportPhoto", "boardResolution"];
-      if (activeStep === 2)
-        fieldsToValidate = [
-          "pacraCertificate",
-          "form2",
-          "taxClearanceCertificate",
-          "taxComplianceReturn",
-          "bankStatementsBusiness",
-          "applicantPassportPhoto",
-          "boardResolution",
-        ];
+    if (activeStep === 0) {
+      if (!form.values.customerType) {
+        hasError = true;
+      } else if (form.values.customerType === "existing" && !form.values.selectedCustomerId) {
+        hasError = true;
+      } else if (form.values.customerType === "new" && !form.values.applicantType) {
+        hasError = true;
+      }
     }
 
-    if (loanType === "Business" && activeStep === 2) {
+    if (activeStep === 1) {
+      if (!form.values.loanAmount || !form.values.tenureMonths) hasError = true;
+    }
+
+    if (loanType === "Personal") {
+      if (activeStep === 2) fieldsToValidate = ["firstName", "surname", "phone", "email", "nrc", "gender", "maritalStatus", "birthDate"];
+      if (activeStep === 3) fieldsToValidate = ["residentialAddress", "occupation", "employerName", "principalObjective", "kinName", "kinPhone", "kinRelationship", "kinEmail", "nationality"];
+      // Step 4 is EmploymentDetails - validation handles dynamically
+      if (activeStep === 5) fieldsToValidate = ["payslips", "bankStatementsPersonal", "nrcCopy", "passportPhotoPersonal", "tpinCertificate"];
+    } else {
+      if (activeStep === 2) fieldsToValidate = ["companyName", "typeOfBusiness", "establishedDate", "natureOfBusiness", "registeredOffice", "collateralPledged", "purposeOfLoan"];
+      if (activeStep === 4) fieldsToValidate = ["applicantFirstName", "applicantLastName", "applicantPhone", "applicantEmail", "applicantNrc", "applicantBirthDate", "applicantAddress", "applicantPosition", "applicantGender", "applicantMaritalStatus", "applicantNationality"];
+      if (activeStep === 5) fieldsToValidate = ["pacraCertificate", "form2", "taxClearanceCertificate", "taxComplianceReturn", "bankStatementsBusiness", "applicantPassportPhoto", "boardResolution"];
+    }
+
+    if (loanType === "Business" && activeStep === 5) {
       if (form.values.directorDocuments.length === 0) {
         hasError = true;
         setDirectorDocsError("Please add at least one director's documents");
@@ -781,7 +759,7 @@ export function LoanApplicationModal({
     });
 
     if (loanType === "Business") {
-      if (activeStep === 1) {
+      if (activeStep === 3) {
         if (form.values.directors.length === 0) {
           hasError = true;
           setDirectorsError("Please add at least one director");
@@ -789,29 +767,22 @@ export function LoanApplicationModal({
           setDirectorsError(null);
         }
         form.values.directors.forEach((_, i) => {
-          if (form.validateField(`directors.${i}.name`).hasError)
-            hasError = true;
-          if (form.validateField(`directors.${i}.phone`).hasError)
-            hasError = true;
-          if (form.validateField(`directors.${i}.email`).hasError)
-            hasError = true;
-          if (form.validateField(`directors.${i}.nrc`).hasError)
-            hasError = true;
+          if (form.validateField(`directors.${i}.name`).hasError) hasError = true;
+          if (form.validateField(`directors.${i}.phone`).hasError) hasError = true;
+          if (form.validateField(`directors.${i}.email`).hasError) hasError = true;
+          if (form.validateField(`directors.${i}.nrc`).hasError) hasError = true;
         });
       }
-      if (activeStep === 2) {
+      if (activeStep === 5) {
         form.values.directorDocuments.forEach((_, i) => {
-          if (form.validateField(`directorDocuments.${i}.nrcFile`).hasError)
-            hasError = true;
-          if (form.validateField(`directorDocuments.${i}.photoFile`).hasError)
-            hasError = true;
+          if (form.validateField(`directorDocuments.${i}.nrcFile`).hasError) hasError = true;
+          if (form.validateField(`directorDocuments.${i}.photoFile`).hasError) hasError = true;
         });
       }
     }
 
-    // Move to next step only if the current step is valid
     if (!hasError) {
-      setActiveStep((s) => Math.min(s + 1, 3));
+      setActiveStep((s) => Math.min(s + 1, 6)); // Max step is now 6
     }
   };
   const handleBack = () => setActiveStep((s) => Math.max(s - 1, 0));
@@ -1148,40 +1119,62 @@ export function LoanApplicationModal({
     }
   };
 
-  const renderStep = () => {
+   const renderStep = () => {
     switch (activeStep) {
       case 0:
-        return <PersonalBusinessInfoStep form={form} loanType={loanType} />;
-      // case 1:
-      //   return <ResidenceEmploymentStep form={form} loanType={loanType} />;
+        return <CustomerLoanStep form={form} readOnly={readOnly} />;
       case 1:
+        return <EligibilitySimulationStep form={form} readOnly={readOnly} />;
+      case 2:
+        return (
+          <PersonalBusinessInfoStep
+            form={form}
+            loanType={loanType}
+            readOnly={readOnly}
+          />
+        );
+      case 3:
         return (
           <ResidenceEmploymentStep
             form={form}
             loanType={loanType}
             directorsError={directorsError}
+            readOnly={readOnly}
           />
         );
-      // case 2:
-      //   return <DocumentsStep form={form} loanType={loanType} />;
-      case 2:
-  return (
-    <DocumentsStep
-      form={form}
-      loanType={loanType}
-      directorDocsError={directorDocsError}
-      originalDocumentUrls={originalDocumentUrls.current}
-    />
-  );
-      case 3:
-      case 3:
-        return <LoanTermsStep form={form} loanType={loanType} />;
+      case 4:
+        return loanType === "Personal" ? (
+          <EmploymentDetails form={form} readOnly={readOnly} />
+        ) : (
+          <Applicant form={form} readOnly={readOnly} />
+        );
+      case 5:
+        return (
+          <DocumentsStep
+            form={form}
+            loanType={loanType}
+            directorDocsError={directorDocsError}
+            originalDocumentUrls={originalDocumentUrls.current}
+            readOnly={readOnly}
+          />
+        );
+      case 6:
+        return <Review form={form} loanType={loanType} />;
       default:
         return null;
     }
   };
-
-  return (
+    const bodyContent = (
+        <Box
+          style={{
+            position: "relative",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+          }}
+        >
+  {/* return (
     <>
       <Modal
         opened={opened}
@@ -1223,7 +1216,8 @@ export function LoanApplicationModal({
             flexDirection: "column",
             minHeight: 0,
           }}
-        >
+        > */}
+         {!embedded && (
           <Group
             justify="space-between"
             align="center"
@@ -1255,40 +1249,33 @@ export function LoanApplicationModal({
                 </Text>
               </Box>
             </Group>
-            {/* <ActionIcon
-              variant="subtle"
-              color="white"
-              radius="xl"
-              size="md"
-              onClick={handleModalClose}
-              aria-label="Close"
-            >
-              <IconX size={16} color="white" />
-            </ActionIcon> */}
-            <Group gap="xs" wrap="nowrap">
-              <ActionIcon
-                variant="subtle"
-                color="white"
-                radius="xl"
-                size="md"
-                onClick={onMinimize}
-                aria-label="Minimize"
-              >
-                <IconMinus size={16} color="white" />
-              </ActionIcon>
+                        {!embedded && (
+              <Group gap="xs" wrap="nowrap">
+                <ActionIcon
+                  variant="subtle"
+                  color="white"
+                  radius="xl"
+                  size="md"
+                  onClick={onMinimize}
+                  aria-label="Minimize"
+                >
+                  <IconMinus size={16} color="white" />
+                </ActionIcon>
 
-              <ActionIcon
-                variant="subtle"
-                color="white"
-                radius="xl"
-                size="md"
-                onClick={handleModalClose}
-                aria-label="Close"
-              >
-                <IconX size={16} color="white" />
-              </ActionIcon>
-            </Group>
+                <ActionIcon
+                  variant="subtle"
+                  color="white"
+                  radius="xl"
+                  size="md"
+                  onClick={handleModalClose}
+                  aria-label="Close"
+                >
+                  <IconX size={16} color="white" />
+                </ActionIcon>
+              </Group>
+            )}
           </Group>
+        )}
                     <Box
             px="md"
             py={6}
@@ -1368,105 +1355,13 @@ export function LoanApplicationModal({
           >
           <ScrollArea type="hover" scrollbarSize={6} style={{ flex: 1, minHeight: 0 }}>
               <Box px="xl" py="xl" style={{ flex: 1, minWidth: 0 }}>
-                {/* Loan type toggle — embedded at top of Step 1 only */}
-            
-                  {/* Loan type toggle (Optional: you can delete this segment control now if you don't want them to change it mid-way, or keep it as a fallback) */}
-                  {/* <Group gap="xs" mb="lg">
-                  <Text fz="xs" fw={600} c="slate.6">
-                    Loan type:
-                  </Text>
-                  <SegmentedControl
-                    size="xs"
-                    radius="xl"
-                    color="brand"
-                    value={loanType}
-                    onChange={handleToggleLoanType}
-                    data={[
-                      { label: "Personal Loan", value: "Personal" },
-                      { label: "Business Loan", value: "Business" },
-                    ]}
-                  />
-                </Group> */}
-
-            
-
-                           {activeStep === 0 && (
-                  <Box mb="xl">
-                    <Text fz="sm" fw={700} c="slate.7" mb="sm">
-                      I'm applying for a
-                    </Text>
-                    <Group grow align="stretch" gap="lg">
-                      <Box
-                        component="button"
-                        onClick={() => handleToggleLoanType("Personal")}
-                        className="text-left p-4 rounded-xl border-2 transition-all cursor-pointer"
-                        style={{
-                          borderColor: loanType === "Personal" ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-3)",
-                          backgroundColor: loanType === "Personal" ? "var(--mantine-color-brand-0)" : "white",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                        }}
-                      >
-                        <ThemeIcon
-                          radius="md"
-                          size={38}
-                          variant={loanType === "Personal" ? "filled" : "light"}
-                          color="brand"
-                        >
-                          <IconUser size={18} />
-                        </ThemeIcon>
-                        <Box>
-                          <Text fz="sm" fw={700} c={loanType === "Personal" ? "brand.8" : "slate.9"} mb={2}>
-                            Personal Loan
-                          </Text>
-                          <Text fz="xs" c={loanType === "Personal" ? "brand.7" : "slate.5"}>
-                            For individual / personal borrowing
-                          </Text>
-                        </Box>
-                      </Box>
-
-                      <Box
-                        component="button"
-                        onClick={() => handleToggleLoanType("Business")}
-                        className="text-left p-4 rounded-xl border-2 transition-all cursor-pointer"
-                        style={{
-                          borderColor: loanType === "Business" ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-3)",
-                          backgroundColor: loanType === "Business" ? "var(--mantine-color-brand-0)" : "white",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                        }}
-                      >
-                        <ThemeIcon
-                          radius="md"
-                          size={38}
-                          variant={loanType === "Business" ? "filled" : "light"}
-                          color="brand"
-                        >
-                          <IconBuilding size={18} />
-                        </ThemeIcon>
-                        <Box>
-                          <Text fz="sm" fw={700} c={loanType === "Business" ? "brand.8" : "slate.9"} mb={2}>
-                            Business Loan
-                          </Text>
-                          <Text fz="xs" c={loanType === "Business" ? "brand.7" : "slate.5"}>
-                            For business-related borrowing
-                          </Text>
-                        </Box>
-                      </Box>
-                    </Group>
-                  </Box>
-                )}
-
-                  {/* Step content card */}
                 <Box className="bg-white border border-slate-200 rounded-xl p-6 mb-4">
                   {renderStep()}
                 </Box>
               </Box>
           </ScrollArea>
 
-            {loanTypeSelected && (
+            {loanTypeSelected && !readOnly &&  (
               <ApplicationSummary
                 values={form.values}
                 totalRepayable={totalRepayable}
@@ -1475,8 +1370,7 @@ export function LoanApplicationModal({
               />
             )}
           </Box>
-          {/* New Fixed Footer (Only visible when form is started) */}
-          {loanTypeSelected && (
+          {loanTypeSelected && !readOnly && (
             <Group
               justify="space-between"
               align="center"
@@ -1520,20 +1414,19 @@ export function LoanApplicationModal({
     Back
   </Button>
             )}
-
-                <Button
+ <Button
                   color="brand"
                   radius="md"
                   onClick={
-                    activeStep < 3 ? handleNext : handleSubmitApplication
+                    activeStep < 6 ? handleNext : handleSubmitApplication
                   }
                   loading={
-                    activeStep === 3 &&
+                    activeStep === 6 &&
                     (isUploadingDocs || isSubmitting || isUpdating)
                   }
                   rightSection={<IconArrowRight size={16} />}
                 >
-                  {activeStep < 3
+                  {activeStep < 6
                     ? "Save & Continue"
                     : loanApplicationId
                       ? "Update Application"
@@ -1542,7 +1435,70 @@ export function LoanApplicationModal({
               </Group>
             </Group>
           )}
-        </Box>
+                </Box>
+  );
+
+  if (embedded) {
+    return (
+      <Box
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          minHeight: 0,
+        }}
+      >
+        {bodyContent}
+      </Box>
+    );
+  }
+
+  return (
+    <>
+      <Modal
+        opened={opened}
+        onClose={handleModalClose}
+        transitionProps={{
+          onExited: () => {
+            onExited?.();
+          },
+        }}
+        // size={1400}
+         size="90vw"
+        padding={0}
+        lockScroll
+        closeOnClickOutside={false}
+        closeOnEscape={false}
+        // styles={{
+        //   content: {
+        //     height: "92vh",
+        //     maxHeight: "95vh",
+        //     display: "flex",
+        //     flexDirection: "column",
+        //     overflow: "hidden",
+        //   },
+         styles={{
+        content: {
+          height: "92vh",
+          maxHeight: "99vh",
+          width: "90vw",
+          maxWidth: "1600px",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        },
+          header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
+          body: {
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            padding: 0,
+            minHeight: 0,
+            overflow: "hidden",
+          },
+        }}
+      >
+        {bodyContent}
       </Modal>
     </>
   );

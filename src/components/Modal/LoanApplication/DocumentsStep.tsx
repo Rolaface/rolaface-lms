@@ -45,12 +45,12 @@ import {
   getFileExtLabel,
   fileKindIcon,
 } from "./ViewDoc";
-
 interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
   loanType: LoanType;
   directorDocsError?: string | null;
   originalDocumentUrls?: Record<string, string>;
+  readOnly?: boolean;
 }
 
 type FileFieldKey = Extract<
@@ -79,7 +79,6 @@ interface DocTile {
 }
 
 const nextId = () => Math.random().toString(36).slice(2, 10);
-const MAX_DIRECTOR_DOCS = 3;
 
 const DEFAULT_GUIDELINES = [
   "File must be clear, legible and unedited",
@@ -210,9 +209,10 @@ interface UploadedDocRowProps {
   file: File;
   onPreview: () => void;
   onRemove: () => void;
+  readOnly?: boolean;
 }
 
-function UploadedDocRow({ file, onPreview, onRemove }: UploadedDocRowProps) {
+function UploadedDocRow({ file, onPreview, onRemove, readOnly = false, }: UploadedDocRowProps) {
   const kind = getFileKind(file);
   const RowIcon = fileKindIcon(kind);
 
@@ -242,8 +242,7 @@ function UploadedDocRow({ file, onPreview, onRemove }: UploadedDocRowProps) {
             </Text>
           </Box>
         </Group>
-
-       <Group gap={6} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+              <Group gap={6} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
   <ActionIcon
     variant="light"
     color="brand"
@@ -257,26 +256,28 @@ function UploadedDocRow({ file, onPreview, onRemove }: UploadedDocRowProps) {
   >
     <IconEye size={16} />
   </ActionIcon>
-  <ActionIcon
-    variant="subtle"
-    color="red"
-    radius="md"
-    size="lg"
-    aria-label="Remove"
-    onClick={(e) => {
-      e.stopPropagation();
-      onRemove();
-    }}
-  >
-    <IconTrash size={16} />
-  </ActionIcon>
+  {!readOnly && (
+    <ActionIcon
+      variant="subtle"
+      color="red"
+      radius="md"
+      size="lg"
+      aria-label="Remove"
+      onClick={(e) => {
+        e.stopPropagation();
+        onRemove();
+      }}
+    >
+      <IconTrash size={16} />
+    </ActionIcon>
+  )}
 </Group>
       </Group>
     </Paper>
   );
 }
 
-export function DocumentsStep({ form, loanType, directorDocsError, originalDocumentUrls }: StepProps) {
+export function DocumentsStep({ form, loanType, directorDocsError, originalDocumentUrls, readOnly = false, }: StepProps) {
   const tiles = loanType === "Personal" ? PERSONAL_DOC_TILES : BUSINESS_DOC_TILES;
   const [selectedKey, setSelectedKey] = useState<FileFieldKey>(tiles[0].key);
 
@@ -302,7 +303,6 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
 } | null>(null);
 
   const handleAddDirectorDoc = () => {
-    if (directorDocs.length >= MAX_DIRECTOR_DOCS) return;
     const newIndex = directorDocs.length;
     form.insertListItem("directorDocuments", {
       id: nextId(),
@@ -461,7 +461,7 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
               </Box>
             </Group>
 
-            {file ? (
+                        {file ? (
               <Stack gap="xs">
                 <Text fz="xs" fw={700} c="slate.5" tt="uppercase">
                   Uploaded Document
@@ -470,8 +470,22 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
                   file={file}
                   onPreview={() => setPreviewOpened(true)}
                   onRemove={() => form.setFieldValue(selected.key, null)}
+                  readOnly={readOnly}
                 />
               </Stack>
+            ) : readOnly ? (
+              <Paper
+                withBorder
+                radius="lg"
+                p="md"
+                ta="center"
+                bg="slate.0"
+                style={{ borderStyle: "dashed" }}
+              >
+                <Text size="sm" fw={600} c="slate.5">
+                  Not provided
+                </Text>
+              </Paper>
             ) : (
               <FileButton
                 onChange={(f) => f && form.setFieldValue(selected.key, f)}
@@ -546,22 +560,23 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
           <Group justify="space-between" align="center" mb="sm">
             <Group gap="sm" align="center">
               <Text fz="sm" fw={700} c="slate.8">
-                Director documents ({directorDocs.length}/{MAX_DIRECTOR_DOCS})
+                Director documents ({directorDocs.length})
               </Text>
               <Text fz="xs" c="slate.5">
-                Add up to 3 director NRC and passport photo uploads.
+                Add director NRC and passport photo uploads.
               </Text>
             </Group>
-            <Button
-              size="sm"
-              variant="light"
-              radius="md"
-              color="brand"
-              onClick={handleAddDirectorDoc}
-              disabled={directorDocs.length >= MAX_DIRECTOR_DOCS}
-            >
-              Add Director Docs
-            </Button>
+                        {!readOnly && (
+              <Button
+                size="sm"
+                variant="light"
+                radius="md"
+                color="brand"
+                onClick={handleAddDirectorDoc}
+              >
+                Add Director Docs
+              </Button>
+            )}
           </Group>
 
           {directorDocsError && (
@@ -588,24 +603,26 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
                       {doc.photoFile ? doc.photoFile.name : "Pending"}
                     </Text>
                   </Box>
-                  <Group gap="xs">
-                    <ActionIcon
-                      variant="subtle"
-                      color="brand"
-                      onClick={() => handleEditDirectorDoc(idx)}
-                      aria-label="Edit director documents"
-                    >
-                      <IconPencil size={18} />
-                    </ActionIcon>
-                    <ActionIcon
-                      variant="subtle"
-                      color="red"
-                      onClick={() => handleDeleteDirectorDoc(idx)}
-                      aria-label="Delete director documents"
-                    >
-                      <IconTrash size={18} />
-                    </ActionIcon>
-                  </Group>
+                                   {!readOnly && (
+                    <Group gap="xs">
+                      <ActionIcon
+                        variant="subtle"
+                        color="brand"
+                        onClick={() => handleEditDirectorDoc(idx)}
+                        aria-label="Edit director documents"
+                      >
+                        <IconPencil size={18} />
+                      </ActionIcon>
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        onClick={() => handleDeleteDirectorDoc(idx)}
+                        aria-label="Delete director documents"
+                      >
+                        <IconTrash size={18} />
+                      </ActionIcon>
+                    </Group>
+                  )}
                 </Group>
               ))}
             </Stack>

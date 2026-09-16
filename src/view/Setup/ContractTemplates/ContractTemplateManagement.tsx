@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import {
   Box,
@@ -138,7 +137,10 @@ export function ContractTemplateManagement() {
   // pagination helpers
   const totalRows = filteredData.length;
   const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-  const pagedData = filteredData.slice((page - 1) * pageSize, page * pageSize);
+  const pagedData = useMemo(
+    () => filteredData.slice((page - 1) * pageSize, page * pageSize),
+    [filteredData, page, pageSize]
+  );
   const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
   const lastRow = Math.min(totalRows, page * pageSize);
 
@@ -246,7 +248,7 @@ export function ContractTemplateManagement() {
   const rows = table.getRowModel().rows;
 
   return (
-    <Stack gap="lg" p="lg">
+    <Stack gap="xs" p="md">
       {/* ── scoped CSS (same as LoanProduct) ── */}
       <style>{`
         .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
@@ -258,12 +260,12 @@ export function ContractTemplateManagement() {
       `}</style>
 
       {/* ── page header (icon + title, same as LoanProduct) ── */}
-      <Group justify="space-between" align="center" wrap="wrap" gap="md">
-        <Group gap="sm" align="center">
+      <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+        <Group gap="xs" align="center">
           <Box
             style={{
-              width: 40,
-              height: 40,
+              width: 34,
+              height: 34,
               borderRadius: 'var(--mantine-radius-md)',
               background: theme.other.brandGradient,
               boxShadow: theme.other.brandGlowShadow,
@@ -272,13 +274,13 @@ export function ContractTemplateManagement() {
               justifyContent: 'center',
             }}
           >
-            <IconFileDescription size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconFileDescription size={17} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
-          <Stack gap={2}>
-            <Title order={2} c="slate.8" fw={700}>
+          <Stack gap={0}>
+            <Title order={2} c="slate.8" fw={700} fz="lg">
               Contract Templates
             </Title>
-            <Text fz="sm" c="slate.5">
+            <Text fz="xs" c="slate.5">
               Upload and manage bank loan contract templates
             </Text>
           </Stack>
@@ -286,58 +288,58 @@ export function ContractTemplateManagement() {
       </Group>
 
       {/* ── stat cards ── */}
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
-        <Paper p="sm" radius="md" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
-          <Group gap="md">
-            <Box className="p-2 rounded-md" style={{ backgroundColor: 'var(--mantine-color-indigo-0)' }}>
-              <IconFileDescription size={24} stroke={1.5} color="var(--mantine-color-brand-6)" />
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="xs">
+        <Paper p="xs" radius="md" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
+          <Group gap="sm">
+            <Box className="p-1.5 rounded-md" style={{ backgroundColor: 'var(--mantine-color-indigo-0)' }}>
+              <IconFileDescription size={20} stroke={1.5} color="var(--mantine-color-brand-6)" />
             </Box>
             <Box>
               <Group gap="xs" align="baseline">
-                <Text size="xl" fw={700} c="slate.8">25</Text>
-                <Text size="sm" fw={600} c="slate.7">Total Templates</Text>
+                <Text size="lg" fw={700} c="slate.8">25</Text>
+                <Text size="xs" fw={600} c="slate.7">Total Templates</Text>
               </Group>
               <Text size="xs" c="slate.5">All uploaded templates</Text>
             </Box>
           </Group>
         </Paper>
-        <Paper p="sm" radius="md" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
-          <Group gap="md">
-            <Box className="p-2 rounded-md" style={{ backgroundColor: 'var(--mantine-color-success-0)' }}>
-              <IconCircleCheck size={24} stroke={1.5} color="var(--mantine-color-success-6)" />
+        <Paper p="xs" radius="md" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
+          <Group gap="sm">
+            <Box className="p-1.5 rounded-md" style={{ backgroundColor: 'var(--mantine-color-success-0)' }}>
+              <IconCircleCheck size={20} stroke={1.5} color="var(--mantine-color-success-6)" />
             </Box>
             <Box>
               <Group gap="xs" align="baseline">
-                <Text size="xl" fw={700} c="slate.8">18</Text>
-                <Text size="sm" fw={600} c="slate.7">Active Templates</Text>
+                <Text size="lg" fw={700} c="slate.8">18</Text>
+                <Text size="xs" fw={600} c="slate.7">Active Templates</Text>
               </Group>
               <Text size="xs" c="slate.5">Currently active</Text>
             </Box>
           </Group>
         </Paper>
-        <Paper p="sm" radius="md" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
-          <Group gap="md">
-            <Box className="p-2 rounded-md" style={{ backgroundColor: 'var(--mantine-color-orange-0)' }}>
-              <IconClock size={24} stroke={1.5} color="var(--mantine-color-orange-5)" />
+        <Paper p="xs" radius="md" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
+          <Group gap="sm">
+            <Box className="p-1.5 rounded-md" style={{ backgroundColor: 'var(--mantine-color-orange-0)' }}>
+              <IconClock size={20} stroke={1.5} color="var(--mantine-color-orange-5)" />
             </Box>
             <Box>
               <Group gap="xs" align="baseline">
-                <Text size="xl" fw={700} c="slate.8">5</Text>
-                <Text size="sm" fw={600} c="slate.7">Inactive Templates</Text>
+                <Text size="lg" fw={700} c="slate.8">5</Text>
+                <Text size="xs" fw={600} c="slate.7">Inactive Templates</Text>
               </Group>
               <Text size="xs" c="slate.5">Not active</Text>
             </Box>
           </Group>
         </Paper>
-        <Paper p="sm" radius="md" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
-          <Group gap="md">
-            <Box className="p-2 rounded-md" style={{ backgroundColor: 'var(--mantine-color-blue-0)' }}>
-              <IconLink size={24} stroke={1.5} color="var(--mantine-color-blue-5)" />
+        <Paper p="xs" radius="md" style={{ border: '1px solid var(--mantine-color-slate-2)' }}>
+          <Group gap="sm">
+            <Box className="p-1.5 rounded-md" style={{ backgroundColor: 'var(--mantine-color-blue-0)' }}>
+              <IconLink size={20} stroke={1.5} color="var(--mantine-color-blue-5)" />
             </Box>
             <Box>
               <Group gap="xs" align="baseline">
-                <Text size="xl" fw={700} c="slate.8">12</Text>
-                <Text size="sm" fw={600} c="slate.7">Loan Products</Text>
+                <Text size="lg" fw={700} c="slate.8">12</Text>
+                <Text size="xs" fw={600} c="slate.7">Loan Products</Text>
               </Group>
               <Text size="xs" c="slate.5">With active templates</Text>
             </Box>
@@ -348,7 +350,8 @@ export function ContractTemplateManagement() {
       {/* ── pill-shaped toolbar (same as LoanProduct) ── */}
       <Paper
         radius="xl"
-        p="xs"
+        p={6}
+        px="sm"
         style={{
           background: 'var(--mantine-color-slate-0)',
           border: '1px solid var(--mantine-color-slate-2)',
@@ -404,7 +407,7 @@ export function ContractTemplateManagement() {
       {/* ── table card (same as LoanProduct) ── */}
       <Paper
         radius="lg"
-        p="sm"
+        p="xs"
         pos="relative"
         style={{
           background: 'var(--mantine-color-slate-0)',
@@ -412,11 +415,11 @@ export function ContractTemplateManagement() {
         }}
       >
         <Table
-          verticalSpacing="sm"
+          verticalSpacing="xs"
           horizontalSpacing="sm"
           fz="xs"
           w="100%"
-          style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}
+          style={{ borderCollapse: 'separate', borderSpacing: '0 4px' }}
         >
           <Table.Thead>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -430,7 +433,7 @@ export function ContractTemplateManagement() {
                       fw={700}
                       style={{
                         fontSize: 'var(--mantine-font-size-xs)',
-                        padding: '0 10px 6px',
+                        padding: '0 10px 4px',
                         userSelect: 'none',
                         cursor: canSort ? 'pointer' : 'default',
                         textTransform: 'uppercase',
@@ -453,11 +456,11 @@ export function ContractTemplateManagement() {
             {rows.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={columns.length} style={{ border: 'none' }}>
-                  <Stack align="center" gap="xs" py="xl">
+                  <Stack align="center" gap="xs" py="md">
                     <Box
                       style={{
-                        width: 52,
-                        height: 52,
+                        width: 44,
+                        height: 44,
                         borderRadius: '50%',
                         background: 'var(--mantine-color-white)',
                         display: 'flex',
@@ -466,7 +469,7 @@ export function ContractTemplateManagement() {
                         border: '1px solid var(--mantine-color-slate-2)',
                       }}
                     >
-                      <IconFileDescription size={24} color="var(--mantine-color-slate-4)" />
+                      <IconFileDescription size={20} color="var(--mantine-color-slate-4)" />
                     </Box>
                     <Text ta="center" c="slate.5" fz="xs">
                       No contract templates match your filters.
@@ -483,7 +486,7 @@ export function ContractTemplateManagement() {
                       <Table.Td
                         key={cell.id}
                         style={{
-                          padding: '10px 10px',
+                          padding: '6px 10px',
                           border: 'none',
                           boxShadow: 'var(--mantine-shadow-xs)',
                           borderLeft:
@@ -503,7 +506,7 @@ export function ContractTemplateManagement() {
         </Table>
 
         {/* ── pagination footer (same as LoanProduct) ── */}
-        <Group justify="space-between" px="sm" pt="xs">
+        <Group justify="space-between" px="sm" pt={4}>
           <Group gap="sm" c="slate.6" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
             <span>
               {totalRows === 0

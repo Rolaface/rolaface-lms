@@ -80,10 +80,15 @@ export interface GetUsersResponse {
 export async function getUsers(
   search?: string,
   page = 1,
-  pageSize = 10
+  pageSize = 10,
+  roles?: string[]
 ): Promise<GetUsersResponse> {
+  const params: Record<string, any> = { search: search || undefined, page, page_size: pageSize };
+  if (roles && roles.length > 0) {
+    params.roles = JSON.stringify(roles);
+  }
   const { data } = await apiClient.get<GetUsersResponse>(API.RoleManagement.getUser, {
-    params: { search: search || undefined, page, page_size: pageSize },
+    params,
   });
   return data;
 }
