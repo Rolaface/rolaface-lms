@@ -206,7 +206,9 @@ export function CustomerModal({
     financialBorrower.setExistingMonthlyObligations(
       basicDetails?.existing_monthly_obligations ?? "",
     );
-
+financialBorrower.setRelationshipManager(
+  nullableText(editCustomer.relationship_manager),
+); 
 
 
     if (isBusiness) {

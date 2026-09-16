@@ -428,10 +428,12 @@ export const API = {
     getCountries: `${ERP_BASE}/api/resource/Country`,
     getGenders: `${ERP_BASE}/api/resource/Gender`,
     getIndustries: `${ERP_BASE}/api/resource/Industry Type`,
+    
   },
   frappeUtilsAPI: {
     getCompanyCurrentFiscalYear: `${ERP_BASE}/api/method/custom_api.utils.frappe_utils.get_current_fiscal_year`,
     getaccounts: `${ERP_BASE}/api/resource/Account`,
+    getallusers: `${ERP_BASE}/api/resource/User`,
   },
 } as const;
 

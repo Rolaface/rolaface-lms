@@ -52,9 +52,7 @@ export function EligibilitySummary({
         </Stack>
       </SimpleGrid>
 
-      <Text size="xs" c="slate.4" mt="xs">
-        Provisional estimate — assumes {DTI_CAP * 100}% affordability threshold. No eligibility API is connected yet; replace this calculation once one exists.
-      </Text>
+     
     </PlainCard>
   );
 }
