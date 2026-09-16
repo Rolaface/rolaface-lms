@@ -682,7 +682,6 @@ function OfferWorkspace() {
                   <Group justify="space-between" align="flex-start" mb={10}>
                     <Box>
                       <Text fz={12.5} fw={700} c="slate.9">LOAN AGREEMENT</Text>
-                      <Text fz={11} c="slate.5" mt={1}>{APPLICATION.id} · v1.0</Text>
                     </Box>
                     <ThemeIcon radius="xl" size={26} variant="light" color="green">
                       <IconCircleCheck size={14} />
