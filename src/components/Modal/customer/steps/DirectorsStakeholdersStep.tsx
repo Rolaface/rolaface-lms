@@ -64,10 +64,7 @@ function initialsForName(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Matches the full BusinessDirector shape from useIdentityState.ts. The
-// table UI here only edits fullName/role/shareholdingPercent — the rest
-// (nationality/idType/idNumber/address/notes) ride along as empty defaults
-// so this step's draft object stays assignable to the real type.
+
 type DirectorDraft = Omit<BusinessDirector, "id">;
 
 function emptyDraft(): DirectorDraft {
