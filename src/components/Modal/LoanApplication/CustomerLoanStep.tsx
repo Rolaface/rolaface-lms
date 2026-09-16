@@ -828,133 +828,120 @@ export function CustomerLoanStep({ form, readOnly = false }: StepProps) {
       </Box>
 
       {customerType === "existing" && selectedCustomer && (
-        existingView === "offers" ? (
-          <SectionCard
-            icon={IconDiscount2}
-            title="Pre-approved offers"
-            action={
-              !offersLoading ? (
-                <Button
-                  variant="light"
-                  color="brand"
-                  size="xs"
-                  radius="md"
-                  onClick={() => setExistingView("configure")}
-                >
-                  Choose Another Product
-                </Button>
-              ) : undefined
-            }
-          >
-            {offersLoading ? (
-              <Group gap={8} c="slate.5" fz="sm">
-                <Loader size={14} />
-                <Text fz="sm">Checking for pre-approved offers…</Text>
-              </Group>
-            ) : offersForCustomer.length === 0 ? (
-              <EmptyState
-                icon={IconInbox}
-                title="No pre-approved offers available"
-                description="This customer has no pre-approved offers yet. Use “Choose Another Product” to configure a loan manually."
-              />
-            ) : (
-              <Stack gap={12}>
-                <SimpleGrid cols={2} spacing={10}>
-  {pagedOffers.map((o) => {
-    const selected = selectedOfferId === o.id;
-    return (
-      <UnstyledButton
-        key={o.id}
-        onClick={readOnly ? undefined : () => applyOffer(o)}
-        p="md"
-        style={{
-          cursor: readOnly ? "default" : "pointer",
-          border: `1.5px solid ${
-            selected
-              ? "var(--mantine-color-brand-6)"
-              : "var(--mantine-color-slate-2)"
-          }`,
-          background: selected
-            ? "var(--mantine-color-brand-0)"
-            : "white",
-          borderRadius: "var(--mantine-radius-md)",
-        }}
-      >
-        <Group justify="space-between" align="center" wrap="nowrap">
-          {/* Left Side: Top Data */}
-          <Box style={{ flex: 1, minWidth: 0, paddingRight: 16 }}>
-            <Group gap={8} wrap="wrap">
-              <Text fz="sm" fw={700} c="slate.9">
-                {o.product}
-              </Text>
-              <Badge 
-                size="sm" 
-                color="slate.1" 
-                c="slate.6" 
-                variant="filled" 
-                style={{ textTransform: "none", fontWeight: 500 }}
-              >
-                {o.purpose} · {o.validity}
-              </Badge>
-            </Group>
+        <Box
+          style={{
+            display: "flex",
+            alignItems: "stretch",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          {/* LEFT SIDE: Pre-approved offers */}
+          <Box style={{ flex: "1 1 380px", minWidth: 320 }}>
+            <SectionCard
+              icon={IconDiscount2}
+              title="Pre-approved offers"
+            >
+              {offersLoading ? (
+                <Group gap={8} c="slate.5" fz="sm">
+                  <Loader size={14} />
+                  <Text fz="sm">Checking for pre-approved offers…</Text>
+                </Group>
+              ) : offersForCustomer.length === 0 ? (
+                <EmptyState
+                  icon={IconInbox}
+                  title="No pre-approved offers available"
+                  description="This customer has no pre-approved offers yet. Use the Loan configuration panel to configure a loan manually."
+                />
+              ) : (
+                <Stack gap={12}>
+                  <SimpleGrid cols={1} spacing={10}>
+                    {pagedOffers.map((o) => {
+                      const selected = selectedOfferId === o.id;
+                      return (
+                        <UnstyledButton
+                          key={o.id}
+                          onClick={readOnly ? undefined : () => applyOffer(o)}
+                          p="md"
+                          style={{
+                            cursor: readOnly ? "default" : "pointer",
+                            border: `1.5px solid ${
+                              selected
+                                ? "var(--mantine-color-brand-6)"
+                                : "var(--mantine-color-slate-2)"
+                            }`,
+                            background: selected
+                              ? "var(--mantine-color-brand-0)"
+                              : "white",
+                            borderRadius: "var(--mantine-radius-md)",
+                          }}
+                        >
+                          <Group justify="space-between" align="center" wrap="nowrap">
+                            {/* Left Side: Top Data */}
+                            <Box style={{ flex: 1, minWidth: 0, paddingRight: 16 }}>
+                              <Group gap={8} wrap="wrap">
+                                <Text fz="sm" fw={700} c="slate.9">
+                                  {o.product}
+                                </Text>
+                                <Badge 
+                                  size="sm" 
+                                  color="slate.1" 
+                                  c="slate.6" 
+                                  variant="filled" 
+                                  style={{ textTransform: "none", fontWeight: 500 }}
+                                >
+                                  {o.purpose} · {o.validity}
+                                </Badge>
+                              </Group>
+                            </Box>
+
+                            {/* Right Side: Bottom Data (Stats) */}
+                            <Group gap={24} wrap="nowrap" style={{ flexShrink: 0 }}>
+                              <OfferStat label="Amount up to" value={zmw(o.amount)} />
+                              <OfferStat label="Rate" value={`${o.rate}% p.a.`} />
+                              <OfferStat label="Tenure up to" value={`${o.tenure} mo`} />
+                              
+                              {selected && (
+                                <ThemeIcon radius="xl" size={20} color="brand" style={{ flexShrink: 0 }}>
+                                  <IconCheck size={12} />
+                                </ThemeIcon>
+                              )}
+                            </Group>
+                          </Group>
+                        </UnstyledButton>
+                      );
+                    })}
+                  </SimpleGrid>
+
+                  {totalOffersPages > 1 && (
+                    <Group justify="center" mt={2}>
+                      <Pagination
+                        total={totalOffersPages}
+                        value={offersPage + 1}
+                        onChange={(p) => setOffersPage(p - 1)}
+                        size="sm"
+                        radius="md"
+                        color="brand"
+                      />
+                    </Group>
+                  )}
+                </Stack>
+              )}
+            </SectionCard>
           </Box>
 
-          {/* Right Side: Bottom Data (Stats) */}
-          <Group gap={24} wrap="nowrap" style={{ flexShrink: 0 }}>
-            <OfferStat label="Amount up to" value={zmw(o.amount)} />
-            <OfferStat label="Rate" value={`${o.rate}% p.a.`} />
-            <OfferStat label="Tenure up to" value={`${o.tenure} mo`} />
-            
-            {selected && (
-              <ThemeIcon radius="xl" size={20} color="brand" style={{ flexShrink: 0 }}>
-                <IconCheck size={12} />
-              </ThemeIcon>
-            )}
-          </Group>
-        </Group>
-      </UnstyledButton>
-    );
-  })}
-</SimpleGrid>
-
-                {totalOffersPages > 1 && (
-                  <Group justify="center" mt={2}>
-                    <Pagination
-                      total={totalOffersPages}
-                      value={offersPage + 1}
-                      onChange={(p) => setOffersPage(p - 1)}
-                      size="sm"
-                      radius="md"
-                      color="brand"
-                    />
-                  </Group>
-                )}
-              </Stack>
-            )}
-          </SectionCard>
-        ) : (
-          <SectionCard
-            icon={IconAdjustmentsHorizontal}
-            title="Loan configuration"
-            description="Narrow down the loan type, sub-type, and purpose"
-            action={
-              <Button
-                variant="subtle"
-                color="brand"
-                size="xs"
-                radius="md"
-                leftSection={<IconArrowLeft size={13} />}
-                onClick={() => setExistingView("offers")}
-              >
-                Back to Pre-approved Loans
-              </Button>
-            }
-          >
-            {loanConfigBody}
-          </SectionCard>
-        )
+          {/* RIGHT SIDE: Loan configuration */}
+          <Box style={{ flex: "1 1 380px", minWidth: 320 }}>
+            <SectionCard
+              icon={IconAdjustmentsHorizontal}
+              title="Loan configuration"
+              description="Narrow down the loan type, sub-type, and purpose"
+            >
+              {loanConfigBody}
+            </SectionCard>
+          </Box>
+        </Box>
       )}
-
       {customerType === "new" && (
         <Box
           style={{
