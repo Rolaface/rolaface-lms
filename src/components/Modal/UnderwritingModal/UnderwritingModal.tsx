@@ -2074,7 +2074,7 @@ function UnderwritingWorkspace({
                 }
                 return (
                   <Group justify="flex-end" mt={24} mb={12}>
-                    <Button variant="light" color="brand" radius="xl" onClick={() => setAssetViewMode('list')}>
+                    <Button variant="filled" color="brand" radius="xl" onClick={() => setAssetViewMode('list')}>
                       Save
                     </Button>
                   </Group>
@@ -2436,7 +2436,7 @@ function UnderwritingWorkspace({
                 }
                 return (
                   <Group justify="flex-end" mt={24} mb={12}>
-                    <Button variant="light" color="brand" radius="xl" onClick={() => setLegalViewMode('list')}>
+                    <Button variant="filled" color="brand" radius="xl" onClick={() => setLegalViewMode('list')}>
                       Save
                     </Button>
                   </Group>
