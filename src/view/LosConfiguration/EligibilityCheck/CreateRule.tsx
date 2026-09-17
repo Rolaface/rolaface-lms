@@ -11,6 +11,7 @@ import {
   TextInput,
   Select,
   Checkbox,
+  Switch,
   Slider,
   SegmentedControl,
   Table,
@@ -31,6 +32,7 @@ import {
   IconAlertTriangle,
   IconCircleX,
   IconPlus,
+  IconMinus,
   IconTrash,
   IconInfoCircle,
   IconFileDescription,
@@ -46,6 +48,9 @@ import {
   IconTag,
   IconBan,
   IconCopy,
+  IconBriefcase,
+  IconBuilding,
+  IconDots,
 } from "@tabler/icons-react";
 import {
   STEPS,
@@ -104,7 +109,7 @@ function ReviewRow({ label, value }: { label: string; value: ReactNode }) {
 
 /* ── data ───────────────────────────────────────────────────── */
 const INCOME_SOURCES: [string, number, boolean, boolean][] = [
-  ["Salary", 100, true, true],
+  ["Net Salary", 100, true, true],
   ["Business Income", 70, true, true],
   ["Rental Income", 80, true, true],
   ["Other Income", 50, true, true],
@@ -129,7 +134,14 @@ function creditBandFor(score: number, bands: CreditBand[]): CreditBand {
   return sorted.find((b) => score >= b.min) || sorted[sorted.length - 1] || DEFAULT_CREDIT_BANDS[DEFAULT_CREDIT_BANDS.length - 1];
 }
 
-const OBLIGATION_TYPES = ["Existing Loan Balance", "Existing Monthly EMI", "Credit Card Balance", "Overdraft Balance", "Mortgage Payment", "Other Monthly Debt"];
+const OBLIGATION_SOURCES: [string, boolean, boolean][] = [
+  ["Existing Loan Balance", true, true],
+  ["Existing Monthly EMI", true, true],
+  ["Credit Card Balance", true, true],
+  ["Overdraft Balance", true, true],
+  ["Mortgage Payment", true, true],
+  ["Other Monthly Debt", false, true],
+];
 const COLLATERAL_TYPES = ["Property", "Vehicle", "Equipment", "Fixed Deposit", "Securities", "Guarantor", "Salary Assignment"];
 
 interface CollateralItem { id: string; type: string; marketValue: number; haircutPct: number; maxLtvPct: number; }
@@ -212,10 +224,40 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
   const [ruleStatus, setRuleStatus] = useState<string | null>("Draft");
   const [weights, setWeights] = useState<WeightItem[]>(DEFAULT_WEIGHTS);
   const totalWeight = weights.reduce((s, x) => s + Number(x.w || 0), 0);
-  const [formulaMode, setFormulaMode] = useState<"flow" | "simulator">("flow");
-  const [limitOverrides, setLimitOverrides] = useState<Record<string, number>>({});
   const [formulaParams, setFormulaParams] = useState<FormulaParams>(DEFAULT_FORMULA_PARAMS);
   const setFormulaParam = (k: keyof FormulaParams) => (v: number) => setFormulaParams((p) => ({ ...p, [k]: v }));
+  
+  const [incomeSources, setIncomeSources] = useState<[string, number, boolean, boolean][]>(INCOME_SOURCES);
+  const updateIncomeSource = (index: number, patch: Partial<{ pct: number; ver: boolean; inc: boolean }>) => {
+    setIncomeSources((sources) =>
+      sources.map((s, i) => {
+        if (i !== index) return s;
+        let newInc = patch.inc !== undefined ? patch.inc : s[3];
+        let newPct = patch.pct !== undefined ? patch.pct : s[1];
+        let newVer = patch.ver !== undefined ? patch.ver : s[2];
+        if (patch.inc === false) {
+          newPct = 0;
+          newVer = false;
+        }
+        return [s[0], newPct, newVer, newInc];
+      })
+    );
+  };
+
+  const [obligationSources, setObligationSources] = useState<[string, boolean, boolean][]>(OBLIGATION_SOURCES);
+  const updateObligationSource = (index: number, patch: Partial<{ ver: boolean; inc: boolean }>) => {
+    setObligationSources((sources) =>
+      sources.map((s, i) => {
+        if (i !== index) return s;
+        let newInc = patch.inc !== undefined ? patch.inc : s[2];
+        let newVer = patch.ver !== undefined ? patch.ver : s[1];
+        if (patch.inc === false) {
+          newVer = false;
+        }
+        return [s[0], newVer, newInc];
+      })
+    );
+  };
   const [creditBands, setCreditBands] = useState<CreditBand[]>(DEFAULT_CREDIT_BANDS);
   const sortedCreditBands = useMemo(() => [...creditBands].sort((a, b) => Number(b.min) - Number(a.min)), [creditBands]);
   const sampleCreditBand = useMemo(() => creditBandFor(FORMULA_SAMPLE.creditScore, creditBands), [creditBands]);
@@ -453,35 +495,83 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
             {/* 1 — Income Assessment */}
             {step === 1 && (
               <Box>
-                <SectionHead title="Income Assessment" description="Add every income source this rule recognizes and the percentage counted towards eligibility." />
-                <Paper radius="sm" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
-                  <Table verticalSpacing="xs" fz={11} highlightOnHover>
-                    <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
+                <Group justify="space-between" align="flex-start" mb="xs">
+                  <SectionHead title="Income assessment" description="Add every income source this rule recognizes and the share counted toward eligibility." />
+                  <Box>
+                    <Text fz={10} fw={600} c="slate.7" mb={4} ta="right">Income multiple</Text>
+                    <Group gap={6} wrap="nowrap">
+                      <ActionIcon size="md" variant="default" radius="md" onClick={() => setFormulaParam("salaryMultiple")(Math.max(1, formulaParams.salaryMultiple - 1))} style={{ borderColor: 'var(--mantine-color-slate-3)' }}>
+                        <IconMinus size={14} color="var(--mantine-color-slate-6)" />
+                      </ActionIcon>
+                      <TextInput 
+                        radius="md" 
+                        w={54} 
+                        type="number" 
+                        value={formulaParams.salaryMultiple} 
+                        onChange={(e) => setFormulaParam("salaryMultiple")(e.target.value === "" ? 0 : Number(e.target.value))} 
+                        rightSection={<Text fz={12} c="slate.4" mr={4}>×</Text>}
+                        rightSectionWidth={20}
+                        styles={{ input: { textAlign: 'center', height: 32, minHeight: 32, fontSize: 13, fontWeight: 500, borderColor: 'var(--mantine-color-slate-3)' } }} 
+                      />
+                      <ActionIcon size="md" variant="default" radius="md" onClick={() => setFormulaParam("salaryMultiple")(formulaParams.salaryMultiple + 1)} style={{ borderColor: 'var(--mantine-color-slate-3)' }}>
+                        <IconPlus size={14} color="var(--mantine-color-slate-6)" />
+                      </ActionIcon>
+                    </Group>
+                  </Box>
+                </Group>
+
+                <Box mb="xs">
+                  <Table verticalSpacing={4} fz={11} highlightOnHover>
+                    <Table.Thead style={{ background: "transparent" }}>
                       <Table.Tr>
-                        {["Income Source", "Recognition %", "Verification Required", "Included"].map((h) => (
-                          <Table.Th key={h} style={{ borderColor: "var(--mantine-color-slate-2)", fontSize: 10, fontWeight: 700, color: "var(--mantine-color-slate-5)", textTransform: "uppercase", letterSpacing: ".04em" }}>{h}</Table.Th>
-                        ))}
+                        <Table.Th style={{ borderColor: "transparent", fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none", paddingLeft: 8 }}>Income Source</Table.Th>
+                        <Table.Th style={{ borderColor: "transparent", fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Recognition %</Table.Th>
+                        <Table.Th style={{ borderColor: "transparent", width: 60, textAlign: "center", fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Verify</Table.Th>
+                        <Table.Th style={{ borderColor: "transparent", width: 70, textAlign: "center", fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Included</Table.Th>
+                        <Table.Th style={{ borderColor: "transparent", width: 36 }}></Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {INCOME_SOURCES.map(([n, pct, ver, inc]) => (
-                        <Table.Tr key={n}>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Text fz={11} fw={500} c="slate.7">{n}</Text></Table.Td>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", width: 200 }}>
-                            <Group gap={8} wrap="nowrap" align="center">
-                              <Slider defaultValue={pct as number} min={0} max={100} w={110} size="xs" color="brand" label={(v) => `${v}%`} />
-                              <Text fz={10} fw={600} c="brand.6" w={28}>{pct}%</Text>
-                            </Group>
-                          </Table.Td>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Checkbox defaultChecked={ver as boolean} size="xs" color="brand" /></Table.Td>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Checkbox defaultChecked={inc as boolean} size="xs" color="brand" /></Table.Td>
-                        </Table.Tr>
-                      ))}
+                      {incomeSources.map(([n, pct, ver, inc], index) => {
+                        const Icon = n === "Net Salary" ? IconBriefcase : n === "Business Income" ? IconBuildingBank : n === "Rental Income" ? IconBuilding : IconDots;
+                        return (
+                          <Table.Tr key={n as string}>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", paddingLeft: 8 }}>
+                              <Group gap={8}>
+                                <Icon size={12} color="var(--mantine-color-slate-5)" />
+                                <Text fz={11} fw={500} c="slate.8">{n as string}</Text>
+                              </Group>
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", width: '50%' }}>
+                              <Group gap={12} wrap="nowrap" align="center">
+                                <Slider value={pct as number} onChange={(v) => updateIncomeSource(index, { pct: v })} disabled={!inc} min={0} max={100} style={{ flex: 1 }} size="xs" color="brand" label={(v) => `${v}%`} />
+                                <Text fz={10} fw={600} c="slate.7" w={28}>{pct}%</Text>
+                              </Group>
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", textAlign: "center", width: 60 }}>
+                              <Switch checked={ver as boolean} onChange={(e) => updateIncomeSource(index, { ver: e.currentTarget.checked })} disabled={!inc} size="xs" color="brand" style={{ display: 'flex', justifyContent: 'center' }} />
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", textAlign: "center", width: 70 }}>
+                              <Switch checked={inc as boolean} onChange={(e) => updateIncomeSource(index, { inc: e.currentTarget.checked })} size="xs" color="brand" style={{ display: 'flex', justifyContent: 'center' }} />
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", textAlign: "center", width: 36, paddingRight: 8 }}>
+                              <ActionIcon variant="subtle" color="slate.4" size="sm"><IconTrash size={12} /></ActionIcon>
+                            </Table.Td>
+                          </Table.Tr>
+                        );
+                      })}
                     </Table.Tbody>
                   </Table>
-                </Paper>
+                </Box>
+                
                 <InfoCard color="brand">
-                  <Group gap={6}><IconInfoCircle size={11} color="var(--mantine-color-brand-6)" /><Text fz={11} c="brand.7" fw={500}>Eligible Monthly Income = sum of each included source x its recognition %.</Text></Group>
+                  <Group gap={6} align="flex-start">
+                    <IconInfoCircle size={14} color="var(--mantine-color-brand-6)" style={{ marginTop: 2 }} />
+                    <Box style={{ flex: 1 }}>
+                      <Text fz={11} c="brand.7" fw={500}>Eligible Monthly Income = sum of each included source x its recognition %.</Text>
+                      <Text fz={11} c="brand.7" fw={500}>Income limit = Eligible Monthly Income x income multiple.</Text>
+                    </Box>
+                  </Group>
                 </InfoCard>
               </Box>
             )}
@@ -509,32 +599,61 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                   </Paper>
                 </SimpleGrid>
                 <Divider mb="sm" label={<Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: ".04em" }}>Obligations Counted</Text>} labelPosition="left" />
-                <SimpleGrid cols={3} spacing={6}>
-                  {OBLIGATION_TYPES.map((o) => (
-                    <Paper key={o} px="sm" py={8} radius="sm" style={{ border: "1px solid var(--mantine-color-slate-2)" }}>
-                      <Checkbox defaultChecked size="xs" color="brand" label={<Text fz="xs" c="slate.6" fw={500}>{o}</Text>} />
-                    </Paper>
-                  ))}
-                </SimpleGrid>
+                <Box mb="xs">
+                  <Table verticalSpacing={4} fz={11} highlightOnHover>
+                    <Table.Thead style={{ background: "transparent" }}>
+                      <Table.Tr>
+                        <Table.Th style={{ borderColor: "transparent", fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none", paddingLeft: 8 }}>Obligation Source</Table.Th>
+                        <Table.Th style={{ borderColor: "transparent", width: 60, textAlign: "center", fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Verify</Table.Th>
+                        <Table.Th style={{ borderColor: "transparent", width: 70, textAlign: "center", fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Included</Table.Th>
+                        <Table.Th style={{ borderColor: "transparent", width: 36 }}></Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {obligationSources.map(([n, ver, inc], index) => {
+                        const Icon = n === "Existing Loan Balance" ? IconScale : n === "Existing Monthly EMI" ? IconMath : n === "Credit Card Balance" ? IconFileDescription : n === "Overdraft Balance" ? IconAlertTriangle : n === "Mortgage Payment" ? IconBuilding : IconDots;
+                        return (
+                          <Table.Tr key={n as string}>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", paddingLeft: 8 }}>
+                              <Group gap={8}>
+                                <Icon size={12} color="var(--mantine-color-slate-5)" />
+                                <Text fz={11} fw={500} c="slate.8">{n as string}</Text>
+                              </Group>
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", textAlign: "center", width: 60 }}>
+                              <Switch checked={ver as boolean} onChange={(e) => updateObligationSource(index, { ver: e.currentTarget.checked })} disabled={!inc} size="xs" color="brand" style={{ display: 'flex', justifyContent: 'center' }} />
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", textAlign: "center", width: 70 }}>
+                              <Switch checked={inc as boolean} onChange={(e) => updateObligationSource(index, { inc: e.currentTarget.checked })} size="xs" color="brand" style={{ display: 'flex', justifyContent: 'center' }} />
+                            </Table.Td>
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", textAlign: "center", width: 36, paddingRight: 8 }}>
+                              <ActionIcon variant="subtle" color="slate.4" size="sm"><IconTrash size={12} /></ActionIcon>
+                            </Table.Td>
+                          </Table.Tr>
+                        );
+                      })}
+                    </Table.Tbody>
+                  </Table>
+                </Box>
               </Box>
             )}
 
             {/* 3 — Credit Score Limit */}
             {step === 3 && (
               <Box>
-                <Paper radius="md" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden", background: "transparent" }}>
-                  <Box py={10} px="md" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", background: "transparent" }}>
+                <Box mb="xs">
+                  <Box py={6} px={8} style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", background: "transparent" }}>
                     <Title order={6} c="slate.8" fw={600} mb={1}>Credit Score Limit</Title>
-                    <Text fz={11} c="slate.5">Define credit bands — each band's minimum score and loan cap are fully editable.</Text>
+                    <Text fz={10} c="slate.5">Define credit bands — each band's minimum score and credit limit are fully editable.</Text>
                   </Box>
-                  <Table verticalSpacing="xs" fz={11} style={{ tableLayout: "fixed" }}>
+                  <Table verticalSpacing={4} fz={11} style={{ tableLayout: "fixed" }}>
                     <Table.Thead style={{ background: "transparent" }}>
                       <Table.Tr>
-                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 100, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Min score</Table.Th>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 100, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none", paddingLeft: 8 }}>Min score</Table.Th>
                         <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 160, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Range</Table.Th>
                         <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 80, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Grade</Table.Th>
-                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 250, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>
-                          <Box>Loan cap</Box>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 250, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none", textAlign: "center" }}>
+                          <Box>Credit limit</Box>
                         </Table.Th>
                         <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 170, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Decision</Table.Th>
                         <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 38 }}></Table.Th>
@@ -547,26 +666,26 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                         const dotColor = DECISION_DOT[DECISION_TONE[band.decision] as string];
                         return (
                           <Table.Tr key={band.id}>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
-                              <TextInput radius="md" size="xs" type="number" value={band.min} onChange={(e) => updateCreditBand(band.id, { min: e.target.value })} styles={{ input: { minHeight: 30, height: 30, textAlign: "center", background: "transparent", borderColor: "var(--mantine-color-slate-3)", fontWeight: 600 } }} />
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)", paddingLeft: 8 }}>
+                              <TextInput radius="md" size="xs" type="number" value={band.min} onChange={(e) => updateCreditBand(band.id, { min: e.target.value })} styles={{ input: { minHeight: 26, height: 26, textAlign: "center", background: "transparent", borderColor: "var(--mantine-color-slate-3)", fontWeight: 600 } }} />
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)", color: "var(--mantine-color-slate-5)" }}>
                               {rangeLabel}
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
-                              <Box w={40} h={30} style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--mantine-color-slate-3)", borderRadius: "var(--mantine-radius-md)", fontWeight: 700, color: "var(--mantine-color-slate-8)" }}>{band.grade}</Box>
+                              <Box w={40} h={26} style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--mantine-color-slate-3)", borderRadius: "var(--mantine-radius-md)", fontWeight: 700, color: "var(--mantine-color-slate-8)" }}>{band.grade}</Box>
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
                               <Group gap={0} wrap="nowrap" style={{ border: "1px solid var(--mantine-color-slate-3)", borderRadius: "var(--mantine-radius-md)", overflow: "hidden" }}>
-                                <TextInput radius={0} size="xs" variant="unstyled" w={46} type="number" value={band.multiple} onChange={(e) => updateCreditBand(band.id, { multiple: e.target.value })} styles={{ input: { minHeight: 30, height: 30, textAlign: "center", fontWeight: 600 } }} />
-                                <Box px={8} style={{ height: 30, borderLeft: "1px solid var(--mantine-color-slate-3)", borderRight: "1px solid var(--mantine-color-slate-3)", background: "transparent", display: "flex", alignItems: "center" }}>
+                                <TextInput radius={0} size="xs" variant="unstyled" w={46} type="number" value={band.multiple} onChange={(e) => updateCreditBand(band.id, { multiple: e.target.value })} styles={{ input: { minHeight: 26, height: 26, textAlign: "center", fontWeight: 600 } }} />
+                                <Box px={8} style={{ height: 26, borderLeft: "1px solid var(--mantine-color-slate-3)", borderRight: "1px solid var(--mantine-color-slate-3)", background: "transparent", display: "flex", alignItems: "center" }}>
                                   <Text fz={10} c="dimmed">×</Text>
                                 </Box>
-                                <Select radius={0} size="xs" variant="unstyled" style={{ flex: 1 }} value={band.basis} onChange={(v) => v && updateCreditBand(band.id, { basis: v })} data={MULTIPLE_BASIS_OPTIONS} styles={{ input: { minHeight: 30, height: 30, paddingLeft: 10 } }} />
+                                <Select radius={0} size="xs" variant="unstyled" style={{ flex: 1 }} value={band.basis} onChange={(v) => v && updateCreditBand(band.id, { basis: v })} data={MULTIPLE_BASIS_OPTIONS} styles={{ input: { minHeight: 26, height: 26, paddingLeft: 10 } }} />
                               </Group>
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
-                              <Select radius="md" size="xs" value={band.decision} onChange={(v) => v && updateCreditBand(band.id, { decision: v })} data={DECISION_OPTIONS} styles={{ input: { minHeight: 30, height: 30, background: "transparent", borderColor: "var(--mantine-color-slate-3)" } }} leftSection={<Box style={{ width: 6, height: 6, borderRadius: 99, background: `var(--mantine-color-${dotColor}-5)` }} />} />
+                              <Select radius="md" size="xs" value={band.decision} onChange={(v) => v && updateCreditBand(band.id, { decision: v })} data={DECISION_OPTIONS} styles={{ input: { minHeight: 26, height: 26, background: "transparent", borderColor: "var(--mantine-color-slate-3)" } }} leftSection={<Box style={{ width: 6, height: 6, borderRadius: 99, background: `var(--mantine-color-${dotColor}-5)` }} />} />
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
                               <ActionIcon variant="subtle" color="slate" size="sm" disabled={creditBands.length <= 1} onClick={() => removeCreditBand(band.id)}>
@@ -578,41 +697,44 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                       })}
                     </Table.Tbody>
                   </Table>
-                  <Box p="sm" style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
-                    <Button variant="subtle" color="slate" size="xs" leftSection={<IconPlus size={11} />} onClick={addCreditBand}>Add band</Button>
+                  <Box py={8} px={8}>
+                    <Button variant="subtle" color="slate" size="xs" leftSection={<IconPlus size={12} />} onClick={addCreditBand}>Add band</Button>
                   </Box>
-                </Paper>
+                </Box>
               </Box>
             )}
 
             {/* 4 — Collateral Limit */}
             {step === 4 && (
               <Box>
-                <SectionHead title="Collateral Limit" description="Add every collateral item this rule accepts. Market value, haircut and max LTV convert to a live limit." />
-                <Paper radius="sm" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
-                  <Table verticalSpacing="xs" fz={11} style={{ tableLayout: "fixed" }}>
-                    <Table.Thead style={{ background: "var(--mantine-color-slate-0)" }}>
+                <Box py={6} px={8} style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", background: "transparent" }}>
+                  <Title order={6} c="slate.8" fw={600} mb={1}>Collateral Limit</Title>
+                  <Text fz={10} c="slate.5">Add every collateral item this rule accepts. Market value, haircut and max LTV convert to a live limit.</Text>
+                </Box>
+                <Box mb="xs">
+                  <Table verticalSpacing={4} fz={11} style={{ tableLayout: "fixed" }}>
+                    <Table.Thead style={{ background: "transparent" }}>
                       <Table.Tr>
-                        {[["Type", 150], ["Haircut %", 150], ["Loan to Value %", 150], ["", 38]].map(([h, w]) => (
-                          <Table.Th key={h} style={{ borderColor: "var(--mantine-color-slate-2)", width: w, fontSize: 10, fontWeight: 700, color: "var(--mantine-color-slate-5)", textTransform: "uppercase", letterSpacing: ".04em" }}>{h}</Table.Th>
+                        {[["Type", 150], ["Haircut %", 150], ["Loan to Value %", 150], ["", 36]].map(([h, w]) => (
+                          <Table.Th key={h} style={{ borderColor: "transparent", width: w, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none", paddingLeft: h === "Type" ? 8 : undefined }}>{h}</Table.Th>
                         ))}
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
                       {collateralItems.map((item) => (
                         <Table.Tr key={item.id}>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Select radius="md" size="xs" value={item.type} onChange={(v) => v && updateCollateralItem(item.id, { type: v })} data={COLLATERAL_TYPES} /></Table.Td>
+                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", paddingLeft: 8 }}><Select radius="md" size="xs" value={item.type} onChange={(v) => v && updateCollateralItem(item.id, { type: v })} data={COLLATERAL_TYPES} styles={{ input: { minHeight: 26, height: 26 } }} /></Table.Td>
                           <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Text fz={11} fw={500}>{item.haircutPct}%</Text></Table.Td>
                           <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><Text fz={11} fw={500}>{item.maxLtvPct}%</Text></Table.Td>
-                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)" }}><ActionIcon variant="subtle" color="red" size="xs" onClick={() => removeCollateralItem(item.id)}><IconTrash size={11} /></ActionIcon></Table.Td>
+                          <Table.Td style={{ borderColor: "var(--mantine-color-slate-1)", paddingRight: 8 }}><ActionIcon variant="subtle" color="slate.4" size="sm" onClick={() => removeCollateralItem(item.id)}><IconTrash size={12} /></ActionIcon></Table.Td>
                         </Table.Tr>
                       ))}
                       {collateralItems.length === 0 && (
-                        <Table.Tr><Table.Td colSpan={6}><Text fz={11} c="slate.5" ta="center" py="sm">No collateral configured — this rule evaluates as unsecured.</Text></Table.Td></Table.Tr>
+                        <Table.Tr><Table.Td colSpan={6}><Text fz={11} c="slate.5" ta="center" py="xs">No collateral configured — this rule evaluates as unsecured.</Text></Table.Td></Table.Tr>
                       )}
                     </Table.Tbody>
                   </Table>
-                </Paper>
+                </Box>
                 <Group justify="flex-start" align="center">
                   <Button variant="subtle" color="slate" size="xs" leftSection={<IconPlus size={11} />} onClick={addCollateralItem}>Add Collateral</Button>
                 </Group>
@@ -628,19 +750,19 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
             {/* 5 — Internal Scoring Limit */}
             {step === 5 && (
               <Box>
-                <Paper radius="md" mb="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden", background: "transparent" }}>
-                  <Box py={10} px="md" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", background: "transparent" }}>
+                <Box mb="xs">
+                  <Box py={6} px={8} style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", background: "transparent" }}>
                     <Title order={6} c="slate.8" fw={600} mb={1}>Internal Scoring Limit</Title>
-                    <Text fz={11} c="slate.5">Define scoring bands — each band's minimum score and loan cap are fully editable. Score is out of 100.</Text>
+                    <Text fz={10} c="slate.5">Define scoring bands — each band's minimum score and credit limit are fully editable. Score is out of 100.</Text>
                   </Box>
-                  <Table verticalSpacing="xs" fz={11} style={{ tableLayout: "fixed" }}>
+                  <Table verticalSpacing={4} fz={11} style={{ tableLayout: "fixed" }}>
                     <Table.Thead style={{ background: "transparent" }}>
                       <Table.Tr>
-                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 100, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Min score</Table.Th>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 100, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none", paddingLeft: 8 }}>Min score</Table.Th>
                         <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 160, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Range</Table.Th>
                         <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 80, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Grade</Table.Th>
-                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 250, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>
-                          <Box>Loan cap</Box>
+                        <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 250, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none", textAlign: "center" }}>
+                          <Box>Credit limit</Box>
                         </Table.Th>
                         <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 170, fontSize: 10, fontWeight: 600, color: "var(--mantine-color-slate-5)", textTransform: "none" }}>Decision</Table.Th>
                         <Table.Th style={{ borderColor: "var(--mantine-color-slate-2)", width: 38 }}></Table.Th>
@@ -653,26 +775,26 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                         const dotColor = DECISION_DOT[DECISION_TONE[band.decision] as string];
                         return (
                           <Table.Tr key={band.id}>
-                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
-                              <TextInput radius="md" size="xs" type="number" value={band.min} onChange={(e) => updateInternalBand(band.id, { min: e.target.value })} styles={{ input: { minHeight: 30, height: 30, textAlign: "center", background: "transparent", borderColor: "var(--mantine-color-slate-3)", fontWeight: 600 } }} />
+                            <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)", paddingLeft: 8 }}>
+                              <TextInput radius="md" size="xs" type="number" value={band.min} onChange={(e) => updateInternalBand(band.id, { min: e.target.value })} styles={{ input: { minHeight: 26, height: 26, textAlign: "center", background: "transparent", borderColor: "var(--mantine-color-slate-3)", fontWeight: 600 } }} />
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)", color: "var(--mantine-color-slate-5)" }}>
                               {rangeLabel}
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
-                              <Box w={40} h={30} style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--mantine-color-slate-3)", borderRadius: "var(--mantine-radius-md)", fontWeight: 700, color: "var(--mantine-color-slate-8)" }}>{band.grade}</Box>
+                              <Box w={40} h={26} style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--mantine-color-slate-3)", borderRadius: "var(--mantine-radius-md)", fontWeight: 700, color: "var(--mantine-color-slate-8)" }}>{band.grade}</Box>
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
                               <Group gap={0} wrap="nowrap" style={{ border: "1px solid var(--mantine-color-slate-3)", borderRadius: "var(--mantine-radius-md)", overflow: "hidden" }}>
-                                <TextInput radius={0} size="xs" variant="unstyled" w={46} type="number" value={band.multiple} onChange={(e) => updateInternalBand(band.id, { multiple: e.target.value })} styles={{ input: { minHeight: 30, height: 30, textAlign: "center", fontWeight: 600 } }} />
-                                <Box px={8} style={{ height: 30, borderLeft: "1px solid var(--mantine-color-slate-3)", borderRight: "1px solid var(--mantine-color-slate-3)", background: "transparent", display: "flex", alignItems: "center" }}>
+                                <TextInput radius={0} size="xs" variant="unstyled" w={46} type="number" value={band.multiple} onChange={(e) => updateInternalBand(band.id, { multiple: e.target.value })} styles={{ input: { minHeight: 26, height: 26, textAlign: "center", fontWeight: 600 } }} />
+                                <Box px={8} style={{ height: 26, borderLeft: "1px solid var(--mantine-color-slate-3)", borderRight: "1px solid var(--mantine-color-slate-3)", background: "transparent", display: "flex", alignItems: "center" }}>
                                   <Text fz={10} c="dimmed">×</Text>
                                 </Box>
-                                <Select radius={0} size="xs" variant="unstyled" style={{ flex: 1 }} value={band.basis} onChange={(v) => v && updateInternalBand(band.id, { basis: v })} data={MULTIPLE_BASIS_OPTIONS} styles={{ input: { minHeight: 30, height: 30, paddingLeft: 10 } }} />
+                                <Select radius={0} size="xs" variant="unstyled" style={{ flex: 1 }} value={band.basis} onChange={(v) => v && updateInternalBand(band.id, { basis: v })} data={MULTIPLE_BASIS_OPTIONS} styles={{ input: { minHeight: 26, height: 26, paddingLeft: 10 } }} />
                               </Group>
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
-                              <Select radius="md" size="xs" value={band.decision} onChange={(v) => v && updateInternalBand(band.id, { decision: v })} data={DECISION_OPTIONS} styles={{ input: { minHeight: 30, height: 30, background: "transparent", borderColor: "var(--mantine-color-slate-3)" } }} leftSection={<Box style={{ width: 6, height: 6, borderRadius: 99, background: `var(--mantine-color-${dotColor}-5)` }} />} />
+                              <Select radius="md" size="xs" value={band.decision} onChange={(v) => v && updateInternalBand(band.id, { decision: v })} data={DECISION_OPTIONS} styles={{ input: { minHeight: 26, height: 26, background: "transparent", borderColor: "var(--mantine-color-slate-3)" } }} leftSection={<Box style={{ width: 6, height: 6, borderRadius: 99, background: `var(--mantine-color-${dotColor}-5)` }} />} />
                             </Table.Td>
                             <Table.Td style={{ borderColor: "var(--mantine-color-slate-2)" }}>
                               <ActionIcon variant="subtle" color="slate" size="sm" disabled={internalBands.length <= 1} onClick={() => removeInternalBand(band.id)}>
@@ -684,10 +806,10 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                       })}
                     </Table.Tbody>
                   </Table>
-                  <Box p="sm" style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
-                    <Button variant="subtle" color="slate" size="xs" leftSection={<IconPlus size={11} />} onClick={addInternalBand}>Add band</Button>
+                  <Box py={8} px={8}>
+                    <Button variant="subtle" color="slate" size="xs" leftSection={<IconPlus size={12} />} onClick={addInternalBand}>Add band</Button>
                   </Box>
-                </Paper>
+                </Box>
               </Box>
             )}
 
@@ -696,91 +818,35 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
               <Box>
                 <Group justify="space-between" align="flex-start" mb="sm">
                   <SectionHead title="Eligibility Formula" description="The eligible amount is always the lowest of the limits below. Values update live." />
-                  <SegmentedControl size="xs" color="brand" value={formulaMode} onChange={(v) => setFormulaMode(v as "flow" | "simulator")} data={[{ label: "Flow view", value: "flow" }, { label: "Simulator", value: "simulator" }]} />
                 </Group>
-                {formulaMode === "flow" ? (
-                  <>
-                    <Stack gap={0}>
-                      {FORMULA_ITEMS.map(([name, formula], i, arr) => {
-                        return (
-                          <Box key={name}>
-                            <Paper px="sm" py={7} radius="sm" style={{ border: `1px solid var(--mantine-color-slate-2)`, background: "var(--mantine-color-white)" }}>
-                              <Group justify="space-between" wrap="nowrap">
-                                <Group gap="sm" wrap="nowrap">
-                                  <ThemeIcon size={18} radius="sm" variant="light" color="brand">
-                                    <Text fz={9} fw={700}>{i + 1}</Text>
-                                  </ThemeIcon>
-                                  <Box>
-                                    <Text fz="xs" fw={600} c="slate.8">{name}</Text>
-                                    <Text fz={9} c="slate.4" ff="monospace">{formula}</Text>
-                                  </Box>
-                                </Group>
-                              </Group>
-                            </Paper>
-                            {i < arr.length - 1 && <Group justify="center" py={2}><IconChevronDown size={12} color="var(--mantine-color-slate-4)" /></Group>}
-                          </Box>
-                        );
-                      })}
-                    </Stack>
-                    <Paper px="sm" py={8} mt="sm" radius="sm" style={{ background: "linear-gradient(135deg, var(--mantine-color-brand-6) 0%, var(--mantine-color-brand-5) 100%)" }}>
-                      <Group justify="space-between">
-                        <Group gap={6}><IconShieldCheck size={13} color="rgba(255,255,255,0.9)" /><Text fz="xs" fw={600} c="white">Final Eligible Amount = MIN(all limits above)</Text></Group>
-                      </Group>
-                    </Paper>
-                    <Text fz={10} c="slate.4" mt={4}>Worked example: Basic Salary ZMW 15,000 · Net Salary ZMW 12,500 · Other Income ZMW 3,000 · Credit Score 735 · Tenure 24 months.</Text>
-                  </>
-                ) : (
-                  <SimpleGrid cols={2} spacing="md">
-                    {(() => {
-                      const effectiveLimits = formulaPreview.limits.map(l => ({
-                        ...l,
-                        value: limitOverrides[l.name] !== undefined ? limitOverrides[l.name] : Math.round(l.value)
-                      }));
-                      const effectiveFinal = Math.min(...effectiveLimits.map(l => l.value));
-                      const effectiveLimitingFactor = effectiveLimits.find(l => l.value === effectiveFinal)?.name;
-                      
-                      return (
-                        <>
-                          <Paper radius="sm" p="sm" style={{ border: "1px solid var(--mantine-color-slate-2)" }}>
-                            <Text fz={12} fw={700} mb="sm" c="slate.8">Simulator Inputs</Text>
-                            <Stack gap="sm">
-                              {effectiveLimits.map((l) => (
-                                <Field key={l.name} label={l.name}>
-                                  <TextInput radius="md" 
-                                    size="xs" 
-                                    type="number" 
-                                    value={l.value} 
-                                    onChange={(e) => setLimitOverrides(prev => ({ ...prev, [l.name]: e.target.value }))}
-                                    mt={3}
-                                  />
-                                </Field>
-                              ))}
-                            </Stack>
-                          </Paper>
-                          
-                          <Paper radius="sm" p="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", alignSelf: "start" }}>
-                            <Text fz={12} fw={700} mb="sm" c="slate.8">Live Preview</Text>
-                            <Stack gap={4}>
-                              {effectiveLimits.map((l) => {
-                                const isLimiting = l.name === effectiveLimitingFactor;
-                                return (
-                                  <Group key={l.name} justify="space-between" px="sm" py={6} style={{ border: `1px solid ${isLimiting ? "var(--mantine-color-yellow-3)" : "var(--mantine-color-slate-2)"}`, background: isLimiting ? "var(--mantine-color-yellow-0)" : "transparent", borderRadius: "var(--mantine-radius-xs)" }}>
-                                    <Text fz="xs" c="slate.7">{l.name}</Text>
-                                    <Group gap={5}><Text fz="xs" fw={700} c="slate.8">ZMW {l.value.toLocaleString()}</Text>{isLimiting && <Pill tone="medium">Binding</Pill>}</Group>
-                                  </Group>
-                                );
-                              })}
-                            </Stack>
-                            <Paper px="sm" py={7} mt="sm" radius="sm" style={{ background: "linear-gradient(135deg, var(--mantine-color-brand-6) 0%, var(--mantine-color-brand-5) 100%)" }}>
-                              <Group justify="space-between"><Text fz="xs" fw={600} c="white">Final Eligible Amount</Text><Text fz="sm" fw={800} c="white">ZMW {effectiveFinal.toLocaleString()}</Text></Group>
-                            </Paper>
-                            <Text fz={10} c="slate.5" mt={6}>Recalculated instantly against the overridden limits.</Text>
-                          </Paper>
-                        </>
-                      );
-                    })()}
-                  </SimpleGrid>
-                )}
+                <Stack gap={0}>
+                  {FORMULA_ITEMS.map(([name, formula], i, arr) => {
+                    return (
+                      <Box key={name}>
+                        <Paper px="sm" py={7} radius="sm" style={{ border: `1px solid var(--mantine-color-slate-2)`, background: "var(--mantine-color-white)" }}>
+                          <Group justify="space-between" wrap="nowrap">
+                            <Group gap="sm" wrap="nowrap">
+                              <ThemeIcon size={18} radius="sm" variant="light" color="brand">
+                                <Text fz={9} fw={700}>{i + 1}</Text>
+                              </ThemeIcon>
+                              <Box>
+                                <Text fz="xs" fw={600} c="slate.8">{name}</Text>
+                                <Text fz={9} c="slate.4" ff="monospace">{formula}</Text>
+                              </Box>
+                            </Group>
+                          </Group>
+                        </Paper>
+                        {i < arr.length - 1 && <Group justify="center" py={2}><IconChevronDown size={12} color="var(--mantine-color-slate-4)" /></Group>}
+                      </Box>
+                    );
+                  })}
+                </Stack>
+                <Paper px="sm" py={8} mt="sm" radius="sm" style={{ background: "linear-gradient(135deg, var(--mantine-color-brand-6) 0%, var(--mantine-color-brand-5) 100%)" }}>
+                  <Group justify="space-between">
+                    <Group gap={6}><IconShieldCheck size={13} color="rgba(255,255,255,0.9)" /><Text fz="xs" fw={600} c="white">Final Eligible Amount = MIN(all limits above)</Text></Group>
+                  </Group>
+                </Paper>
+                <Text fz={10} c="slate.4" mt={4}>Worked example: Basic Salary ZMW 15,000 · Net Salary ZMW 12,500 · Other Income ZMW 3,000 · Credit Score 735 · Tenure 24 months.</Text>
               </Box>
             )}
 
@@ -909,7 +975,7 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                 <SimpleGrid cols={2} spacing="sm">
                   {[
                     { title: "Rule Details", rows: [["Rule Name", ruleName || "—"], ["Loan Product", loanProduct || "—"], ["Risk Category", riskCategory || "—"], ["Status", ruleStatus || "—"]] as [string, ReactNode][] },
-                    { title: "Income & Obligations", rows: [["Income Sources Recognized", `${INCOME_SOURCES.length} configured`], ["Obligation Types Tracked", `${OBLIGATION_TYPES.length} configured`], ["Max EMI-to-Income Ratio", `${formulaParams.maxEmiRatio}%`]] as [string, ReactNode][] },
+                    { title: "Income & Obligations", rows: [["Income Sources Recognized", `${incomeSources.filter(s => s[3]).length} configured`], ["Obligation Types Tracked", `${obligationSources.filter(s => s[2]).length} configured`], ["Max EMI-to-Income Ratio", `${formulaParams.maxEmiRatio}%`]] as [string, ReactNode][] },
                     { title: "Credit & Risk Scoring", rows: [["Credit Bands", `${creditBands.length} configured`], ["Risk Weight Total", <Text span fz="xs" fw={700} c={totalWeight === 100 ? "green.7" : "red.6"}>{totalWeight}%</Text>], ["Salary Multiple", `${formulaParams.salaryMultiple}x`], ["Affordability Buffer", `${formulaParams.affordabilityBuffer}%`]] as [string, ReactNode][] },
                     { title: "Collateral", rows: [["Collateral Items", collateralItems.length > 0 ? `${collateralItems.length} configured` : "None — unsecured"], ["Total Collateral Limit", `ZMW ${Math.round(totalCollateralLimit).toLocaleString()}`]] as [string, ReactNode][] },
                     { title: "Pre-Approval & Decision Rules", rows: [["Pre-Approval Tiers", `${TIERS.length} configured`], ["Hard Stops", `${hardStops.length} configured`], ["Sample Eligible Amount", `ZMW ${Math.round(formulaPreview.final).toLocaleString()}`], ["Sample Pre-Approved Amount", `ZMW ${Math.round(preApprovedPreview).toLocaleString()}`]] as [string, ReactNode][] },
