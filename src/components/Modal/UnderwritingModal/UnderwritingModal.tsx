@@ -2169,7 +2169,7 @@ function UnderwritingWorkspace({
                  
                  <Group gap={8}>
                    <Badge variant="light" color="brand" radius="xl">
-                     Verification {assets.findIndex(a => a.id === selectedLegal.id) + 1}
+                     Asset {assets.findIndex(a => a.id === selectedLegal.id) + 1}
                    </Badge>
                  </Group>
               </Group>
@@ -2427,7 +2427,7 @@ function UnderwritingWorkspace({
                 const isLastStep = idx === detailSteps.length - 1;
                 if (!isLastStep) {
                   return (
-                    <Group justify="flex-end" mt={16} mb={8}>
+                    <Group justify="flex-end" mt={24} mb={12}>
                       <Button radius="xl" variant="filled" color="brand" onClick={() => setPanel(detailSteps[idx + 1])} rightSection={<IconArrowRight size={16} />}>
                         Next
                       </Button>
@@ -2435,7 +2435,7 @@ function UnderwritingWorkspace({
                   );
                 }
                 return (
-                  <Group justify="flex-end" mt={16} mb={8}>
+                  <Group justify="flex-end" mt={24} mb={12}>
                     <Button variant="light" color="brand" radius="xl" onClick={() => setLegalViewMode('list')}>
                       Save
                     </Button>
@@ -2672,11 +2672,6 @@ function UnderwritingWorkspace({
                     </Text>
                   </Text>
                 </Group>
-                {!addingAsset && (
-                  <Button radius="xl" color="brand" leftSection={<IconPlus size={14} />} onClick={openAddAsset}>
-                    Add Verification
-                  </Button>
-                )}
               </Group>
 
               {assets.length === 0 && !addingAsset ? (
@@ -2684,11 +2679,8 @@ function UnderwritingWorkspace({
                   <ThemeIcon size={48} radius="xl" color="gray" variant="light" mb={12}>
                     <IconIdBadge2 size={24} />
                   </ThemeIcon>
-                  <Text fz="md" fw={600} c="dark.8">No verifications added</Text>
-                  <Text fz="sm" c="dimmed" mb={20}>Add a verification to begin legal checks.</Text>
-                  <Button radius="xl" color="brand" leftSection={<IconPlus size={14} />} onClick={openAddAsset}>
-                    Add Verification
-                  </Button>
+                  <Text fz="md" fw={600} c="dark.8">No assets added</Text>
+                  <Text fz="sm" c="dimmed" mb={20}>Add assets in the Asset Valuation tab to begin legal checks.</Text>
                 </Paper>
               ) : (
                 <Box>
@@ -2698,7 +2690,7 @@ function UnderwritingWorkspace({
                       key={a.id}
                       asset={a}
                       index={i}
-                      titleBadgeLabel="Verification"
+                      titleBadgeLabel="Asset"
                       onClick={() => {
                         setSelectedLegalId(a.id);
                         setLegalViewMode('detail');
@@ -2711,24 +2703,6 @@ function UnderwritingWorkspace({
                 </Paper>
                   
                   
-                </Box>
-              )}
-
-              {addingAsset && (
-                <Box mt={16}>
-                  <AssetBaseForm
-                    type={newAssetType}
-                    assetId={newAssetIdField}
-                    desc={newAssetDesc}
-                    onTypeChange={setNewAssetType}
-                    onAssetIdChange={setNewAssetIdField}
-                    onDescChange={setNewAssetDesc}
-                    descError={newAssetDescError}
-                    onSubmit={submitNewAsset}
-                    onCancel={() => setAddingAsset(false)}
-                    submitLabel="Add Verification"
-                    title="Add Verification"
-                  />
                 </Box>
               )}
             </Box>
