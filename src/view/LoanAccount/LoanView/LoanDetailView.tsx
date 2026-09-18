@@ -44,16 +44,38 @@ import { DocumentsTab } from "./Tabs/DocumentsTab";
 import { ActivityTab } from "./Tabs/ActivityTab";
 import { loanRepaymentModal } from "../../../components/Modal/loanRepaymentModalStore";
 
+
+interface Borrower {
+  name: string;
+  cif: string;
+  phone: string;
+  status: string;
+  loans: {
+    id: string;
+    type: string;
+    balance: number;
+    emiDate: string;
+    principalDue: number;
+    interestDue: number;
+    penalty: number;
+    lateFees: number;
+    remainingInstallments: number;
+  }[];
+}
+
 export function LoanDetailView({
-  loanId,
+  loan,
   borrower,
 }: {
-  loanId: string;
+  loan: any;
   borrower: any;
 }) {
+
+  const loanId = loan?.id;
+
   const { data, status, activeTab, setActiveTab, pagination, actions } =
     useLoanView(loanId);
-  
+
   const { overview } = data;
 
   const currencyCode = useCompanyStore((state) => state.baseCurrency);
@@ -84,7 +106,7 @@ export function LoanDetailView({
       />
     );
 
-  // Modern, layout-matching loading state instead of a single generic block.
+
   if (status.overview && !overview) {
     return <LoanDetailSkeleton />;
   }
@@ -104,29 +126,29 @@ export function LoanDetailView({
         ? themeTokens.slate
         : themeTokens.danger;
 
-const repaymentBorrower: Borrower | null = borrower
-  ? {
-      name: borrower.name ?? "",
-      cif: borrower.custId ?? borrower.customerId ?? "",
-      phone: borrower.mobile ?? "",
-      status: borrower.status ?? "",
-      loans: [
-        {
-          id: loanId,
-          type: overview.loan_product ?? "",
-          balance: overview.total_outstanding ?? 0,
-          emiDate: overview.maturity_date ?? "",
-          principalDue: 0,
-          interestDue: 0,
-          penalty: 0,
-          lateFees: 0,
-          remainingInstallments:
-            (overview.repayment_periods ?? 0) -
-            (overview.total_installments_raised ?? 0),
-        },
-      ],
-    }
-  : null;
+  const repaymentBorrower: Borrower | null = borrower
+    ? {
+        name: borrower.name ?? "",
+        cif: borrower.custId ?? borrower.customerId ?? "",
+        phone: borrower.mobile ?? "",
+        status: borrower.status ?? "",
+        loans: [
+          {
+            id: loanId,
+            type: overview.loan_product ?? "",
+            balance: overview.total_outstanding ?? 0,
+            emiDate: overview.maturity_date ?? "",
+            principalDue: 0,
+            interestDue: 0,
+            penalty: 0,
+            lateFees: 0,
+            remainingInstallments:
+              (overview.repayment_periods ?? 0) -
+              (overview.total_installments_raised ?? 0),
+          },
+        ],
+      }
+    : null;
 
   return (
     <div className="flex flex-col lg:flex-row gap-5 items-start">
