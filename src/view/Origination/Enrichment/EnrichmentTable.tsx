@@ -332,7 +332,7 @@ export function EnrichmentTable() {
           </Box>
           <Stack gap={2}>
             <Title order={2} fz={22} fw={800} c="slate.9">
-              Appraisal
+              Loan Appraisal
             </Title>
             <Text fz="sm" c="slate.5">
               Review and finalize loan terms for approved applications

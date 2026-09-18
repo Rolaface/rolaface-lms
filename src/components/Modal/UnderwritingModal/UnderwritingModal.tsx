@@ -341,7 +341,7 @@ function LeftNav({
   const items: { id: Section; label: string; icon: React.FC<any>; done: boolean }[] = [
     { id: "application", label: "Loan application", icon: IconFileText, done: true },
     { id: "prescreening", label: "Pre-screening", icon: IconGauge, done: true },
-    { id: "appraisal", label: "Appraisal", icon: IconBuildingBank, done: true },
+    { id: "appraisal", label: "Loan Appraisal", icon: IconBuildingBank, done: true },
     { id: "underwriting", label: "Underwriting", icon: IconScale, done: false },
   ];
 
@@ -2771,6 +2771,8 @@ export function UnderwritingModal({
       opened={opened}
       onClose={onClose}
       size={1400}
+      closeOnClickOutside={false}
+        closeOnEscape={false}
       padding={0}
       lockScroll
       styles={{
