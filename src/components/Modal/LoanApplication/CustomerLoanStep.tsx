@@ -30,6 +30,8 @@ import {
   IconInbox,
   IconPencil,
   IconArrowLeft,
+  IconBriefcase,
+  IconFileInvoice,
 } from "@tabler/icons-react";
 import type { LoanApplicationValues, LoanType } from "./LoanApplicationModal";
 
@@ -187,11 +189,11 @@ const zmw = (n: number) => "ZMW " + Math.round(n).toLocaleString();
 
 type LoanConfigTypeId = 
   | "personal" 
-  | "house" 
-  | "car" 
+  | "vehicle" 
+  | "mortgage" 
   | "working-capital" 
-  | "term" 
-  | "machinery";
+  | "asset-finance" 
+  | "agribusiness";
 
 const LOAN_CONFIG_TYPES: {
   id: LoanConfigTypeId;
@@ -250,10 +252,10 @@ const LOAN_CONFIG_TYPES: {
   ],
   },
   {
-    id: "car",
+    id: "mortgage",
     applicantType: "Personal",
-    label: "Vehicle Loan",
-    icon: IconUser,
+    label: "Mortgage / Home Loan",
+    icon: IconBuilding,
     subtypes: [
     { id: "car-loan", label: "Car Loan", purposes: [ "New Car", "Used Car"],},
     { id: "bike-loan", label: "Bike Loan", purposes: ["New Bike", "Used Bike"],},
@@ -263,36 +265,35 @@ const LOAN_CONFIG_TYPES: {
   {
     id: "working-capital",
     applicantType: "Business",
-    label: "Working Capital Loan",
-    icon: IconBuilding,
+    label: "Working Capital",
+    icon: IconBriefcase,
     subtypes: [
-      { id: "cash-flow", label: "Cash Flow Support", purposes: ["Stock purchase", "Operations"] }
+      { id: "overdraft", label: "Overdraft", purposes: ["Daily operations", "Short-term cash flow"] },
+      { id: "invoice-discounting", label: "Invoice Discounting", purposes: ["Cash flow management"] },
+      { id: "lpo-finance", label: "LPO Financing", purposes: ["Order fulfillment", "Supply contracts"] }
     ],
   },
   {
-    id: "term",
+    id: "asset-finance",
     applicantType: "Business",
-    label: "Term Loan",
-    icon: IconBuilding,
+    label: "Asset Finance",
+    icon: IconFileInvoice,
     subtypes: [
-      { id: "expansion", label: "Business Expansion", purposes: ["New branch", "Infrastructure"] }
+      { id: "equipment", label: "Equipment", purposes: ["Heavy machinery", "IT equipment", "Manufacturing"] },
+      { id: "commercial-vehicle", label: "Commercial Vehicles", purposes: ["Trucks", "Delivery vans", "Buses"] }
     ],
   },
   {
-    id: "machinery",
+    id: "agribusiness",
     applicantType: "Business",
-    label: "Machinery Loan",
+    label: "Agribusiness Loan",
     icon: IconBuilding,
     subtypes: [
-      { id: "equipment", label: "Equipment Finance", purposes: ["Heavy machinery", "IT equipment"] }
+      { id: "crop-finance", label: "Crop Finance", purposes: ["Seeds", "Fertilizer", "Labor"] },
+      { id: "livestock", label: "Livestock Finance", purposes: ["Animal purchase", "Feed"] }
     ],
   },
 ];
-
- const CONFIG_TO_APPLICANT_TYPE: Record<LoanConfigTypeId, LoanType> = {
-  personal: "Personal",
-  business: "Business",
-};
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (

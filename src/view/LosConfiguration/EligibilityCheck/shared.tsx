@@ -163,6 +163,10 @@ export interface EligibilityInputs {
   npa: boolean;
   tenure: number;
   productMax: number;
+  maxEmiRatio?: number;
+  maxDtiRatio?: number;
+  affordabilityBuffer?: number;
+  exposureCap?: number;
 }
 
 export interface LimitItem {
@@ -172,18 +176,22 @@ export interface LimitItem {
 
 export function computeEligibility(inputs: EligibilityInputs) {
   const { basicSalary, netSalary, otherIncome, existingEMI, existingBalance, creditScore, onTime, maxDPD, npa, tenure, productMax } = inputs;
+  const maxEmiRatio = inputs.maxEmiRatio ?? 30;
+  const maxDtiRatio = inputs.maxDtiRatio ?? 40;
+  const affordabilityBuffer = inputs.affordabilityBuffer ?? 91;
+  const exposureCap = inputs.exposureCap ?? 60;
 
   const eligibleIncome = netSalary + otherIncome * 0.7;
   const salaryLimit = basicSalary * 5;
 
-  let maxEMI = eligibleIncome * 0.3 - existingEMI;
+  let maxEMI = eligibleIncome * (maxEmiRatio / 100) - existingEMI;
   if (maxEMI < 0) maxEMI = 0;
-  const affordabilityLimit = maxEMI * tenure * 0.91;
+  const affordabilityLimit = maxEMI * tenure * (affordabilityBuffer / 100);
 
   const tier = creditTier(creditScore);
   const creditLimit = basicSalary * tier.multiple;
 
-  const exposureRatio = Math.min(existingBalance / (eligibleIncome * 12 || 1), 0.6);
+  const exposureRatio = Math.min(existingBalance / (eligibleIncome * 12 || 1), exposureCap / 100);
   const exposureLimit = affordabilityLimit * (1 - exposureRatio);
 
   let onTimeAdj = 1;
@@ -206,9 +214,12 @@ export function computeEligibility(inputs: EligibilityInputs) {
   if (npa) { final = 0; limitingFactor = "Active NPA — Hard Stop"; decision = "Decline"; }
   else if (creditScore < 500) { final = 0; limitingFactor = "Credit Score Below Minimum"; decision = "Decline"; }
   else if (risk.label === "Not Acceptable") { final = 0; limitingFactor = "Risk Profile Not Acceptable — Hard Stop"; decision = "Decline"; }
+  else if (existingEMI / (eligibleIncome || 1) > maxDtiRatio / 100) { final = 0; limitingFactor = "DTI Limit"; decision = "Decline"; }
 
   const preApproved = decision === "Eligible" ? final * risk.pct : 0;
   const maxEMIOut = (preApproved / tenure) * 1.1;
 
-  return { eligibleIncome, limits, final, limitingFactor, decision, risk, preApproved, tier, maxEMIOut };
+  const totalMonthlyDebt = existingEMI;
+  const dti = totalMonthlyDebt / (eligibleIncome || 1);
+  return { eligibleIncome, totalMonthlyDebt, dti, limits, final, limitingFactor, decision, risk, preApproved, tier, maxEMIOut };
 }
