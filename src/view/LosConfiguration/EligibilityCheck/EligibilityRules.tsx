@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -35,7 +35,21 @@ const STAT_CARDS = [
 
 export function EligibilityRules({ onCreateRule, onSimulate }: { onCreateRule: () => void; onSimulate: () => void }) {
   const [query, setQuery] = useState("");
-  const filtered = RULES.filter((r) => r.name.toLowerCase().includes(query.toLowerCase()));
+  const [rules, setRules] = useState(RULES);
+  useEffect(() => {
+    const load = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem("losEligibilityRules") || "[]");
+        if (Array.isArray(saved) && saved.length) setRules([...RULES.filter((r) => !saved.some((s: RuleRow) => s.name === r.name)), ...saved]);
+      } catch {
+        // Ignore malformed local drafts and retain the built-in examples.
+      }
+    };
+    load();
+    window.addEventListener("losEligibilityRulesChanged", load);
+    return () => window.removeEventListener("losEligibilityRulesChanged", load);
+  }, []);
+  const filtered = rules.filter((r) => r.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
     <Box style={{ margin: "0 auto" }}>
