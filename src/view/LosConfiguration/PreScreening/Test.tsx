@@ -47,7 +47,8 @@ export default function TestTab({ ruleSet }: TestTabProps) {
 
   return (
     <Grid gutter="lg" >
-      <Grid.Col span={{ base: 12, md: 4 }}>
+      {/* Changed span from {base: 12, md: 4} to {base: 12, md: 6} for an equal 50/50 split */}
+      <Grid.Col span={{ base: 12, md: 6 }}>
         <Paper withBorder radius="lg" shadow="xs" p="lg" style={{ alignSelf: "start" }}>
           <Text fz={13} fw={700} mb="md">Sample Applicant</Text>
           <Select
@@ -61,11 +62,12 @@ export default function TestTab({ ruleSet }: TestTabProps) {
             data={[...Object.keys(SAMPLE_APPLICANTS), "Custom"]}
             mb="md"
           />
-          <Stack gap="sm">
+          {/* Replaced Stack with a Grid to allow 2 fields per row */}
+          <Grid gutter="sm">
             {TEST_FIELDS.map((fid) => {
               const f = fieldById(fid)!;
               return (
-                <Box key={fid}>
+                <Grid.Col span={6} key={fid}>
                   {f.type === "boolean" ? (
                     <>
                       <Text fz="sm" fw={600} mb={6}>{f.label}</Text>
@@ -91,32 +93,40 @@ export default function TestTab({ ruleSet }: TestTabProps) {
                       onChange={(val) => { setSample({ ...sample, [fid]: val === "" ? "" : Number(val) }); setPreset("Custom"); }}
                     />
                   )}
-                </Box>
+                </Grid.Col>
               );
             })}
-          </Stack>
+          </Grid>
           <Button fullWidth mt="md" color="brand" leftSection={<IconPlayerPlay size={13} />}>Run Simulation</Button>
         </Paper>
       </Grid.Col>
 
-      <Grid.Col span={{ base: 12, md: 8 }}>
-        <Paper withBorder radius="lg" p="lg" mb="md" ta="center" style={{ background: verdictStyle.bg, borderColor: verdictStyle.fg }}>
-          <Text fz={11} fw={700} c={verdictStyle.fg} tt="uppercase" mb={6} style={{ letterSpacing: ".05em" }}>
-            Pre-Screening Result
-          </Text>
-          <Text fz={22} fw={600} c={verdictStyle.fg}>{verdictStyle.label}</Text>
-          <Text fz={12.5} c={verdictStyle.fg} mt={6}>
-            {results.verdict === "Eligible" && "All blocking criteria passed."}
-            {results.verdict === "Eligible with Warnings" && "All blocking criteria passed; some non-blocking checks were flagged."}
-            {results.verdict === "Manual Review" && "Basic criteria were met, but the file needs manual credit review."}
-            {results.verdict === "Not Eligible" && "One or more blocking criteria failed."}
-          </Text>
+      {/* Changed span from {base: 12, md: 8} to {base: 12, md: 6} for an equal 50/50 split */}
+      {/* Right Column */}
+      <Grid.Col span={{ base: 12, md: 6 }}>
+        {/* Condensed single-line Pre-Screening Result */}
+        <Paper withBorder radius="lg" p="sm" mb="sm" style={{ background: verdictStyle.bg, borderColor: verdictStyle.fg }}>
+          <Group justify="space-between" align="center">
+            <Group gap="xs" align="center">
+              <Text fz={12} fw={700} c={verdictStyle.fg} tt="uppercase" style={{ letterSpacing: ".05em" }}>
+                Pre-Screening Result:
+              </Text>
+              <Text fz={15} fw={700} c={verdictStyle.fg}>{verdictStyle.label}</Text>
+            </Group>
+            <Text fz={12} c={verdictStyle.fg}>
+              {results.verdict === "Eligible" && "All blocking criteria passed."}
+              {results.verdict === "Eligible with Warnings" && "All blocking criteria passed; some non-blocking checks flagged."}
+              {results.verdict === "Manual Review" && "Basic criteria met, but file needs manual review."}
+              {results.verdict === "Not Eligible" && "One or more blocking criteria failed."}
+            </Text>
+          </Group>
         </Paper>
 
+        {/* Compacted Rule Groups */}
         {results.groupResults.map(({ group, groupPass }) => (
-          <Paper withBorder radius="lg" shadow="xs" p="lg" mb="md" key={group.id}>
-            <Group justify="space-between" mb="sm">
-              <Text fw={700} fz={13.5}>{group.name}</Text>
+          <Paper withBorder radius="lg" shadow="xs" p="sm" mb="sm" key={group.id}>
+            <Group justify="space-between" mb={4}>
+              <Text fw={700} fz={13}>{group.name}</Text>
               {groupPass === null ? (
                 <Text fz={12} c="dimmed">Not evaluated</Text>
               ) : groupPass ? (
@@ -131,18 +141,21 @@ export default function TestTab({ ruleSet }: TestTabProps) {
                 const pass = evalRule(r, sample[r.fieldId as string]);
                 return (
                   <Box key={r.id}>
-                    {i > 0 && <Divider />}
-                    <Group justify="space-between" align="center" py="sm">
-                      <Box>
-                        <Text fz={13}>{f.label}</Text>
-                        <Text fz={12} c="dimmed">Required: {ruleSentence(r).replace(f.label + " ", "")} · Applicant: {fmtVal(f, sample[r.fieldId as string])}</Text>
-                      </Box>
+                    {i > 0 && <Divider my={6} />}
+                    {/* Changed Box to Group to put Label and Required text on a single line */}
+                    <Group justify="space-between" align="center" py={2} wrap="nowrap">
+                      <Group gap="xs" wrap="nowrap" style={{ overflow: "hidden" }}>
+                        <Text fz={13} fw={500} truncate>{f.label}:</Text>
+                        <Text fz={12} c="dimmed" truncate>
+                          Required: {ruleSentence(r).replace(f.label + " ", "")} · Applicant: {fmtVal(f, sample[r.fieldId as string])}
+                        </Text>
+                      </Group>
                       {pass === null ? (
                         <Text c="dimmed" fz={12}>—</Text>
                       ) : pass ? (
-                        <IconCheck size={14} color="var(--mantine-color-green-6)" />
+                        <IconCheck size={16} color="var(--mantine-color-green-6)" style={{ flexShrink: 0 }} />
                       ) : (
-                        <IconX size={14} color="var(--mantine-color-red-6)" />
+                        <IconX size={16} color="var(--mantine-color-red-6)" style={{ flexShrink: 0 }} />
                       )}
                     </Group>
                   </Box>
