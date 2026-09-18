@@ -1569,11 +1569,11 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                       <Text fz="xs" fw={700} c="slate.8">Debt-to-Income Ratio</Text>
                     </Group>
                     <Text fz={10} c="slate.5" mb="sm">
-                      Outstanding balances divided by the customer's eligible annual income. Obligations below are summed to form the total debt figure.
+                      Measures a customer's total monthly debt obligations as a percentage of their gross monthly income.
                     </Text>
                     <Field
                       label={`Maximum DTI Ratio — ${formulaParams.maxDtiRatio}%`}
-                      hint="If total outstanding balance / annual income exceeds this, the applicant is declined or flagged."
+                      hint="If total qualifying monthly debt / gross monthly income exceeds this, the applicant is declined or flagged."
                     >
                       <Group gap="sm" wrap="nowrap" mt={4}>
                         <Slider
@@ -1658,7 +1658,7 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
 
                     <Paper mt="sm" px={8} py={6} radius="sm" style={{ background: "var(--mantine-color-violet-0)", border: "1px solid var(--mantine-color-violet-1)" }}>
                       <Text fz={10} c="violet.7" fw={500}>
-                        <b>Formula:</b> DTI = (Sum of all included balance obligations) ÷ (Eligible Annual Income) × 100
+                        <b>Formula:</b> Total qualifying monthly debt payments ÷ Gross monthly income × 100
                       </Text>
                     </Paper>
                   </Paper>
@@ -1675,11 +1675,11 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                       <Text fz="xs" fw={700} c="slate.8">EMI-to-Income Ratio</Text>
                     </Group>
                     <Text fz={10} c="slate.5" mb="sm">
-                      Sum of all monthly payment obligations divided by eligible monthly income. This determines how much of the customer's income is already committed.
+                      Measures the customer's monthly loan/EMI repayment obligations as a percentage of their monthly income.
                     </Text>
                     <Field
                       label={`Maximum EMI-to-Income Ratio — ${formulaParams.maxEmiRatio}%`}
-                      hint="Monthly obligations + proposed new EMI must not exceed this percentage of monthly income."
+                      hint="Qualifying monthly EMI/debt payments + proposed new EMI must not exceed this percentage of monthly income."
                     >
                       <Group gap="sm" wrap="nowrap" mt={4}>
                         <Slider
@@ -1763,7 +1763,7 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
 
                     <Paper mt="sm" px={8} py={6} radius="sm" style={{ background: "var(--mantine-color-brand-0)", border: "1px solid var(--mantine-color-brand-1)" }}>
                       <Text fz={10} c="brand.7" fw={500}>
-                        <b>Formula:</b> EMI Ratio = (Sum of all included monthly payments + Proposed New EMI) ÷ (Eligible Monthly Income) × 100
+                        <b>Formula:</b> Qualifying monthly EMI/debt payments ÷ Monthly income × 100
                       </Text>
                     </Paper>
                   </Paper>
