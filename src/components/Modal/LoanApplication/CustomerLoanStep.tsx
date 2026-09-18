@@ -200,33 +200,54 @@ const LOAN_CONFIG_TYPES: {
   icon: React.FC<any>;
   subtypes: { id: string; label: string; purposes: string[] }[];
 }[] = [
-  // Personal (Individual) Loans
   {
     id: "personal",
     applicantType: "Personal",
     label: "Personal Loan",
     icon: IconUser,
     subtypes: [
-      {
-        id: "salary",
-        label: "Salary-backed",
-        purposes: ["Home improvement", "Education", "Medical", "Debt consolidation", "Other"],
-      },
-      {
-        id: "consumer",
-        label: "Consumer loan",
-        purposes: ["Vehicle purchase", "Appliances", "Travel", "Other"],
-      },
+  {
+    id: "wedding",
+    label: "Wedding",
+    purposes: [
+      "Son Wedding",
+      "Daughter Wedding",
+      "Self Wedding",
+      "Other"
     ],
+  },
+  {
+    id: "education",
+    label: "Education",
+    purposes: [
+      "School Fees",
+      "University Fees",
+      "Professional Course",
+      "Other"
+    ],
+  },
+  {
+    id: "medical",
+    label: "Medical",
+    purposes: [
+      "Hospital Treatment",
+      "Surgery",
+      "Medical Expenses",
+      "Other"
+    ],
+  },
+]
   },
   {
     id: "house",
     applicantType: "Personal",
     label: "House Loan",
     icon: IconBuilding,
-    subtypes: [
-      { id: "home-purchase", label: "Home Purchase", purposes: ["New property", "Old property", "Construction"] }
-    ],
+     subtypes: [
+    { id: "home-purchase", label: "Home Purchase", purposes: [ "New Property", "Old Property" ],},
+    { id: "home-construction", label: "Home Construction", purposes: [ "Construction", "Renovation"],},
+    { id: "land-purchase", label: "Land Purchase", purposes: [ "New Land", "Borrow Land" ],},
+  ],
   },
   {
     id: "car",
@@ -234,8 +255,9 @@ const LOAN_CONFIG_TYPES: {
     label: "Vehicle Loan",
     icon: IconUser,
     subtypes: [
-      { id: "vehicle", label: "Vehicle Purchase", purposes: ["New Car", "Used Car"] }
-    ],
+    { id: "car-loan", label: "Car Loan", purposes: [ "New Car", "Used Car"],},
+    { id: "bike-loan", label: "Bike Loan", purposes: ["New Bike", "Used Bike"],},
+  ],
   },
   // Business Loans
   {
