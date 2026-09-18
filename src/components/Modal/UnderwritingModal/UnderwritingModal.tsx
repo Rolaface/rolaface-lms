@@ -19,10 +19,14 @@ import {
   ActionIcon,
   Avatar,
   Divider,
+  Tooltip,
 } from "@mantine/core";
 import {
   IconBell,
   IconChevronDown,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronUp,
   IconFileText,
   IconGauge,
   IconBuildingBank,
@@ -41,6 +45,8 @@ import {
   IconCircleX,
   IconArrowRight,
   IconMinus,
+  IconPencil, IconGavel, IconKey, IconCalendarEvent, IconUserCheck,
+  IconTrash,
 } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
@@ -113,10 +119,10 @@ function calcEligibility({
 function ReadRow({ label, value, span }: { label: string; value: React.ReactNode; span?: number }) {
   return (
     <Box style={{ gridColumn: span === 2 ? "1 / -1" : "auto" }}>
-      <Text fz={11.5} c="dimmed" mb={3}>
+      <Text fz={11} c="gray.6" mb={3} fw={500}>
         {label}
       </Text>
-      <Text fz={13.5} fw={600} c="dark.7">
+      <Text fz={14} fw={600} c="dark.8">
         {value ?? "—"}
       </Text>
     </Box>
@@ -149,54 +155,34 @@ function SimRow({ label, value, last, strong }: { label: string; value: string; 
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+// Section headings now accept a color so they can pick up the card's accent
+// instead of every heading in the page rendering as the same flat gray.
+function SectionLabel({ children, color = "dark.6", icon: Icon }: { children: React.ReactNode; color?: string; icon?: React.FC<any> }) {
   return (
-    <Text fz={11} fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: 0.3 }}>
-      {children}
-    </Text>
-  );
-}
-
-function CardHeader({ icon: Icon, title, right, color = "brand" }: { icon: React.FC<any>; title: string; right?: React.ReactNode; color?: string }) {
-  return (
-    <Group
-      justify="space-between"
-      align="center"
-      mb={8}
-      pb={7}
-      style={{ borderBottom: "1px solid var(--mantine-color-gray-1)" }}
-    >
-      <Group gap={7}>
-        <ThemeIcon radius="md" size={22} variant="light" color={color}>
-          <Icon size={13} />
+    <Group gap={6} align="center" wrap="nowrap">
+      {Icon && (
+        <ThemeIcon variant="transparent" size="sm" color={color} style={{ display: 'flex', alignItems: 'center' }}>
+           <Icon size={16} stroke={2.5} />
         </ThemeIcon>
-        <SectionLabel>{title}</SectionLabel>
-      </Group>
-      {right}
+      )}
+      <Text fz={11.5} fw={700} c={color} tt="uppercase" style={{ letterSpacing: 0.5 }}>
+        {children}
+      </Text>
     </Group>
   );
 }
 
-function Card({
-  icon,
-  title,
-  right,
-  color = "brand",
-  children,
-}: {
-  icon: React.FC<any>;
-  title: string;
-  right?: React.ReactNode;
-  color?: string;
-  children: React.ReactNode;
-}) {
+function SectionHeader({ icon: Icon, title, right, color = "brand" }: { icon: React.FC<any>; title: string; right?: React.ReactNode; color?: string }) {
   return (
-    <Paper withBorder shadow="xs" radius="md" style={{ overflow: "hidden" }}>
-      <Box p="sm">
-        <CardHeader icon={icon} title={title} right={right} color={color} />
-        {children}
-      </Box>
-    </Paper>
+    <Group justify="space-between" align="center" mb={10}>
+      <Group gap={8}>
+        <ThemeIcon radius="md" size={24} variant="light" color={color}>
+          <Icon size={13.5} />
+        </ThemeIcon>
+        <SectionLabel color={`${color}.8`}>{title}</SectionLabel>
+      </Group>
+      {right}
+    </Group>
   );
 }
 
@@ -224,8 +210,8 @@ const DOC_STATUSES = ["Missing", "Uploaded", "Verified", "Rejected"];
 
 function SourceBadge({ source }: { source: "application" | "manual" }) {
   const map: Record<string, { label: string; color: string }> = {
-    application: { label: "From application", color: "teal" },
-    manual: { label: "Manual entry", color: "teal" },
+    application: { label: "From application", color: "blue" },
+    manual: { label: "Manual entry", color: "blue" },
   };
   const s = map[source] || map.application;
   return (
@@ -241,7 +227,7 @@ function SourceBadge({ source }: { source: "application" | "manual" }) {
 
 function TopBar({ onMinimize, onClose, embedded }: { onMinimize: () => void; onClose: () => void; embedded?: boolean }) {
   return (
-    <Group justify="space-between" align="center" px="xl" py={10} bg="brand.7" style={{ flexShrink: 0 }}>
+    <Group justify="space-between" align="center" px="xl" py={8} bg="brand.7" style={{ flexShrink: 0 }}>
       <Group gap={10}>
         <ThemeIcon radius="md" size={30} variant="white" color="brand">
           <IconFileText size={15} />
@@ -283,12 +269,71 @@ function TopBar({ onMinimize, onClose, embedded }: { onMinimize: () => void; onC
 }
 
 // ---------------------------------------------------------------------------
-// Left sidebar
+// Underwriting sub-tabs (flat list, shown as nested items in the left nav
+// instead of a separate top tab bar + progress stepper inside the workspace)
 // ---------------------------------------------------------------------------
 
 type Section = "application" | "prescreening" | "enrichment" | "underwriting";
+// "assetDocs" is the Asset Valuation flow's own Supporting Documents step
+// (previously embedded inline at the bottom of the Valuation & Verification
+// panel). It now lives as its own step, mirroring "legalDocs" on the
+// Legal Verification side, and both share the same label
+// ("Supporting Documents") so the naming is consistent across both flows.
+type PanelId = "assetDetails" | "valuation" | "assetDocs" | "legal" | "legalDocs" | "notes" | "assetConclusion" | "conclusion";
+type TabId = "asset" | "legal";
 
-function LeftNav({ section, setSection, values }: { section: Section; setSection: (s: Section) => void; values: LoanApplicationValues }) {
+interface PanelItem {
+  id: PanelId;
+  label: string;
+  icon: React.FC<any>;
+  color: string;
+}
+
+// Content panels are still tracked individually (used for section headers,
+// etc.) but navigation only ever exposes the two groups below.
+const PANEL_ITEMS: PanelItem[] = [
+  { id: "assetDetails", label: "Asset Details", icon: IconIdBadge2, color: "blue" },
+  { id: "valuation", label: "Valuation", icon: IconCar, color: "brand" },
+  { id: "assetDocs", label: "Supporting Documents", icon: IconFileText, color: "blue" },
+  { id: "legal", label: "Verifier information", icon: IconIdBadge2, color: "violet" },
+  { id: "legalDocs", label: "Supporting Documents", icon: IconFileText, color: "violet" },
+  { id: "notes", label: "Underwriter Notes", icon: IconFileText, color: "gray" },
+  { id: "assetConclusion", label: "Conclusion", icon: IconClipboardCheck, color: "blue" },
+  { id: "conclusion", label: "Conclusion", icon: IconClipboardCheck, color: "brand" },
+];
+
+// The only two sub-tabs shown in the sidebar. Each groups a sequence of
+// panels, paged through via the in-content "next" arrow.
+interface TabItem {
+  id: TabId;
+  label: string;
+  icon: React.FC<any>;
+  steps: PanelId[];
+}
+const TAB_ITEMS: TabItem[] = [
+  { id: "asset", label: "Asset Valuation", icon: IconCircleCheck, steps: ["assetDetails", "valuation", "assetDocs", "notes", "assetConclusion"] },
+  { id: "legal", label: "Legal Verification", icon: IconShieldCheck, steps: ["legal", "legalDocs", "notes", "conclusion"] },
+];
+
+// ---------------------------------------------------------------------------
+// Left sidebar — now owns the underwriting sub-navigation. When the active
+// section is "underwriting", the Underwriting item expands in place to show
+// PANEL_ITEMS as nested sub-tabs instead of the old top tab bar + stepper.
+// ---------------------------------------------------------------------------
+
+function LeftNav({
+  section,
+  setSection,
+  values,
+  tab,
+  setTab,
+}: {
+  section: Section;
+  setSection: (s: Section) => void;
+  values: LoanApplicationValues;
+  tab: TabId;
+  setTab: (t: TabId) => void;
+}) {
   const isBusiness = values.loanType === "Business";
   const name = isBusiness ? values.companyName : [values.firstName, values.surname].filter(Boolean).join(" ");
   const initials = (name || "").split(" ").filter(Boolean).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
@@ -301,7 +346,7 @@ function LeftNav({ section, setSection, values }: { section: Section; setSection
   ];
 
   return (
-    <Box w={220} style={{ flexShrink: 0, background: "white", borderRight: "1px solid var(--mantine-color-gray-2)" }}>
+    <Box w={240} style={{ flexShrink: 0, background: "white", borderRight: "1px solid var(--mantine-color-gray-2)" }}>
       <Group gap={10} p="md" style={{ borderBottom: "1px solid var(--mantine-color-gray-1)" }}>
         <Avatar radius="xl" size={34} color="brand" variant="light">
           {initials || "—"}
@@ -321,25 +366,57 @@ function LeftNav({ section, setSection, values }: { section: Section; setSection
           const active = section === it.id;
           const Icon = it.icon;
           return (
-            <UnstyledButton key={it.id} onClick={() => setSection(it.id)} px={10} py={9} style={{ borderRadius: 8 }}>
-              <Group gap={9} justify="space-between" wrap="nowrap">
-                <Group gap={9} wrap="nowrap">
-                  {active ? (
-                    <Box w={8} h={8} style={{ borderRadius: "50%", background: "var(--mantine-color-brand-6)", flexShrink: 0 }} />
-                  ) : (
-                    <Icon size={15} color="var(--mantine-color-gray-6)" style={{ flexShrink: 0 }} />
+            <Box key={it.id}>
+              <UnstyledButton onClick={() => setSection(it.id)} px={10} py={9} style={{ borderRadius: 8, width: "100%" }}>
+                <Group gap={9} justify="space-between" wrap="nowrap">
+                  <Group gap={9} wrap="nowrap">
+                    {active ? (
+                      <Box w={8} h={8} style={{ borderRadius: "50%", background: "var(--mantine-color-brand-6)", flexShrink: 0 }} />
+                    ) : (
+                      <Icon size={15} color="var(--mantine-color-gray-6)" style={{ flexShrink: 0 }} />
+                    )}
+                    <Text fz={13} fw={active ? 700 : 500} c={active ? "brand.7" : "dark.6"}>
+                      {it.label}
+                    </Text>
+                  </Group>
+                  {it.done && (
+                    <ThemeIcon radius="xl" size={16} color="brand" variant="light">
+                      <IconCheck size={11} />
+                    </ThemeIcon>
                   )}
-                  <Text fz={13} fw={active ? 700 : 500} c={active ? "brand.7" : "dark.6"}>
-                    {it.label}
-                  </Text>
                 </Group>
-                {it.done && (
-                  <ThemeIcon radius="xl" size={16} color="brand" variant="light">
-                    <IconCheck size={11} />
-                  </ThemeIcon>
-                )}
-              </Group>
-            </UnstyledButton>
+              </UnstyledButton>
+
+              {/* Sub-tabs for Underwriting, nested right under the item */}
+              {it.id === "underwriting" && active && (
+                <Stack gap={1} pl={27} pr={4} py={2}>
+                  {TAB_ITEMS.map((t) => {
+                    const tActive = tab === t.id;
+                    const TIcon = t.icon;
+                    return (
+                      <UnstyledButton
+                        key={t.id}
+                        onClick={() => setTab(t.id)}
+                        px={9}
+                        py={7}
+                        style={{
+                          borderRadius: 7,
+                          borderLeft: `2px solid ${tActive ? "var(--mantine-color-brand-6)" : "transparent"}`,
+                          background: tActive ? "var(--mantine-color-brand-0)" : "transparent",
+                        }}
+                      >
+                        <Group gap={7} wrap="nowrap">
+                          <TIcon size={13} color={tActive ? "var(--mantine-color-brand-7)" : "var(--mantine-color-gray-5)"} />
+                          <Text fz={12} fw={tActive ? 700 : 500} c={tActive ? "brand.8" : "dark.5"}>
+                            {t.label}
+                          </Text>
+                        </Group>
+                      </UnstyledButton>
+                    );
+                  })}
+                </Stack>
+              )}
+            </Box>
           );
         })}
       </Stack>
@@ -403,6 +480,15 @@ interface Asset {
   titleChecklist: TitleChecklistItem[];
   titleDocs: AssetDoc[];
   legalChecks: LegalCheck[];
+  // Asset Validation tab's own Conclusion & Decision (asset-level outcome only)
+  assetOverallAssessment: string;
+  assetRemarks: string;
+  assetAssignee: string;
+  assetDecisionStatus: string;
+  assetDecision: Decision;
+  assetConditions: Condition[];
+  assetReasonCategory: string;
+  assetReasonDetail: string;
 }
 
 let assetSeq = 1;
@@ -460,6 +546,14 @@ function makeAsset(source: "application" | "manual", base: DummyAssetBase): Asse
       action: c?.action || "",
       comment: "",
     })),
+    assetOverallAssessment: "Review Required",
+    assetRemarks: "",
+    assetAssignee: "Internal team",
+    assetDecisionStatus: "Review Required",
+    assetDecision: null,
+    assetConditions: [],
+    assetReasonCategory: "",
+    assetReasonDetail: "",
   };
 }
 
@@ -498,14 +592,6 @@ function makeSeedAsset(): Asset {
       comment: "",
     },
   ];
-  a.title = {
-    titleNumber: "MV-ZM-119284",
-    propertyRef: DUMMY_SEED_ASSET_BASE.assetId || "AST-33021",
-    propertyType: DUMMY_SEED_ASSET_BASE.type,
-    location: DUMMY_SEED_ASSET_BASE.location || "Lusaka, Zambia",
-    registrationInfo: "Registered with RTSA, Lusaka",
-    registeredOwner: DUMMY_SEED_ASSET_BASE.owner || "",
-  };
   a.titleChecklist = [
     { id: "titleVerified", label: "Title verified", status: "Passed", comment: "" },
     { id: "ownershipVerified", label: "Ownership verified", status: "Passed", comment: "" },
@@ -582,171 +668,375 @@ function DocumentsTable({ title, docs, setDocs }: { title: string; docs: AssetDo
   const removeDoc = (i: number) => setDocs(docs.filter((_, idx) => idx !== i));
 
   return (
-    <Card
-      icon={IconFileText}
-      title={title}
-      color="blue"
-      right={
-        <Button size="compact-sm" variant="light" color="blue" radius="xl" leftSection={<IconPlus size={13} />} onClick={addDoc}>
+    <Box>
+      {/* Heading removed here — the "Supporting Documents" step label is
+          already shown in the top step/tab bar above, so this panel only
+          keeps the "Add documents" action, right-aligned. */}
+      <Group justify="flex-end" mb={10}>
+        <Button size="compact-sm" variant="light" color="brand" radius="xl" leftSection={<IconPlus size={13} />} onClick={addDoc}>
           Add documents
         </Button>
-      }
-    >
-      <Stack gap={0}>
+      </Group>
+      <SimpleGrid cols={3} spacing={12}>
         {docs.length === 0 && (
-          <Text fz={12.5} c="dimmed" ta="center" py="md">
+          <Text fz={12.5} c="dimmed" ta="center" py="md" style={{ gridColumn: "1 / -1" }}>
             No documents added yet.
           </Text>
         )}
         {docs.map((d, i) => (
-          <Box key={i} py={8} style={{ borderTop: i > 0 ? "1px solid var(--mantine-color-gray-1)" : "none" }}>
-            <Group justify="space-between" wrap="nowrap" gap={14}>
-              <Group gap={10} style={{ flex: 1, minWidth: 0 }} wrap="nowrap" align="flex-start">
-                <ThemeIcon radius="md" size={30} variant="light" color={STATUS_COLORS[d.status] || "blue"} style={{ flexShrink: 0 }}>
-                  <IconFileText size={15} />
-                </ThemeIcon>
-                <Box style={{ flex: 1, minWidth: 0 }}>
-                  <TextInput
-                    value={d.name}
-                    onChange={(e) => update(i, { name: e.currentTarget.value })}
-                    size="sm"
-                    variant="transparent"
-                    placeholder="Document name"
-                    styles={{ input: { fontWeight: 600, fontSize: 13, color: "var(--mantine-color-dark-7)", padding: 0, minHeight: 24, height: 24, border: "none", background: "transparent" } }}
-                  />
-                  <Group gap={6} mt={2} wrap="nowrap">
-                    <Select
-                      data={["required", "optional"]}
-                      value={d.tier}
-                      onChange={(v) => update(i, { tier: (v as "required" | "optional") || "required" })}
-                      size="xs"
-                      variant="transparent"
-                      allowDeselect={false}
-                      styles={{
-                        input: { fontSize: 11, color: "var(--mantine-color-gray-5)", padding: 0, minHeight: 18, height: 18, border: "none", background: "transparent", cursor: "pointer" },
-                        wrapper: { width: 100 },
-                        rightSection: { width: 14 },
-                      }}
-                    />
-                    <Text fz={11} c="dimmed" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      · {d.fileMeta || `uploaded ${d.uploadedDate || "—"}${d.uploadedBy ? ` by ${d.uploadedBy}` : ""}`}
-                      {d.validUntil ? ` · valid until ${d.validUntil}` : ""}
-                    </Text>
-                  </Group>
-                </Box>
-              </Group>
-              <Group gap={8} wrap="nowrap" align="center">
-                <Button size="compact-sm" variant="light" color="brand" radius="xl">
-                  Preview
-                </Button>
+          <Paper key={i} withBorder radius="md" p={10} style={{ display: "flex", flexDirection: "column" }}>
+            <Group gap={8} wrap="nowrap" align="flex-start" mb={6}>
+              <ThemeIcon radius="md" size={28} variant="light" color={STATUS_COLORS[d.status] || "blue"} style={{ flexShrink: 0 }}>
+                <IconFileText size={14} />
+              </ThemeIcon>
+              <Box style={{ flex: 1, minWidth: 0 }}>
+                <TextInput
+                  value={d.name}
+                  onChange={(e) => update(i, { name: e.currentTarget.value })}
+                  size="sm"
+                  variant="transparent"
+                  placeholder="Document name"
+                  styles={{ input: { fontWeight: 600, fontSize: 12.5, color: "var(--mantine-color-dark-7)", padding: 0, minHeight: 20, height: 20, border: "none", background: "transparent" } }}
+                />
                 <Select
-                  data={DOC_STATUSES}
-                  value={d.status}
-                  onChange={(v) => update(i, { status: v || d.status })}
+                  data={["required", "optional"]}
+                  value={d.tier}
+                  onChange={(v) => update(i, { tier: (v as "required" | "optional") || "required" })}
                   size="xs"
-                  radius="xl"
-                  w={110}
+                  variant="transparent"
                   allowDeselect={false}
-                  color={STATUS_COLORS[d.status]}
                   styles={{
-                    input: {
-                      fontWeight: 600,
-                      color: `var(--mantine-color-${STATUS_COLORS[d.status] || "gray"}-7)`,
-                      background: `var(--mantine-color-${STATUS_COLORS[d.status] || "gray"}-0)`,
-                      borderColor: `var(--mantine-color-${STATUS_COLORS[d.status] || "gray"}-3)`,
-                    },
+                    input: { fontSize: 11, color: "var(--mantine-color-gray-5)", padding: 0, minHeight: 16, height: 16, border: "none", background: "transparent", cursor: "pointer" },
+                    wrapper: { width: 90 },
+                    rightSection: { width: 12 },
                   }}
                 />
-                <ActionIcon variant="subtle" color="gray" onClick={() => removeDoc(i)}>
-                  <IconX size={14} />
-
-                </ActionIcon>
-              </Group>
+              </Box>
+              <ActionIcon variant="subtle" color="gray" size="sm" onClick={() => removeDoc(i)}>
+                <IconX size={13} />
+              </ActionIcon>
             </Group>
-            <TextInput value={d.comment} onChange={(e) => update(i, { comment: e.currentTarget.value })} placeholder="Verification comment (optional)" size="xs" radius="md" mt={6} />
-          </Box>
+            <Text fz={10.5} c="dimmed" mb={8} lineClamp={2}>
+              {d.fileMeta || `uploaded ${d.uploadedDate || "—"}${d.uploadedBy ? ` by ${d.uploadedBy}` : ""}`}
+              {d.validUntil ? ` · valid until ${d.validUntil}` : ""}
+            </Text>
+            <Group gap={6} wrap="nowrap" mb={8}>
+              <Button size="compact-xs" variant="light" color="brand" radius="xl" style={{ flex: 1 }}>
+                Preview
+              </Button>
+              <Select
+                data={DOC_STATUSES}
+                value={d.status}
+                onChange={(v) => update(i, { status: v || d.status })}
+                size="xs"
+                radius="xl"
+                style={{ flex: 1 }}
+                allowDeselect={false}
+                color={STATUS_COLORS[d.status]}
+                styles={{
+                  input: {
+                    fontWeight: 600,
+                    fontSize: 11,
+                    color: `var(--mantine-color-${STATUS_COLORS[d.status] || "gray"}-7)`,
+                    background: `var(--mantine-color-${STATUS_COLORS[d.status] || "gray"}-0)`,
+                    borderColor: `var(--mantine-color-${STATUS_COLORS[d.status] || "gray"}-3)`,
+                  },
+                }}
+              />
+            </Group>
+            <TextInput value={d.comment} onChange={(e) => update(i, { comment: e.currentTarget.value })} placeholder="Verification comment (optional)" size="xs" radius="md" mt="auto" />
+          </Paper>
         ))}
-      </Stack>
-    </Card>
+      </SimpleGrid>
+    </Box>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Asset switcher
+// Asset switcher — chips to add, EDIT and remove assets offered as security
 // ---------------------------------------------------------------------------
+
+function AssetBaseForm({
+  type,
+  assetId,
+  desc,
+  onTypeChange,
+  onAssetIdChange,
+  onDescChange,
+  descError,
+  onSubmit,
+  onCancel,
+  submitLabel,
+  title,
+}: {
+  type: string;
+  assetId: string;
+  desc: string;
+  onTypeChange: (v: string) => void;
+  onAssetIdChange: (v: string) => void;
+  onDescChange: (v: string) => void;
+  descError: boolean;
+  onSubmit: () => void;
+  onCancel: () => void;
+  submitLabel: string;
+  title: string;
+}) {
+  return (
+    <Paper withBorder radius="md" p={10} bg="gray.0">
+      <Group justify="space-between" align="center" mb={8}>
+        <Text fz={11.5} fw={700} c="dark.6">
+          {title}
+        </Text>
+        <ActionIcon variant="subtle" color="gray" radius="xl" size="xs" onClick={onCancel} aria-label="Close">
+          <IconX size={12} />
+        </ActionIcon>
+      </Group>
+      <Group align="flex-end" gap={8} wrap="wrap">
+        <Select size="xs" label="Asset type" data={DUMMY_ASSET_TYPES} value={type} onChange={(v) => onTypeChange(v || DUMMY_ASSET_TYPES[0])} w={160} radius="md" />
+        <TextInput size="xs" label="Asset ID" value={assetId} onChange={(e) => onAssetIdChange(e.currentTarget.value)} placeholder="e.g. AST-33022" w={140} radius="md" />
+        <TextInput
+          size="xs"
+          label="Description"
+          value={desc}
+          onChange={(e) => onDescChange(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSubmit();
+          }}
+          placeholder="e.g. Stand 4521, Kabwata, Lusaka"
+          style={{ flex: 1, minWidth: 180 }}
+          radius="md"
+          error={descError ? "Required" : undefined}
+        />
+        <Button size="xs" onClick={onSubmit} radius="md">
+          {submitLabel}
+        </Button>
+        <Button size="xs" variant="default" radius="md" onClick={onCancel}>
+          Cancel
+        </Button>
+      </Group>
+    </Paper>
+  );
+}
 
 function AssetSwitcher({
   assets,
   selectedId,
   onSelect,
   onAdd,
+  onEdit,
+  onRemove,
 }: {
   assets: Asset[];
   selectedId: string;
   onSelect: (id: string) => void;
   onAdd: (base: DummyAssetBase) => void;
+  onEdit: (id: string, patch: Partial<DummyAssetBase>) => void;
+  onRemove: (id: string) => void;
 }) {
   const [adding, setAdding] = useState(false);
-  const [newType, setNewType] = useState(DUMMY_ASSET_TYPES[0]);
-  const [newDesc, setNewDesc] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  function submit() {
-    if (!newDesc.trim()) return;
-    onAdd({ type: newType, description: newDesc, assetId: "", location: "", owner: "", acquisition: "" });
+  const [newType, setNewType] = useState(DUMMY_ASSET_TYPES[0]);
+  const [newAssetId, setNewAssetId] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [descError, setDescError] = useState(false);
+
+  function openAdd() {
+    setEditingId(null);
+    setNewType(DUMMY_ASSET_TYPES[0]);
+    setNewAssetId("");
     setNewDesc("");
-    setAdding(false);
+    setDescError(false);
+    setAdding(true);
   }
 
-  return (
-    <Box mb={14}>
-      <Group justify="space-between" mb={8}>
-        <Text fz={13} fw={700} c="dark.7">
-          Assets offered as security ({assets.length})
+  function toggleEdit(a: Asset) {
+    if (editingId === a.id) {
+      setEditingId(null);
+      return;
+    }
+    setAdding(false);
+    setNewType(a.base.type);
+    setNewAssetId(a.base.assetId || "");
+    setNewDesc(a.base.description || "");
+    setDescError(false);
+    setEditingId(a.id);
+    onSelect(a.id);
+  }
+
+  function closeForm() {
+    setAdding(false);
+    setEditingId(null);
+    setNewAssetId("");
+    setNewDesc("");
+    setDescError(false);
+  }
+
+  function submit() {
+    if (!newDesc.trim()) {
+      setDescError(true);
+      return;
+    }
+    if (editingId) {
+      onEdit(editingId, { type: newType, description: newDesc, assetId: newAssetId });
+    } else {
+      onAdd({ type: newType, description: newDesc, assetId: newAssetId, location: "", owner: "", acquisition: "" });
+    }
+    closeForm();
+  }
+
+const editFields = (
+  <Box mt={0}>
+    <Group
+      gap={8}
+      px={14}
+      py={10}
+      bg="brand.0"
+      style={{ borderBottom: "1px solid var(--mantine-color-brand-1)" }}
+    >
+      <ThemeIcon radius="md" size={22} variant="light" color="brand">
+        <IconPencil size={12} />
+      </ThemeIcon>
+      <Text fz={13} fw={700} c="dark.8">
+        {editingId ? "Edit asset" : "Add asset"}
+      </Text>
+    </Group>
+
+    <Group align="flex-end" gap={8} px={14} py={12} wrap="wrap">
+      <Box style={{ flex: "0 0 160px" }}>
+        <Text fz={11} fw={600} c="dark.6" mb={4}>
+          Asset type
         </Text>
-      </Group>
-      <Group gap={8} mb={adding ? 8 : 0} wrap="wrap">
-        {assets.map((a, i) => {
-          const active = a.id === selectedId;
-          return (
-            <UnstyledButton
-              key={a.id}
-              onClick={() => onSelect(a.id)}
-              px={12}
-              py={6}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                borderRadius: 999,
-                border: `1.5px solid ${active ? "var(--mantine-color-brand-6)" : "var(--mantine-color-gray-2)"}`,
-                background: active ? "var(--mantine-color-brand-0)" : "white",
-                boxShadow: active ? "0 1px 4px rgba(67,56,202,0.15)" : "none",
-              }}
-            >
-              <Text fz={12} fw={600} c={active ? "brand.7" : "dark.8"}>
-                Asset {i + 1}: {a.base.description.slice(0, 28)}
-                {a.base.description.length > 28 ? "…" : ""}
-              </Text>
-              <StatusBadge status={a.status} />
-            </UnstyledButton>
-          );
-        })}
-        <Button size="compact-sm" variant="outline" color="brand" radius="md" onClick={() => setAdding(!adding)} styles={{ root: { borderStyle: "dashed" } }}>
-          + Add asset
+        <Select
+          size="xs"
+          data={DUMMY_ASSET_TYPES}
+          value={newType}
+          onChange={(v) => setNewType(v || DUMMY_ASSET_TYPES[0])}
+          radius="md"
+          allowDeselect={false}
+          leftSection={<IconCar size={13} />}
+        />
+      </Box>
+      <Box style={{ flex: "0 0 140px" }}>
+        <Text fz={11} fw={600} c="dark.6" mb={4}>
+          Asset ID
+        </Text>
+        <TextInput size="xs" value={newAssetId} onChange={(e) => setNewAssetId(e.currentTarget.value)} placeholder="e.g. AST-33022" radius="md" />
+      </Box>
+      <Box style={{ flex: 1, minWidth: 180 }}>
+        <Text fz={11} fw={600} c="dark.6" mb={4}>
+          Description
+        </Text>
+        <TextInput
+          size="xs"
+          value={newDesc}
+          onChange={(e) => {
+            setNewDesc(e.currentTarget.value);
+            if (e.currentTarget.value.trim()) setDescError(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submit();
+          }}
+          placeholder="e.g. Stand 4521, Kabwata, Lusaka"
+          radius="md"
+          error={descError ? "Required" : undefined}
+        />
+      </Box>
+      <Group gap={8} wrap="nowrap">
+       
+        <Button color="brand" size="xs" radius="md" onClick={submit}>
+          Save
+        </Button>
+         <Button variant="subtle" color="gray" size="xs" radius="md" onClick={closeForm}>
+          Cancel
         </Button>
       </Group>
-      {adding && (
-        <Paper withBorder radius="md" p="sm" bg="gray.0">
-          <Group align="flex-end" gap={8}>
-            <Select size="xs" label="Asset type" data={DUMMY_ASSET_TYPES} value={newType} onChange={(v) => setNewType(v || DUMMY_ASSET_TYPES[0])} w={180} radius="md" />
-            <TextInput size="xs" label="Description" value={newDesc} onChange={(e) => setNewDesc(e.currentTarget.value)} placeholder="e.g. Stand 4521, Kabwata, Lusaka" style={{ flex: 1 }} radius="md" />
-            <Button onClick={submit} radius="md">
-              Add
-            </Button>
-            <Button variant="default" radius="md" onClick={() => setAdding(false)}>
-              Cancel
-            </Button>
+    </Group>
+  </Box>
+);
+
+  return (
+    <Box mb={10}>
+      <Group justify="space-between" align="center" mb={10}>
+        <Group gap={10}>
+          <ThemeIcon radius="md" size={34} variant="light" color="brand">
+            <IconShieldCheck size={17} />
+          </ThemeIcon>
+          <Text fz={16} fw={700} c="dark.8">
+            Assets offered as security{" "}
+            <Text span c="dimmed" fw={600}>
+              ({assets.length})
+            </Text>
+          </Text>
+        </Group>
+        <Button radius="xl" color="brand" leftSection={<IconPlus size={14} />} onClick={openAdd}>
+          Add asset
+        </Button>
+      </Group>
+
+      <Group gap={8} wrap="wrap" align="flex-start">
+       {assets.map((a, i) => {
+  const isEditing = editingId === a.id;
+  const AssetIcon = (a.base.type || "").toLowerCase().includes("vehicle") ? IconCar : IconBuildingBank;
+  const name = a.base.description ? a.base.description.split(",")[0] : a.base.type || "—";
+  return (
+    <Box key={a.id} style={{ flex: isEditing ? "1 1 100%" : "0 0 auto", maxWidth: isEditing ? "100%" : 340 }}>
+      <Paper withBorder radius="xl" style={{ overflow: "hidden" }}>
+        <Group justify="space-between" align="center" wrap="nowrap" gap={8} px={10} py={6}>
+          <Group gap={8} wrap="nowrap" align="center" style={{ flex: 1, minWidth: 0 }}>
+            <ThemeIcon radius="xl" size={26} variant="light" color="brand" style={{ flexShrink: 0 }}>
+              <AssetIcon size={13} />
+            </ThemeIcon>
+            <Badge size="xs" radius="xl" color="brand" variant="light" style={{ flexShrink: 0 }}>
+              Asset {i + 1}
+            </Badge>
+            <Text fz={12.5} fw={700} c="dark.8" truncate>
+              {name}
+            </Text>
+            {a.base.assetId && (
+              <Text fz={11} c="dimmed" truncate>
+                · {a.base.assetId}
+              </Text>
+            )}
+            <StatusBadge status={a.status} />
           </Group>
+
+          <Group gap={4} wrap="nowrap" style={{ flexShrink: 0 }}>
+            <ActionIcon
+              variant={isEditing ? "filled" : "light"}
+              color="brand"
+              radius="xl"
+              size={24}
+              onClick={() => toggleEdit(a)}
+              title="Edit asset"
+            >
+              <IconPencil size={12} />
+            </ActionIcon>
+            {assets.length > 1 && (
+              <ActionIcon
+                variant="light"
+                color="red"
+                radius="xl"
+                size={24}
+                onClick={() => onRemove(a.id)}
+                title="Remove asset"
+              >
+                <IconTrash size={12} />
+              </ActionIcon>
+            )}
+          </Group>
+        </Group>
+
+        {isEditing && editFields}
+      </Paper>
+    </Box>
+  );
+})}
+      </Group>
+
+      {adding && (
+        <Paper withBorder radius="lg" mt={10} style={{ overflow: "hidden" }}>
+          {editFields}
         </Paper>
       )}
     </Box>
@@ -805,12 +1095,15 @@ interface Readiness {
   blockers: string[];
 }
 
+// All four decision options render with the same light-tint card style and
+// an (unselected) radio circle, so none visually outranks the others —
+// matches the reference layout: colored icon in a filled circle on the
+// left, label + caption stacked beside it, radio indicator on the right.
 function DecisionButton({
   label,
   caption,
   color,
   icon: Icon,
-  active,
   disabled,
   onClick,
 }: {
@@ -818,7 +1111,6 @@ function DecisionButton({
   caption?: string;
   color: string;
   icon: React.FC<any>;
-  active: boolean;
   disabled?: boolean;
   onClick: () => void;
 }) {
@@ -826,49 +1118,716 @@ function DecisionButton({
     <UnstyledButton
       onClick={onClick}
       disabled={disabled}
-      p={10}
+      p={14}
       style={{
         borderRadius: "var(--mantine-radius-md)",
-        border: `1.5px solid var(--mantine-color-${color}-3)`,
-        background: `var(--mantine-color-${color}-0)`,
+        border: "1px solid var(--mantine-color-gray-3)",
+        background: "white",
         textAlign: "left",
-        transition: "transform 120ms ease, box-shadow 120ms ease",
+        transition: "border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease",
+        opacity: disabled ? 0.6 : 1,
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.borderColor = `var(--mantine-color-${color}-5)`;
+          e.currentTarget.style.transform = "translateY(-2px)";
+          e.currentTarget.style.boxShadow = "var(--mantine-shadow-sm)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.borderColor = "var(--mantine-color-gray-3)";
+          e.currentTarget.style.transform = "none";
+          e.currentTarget.style.boxShadow = "none";
+        }
       }}
     >
-      <ThemeIcon radius="xl" size={24} variant="light" color={color} mb={6}>
-        <Icon size={14} />
-      </ThemeIcon>
-      <Text fz={12.5} fw={700} c={`${color}.8`}>
-        {label}
-      </Text>
-      {caption && (
-        <Text fz={10.5} c="dimmed" mt={2}>
-          {caption}
-        </Text>
-      )}
+      <Group gap={12} wrap="nowrap" align="center">
+        <ThemeIcon radius="md" size={32} variant="light" color={color}>
+          <Icon size={18} />
+        </ThemeIcon>
+        <Box>
+          <Text fz={13} fw={600} c="dark.8">
+            {label}
+          </Text>
+          {caption && (
+            <Text fz={11} c="dimmed" mt={2} lh={1.2}>
+              {caption}
+            </Text>
+          )}
+        </Box>
+      </Group>
     </UnstyledButton>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Underwriting workspace
+// Asset Validation accordion card — one per asset. Each card owns its own
+// expand/collapse state and its own active sub-tab (Asset Details /
+// Valuation & Verification / Supporting Documents / Underwriter Notes /
+// Conclusion & Decision), so multiple assets can be reviewed side by side
+// without a separate asset switcher.
 // ---------------------------------------------------------------------------
+
+function AssetListItem({
+  asset,
+  index,
+  onClick,
+  onRemove,
+  onUpdateBase,
+  titleBadgeLabel,
+}: {
+  asset: Asset;
+  index: number;
+  onClick: () => void;
+  onRemove: () => void;
+  onUpdateBase: (patch: Partial<DummyAssetBase>) => void;
+  titleBadgeLabel: string;
+}) {
+  const [editingBase, setEditingBase] = useState(false);
+  const AssetIcon = (asset.base.type || "").toLowerCase().includes("vehicle") ? IconCar : IconBuildingBank;
+  const name = asset.base.description ? asset.base.description.split(",")[0] : asset.base.type || "�";
+
+  return (
+    <>
+      <Paper
+        withBorder
+        radius="md"
+        mb={8}
+        onClick={onClick}
+        style={{
+          borderLeftWidth: 4,
+          borderLeftColor: "var(--mantine-color-brand-6)",
+          cursor: "pointer",
+          transition: "transform 150ms ease, box-shadow 150ms ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "translateY(-1px)";
+          e.currentTarget.style.boxShadow = "var(--mantine-shadow-sm)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "none";
+          e.currentTarget.style.boxShadow = "none";
+        }}
+      >
+        <Group justify="space-between" align="center" wrap="nowrap" px={14} py={8}>
+          <Group gap={12} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+            <ThemeIcon radius="md" size={30} variant="light" color="brand">
+              <AssetIcon size={16} />
+            </ThemeIcon>
+            <Box style={{ minWidth: 0 }}>
+              <Group gap={8} wrap="nowrap" align="center">
+                <Badge size="xs" radius="xl" color="brand" variant="light" style={{ flexShrink: 0 }}>
+                  {titleBadgeLabel} {index + 1}
+                </Badge>
+                <Text fz={13.5} fw={700} c="dark.8" truncate lh={1.2}>
+                  {name}
+                </Text>
+              </Group>
+              {asset.base.assetId && (
+                <Text fz={11.5} c="dimmed" mt={3} truncate lh={1.1}>
+                  {asset.base.assetId}
+                </Text>
+              )}
+            </Box>
+          </Group>
+          <Group gap={10} wrap="nowrap" style={{ flexShrink: 0 }}>
+            <StatusBadge status={asset.status} />
+            <ActionIcon variant="subtle" color="gray" size="sm" onClick={(e) => { e.stopPropagation(); setEditingBase(!editingBase); }} title="Edit basic info">
+              <IconPencil size={15} />
+            </ActionIcon>
+            <ActionIcon variant="subtle" color="red" size="sm" onClick={(e) => { e.stopPropagation(); onRemove(); }} title="Remove">
+              <IconTrash size={15} />
+            </ActionIcon>
+            <IconChevronRight size={16} color="var(--mantine-color-gray-4)" />
+          </Group>
+        </Group>
+      </Paper>
+      {editingBase && (
+        <Paper withBorder radius="md" p="md" mb={12} mt={-4} bg="gray.0">
+          <AssetBaseForm
+            type={asset.base.type}
+            assetId={asset.base.assetId || ""}
+            desc={asset.base.description || ""}
+            onTypeChange={(t) => onUpdateBase({ type: t })}
+            onAssetIdChange={(i) => onUpdateBase({ assetId: i })}
+            onDescChange={(d) => onUpdateBase({ description: d })}
+            descError={false}
+            onSubmit={() => setEditingBase(false)}
+            onCancel={() => setEditingBase(false)}
+            submitLabel="Save changes"
+            title="Edit Basic Info"
+          />
+        </Paper>
+      )}
+    </>
+  );
+}
+
+function AssetDetailView({
+  asset,
+  finalAmount,
+  panel,
+  notes,
+  setNotes,
+  onUpdate,
+}: {
+  asset: Asset;
+  finalAmount: number;
+  panel: PanelId;
+  notes: string;
+  setNotes: (v: string) => void;
+  onUpdate: (patch: Partial<Asset>) => void;
+}) {
+  const coverage = asset.valuation.amount ? Math.round((Number(asset.valuation.amount) / finalAmount) * 100) : null;
+  const valuationBadge =
+    asset.status === "Passed"
+      ? { color: "green", label: "Valuation verified" }
+      : ["Failed", "Exception"].includes(asset.status)
+      ? { color: "red", label: "Valuation flagged" }
+      : { color: "orange", label: "Valuation pending" };
+
+  const requiredAssetDocs = asset.docs.filter((d) => d.tier === "required");
+  const missingAssetDocs = requiredAssetDocs.filter((d) => d.status !== "Verified");
+  const assetValidationStatus = asset.status === "Passed" ? "Passed" : asset.status === "Failed" ? "Failed" : "Review Required";
+  const assetValuationStatus = asset.status === "Passed" ? "Verified" : "Pending";
+  const assetDocsStatus = missingAssetDocs.length === 0 ? "Complete" : "Incomplete";
+
+  return (
+    <Box px={16} pt={16} pb={12}>
+      {panel === "assetDetails" && (
+        <Box>
+          <SectionLabel color="brand.8" icon={IconInfoCircle}>Basic Information</SectionLabel>
+          <SimpleGrid cols={3} spacing={24} mt={16} mb={24}>
+            <ReadRow label="Asset type" value={asset.base.type || "�"} />
+            <ReadRow label="Asset ID" value={asset.base.assetId || "�"} />
+            <ReadRow label="Description" value={asset.base.description || "�"} />
+          </SimpleGrid>
+
+          <Group
+            gap={12}
+            p={12}
+            mb={24}
+            bg={asset.kycVerified ? "brand.0" : "gray.0"}
+            style={{ border: `1px solid var(--mantine-color-${asset.kycVerified ? "brand" : "gray"}-2)`, borderRadius: 9 }}
+            wrap="nowrap"
+            align="center"
+          >
+            <IconInfoCircle size={13} color="var(--mantine-color-brand-6)" style={{ flexShrink: 0 }} />
+            <Text fz={11} lh={1.3} c="dark.6" style={{ flex: 1 }}>
+              Confirm the owner's KYC has been completed and verified for this asset.
+            </Text>
+            <Checkbox
+              checked={asset.kycVerified}
+              onChange={(e) => onUpdate({ kycVerified: e.currentTarget.checked })}
+              label="KYC verified"
+              size="xs"
+              styles={{ label: { fontSize: 11.5 } }}
+            />
+          </Group>
+        </Box>
+      )}
+
+      {panel === "valuation" && (
+        <Box>
+          <Group justify="space-between" mb={16} mt={6} align="center">
+                <SectionLabel color="brand.8" icon={IconCar}>Asset Valuation</SectionLabel>
+                <Badge size="sm" radius="xl" color={valuationBadge.color} variant="light" leftSection={<IconAlertTriangle size={11} />}>
+                  {valuationBadge.label}
+                </Badge>
+            </Group>
+            <SimpleGrid cols={2} spacing={20} mb={8}>
+              <Box>
+                <SimpleGrid cols={2} spacing={8}>
+                <NumberInput
+                  size="xs"
+                  label="Valuation amount"
+                  value={asset.valuation.amount ? Number(asset.valuation.amount) : undefined}
+                  onChange={(v) => onUpdate({ valuation: { ...asset.valuation, amount: v ? String(v) : "" } })}
+                  placeholder="e.g. 95000"
+                  prefix="ZMW "
+                  radius="md"
+                  thousandSeparator=","
+                />
+                <Select
+                  size="xs"
+                  label="Valuation method"
+                  value={asset.valuation.method}
+                  onChange={(v) => onUpdate({ valuation: { ...asset.valuation, method: v || asset.valuation.method } })}
+                  data={["Market comparison", "Cost approach", "Income approach"]}
+                  radius="md"
+                />
+                <NumberInput
+                  size="xs"
+                  label="Market value"
+                  value={asset.valuation.marketValue ? Number(asset.valuation.marketValue) : undefined}
+                  onChange={(v) => onUpdate({ valuation: { ...asset.valuation, marketValue: v ? String(v) : "" } })}
+                  placeholder="e.g. 98000"
+                  prefix="ZMW "
+                  radius="md"
+                  thousandSeparator=","
+                />
+                <NumberInput
+                  size="xs"
+                  label="Forced sale value"
+                  value={asset.valuation.forcedSaleValue ? Number(asset.valuation.forcedSaleValue) : undefined}
+                  onChange={(v) => onUpdate({ valuation: { ...asset.valuation, forcedSaleValue: v ? String(v) : "" } })}
+                  placeholder="e.g. 76000"
+                  prefix="ZMW "
+                  radius="md"
+                  thousandSeparator=","
+                />
+              </SimpleGrid>
+            </Box>
+            <Box style={{ borderLeft: "1px solid var(--mantine-color-gray-2)", paddingLeft: 20 }}>
+              <Stack gap={8} h="100%">
+                <Textarea
+                  size="xs"
+                  label="Valuation notes"
+                  value={asset.valuation.notes}
+                  onChange={(e) => onUpdate({ valuation: { ...asset.valuation, notes: e.currentTarget.value } })}
+                  placeholder="Condition, mileage, any relevant observations…"
+                  minRows={coverage != null ? 5 : 7}
+                  radius="md"
+                  style={{ flex: 1 }}
+                />
+                {coverage != null && (
+                  <Paper bg="brand.0" p={8} radius="md" style={{ border: "1px solid var(--mantine-color-brand-2)" }}>
+                    <Stack gap={6}>
+                      <MiniStat label="This asset's value" value={zmw(asset.valuation.amount)} />
+                      <MiniStat label="Final loan amount" value={zmw(finalAmount)} />
+                      <MiniStat label="Coverage" value={`${coverage}%`} accent={coverage < 120} />
+                    </Stack>
+                  </Paper>
+                )}
+              </Stack>
+            </Box>
+          </SimpleGrid>
+
+          <Divider mb={6} />
+          <SimpleGrid cols={2} spacing={20}>
+            <Box>
+              <SectionLabel color="brand.8" icon={IconUserCheck}>Valuer information</SectionLabel>
+              <SimpleGrid cols={2} spacing={8} mt={6} mb={6}>
+                <TextInput size="xs" label="Valuer name" value={asset.valuer.name} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, name: e.currentTarget.value } })} placeholder="e.g. K. Zulu" radius="md" />
+                <TextInput size="xs" label="Valuer / company" value={asset.valuer.company} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, company: e.currentTarget.value } })} placeholder="e.g. Apex Valuers Ltd" radius="md" />
+                <TextInput size="xs" label="License number" value={asset.valuer.license} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, license: e.currentTarget.value } })} placeholder="e.g. VAL-2321" radius="md" />
+                <TextInput size="xs" label="Contact" value={asset.valuer.contact} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, contact: e.currentTarget.value } })} placeholder="Phone or email" radius="md" />
+              </SimpleGrid>
+              <Group
+                gap={8}
+                p={5}
+                bg={asset.valuer.verified ? "brand.0" : "gray.0"}
+                style={{ border: `1px solid var(--mantine-color-${asset.valuer.verified ? "brand" : "gray"}-2)`, borderRadius: 9 }}
+                wrap="nowrap"
+                align="center"
+              >
+                <IconInfoCircle size={13} color="var(--mantine-color-brand-6)" style={{ flexShrink: 0 }} />
+                <Text fz={11} lh={1.3} c="dark.6" style={{ flex: 1 }}>
+                  Confirm the valuer meets the configured panel requirement.
+                </Text>
+                <Checkbox
+                  checked={asset.valuer.verified}
+                  onChange={(e) => onUpdate({ valuer: { ...asset.valuer, verified: e.currentTarget.checked } })}
+                  label="Confirmed"
+                  size="xs"
+                  styles={{ label: { fontSize: 11.5 } }}
+                />
+              </Group>
+            </Box>
+
+            <Box style={{ borderLeft: "1px solid var(--mantine-color-gray-2)", paddingLeft: 20 }}>
+              <Group justify="space-between" mb={6}>
+                <SectionLabel color="brand.8" icon={IconCalendarEvent}>Valuation date &amp; status</SectionLabel>
+                <Select data={CHECK_STATUSES} value={asset.status} onChange={(v) => onUpdate({ status: v || asset.status })} size="xs" radius="xl" w={140} allowDeselect={false} />
+              </Group>
+              <Stack gap={4}>
+                <TextInput size="xs" type="date" label="Valuation date" value={asset.valuationDate} onChange={(e) => onUpdate({ valuationDate: e.currentTarget.value })} radius="md" />
+                <Box mt={10}>
+                  <Text fz={12} fw={500} c="dark.6" mb={5}>
+                    Validity
+                  </Text>
+                  <ValidityNote date={asset.valuationDate} days={asset.expiryDays} />
+                </Box>
+              </Stack>
+              {["Failed", "Exception"].includes(asset.status) && (
+                <Textarea
+                  size="xs"
+                  label="Finding / reason (required)"
+                  value={asset.reason}
+                  onChange={(e) => onUpdate({ reason: e.currentTarget.value })}
+                  placeholder="Explain why the valuation failed or is an exception…"
+                  minRows={1}
+                  radius="md"
+                  mt={8}
+                />
+              )}
+            </Box>
+          </SimpleGrid>
+        </Box>
+      )}
+
+      {panel === "assetDocs" && (
+        <DocumentsTable title="" docs={asset.docs} setDocs={(docs) => onUpdate({ docs })} />
+      )}
+
+      {panel === "notes" && (
+        <Box>
+          
+          <Textarea
+            size="xs"
+            value={notes}
+            onChange={(e) => setNotes(e.currentTarget.value)}
+            placeholder="General comments, findings, risks, exceptions and recommendations that apply across the review…"
+            minRows={2}
+            radius="md"
+          />
+          <Text fz={11} c="dimmed" mt={6}>
+            Shared across all assets and tabs, and included in the underwriting audit trail.
+          </Text>
+        </Box>
+      )}
+
+      {panel === "assetConclusion" && (
+        <Box>
+          <SectionLabel color="brand.8" icon={IconShieldCheck}>Validation Summary</SectionLabel>
+          <SimpleGrid cols={3} spacing={8} mt={6} mb={10}>
+            <Box
+              p={10}
+              bg={assetValidationStatus === "Passed" ? "green.0" : assetValidationStatus === "Failed" ? "red.0" : "orange.0"}
+              style={{
+                borderRadius: "var(--mantine-radius-md)",
+                border: `1px solid var(--mantine-color-${assetValidationStatus === "Passed" ? "green" : assetValidationStatus === "Failed" ? "red" : "orange"}-3)`,
+                borderLeftWidth: 3,
+                borderLeftColor: `var(--mantine-color-${assetValidationStatus === "Passed" ? "green" : assetValidationStatus === "Failed" ? "red" : "orange"}-6)`,
+              }}
+            >
+              <Text fz={9.5} fw={700} tt="uppercase" c={assetValidationStatus === "Passed" ? "green.7" : assetValidationStatus === "Failed" ? "red.7" : "orange.7"}>
+                Asset Validation
+              </Text>
+              <Text fz={14} fw={700} c="dark.8" mt={1}>
+                {assetValidationStatus}
+              </Text>
+            </Box>
+            <Box
+              p={10}
+              bg={assetValuationStatus === "Verified" ? "green.0" : "orange.0"}
+              style={{
+                borderRadius: "var(--mantine-radius-md)",
+                border: `1px solid var(--mantine-color-${assetValuationStatus === "Verified" ? "green" : "orange"}-3)`,
+                borderLeftWidth: 3,
+                borderLeftColor: `var(--mantine-color-${assetValuationStatus === "Verified" ? "green" : "orange"}-6)`,
+              }}
+            >
+              <Text fz={9.5} fw={700} c={assetValuationStatus === "Verified" ? "green.7" : "orange.7"} tt="uppercase">
+                Valuation
+              </Text>
+              <Text fz={14} fw={700} c="dark.8" mt={1}>
+                {assetValuationStatus}
+              </Text>
+            </Box>
+            <Box
+              p={10}
+              bg={assetDocsStatus === "Complete" ? "green.0" : "orange.0"}
+              style={{
+                borderRadius: "var(--mantine-radius-md)",
+                border: `1px solid var(--mantine-color-${assetDocsStatus === "Complete" ? "green" : "orange"}-3)`,
+                borderLeftWidth: 3,
+                borderLeftColor: `var(--mantine-color-${assetDocsStatus === "Complete" ? "green" : "orange"}-6)`,
+              }}
+            >
+              <Text fz={9.5} fw={700} c={assetDocsStatus === "Complete" ? "green.7" : "orange.7"} tt="uppercase">
+                Documents
+              </Text>
+              <Text fz={14} fw={700} c="dark.8" mt={1}>
+                {assetDocsStatus}
+              </Text>
+            </Box>
+          </SimpleGrid>
+
+          <Divider my={10} />
+
+          <SectionLabel color="brand.8" icon={IconGavel}>Final Decision</SectionLabel>
+          <SimpleGrid cols={4} spacing={16} mt={6} mb={10}>
+            <Select
+              size="xs"
+              label="Assignee"
+              data={["Internal team", "Legal"]}
+              value={asset.assetAssignee}
+              onChange={(v) => onUpdate({ assetAssignee: v || asset.assetAssignee })}
+              radius="md"
+            />
+          </SimpleGrid>
+
+          {!asset.assetDecision ? (
+            <SimpleGrid cols={4} spacing={8}>
+              <DecisionButton label="Approve / Proceed" caption="No conditions" color="green" icon={IconCircleCheck} onClick={() => onUpdate({ assetDecision: "approve" })} />
+              <DecisionButton label="Approve with Conditions" caption="Add pre-disbursement terms" color="orange" icon={IconAlertTriangle} onClick={() => onUpdate({ assetDecision: "conditions" })} />
+              <DecisionButton label="Refer / Further Revision" caption="Send back for more info" color="brand" icon={IconArrowRight} onClick={() => onUpdate({ assetDecision: "refer" })} />
+              <DecisionButton label="Reject" caption="Close this asset" color="red" icon={IconCircleX} onClick={() => onUpdate({ assetDecision: "reject" })} />
+            </SimpleGrid>
+          ) : (
+            <Box>
+              <Group justify="space-between" mb={10}>
+                <Text fz={13} fw={700} c="dark.8">
+                  {DECISION_LABEL[asset.assetDecision]}
+                </Text>
+                <Button variant="subtle" size="compact-sm" onClick={() => onUpdate({ assetDecision: null })}>
+                  Change decision
+                </Button>
+              </Group>
+
+              {asset.assetDecision === "conditions" && (
+                <Box mb={12}>
+                  <Divider mb={10} />
+                  {asset.assetConditions.map((c, i) => (
+                    <Group key={i} align="flex-end" gap={10} mb={8} wrap="nowrap">
+                      <TextInput
+                        size="xs"
+                        label="Condition"
+                        value={c.condition}
+                        onChange={(e) =>
+                          onUpdate({
+                            assetConditions: asset.assetConditions.map((cc, idx) => (idx === i ? { ...cc, condition: e.currentTarget.value } : cc)),
+                          })
+                        }
+                        placeholder="e.g. Provide updated valuation report"
+                        style={{ flex: 2 }}
+                        radius="md"
+                      />
+                      <Select
+                        size="xs"
+                        label="Responsible party"
+                        value={c.responsible}
+                        onChange={(v) =>
+                          onUpdate({
+                            assetConditions: asset.assetConditions.map((cc, idx) => (idx === i ? { ...cc, responsible: v || cc.responsible } : cc)),
+                          })
+                        }
+                        data={["Customer", "Internal", "Legal"]}
+                        style={{ flex: 1 }}
+                        radius="md"
+                      />
+                      <Select
+                        size="xs"
+                        label="Due before"
+                        value={c.dueBefore}
+                        onChange={(v) =>
+                          onUpdate({
+                            assetConditions: asset.assetConditions.map((cc, idx) => (idx === i ? { ...cc, dueBefore: v || cc.dueBefore } : cc)),
+                          })
+                        }
+                        data={["Disbursement", "Offer", "Documentation"]}
+                        style={{ flex: 1 }}
+                        radius="md"
+                      />
+                      <ActionIcon
+                        variant="default"
+                        color="red"
+                        size="lg"
+                        onClick={() => onUpdate({ assetConditions: asset.assetConditions.filter((_, idx) => idx !== i) })}
+                      >
+                        <IconX size={14} />
+                      </ActionIcon>
+                    </Group>
+                  ))}
+                  <Button
+                    variant="light"
+                    size="compact-sm"
+                    radius="md"
+                    onClick={() =>
+                      onUpdate({ assetConditions: [...asset.assetConditions, { condition: "", responsible: "Customer", dueBefore: "Disbursement" }] })
+                    }
+                  >
+                    + Add condition
+                  </Button>
+                </Box>
+              )}
+
+              {(asset.assetDecision === "refer" || asset.assetDecision === "reject") && (
+                <Box mb={12}>
+                  <Divider mb={10} />
+                  <Text fz={11} fw={600} c="dimmed" tt="uppercase" mb={8}>
+                    Reason
+                  </Text>
+                  <Group gap={8} wrap="wrap">
+                    {REJECT_REASONS.map((r) => (
+                      <Button
+                        key={r}
+                        size="compact-sm"
+                        radius="xl"
+                        variant={asset.assetReasonCategory === r ? "light" : "outline"}
+                        color={asset.assetReasonCategory === r ? "brand" : "gray"}
+                        onClick={() => onUpdate({ assetReasonCategory: r })}
+                      >
+                        {r}
+                      </Button>
+                    ))}
+                  </Group>
+                </Box>
+              )}
+
+              <Divider mb={10} />
+              <Textarea
+                size="xs"
+                label="Decision remarks — final reason / justification"
+                value={asset.assetReasonDetail}
+                onChange={(e) => onUpdate({ assetReasonDetail: e.currentTarget.value })}
+                placeholder="Add the justification for this asset's decision…"
+                minRows={2}
+                radius="md"
+              />
+            </Box>
+          )}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+function LegalDetailView({
+  asset,
+  panel,
+  notes,
+  setNotes,
+  onUpdate,
+  onUpdateChecklist,
+  onUpdateLegalCheck,
+}: {
+  asset: Asset;
+  panel: PanelId;
+  notes: string;
+  setNotes: (v: string) => void;
+  onUpdate: (patch: Partial<Asset>) => void;
+  onUpdateChecklist: (itemId: string, patch: Partial<TitleChecklistItem>) => void;
+  onUpdateLegalCheck: (checkId: string, patch: Partial<LegalCheck>) => void;
+}) {
+  return (
+    <Box px={16} pt={16} pb={12}>
+      {panel === "legal" && (
+        <Box>
+          
+          <SimpleGrid cols={4} spacing={20} mt={16} mb={16}>
+            <TextInput size="xs" label="Verifier name" value={asset.legalVerifier.name} onChange={(e) => onUpdate({ legalVerifier: { ...asset.legalVerifier, name: e.currentTarget.value } })} placeholder="e.g. M. Tembo" radius="md" />
+            <TextInput size="xs" label="Company / firm" value={asset.legalVerifier.company} onChange={(e) => onUpdate({ legalVerifier: { ...asset.legalVerifier, company: e.currentTarget.value } })} placeholder="e.g. Tembo & Associates" radius="md" />
+            <TextInput size="xs" label="Role" value={asset.legalVerifier.role} onChange={(e) => onUpdate({ legalVerifier: { ...asset.legalVerifier, role: e.currentTarget.value } })} placeholder="e.g. Internal legal officer" radius="md" />
+            <TextInput size="xs" label="License number" value={asset.legalVerifier.license} onChange={(e) => onUpdate({ legalVerifier: { ...asset.legalVerifier, license: e.currentTarget.value } })} placeholder="e.g. LZ-4471" radius="md" />
+          </SimpleGrid>
+
+          <Divider my={10} />
+
+          <SimpleGrid cols={2} spacing={20}>
+            <Box>
+              <SectionLabel color="brand.8" icon={IconScale}>Legal verification</SectionLabel>
+              <Box mt={6}>
+                {asset.titleChecklist.map((item) => (
+                  <CompactCheckRow
+                    key={item.id}
+                    label={item.label}
+                    checked={item.status === "Passed"}
+                    exception={["Failed", "Exception"].includes(item.status)}
+                    note={item.comment}
+                    onToggle={() => onUpdateChecklist(item.id, { status: item.status === "Passed" ? "Pending" : "Passed" })}
+                    onFlag={() => onUpdateChecklist(item.id, { status: ["Failed", "Exception"].includes(item.status) ? "Pending" : "Exception" })}
+                    onNoteChange={(v) => onUpdateChecklist(item.id, { comment: v })}
+                  />
+                ))}
+              </Box>
+            </Box>
+
+            <Box style={{ borderLeft: "1px solid var(--mantine-color-gray-2)", paddingLeft: 20 }}>
+              <Group justify="space-between" mb={4}>
+                <SectionLabel color="brand.8" icon={IconScale}>Legal checks</SectionLabel>
+                <Text fz={10.5} c="dimmed">
+                  for {asset.base.type}
+                </Text>
+              </Group>
+              {asset.legalChecks.map((c) => (
+                <CompactCheckRow
+                  key={c.id}
+                  label={c.name}
+                  checked={c.status === "Passed"}
+                  exception={["Failed", "Exception"].includes(c.status)}
+                  note={c.comment}
+                  onToggle={() => onUpdateLegalCheck(c.id, { status: c.status === "Passed" ? "Pending" : "Passed" })}
+                  onFlag={() => onUpdateLegalCheck(c.id, { status: ["Failed", "Exception"].includes(c.status) ? "Pending" : "Exception" })}
+                  onNoteChange={(v) => onUpdateLegalCheck(c.id, { comment: v })}
+                />
+              ))}
+            </Box>
+          </SimpleGrid>
+        </Box>
+      )}
+
+      {panel === "legalDocs" && <DocumentsTable title="" docs={asset.titleDocs} setDocs={(titleDocs) => onUpdate({ titleDocs })} />}
+
+      {panel === "notes" && (
+        <Box>
+          
+          <Textarea
+            size="xs"
+            value={notes}
+            onChange={(e) => setNotes(e.currentTarget.value)}
+            placeholder="General comments, findings, risks, exceptions and recommendations that apply across the review…"
+            minRows={2}
+            radius="md"
+          />
+          <Text fz={11} c="dimmed" mt={6}>
+            Shared across all assets and tabs, and included in the underwriting audit trail.
+          </Text>
+        </Box>
+      )}
+    </Box>
+  );
+}
 
 function UnderwritingWorkspace({
   finalAmount,
+  applicationId,
+  loanTypeLabel,
+  onBack,
   onSubmitReady,
+  tab: tabProp,
+  onTabChange,
 }: {
   finalAmount: number;
   applicationId: string;
   loanTypeLabel: string;
   onBack?: () => void;
   onSubmitReady?: (canSubmit: boolean, submit: () => void) => void;
+  tab?: TabId;
+  onTabChange?: (t: TabId) => void;
 }) {
-  const [tab, setTab] = useState<"asset" | "legal">("asset");
+  const [internalTab, setInternalTab] = useState<TabId>("asset");
+  const tab = tabProp ?? internalTab;
+  const setTab = (t: TabId) => (onTabChange ? onTabChange(t) : setInternalTab(t));
+  const isControlled = !!onTabChange;
+
+  const steps = TAB_ITEMS.find((t) => t.id === tab)?.steps ?? TAB_ITEMS[0].steps;
+  const [panel, setPanelRaw] = useState<PanelId>(steps[0]);
+
+  const [assetViewMode, setAssetViewMode] = useState<'list'|'detail'>('list');
+  const [legalViewMode, setLegalViewMode] = useState<'list'|'detail'|'conclusion'>('list');
+
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [selectedLegalId, setSelectedLegalId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPanelRaw(steps[0]);
+    // Reset view mode when switching main tabs
+    if (tab === 'asset') {
+      if (selectedAssetId) setAssetViewMode('detail');
+      else setAssetViewMode('list');
+    } else {
+      if (selectedLegalId) setLegalViewMode('detail');
+      else setLegalViewMode('list');
+    }
+  }, [tab]);
+  const setPanel = (id: PanelId) => setPanelRaw(id);
+
   const [assets, setAssets] = useState<Asset[]>(() => [makeSeedAsset()]);
-  const [selectedId, setSelectedId] = useState<string>(() => assets[0]?.id ?? "");
   const [notes, setNotes] = useState("");
-  const [assignee, setAssignee] = useState("ZMW");
+  const [assignee, setAssignee] = useState("Internal team");
   const [decisionStatus, setDecisionStatus] = useState("Review Required");
   const [decision, setDecision] = useState<Decision>(null);
   const [conditions, setConditions] = useState<Condition[]>([]);
@@ -876,18 +1835,38 @@ function UnderwritingWorkspace({
   const [reasonDetail, setReasonDetail] = useState("");
   const [completed, setCompleted] = useState(false);
 
-  const selected = assets.find((a) => a.id === selectedId) || assets[0];
+  const [addingAsset, setAddingAsset] = useState(false);
+  const [newAssetType, setNewAssetType] = useState(DUMMY_ASSET_TYPES[0]);
+  const [newAssetIdField, setNewAssetIdField] = useState("");
+  const [newAssetDesc, setNewAssetDesc] = useState("");
+  const [newAssetDescError, setNewAssetDescError] = useState(false);
+
+  const selectedAsset = assets.find((a) => a.id === selectedAssetId);
+  const selectedLegal = assets.find((a) => a.id === selectedLegalId);
 
   function updateAsset(id: string, patch: Partial<Asset>) {
     setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
   }
-  function updateSelected(patch: Partial<Asset>) {
-    updateAsset(selected.id, patch);
-  }
   function addAsset(base: DummyAssetBase) {
     const a = makeAsset("manual", { ...base, owner: base.owner || "" });
     setAssets((prev) => [...prev, a]);
-    setSelectedId(a.id);
+    setAddingAsset(false);
+  }
+  function editAssetBase(id: string, patch: Partial<DummyAssetBase>) {
+    const asset = assets.find((a) => a.id === id);
+    if (!asset) return;
+    updateAsset(id, { base: { ...asset.base, ...patch } });
+  }
+  function removeAsset(id: string) {
+    setAssets((prev) => prev.filter((a) => a.id !== id));
+    if (selectedAssetId === id) {
+      setSelectedAssetId(null);
+      setAssetViewMode('list');
+    }
+    if (selectedLegalId === id) {
+      setSelectedLegalId(null);
+      setLegalViewMode('list');
+    }
   }
   function updateChecklist(assetId: string, itemId: string, patch: Partial<TitleChecklistItem>) {
     const asset = assets.find((a) => a.id === assetId);
@@ -908,8 +1887,21 @@ function UnderwritingWorkspace({
   function removeCondition(i: number) {
     setConditions((prev) => prev.filter((_, idx) => idx !== i));
   }
+  function openAddAsset() {
+    setNewAssetType(DUMMY_ASSET_TYPES[0]);
+    setNewAssetIdField("");
+    setNewAssetDesc("");
+    setNewAssetDescError(false);
+    setAddingAsset(true);
+  }
+  function submitNewAsset() {
+    if (!newAssetDesc.trim()) {
+      setNewAssetDescError(true);
+      return;
+    }
+    addAsset({ type: newAssetType, description: newAssetDesc, assetId: newAssetIdField, location: "", owner: "", acquisition: "" });
+  }
 
-  const coverage = selected.valuation.amount ? Math.round((Number(selected.valuation.amount) / finalAmount) * 100) : null;
   const totalAssetValue = assets.reduce((sum, a) => sum + (Number(a.valuation.amount) || 0), 0);
   const totalCoverage = totalAssetValue ? Math.round((totalAssetValue / finalAmount) * 100) : null;
 
@@ -968,14 +1960,7 @@ function UnderwritingWorkspace({
   const canSubmit = completed;
   useEffect(() => {
     onSubmitReady?.(canSubmit, () => {});
-  }, [canSubmit]);
-
-  const valuationBadge =
-    selected.status === "Passed"
-      ? { color: "green", label: "Valuation verified" }
-      : ["Failed", "Exception"].includes(selected.status)
-      ? { color: "red", label: "Valuation flagged" }
-      : { color: "orange", label: "Valuation pending" };
+  }, [canSubmit, onSubmitReady]);
 
   if (completed) {
     return (
@@ -995,388 +1980,735 @@ function UnderwritingWorkspace({
   }
 
   return (
-    <Box p={18}>
-      {/* Asset switcher */}
-      <AssetSwitcher assets={assets} selectedId={selected.id} onSelect={setSelectedId} onAdd={addAsset} />
-
-      {/* Tabs */}
-      <Paper withBorder radius="xl" p={4} mb={14} bg="gray.0">
-        <Group gap={4}>
-          <UnstyledButton
-            onClick={() => setTab("asset")}
-            px={14}
-            py={6}
-            style={{
-              borderRadius: 999,
-              background: tab === "asset" ? "white" : "transparent",
-              boxShadow: tab === "asset" ? "0 1px 3px rgba(16,24,40,0.08)" : "none",
-              flex: 1,
-              transition: "background 120ms ease",
-            }}
-          >
-            <Group gap={7} justify="center">
-              <IconCircleCheck size={14} color={tab === "asset" ? "var(--mantine-color-brand-7)" : "var(--mantine-color-gray-5)"} />
-              <Text fz={12.5} fw={tab === "asset" ? 700 : 500} c={tab === "asset" ? "brand.7" : "dark.5"}>
-                Asset Validation
-              </Text>
-            </Group>
-          </UnstyledButton>
-          <UnstyledButton
-            onClick={() => setTab("legal")}
-            px={14}
-            py={6}
-            style={{
-              borderRadius: 999,
-              background: tab === "legal" ? "white" : "transparent",
-              boxShadow: tab === "legal" ? "0 1px 3px rgba(16,24,40,0.08)" : "none",
-              flex: 1,
-              transition: "background 120ms ease",
-            }}
-          >
-            <Group gap={7} justify="center">
-              <IconShieldCheck size={14} color={tab === "legal" ? "var(--mantine-color-brand-7)" : "var(--mantine-color-gray-5)"} />
-              <Text fz={12.5} fw={tab === "legal" ? 700 : 500} c={tab === "legal" ? "brand.7" : "dark.5"}>
-                Legal &amp; Title Verification
-              </Text>
-            </Group>
-          </UnstyledButton>
-        </Group>
-      </Paper>
-
-      <Stack gap={10}>
-        {tab === "asset" && (
-          <>
-            <Card
-              icon={IconUserCircle}
-              title="Borrower Details"
-              color="indigo"
-              right={
-                <Group gap={10}>
-                  <SourceBadge source={selected.source} />
-                  <Checkbox size="xs"
-                    checked={selected.kycVerified}
-                    onChange={(e) => updateSelected({ kycVerified: e.currentTarget.checked })}
-                    label={
-                      <Text fz={12} fw={600} c={selected.kycVerified ? "green.7" : "dimmed"}>
-                        KYC Verified
-                      </Text>
-                    }
-                  />
-                </Group>
-              }
-            >
-              {selected.source === "application" ? (
-                <>
-                  <SimpleGrid cols={4} spacing={8}>
-                    <ReadRow label="Asset Type" value={selected.base.type} />
-                    <ReadRow label="Asset ID" value={selected.base.assetId} />
-                    <ReadRow label="Location" value={selected.base.location} />
-                    <ReadRow label="Owner" value={selected.base.owner} />
-                  </SimpleGrid>
-                  <SimpleGrid cols={2} spacing={8} mt={8}>
-                    <ReadRow label="Description" value={selected.base.description} />
-                    <ReadRow label="Acquisition information" value={selected.base.acquisition} />
-                  </SimpleGrid>
-                </>
-              ) : (
-                <>
-                  <SimpleGrid cols={4} spacing={8}>
-                    <Select size="xs" label="Asset type" value={selected.base.type} onChange={(v) => updateSelected({ base: { ...selected.base, type: v || selected.base.type } })} data={DUMMY_ASSET_TYPES} radius="md" />
-                    <TextInput size="xs" label="Asset ID / reference" value={selected.base.assetId} onChange={(e) => updateSelected({ base: { ...selected.base, assetId: e.currentTarget.value } })} placeholder="e.g. AST-33022" radius="md" />
-                    <TextInput size="xs" label="Location" value={selected.base.location} onChange={(e) => updateSelected({ base: { ...selected.base, location: e.currentTarget.value } })} placeholder="e.g. Lusaka, Zambia" radius="md" />
-                    <TextInput size="xs" label="Owner" value={selected.base.owner} onChange={(e) => updateSelected({ base: { ...selected.base, owner: e.currentTarget.value } })} radius="md" />
-                  </SimpleGrid>
-                  <SimpleGrid cols={2} spacing={8} mt={8}>
-                    <TextInput size="xs" label="Description" value={selected.base.description} onChange={(e) => updateSelected({ base: { ...selected.base, description: e.currentTarget.value } })} radius="md" />
-                    <TextInput size="xs" label="Acquisition / value information" value={selected.base.acquisition} onChange={(e) => updateSelected({ base: { ...selected.base, acquisition: e.currentTarget.value } })} radius="md" />
-                  </SimpleGrid>
-                </>
-              )}
-            </Card>
-
-            <Card
-              icon={IconCar}
-              title={`${selected.base.type || "Asset"} Valuation`}
-              color="teal"
-              right={
-                <Badge size="sm" radius="xl" color={valuationBadge.color} variant="light" leftSection={<IconAlertTriangle size={11} />}>
-                  {valuationBadge.label}
-                </Badge>
-              }
-            >
-              <SimpleGrid cols={4} spacing={8} mb={10}>
-                <NumberInput size="xs" label="Valuation amount" value={selected.valuation.amount ? Number(selected.valuation.amount) : undefined} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, amount: v ? String(v) : "" } })} placeholder="e.g. 95000" prefix="ZMW " radius="md" thousandSeparator="," />
-                <Select size="xs" label="Valuation method" value={selected.valuation.method} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, method: v || selected.valuation.method } })} data={["Market comparison", "Cost approach", "Income approach"]} radius="md" />
-                <NumberInput size="xs" label="Market value" value={selected.valuation.marketValue ? Number(selected.valuation.marketValue) : undefined} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, marketValue: v ? String(v) : "" } })} placeholder="e.g. 98000" prefix="ZMW " radius="md" thousandSeparator="," />
-                <NumberInput size="xs" label="Forced sale value" value={selected.valuation.forcedSaleValue ? Number(selected.valuation.forcedSaleValue) : undefined} onChange={(v) => updateSelected({ valuation: { ...selected.valuation, forcedSaleValue: v ? String(v) : "" } })} placeholder="e.g. 76000" prefix="ZMW " radius="md" thousandSeparator="," />
-              </SimpleGrid>
-              <SimpleGrid cols={coverage != null ? 2 : 1} spacing={10} mb={12}>
-                <Textarea size="xs" label="Valuation notes" value={selected.valuation.notes} onChange={(e) => updateSelected({ valuation: { ...selected.valuation, notes: e.currentTarget.value } })} placeholder="Condition, mileage, any relevant observations…" minRows={2} radius="md" />
-                {coverage != null && (
-                  <Paper bg="brand.0" p={8} radius="md" style={{ border: "1px solid var(--mantine-color-brand-2)" }}>
-                    <Stack gap={6}>
-                      <MiniStat label="This asset's value" value={zmw(selected.valuation.amount)} />
-                      <MiniStat label="Final loan amount" value={zmw(finalAmount)} />
-                      <MiniStat label="Coverage" value={`${coverage}%`} accent={coverage < 120} />
-                    </Stack>
-                  </Paper>
-                )}
-              </SimpleGrid>
-
-              <Divider mb={10} />
-              <SectionLabel>Valuer information</SectionLabel>
-              <SimpleGrid cols={4} spacing={8} mt={8} mb={8}>
-                <TextInput size="xs" label="Valuer name" value={selected.valuer.name} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, name: e.currentTarget.value } })} placeholder="e.g. K. Zulu" radius="md" />
-                <TextInput size="xs" label="Valuer / company" value={selected.valuer.company} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, company: e.currentTarget.value } })} placeholder="e.g. Apex Valuers Ltd" radius="md" />
-                <TextInput size="xs" label="License number" value={selected.valuer.license} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, license: e.currentTarget.value } })} placeholder="e.g. VAL-2321" radius="md" />
-                <TextInput size="xs" label="Contact" value={selected.valuer.contact} onChange={(e) => updateSelected({ valuer: { ...selected.valuer, contact: e.currentTarget.value } })} placeholder="Phone or email" radius="md" />
-              </SimpleGrid>
-              <Group gap={8} p={8} bg={selected.valuer.verified ? "brand.0" : "gray.0"} style={{ border: `1px solid var(--mantine-color-${selected.valuer.verified ? "brand" : "gray"}-2)`, borderRadius: 9 }}>
-                <IconInfoCircle size={14} color="var(--mantine-color-brand-6)" style={{ flexShrink: 0 }} />
-                <Text fz={12} c="dark.6" style={{ flex: 1 }}>
-                  Confirm the valuer meets the configured panel requirement before relying on this valuation.
-                </Text>
-                <Checkbox
-                  checked={selected.valuer.verified}
-                  onChange={(e) => updateSelected({ valuer: { ...selected.valuer, verified: e.currentTarget.checked } })}
-                  label="Confirmed"
-                  size="sm"
-                />
-              </Group>
-
-              <Divider my={10} />
-              <Group justify="space-between" mb={8}>
-                <SectionLabel>Valuation date &amp; status</SectionLabel>
-                <Select data={CHECK_STATUSES} value={selected.status} onChange={(v) => updateSelected({ status: v || selected.status })} size="xs" radius="xl" w={140} allowDeselect={false} />
-              </Group>
-              <SimpleGrid cols={["Failed", "Exception"].includes(selected.status) ? 3 : 2} spacing={8}>
-                <TextInput size="xs" type="date" label="Valuation date" value={selected.valuationDate} onChange={(e) => updateSelected({ valuationDate: e.currentTarget.value })} radius="md" />
-                <Box>
-                  <Text fz={12} fw={500} c="dark.6" mb={5}>
-                    Validity
-                  </Text>
-                  <ValidityNote date={selected.valuationDate} days={selected.expiryDays} />
-                </Box>
-                {["Failed", "Exception"].includes(selected.status) && (
-                  <Textarea size="xs" label="Finding / reason (required)" value={selected.reason} onChange={(e) => updateSelected({ reason: e.currentTarget.value })} placeholder="Explain why the valuation failed or is an exception…" minRows={2} radius="md" />
-                )}
-              </SimpleGrid>
-            </Card>
-
-            <DocumentsTable title="Supporting Documents" docs={selected.docs} setDocs={(docs) => updateSelected({ docs })} />
-          </>
-        )}
-
-        {tab === "legal" && (
-          <>
-            <Card icon={IconIdBadge2} title="Legal & Title Verification" color="violet">
-              <SectionLabel>Verifier information</SectionLabel>
-              <SimpleGrid cols={4} spacing={8} mt={8}>
-                <TextInput size="xs" label="Verifier name" value={selected.legalVerifier.name} onChange={(e) => updateSelected({ legalVerifier: { ...selected.legalVerifier, name: e.currentTarget.value } })} placeholder="e.g. M. Tembo" radius="md" />
-                <TextInput size="xs" label="Company / firm" value={selected.legalVerifier.company} onChange={(e) => updateSelected({ legalVerifier: { ...selected.legalVerifier, company: e.currentTarget.value } })} placeholder="e.g. Tembo & Associates" radius="md" />
-                <TextInput size="xs" label="Role" value={selected.legalVerifier.role} onChange={(e) => updateSelected({ legalVerifier: { ...selected.legalVerifier, role: e.currentTarget.value } })} placeholder="e.g. Internal legal officer" radius="md" />
-                <TextInput size="xs" label="License number" value={selected.legalVerifier.license} onChange={(e) => updateSelected({ legalVerifier: { ...selected.legalVerifier, license: e.currentTarget.value } })} placeholder="e.g. LZ-4471" radius="md" />
-              </SimpleGrid>
-
-              <Divider my={10} />
-
-              <SimpleGrid cols={2} spacing={20}>
-                <Box>
-                  <SectionLabel>Title verification</SectionLabel>
-                  <Box mt={6}>
-                    {selected.titleChecklist.map((item) => (
-                      <CompactCheckRow
-                        key={item.id}
-                        label={item.label}
-                        checked={item.status === "Passed"}
-                        exception={["Failed", "Exception"].includes(item.status)}
-                        note={item.comment}
-                        onToggle={() => updateChecklist(selected.id, item.id, { status: item.status === "Passed" ? "Pending" : "Passed" })}
-                        onFlag={() => updateChecklist(selected.id, item.id, { status: ["Failed", "Exception"].includes(item.status) ? "Pending" : "Exception" })}
-                        onNoteChange={(v) => updateChecklist(selected.id, item.id, { comment: v })}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-
-                <Box style={{ borderLeft: "1px solid var(--mantine-color-gray-2)", paddingLeft: 20 }}>
-                  <Group justify="space-between" mb={4}>
-                    <SectionLabel>Legal checks</SectionLabel>
-                    <Text fz={10.5} c="dimmed">
-                      for {selected.base.type}
-                    </Text>
-                  </Group>
-                  {selected.legalChecks.map((c) => (
-                    <CompactCheckRow
-                      key={c.id}
-                      label={c.name}
-                      checked={c.status === "Passed"}
-                      exception={["Failed", "Exception"].includes(c.status)}
-                      note={c.comment}
-                      onToggle={() => updateLegalCheck(selected.id, c.id, { status: c.status === "Passed" ? "Pending" : "Passed" })}
-                      onFlag={() => updateLegalCheck(selected.id, c.id, { status: ["Failed", "Exception"].includes(c.status) ? "Pending" : "Exception" })}
-                      onNoteChange={(v) => updateLegalCheck(selected.id, c.id, { comment: v })}
-                    />
-                  ))}
-                </Box>
-              </SimpleGrid>
-            </Card>
-
-            <DocumentsTable title="Supporting Documents" docs={selected.titleDocs} setDocs={(titleDocs) => updateSelected({ titleDocs })} />
-          </>
-        )}
-
-        <Card icon={IconFileText} title="Underwriter Notes" color="gray">
-          <Textarea size="xs"
-            value={notes}
-            onChange={(e) => setNotes(e.currentTarget.value)}
-            placeholder="General comments, findings, risks, exceptions and recommendations that apply across the review…"
-            minRows={2}
-            radius="md"
-          />
-          <Text fz={11} c="dimmed" mt={6}>
-            Shared across all assets and tabs, and included in the underwriting audit trail.
-          </Text>
-        </Card>
-
-        <Card icon={IconClipboardCheck} title="Conclusion by Underwriting Decision" color="brand">
-            <SimpleGrid cols={3} spacing={8} mb={10}>
-              <Box p={8} bg={readiness.valuationOk ? "green.0" : "orange.0"} style={{ borderRadius: "var(--mantine-radius-md)", border: `1px solid var(--mantine-color-${readiness.valuationOk ? "green" : "orange"}-2)` }}>
-                <Text fz={9.5} fw={600} c={readiness.valuationOk ? "green.7" : "orange.7"} tt="uppercase">
-                  Assets ({assets.length})
-                </Text>
-                <Text fz={15} fw={700} c="dark.8" mt={1}>
-                  {zmw(totalAssetValue)}
-                </Text>
-                <Text fz={10.5} c="dimmed" mt={1}>
-                  {totalCoverage != null ? `${totalCoverage}% coverage` : "—"}
-                </Text>
-              </Box>
-              <Box p={8} bg={readiness.titleOk ? "green.0" : "orange.0"} style={{ borderRadius: "var(--mantine-radius-md)", border: `1px solid var(--mantine-color-${readiness.titleOk ? "green" : "orange"}-2)` }}>
-                <Text fz={9.5} fw={600} c={readiness.titleOk ? "green.7" : "orange.7"} tt="uppercase">
-                  Title
-                </Text>
-                <Text fz={15} fw={700} c="dark.8" mt={1}>
-                  {readiness.titleOk ? "Verified" : "Unresolved"}
-                </Text>
-                <Text fz={10.5} c="dimmed" mt={1}>
-                  {readiness.titleOk ? "No open items" : "Action needed"}
-                </Text>
-              </Box>
-              <Box
-                p={8}
-                bg={legalCounts.failed ? "red.0" : legalCounts.exception ? "orange.0" : "green.0"}
-                style={{ borderRadius: "var(--mantine-radius-md)", border: `1px solid var(--mantine-color-${legalCounts.failed ? "red" : legalCounts.exception ? "orange" : "green"}-2)` }}
+    <Box px={16} py={16}>
+      {!isControlled && (
+        <Group gap={6} mb={12} wrap="wrap">
+          {TAB_ITEMS.map((t) => {
+            const tActive = tab === t.id;
+            const TIcon = t.icon;
+            return (
+              <Button
+                key={t.id}
+                size="compact-sm"
+                radius="xl"
+                variant={tActive ? "light" : "subtle"}
+                color={tActive ? "brand" : "gray"}
+                leftSection={<TIcon size={13} />}
+                onClick={() => setTab(t.id)}
               >
-                <Text fz={9.5} fw={600} c={legalCounts.failed ? "red.7" : legalCounts.exception ? "orange.7" : "green.7"} tt="uppercase">
-                  Legal checks
-                </Text>
-                <Text fz={15} fw={700} c="dark.8" mt={1}>
-                  {legalCounts.passed} passed
-                </Text>
-                <Text fz={10.5} c="dimmed" mt={1}>
-                  {legalCounts.exception} exception · {legalCounts.failed} failed
-                </Text>
-              </Box>
-            </SimpleGrid>
+                {t.label}
+              </Button>
+            );
+          })}
+        </Group>
+      )}
 
-            <SimpleGrid cols={2} spacing={8} mb={10}>
-              <Select size="xs" label="Assignee" data={["ZMW", "Internal team", "Legal"]} value={assignee} onChange={(v) => setAssignee(v || assignee)} radius="md" />
-              <Select size="xs" label="Status" data={["Review Required", "In Progress", "Ready for Decision"]} value={decisionStatus} onChange={(v) => setDecisionStatus(v || decisionStatus)} radius="md" />
-            </SimpleGrid>
-
-          {!decision ? (
-            <>
-              <SimpleGrid cols={4} spacing={8} style={{ opacity: readiness.ready ? 1 : 0.45, pointerEvents: readiness.ready ? "auto" : "none" }}>
-                <DecisionButton label="Approve / Proceed" caption="No conditions" color="green" icon={IconCircleCheck} active={false} onClick={() => setDecision("approve")} />
-                <DecisionButton label="Approve with Conditions" caption="Add pre-disbursement terms" color="orange" icon={IconAlertTriangle} active={false} onClick={() => setDecision("conditions")} />
-                <DecisionButton label="Refer / Further Revision" caption="Send back for more info" color="brand" icon={IconArrowRight} active={false} onClick={() => setDecision("refer")} />
-                <DecisionButton label="Reject" caption="Close the application" color="red" icon={IconCircleX} active={false} onClick={() => setDecision("reject")} />
-              </SimpleGrid>
-              {!readiness.ready && (
-                <Text fz={11.5} c="dimmed" mt={8}>
-                  Approve options unlock once valuation, title and legal checks have no unresolved items. You can still refer or reject at any point.
-                </Text>
-              )}
-            </>
-          ) : (
+      {tab === "asset" ? (
+        <Box>
+          {assetViewMode === 'detail' && selectedAsset ? (
             <Box>
-              <Group justify="space-between" mb={10}>
-                <Text fz={13} fw={700} c="dark.8">
-                  {DECISION_LABEL[decision]}
-                </Text>
-                <Button variant="subtle" size="compact-sm" onClick={() => setDecision(null)}>
-                  Change decision
-                </Button>
+              <Group mb={8} justify="space-between">
+                 <UnstyledButton onClick={() => setAssetViewMode('list')} p={4}>
+                    <Group gap={4} wrap="nowrap" c="dimmed" style={{ transition: 'color 150ms ease' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--mantine-color-brand-6)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--mantine-color-gray-5)'}>
+                       <IconChevronLeft size={16} />
+                       <Text fz={13} fw={600}>Back to Assets</Text>
+                    </Group>
+                 </UnstyledButton>
+                 
+                 <Group gap={8}>
+                   <Badge variant="light" color="brand" radius="xl">
+                     Asset {assets.findIndex(a => a.id === selectedAsset.id) + 1}
+                   </Badge>
+                 </Group>
               </Group>
 
-              {decision === "conditions" && (
-                <Box mb={12}>
-                  <Divider mb={10} />
-                  {conditions.map((c, i) => (
-                    <Group key={i} align="flex-end" gap={10} mb={8} wrap="nowrap">
-                      <TextInput size="xs"
-                        label="Condition"
-                        value={c.condition}
-                        onChange={(e) => updateCondition(i, { condition: e.currentTarget.value })}
-                        placeholder="e.g. Title clearance required before disbursement"
-                        style={{ flex: 2 }}
-                        radius="md"
-                      />
-                      <Select size="xs" label="Responsible party" value={c.responsible} onChange={(v) => updateCondition(i, { responsible: v || c.responsible })} data={["Customer", "Internal", "Legal"]} style={{ flex: 1 }} radius="md" />
-                      <Select size="xs" label="Due before" value={c.dueBefore} onChange={(v) => updateCondition(i, { dueBefore: v || c.dueBefore })} data={["Disbursement", "Offer", "Documentation"]} style={{ flex: 1 }} radius="md" />
-                      <ActionIcon variant="default" color="red" size="lg" onClick={() => removeCondition(i)}>
-                        <IconX size={14} />
-                      </ActionIcon>
-                    </Group>
-                  ))}
-                  <Button variant="light" size="compact-sm" radius="md" onClick={addCondition}>
-                    + Add condition
-                  </Button>
-                </Box>
-              )}
-
-              {(decision === "refer" || decision === "reject") && (
-                <Box mb={12}>
-                  <Divider mb={10} />
-                  <Text fz={11} fw={600} c="dimmed" tt="uppercase" mb={8}>
-                    Reason
-                  </Text>
-                  <Group gap={8} mb={10} wrap="wrap">
-                    {REJECT_REASONS.map((r) => (
-                      <Button key={r} size="compact-sm" radius="xl" variant={reasonCategory === r ? "light" : "outline"} color={reasonCategory === r ? "brand" : "gray"} onClick={() => setReasonCategory(r)}>
-                        {r}
-                      </Button>
-                    ))}
-                  </Group>
-                  <Textarea size="xs" label="Detailed explanation (optional)" value={reasonDetail} onChange={(e) => setReasonDetail(e.currentTarget.value)} placeholder="Add any further detail for the audit trail…" minRows={2} radius="md" />
-                </Box>
-              )}
-
-              <Paper withBorder radius="md" p="sm" mb={12} bg="gray.0">
-                <Text fz={12} fw={600} c="dark.8" mb={6}>
-                  Decision summary
-                </Text>
-                <SimRow label="Decision" value={DECISION_LABEL[decision]} />
-                <SimRow label="Assets reviewed" value={String(assets.length)} />
-                <SimRow label="Title verification" value={readiness.titleOk ? "Passed" : "Unresolved"} />
-                <SimRow label="Legal checks" value={`${legalCounts.passed} passed / ${legalCounts.exception} exception`} last={decision === "approve"} />
-                {decision === "conditions" && <SimRow label="Conditions" value={String(conditions.length)} last />}
-                {(decision === "refer" || decision === "reject") && <SimRow label="Reason" value={reasonCategory || "—"} last />}
+              <Paper withBorder radius="lg" mb={4} style={{ overflow: "hidden" }}>
+                <Group gap={0} px={10} pt={10} pb={0} wrap="wrap">
+                  {steps.map((stepId) => {
+                    const item = PANEL_ITEMS.find((p) => p.id === stepId)!;
+                    const stepActive = panel === stepId;
+                    const SIcon = item.icon;
+                    return (
+                      <UnstyledButton
+                        key={stepId}
+                        onClick={() => setPanel(stepId)}
+                        px={12}
+                        pb={10}
+                        style={{
+                          borderBottom: `2px solid ${stepActive ? "var(--mantine-color-brand-6)" : "transparent"}`,
+                          transition: "border-color 120ms ease",
+                        }}
+                      >
+                        <Group gap={7}>
+                          <SIcon size={14} color={stepActive ? "var(--mantine-color-brand-7)" : "var(--mantine-color-gray-5)"} />
+                          <Text fz={12.5} fw={stepActive ? 700 : 500} c={stepActive ? "brand.7" : "dark.5"}>
+                            {item.label}
+                          </Text>
+                        </Group>
+                      </UnstyledButton>
+                    );
+                  })}
+                </Group>
               </Paper>
 
-              <Button disabled={!decisionReady} onClick={() => decisionReady && setCompleted(true)} color="brand" radius="md" rightSection={<IconArrowRight size={16} />}>
-                Complete underwriting
-              </Button>
-              {!decisionReady && (
-                <Text fz={11.5} c="dimmed" mt={6}>
-                  {decision === "conditions" ? "Add at least one condition to continue." : "Select a reason to continue."}
-                </Text>
+              <AssetDetailView
+                asset={selectedAsset}
+                finalAmount={finalAmount}
+                panel={panel}
+                notes={notes}
+                setNotes={setNotes}
+                onUpdate={(patch) => updateAsset(selectedAsset.id, patch)}
+              />
+
+              {(() => {
+                const idx = steps.indexOf(panel);
+                const isLastStep = idx === steps.length - 1;
+                if (!isLastStep) {
+                  return (
+                    <Group justify="flex-end" mt={24} mb={12}>
+                      <Button radius="xl" variant="filled" color="brand" onClick={() => setPanel(steps[idx + 1])} rightSection={<IconArrowRight size={16} />}>
+                        Next
+                      </Button>
+                    </Group>
+                  );
+                }
+                return (
+                  <Group justify="flex-end" mt={24} mb={12}>
+                    <Button variant="filled" color="brand" radius="xl" onClick={() => setAssetViewMode('list')}>
+                      Save
+                    </Button>
+                  </Group>
+                );
+              })()}
+            </Box>
+          ) : (
+            <Box>
+              <Group justify="space-between" align="center" mb={14}>
+                <Group gap={10}>
+                  <ThemeIcon radius="md" size={34} variant="light" color="brand">
+                    <IconShieldCheck size={17} />
+                  </ThemeIcon>
+                  <Text fz={16} fw={700} c="dark.8">
+                    Asset Valuation{" "}
+                    <Text span c="dimmed" fw={600}>
+                      ({assets.length})
+                    </Text>
+                  </Text>
+                </Group>
+                {!addingAsset && (
+                  <Button radius="xl" color="brand" leftSection={<IconPlus size={14} />} onClick={openAddAsset}>
+                    Add Asset
+                  </Button>
+                )}
+              </Group>
+
+              {assets.length === 0 && !addingAsset ? (
+                <Paper withBorder radius="lg" py={60} ta="center" bg="gray.0">
+                  <ThemeIcon size={48} radius="xl" color="gray" variant="light" mb={12}>
+                    <IconCar size={24} />
+                  </ThemeIcon>
+                  <Text fz="md" fw={600} c="dark.8">No assets added</Text>
+                  <Text fz="sm" c="dimmed" mb={20}>Add an asset to begin valuation.</Text>
+                  <Button radius="xl" color="brand" leftSection={<IconPlus size={14} />} onClick={openAddAsset}>
+                    Add Asset
+                  </Button>
+                </Paper>
+              ) : (
+                <Box>
+                <Paper withBorder radius="lg" p="md" bg="gray.0">
+                  {assets.map((a, i) => (
+                    <AssetListItem
+                      key={a.id}
+                      asset={a}
+                      index={i}
+                      titleBadgeLabel="Asset"
+                      onClick={() => {
+                        setSelectedAssetId(a.id);
+                        setAssetViewMode('detail');
+                        setPanel('assetDetails');
+                      }}
+                      onUpdateBase={(patch) => editAssetBase(a.id, patch)}
+                      onRemove={() => removeAsset(a.id)}
+                    />
+                  ))}
+                </Paper>
+                </Box>
+              )}
+
+              {addingAsset && (
+                <Box mt={16}>
+                  <AssetBaseForm
+                    type={newAssetType}
+                    assetId={newAssetIdField}
+                    desc={newAssetDesc}
+                    onTypeChange={setNewAssetType}
+                    onAssetIdChange={setNewAssetIdField}
+                    onDescChange={setNewAssetDesc}
+                    descError={newAssetDescError}
+                    onSubmit={submitNewAsset}
+                    onCancel={() => setAddingAsset(false)}
+                    submitLabel="Add Asset"
+                    title="Add Asset"
+                  />
+                </Box>
               )}
             </Box>
           )}
-        </Card>
-      </Stack>
+        </Box>
+      ) : (
+        <Box>
+          {legalViewMode === 'detail' && selectedLegal ? (
+            <Box>
+              <Group mb={8} justify="space-between">
+                 <UnstyledButton onClick={() => setLegalViewMode('list')} p={4}>
+                    <Group gap={4} wrap="nowrap" c="dimmed" style={{ transition: 'color 150ms ease' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--mantine-color-brand-6)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--mantine-color-gray-5)'}>
+                       <IconChevronLeft size={16} />
+                       <Text fz={13} fw={600}>Back to Assets</Text>
+                    </Group>
+                 </UnstyledButton>
+                 
+                 <Group gap={8}>
+                   <Badge variant="light" color="brand" radius="xl">
+                     Asset {assets.findIndex(a => a.id === selectedLegal.id) + 1}
+                   </Badge>
+                 </Group>
+              </Group>
+
+              <Paper withBorder radius="lg" mb={4} style={{ overflow: "hidden" }}>
+                <Group gap={0} px={10} pt={10} pb={0} wrap="wrap">
+                  {steps.map((stepId) => {
+                    const item = PANEL_ITEMS.find((p) => p.id === stepId)!;
+                    const stepActive = panel === stepId;
+                    const SIcon = item.icon;
+                    return (
+                      <UnstyledButton
+                        key={stepId}
+                        onClick={() => setPanel(stepId)}
+                        px={12}
+                        pb={10}
+                        style={{
+                          borderBottom: `2px solid ${stepActive ? "var(--mantine-color-brand-6)" : "transparent"}`,
+                          transition: "border-color 120ms ease",
+                        }}
+                      >
+                        <Group gap={7}>
+                          <SIcon size={14} color={stepActive ? "var(--mantine-color-brand-7)" : "var(--mantine-color-gray-5)"} />
+                          <Text fz={12.5} fw={stepActive ? 700 : 500} c={stepActive ? "brand.7" : "dark.5"}>
+                            {item.label}
+                          </Text>
+                        </Group>
+                      </UnstyledButton>
+                    );
+                  })}
+                </Group>
+              </Paper>
+
+              {panel === 'conclusion' ? (
+                <Box mt={12}>
+                  <Paper withBorder radius="lg" style={{ overflow: "hidden" }} bg="white">
+                  <Box px={24} pt={14} pb={12}>
+                    
+                    <SimpleGrid cols={3} spacing={8} mb={10}>
+                      <Box
+                        p={10}
+                        bg={readiness.valuationOk ? "green.0" : "orange.0"}
+                        style={{
+                          borderRadius: "var(--mantine-radius-md)",
+                          border: `1px solid var(--mantine-color-${readiness.valuationOk ? "green" : "orange"}-3)`,
+                          borderLeftWidth: 3,
+                          borderLeftColor: `var(--mantine-color-${readiness.valuationOk ? "green" : "orange"}-6)`,
+                        }}
+                      >
+                        <Text fz={9.5} fw={700} c={readiness.valuationOk ? "green.7" : "orange.7"} tt="uppercase">
+                          Assets ({assets.length})
+                        </Text>
+                        <Text fz={15} fw={700} c="dark.8" mt={1}>
+                          {zmw(totalAssetValue)}
+                        </Text>
+                        <Text fz={10.5} c="dimmed" mt={1}>
+                          {totalCoverage != null ? `${totalCoverage}% coverage` : "—"}
+                        </Text>
+                      </Box>
+                      <Box
+                        p={10}
+                        bg={readiness.titleOk ? "green.0" : "orange.0"}
+                        style={{
+                          borderRadius: "var(--mantine-radius-md)",
+                          border: `1px solid var(--mantine-color-${readiness.titleOk ? "green" : "orange"}-3)`,
+                          borderLeftWidth: 3,
+                          borderLeftColor: `var(--mantine-color-${readiness.titleOk ? "green" : "orange"}-6)`,
+                        }}
+                      >
+                        <Text fz={9.5} fw={700} c={readiness.titleOk ? "green.7" : "orange.7"} tt="uppercase">
+                          Title
+                        </Text>
+                        <Text fz={15} fw={700} c="dark.8" mt={1}>
+                          {readiness.titleOk ? "Verified" : "Unresolved"}
+                        </Text>
+                        <Text fz={10.5} c="dimmed" mt={1}>
+                          {readiness.titleOk ? "No open items" : "Action needed"}
+                        </Text>
+                      </Box>
+                      <Box
+                        p={10}
+                        bg={legalCounts.failed ? "red.0" : legalCounts.exception ? "orange.0" : "green.0"}
+                        style={{
+                          borderRadius: "var(--mantine-radius-md)",
+                          border: `1px solid var(--mantine-color-${legalCounts.failed ? "red" : legalCounts.exception ? "orange" : "green"}-3)`,
+                          borderLeftWidth: 3,
+                          borderLeftColor: `var(--mantine-color-${legalCounts.failed ? "red" : legalCounts.exception ? "orange" : "green"}-6)`,
+                        }}
+                      >
+                        <Text fz={9.5} fw={700} c={legalCounts.failed ? "red.7" : legalCounts.exception ? "orange.7" : "green.7"} tt="uppercase">
+                          Legal checks
+                        </Text>
+                        <Text fz={15} fw={700} c="dark.8" mt={1}>
+                          {legalCounts.passed} passed
+                        </Text>
+                        <Text fz={10.5} c="dimmed" mt={1}>
+                          {legalCounts.exception} exception · {legalCounts.failed} failed
+                        </Text>
+                      </Box>
+                    </SimpleGrid>
+
+                    <SectionLabel color="brand.8" icon={IconBuildingBank}>Assets in this decision</SectionLabel>
+                    <Stack gap={6} mt={6} mb={12}>
+                      {assets.map((a, i) => {
+                        const titleUnresolved = a.titleChecklist.filter(
+                          (t) => t.status === "Pending" || t.status === "In Progress" || (["Failed", "Exception"].includes(t.status) && !t.comment.trim()),
+                        ).length;
+                        const legalPassed = a.legalChecks.filter((c) => c.status === "Passed").length;
+                        const legalTotal = a.legalChecks.length;
+                        const assetName = a.base.description ? a.base.description.split(",")[0] : a.base.type || "—";
+                        return (
+                          <Paper key={a.id} withBorder radius="md" p={8}>
+                            <Group justify="space-between" align="center" wrap="wrap" gap={8}>
+                              <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+                                <Badge size="sm" radius="xl" color="brand" variant="light" style={{ flexShrink: 0 }}>
+                                  Asset {i + 1}
+                                </Badge>
+                                <Text fz={12.5} fw={600} c="dark.8" truncate>
+                                  {assetName}
+                                </Text>
+                                {a.base.assetId && (
+                                  <Text fz={11} c="dimmed" truncate>
+                                    · {a.base.assetId}
+                                  </Text>
+                                )}
+                              </Group>
+                              <Group gap={10} wrap="nowrap">
+                                <StatusBadge status={a.status} />
+                                <Text fz={11} c={titleUnresolved ? "orange.7" : "green.7"}>
+                                  {titleUnresolved ? `${titleUnresolved} title item(s) open` : "Title clear"}
+                                </Text>
+                                <Text fz={11} c="dimmed">
+                                  {legalPassed}/{legalTotal} legal checks passed
+                                </Text>
+                              </Group>
+                            </Group>
+                          </Paper>
+                        );
+                      })}
+                    </Stack>
+
+                    <SimpleGrid cols={3} spacing={16} mb={10}>
+                      <Select size="xs" label="Assignee" data={["Internal team", "Legal"]} value={assignee} onChange={(v) => setAssignee(v || assignee)} radius="md" />
+                      <Select size="xs" label="Status" data={["Review Required", "In Progress", "Ready for Decision"]} value={decisionStatus} onChange={(v) => setDecisionStatus(v || decisionStatus)} radius="md" />
+                    </SimpleGrid>
+
+                    {!decision ? (
+                      <>
+                        <SimpleGrid cols={4} spacing={8} style={{ opacity: readiness.ready ? 1 : 0.45, pointerEvents: readiness.ready ? "auto" : "none" }}>
+                          <DecisionButton label="Approve / Proceed" caption="No conditions" color="green" icon={IconCircleCheck} onClick={() => setDecision("approve")} />
+                          <DecisionButton label="Approve with Conditions" caption="Add pre-disbursement terms" color="orange" icon={IconAlertTriangle} onClick={() => setDecision("conditions")} />
+                          <DecisionButton label="Refer / Further Revision" caption="Send back for more info" color="brand" icon={IconArrowRight} onClick={() => setDecision("refer")} />
+                          <DecisionButton label="Reject" caption="Close the application" color="red" icon={IconCircleX} onClick={() => setDecision("reject")} />
+                        </SimpleGrid>
+                        {!readiness.ready && (
+                          <Text fz={11.5} c="dimmed" mt={8}>
+                            Approve options unlock once valuation, title and legal checks have no unresolved items. You can still refer or reject at any point.
+                          </Text>
+                        )}
+                      </>
+                    ) : (
+                      <Box>
+                        <Group justify="space-between" mb={10}>
+                          <Text fz={13} fw={700} c="dark.8">
+                            {DECISION_LABEL[decision]}
+                          </Text>
+                          <Button variant="subtle" size="compact-sm" onClick={() => setDecision(null)}>
+                            Change decision
+                          </Button>
+                        </Group>
+
+                        {decision === "conditions" && (
+                          <Box mb={12}>
+                            <Divider mb={10} />
+                            {conditions.map((c, i) => (
+                              <Group key={i} align="flex-end" gap={10} mb={8} wrap="nowrap">
+                                <TextInput size="xs"
+                                  label="Condition"
+                                  value={c.condition}
+                                  onChange={(e) => updateCondition(i, { condition: e.currentTarget.value })}
+                                  placeholder="e.g. Title clearance required before disbursement"
+                                  style={{ flex: 2 }}
+                                  radius="md"
+                                />
+                                <Select size="xs" label="Responsible party" value={c.responsible} onChange={(v) => updateCondition(i, { responsible: v || c.responsible })} data={["Customer", "Internal", "Legal"]} style={{ flex: 1 }} radius="md" />
+                                <Select size="xs" label="Due before" value={c.dueBefore} onChange={(v) => updateCondition(i, { dueBefore: v || c.dueBefore })} data={["Disbursement", "Offer", "Documentation"]} style={{ flex: 1 }} radius="md" />
+                                <ActionIcon variant="default" color="red" size="lg" onClick={() => removeCondition(i)}>
+                                  <IconX size={14} />
+                                </ActionIcon>
+                              </Group>
+                            ))}
+                            <Button variant="light" size="compact-sm" radius="md" onClick={addCondition}>
+                              + Add condition
+                            </Button>
+                          </Box>
+                        )}
+
+                        {(decision === "refer" || decision === "reject") && (
+                          <Box mb={12}>
+                            <Divider mb={10} />
+                            <Text fz={11} fw={600} c="dimmed" tt="uppercase" mb={8}>
+                              Reason
+                            </Text>
+                            <Group gap={8} mb={10} wrap="wrap">
+                              {REJECT_REASONS.map((r) => (
+                                <Button key={r} size="compact-sm" radius="xl" variant={reasonCategory === r ? "light" : "outline"} color={reasonCategory === r ? "brand" : "gray"} onClick={() => setReasonCategory(r)}>
+                                  {r}
+                                </Button>
+                              ))}
+                            </Group>
+                            <Textarea size="xs" label="Detailed explanation (optional)" value={reasonDetail} onChange={(e) => setReasonDetail(e.currentTarget.value)} placeholder="Add any further detail for the audit trail…" minRows={2} radius="md" />
+                          </Box>
+                        )}
+
+                        <Paper withBorder radius="md" p="sm" mb={12} bg="gray.0">
+                          <Text fz={12} fw={600} c="dark.8" mb={6}>
+                            Decision summary
+                          </Text>
+                          <SimRow label="Decision" value={DECISION_LABEL[decision]} />
+                          <SimRow label="Assets reviewed" value={String(assets.length)} />
+                          <SimRow label="Title verification" value={readiness.titleOk ? "Passed" : "Unresolved"} />
+                          <SimRow label="Legal checks" value={`${legalCounts.passed} passed / ${legalCounts.exception} exception`} last={decision === "approve"} />
+                          {decision === "conditions" && <SimRow label="Conditions" value={String(conditions.length)} last />}
+                          {(decision === "refer" || decision === "reject") && <SimRow label="Reason" value={reasonCategory || "—"} last />}
+                        </Paper>
+
+                        <Button disabled={!decisionReady} onClick={() => decisionReady && setCompleted(true)} color="brand" radius="md" rightSection={<IconArrowRight size={16} />}>
+                          Complete underwriting
+                        </Button>
+                        {!decisionReady && (
+                          <Text fz={11.5} c="dimmed" mt={6}>
+                            {decision === "conditions" ? "Add at least one condition to continue." : "Select a reason to continue."}
+                          </Text>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+                </Paper>
+                </Box>
+              ) : (
+                <LegalDetailView
+                asset={selectedLegal}
+                panel={panel}
+                notes={notes}
+                setNotes={setNotes}
+                onUpdate={(patch) => updateAsset(selectedLegal.id, patch)}
+                onUpdateChecklist={(itemId, patch) => updateChecklist(selectedLegal.id, itemId, patch)}
+                onUpdateLegalCheck={(checkId, patch) => updateLegalCheck(selectedLegal.id, checkId, patch)}
+              />
+              )}
+
+              {(() => {
+                const detailSteps = steps;
+                const idx = detailSteps.indexOf(panel as any);
+                const isLastStep = idx === detailSteps.length - 1;
+                if (!isLastStep) {
+                  return (
+                    <Group justify="flex-end" mt={24} mb={12}>
+                      <Button radius="xl" variant="filled" color="brand" onClick={() => setPanel(detailSteps[idx + 1])} rightSection={<IconArrowRight size={16} />}>
+                        Next
+                      </Button>
+                    </Group>
+                  );
+                }
+                return (
+                  <Group justify="flex-end" mt={24} mb={12}>
+                    <Button variant="filled" color="brand" radius="xl" onClick={() => setLegalViewMode('list')}>
+                      Save
+                    </Button>
+                  </Group>
+                );
+              })()}
+            </Box>
+          ) : legalViewMode === 'conclusion' ? (
+             <Box>
+                <Group mb={14}>
+                   <UnstyledButton onClick={() => setLegalViewMode('list')} p={4}>
+                      <Group gap={4} wrap="nowrap" c="dimmed" style={{ transition: 'color 150ms ease' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--mantine-color-brand-6)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--mantine-color-gray-5)'}>
+                         <IconChevronLeft size={16} />
+                         <Text fz={13} fw={600}>Back to Assets</Text>
+                      </Group>
+                   </UnstyledButton>
+                </Group>
+
+                <Paper withBorder radius="lg" style={{ overflow: "hidden" }} bg="white">
+                  <Box px={24} pt={14} pb={12}>
+                    <SectionHeader icon={IconClipboardCheck} title="Conclusion by Underwriting Decision" color="brand" />
+                    <SimpleGrid cols={3} spacing={8} mb={10}>
+                      <Box
+                        p={10}
+                        bg={readiness.valuationOk ? "green.0" : "orange.0"}
+                        style={{
+                          borderRadius: "var(--mantine-radius-md)",
+                          border: `1px solid var(--mantine-color-${readiness.valuationOk ? "green" : "orange"}-3)`,
+                          borderLeftWidth: 3,
+                          borderLeftColor: `var(--mantine-color-${readiness.valuationOk ? "green" : "orange"}-6)`,
+                        }}
+                      >
+                        <Text fz={9.5} fw={700} c={readiness.valuationOk ? "green.7" : "orange.7"} tt="uppercase">
+                          Assets ({assets.length})
+                        </Text>
+                        <Text fz={15} fw={700} c="dark.8" mt={1}>
+                          {zmw(totalAssetValue)}
+                        </Text>
+                        <Text fz={10.5} c="dimmed" mt={1}>
+                          {totalCoverage != null ? `${totalCoverage}% coverage` : "—"}
+                        </Text>
+                      </Box>
+                      <Box
+                        p={10}
+                        bg={readiness.titleOk ? "green.0" : "orange.0"}
+                        style={{
+                          borderRadius: "var(--mantine-radius-md)",
+                          border: `1px solid var(--mantine-color-${readiness.titleOk ? "green" : "orange"}-3)`,
+                          borderLeftWidth: 3,
+                          borderLeftColor: `var(--mantine-color-${readiness.titleOk ? "green" : "orange"}-6)`,
+                        }}
+                      >
+                        <Text fz={9.5} fw={700} c={readiness.titleOk ? "green.7" : "orange.7"} tt="uppercase">
+                          Title
+                        </Text>
+                        <Text fz={15} fw={700} c="dark.8" mt={1}>
+                          {readiness.titleOk ? "Verified" : "Unresolved"}
+                        </Text>
+                        <Text fz={10.5} c="dimmed" mt={1}>
+                          {readiness.titleOk ? "No open items" : "Action needed"}
+                        </Text>
+                      </Box>
+                      <Box
+                        p={10}
+                        bg={legalCounts.failed ? "red.0" : legalCounts.exception ? "orange.0" : "green.0"}
+                        style={{
+                          borderRadius: "var(--mantine-radius-md)",
+                          border: `1px solid var(--mantine-color-${legalCounts.failed ? "red" : legalCounts.exception ? "orange" : "green"}-3)`,
+                          borderLeftWidth: 3,
+                          borderLeftColor: `var(--mantine-color-${legalCounts.failed ? "red" : legalCounts.exception ? "orange" : "green"}-6)`,
+                        }}
+                      >
+                        <Text fz={9.5} fw={700} c={legalCounts.failed ? "red.7" : legalCounts.exception ? "orange.7" : "green.7"} tt="uppercase">
+                          Legal checks
+                        </Text>
+                        <Text fz={15} fw={700} c="dark.8" mt={1}>
+                          {legalCounts.passed} passed
+                        </Text>
+                        <Text fz={10.5} c="dimmed" mt={1}>
+                          {legalCounts.exception} exception · {legalCounts.failed} failed
+                        </Text>
+                      </Box>
+                    </SimpleGrid>
+
+                    <SectionLabel color="brand.8" icon={IconBuildingBank}>Assets in this decision</SectionLabel>
+                    <Stack gap={6} mt={6} mb={12}>
+                      {assets.map((a, i) => {
+                        const titleUnresolved = a.titleChecklist.filter(
+                          (t) => t.status === "Pending" || t.status === "In Progress" || (["Failed", "Exception"].includes(t.status) && !t.comment.trim()),
+                        ).length;
+                        const legalPassed = a.legalChecks.filter((c) => c.status === "Passed").length;
+                        const legalTotal = a.legalChecks.length;
+                        const assetName = a.base.description ? a.base.description.split(",")[0] : a.base.type || "—";
+                        return (
+                          <Paper key={a.id} withBorder radius="md" p={8}>
+                            <Group justify="space-between" align="center" wrap="wrap" gap={8}>
+                              <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+                                <Badge size="sm" radius="xl" color="brand" variant="light" style={{ flexShrink: 0 }}>
+                                  Asset {i + 1}
+                                </Badge>
+                                <Text fz={12.5} fw={600} c="dark.8" truncate>
+                                  {assetName}
+                                </Text>
+                                {a.base.assetId && (
+                                  <Text fz={11} c="dimmed" truncate>
+                                    · {a.base.assetId}
+                                  </Text>
+                                )}
+                              </Group>
+                              <Group gap={10} wrap="nowrap">
+                                <StatusBadge status={a.status} />
+                                <Text fz={11} c={titleUnresolved ? "orange.7" : "green.7"}>
+                                  {titleUnresolved ? `${titleUnresolved} title item(s) open` : "Title clear"}
+                                </Text>
+                                <Text fz={11} c="dimmed">
+                                  {legalPassed}/{legalTotal} legal checks passed
+                                </Text>
+                              </Group>
+                            </Group>
+                          </Paper>
+                        );
+                      })}
+                    </Stack>
+
+                    <SimpleGrid cols={2} spacing={8} mb={10}>
+                      <Select size="xs" label="Assignee" data={["Internal team", "Legal"]} value={assignee} onChange={(v) => setAssignee(v || assignee)} radius="md" />
+                      <Select size="xs" label="Status" data={["Review Required", "In Progress", "Ready for Decision"]} value={decisionStatus} onChange={(v) => setDecisionStatus(v || decisionStatus)} radius="md" />
+                    </SimpleGrid>
+
+                    {!decision ? (
+                      <>
+                        <SimpleGrid cols={4} spacing={8} style={{ opacity: readiness.ready ? 1 : 0.45, pointerEvents: readiness.ready ? "auto" : "none" }}>
+                          <DecisionButton label="Approve / Proceed" caption="No conditions" color="green" icon={IconCircleCheck} onClick={() => setDecision("approve")} />
+                          <DecisionButton label="Approve with Conditions" caption="Add pre-disbursement terms" color="orange" icon={IconAlertTriangle} onClick={() => setDecision("conditions")} />
+                          <DecisionButton label="Refer / Further Revision" caption="Send back for more info" color="brand" icon={IconArrowRight} onClick={() => setDecision("refer")} />
+                          <DecisionButton label="Reject" caption="Close the application" color="red" icon={IconCircleX} onClick={() => setDecision("reject")} />
+                        </SimpleGrid>
+                        {!readiness.ready && (
+                          <Text fz={11.5} c="dimmed" mt={8}>
+                            Approve options unlock once valuation, title and legal checks have no unresolved items. You can still refer or reject at any point.
+                          </Text>
+                        )}
+                      </>
+                    ) : (
+                      <Box>
+                        <Group justify="space-between" mb={10}>
+                          <Text fz={13} fw={700} c="dark.8">
+                            {DECISION_LABEL[decision]}
+                          </Text>
+                          <Button variant="subtle" size="compact-sm" onClick={() => setDecision(null)}>
+                            Change decision
+                          </Button>
+                        </Group>
+
+                        {decision === "conditions" && (
+                          <Box mb={12}>
+                            <Divider mb={10} />
+                            {conditions.map((c, i) => (
+                              <Group key={i} align="flex-end" gap={10} mb={8} wrap="nowrap">
+                                <TextInput size="xs"
+                                  label="Condition"
+                                  value={c.condition}
+                                  onChange={(e) => updateCondition(i, { condition: e.currentTarget.value })}
+                                  placeholder="e.g. Title clearance required before disbursement"
+                                  style={{ flex: 2 }}
+                                  radius="md"
+                                />
+                                <Select size="xs" label="Responsible party" value={c.responsible} onChange={(v) => updateCondition(i, { responsible: v || c.responsible })} data={["Customer", "Internal", "Legal"]} style={{ flex: 1 }} radius="md" />
+                                <Select size="xs" label="Due before" value={c.dueBefore} onChange={(v) => updateCondition(i, { dueBefore: v || c.dueBefore })} data={["Disbursement", "Offer", "Documentation"]} style={{ flex: 1 }} radius="md" />
+                                <ActionIcon variant="default" color="red" size="lg" onClick={() => removeCondition(i)}>
+                                  <IconX size={14} />
+                                </ActionIcon>
+                              </Group>
+                            ))}
+                            <Button variant="light" size="compact-sm" radius="md" onClick={addCondition}>
+                              + Add condition
+                            </Button>
+                          </Box>
+                        )}
+
+                        {(decision === "refer" || decision === "reject") && (
+                          <Box mb={12}>
+                            <Divider mb={10} />
+                            <Text fz={11} fw={600} c="dimmed" tt="uppercase" mb={8}>
+                              Reason
+                            </Text>
+                            <Group gap={8} mb={10} wrap="wrap">
+                              {REJECT_REASONS.map((r) => (
+                                <Button key={r} size="compact-sm" radius="xl" variant={reasonCategory === r ? "light" : "outline"} color={reasonCategory === r ? "brand" : "gray"} onClick={() => setReasonCategory(r)}>
+                                  {r}
+                                </Button>
+                              ))}
+                            </Group>
+                            <Textarea size="xs" label="Detailed explanation (optional)" value={reasonDetail} onChange={(e) => setReasonDetail(e.currentTarget.value)} placeholder="Add any further detail for the audit trail…" minRows={2} radius="md" />
+                          </Box>
+                        )}
+
+                        <Paper withBorder radius="md" p="sm" mb={12} bg="gray.0">
+                          <Text fz={12} fw={600} c="dark.8" mb={6}>
+                            Decision summary
+                          </Text>
+                          <SimRow label="Decision" value={DECISION_LABEL[decision]} />
+                          <SimRow label="Assets reviewed" value={String(assets.length)} />
+                          <SimRow label="Title verification" value={readiness.titleOk ? "Passed" : "Unresolved"} />
+                          <SimRow label="Legal checks" value={`${legalCounts.passed} passed / ${legalCounts.exception} exception`} last={decision === "approve"} />
+                          {decision === "conditions" && <SimRow label="Conditions" value={String(conditions.length)} last />}
+                          {(decision === "refer" || decision === "reject") && <SimRow label="Reason" value={reasonCategory || "—"} last />}
+                        </Paper>
+
+                        <Button disabled={!decisionReady} onClick={() => decisionReady && setCompleted(true)} color="brand" radius="md" rightSection={<IconArrowRight size={16} />}>
+                          Complete underwriting
+                        </Button>
+                        {!decisionReady && (
+                          <Text fz={11.5} c="dimmed" mt={6}>
+                            {decision === "conditions" ? "Add at least one condition to continue." : "Select a reason to continue."}
+                          </Text>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+                </Paper>
+             </Box>
+          ) : (
+            <Box>
+              <Group justify="space-between" align="center" mb={14}>
+                <Group gap={10}>
+                  <ThemeIcon radius="md" size={34} variant="light" color="brand">
+                    <IconShieldCheck size={17} />
+                  </ThemeIcon>
+                  <Text fz={16} fw={700} c="dark.8">
+                    Legal Verification{" "}
+                    <Text span c="dimmed" fw={600}>
+                      ({assets.length})
+                    </Text>
+                  </Text>
+                </Group>
+              </Group>
+
+              {assets.length === 0 && !addingAsset ? (
+                <Paper withBorder radius="lg" py={60} ta="center" bg="gray.0">
+                  <ThemeIcon size={48} radius="xl" color="gray" variant="light" mb={12}>
+                    <IconIdBadge2 size={24} />
+                  </ThemeIcon>
+                  <Text fz="md" fw={600} c="dark.8">No assets added</Text>
+                  <Text fz="sm" c="dimmed" mb={20}>Add assets in the Asset Valuation tab to begin legal checks.</Text>
+                </Paper>
+              ) : (
+                <Box>
+                <Paper withBorder radius="lg" p="md" bg="gray.0">
+                  {assets.map((a, i) => (
+                    <AssetListItem
+                      key={a.id}
+                      asset={a}
+                      index={i}
+                      titleBadgeLabel="Asset"
+                      onClick={() => {
+                        setSelectedLegalId(a.id);
+                        setLegalViewMode('detail');
+                        setPanel('legal');
+                      }}
+                      onUpdateBase={(patch) => editAssetBase(a.id, patch)}
+                      onRemove={() => removeAsset(a.id)}
+                    />
+                  ))}
+                </Paper>
+                  
+                  
+                </Box>
+              )}
+            </Box>
+          )}
+        </Box>
+      )}
     </Box>
   );
 }
@@ -1394,6 +2726,7 @@ export function UnderwritingModal({
   readOnly,
 }: UnderwritingModalProps) {
   const [section, setSection] = useState<Section>("underwriting");
+  const [tab, setTab] = useState<TabId>("asset");
 
   const policy = POLICY[DUMMY_PRESCREENING_CONTEXT.loanTypeId];
   const calc = calcEligibility({
@@ -1441,7 +2774,7 @@ export function UnderwritingModal({
       padding={0}
       lockScroll
       styles={{
-        content: { display: "flex", flexDirection: "column", overflow: "hidden" },
+        content: { display: "flex", flexDirection: "column", overflow: "hidden", height: "85vh", maxHeight: 860 },
         header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
         body: { flex: 1, display: "flex", flexDirection: "column", padding: 0, minHeight: 0, overflow: "hidden" },
       }}
@@ -1450,7 +2783,7 @@ export function UnderwritingModal({
         <TopBar onMinimize={onMinimize} onClose={onClose} />
 
         <Box style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", overflow: "hidden" }}>
-          <LeftNav section={section} setSection={setSection} values={applicationValues} />
+          <LeftNav section={section} setSection={setSection} values={applicationValues} tab={tab} setTab={setTab} />
 
           <Box style={{ flex: 1, minWidth: 0, overflowY: "auto", background: "linear-gradient(180deg, #F5F4FF 0%, var(--mantine-color-gray-0) 320px)" }}>
             {section === "application" && (
@@ -1486,6 +2819,8 @@ export function UnderwritingModal({
                 loanTypeLabel={loanTypeLabel}
                 onBack={() => setSection("enrichment")}
                 onSubmitReady={handleSubmitReady}
+                tab={tab}
+                onTabChange={setTab}
               />
             )}
           </Box>
