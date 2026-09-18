@@ -195,13 +195,13 @@ function SimRow({ label, value, last, strong }: { label: string; value: string; 
 const th = { textAlign: "left" as const, padding: "8px 12px", fontWeight: 600, color: "var(--mantine-color-slate-5)", fontSize: 11 };
 const td = { padding: "8px 12px", color: "var(--mantine-color-slate-7)" };
 
-type Section = "application" | "prescreening" | "enrichment" | "underwriting" | "offer";
+type Section = "application" | "prescreening" | "appraisal" | "underwriting" | "offer";
 
 function LeftNav({ section, setSection }: { section: Section; setSection: (s: Section) => void }) {
   const items: { id: Section; label: string; icon: React.FC<any> }[] = [
     { id: "application", label: "Loan application", icon: IconFileText },
     { id: "prescreening", label: "Prescreening", icon: IconGauge },
-    { id: "enrichment", label: "Enrichment", icon: IconBuildingBank },
+    { id: "appraisal", label: "Loan Appraisal", icon: IconBuildingBank },
     { id: "underwriting", label: "Underwriting", icon: IconScale },
     { id: "offer", label: "Offer & signing", icon: IconSignature },
   ];
@@ -298,7 +298,7 @@ function CollapsibleStep({ index, title, status, summary, onEdit, onBack, active
 }
 
 const AMEND_FIELDS = ["Requested amount", "Tenure", "Interest rate", "Repayment frequency", "Other terms"];
-const ROUTE_STAGES = ["Enrichment", "Underwriting", "Prescreening"];
+const ROUTE_STAGES = ["Appraisal", "Underwriting", "Prescreening"];
 
 // ---------------------------------------------------------------------------
 // Offer summary — top banner (matches reference design)
@@ -1047,6 +1047,8 @@ export function OfferModal({
       onClose={onClose}
       size={1400}
       padding={0}
+      closeOnClickOutside={false}
+        closeOnEscape={false}
       lockScroll
       styles={{
         content: { display: "flex", flexDirection: "column", overflow: "hidden", height: "90vh", maxHeight: "90vh" },
@@ -1093,7 +1095,7 @@ export function OfferModal({
               </Box>
             )}
 
-            {section === "enrichment" && (
+            {section === "appraisal" && (
               <Box style={{ height: "100%" }}>
                 <EnrichmentModal embedded readOnly applicationValues={applicationValues} opened={false} onClose={() => {}} onMinimize={() => {}} />
               </Box>

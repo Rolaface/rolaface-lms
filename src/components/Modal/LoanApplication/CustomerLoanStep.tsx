@@ -202,27 +202,54 @@ const LOAN_CONFIG_TYPES: {
   icon: React.FC<any>;
   subtypes: { id: string; label: string; purposes: string[] }[];
 }[] = [
-  // Personal (Individual) Loans
   {
     id: "personal",
     applicantType: "Personal",
     label: "Personal Loan",
     icon: IconUser,
     subtypes: [
-      { id: "salary-advance", label: "Salary Advance", purposes: ["Emergency", "Bills", "School Fees"] },
-      { id: "unsecured", label: "Unsecured Personal", purposes: ["Education", "Home improvement", "Medical", "General"] },
-      { id: "secured", label: "Secured Personal", purposes: ["Debt consolidation", "Large purchases", "General"] },
+  {
+    id: "wedding",
+    label: "Wedding",
+    purposes: [
+      "Son Wedding",
+      "Daughter Wedding",
+      "Self Wedding",
+      "Other"
     ],
   },
   {
-    id: "vehicle",
-    applicantType: "Personal",
-    label: "Vehicle Loan",
-    icon: IconUser,
-    subtypes: [
-      { id: "new-vehicle", label: "New Vehicle", purposes: ["Dealership purchase"] },
-      { id: "used-vehicle", label: "Used Vehicle", purposes: ["Dealership purchase", "Private sale"] }
+    id: "education",
+    label: "Education",
+    purposes: [
+      "School Fees",
+      "University Fees",
+      "Professional Course",
+      "Other"
     ],
+  },
+  {
+    id: "medical",
+    label: "Medical",
+    purposes: [
+      "Hospital Treatment",
+      "Surgery",
+      "Medical Expenses",
+      "Other"
+    ],
+  },
+]
+  },
+  {
+    id: "house",
+    applicantType: "Personal",
+    label: "House Loan",
+    icon: IconBuilding,
+     subtypes: [
+    { id: "home-purchase", label: "Home Purchase", purposes: [ "New Property", "Old Property" ],},
+    { id: "home-construction", label: "Home Construction", purposes: [ "Construction", "Renovation"],},
+    { id: "land-purchase", label: "Land Purchase", purposes: [ "New Land", "Borrow Land" ],},
+  ],
   },
   {
     id: "mortgage",
@@ -230,9 +257,9 @@ const LOAN_CONFIG_TYPES: {
     label: "Mortgage / Home Loan",
     icon: IconBuilding,
     subtypes: [
-      { id: "home-purchase", label: "Home Purchase", purposes: ["New property", "Existing property"] },
-      { id: "construction", label: "Construction", purposes: ["Land purchase", "Building"] }
-    ],
+    { id: "car-loan", label: "Car Loan", purposes: [ "New Car", "Used Car"],},
+    { id: "bike-loan", label: "Bike Loan", purposes: ["New Bike", "Used Bike"],},
+  ],
   },
   // Business Loans
   {
