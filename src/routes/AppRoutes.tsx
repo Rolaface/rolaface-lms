@@ -258,7 +258,7 @@ const originationPrescreeningRoute = createRoute({
 });
 const originationEnrichmentRoute = createRoute({
   getParentRoute: () => originationRoute,
-  path: "/enrichment",
+  path: "/appraisal",
   component: EnrichmentTable,
 });
 const originationUnderwritingRoute = createRoute({

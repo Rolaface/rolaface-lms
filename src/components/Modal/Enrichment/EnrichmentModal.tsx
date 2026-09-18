@@ -209,13 +209,13 @@ function MilestoneCard({ label, value, sub, highlight }: { label: string; value:
 const th = { textAlign: "left" as const, padding: "8px 12px", fontWeight: 600, color: "var(--mantine-color-slate-5)", fontSize: 11 };
 const td = { padding: "8px 12px", color: "var(--mantine-color-slate-7)" };
 
-type Section = "application" | "prescreening" | "enrichment";
+type Section = "application" | "prescreening" | "appraisal";
 
 function LeftNav({ section, setSection }: { section: Section; setSection: (s: Section) => void }) {
   const items: { id: Section; label: string; icon: React.FC<any> }[] = [
     { id: "application", label: "Loan application", icon: IconFileText },
     { id: "prescreening", label: "Prescreening", icon: IconGauge },
-    { id: "enrichment", label: "Enrichment", icon: IconBuildingBank },
+    { id: "appraisal", label: "Appraisal", icon: IconBuildingBank },
   ];
   return (
     <Box
@@ -833,7 +833,7 @@ export function EnrichmentModal({
   embedded,
   readOnly,
 }: EnrichmentModalProps) {
-  const [section, setSection] = useState<Section>("enrichment");
+  const [section, setSection] = useState<Section>("appraisal");
 
   const policy = POLICY[DUMMY_PRESCREENING_CONTEXT.loanTypeId];
   const calc = calcEligibility({
@@ -916,7 +916,7 @@ export function EnrichmentModal({
                 Loan application
               </Text>
               <Text size="xs" fw={500} c="brand.1">
-                Stage 3 — Loan enrichment
+                Stage 3 — Loan Appraisal
               </Text>
             </Box>
           </Group>
@@ -987,7 +987,7 @@ export function EnrichmentModal({
               </Box>
             )}
 
-                       {section === "enrichment" && (
+                       {section === "appraisal" && (
               <EnrichmentWorkspace
                 values={applicationValues}
                 approvedAmount={approvedAmount}

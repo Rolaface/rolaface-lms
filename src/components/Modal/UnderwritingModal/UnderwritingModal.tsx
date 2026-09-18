@@ -273,7 +273,7 @@ function TopBar({ onMinimize, onClose, embedded }: { onMinimize: () => void; onC
 // instead of a separate top tab bar + progress stepper inside the workspace)
 // ---------------------------------------------------------------------------
 
-type Section = "application" | "prescreening" | "enrichment" | "underwriting";
+type Section = "application" | "prescreening" | "appraisal" | "underwriting";
 // "assetDocs" is the Asset Valuation flow's own Supporting Documents step
 // (previously embedded inline at the bottom of the Valuation & Verification
 // panel). It now lives as its own step, mirroring "legalDocs" on the
@@ -341,7 +341,7 @@ function LeftNav({
   const items: { id: Section; label: string; icon: React.FC<any>; done: boolean }[] = [
     { id: "application", label: "Loan application", icon: IconFileText, done: true },
     { id: "prescreening", label: "Pre-screening", icon: IconGauge, done: true },
-    { id: "enrichment", label: "Enrichment", icon: IconBuildingBank, done: true },
+    { id: "appraisal", label: "Appraisal", icon: IconBuildingBank, done: true },
     { id: "underwriting", label: "Underwriting", icon: IconScale, done: false },
   ];
 
@@ -2806,7 +2806,7 @@ export function UnderwritingModal({
               </Box>
             )}
 
-            {section === "enrichment" && (
+            {section === "appraisal" && (
               <Box style={{ height: "100%" }}>
                 <EnrichmentModal embedded readOnly applicationValues={applicationValues} opened={false} onClose={() => {}} onMinimize={() => {}} />
               </Box>
@@ -2817,7 +2817,7 @@ export function UnderwritingModal({
                 finalAmount={finalAmount}
                 applicationId={DUMMY_PRESCREENING_CONTEXT.applicationId}
                 loanTypeLabel={loanTypeLabel}
-                onBack={() => setSection("enrichment")}
+                onBack={() => setSection("appraisal")}
                 onSubmitReady={handleSubmitReady}
                 tab={tab}
                 onTabChange={setTab}
