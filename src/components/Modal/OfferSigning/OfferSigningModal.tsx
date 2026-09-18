@@ -201,7 +201,7 @@ function LeftNav({ section, setSection }: { section: Section; setSection: (s: Se
   const items: { id: Section; label: string; icon: React.FC<any> }[] = [
     { id: "application", label: "Loan application", icon: IconFileText },
     { id: "prescreening", label: "Prescreening", icon: IconGauge },
-    { id: "appraisal", label: "Appraisal", icon: IconBuildingBank },
+    { id: "appraisal", label: "Loan Appraisal", icon: IconBuildingBank },
     { id: "underwriting", label: "Underwriting", icon: IconScale },
     { id: "offer", label: "Offer & signing", icon: IconSignature },
   ];
@@ -1047,6 +1047,8 @@ export function OfferModal({
       onClose={onClose}
       size={1400}
       padding={0}
+      closeOnClickOutside={false}
+        closeOnEscape={false}
       lockScroll
       styles={{
         content: { display: "flex", flexDirection: "column", overflow: "hidden", height: "90vh", maxHeight: "90vh" },

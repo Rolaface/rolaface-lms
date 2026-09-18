@@ -215,7 +215,7 @@ function LeftNav({ section, setSection }: { section: Section; setSection: (s: Se
   const items: { id: Section; label: string; icon: React.FC<any> }[] = [
     { id: "application", label: "Loan application", icon: IconFileText },
     { id: "prescreening", label: "Prescreening", icon: IconGauge },
-    { id: "appraisal", label: "Appraisal", icon: IconBuildingBank },
+    { id: "appraisal", label: "Loan Appraisal", icon: IconBuildingBank },
   ];
   return (
     <Box
@@ -876,6 +876,8 @@ export function EnrichmentModal({
       onClose={onClose}
       size="90vw"
       padding={0}
+      closeOnClickOutside={false}
+      closeOnEscape={false}
       lockScroll
       styles={{
         content: {
