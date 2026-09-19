@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Paper,
@@ -40,8 +40,24 @@ const DEFAULT_INPUTS: EligibilityInputs = {
 
 export function Simulator() {
   const [inputs, setInputs] = useState<EligibilityInputs>(DEFAULT_INPUTS);
+  const [policy, setPolicy] = useState<Partial<EligibilityInputs>>({});
+  useEffect(() => {
+    const loadPolicy = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem("losEligibilityRules") || "[]");
+        const active = [...saved].reverse().find((rule: { status?: string }) => rule.status === "active");
+        const params = active?.configuration?.formulaParams;
+        if (params) setPolicy(params);
+      } catch {
+        // Keep the simulator defaults when no published rule is available.
+      }
+    };
+    loadPolicy();
+    window.addEventListener("losEligibilityRulesChanged", loadPolicy);
+    return () => window.removeEventListener("losEligibilityRulesChanged", loadPolicy);
+  }, []);
   const set = (k: keyof EligibilityInputs) => (v: any) => setInputs((p) => ({ ...p, [k]: v }));
-  const r = useMemo(() => computeEligibility(inputs), [inputs]);
+  const r = useMemo(() => computeEligibility({ ...inputs, ...policy }), [inputs, policy]);
 
   return (
     <Box style={{margin: "0 auto" }}>
@@ -96,6 +112,15 @@ export function Simulator() {
                 <Text fz={20} fw={700} c="brand.6">ZMW {Math.round(r.preApproved).toLocaleString()}</Text>
               </Box>
             </SimpleGrid>
+            <Paper mt="sm" px="xs" py={7} radius="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", background: "var(--mantine-color-slate-0)" }}>
+              <Group justify="space-between" gap="xs">
+                <Text fz={11} c="slate.6">Total monthly debt: ZMW {Math.round(r.totalMonthlyDebt).toLocaleString()}</Text>
+                <Text fz={11} fw={700} c={r.dti <= (policy.maxDtiRatio ?? 40) / 100 ? "green.7" : "red.7"}>
+                  DTI: {(r.dti * 100).toFixed(1)}% / {policy.maxDtiRatio ?? 40}%
+                </Text>
+              </Group>
+              <Text fz={9} c="slate.5" mt={3}>DTI = total included monthly debt ÷ eligible monthly income. Existing loan balances are tracked separately for exposure.</Text>
+            </Paper>
             {r.decision === "Eligible" && (
               <Text fz={11} mt="sm" p={8} style={{ background: "var(--mantine-color-brand-0)", borderRadius: 2, color: "var(--mantine-color-brand-7)" }}>
                 Pre-approved amount is limited by <b>{r.limitingFactor.replace(" Limit", "")}</b>.

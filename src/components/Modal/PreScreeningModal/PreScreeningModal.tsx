@@ -3388,6 +3388,8 @@ export function PreScreeningModal({
       onClose={onClose}
       size={1400}
       padding={0}
+      closeOnClickOutside={false}
+        closeOnEscape={false}
       lockScroll
       styles={{
         content: {

@@ -16,7 +16,8 @@ import {
   IconX,
   IconBriefcase,
   IconCheck,
-  IconChevronRight,IconMinus
+  IconChevronRight,
+  IconMinus,
 } from "@tabler/icons-react";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import {
@@ -26,6 +27,7 @@ import {
   getAllIncomeAccounts,
   getAllIPAccounts,
   getAllPrincipalAccounts,
+  type ChargeBasedOn,
 } from "../../../api/productApi";
 import { STEPS, toAccountOptions } from "./Constants";
 import { ProductDetailsTab } from "./ProductDetailsTab";
@@ -48,7 +50,35 @@ interface LoanProductProps {
   onMinimize: () => void;
 }
 
-export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isViewMode ,onMinimize }: LoanProductProps) {
+// ---------- NUMERIC VALIDATION HELPERS ----------
+const positiveNumber =
+  (label: string, opts: { integer?: boolean; max?: number } = {}) =>
+  (v: number | string) => {
+    if (v === "" || v === null || v === undefined) return `${label} is required`;
+    const n = Number(v);
+    if (!Number.isFinite(n)) return `${label} must be a valid number`;
+    if (n <= 0) return `${label} must be greater than 0`;
+    if (opts.integer && !Number.isInteger(n)) return `${label} must be a whole number`;
+    if (opts.max !== undefined && n > opts.max) return `${label} cannot exceed ${opts.max}`;
+    return null;
+  };
+
+const nonNegativeInteger = (label: string) => (v: number | string) => {
+  if (v === "" || v === null || v === undefined) return null; // optional field
+  const n = Number(v);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0)
+    return `${label} must be a whole number (0 or more)`;
+  return null;
+};
+
+// Converts form value to a safe number for the API. Never returns NaN.
+const toNum = (v: number | string): number | undefined => {
+  if (v === "" || v === null || v === undefined) return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isViewMode, onMinimize }: LoanProductProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<string | null>("0");
 
@@ -58,13 +88,13 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
       productName: "",
       loanCategory: null as string | null,
       repaymentScheduleType: null as string | null,
-      maxLoanAmount: "" as number | "",
-      npaThreshold: "" as number | "",
-      interestRate: "" as number | "",
+      maxLoanAmount: "" as number | string,
+      npaThreshold: "" as number | string,
+      interestRate: "" as number | string,
       interestFrequency: null as string | null,
-      penaltyRate: "" as number | "",
+      penaltyRate: "" as number | string,
       penaltyFrequency: null as string | null,
-      gracePeriodDays: "" as number | "",
+      gracePeriodDays: "" as number | string,
       collectionSeq: {
         standard: null as string | null,
         subStandard: null as string | null,
@@ -77,10 +107,11 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
       productName: (v) => (!v ? "Product Name is required" : null),
       loanCategory: (v) => (!v ? "Loan Category is required" : null),
       repaymentScheduleType: (v) => (!v ? "Repayment Schedule Type is required" : null),
-      maxLoanAmount: (v) => (!v ? "Maximum Loan Amount is required" : null),
-      npaThreshold: (v) => (!v ? "This field is required" : null),
-      interestRate: (v) => (!v ? "Interest Rate is required" : null),
-      penaltyRate: (v) => (!v ? "Penalty Rate is required" : null),
+      maxLoanAmount: positiveNumber("Maximum Loan Amount"),
+      npaThreshold: positiveNumber("Days Past Due Threshold", { integer: true }),
+      interestRate: positiveNumber("Interest Rate", { max: 100 }),
+      penaltyRate: positiveNumber("Penalty Rate", { max: 100 }),
+      gracePeriodDays: nonNegativeInteger("Grace Period"),
       collectionSeq: {
         standard: (v) => (!v ? "Required" : null),
         subStandard: (v) => (!v ? "Required" : null),
@@ -106,8 +137,8 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
   const [charges, setCharges] = useState<ChargeRow[]>([]);
   const [accountsModalIndex, setAccountsModalIndex] = useState<number | null>(null);
   const { rows: principalRows } = usePrincipalAccounts();
-const { rows: generalRows } = useGeneralAccounts();
-const { mappings: ipMappings, sameAsInterest: defaultSameAsInterest } = useInterestPenaltyAccounts();
+  const { rows: generalRows } = useGeneralAccounts();
+  const { mappings: ipMappings, sameAsInterest: defaultSameAsInterest } = useInterestPenaltyAccounts();
 
   // ---------- ALERT HELPERS (same pattern as AddLoanCategoryModal) ----------
   const showError = (heading: string, error: any) => {
@@ -143,21 +174,18 @@ const { mappings: ipMappings, sameAsInterest: defaultSameAsInterest } = useInter
   const { data: incomeAccountsData } = useQuery({
     queryKey: ["accounts", "Income"],
     queryFn: () => getAllIncomeAccounts(),
-    
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: principalAccountsData } = useQuery({
     queryKey: ["accounts", "Asset,Liability"],
     queryFn: () => getAllPrincipalAccounts(),
-    
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: allAccountsData } = useQuery({
     queryKey: ["accounts", "all"],
     queryFn: () => getAllIPAccounts(),
-    
     staleTime: 5 * 60 * 1000,
   });
 
@@ -173,63 +201,55 @@ const { mappings: ipMappings, sameAsInterest: defaultSameAsInterest } = useInter
     refetchOnMount: false,
   });
 
+  // ---------- PREFILL DEFAULT ACCOUNTS (create mode only) ----------
+  const hasPrefilledDefaults = useRef(false);
 
+  useEffect(() => {
+    if (loanProductId) return;
+    if (hasPrefilledDefaults.current) return;
+    if (principalRows.length === 0 && generalRows.length === 0 && ipMappings.length === 0) return;
 
-const hasPrefilledDefaults = useRef(false);
+    const findVal = (rows: typeof principalRows, id: string) =>
+      rows.find((r) => r.id === id)?.value || "";
 
-useEffect(() => {
-  if (loanProductId) return; 
-  if (hasPrefilledDefaults.current) return; 
-  if (principalRows.length === 0 && generalRows.length === 0 && ipMappings.length === 0) return; 
+    setGeneralAccs((prev) => ({
+      ...prev,
+      loanAccount: findVal(principalRows, "loan_account") || prev.loanAccount,
+      disbursementAccount: findVal(principalRows, "disbursement_account") || prev.disbursementAccount,
+      repaymentAccount: findVal(principalRows, "repayment_account") || prev.repaymentAccount,
+      writeOffAccount: findVal(generalRows, "write_off") || prev.writeOffAccount,
+      writeOffRecoveryAccount: findVal(generalRows, "write_off_recovery") || prev.writeOffRecoveryAccount,
+      subsidyAccount: findVal(generalRows, "subsidy") || prev.subsidyAccount,
+      securityDepositAccount: findVal(generalRows, "security_deposit") || prev.securityDepositAccount,
+      suspenseCollectionAccount: findVal(generalRows, "suspense_collection") || prev.suspenseCollectionAccount,
+      customerRefundAccount: findVal(generalRows, "customer_refund") || prev.customerRefundAccount,
+    }));
 
-  const findVal = (rows: typeof principalRows, id: string) =>
-    rows.find((r) => r.id === id)?.value || "";
+    const mapByType = (type: string, key: "interest_account" | "penalty_account") =>
+      ipMappings.find((m) => m.transaction_type === type)?.[key] || "";
 
-  setGeneralAccs((prev) => ({
-    ...prev,
-    loanAccount: findVal(principalRows, "loan_account") || prev.loanAccount,
-    disbursementAccount: findVal(principalRows, "disbursement_account") || prev.disbursementAccount,
-    repaymentAccount: findVal(principalRows, "repayment_account") || prev.repaymentAccount,
-    writeOffAccount: findVal(generalRows, "write_off") || prev.writeOffAccount,
-    writeOffRecoveryAccount: findVal(generalRows, "write_off_recovery") || prev.writeOffRecoveryAccount,
-    subsidyAccount: findVal(generalRows, "subsidy") || prev.subsidyAccount,
-    securityDepositAccount: findVal(generalRows, "security_deposit") || prev.securityDepositAccount,
-    suspenseCollectionAccount: findVal(generalRows, "suspense_collection") || prev.suspenseCollectionAccount,
-    customerRefundAccount: findVal(generalRows, "customer_refund") || prev.customerRefundAccount,
-  }));
+    setInterestAccs((prev) => ({
+      income: mapByType("Income", "interest_account") || prev.income,
+      receivable: mapByType("Receivable", "interest_account") || prev.receivable,
+      accrued: mapByType("Accrued", "interest_account") || prev.accrued,
+      suspended: mapByType("Suspended", "interest_account") || prev.suspended,
+      waiver: mapByType("Waiver", "interest_account") || prev.waiver,
+    }));
 
-  const mapByType = (type: string, key: "interest_account" | "penalty_account") =>
-    ipMappings.find((m) => m.transaction_type === type)?.[key] || "";
+    setPenaltyAccs((prev) => ({
+      income: mapByType("Income", "penalty_account") || prev.income,
+      receivable: mapByType("Receivable", "penalty_account") || prev.receivable,
+      accrued: mapByType("Accrued", "penalty_account") || prev.accrued,
+      suspended: mapByType("Suspended", "penalty_account") || prev.suspended,
+      waiver: mapByType("Waiver", "penalty_account") || prev.waiver,
+    }));
 
-  setInterestAccs((prev) => ({
-    income: mapByType("Income", "interest_account") || prev.income,
-    receivable: mapByType("Receivable", "interest_account") || prev.receivable,
-    accrued: mapByType("Accrued", "interest_account") || prev.accrued,
-    suspended: mapByType("Suspended", "interest_account") || prev.suspended,
-    waiver: mapByType("Waiver", "interest_account") || prev.waiver,
-  }));
+    setSameAsInterest(defaultSameAsInterest);
 
-  setPenaltyAccs((prev) => ({
-    income: mapByType("Income", "penalty_account") || prev.income,
-    receivable: mapByType("Receivable", "penalty_account") || prev.receivable,
-    accrued: mapByType("Accrued", "penalty_account") || prev.accrued,
-    suspended: mapByType("Suspended", "penalty_account") || prev.suspended,
-    waiver: mapByType("Waiver", "penalty_account") || prev.waiver,
-  }));
+    hasPrefilledDefaults.current = true;
+  }, [loanProductId, principalRows, generalRows, ipMappings, defaultSameAsInterest]);
 
-  setSameAsInterest(defaultSameAsInterest);
-
-  hasPrefilledDefaults.current = true;
-}, [loanProductId, principalRows, generalRows, ipMappings, defaultSameAsInterest]);
-
-
-
-
-
-
-
-
-
+  // ---------- LOAD EXISTING PRODUCT INTO FORM (view / edit) ----------
   useEffect(() => {
     const product = (existingProductData as any)?.message?.data || (existingProductData as any)?.data;
     if (!product) return;
@@ -305,6 +325,7 @@ useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingProductData]);
 
+  // ---------- ACCOUNT HANDLERS ----------
   const handleInterestChange = (field: keyof InterestPenaltyAccountsState, value: string | null) => {
     const val = value || "";
     setInterestAccs((prev) => ({ ...prev, [field]: val }));
@@ -322,6 +343,7 @@ useEffect(() => {
     if (isChecked) setPenaltyAccs({ ...interestAccs });
   };
 
+  // ---------- CHARGE HANDLERS ----------
   const emptyCharge = (): ChargeRow => ({
     id: Date.now() + Math.random(), type: "", basedOn: "Percentage", amount: "", percentage: "",
     incomeAccount: "", receivableAccount: "", waiverAccount: "", writeOffAccount: "", suspenseAccount: "",
@@ -348,18 +370,19 @@ useEffect(() => {
     setAccountsModalIndex(null);
   };
 
+  // ---------- PAYLOAD ----------
   const buildPayload = (values: typeof form.values) => ({
     product_code: values.productCode,
     product_name: values.productName,
     loan_category: values.loanCategory || undefined,
     repayment_schedule_type: values.repaymentScheduleType || undefined,
-    maximum_loan_amount: values.maxLoanAmount ? Number(values.maxLoanAmount) : undefined,
-    days_past_due_threshold_for_npa: values.npaThreshold ? Number(values.npaThreshold) : undefined,
-    rate_of_interest: values.interestRate ? Number(values.interestRate) : undefined,
+    maximum_loan_amount: toNum(values.maxLoanAmount),
+    days_past_due_threshold_for_npa: toNum(values.npaThreshold),
+    rate_of_interest: toNum(values.interestRate),
+    penalty_interest_rate: toNum(values.penaltyRate),
+    grace_period_in_days: toNum(values.gracePeriodDays),
     interest_frequency: values.interestFrequency || undefined,
-    penalty_interest_rate: values.penaltyRate ? Number(values.penaltyRate) : undefined,
     penalty_frequency: values.penaltyFrequency || undefined,
-    grace_period_in_days: values.gracePeriodDays ? Number(values.gracePeriodDays) : undefined,
 
     collection_offset_sequence_for_standard_asset: values.collectionSeq.standard || undefined,
     collection_offset_sequence_for_sub_standard_asset: values.collectionSeq.subStandard || undefined,
@@ -392,7 +415,9 @@ useEffect(() => {
 
     loan_charges: charges.map((c) => ({
       charge_type: c.type,
-      charge_based_on: c.basedOn === "Flat Amount" ? "Fixed Amount" : "Percentage",
+      charge_based_on: (c.basedOn === "Flat Amount"
+        ? "Fixed Amount"
+        : "Percentage") as ChargeBasedOn,
       percentage: c.percentage ? Number(c.percentage) : 0,
       amount: c.amount ? Number(c.amount) : 0,
     })),
@@ -471,7 +496,7 @@ useEffect(() => {
     "0": [
       "productCode", "productName", "loanCategory", "repaymentScheduleType",
       "maxLoanAmount", "npaThreshold", "interestRate", "interestFrequency",
-      "penaltyRate", "penaltyFrequency",
+      "penaltyRate", "penaltyFrequency", "gracePeriodDays",
     ],
     "2": [
       "collectionSeq.standard", "collectionSeq.subStandard",
@@ -521,6 +546,7 @@ useEffect(() => {
     if (!validateCurrentStep()) return;
     if (current < 3) setActiveTab((current + 1).toString());
   };
+
   const handleBack = () => {
     const current = parseInt(activeTab || "0");
     if (current > 0) setActiveTab((current - 1).toString());
@@ -539,11 +565,10 @@ useEffect(() => {
     setSubmitError(null);
     createMutation.reset();
     updateMutation.reset();
-    hasPrefilledDefaults.current = false; 
+    hasPrefilledDefaults.current = false;
   };
 
   const handleReset = doReset;
-
 
   const handleModalClose = () => {
     if (loanProductId) {
@@ -571,6 +596,7 @@ useEffect(() => {
     : isViewMode
       ? "Next"
       : "Save & Continue";
+
   const handleFooterSubmit = () => {
     if (currentStep < 3) {
       handleNext();
@@ -688,7 +714,6 @@ useEffect(() => {
               </ActionIcon>
             </Group>
           </Group>
-           
 
           {/* Tab bar */}
           <Box
