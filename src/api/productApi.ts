@@ -69,11 +69,23 @@ export async function getAllItems() {
 }
 
 export async function getAllLoanCategory() {
-  const { data } = await apiClient.get(API.search.getLoanCategory);
-  return data;
-  
-}
+  const { data } = await apiClient.get(API.loanCategory.getAll, {
+    params: { disabled: 0, page_size: 100 },
+  });
 
+  const list = data?.data?.categories ?? [];
+
+  return {
+    ...data,
+    data: list
+      .filter((c: any) => Number(c.disabled) === 0)
+      .map((c: any) => ({
+        value: c.name,
+        label: c.loan_category_name,
+        description: c.loan_category_name,
+      })),
+  };
+}
 export async function getAllIncomeAccounts(searchTerm?: string) {
   const { data } = await apiClient.get(API.search.getAccounts, {
     params: {
