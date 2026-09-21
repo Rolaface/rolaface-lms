@@ -21,5 +21,10 @@ export interface RawSubscribedModules {
     settings?: { bank?: boolean; email?: boolean; company?: boolean; userAndRoles?: boolean };
     expenseManagement?: boolean;
   };
-  lending?: boolean;
+  lending?: {
+    enabled?: boolean;
+  };
+  los?: {
+    enabled?: boolean;
+  };
 }
