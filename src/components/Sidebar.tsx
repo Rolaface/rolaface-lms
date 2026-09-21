@@ -99,69 +99,70 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconSettings,
     matchPrefix: true,
     subItems: [
-      { path: "/setup/category", label: "Loan Category", icon: IconListDetails , modules: ["Loan Category"]},
-      { path: "/setup/classification", label: "Loan Classification", icon: IconFileText ,modules: ["Loan Classification"] },
-      { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails , modules:["Loan Demand Offset Order"]},
-      { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt , modules:["Item"] },
-      { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank ,modules: ["Loan Product"]},
-        { path: "/setup/contract-templates", label: "Contract Templates", icon: IconFileText },
-        { path: "/setup/map-products", label: "Map Loan Products", icon: IconLayersLinked },
+      { path: "/setup/category", label: "Loan Category", icon: IconListDetails, modules: ["Loan Category"] },
+      { path: "/setup/classification", label: "Loan Classification", icon: IconFileText, modules: ["Loan Classification"] },
+      { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails, modules: ["Loan Demand Offset Order"] },
+      { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt, modules: ["Item"] },
+      { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank, modules: ["Loan Product"] },
+      { path: "/setup/contract-templates", label: "Contract Templates", icon: IconFileText },
+      { path: "/setup/map-products", label: "Map Loan Products", icon: IconLayersLinked },
+      { path: "/setup/lending-configuration", label: "Lending Configuration", icon: IconSettings },
     ],
   },
-   {
-        path: "/origination-setup",
-        label: "Origination Setup",
+  {
+    path: "/origination-setup",
+    label: "Origination Setup",
+    icon: IconSettings,
+    subItems: [
+      {
+        path: "/origination-setup/workflow",
+        label: "Workflow Configuration",
         icon: IconSettings,
-         subItems: [
-                    {
-            path: "/origination-setup/workflow",
-            label: "Workflow Configuration",
-            icon: IconSettings,
-          },
-          {
-            path: "/origination-setup/pre-screening",
-            label: "Pre-Screening",
-            icon: IconUsers,
-          }, 
-           {
-            path: "/origination-setup/eligibility-check",
-            label: "Eligibility Rules & Formula",
-            icon: IconSettingsCheck,
-          },
-           {
-            path: "/origination-setup/product-assignment",
-            label: "Loan Product Assignment",
-            icon: IconBrandProducthunt,
-          },  
-          //  {
-          //   path: "/origination-setup/product-temp",
-          //   label: "Temp Product Assignment",
-          //   icon: IconBrandProducthunt,
-          // },  
-          //  {
-          //   path: "/origination-setup/enrichment-stage",
-          //   label: "Enrichment Stage",
-          //   icon: IconBrandProducthunt,
-          // }, 
-          //  {
-          //   path: "/origination-setup/loanApplication-tabs",
-          //   label: "Loan Application Tabs",
-          //   icon: IconBrandProducthunt,
-          // }, 
-          // {
-          //   path: "/origination-setup/pre-screening-stage",
-          //   label: "Pre-Screening Stage",
-          //   icon: IconBrandProducthunt,
-          // }, 
-        ],
       },
+      {
+        path: "/origination-setup/pre-screening",
+        label: "Pre-Screening",
+        icon: IconUsers,
+      },
+      {
+        path: "/origination-setup/eligibility-check",
+        label: "Eligibility Rules & Formula",
+        icon: IconSettingsCheck,
+      },
+      {
+        path: "/origination-setup/product-assignment",
+        label: "Loan Product Assignment",
+        icon: IconBrandProducthunt,
+      },
+      //  {
+      //   path: "/origination-setup/product-temp",
+      //   label: "Temp Product Assignment",
+      //   icon: IconBrandProducthunt,
+      // },  
+      //  {
+      //   path: "/origination-setup/enrichment-stage",
+      //   label: "Enrichment Stage",
+      //   icon: IconBrandProducthunt,
+      // }, 
+      //  {
+      //   path: "/origination-setup/loanApplication-tabs",
+      //   label: "Loan Application Tabs",
+      //   icon: IconBrandProducthunt,
+      // }, 
+      // {
+      //   path: "/origination-setup/pre-screening-stage",
+      //   label: "Pre-Screening Stage",
+      //   icon: IconBrandProducthunt,
+      // }, 
+    ],
+  },
   {
     path: "/origination",
     label: "Origination",
     icon: IconFileText,
     matchPrefix: true,
     subItems: [
-      { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText , modules:["Loan Application"]},
+      { path: "/origination/loanApplication", label: "Loan Application", icon: IconFileText, modules: ["Loan Application"] },
       { path: "/origination/prescreening", label: "Prescreening", icon: IconFileText, modules: ["Loan Application"] },
       { path: "/origination/loan-appraisal", label: "Loan Appraisal", icon: IconFileText, modules: ["Loan Application"] },
       { path: "/origination/underwriting", label: "Underwriting", icon: IconFileText, modules: ["Loan Application"] },
@@ -279,11 +280,6 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconTool,
     matchPrefix: true,
     subItems: [
-      {
-        path: "/settings/lending-configuration",
-        label: "Lending Configuration",
-        icon: IconSettings,
-      },
       {
         path: "/settings/user",
         label: "User",
@@ -540,12 +536,31 @@ export function Sidebar({
   );
 
   const { can, isAdmin, permissions } = usePermission();
-  const visibleNavItems = React.useMemo(
-    () => filterNavItems(LOCAL_NAV_ITEMS, can),
-    [can, isAdmin, permissions]
-  );
 
   const user = useUserStore((s) => s.user);
+  const entryMode =
+    (typeof window !== "undefined" && localStorage.getItem("lms_entry_mode")) === "los"
+      ? "los"
+      : "lending";
+
+
+  const HIDDEN_IN_LENDING_MODE = ["/origination", "/origination-setup"];
+  const HIDDEN_IN_LOS_MODE = ["/setup", "/operations", "/reports"];
+
+  const navItemsForSubscription = React.useMemo(
+    () =>
+      LOCAL_NAV_ITEMS.filter((item) => {
+        if (entryMode === "lending" && HIDDEN_IN_LENDING_MODE.includes(item.path ?? "")) return false;
+        if (entryMode === "los" && HIDDEN_IN_LOS_MODE.includes(item.path ?? "")) return false;
+        return true;
+      }),
+    [entryMode],
+  );
+  const visibleNavItems = React.useMemo(
+    () => filterNavItems(navItemsForSubscription, can),
+    [can, isAdmin, permissions, navItemsForSubscription]
+  );
+
   const clearUser = useUserStore((s) => s.clearUser);
   const [loggingOut, setLoggingOut] = React.useState(false);
 
@@ -555,6 +570,14 @@ export function Sidebar({
   const canSwitchWorkspace =
     user?.subscribed_modules?.erp?.enabled === true ||
     user?.subscribed_modules?.hrms?.enabled === true;
+
+  // No ERP/HRMS access, but both LMS sub-modules subscribed → house button
+  // repurposes into a Lending ⇄ Loan Origination switch instead of hiding.
+  const canSwitchLmsMode =
+    !canSwitchWorkspace &&
+    user?.subscribed_modules?.lending?.enabled === true &&
+    user?.subscribed_modules?.los?.enabled === true;
+
 
   const displayName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
@@ -651,23 +674,40 @@ export function Sidebar({
         {!isCollapsed && (
           <Box className="flex-1 min-w-0">
             <Text fw={700} size="md" style={{ color: tk.textHeading, letterSpacing: "0.01em" }}>
-              LMS
+              {entryMode === "los" ? "LOS" : "LMS"}
             </Text>
           </Box>
         )}
 
-        {canSwitchWorkspace && (
-          <Tooltip label="Switch workspace" position="bottom" disabled={isCollapsed}>
+        {(canSwitchWorkspace || canSwitchLmsMode) && (
+          <Tooltip
+            label={
+              canSwitchWorkspace
+                ? "Switch workspace"
+                : entryMode === "los"
+                  ? "Switch to Lending"
+                  : "Switch to Loan Origination"
+            }
+            position="bottom"
+            disabled={isCollapsed}
+          >
             <ActionIcon
               variant="subtle"
               radius="md"
               className="lms-focusable shrink-0"
               onClick={() => {
-                window.location.href = `${ERP_FRONTEND}/dashboard`;
+                if (canSwitchWorkspace) {
+                  window.location.href = `${ERP_FRONTEND}/dashboard`;
+                } else if (canSwitchLmsMode) {
+                  const nextMode = entryMode === "los" ? "lending" : "los";
+                  localStorage.setItem("lms_entry_mode", nextMode);
+                  window.location.reload();
+                }
+
               }}
               style={{ color: tk.iconDefault }}
             >
-              <IconHome size={18} />
+              {canSwitchWorkspace ? <IconHome size={18} /> : <IconArrowsExchange size={18} />}
             </ActionIcon>
           </Tooltip>
         )}
