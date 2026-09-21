@@ -27,6 +27,8 @@ interface FilterMultiSelectProps {
   loading?: boolean;
   disabled?: boolean;
   width?: number;
+  /** Adds "Select all" / "Clear all" above the options. */
+  withSelectAll?: boolean;
 }
 
 
@@ -41,6 +43,7 @@ export function FilterMultiSelect({
   loading,
   disabled,
   width = 150,
+  withSelectAll,
 }: FilterMultiSelectProps) {
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
@@ -55,7 +58,9 @@ export function FilterMultiSelect({
   const displayLabel =
     value.length === 0
       ? placeholder
-      : value.length === 1
+      : withSelectAll && value.length === data.length && data.length > 1
+        ? "All selected"
+        : value.length === 1
         ? data.find((d) => d.value === value[0])?.label || value[0]
         : `${value.length} selected`;
 
@@ -137,6 +142,45 @@ export function FilterMultiSelect({
             placeholder="Search..."
             leftSection={<IconSearch size={12} />}
           />
+        )}
+        {withSelectAll && data.length > 0 && (
+          <Group
+            justify="space-between"
+            px="xs"
+            pt={4}
+            pb={6}
+            mb={4}
+            style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}
+          >
+            <UnstyledButton
+              onClick={() => onChange(data.map((d) => d.value))}
+              disabled={value.length === data.length}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color:
+                  value.length === data.length
+                    ? "var(--mantine-color-slate-4)"
+                    : "var(--mantine-color-brand-6)",
+              }}
+            >
+              Select all
+            </UnstyledButton>
+            <UnstyledButton
+              onClick={() => onChange([])}
+              disabled={value.length === 0}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color:
+                  value.length === 0
+                    ? "var(--mantine-color-slate-4)"
+                    : "var(--mantine-color-slate-6)",
+              }}
+            >
+              Clear all
+            </UnstyledButton>
+          </Group>
         )}
         <Combobox.Options>
           <ScrollArea.Autosize mah={220} type="scroll">

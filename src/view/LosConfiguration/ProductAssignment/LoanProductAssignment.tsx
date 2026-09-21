@@ -1,9 +1,12 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import {
   ActionIcon,
   Box,
   Button,
+  CheckIcon,
+  Chip,
   Group,
+  Modal,
   NumberInput,
   Pagination,
   Paper,
@@ -13,27 +16,33 @@ import {
   Stack,
   Table,
   Text,
+  ThemeIcon,
   Title,
   Tooltip,
   UnstyledButton,
   useMantineTheme,
 } from "@mantine/core";
 import {
-  IconArrowDown,
-  IconArrowUp,
-  IconBuildingBank,
   IconAffiliate,
+  IconBuildingBank,
+  IconCheck,
   IconChevronDown,
   IconDeviceMobile,
-  IconPlus,
-  IconShieldCog,
-  IconTrash,
+  IconGripVertical,
   IconHash,
+  IconPencil,
+  IconPlus,
+  IconRoute,
+  IconShieldCog,
+  IconStack2,
+  IconTrash,
   IconWorldWww,
   IconX,
   type Icon,
 } from "@tabler/icons-react";
 
+import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
+import { ModalFooter } from "../../../components/shared/ModalFooter";
 import { showSuccess } from "../../../utils/alert";
 import {
   FALLBACKS,
@@ -43,14 +52,13 @@ import {
   VARIABLES,
   clauseText,
   conditionText,
-  groupKey,
+  isShadowed,
   newClause,
   operatorsFor,
   orBlocks,
   productByCode,
   productsFor,
   rowError,
-  sortRows,
   uid,
   variableByName,
   type AssignmentRow,
@@ -73,24 +81,88 @@ const SEED: Config = {
   matchMode: "first",
   fallback: "manual",
   rows: [
-    { id: "r1", source: "Branch", loanType: "Personal", clauses: [c("customer_type", "=", "Staff")], productCode: "PL-STF" },
-    { id: "r2", source: "Branch", loanType: "Personal", clauses: [c("employment_type", "=", "Salaried"), c("net_monthly_income", ">=", "15000")], productCode: "PL-SAL" },
-    { id: "r3", source: "Branch", loanType: "Personal", clauses: [c("employment_type", "=", "Self-employed"), c("employment_type", "=", "Business owner", "OR")], productCode: "PL-SE" },
-    { id: "r4", source: "Mobile Banking", loanType: "Personal", clauses: [c("employment_type", "=", "Salaried"), c("credit_score", ">=", "700")], productCode: "PL-SAL" },
-    { id: "r5", source: "Branch", loanType: "Business", clauses: [c("years_in_business", ">=", "2"), c("loan_amount", "<=", "5000000")], productCode: "SME-WC" },
-    { id: "r6", source: "Branch", loanType: "Business", clauses: [c("years_in_business", ">=", "3"), c("loan_amount", ">", "5000000")], productCode: "SME-TL" },
-    { id: "r7", source: "Third Party", loanType: "Auto", clauses: [c("vehicle_condition", "=", "New")], productCode: "AL-NEW" },
-    { id: "r8", source: "Third Party", loanType: "Auto", clauses: [], productCode: "AL-USED" },
-    { id: "r9", source: "Online Portal", loanType: "Education", clauses: [], productCode: "EDU-01" },
-    { id: "r10", source: "Mobile Banking", loanType: "Personal", clauses: [c("employment_type", "=", "Self-employed"), c("credit_score", ">=", "650")], productCode: "PL-SE" },
-    { id: "r11", source: "USSD", loanType: "Personal", clauses: [c("employment_type", "=", "Salaried"), c("net_monthly_income", ">=", "20000")], productCode: "PL-SAL" },
-    { id: "r12", source: "Branch", loanType: "Auto", clauses: [c("vehicle_condition", "=", "New")], productCode: "AL-NEW" },
-    { id: "r13", source: "Branch", loanType: "Auto", clauses: [c("vehicle_condition", "=", "Used"), c("tenor", "<=", "48")], productCode: "AL-USED" },
-    { id: "r14", source: "Third Party", loanType: "Mortgage", clauses: [c("customer_type", "=", "Existing customer"), c("loan_amount", "<=", "1500000")], productCode: "HL-TOP" },
-    { id: "r15", source: "Third Party", loanType: "Mortgage", clauses: [], productCode: "HL-PUR" },
-    { id: "r16", source: "Third Party", loanType: "Business", clauses: [c("years_in_business", ">=", "1"), c("loan_amount", "<=", "1000000")], productCode: "SME-WC" },
+    { id: "r1", sources: ["Branch"], loanTypes: ["Personal"], clauses: [c("customer_type", "=", "Staff")], productCode: "PL-STF" },
+    {
+      id: "r2",
+      sources: ["Branch", "Online Portal"],
+      loanTypes: ["Personal"],
+      clauses: [c("employment_type", "=", "Salaried"), c("net_monthly_income", ">=", "15000")],
+      productCode: "PL-SAL",
+    },
+    {
+      id: "r3",
+      sources: ["Branch"],
+      loanTypes: ["Personal"],
+      clauses: [c("employment_type", "=", "Self-employed"), c("employment_type", "=", "Business owner", "OR")],
+      productCode: "PL-SE",
+    },
+    {
+      id: "r4",
+      sources: ["Mobile Banking", "USSD"],
+      loanTypes: ["Personal"],
+      clauses: [c("employment_type", "=", "Salaried"), c("credit_score", ">=", "700")],
+      productCode: "PL-SAL",
+    },
+    {
+      id: "r5",
+      sources: ["Mobile Banking"],
+      loanTypes: ["Personal"],
+      clauses: [c("employment_type", "=", "Self-employed"), c("credit_score", ">=", "650")],
+      productCode: "PL-SE",
+    },
+    {
+      id: "r6",
+      sources: ["Branch", "Third Party"],
+      loanTypes: ["Business"],
+      clauses: [c("years_in_business", ">=", "2"), c("loan_amount", "<=", "5000000")],
+      productCode: "SME-WC",
+    },
+    { id: "r7", sources: ["Branch"], loanTypes: ["Business"], clauses: [c("years_in_business", ">=", "3"), c("loan_amount", ">", "5000000")], productCode: "SME-TL" },
+    { id: "r8", sources: ["Branch", "Third Party"], loanTypes: ["Auto"], clauses: [c("vehicle_condition", "=", "New")], productCode: "AL-NEW" },
+    { id: "r9", sources: ["Branch"], loanTypes: ["Auto"], clauses: [c("vehicle_condition", "=", "Used"), c("tenor", "<=", "48")], productCode: "AL-USED" },
+    { id: "r10", sources: ["Third Party"], loanTypes: ["Auto"], clauses: [], productCode: "AL-USED" },
+    {
+      id: "r11",
+      sources: ["Third Party"],
+      loanTypes: ["Mortgage"],
+      clauses: [c("customer_type", "=", "Existing customer"), c("loan_amount", "<=", "1500000")],
+      productCode: "HL-TOP",
+    },
+    { id: "r12", sources: [...SOURCES], loanTypes: ["Mortgage"], clauses: [], productCode: "HL-PUR" },
+    { id: "r13", sources: ["Mobile Banking", "Online Portal"], loanTypes: ["Education"], clauses: [], productCode: "EDU-01" },
   ],
 };
+
+type RowKind = "all" | "conditional" | "direct";
+
+const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
+
+// Modal inputs one step smaller than the theme default, to keep the form compact.
+const FIELD = { input: { height: 30, minHeight: 30, fontSize: 12.5, paddingLeft: 10 } };
+
+const headStyle = {
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase" as const,
+  color: "var(--mantine-color-slate-5)",
+  whiteSpace: "nowrap" as const,
+  padding: "0 10px 4px",
+  border: "none",
+};
+
+const codeBadge = {
+  fontSize: 10,
+  fontWeight: 700,
+  padding: "2px 6px",
+  borderRadius: "var(--mantine-radius-sm)",
+  color: "var(--mantine-color-brand-8)",
+  background: "var(--mantine-color-brand-0)",
+  fontFamily: "var(--mantine-font-family-monospace)",
+  flexShrink: 0,
+};
+
+const JOINER_COLOR: Record<Joiner, string> = { AND: "var(--mantine-color-brand-7)", OR: "var(--mantine-color-orange-8)" };
 
 const SOURCE_ICON: Record<string, Icon> = {
   Branch: IconBuildingBank,
@@ -100,38 +172,322 @@ const SOURCE_ICON: Record<string, Icon> = {
   "Third Party": IconAffiliate,
 };
 
-type RowKind = "all" | "conditional" | "direct";
+// Each loan type keeps one colour everywhere, so a column of loan types can be scanned at a glance.
+const LOAN_TONE: Record<string, string> = { Personal: "brand", Business: "info", Auto: "orange", Mortgage: "teal", Education: "grape" };
 
-const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
+type PickerKind = "source" | "loanType";
 
-// Row cells stay editable but read as plain text until clicked.
-const CELL_INPUT = { input: { height: 30, minHeight: 30, fontSize: 12.5, paddingLeft: 6, border: "none", background: "transparent" } };
-
-const CLAUSE_INPUT = { input: { height: 28, minHeight: 28, fontSize: 13, paddingLeft: 8, borderRadius: 6 } };
-
-const headStyle = {
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.04em",
-  textTransform: "uppercase" as const,
-  color: "var(--mantine-color-slate-5)",
-  whiteSpace: "nowrap" as const,
-  padding: "0 12px 4px",
-  border: "none",
+const PICKER = {
+  source: { options: SOURCES, label: "Sources", allLabel: "All sources" },
+  loanType: { options: LOAN_TYPES, label: "Loan types", allLabel: "All loan types" },
 };
 
-const JOINER_COLOR: Record<Joiner, string> = { AND: "var(--mantine-color-brand-7)", OR: "var(--mantine-color-orange-8)" };
+function OptionMark({ kind, value, size = 20 }: { kind: PickerKind; value: string; size?: number }) {
+  if (kind === "loanType") {
+    return <Box style={{ width: 8, height: 8, borderRadius: 999, flexShrink: 0, background: `var(--mantine-color-${LOAN_TONE[value] ?? "slate"}-5)` }} />;
+  }
+  const SourceIcon = SOURCE_ICON[value] ?? IconBuildingBank;
+  return (
+    <Box
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 6,
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--mantine-color-slate-1)",
+        color: "var(--mantine-color-slate-6)",
+      }}
+    >
+      <SourceIcon size={size * 0.62} stroke={1.8} />
+    </Box>
+  );
+}
 
-// Selects inside the popover keep their dropdown in place, otherwise picking an option counts as an outside click.
-const INLINE_DROPDOWN = { withinPortal: false };
+// One-line summary of a multi-value cell: "Branch +2", or "All sources" when everything is picked.
+function PickerSummary({ kind, values }: { kind: PickerKind; values: string[] }) {
+  const { options, allLabel } = PICKER[kind];
+  const ordered = options.filter((o) => values.includes(o));
+  const more =
+    ordered.length > 1 && ordered.length < options.length ? (
+      <Tooltip label={ordered.join(", ")} withinPortal openDelay={200}>
+        <span
+          style={{
+            fontSize: 10.5,
+            fontWeight: 700,
+            lineHeight: "18px",
+            padding: "0 6px",
+            borderRadius: 999,
+            flexShrink: 0,
+            color: "var(--mantine-color-slate-6)",
+            background: "var(--mantine-color-white)",
+            border: "1px solid var(--mantine-color-slate-2)",
+          }}
+        >
+          +{ordered.length - 1}
+        </span>
+      </Tooltip>
+    ) : null;
+
+  if (ordered.length === options.length) {
+    return (
+      <Group gap={6} wrap="nowrap">
+        <Box
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 6,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "var(--mantine-color-brand-0)",
+            color: "var(--mantine-color-brand-6)",
+            flexShrink: 0,
+          }}
+        >
+          <IconStack2 size={12} />
+        </Box>
+        <Text fz={11.5} fw={600} c="brand.8">
+          {allLabel}
+        </Text>
+      </Group>
+    );
+  }
+
+  if (kind === "loanType") {
+    const tone = LOAN_TONE[ordered[0]] ?? "slate";
+    return (
+      <Group gap={4} wrap="nowrap" style={{ minWidth: 0 }}>
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 11,
+            fontWeight: 600,
+            lineHeight: "20px",
+            padding: "0 8px",
+            borderRadius: 999,
+            whiteSpace: "nowrap",
+            color: `var(--mantine-color-${tone}-8)`,
+            background: `var(--mantine-color-${tone}-0)`,
+          }}
+        >
+          <OptionMark kind="loanType" value={ordered[0]} />
+          {ordered[0]}
+        </span>
+        {more}
+      </Group>
+    );
+  }
+
+  return (
+    <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+      <OptionMark kind="source" value={ordered[0]} />
+      <Text fz={11.5} fw={600} c="slate.8" truncate>
+        {ordered[0]}
+      </Text>
+      {more}
+    </Group>
+  );
+}
+
+// Same checkbox look as the shared FilterMultiSelect, so every multi-select on the page reads the same.
+function CheckMark({ checked, indeterminate }: { checked: boolean; indeterminate?: boolean }) {
+  const filled = checked || indeterminate;
+  return (
+    <Box
+      style={{
+        width: 16,
+        height: 16,
+        borderRadius: "var(--mantine-radius-xs)",
+        border: `1px solid ${filled ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-3)"}`,
+        background: filled ? "var(--mantine-color-brand-6)" : "var(--mantine-color-white)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      {checked ? (
+        <CheckIcon size={10} color="var(--mantine-color-white)" />
+      ) : indeterminate ? (
+        <Box style={{ width: 8, height: 2, borderRadius: 1, background: "var(--mantine-color-white)" }} />
+      ) : null}
+    </Box>
+  );
+}
+
+// Click-to-edit multi-select for a table cell. It reads as plain text until hovered, and its clicks
+// never reach the row, which opens the full rule on click.
+function InlinePicker({ kind, value, onChange }: { kind: PickerKind; value: string[]; onChange: (value: string[]) => void }) {
+  const { options, label } = PICKER[kind];
+  const all = value.length === options.length;
+  const toggle = (item: string) => onChange(options.filter((o) => (o === item ? !value.includes(o) : value.includes(o))));
+
+  return (
+    <Box onClick={(e) => e.stopPropagation()} style={{ minWidth: 0, flex: 1 }}>
+      <Popover position="bottom-start" width={236} shadow="md" radius="md" withinPortal>
+        <Popover.Target>
+          <UnstyledButton className="pa-cell" aria-label={`Edit ${label.toLowerCase()}`}>
+            <Box style={{ flex: 1, minWidth: 0 }}>
+              {value.length === 0 ? (
+                <Text fz={11.5} fw={600} c="danger.6">
+                  Choose {label.toLowerCase()}
+                </Text>
+              ) : (
+                <PickerSummary kind={kind} values={value} />
+              )}
+            </Box>
+            <IconChevronDown className="pa-chev" size={13} />
+          </UnstyledButton>
+        </Popover.Target>
+        <Popover.Dropdown p={6}>
+          <UnstyledButton
+            className="pa-option"
+            role="checkbox"
+            aria-checked={all ? "true" : value.length > 0 ? "mixed" : "false"}
+            onClick={() => onChange(all ? [] : [...options])}
+          >
+            <CheckMark checked={all} indeterminate={value.length > 0 && !all} />
+            <Text fz={12} fw={600} c="slate.8" style={{ flex: 1 }}>
+              Select all {label.toLowerCase()}
+            </Text>
+            <Text fz={10.5} c="slate.5">
+              {value.length}/{options.length}
+            </Text>
+          </UnstyledButton>
+          <Box my={4} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }} />
+          <Stack gap={1}>
+            {options.map((o) => {
+              const on = value.includes(o);
+              return (
+                <UnstyledButton key={o} onClick={() => toggle(o)} role="checkbox" aria-checked={on} className="pa-option">
+                  <CheckMark checked={on} />
+                  <OptionMark kind={kind} value={o} />
+                  <Text fz={12.5} fw={on ? 600 : 500} c={on ? "slate.8" : "slate.7"} style={{ flex: 1 }}>
+                    {o}
+                  </Text>
+                </UnstyledButton>
+              );
+            })}
+          </Stack>
+        </Popover.Dropdown>
+      </Popover>
+    </Box>
+  );
+}
+
+// Click-to-edit product for a table cell: code and name, grouped by loan type when the rule has several.
+function ProductPicker({ loanTypes, value, onChange }: { loanTypes: string[]; value: string; onChange: (code: string) => void }) {
+  const [opened, setOpened] = useState(false);
+  const product = productByCode(value);
+  const products = productsFor(loanTypes);
+  const groups = loanTypes.map((lt) => ({ loanType: lt, items: products.filter((p) => p.loanType === lt) })).filter((g) => g.items.length > 0);
+  const disabled = loanTypes.length === 0;
+
+  return (
+    <Box onClick={(e) => e.stopPropagation()} style={{ minWidth: 0 }}>
+      <Popover opened={opened} onChange={setOpened} position="bottom-start" width={290} shadow="md" radius="md" withinPortal disabled={disabled}>
+        <Popover.Target>
+          <UnstyledButton className="pa-cell" aria-label="Edit product" onClick={() => setOpened((o) => !o)} aria-expanded={opened} disabled={disabled}>
+            <Box style={{ flex: 1, minWidth: 0 }}>
+              {product ? (
+                <Group gap={8} wrap="nowrap">
+                  <span style={codeBadge}>{product.code}</span>
+                  <Text fz={11.5} fw={600} c="slate.8" truncate>
+                    {product.name}
+                  </Text>
+                </Group>
+              ) : (
+                <Text fz={11.5} fw={600} c={disabled ? "slate.4" : "danger.6"}>
+                  {disabled ? "Pick a loan type first" : "Choose product"}
+                </Text>
+              )}
+            </Box>
+            <IconChevronDown className="pa-chev" size={13} />
+          </UnstyledButton>
+        </Popover.Target>
+        <Popover.Dropdown p={6}>
+          <Stack gap={2}>
+            {groups.map((g) => (
+              <Fragment key={g.loanType}>
+                {groups.length > 1 && (
+                  <Group gap={6} px={8} pt={6} pb={2}>
+                    <OptionMark kind="loanType" value={g.loanType} />
+                    <Text fz={10} fw={700} c="slate.5" style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      {g.loanType}
+                    </Text>
+                  </Group>
+                )}
+                {g.items.map((p) => {
+                  const on = p.code === value;
+                  return (
+                    <UnstyledButton
+                      key={p.code}
+                      className="pa-option"
+                      aria-pressed={on}
+                      onClick={() => {
+                        onChange(p.code);
+                        setOpened(false);
+                      }}
+                      style={{ background: on ? "var(--mantine-color-brand-0)" : undefined }}
+                    >
+                      <span style={{ ...codeBadge, minWidth: 58, textAlign: "center" }}>{p.code}</span>
+                      <Text fz={12.5} fw={on ? 600 : 500} c={on ? "slate.8" : "slate.7"} style={{ flex: 1 }}>
+                        {p.name}
+                      </Text>
+                      {on && <IconCheck size={14} color="var(--mantine-color-brand-6)" />}
+                    </UnstyledButton>
+                  );
+                })}
+              </Fragment>
+            ))}
+          </Stack>
+        </Popover.Dropdown>
+      </Popover>
+    </Box>
+  );
+}
+
+function ConditionSummary({ clauses }: { clauses: Clause[] }) {
+  if (clauses.length === 0) {
+    return (
+      <Group gap={8} wrap="nowrap">
+        <Text fz={10} fw={700} c="success.8" px={7} py={1} style={{ background: "var(--mantine-color-success-0)", borderRadius: 4, flexShrink: 0 }}>
+          ALWAYS
+        </Text>
+        <Text fz={11.5} c="slate.5" truncate>
+          No condition — direct mapping
+        </Text>
+      </Group>
+    );
+  }
+  return (
+    <Text fz={11.5} c="slate.8" lineClamp={1}>
+      {clauses.map((cl, i) => (
+        <Fragment key={cl.id}>
+          {i > 0 && (
+            <Text span fz={11.5} fw={700} c={cl.joiner === "AND" ? "brand.7" : "orange.8"}>
+              {` ${cl.joiner.toLowerCase()} `}
+            </Text>
+          )}
+          {clauseText(cl)}
+        </Fragment>
+      ))}
+    </Text>
+  );
+}
 
 function ConditionEditor({ clauses, onChange }: { clauses: Clause[]; onChange: (clauses: Clause[]) => void }) {
   const set = (id: string, patch: Partial<Clause>) => onChange(clauses.map((cl) => (cl.id === id ? { ...cl, ...patch } : cl)));
 
   if (clauses.length === 0) {
     return (
-      <Text fz={12.5} c="slate.6">
-        No condition. Every application for this source and loan type gets this product.
+      <Text fz={12} c="slate.5" py={6}>
+        None — every matching application gets the product directly.
       </Text>
     );
   }
@@ -146,7 +502,7 @@ function ConditionEditor({ clauses, onChange }: { clauses: Clause[]; onChange: (
             const joiner = ci === 0 ? "OR" : "AND";
             return (
               <Group key={clause.id} gap={6} wrap="nowrap">
-                <Box w={36} style={{ flexShrink: 0, textAlign: "center" }}>
+                <Box w={34} style={{ flexShrink: 0, textAlign: "center" }}>
                   {first ? (
                     <Text fz={11} fw={800} c="slate.4">
                       IF
@@ -156,7 +512,14 @@ function ConditionEditor({ clauses, onChange }: { clauses: Clause[]; onChange: (
                       <UnstyledButton
                         onClick={() => set(clause.id, { joiner: joiner === "AND" ? "OR" : "AND" })}
                         aria-label={`${joiner}, click to switch`}
-                        style={{ fontSize: 11, fontWeight: 800, color: JOINER_COLOR[joiner], padding: "2px 6px", borderRadius: 4 }}
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 800,
+                          color: JOINER_COLOR[joiner],
+                          padding: "3px 8px",
+                          borderRadius: 999,
+                          background: joiner === "AND" ? "var(--mantine-color-brand-0)" : "var(--mantine-color-orange-0)",
+                        }}
                       >
                         {joiner}
                       </UnstyledButton>
@@ -175,9 +538,8 @@ function ConditionEditor({ clauses, onChange }: { clauses: Clause[]; onChange: (
                   }}
                   allowDeselect={false}
                   searchable
-                  comboboxProps={INLINE_DROPDOWN}
-                  styles={CLAUSE_INPUT}
-                  style={{ flex: "1 1 170px", minWidth: 0 }}
+                  styles={FIELD}
+                  style={{ flex: "1 1 180px", minWidth: 0 }}
                 />
                 <Select
                   aria-label="Operator"
@@ -185,9 +547,8 @@ function ConditionEditor({ clauses, onChange }: { clauses: Clause[]; onChange: (
                   value={clause.operator}
                   onChange={(v) => v && set(clause.id, { operator: v as Operator })}
                   allowDeselect={false}
-                  comboboxProps={INLINE_DROPDOWN}
-                  styles={{ input: { ...CLAUSE_INPUT.input, fontWeight: 600, color: "var(--mantine-color-brand-7)" } }}
-                  style={{ width: 150, flexShrink: 0 }}
+                  styles={{ input: { ...FIELD.input, fontWeight: 600, color: "var(--mantine-color-brand-7)" } }}
+                  style={{ width: 136, flexShrink: 0 }}
                 />
                 {variable?.options ? (
                   <Select
@@ -197,9 +558,8 @@ function ConditionEditor({ clauses, onChange }: { clauses: Clause[]; onChange: (
                     value={clause.value || null}
                     onChange={(v) => set(clause.id, { value: v ?? "" })}
                     allowDeselect={false}
-                    comboboxProps={INLINE_DROPDOWN}
-                    styles={CLAUSE_INPUT}
-                    style={{ flex: "1 1 140px", minWidth: 0 }}
+                    styles={FIELD}
+                    style={{ flex: "1 1 150px", minWidth: 0 }}
                   />
                 ) : (
                   <NumberInput
@@ -210,12 +570,12 @@ function ConditionEditor({ clauses, onChange }: { clauses: Clause[]; onChange: (
                     hideControls
                     thousandSeparator=","
                     disabled={!variable}
-                    styles={CLAUSE_INPUT}
-                    style={{ flex: "1 1 140px", minWidth: 0 }}
+                    styles={FIELD}
+                    style={{ flex: "1 1 150px", minWidth: 0 }}
                   />
                 )}
-                <ActionIcon variant="subtle" color="slate" size="sm" onClick={() => onChange(clauses.filter((cl) => cl.id !== clause.id))} aria-label="Remove">
-                  <IconX size={14} />
+                <ActionIcon variant="subtle" color="slate" radius="xl" onClick={() => onChange(clauses.filter((cl) => cl.id !== clause.id))} aria-label="Remove">
+                  <IconX size={15} />
                 </ActionIcon>
               </Group>
             );
@@ -226,32 +586,42 @@ function ConditionEditor({ clauses, onChange }: { clauses: Clause[]; onChange: (
   );
 }
 
-function ConditionSummary({ clauses }: { clauses: Clause[] }) {
-  if (clauses.length === 0) {
-    return (
-      <Group gap={8} wrap="nowrap">
-        <Text fz={11} fw={700} c="success.8" px={8} py={1} style={{ background: "var(--mantine-color-success-0)", borderRadius: 4, flexShrink: 0 }}>
-          ALWAYS
-        </Text>
-        <Text fz={12.5} c="slate.5" truncate>
-          No condition — direct mapping
-        </Text>
-      </Group>
-    );
-  }
+// One line of the rule form: a fixed label column on the left, the field on the right.
+function FormRow({ label, children, align = "center" }: { label: string; children: ReactNode; align?: "center" | "flex-start" }) {
   return (
-    <Text fz={12.5} c="slate.8" lh={1.45} lineClamp={2}>
-      {clauses.map((cl, i) => (
-        <Fragment key={cl.id}>
-          {i > 0 && (
-            <Text span fz={12.5} fw={700} c={cl.joiner === "AND" ? "brand.7" : "orange.8"}>
-              {` ${cl.joiner.toLowerCase()} `}
-            </Text>
-          )}
-          {clauseText(cl)}
-        </Fragment>
-      ))}
-    </Text>
+    <Group gap="md" wrap="nowrap" align={align}>
+      <Text fz={11.5} fw={600} c="slate.6" w={76} style={{ flexShrink: 0, paddingTop: align === "flex-start" ? 7 : 0 }}>
+        {label}
+      </Text>
+      <Box style={{ flex: 1, minWidth: 0 }}>{children}</Box>
+    </Group>
+  );
+}
+
+function ChipPicker({ kind, value, onChange }: { kind: PickerKind; value: string[]; onChange: (value: string[]) => void }) {
+  const { options, label: plural } = PICKER[kind];
+  const all = value.length === options.length;
+  return (
+    <Group gap={6} wrap="nowrap">
+      <Chip.Group multiple value={value} onChange={(v) => onChange(options.filter((o) => v.includes(o)))}>
+        <Group gap={5}>
+          {options.map((o) => (
+            <Chip key={o} value={o} size="xs" variant="light" color={kind === "loanType" ? LOAN_TONE[o] : "brand"} radius="xl" aria-label={`${plural}: ${o}`}>
+              <Group gap={6} wrap="nowrap">
+                {kind === "source" ? (() => {
+                  const SourceIcon = SOURCE_ICON[o] ?? IconBuildingBank;
+                  return <SourceIcon size={12} stroke={1.8} />;
+                })() : <OptionMark kind="loanType" value={o} />}
+                {o}
+              </Group>
+            </Chip>
+          ))}
+        </Group>
+      </Chip.Group>
+      <UnstyledButton onClick={() => onChange(all ? [] : [...options])} style={{ fontSize: 11, fontWeight: 600, color: "var(--mantine-color-brand-6)", marginLeft: 2 }}>
+        {all ? "Clear" : "All"}
+      </UnstyledButton>
+    </Group>
   );
 }
 
@@ -259,75 +629,108 @@ export function LoanProductAssignment() {
   const theme = useMantineTheme();
   const [saved, setSaved] = useState<Config>(SEED);
   const [draft, setDraft] = useState<Config>(SEED);
-  const [sourceFilter, setSourceFilter] = useState<string | null>(null);
-  const [loanTypeFilter, setLoanTypeFilter] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<string[]>([]);
+  const [loanTypeFilter, setLoanTypeFilter] = useState<string[]>([]);
   const [kind, setKind] = useState<RowKind>("all");
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  const [editing, setEditing] = useState<string | null>(null);
+  // The rule open in the modal; written to the list only on save.
+  const [editing, setEditing] = useState<{ mode: "add" | "edit"; row: AssignmentRow; attempted: boolean } | null>(null);
+  // Drag starts from the grip only, so clicking a row still opens it.
+  const [dragArmed, setDragArmed] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
 
   const { rows } = draft;
-  const sorted = useMemo(() => sortRows(rows), [rows]);
-  const matchesFilters = (r: AssignmentRow) =>
-    (!sourceFilter || r.source === sourceFilter) &&
-    (!loanTypeFilter || r.loanType === loanTypeFilter) &&
-    (kind === "all" || (kind === "direct") === (r.clauses.length === 0));
-  const visible = sorted.filter(matchesFilters);
-  const group = (row: AssignmentRow) => sorted.filter((r) => groupKey(r) === groupKey(row));
+  const visible = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (sourceFilter.length === 0 || r.sources.some((v) => sourceFilter.includes(v))) &&
+          (loanTypeFilter.length === 0 || r.loanTypes.some((v) => loanTypeFilter.includes(v))) &&
+          (kind === "all" || (kind === "direct") === (r.clauses.length === 0))
+      ),
+    [rows, sourceFilter, loanTypeFilter, kind]
+  );
 
   const totalRows = visible.length;
-  const pageCount = Math.max(1, Math.ceil(totalRows / pagination.pageSize));
-  const pageIndex = Math.min(pagination.pageIndex, pageCount - 1);
   const { pageSize } = pagination;
+  const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
+  const pageIndex = Math.min(pagination.pageIndex, pageCount - 1);
   const pageRows = visible.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
   const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
   const resetPage = () => setPagination((p) => ({ ...p, pageIndex: 0 }));
 
-  const errorCount = rows.filter((r) => rowError(r)).length;
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const errorCount = rows.filter((r) => rowError(r)).length;
 
-  // With "first match only", a row with no condition catches everything, so rows below it never run.
-  const shadowedBy = (row: AssignmentRow): number | null => {
-    if (draft.matchMode !== "first") return null;
-    const rowsInGroup = group(row);
-    const catchAll = rowsInGroup.findIndex((r) => r.clauses.length === 0);
-    return catchAll >= 0 && rowsInGroup.indexOf(row) > catchAll ? catchAll + 1 : null;
+  const updateRow = (id: string, patch: Partial<AssignmentRow>) => setDraft((d) => ({ ...d, rows: d.rows.map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
+
+  // Products belong to a loan type, so a product whose loan type is removed is cleared.
+  const fitsProduct = (loanTypes: string[], code: string) => (productsFor(loanTypes).some((p) => p.code === code) ? code : "");
+  const changeRowLoanTypes = (row: AssignmentRow, loanTypes: string[]) => updateRow(row.id, { loanTypes, productCode: fitsProduct(loanTypes, row.productCode) });
+
+  const openAdd = () =>
+    setEditing({
+      mode: "add",
+      attempted: false,
+      row: { id: uid(), sources: [...sourceFilter], loanTypes: [...loanTypeFilter], clauses: [], productCode: "" },
+    });
+
+  const editRow = (patch: Partial<AssignmentRow>) => setEditing((e) => e && { ...e, row: { ...e.row, ...patch } });
+
+  const changeLoanTypes = (loanTypes: string[]) => setEditing((e) => e && { ...e, row: { ...e.row, loanTypes, productCode: fitsProduct(loanTypes, e.row.productCode) } });
+
+  const editingError = editing ? rowError(editing.row) : null;
+
+  const saveRule = () => {
+    if (!editing) return;
+    if (editingError) {
+      setEditing({ ...editing, attempted: true });
+      return;
+    }
+    const { mode, row } = editing;
+    setDraft((d) => ({ ...d, rows: mode === "add" ? [row, ...d.rows] : d.rows.map((r) => (r.id === row.id ? row : r)) }));
+    if (mode === "add") {
+      setKind("all");
+      resetPage();
+    }
+    setEditing(null);
   };
 
-  const update = (id: string, patch: Partial<AssignmentRow>) => setDraft((d) => ({ ...d, rows: d.rows.map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
-
-  const changeLoanType = (row: AssignmentRow, loanType: string) =>
-    update(row.id, { loanType, productCode: productsFor(loanType).some((p) => p.code === row.productCode) ? row.productCode : "" });
-
-  const move = (row: AssignmentRow, delta: -1 | 1) => {
-    const rowsInGroup = group(row);
-    const target = rowsInGroup[rowsInGroup.indexOf(row) + delta];
-    if (!target) return;
+  // Dropping on a row takes its place: rows moving down land after it, rows moving up land before it.
+  const moveRow = (fromId: string, toId: string) => {
+    if (fromId === toId) return;
     setDraft((d) => {
+      const from = d.rows.findIndex((r) => r.id === fromId);
+      const to = d.rows.findIndex((r) => r.id === toId);
       const next = [...d.rows];
-      const a = next.indexOf(row);
-      const b = next.indexOf(target);
-      [next[a], next[b]] = [next[b], next[a]];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
       return { ...d, rows: next };
     });
   };
 
-  // New rows start as a direct mapping; jump to the page that shows it.
-  const addRow = () => {
-    const row: AssignmentRow = { id: uid(), source: sourceFilter ?? SOURCES[0], loanType: loanTypeFilter ?? LOAN_TYPES[0], clauses: [], productCode: "" };
-    const next = [...rows, row];
-    const index = sortRows(next)
-      .filter((r) => (!sourceFilter || r.source === sourceFilter) && (!loanTypeFilter || r.loanType === loanTypeFilter))
-      .indexOf(row);
-    setDraft((d) => ({ ...d, rows: next }));
-    setKind("all");
-    setPagination((p) => ({ ...p, pageIndex: Math.floor(index / p.pageSize) }));
+  const endDrag = () => {
+    if (dragging && dragOver) moveRow(dragging, dragOver);
+    setDragging(null);
+    setDragOver(null);
+    setDragArmed(null);
   };
 
   const save = () => {
     setSaved(draft);
-    showSuccess(`${rows.length} ${rows.length === 1 ? "row" : "rows"} in effect for new applications.`, "Product code rules saved");
+    showSuccess(`${rows.length} ${rows.length === 1 ? "rule" : "rules"} in effect for new applications.`, "Product rules saved");
   };
+
+  const modalProducts = editing ? productsFor(editing.row.loanTypes) : [];
+  const modalProductData =
+    editing && editing.row.loanTypes.length > 1
+      ? editing.row.loanTypes
+          .map((lt) => ({ group: lt, items: modalProducts.filter((p) => p.loanType === lt).map((p) => ({ value: p.code, label: p.name })) }))
+          .filter((g) => g.items.length > 0)
+      : modalProducts.map((p) => ({ value: p.code, label: p.name }));
+  const modalProduct = editing ? productByCode(editing.row.productCode) : undefined;
 
   return (
     <Stack gap="md" p="lg">
@@ -336,6 +739,14 @@ export function LoanProductAssignment() {
         .lms-row:hover td { background: ${theme.other?.rowHoverBg} !important; }
         .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
         .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+        .lms-row .pa-grip { opacity: 0.3; transition: opacity 120ms ease; }
+        .lms-row:hover .pa-grip { opacity: 0.9; }
+        .pa-cell { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; height: 30px; padding: 0 6px; border-radius: 8px; transition: background-color 120ms ease, box-shadow 120ms ease; }
+        .pa-cell .pa-chev { flex-shrink: 0; opacity: 0; color: var(--mantine-color-slate-5); transition: opacity 120ms ease; }
+        .pa-cell:hover, .pa-cell[aria-expanded="true"] { background: var(--mantine-color-white); box-shadow: 0 0 0 1px var(--mantine-color-slate-2); }
+        .pa-cell:hover .pa-chev, .pa-cell[aria-expanded="true"] .pa-chev { opacity: 1; }
+        .pa-option { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border-radius: 8px; transition: background-color 100ms ease; }
+        .pa-option:hover { background: var(--mantine-color-slate-0); }
       `}</style>
 
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
@@ -360,20 +771,20 @@ export function LoanProductAssignment() {
               Loan Product Auto Assignment
             </Title>
             <Text fz="sm" c="slate.5">
-              Map each source and loan type to a product code. Add a condition only when the product depends on the applicant.
+              Rules are checked from the top. Drag a rule by its handle to change priority.
             </Text>
           </Stack>
         </Group>
         <Group gap={8}>
-          <Button size="sm" radius="xl" variant="default" leftSection={<IconPlus size={14} />} onClick={addRow}>
-            Add row
+          <Button size="sm" radius="xl" variant="default" leftSection={<IconPlus size={14} />} onClick={openAdd}>
+            Add rule
           </Button>
           {dirty && (
             <Button size="sm" radius="xl" variant="default" onClick={() => setDraft(saved)}>
               Discard
             </Button>
           )}
-          <Tooltip label={`Fix ${errorCount} ${errorCount === 1 ? "row" : "rows"} first`} disabled={errorCount === 0} withinPortal>
+          <Tooltip label={`Fix ${errorCount} ${errorCount === 1 ? "rule" : "rules"} first`} disabled={errorCount === 0} withinPortal>
             <Box>
               <Button
                 size="sm"
@@ -391,35 +802,27 @@ export function LoanProductAssignment() {
 
       <Paper radius="xl" p="xs" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}>
         <Group gap="sm" wrap="wrap" align="center">
-          <Select
-            size="sm"
-            radius="xl"
-            w={166}
+          <FilterMultiSelect
             placeholder="All sources"
-            data={SOURCES}
+            data={SOURCES.map((v) => ({ value: v, label: v }))}
             value={sourceFilter}
             onChange={(v) => {
-              setSourceFilter(v);
+              setSourceFilter(SOURCES.filter((o) => v.includes(o)));
               resetPage();
             }}
-            clearable
-            rightSection={sourceFilter ? undefined : chevronDown}
-            comboboxProps={{ withinPortal: true }}
+            withSelectAll
+            width={166}
           />
-          <Select
-            size="sm"
-            radius="xl"
-            w={166}
+          <FilterMultiSelect
             placeholder="All loan types"
-            data={LOAN_TYPES}
+            data={LOAN_TYPES.map((v) => ({ value: v, label: v }))}
             value={loanTypeFilter}
             onChange={(v) => {
-              setLoanTypeFilter(v);
+              setLoanTypeFilter(LOAN_TYPES.filter((o) => v.includes(o)));
               resetPage();
             }}
-            clearable
-            rightSection={loanTypeFilter ? undefined : chevronDown}
-            comboboxProps={{ withinPortal: true }}
+            withSelectAll
+            width={166}
           />
           <SegmentedControl
             size="xs"
@@ -445,14 +848,14 @@ export function LoanProductAssignment() {
                 size="sm"
                 radius="xl"
                 w={150}
-                aria-label="When several rows match"
+                aria-label="When several rules match"
                 data={MATCH_MODES}
                 value={draft.matchMode}
                 onChange={(v) => v && setDraft((d) => ({ ...d, matchMode: v as MatchMode }))}
                 allowDeselect={false}
                 rightSection={chevronDown}
                 comboboxProps={{ withinPortal: true }}
-                styles={{ input: { fontSize: 12.5 } }}
+                styles={{ input: { fontSize: 12.5, height: 34, minHeight: 34 } }}
               />
             </Group>
             <Group gap={6} wrap="nowrap">
@@ -470,7 +873,7 @@ export function LoanProductAssignment() {
                 allowDeselect={false}
                 rightSection={chevronDown}
                 comboboxProps={{ withinPortal: true }}
-                styles={{ input: { fontSize: 12.5 } }}
+                styles={{ input: { fontSize: 12.5, height: 34, minHeight: 34 } }}
               />
             </Group>
           </Group>
@@ -478,19 +881,19 @@ export function LoanProductAssignment() {
       </Paper>
 
       <Paper radius="lg" p="sm" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}>
-        <Table.ScrollContainer minWidth={1000}>
-          <Table w="100%" style={{ borderCollapse: "separate", borderSpacing: "0 6px", tableLayout: "fixed" }}>
+        <Table.ScrollContainer minWidth={980}>
+          <Table w="100%" style={{ borderCollapse: "separate", borderSpacing: "0 5px", tableLayout: "fixed" }}>
             <colgroup>
-              <col style={{ width: 188 }} />
-              <col style={{ width: 132 }} />
+              <col style={{ width: 228 }} />
+              <col style={{ width: 150 }} />
               <col />
-              <col style={{ width: 290 }} />
-              <col style={{ width: 100 }} />
+              <col style={{ width: 272 }} />
+              <col style={{ width: 84 }} />
             </colgroup>
             <Table.Thead>
               <Table.Tr>
-                {["Source", "Loan type", "Condition", "Product code", ""].map((h, i) => (
-                  <Table.Th key={h || i} style={headStyle}>
+                {["Source", "Loan type", "Condition", "Product", ""].map((h, i) => (
+                  <Table.Th key={h || i} style={{ ...headStyle, paddingLeft: i === 0 ? 34 : 10 }}>
                     {h}
                   </Table.Th>
                 ))}
@@ -516,189 +919,88 @@ export function LoanProductAssignment() {
                         <IconShieldCog size={26} color="var(--mantine-color-slate-4)" />
                       </Box>
                       <Text ta="center" c="slate.5" fz={11}>
-                        No rows match your filters.
+                        No rules match your filters.
                       </Text>
                     </Stack>
                   </Table.Td>
                 </Table.Tr>
               ) : (
                 pageRows.map((row) => {
-                  const rowsInGroup = group(row);
-                  const no = rowsInGroup.indexOf(row) + 1;
                   const error = rowError(row);
-                  const shadow = shadowedBy(row);
-                  const note = error
-                    ? { text: error, color: "danger.7" }
-                    : shadow
-                      ? { text: "Never used: a row above has no condition and catches every application first.", color: "orange.8" }
-                      : null;
+                  const shadow = !error && draft.matchMode === "first" && isShadowed(rows, rows.indexOf(row));
                   const stripe = error ? "danger" : shadow ? "orange" : row.clauses.length === 0 ? "success" : "brand";
-                  const SourceIcon = SOURCE_ICON[row.source] ?? IconBuildingBank;
-                  const product = productByCode(row.productCode);
-                  const cell = { padding: "6px 10px", border: "none", boxShadow: "var(--mantine-shadow-xs)", verticalAlign: "middle" as const };
+                  const isDropTarget = dragOver === row.id && dragging !== null && dragging !== row.id;
+                  const cell = {
+                    padding: "7px 10px",
+                    border: "none",
+                    boxShadow: isDropTarget ? "inset 0 2px 0 var(--mantine-color-brand-5), var(--mantine-shadow-xs)" : "var(--mantine-shadow-xs)",
+                    verticalAlign: "middle" as const,
+                  };
+                  const open = () => setEditing({ mode: "edit", row, attempted: false });
                   return (
-                    <Table.Tr key={row.id} className="lms-row" style={{ opacity: shadow ? 0.7 : 1 }}>
-                      <Table.Td style={{ ...cell, borderLeft: `3px solid var(--mantine-color-${stripe}-4)` }}>
-                        <Group gap={6} wrap="nowrap">
-                          <Box
-                            style={{
-                              width: 30,
-                              height: 30,
-                              borderRadius: "var(--mantine-radius-md)",
-                              background: "var(--mantine-color-brand-0)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              flexShrink: 0,
-                            }}
-                          >
-                            <SourceIcon size={15} color="var(--mantine-color-brand-6)" />
-                          </Box>
-                          <Select
-                            aria-label={`Source, row ${no}`}
-                            data={SOURCES}
-                            value={row.source}
-                            onChange={(v) => v && update(row.id, { source: v })}
-                            allowDeselect={false}
-                            comboboxProps={{ withinPortal: true }}
-                            styles={{ input: { ...CELL_INPUT.input, fontWeight: 700, color: "var(--mantine-color-slate-8)" } }}
-                            style={{ flex: 1, minWidth: 0 }}
-                          />
+                    <Table.Tr
+                      key={row.id}
+                      className="lms-row"
+                      onClick={open}
+                      draggable={dragArmed === row.id}
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = "move";
+                        setDragging(row.id);
+                      }}
+                      onDragEnter={() => dragging && setDragOver(row.id)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDragEnd={endDrag}
+                      style={{ cursor: "pointer", opacity: dragging === row.id ? 0.35 : shadow ? 0.7 : 1, transition: "opacity 120ms ease" }}
+                    >
+                      <Table.Td style={{ ...cell, borderLeft: `3px solid var(--mantine-color-${stripe}-4)`, paddingLeft: 4 }}>
+                        <Group gap={4} wrap="nowrap">
+                          <Tooltip label="Drag to change priority" openDelay={500}>
+                            <Box
+                              className="pa-grip"
+                              onClick={(e) => e.stopPropagation()}
+                              onMouseDown={() => setDragArmed(row.id)}
+                              onMouseUp={() => setDragArmed(null)}
+                              aria-label="Drag to reorder"
+                              style={{ cursor: "grab", display: "flex", padding: "4px 2px", color: "var(--mantine-color-brand-6)", flexShrink: 0 }}
+                            >
+                              <IconGripVertical size={15} />
+                            </Box>
+                          </Tooltip>
+                          <InlinePicker kind="source" value={row.sources} onChange={(sources) => updateRow(row.id, { sources })} />
                         </Group>
                       </Table.Td>
                       <Table.Td style={cell}>
-                        <Select
-                          aria-label={`Loan type, row ${no}`}
-                          data={LOAN_TYPES}
-                          value={row.loanType}
-                          onChange={(v) => v && changeLoanType(row, v)}
-                          allowDeselect={false}
-                          comboboxProps={{ withinPortal: true }}
-                          styles={{
-                            input: {
-                              height: 26,
-                              minHeight: 26,
-                              fontSize: 12,
-                              fontWeight: 600,
-                              paddingLeft: 10,
-                              border: "none",
-                              borderRadius: "var(--mantine-radius-sm)",
-                              color: "var(--mantine-color-brand-8)",
-                              background: "var(--mantine-color-brand-0)",
-                            },
-                          }}
-                          w={112}
-                        />
+                        <InlinePicker kind="loanType" value={row.loanTypes} onChange={(loanTypes) => changeRowLoanTypes(row, loanTypes)} />
                       </Table.Td>
                       <Table.Td style={cell}>
-                        <Popover opened={editing === row.id} onChange={(open) => !open && setEditing(null)} position="bottom-start" width={660} shadow="md" radius="md" withinPortal>
-                          <Popover.Target>
-                            <UnstyledButton
-                              onClick={() => setEditing(editing === row.id ? null : row.id)}
-                              aria-label={`Edit condition, row ${no}`}
-                              title={conditionText(row.clauses) || undefined}
-                              style={{
-                                display: "block",
-                                width: "100%",
-                                padding: "5px 8px",
-                                borderRadius: "var(--mantine-radius-sm)",
-                                background: editing === row.id ? "var(--mantine-color-brand-0)" : undefined,
-                                boxShadow: editing === row.id ? "inset 0 0 0 1px var(--mantine-color-brand-4)" : undefined,
-                              }}
-                            >
-                              <ConditionSummary clauses={row.clauses} />
-                              {note && (
-                                <Text fz={10.5} c={note.color} mt={2} truncate>
-                                  {note.text}
-                                </Text>
-                              )}
-                            </UnstyledButton>
-                          </Popover.Target>
-                          <Popover.Dropdown p="sm">
-                            <Stack gap="sm">
-                              <Text fz={11} fw={700} c="slate.5" style={{ textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                                Condition · {row.source} · {row.loanType}
+                        <Tooltip label={conditionText(row.clauses)} disabled={row.clauses.length === 0} multiline w={380} openDelay={250} position="top-start" withinPortal>
+                          <Box>
+                            <ConditionSummary clauses={row.clauses} />
+                            {(error || shadow) && (
+                              <Text fz={10} c={error ? "danger.7" : "orange.8"} mt={2} truncate>
+                                {error ?? "Never used: a rule above has no condition and already covers these applications."}
                               </Text>
-                              <ConditionEditor clauses={row.clauses} onChange={(clauses) => update(row.id, { clauses })} />
-                              <Group justify="space-between">
-                                <Group gap={4}>
-                                  <Button size="compact-xs" variant="subtle" color="brand" onClick={() => update(row.id, { clauses: [...row.clauses, newClause("AND")] })}>
-                                    {row.clauses.length === 0 ? "+ Add condition" : "+ AND"}
-                                  </Button>
-                                  {row.clauses.length > 0 && (
-                                    <Button size="compact-xs" variant="subtle" color="orange" onClick={() => update(row.id, { clauses: [...row.clauses, newClause("OR")] })}>
-                                      + OR
-                                    </Button>
-                                  )}
-                                </Group>
-                                <Group gap={6}>
-                                  {row.clauses.length > 0 && (
-                                    <Button size="compact-xs" variant="subtle" color="slate" onClick={() => update(row.id, { clauses: [] })}>
-                                      Clear (always)
-                                    </Button>
-                                  )}
-                                  <Button size="compact-xs" onClick={() => setEditing(null)}>
-                                    Done
-                                  </Button>
-                                </Group>
-                              </Group>
-                            </Stack>
-                          </Popover.Dropdown>
-                        </Popover>
+                            )}
+                          </Box>
+                        </Tooltip>
                       </Table.Td>
                       <Table.Td style={cell}>
-                        <Select
-                          aria-label={`Product code, row ${no}`}
-                          placeholder="Select product"
-                          data={productsFor(row.loanType).map((p) => ({ value: p.code, label: p.name }))}
-                          value={row.productCode || null}
-                          onChange={(v) => update(row.id, { productCode: v ?? "" })}
-                          allowDeselect={false}
-                          comboboxProps={{ withinPortal: true }}
-                          leftSection={
-                            product ? (
-                              <Text
-                                fz={10.5}
-                                fw={700}
-                                c="brand.8"
-                                px={6}
-                                py={2}
-                                style={{ background: "var(--mantine-color-brand-0)", borderRadius: "var(--mantine-radius-sm)", fontFamily: "var(--mantine-font-family-monospace)" }}
-                              >
-                                {product.code}
-                              </Text>
-                            ) : null
-                          }
-                          leftSectionWidth={product ? 62 : undefined}
-                          leftSectionPointerEvents="none"
-                          renderOption={({ option }) => (
-                            <Group gap={8} wrap="nowrap">
-                              <Text fz={10.5} fw={700} c="brand.8" w={58} style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
-                                {option.value}
-                              </Text>
-                              <Text fz={12.5}>{option.label}</Text>
-                            </Group>
-                          )}
-                          styles={{ input: { ...CELL_INPUT.input, paddingLeft: product ? 64 : 6, fontWeight: 600, color: "var(--mantine-color-slate-8)" } }}
-                        />
+                        <ProductPicker loanTypes={row.loanTypes} value={row.productCode} onChange={(productCode) => updateRow(row.id, { productCode })} />
                       </Table.Td>
-                      <Table.Td style={cell}>
+                      <Table.Td style={cell} onClick={(e) => e.stopPropagation()}>
                         <Group gap={2} justify="flex-end" wrap="nowrap">
-                          <ActionIcon variant="subtle" color="slate" size="md" radius="xl" disabled={no === 1} onClick={() => move(row, -1)} aria-label={`Move row ${no} up`}>
-                            <IconArrowUp size={15} />
-                          </ActionIcon>
-                          <ActionIcon variant="subtle" color="slate" size="md" radius="xl" disabled={no === rowsInGroup.length} onClick={() => move(row, 1)} aria-label={`Move row ${no} down`}>
-                            <IconArrowDown size={15} />
+                          <ActionIcon variant="subtle" color="slate" size="sm" radius="xl" onClick={open} aria-label="Edit rule">
+                            <IconPencil size={14} />
                           </ActionIcon>
                           <ActionIcon
                             variant="subtle"
                             color="danger"
-                            size="md"
+                            size="sm"
                             radius="xl"
                             onClick={() => setDraft((d) => ({ ...d, rows: d.rows.filter((r) => r.id !== row.id) }))}
-                            aria-label={`Delete row ${no}`}
+                            aria-label="Delete rule"
                           >
-                            <IconTrash size={15} />
+                            <IconTrash size={14} />
                           </ActionIcon>
                         </Group>
                       </Table.Td>
@@ -730,6 +1032,111 @@ export function LoanProductAssignment() {
           <Pagination total={pageCount} value={pageIndex + 1} onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))} color="brand" size="xs" radius="xl" />
         </Group>
       </Paper>
+
+      <Modal
+        opened={editing !== null}
+        onClose={() => setEditing(null)}
+        size={740}
+        padding={0}
+        centered
+        styles={{
+          content: { display: "flex", flexDirection: "column", overflow: "hidden" },
+          header: { display: "none" },
+          body: { padding: 0, display: "flex", flexDirection: "column" },
+        }}
+      >
+        {editing && (
+          <>
+            <Group justify="space-between" align="center" px="lg" py={10} bg="brand.6">
+              <Group gap={10} wrap="nowrap">
+                <ThemeIcon radius="md" size={26} variant="white" color="brand">
+                  <IconRoute size={14} />
+                </ThemeIcon>
+                <Text fz={14} fw={700} c="white">
+                  {editing.mode === "add" ? "Add rule" : "Edit rule"}
+                </Text>
+              </Group>
+              <ActionIcon variant="subtle" color="white" radius="xl" size="sm" onClick={() => setEditing(null)} aria-label="Close">
+                <IconX size={15} color="white" />
+              </ActionIcon>
+            </Group>
+
+            <Stack gap={14} px="lg" py="md">
+              <FormRow label="Source">
+                <ChipPicker kind="source" value={editing.row.sources} onChange={(sources) => editRow({ sources })} />
+              </FormRow>
+              <FormRow label="Loan type">
+                <ChipPicker kind="loanType" value={editing.row.loanTypes} onChange={changeLoanTypes} />
+              </FormRow>
+              <FormRow label="Condition" align="flex-start">
+                <Stack gap={6}>
+                  <ConditionEditor clauses={editing.row.clauses} onChange={(clauses) => editRow({ clauses })} />
+                  <Group gap={4} ml={editing.row.clauses.length ? 34 : 0}>
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
+                      color="brand"
+                      leftSection={<IconPlus size={12} />}
+                      onClick={() => editRow({ clauses: [...editing.row.clauses, newClause("AND")] })}
+                    >
+                      {editing.row.clauses.length === 0 ? "Add condition" : "AND"}
+                    </Button>
+                    {editing.row.clauses.length > 0 && (
+                      <>
+                        <Button
+                          size="compact-xs"
+                          variant="subtle"
+                          color="orange"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => editRow({ clauses: [...editing.row.clauses, newClause("OR")] })}
+                        >
+                          OR
+                        </Button>
+                        <Button size="compact-xs" variant="subtle" color="slate" onClick={() => editRow({ clauses: [] })} ml="auto">
+                          Remove condition
+                        </Button>
+                      </>
+                    )}
+                  </Group>
+                </Stack>
+              </FormRow>
+              <FormRow label="Product">
+                <Select
+                  aria-label="Product"
+                  placeholder={editing.row.loanTypes.length ? "Select product" : "Pick a loan type first"}
+                  data={modalProductData}
+                  value={editing.row.productCode || null}
+                  onChange={(v) => editRow({ productCode: v ?? "" })}
+                  allowDeselect={false}
+                  disabled={editing.row.loanTypes.length === 0}
+                  searchable
+                  leftSection={modalProduct ? <span style={codeBadge}>{modalProduct.code}</span> : null}
+                  leftSectionWidth={modalProduct ? 70 : undefined}
+                  leftSectionPointerEvents="none"
+                  renderOption={({ option }) => (
+                    <Group gap={8} wrap="nowrap">
+                      <Text fz={10} fw={700} c="brand.8" w={56} style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
+                        {option.value}
+                      </Text>
+                      <Text fz={12.5}>{option.label}</Text>
+                    </Group>
+                  )}
+                  styles={{ input: { ...FIELD.input, paddingLeft: modalProduct ? 72 : 10, fontWeight: 600 } }}
+                  w={320}
+                />
+              </FormRow>
+            </Stack>
+
+            <ModalFooter
+              variant="theme"
+              onClose={() => setEditing(null)}
+              submitLabel={editing.mode === "add" ? "Add rule" : "Save rule"}
+              errorMessage={editing.attempted && editingError ? editingError : undefined}
+              onSubmit={saveRule}
+            />
+          </>
+        )}
+      </Modal>
     </Stack>
   );
 }

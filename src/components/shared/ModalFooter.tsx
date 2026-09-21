@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Button, Group, Text, useMantineTheme } from '@mantine/core';
 
-const FOOTER_MIN_HEIGHT = 60;
+const FOOTER_MIN_HEIGHT = 50;
 
 interface ModalFooterProps {
   leftSlot?: ReactNode;
@@ -15,6 +15,7 @@ interface ModalFooterProps {
   submitLoading?: boolean;
   submitDisabled?: boolean;
   submitIcon?: ReactNode;
+  hideSubmit?: boolean;
   onSubmit?: () => void;
   variant?: 'tailwind' | 'theme';
   errorMessage?: string;
@@ -32,6 +33,7 @@ export function ModalFooter({
   submitLoading,
   submitDisabled,
   submitIcon,
+  hideSubmit,
   onSubmit,
   variant = 'tailwind',
   errorMessage,
@@ -79,22 +81,24 @@ export function ModalFooter({
                     {saveDraftLabel}
                   </Button>
                 )}
-                <Button
-                  {...submitButtonProps}
-                  px="xl"
-                  disabled={submitDisabled}
-                  loading={submitLoading}
-                  rightSection={submitIcon}
-                  styles={{
-                    root: {
-                      background: theme.other.brandGradient,
-                      boxShadow: theme.other.brandGlowShadowSm,
-                      border: 'none',
-                    },
-                  }}
-                >
-                  {submitLabel}
-                </Button>
+                {!hideSubmit && (
+                  <Button
+                    {...submitButtonProps}
+                    px="xl"
+                    disabled={submitDisabled}
+                    loading={submitLoading}
+                    rightSection={submitIcon}
+                    styles={{
+                      root: {
+                        background: theme.other.brandGradient,
+                        boxShadow: theme.other.brandGlowShadowSm,
+                        border: 'none',
+                      },
+                    }}
+                  >
+                    {submitLabel}
+                  </Button>
+                )}
               </>
             )}
           </Group>
@@ -152,16 +156,18 @@ export function ModalFooter({
                 </Button>
               )}
 
-              <Button
-                {...submitButtonProps}
-                size="sm"
-                loading={submitLoading}
-                disabled={submitDisabled}
-                rightSection={submitIcon}
-                className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0 font-semibold px-6"
-              >
-                {submitLabel}
-              </Button>
+              {!hideSubmit && (
+                <Button
+                  {...submitButtonProps}
+                  size="sm"
+                  loading={submitLoading}
+                  disabled={submitDisabled}
+                  rightSection={submitIcon}
+                  className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0 font-semibold px-6"
+                >
+                  {submitLabel}
+                </Button>
+              )}
             </>
           )}
         </div>

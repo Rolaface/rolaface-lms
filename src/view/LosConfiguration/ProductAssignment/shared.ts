@@ -24,7 +24,7 @@ export const PRODUCTS: LoanProduct[] = [
   { code: "EDU-01", name: "Study Loan", loanType: "Education" },
 ];
 
-export const productsFor = (loanType: string): LoanProduct[] => PRODUCTS.filter((p) => p.loanType === loanType);
+export const productsFor = (loanTypes: string[]): LoanProduct[] => PRODUCTS.filter((p) => loanTypes.includes(p.loanType));
 
 export const productByCode = (code: string): LoanProduct | undefined => PRODUCTS.find((p) => p.code === code);
 
@@ -89,11 +89,12 @@ export interface Clause {
   value: string;
 }
 
-// A row with no clauses is a direct mapping: every application for that source and loan type matches it.
+// A row applies to any of its sources combined with any of its loan types.
+// A row with no clauses is a direct mapping: every such application matches it.
 export interface AssignmentRow {
   id: string;
-  source: string;
-  loanType: string;
+  sources: string[];
+  loanTypes: string[];
   clauses: Clause[];
   productCode: string;
 }
@@ -123,16 +124,23 @@ export const orBlocks = (clauses: Clause[]): Clause[][] =>
     return blocks;
   }, []);
 
-export const groupKey = (row: Pick<AssignmentRow, "source" | "loanType">): string => `${row.source}|${row.loanType}`;
+const covers = (outer: string[], inner: string[]) => inner.length > 0 && inner.every((v) => outer.includes(v));
 
-// Rows are checked top to bottom within each Source + Loan type.
-export const sortRows = (rows: AssignmentRow[]): AssignmentRow[] =>
-  [...rows].sort((a, b) => a.source.localeCompare(b.source) || a.loanType.localeCompare(b.loanType) || rows.indexOf(a) - rows.indexOf(b));
+// Rows are checked top to bottom. With "first match only", a row with no condition catches every
+// application it covers, so a later row covering nothing beyond it can never be used.
+export const isShadowed = (rows: AssignmentRow[], index: number): boolean => {
+  const row = rows[index];
+  return rows
+    .slice(0, index)
+    .some((earlier) => earlier.clauses.length === 0 && covers(earlier.sources, row.sources) && covers(earlier.loanTypes, row.loanTypes));
+};
 
 export const rowError = (row: AssignmentRow): string | null => {
+  if (row.sources.length === 0) return "Choose at least one source";
+  if (row.loanTypes.length === 0) return "Choose at least one loan type";
   if (row.clauses.some((c) => !c.variable)) return "Choose a variable";
   if (row.clauses.some((c) => c.value.trim() === "")) return "Enter a value";
-  if (!row.productCode) return "Choose a product code";
+  if (!row.productCode) return "Choose a product";
   return null;
 };
 
