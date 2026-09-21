@@ -407,7 +407,7 @@ export function LoanApplication() {
   } = useQuery({
     queryKey: ["loan-applications"],
     queryFn: getAllLoanApplications,
-    refetchInterval: 2000,
+    // refetchInterval: 2000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
