@@ -27,7 +27,6 @@ interface FilterMultiSelectProps {
   loading?: boolean;
   disabled?: boolean;
   width?: number;
-  /** Adds "Select all" / "Clear all" above the options. */
   withSelectAll?: boolean;
 }
 

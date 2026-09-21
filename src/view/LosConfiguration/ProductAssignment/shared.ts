@@ -1,6 +1,3 @@
-// ---------------------------------------------------------------------------
-// Reference data
-// ---------------------------------------------------------------------------
 export const SOURCES = ["Branch", "Mobile Banking", "Online Portal", "USSD", "Third Party"];
 
 export const LOAN_TYPES = ["Business", "Personal", "Auto", "Mortgage", "Education"];
@@ -28,9 +25,6 @@ export const productsFor = (loanTypes: string[]): LoanProduct[] => PRODUCTS.filt
 
 export const productByCode = (code: string): LoanProduct | undefined => PRODUCTS.find((p) => p.code === code);
 
-// ---------------------------------------------------------------------------
-// Variables a condition can test
-// ---------------------------------------------------------------------------
 export interface Variable {
   name: string;
   label: string;
@@ -56,7 +50,6 @@ export const variableByName = (name: string): Variable | undefined => VARIABLES.
 
 export type Operator = "=" | "<>" | ">" | ">=" | "<" | "<=";
 
-// Operators read as words so a condition reads as a sentence: "Credit score is at least 700".
 const NUMBER_OPERATORS: { value: Operator; label: string }[] = [
   { value: "=", label: "is equal to" },
   { value: "<>", label: "is not equal to" },
@@ -66,7 +59,6 @@ const NUMBER_OPERATORS: { value: Operator; label: string }[] = [
   { value: "<=", label: "is at most" },
 ];
 
-// List values read better without "equal to": "Employment type is Salaried".
 const LIST_OPERATORS: { value: Operator; label: string }[] = [
   { value: "=", label: "is" },
   { value: "<>", label: "is not" },
@@ -74,72 +66,71 @@ const LIST_OPERATORS: { value: Operator; label: string }[] = [
 
 export const operatorsFor = (variable: Variable | undefined) => (variable && !variable.numeric ? LIST_OPERATORS : NUMBER_OPERATORS);
 
-// ---------------------------------------------------------------------------
-// Rows
-// ---------------------------------------------------------------------------
 export type Joiner = "AND" | "OR";
 
-// `joiner` links a clause to the one above it (ignored on the first). AND binds tighter than OR,
-// so the clauses split at each OR into blocks: the row matches when every clause in any one block holds.
 export interface Clause {
   id: string;
-  joiner: Joiner;
   variable: string;
   operator: Operator;
   value: string;
 }
 
-// A row applies to any of its sources combined with any of its loan types.
-// A row with no clauses is a direct mapping: every such application matches it.
+export interface ConditionGroup {
+  id: string;
+  name: string;
+  join: Joiner;
+  clauses: Clause[];
+}
+
 export interface AssignmentRow {
   id: string;
   sources: string[];
   loanTypes: string[];
-  clauses: Clause[];
+  join: Joiner;
+  groups: ConditionGroup[];
   productCode: string;
 }
 
-export type MatchMode = "first" | "all";
+export type MatchMode = "first" | "manual" | "all";
 
 export const MATCH_MODES: { value: MatchMode; label: string }[] = [
   { value: "first", label: "First match only" },
+  { value: "manual", label: "Manual review" },
   { value: "all", label: "All matches" },
 ];
 
-export type Fallback = "manual" | "reject";
+export type Fallback = "manual" | "default";
 
 export const FALLBACKS: { value: Fallback; label: string }[] = [
   { value: "manual", label: "Manual review" },
-  { value: "reject", label: "Reject" },
+  { value: "default", label: "Assign default product" },
 ];
 
 export const uid = (): string => Math.random().toString(36).slice(2, 9);
 
-export const newClause = (joiner: Joiner = "AND"): Clause => ({ id: uid(), joiner, variable: "", operator: "=", value: "" });
+export const newClause = (): Clause => ({ id: uid(), variable: "", operator: "=", value: "" });
 
-export const orBlocks = (clauses: Clause[]): Clause[][] =>
-  clauses.reduce<Clause[][]>((blocks, clause, i) => {
-    if (i === 0 || clause.joiner === "OR") blocks.push([clause]);
-    else blocks[blocks.length - 1].push(clause);
-    return blocks;
-  }, []);
+export const newGroup = (join: Joiner = "AND"): ConditionGroup => ({ id: uid(), name: "", join, clauses: [newClause()] });
+
+export const allClauses = (row: Pick<AssignmentRow, "groups">): Clause[] => row.groups.flatMap((g) => g.clauses);
+
+export const hasCondition = (row: Pick<AssignmentRow, "groups">): boolean => allClauses(row).length > 0;
 
 const covers = (outer: string[], inner: string[]) => inner.length > 0 && inner.every((v) => outer.includes(v));
 
-// Rows are checked top to bottom. With "first match only", a row with no condition catches every
-// application it covers, so a later row covering nothing beyond it can never be used.
 export const isShadowed = (rows: AssignmentRow[], index: number): boolean => {
   const row = rows[index];
   return rows
     .slice(0, index)
-    .some((earlier) => earlier.clauses.length === 0 && covers(earlier.sources, row.sources) && covers(earlier.loanTypes, row.loanTypes));
+    .some((earlier) => !hasCondition(earlier) && covers(earlier.sources, row.sources) && covers(earlier.loanTypes, row.loanTypes));
 };
 
 export const rowError = (row: AssignmentRow): string | null => {
+  const clauses = allClauses(row);
   if (row.sources.length === 0) return "Choose at least one source";
   if (row.loanTypes.length === 0) return "Choose at least one loan type";
-  if (row.clauses.some((c) => !c.variable)) return "Choose a variable";
-  if (row.clauses.some((c) => c.value.trim() === "")) return "Enter a value";
+  if (clauses.some((c) => !c.variable)) return "Choose a variable";
+  if (clauses.some((c) => c.value.trim() === "")) return "Enter a value";
   if (!row.productCode) return "Choose a product";
   return null;
 };
@@ -151,6 +142,9 @@ export const clauseText = (clause: Clause): string => {
   return `${variable?.label ?? "…"} ${operator} ${value || "…"}`;
 };
 
-// The whole condition as one sentence, e.g. "Employment type is Salaried and Credit score is at least 700".
-export const conditionText = (clauses: Clause[]): string =>
-  clauses.map((c, i) => (i > 0 ? ` ${c.joiner.toLowerCase()} ` : "") + clauseText(c)).join("");
+export const groupText = (group: ConditionGroup): string => group.clauses.map(clauseText).join(` ${group.join.toLowerCase()} `);
+
+export const conditionText = (row: Pick<AssignmentRow, "join" | "groups">): string => {
+  const groups = row.groups.filter((g) => g.clauses.length > 0);
+  return groups.map((g) => (groups.length > 1 && g.clauses.length > 1 ? `(${groupText(g)})` : groupText(g))).join(` ${row.join.toLowerCase()} `);
+};

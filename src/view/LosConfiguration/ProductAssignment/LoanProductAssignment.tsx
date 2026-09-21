@@ -1,10 +1,10 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import {
   ActionIcon,
+  Badge,
   Box,
   Button,
   CheckIcon,
-  Chip,
   Group,
   Modal,
   NumberInput,
@@ -16,14 +16,16 @@ import {
   Stack,
   Table,
   Text,
-  ThemeIcon,
+  TextInput,
   Title,
   Tooltip,
   UnstyledButton,
   useMantineTheme,
 } from "@mantine/core";
 import {
+  IconAdjustmentsHorizontal,
   IconAffiliate,
+  IconArrowRight,
   IconBuildingBank,
   IconCheck,
   IconChevronDown,
@@ -42,7 +44,6 @@ import {
 } from "@tabler/icons-react";
 
 import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
-import { ModalFooter } from "../../../components/shared/ModalFooter";
 import { showSuccess } from "../../../utils/alert";
 import {
   FALLBACKS,
@@ -53,9 +54,10 @@ import {
   clauseText,
   conditionText,
   isShadowed,
+  hasCondition,
   newClause,
+  newGroup,
   operatorsFor,
-  orBlocks,
   productByCode,
   productsFor,
   rowError,
@@ -63,6 +65,7 @@ import {
   variableByName,
   type AssignmentRow,
   type Clause,
+  type ConditionGroup,
   type Fallback,
   type Joiner,
   type MatchMode,
@@ -73,63 +76,93 @@ interface Config {
   rows: AssignmentRow[];
   matchMode: MatchMode;
   fallback: Fallback;
+  defaultProduct: string;
 }
 
-const c = (variable: string, operator: Operator, value: string, joiner: Joiner = "AND"): Clause => ({ id: uid(), joiner, variable, operator, value });
+const c = (variable: string, operator: Operator, value: string): Clause => ({ id: uid(), variable, operator, value });
+const g = (join: Joiner, ...clauses: Clause[]): ConditionGroup => ({ id: uid(), name: "", join, clauses });
+const named = (name: string, group: ConditionGroup): ConditionGroup => ({ ...group, name });
 
 const SEED: Config = {
   matchMode: "first",
   fallback: "manual",
+  defaultProduct: "",
   rows: [
-    { id: "r1", sources: ["Branch"], loanTypes: ["Personal"], clauses: [c("customer_type", "=", "Staff")], productCode: "PL-STF" },
+    { id: "r1", sources: ["Branch"], loanTypes: ["Personal"], join: "AND", groups: [g("AND", c("customer_type", "=", "Staff"))], productCode: "PL-STF" },
     {
       id: "r2",
       sources: ["Branch", "Online Portal"],
       loanTypes: ["Personal"],
-      clauses: [c("employment_type", "=", "Salaried"), c("net_monthly_income", ">=", "15000")],
+      join: "AND",
+      groups: [g("AND", c("employment_type", "=", "Salaried"), c("net_monthly_income", ">=", "15000"))],
       productCode: "PL-SAL",
     },
     {
       id: "r3",
       sources: ["Branch"],
       loanTypes: ["Personal"],
-      clauses: [c("employment_type", "=", "Self-employed"), c("employment_type", "=", "Business owner", "OR")],
+      join: "AND",
+      groups: [g("OR", c("employment_type", "=", "Self-employed"), c("employment_type", "=", "Business owner"))],
       productCode: "PL-SE",
     },
     {
       id: "r4",
       sources: ["Mobile Banking", "USSD"],
       loanTypes: ["Personal"],
-      clauses: [c("employment_type", "=", "Salaried"), c("credit_score", ">=", "700")],
+      join: "AND",
+      groups: [
+        named("Employment", g("OR", c("employment_type", "=", "Salaried"), c("employment_type", "=", "Pensioner"))),
+        named("Credit profile", g("OR", c("credit_score", ">=", "700"), c("customer_type", "=", "Existing customer"))),
+      ],
       productCode: "PL-SAL",
     },
     {
       id: "r5",
       sources: ["Mobile Banking"],
       loanTypes: ["Personal"],
-      clauses: [c("employment_type", "=", "Self-employed"), c("credit_score", ">=", "650")],
+      join: "AND",
+      groups: [g("AND", c("employment_type", "=", "Self-employed"), c("credit_score", ">=", "650"))],
       productCode: "PL-SE",
     },
     {
       id: "r6",
       sources: ["Branch", "Third Party"],
       loanTypes: ["Business"],
-      clauses: [c("years_in_business", ">=", "2"), c("loan_amount", "<=", "5000000")],
+      join: "AND",
+      groups: [g("AND", c("years_in_business", ">=", "2"), c("loan_amount", "<=", "5000000"))],
       productCode: "SME-WC",
     },
-    { id: "r7", sources: ["Branch"], loanTypes: ["Business"], clauses: [c("years_in_business", ">=", "3"), c("loan_amount", ">", "5000000")], productCode: "SME-TL" },
-    { id: "r8", sources: ["Branch", "Third Party"], loanTypes: ["Auto"], clauses: [c("vehicle_condition", "=", "New")], productCode: "AL-NEW" },
-    { id: "r9", sources: ["Branch"], loanTypes: ["Auto"], clauses: [c("vehicle_condition", "=", "Used"), c("tenor", "<=", "48")], productCode: "AL-USED" },
-    { id: "r10", sources: ["Third Party"], loanTypes: ["Auto"], clauses: [], productCode: "AL-USED" },
+    {
+      id: "r7",
+      sources: ["Branch"],
+      loanTypes: ["Business"],
+      join: "AND",
+      groups: [
+        named("Business profile", g("OR", c("years_in_business", ">=", "3"), c("customer_type", "=", "Existing customer"))),
+        named("Loan size", g("AND", c("loan_amount", ">", "2000000"))),
+      ],
+      productCode: "SME-TL",
+    },
+    { id: "r8", sources: ["Branch", "Third Party"], loanTypes: ["Auto"], join: "AND", groups: [g("AND", c("vehicle_condition", "=", "New"))], productCode: "AL-NEW" },
+    {
+      id: "r9",
+      sources: ["Branch"],
+      loanTypes: ["Auto"],
+      join: "AND",
+      groups: [g("AND", c("vehicle_condition", "=", "Used"), c("tenor", "<=", "48"))],
+      productCode: "AL-USED",
+    },
+    { id: "r10", sources: ["Third Party"], loanTypes: ["Auto"], join: "AND", groups: [], productCode: "AL-USED" },
     {
       id: "r11",
       sources: ["Third Party"],
       loanTypes: ["Mortgage"],
-      clauses: [c("customer_type", "=", "Existing customer"), c("loan_amount", "<=", "1500000")],
+      join: "AND",
+      groups: [g("AND", c("customer_type", "=", "Existing customer"), c("loan_amount", "<=", "1500000"))],
       productCode: "HL-TOP",
     },
-    { id: "r12", sources: [...SOURCES], loanTypes: ["Mortgage"], clauses: [], productCode: "HL-PUR" },
-    { id: "r13", sources: ["Mobile Banking", "Online Portal"], loanTypes: ["Education"], clauses: [], productCode: "EDU-01" },
+    { id: "r12", sources: [...SOURCES], loanTypes: ["Mortgage"], join: "AND", groups: [], productCode: "HL-PUR" },
+    { id: "r13", sources: ["Mobile Banking", "Online Portal"], loanTypes: ["Education"], join: "AND", groups: [], productCode: "EDU-01" },
   ],
 };
 
@@ -137,7 +170,6 @@ type RowKind = "all" | "conditional" | "direct";
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-// Modal inputs one step smaller than the theme default, to keep the form compact.
 const FIELD = { input: { height: 30, minHeight: 30, fontSize: 12.5, paddingLeft: 10 } };
 
 const headStyle = {
@@ -162,8 +194,6 @@ const codeBadge = {
   flexShrink: 0,
 };
 
-const JOINER_COLOR: Record<Joiner, string> = { AND: "var(--mantine-color-brand-7)", OR: "var(--mantine-color-orange-8)" };
-
 const SOURCE_ICON: Record<string, Icon> = {
   Branch: IconBuildingBank,
   "Mobile Banking": IconDeviceMobile,
@@ -172,7 +202,6 @@ const SOURCE_ICON: Record<string, Icon> = {
   "Third Party": IconAffiliate,
 };
 
-// Each loan type keeps one colour everywhere, so a column of loan types can be scanned at a glance.
 const LOAN_TONE: Record<string, string> = { Personal: "brand", Business: "info", Auto: "orange", Mortgage: "teal", Education: "grape" };
 
 type PickerKind = "source" | "loanType";
@@ -206,95 +235,60 @@ function OptionMark({ kind, value, size = 20 }: { kind: PickerKind; value: strin
   );
 }
 
-// One-line summary of a multi-value cell: "Branch +2", or "All sources" when everything is picked.
-function PickerSummary({ kind, values }: { kind: PickerKind; values: string[] }) {
+const chipBase = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 5,
+  height: 22,
+  padding: "0 8px 0 4px",
+  borderRadius: 6,
+  fontSize: 11.5,
+  fontWeight: 600,
+  whiteSpace: "nowrap" as const,
+};
+
+function PickerSummary({ kind, values, grid = true }: { kind: PickerKind; values: string[]; grid?: boolean }) {
   const { options, allLabel } = PICKER[kind];
   const ordered = options.filter((o) => values.includes(o));
-  const more =
-    ordered.length > 1 && ordered.length < options.length ? (
-      <Tooltip label={ordered.join(", ")} withinPortal openDelay={200}>
-        <span
-          style={{
-            fontSize: 10.5,
-            fontWeight: 700,
-            lineHeight: "18px",
-            padding: "0 6px",
-            borderRadius: 999,
-            flexShrink: 0,
-            color: "var(--mantine-color-slate-6)",
-            background: "var(--mantine-color-white)",
-            border: "1px solid var(--mantine-color-slate-2)",
-          }}
-        >
-          +{ordered.length - 1}
-        </span>
-      </Tooltip>
-    ) : null;
 
   if (ordered.length === options.length) {
     return (
-      <Group gap={6} wrap="nowrap">
-        <Box
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: 6,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "var(--mantine-color-brand-0)",
-            color: "var(--mantine-color-brand-6)",
-            flexShrink: 0,
-          }}
-        >
-          <IconStack2 size={12} />
-        </Box>
-        <Text fz={11.5} fw={600} c="brand.8">
-          {allLabel}
-        </Text>
-      </Group>
-    );
-  }
-
-  if (kind === "loanType") {
-    const tone = LOAN_TONE[ordered[0]] ?? "slate";
-    return (
-      <Group gap={4} wrap="nowrap" style={{ minWidth: 0 }}>
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            fontSize: 11,
-            fontWeight: 600,
-            lineHeight: "20px",
-            padding: "0 8px",
-            borderRadius: 999,
-            whiteSpace: "nowrap",
-            color: `var(--mantine-color-${tone}-8)`,
-            background: `var(--mantine-color-${tone}-0)`,
-          }}
-        >
-          <OptionMark kind="loanType" value={ordered[0]} />
-          {ordered[0]}
-        </span>
-        {more}
-      </Group>
+      <span style={{ ...chipBase, color: "var(--mantine-color-brand-8)", background: "var(--mantine-color-brand-0)" }}>
+        <IconStack2 size={13} />
+        {allLabel}
+      </span>
     );
   }
 
   return (
-    <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
-      <OptionMark kind="source" value={ordered[0]} />
-      <Text fz={11.5} fw={600} c="slate.8" truncate>
-        {ordered[0]}
-      </Text>
-      {more}
-    </Group>
+    <Box
+      style={
+        kind === "loanType" && grid
+          ? { display: "grid", gridTemplateColumns: "repeat(2, max-content)", gap: 4, justifyContent: "start", minWidth: 0 }
+          : { display: "flex", flexWrap: "wrap", gap: 4, minWidth: 0 }
+      }
+    >
+      {ordered.map((o) => {
+        if (kind === "loanType") {
+          const tone = LOAN_TONE[o] ?? "slate";
+          return (
+            <span key={o} style={{ ...chipBase, paddingLeft: 8, color: `var(--mantine-color-${tone}-8)`, background: `var(--mantine-color-${tone}-0)` }}>
+              <OptionMark kind="loanType" value={o} />
+              {o}
+            </span>
+          );
+        }
+        return (
+          <span key={o} style={{ ...chipBase, color: "var(--mantine-color-slate-8)", background: "var(--mantine-color-slate-1)" }}>
+            <OptionMark kind="source" value={o} size={16} />
+            {o}
+          </span>
+        );
+      })}
+    </Box>
   );
 }
 
-// Same checkbox look as the shared FilterMultiSelect, so every multi-select on the page reads the same.
 function CheckMark({ checked, indeterminate }: { checked: boolean; indeterminate?: boolean }) {
   const filled = checked || indeterminate;
   return (
@@ -320,25 +314,23 @@ function CheckMark({ checked, indeterminate }: { checked: boolean; indeterminate
   );
 }
 
-// Click-to-edit multi-select for a table cell. It reads as plain text until hovered, and its clicks
-// never reach the row, which opens the full rule on click.
-function InlinePicker({ kind, value, onChange }: { kind: PickerKind; value: string[]; onChange: (value: string[]) => void }) {
+function InlinePicker({ kind, value, onChange, field }: { kind: PickerKind; value: string[]; onChange: (value: string[]) => void; field?: boolean }) {
   const { options, label } = PICKER[kind];
   const all = value.length === options.length;
   const toggle = (item: string) => onChange(options.filter((o) => (o === item ? !value.includes(o) : value.includes(o))));
 
   return (
     <Box onClick={(e) => e.stopPropagation()} style={{ minWidth: 0, flex: 1 }}>
-      <Popover position="bottom-start" width={236} shadow="md" radius="md" withinPortal>
+      <Popover position="bottom-start" width={field ? "target" : 236} shadow="md" radius="md" withinPortal>
         <Popover.Target>
-          <UnstyledButton className="pa-cell" aria-label={`Edit ${label.toLowerCase()}`}>
+          <UnstyledButton className={field ? "pa-field" : "pa-cell"} aria-label={`Edit ${label.toLowerCase()}`}>
             <Box style={{ flex: 1, minWidth: 0 }}>
               {value.length === 0 ? (
-                <Text fz={11.5} fw={600} c="danger.6">
+                <Text fz={field ? 12.5 : 11.5} fw={field ? 400 : 600} c={field ? "slate.4" : "danger.6"}>
                   Choose {label.toLowerCase()}
                 </Text>
               ) : (
-                <PickerSummary kind={kind} values={value} />
+                <PickerSummary kind={kind} values={value} grid={!field} />
               )}
             </Box>
             <IconChevronDown className="pa-chev" size={13} />
@@ -380,7 +372,6 @@ function InlinePicker({ kind, value, onChange }: { kind: PickerKind; value: stri
   );
 }
 
-// Click-to-edit product for a table cell: code and name, grouped by loan type when the rule has several.
 function ProductPicker({ loanTypes, value, onChange }: { loanTypes: string[]; value: string; onChange: (code: string) => void }) {
   const [opened, setOpened] = useState(false);
   const product = productByCode(value);
@@ -452,8 +443,40 @@ function ProductPicker({ loanTypes, value, onChange }: { loanTypes: string[]; va
   );
 }
 
-function ConditionSummary({ clauses }: { clauses: Clause[] }) {
-  if (clauses.length === 0) {
+const JOIN_TONE: Record<Joiner, string> = { AND: "brand", OR: "orange" };
+
+const JoinWord = ({ join }: { join: Joiner }) => (
+  <Text span inherit fw={700} c={`${JOIN_TONE[join]}.7`}>
+    {` ${join.toLowerCase()} `}
+  </Text>
+);
+
+function ConditionText({ row }: { row: Pick<AssignmentRow, "join" | "groups"> }) {
+  const groups = row.groups.filter((gr) => gr.clauses.length > 0);
+  return (
+    <>
+      {groups.map((gr, gi) => {
+        const bracket = groups.length > 1 && gr.clauses.length > 1;
+        return (
+          <Fragment key={gr.id}>
+            {gi > 0 && <JoinWord join={row.join} />}
+            {bracket && "("}
+            {gr.clauses.map((cl, ci) => (
+              <Fragment key={cl.id}>
+                {ci > 0 && <JoinWord join={gr.join} />}
+                {clauseText(cl)}
+              </Fragment>
+            ))}
+            {bracket && ")"}
+          </Fragment>
+        );
+      })}
+    </>
+  );
+}
+
+function ConditionSummary({ row }: { row: AssignmentRow }) {
+  if (!hasCondition(row)) {
     return (
       <Group gap={8} wrap="nowrap">
         <Text fz={10} fw={700} c="success.8" px={7} py={1} style={{ background: "var(--mantine-color-success-0)", borderRadius: 4, flexShrink: 0 }}>
@@ -467,161 +490,206 @@ function ConditionSummary({ clauses }: { clauses: Clause[] }) {
   }
   return (
     <Text fz={11.5} c="slate.8" lineClamp={1}>
-      {clauses.map((cl, i) => (
-        <Fragment key={cl.id}>
-          {i > 0 && (
-            <Text span fz={11.5} fw={700} c={cl.joiner === "AND" ? "brand.7" : "orange.8"}>
-              {` ${cl.joiner.toLowerCase()} `}
-            </Text>
-          )}
-          {clauseText(cl)}
-        </Fragment>
-      ))}
+      <ConditionText row={row} />
     </Text>
   );
 }
 
-function ConditionEditor({ clauses, onChange }: { clauses: Clause[]; onChange: (clauses: Clause[]) => void }) {
-  const set = (id: string, patch: Partial<Clause>) => onChange(clauses.map((cl) => (cl.id === id ? { ...cl, ...patch } : cl)));
+const LINE = { input: { height: 26, minHeight: 26, fontSize: 12, paddingLeft: 8, borderRadius: 6 } };
 
-  if (clauses.length === 0) {
-    return (
-      <Text fz={12} c="slate.5" py={6}>
-        None — every matching application gets the product directly.
-      </Text>
-    );
-  }
+function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onChange: (groups: ConditionGroup[]) => void }) {
+  const setGroups = (next: ConditionGroup[]) => onChange(next.filter((gr) => gr.clauses.length > 0));
+  const updateGroup = (id: string, patch: Partial<ConditionGroup>) => setGroups(groups.map((gr) => (gr.id === id ? { ...gr, ...patch } : gr)));
+  const updateClause = (gr: ConditionGroup, id: string, patch: Partial<Clause>) =>
+    updateGroup(gr.id, { clauses: gr.clauses.map((cl) => (cl.id === id ? { ...cl, ...patch } : cl)) });
 
   return (
     <Stack gap={6}>
-      {orBlocks(clauses).map((block, bi) => (
-        <Fragment key={block[0].id}>
-          {block.map((clause, ci) => {
-            const variable = variableByName(clause.variable);
-            const first = bi === 0 && ci === 0;
-            const joiner = ci === 0 ? "OR" : "AND";
-            return (
-              <Group key={clause.id} gap={6} wrap="nowrap">
-                <Box w={34} style={{ flexShrink: 0, textAlign: "center" }}>
-                  {first ? (
-                    <Text fz={11} fw={800} c="slate.4">
-                      IF
-                    </Text>
-                  ) : (
-                    <Tooltip label={`Switch to ${joiner === "AND" ? "OR" : "AND"}`} openDelay={400}>
-                      <UnstyledButton
-                        onClick={() => set(clause.id, { joiner: joiner === "AND" ? "OR" : "AND" })}
-                        aria-label={`${joiner}, click to switch`}
-                        style={{
-                          fontSize: 10.5,
-                          fontWeight: 800,
-                          color: JOINER_COLOR[joiner],
-                          padding: "3px 8px",
-                          borderRadius: 999,
-                          background: joiner === "AND" ? "var(--mantine-color-brand-0)" : "var(--mantine-color-orange-0)",
-                        }}
-                      >
-                        {joiner}
-                      </UnstyledButton>
-                    </Tooltip>
-                  )}
-                </Box>
-                <Select
-                  aria-label="Variable"
-                  placeholder="Variable"
-                  data={VARIABLES.map((v) => ({ value: v.name, label: v.label }))}
-                  value={clause.variable || null}
-                  onChange={(v) => {
-                    if (!v) return;
-                    const allowed = operatorsFor(variableByName(v)).some((o) => o.value === clause.operator);
-                    set(clause.id, { variable: v, operator: allowed ? clause.operator : "=", value: "" });
-                  }}
-                  allowDeselect={false}
-                  searchable
-                  styles={FIELD}
-                  style={{ flex: "1 1 180px", minWidth: 0 }}
+      {groups.map((gr) => (
+        <Fragment key={gr.id}>
+          <Box style={{ borderRadius: 8, border: "1px solid var(--mantine-color-slate-2)", overflow: "hidden" }}>
+            <Group justify="space-between" wrap="nowrap" px={10} h={32} style={{ background: "var(--mantine-color-slate-0)", borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
+              <Group gap={10} wrap="nowrap">
+                <TextInput
+                  className="pa-name"
+                  aria-label="Group name"
+                  placeholder="Name this group"
+                  value={gr.name}
+                  onChange={(e) => updateGroup(gr.id, { name: e.currentTarget.value })}
+                  maxLength={40}
+                  w={150}
+                  rightSection={<IconPencil size={12} />}
+                  rightSectionWidth={22}
+                  rightSectionPointerEvents="none"
                 />
-                <Select
-                  aria-label="Operator"
-                  data={operatorsFor(variable)}
-                  value={clause.operator}
-                  onChange={(v) => v && set(clause.id, { operator: v as Operator })}
-                  allowDeselect={false}
-                  styles={{ input: { ...FIELD.input, fontWeight: 600, color: "var(--mantine-color-brand-7)" } }}
-                  style={{ width: 136, flexShrink: 0 }}
-                />
-                {variable?.options ? (
-                  <Select
-                    aria-label="Value"
-                    placeholder="Value"
-                    data={variable.options}
-                    value={clause.value || null}
-                    onChange={(v) => set(clause.id, { value: v ?? "" })}
-                    allowDeselect={false}
-                    styles={FIELD}
-                    style={{ flex: "1 1 150px", minWidth: 0 }}
+                {gr.clauses.length > 1 && (
+                <Group gap={8} wrap="nowrap">
+                  <SegmentedControl
+                    size="xs"
+                    radius="md"
+                    color={gr.join === "AND" ? "brand" : "orange"}
+                    value={gr.join}
+                    onChange={(v) => updateGroup(gr.id, { join: v as Joiner })}
+                    data={[
+                      { label: "Any", value: "OR" },
+                      { label: "All", value: "AND" },
+                    ]}
+                    aria-label="Any or all of the following"
+                    styles={{ root: { padding: 2 }, label: { fontSize: 10.5, fontWeight: 700, padding: "1px 10px", minHeight: 0, lineHeight: "16px" } }}
                   />
-                ) : (
-                  <NumberInput
-                    aria-label="Value"
-                    placeholder="Value"
-                    value={clause.value}
-                    onChange={(v) => set(clause.id, { value: String(v) })}
-                    hideControls
-                    thousandSeparator=","
-                    disabled={!variable}
-                    styles={FIELD}
-                    style={{ flex: "1 1 150px", minWidth: 0 }}
-                  />
+                  <Text fz={11.5} c="slate.6">
+                    of the following
+                  </Text>
+                </Group>
                 )}
-                <ActionIcon variant="subtle" color="slate" radius="xl" onClick={() => onChange(clauses.filter((cl) => cl.id !== clause.id))} aria-label="Remove">
-                  <IconX size={15} />
-                </ActionIcon>
               </Group>
-            );
-          })}
+              <Group gap={2} wrap="nowrap">
+                <UnstyledButton
+                  onClick={() => updateGroup(gr.id, { clauses: [...gr.clauses, newClause()] })}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--mantine-color-brand-6)", padding: "0 6px" }}
+                >
+                  <IconPlus size={11} stroke={2.4} />
+                  Add line
+                </UnstyledButton>
+                {groups.length > 1 && (
+                  <Tooltip label="Remove group" withinPortal>
+                    <ActionIcon variant="subtle" color="slate" size="sm" radius="xl" onClick={() => setGroups(groups.filter((x) => x.id !== gr.id))} aria-label="Remove group">
+                      <IconTrash size={13} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </Group>
+            </Group>
+            <Stack gap={4} p={8}>
+              {gr.clauses.map((clause) => {
+                const variable = variableByName(clause.variable);
+                return (
+                  <Group key={clause.id} gap={6} wrap="nowrap">
+                    <Select
+                      aria-label="Variable"
+                      placeholder="Variable"
+                      data={VARIABLES.map((v) => ({ value: v.name, label: v.label }))}
+                      value={clause.variable || null}
+                      onChange={(v) => {
+                        if (!v) return;
+                        const allowed = operatorsFor(variableByName(v)).some((o) => o.value === clause.operator);
+                        updateClause(gr, clause.id, { variable: v, operator: allowed ? clause.operator : "=", value: "" });
+                      }}
+                      allowDeselect={false}
+                      searchable
+                      styles={LINE}
+                      style={{ flex: "1.3 1 0", minWidth: 0 }}
+                    />
+                    <Select
+                      aria-label="Operator"
+                      data={operatorsFor(variable)}
+                      value={clause.operator}
+                      onChange={(v) => v && updateClause(gr, clause.id, { operator: v as Operator })}
+                      allowDeselect={false}
+                      styles={{ input: { ...LINE.input, fontWeight: 500, color: "var(--mantine-color-brand-7)" } }}
+                      style={{ width: 138, flexShrink: 0 }}
+                    />
+                    {variable?.options ? (
+                      <Select
+                        aria-label="Value"
+                        placeholder="Value"
+                        data={variable.options}
+                        value={clause.value || null}
+                        onChange={(v) => updateClause(gr, clause.id, { value: v ?? "" })}
+                        allowDeselect={false}
+                        styles={LINE}
+                        style={{ flex: "1 1 0", minWidth: 0 }}
+                      />
+                    ) : (
+                      <NumberInput
+                        aria-label="Value"
+                        placeholder="Value"
+                        value={clause.value}
+                        onChange={(v) => updateClause(gr, clause.id, { value: String(v) })}
+                        hideControls
+                        thousandSeparator=","
+                        disabled={!variable}
+                        styles={LINE}
+                        style={{ flex: "1 1 0", minWidth: 0 }}
+                      />
+                    )}
+                    <ActionIcon
+                      variant="subtle"
+                      color="slate"
+                      size="sm"
+                      radius="xl"
+                      onClick={() => updateGroup(gr.id, { clauses: gr.clauses.filter((cl) => cl.id !== clause.id) })}
+                      aria-label="Remove line"
+                    >
+                      <IconX size={13} />
+                    </ActionIcon>
+                  </Group>
+                );
+              })}
+            </Stack>
+          </Box>
         </Fragment>
       ))}
+      <Box>
+        <UnstyledButton className="pa-dashed" onClick={() => onChange([...groups, newGroup()])}>
+          <IconPlus size={12} stroke={2.4} />
+          Add group
+        </UnstyledButton>
+      </Box>
     </Stack>
   );
 }
 
-// One line of the rule form: a fixed label column on the left, the field on the right.
-function FormRow({ label, children, align = "center" }: { label: string; children: ReactNode; align?: "center" | "flex-start" }) {
+function FieldLabel({ children }: { children: ReactNode }) {
   return (
-    <Group gap="md" wrap="nowrap" align={align}>
-      <Text fz={11.5} fw={600} c="slate.6" w={76} style={{ flexShrink: 0, paddingTop: align === "flex-start" ? 7 : 0 }}>
-        {label}
-      </Text>
-      <Box style={{ flex: 1, minWidth: 0 }}>{children}</Box>
+    <Text fz={12} fw={500} c="slate.6" mb={5}>
+      {children}
+    </Text>
+  );
+}
+
+function SectionTitle({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
+  return (
+    <Group justify="space-between" align="center" mb={8} h={22}>
+      <Group gap={8} align="baseline">
+        <Text fz={13} fw={600} c="slate.8">
+          {title}
+        </Text>
+        {hint && (
+          <Text fz={12} c="slate.5">
+            {hint}
+          </Text>
+        )}
+      </Group>
+      {action}
     </Group>
   );
 }
 
-function ChipPicker({ kind, value, onChange }: { kind: PickerKind; value: string[]; onChange: (value: string[]) => void }) {
-  const { options, label: plural } = PICKER[kind];
-  const all = value.length === options.length;
+const joinWords = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}`);
+
+function RuleSummary({ row }: { row: AssignmentRow }) {
+  const product = productByCode(row.productCode);
+  const strong = (text: ReactNode) => (
+    <Text span inherit fw={600} c="slate.9">
+      {text}
+    </Text>
+  );
+  const loanList = joinWords(row.loanTypes);
+  const sources = row.sources.length === SOURCES.length ? "any source" : joinWords(row.sources);
+  const loanTypes = row.loanTypes.length === LOAN_TYPES.length ? "any loan type" : `${/^[AEIOU]/.test(loanList) ? "an" : "a"} ${loanList} loan`;
   return (
-    <Group gap={6} wrap="nowrap">
-      <Chip.Group multiple value={value} onChange={(v) => onChange(options.filter((o) => v.includes(o)))}>
-        <Group gap={5}>
-          {options.map((o) => (
-            <Chip key={o} value={o} size="xs" variant="light" color={kind === "loanType" ? LOAN_TONE[o] : "brand"} radius="xl" aria-label={`${plural}: ${o}`}>
-              <Group gap={6} wrap="nowrap">
-                {kind === "source" ? (() => {
-                  const SourceIcon = SOURCE_ICON[o] ?? IconBuildingBank;
-                  return <SourceIcon size={12} stroke={1.8} />;
-                })() : <OptionMark kind="loanType" value={o} />}
-                {o}
-              </Group>
-            </Chip>
-          ))}
-        </Group>
-      </Chip.Group>
-      <UnstyledButton onClick={() => onChange(all ? [] : [...options])} style={{ fontSize: 11, fontWeight: 600, color: "var(--mantine-color-brand-6)", marginLeft: 2 }}>
-        {all ? "Clear" : "All"}
-      </UnstyledButton>
-    </Group>
+    <Text fz={13} c="slate.6" lh={1.65}>
+      Applications from {strong(row.sources.length ? sources : "…")} for {strong(row.loanTypes.length ? loanTypes : "…")}
+      {hasCondition(row) ? (
+        <>
+          , where {strong(<ConditionText row={row} />)},
+        </>
+      ) : (
+        ", with no further condition,"
+      )}{" "}
+      get {product ? strong(`${product.name} (${product.code})`) : strong("…")}.
+    </Text>
   );
 }
 
@@ -633,9 +701,7 @@ export function LoanProductAssignment() {
   const [loanTypeFilter, setLoanTypeFilter] = useState<string[]>([]);
   const [kind, setKind] = useState<RowKind>("all");
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  // The rule open in the modal; written to the list only on save.
-  const [editing, setEditing] = useState<{ mode: "add" | "edit"; row: AssignmentRow; attempted: boolean } | null>(null);
-  // Drag starts from the grip only, so clicking a row still opens it.
+  const [editing, setEditing] = useState<{ mode: "add" | "edit"; row: AssignmentRow; original: string; attempted: boolean } | null>(null);
   const [dragArmed, setDragArmed] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
@@ -647,7 +713,7 @@ export function LoanProductAssignment() {
         (r) =>
           (sourceFilter.length === 0 || r.sources.some((v) => sourceFilter.includes(v))) &&
           (loanTypeFilter.length === 0 || r.loanTypes.some((v) => loanTypeFilter.includes(v))) &&
-          (kind === "all" || (kind === "direct") === (r.clauses.length === 0))
+          (kind === "all" || (kind === "direct") === !hasCondition(r))
       ),
     [rows, sourceFilter, loanTypeFilter, kind]
   );
@@ -662,20 +728,18 @@ export function LoanProductAssignment() {
   const resetPage = () => setPagination((p) => ({ ...p, pageIndex: 0 }));
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
-  const errorCount = rows.filter((r) => rowError(r)).length;
+  const defaultMissing = draft.fallback === "default" && !productByCode(draft.defaultProduct);
+  const errorCount = rows.filter((r) => rowError(r)).length + (defaultMissing ? 1 : 0);
 
   const updateRow = (id: string, patch: Partial<AssignmentRow>) => setDraft((d) => ({ ...d, rows: d.rows.map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
 
-  // Products belong to a loan type, so a product whose loan type is removed is cleared.
   const fitsProduct = (loanTypes: string[], code: string) => (productsFor(loanTypes).some((p) => p.code === code) ? code : "");
   const changeRowLoanTypes = (row: AssignmentRow, loanTypes: string[]) => updateRow(row.id, { loanTypes, productCode: fitsProduct(loanTypes, row.productCode) });
 
-  const openAdd = () =>
-    setEditing({
-      mode: "add",
-      attempted: false,
-      row: { id: uid(), sources: [...sourceFilter], loanTypes: [...loanTypeFilter], clauses: [], productCode: "" },
-    });
+  const openAdd = () => {
+    const row: AssignmentRow = { id: uid(), sources: [...sourceFilter], loanTypes: [...loanTypeFilter], join: "AND", groups: [], productCode: "" };
+    setEditing({ mode: "add", attempted: false, row, original: JSON.stringify(row) });
+  };
 
   const editRow = (patch: Partial<AssignmentRow>) => setEditing((e) => e && { ...e, row: { ...e.row, ...patch } });
 
@@ -698,7 +762,6 @@ export function LoanProductAssignment() {
     setEditing(null);
   };
 
-  // Dropping on a row takes its place: rows moving down land after it, rows moving up land before it.
   const moveRow = (fromId: string, toId: string) => {
     if (fromId === toId) return;
     setDraft((d) => {
@@ -731,6 +794,7 @@ export function LoanProductAssignment() {
           .filter((g) => g.items.length > 0)
       : modalProducts.map((p) => ({ value: p.code, label: p.name }));
   const modalProduct = editing ? productByCode(editing.row.productCode) : undefined;
+  const editingChanged = editing ? JSON.stringify(editing.row) !== editing.original : false;
 
   return (
     <Stack gap="md" p="lg">
@@ -741,12 +805,24 @@ export function LoanProductAssignment() {
         .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
         .lms-row .pa-grip { opacity: 0.3; transition: opacity 120ms ease; }
         .lms-row:hover .pa-grip { opacity: 0.9; }
-        .pa-cell { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; height: 30px; padding: 0 6px; border-radius: 8px; transition: background-color 120ms ease, box-shadow 120ms ease; }
-        .pa-cell .pa-chev { flex-shrink: 0; opacity: 0; color: var(--mantine-color-slate-5); transition: opacity 120ms ease; }
+        .pa-cell { position: relative; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; min-height: 30px; padding: 3px 6px; border-radius: 8px; transition: background-color 120ms ease, box-shadow 120ms ease; }
+        .pa-cell .pa-chev { position: absolute; right: 6px; top: 50%; margin-top: -6.5px; padding: 1px; border-radius: 4px; background: var(--mantine-color-white); opacity: 0; color: var(--mantine-color-slate-5); transition: opacity 120ms ease; }
         .pa-cell:hover, .pa-cell[aria-expanded="true"] { background: var(--mantine-color-white); box-shadow: 0 0 0 1px var(--mantine-color-slate-2); }
         .pa-cell:hover .pa-chev, .pa-cell[aria-expanded="true"] .pa-chev { opacity: 1; }
         .pa-option { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border-radius: 8px; transition: background-color 100ms ease; }
         .pa-option:hover { background: var(--mantine-color-slate-0); }
+        .pa-field { position: relative; display: flex; align-items: center; width: 100%; min-width: 0; min-height: 32px; padding: 4px 30px 4px 6px; border: 1px solid var(--mantine-color-slate-3); border-radius: var(--mantine-radius-lg); background: var(--mantine-color-white); transition: border-color 120ms ease; }
+        .pa-field:hover { border-color: var(--mantine-color-slate-4); }
+        .pa-field[aria-expanded="true"] { border-color: var(--mantine-color-brand-5); }
+        .pa-field .pa-chev { position: absolute; right: 10px; top: 50%; margin-top: -6.5px; color: var(--mantine-color-slate-5); }
+        .pa-name input { height: 24px !important; min-height: 24px !important; padding: 0 22px 0 6px !important; border-radius: 6px !important; font-size: 12.5px !important; font-weight: 600 !important; color: var(--mantine-color-slate-8) !important; background: transparent !important; border: 1px solid transparent !important; transition: background-color 120ms ease, border-color 120ms ease; }
+        .pa-name [data-position="right"] { color: var(--mantine-color-slate-4); transition: color 120ms ease; }
+        .pa-name:hover [data-position="right"], .pa-name:focus-within [data-position="right"] { color: var(--mantine-color-brand-6); }
+        .pa-name input::placeholder { font-weight: 400; color: var(--mantine-color-slate-4); }
+        .pa-name input:hover { background: var(--mantine-color-white) !important; border-color: var(--mantine-color-slate-3) !important; }
+        .pa-name input:focus { background: var(--mantine-color-white) !important; border-color: var(--mantine-color-brand-5) !important; outline: none; }
+        .pa-dashed { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 24px; padding: 0 10px; border-radius: 6px; border: 1px dashed var(--mantine-color-slate-3); font-size: 11.5px; font-weight: 500; color: var(--mantine-color-slate-6); transition: border-color 120ms ease, color 120ms ease, background-color 120ms ease; }
+        .pa-dashed:hover { border-color: var(--mantine-color-brand-4); color: var(--mantine-color-brand-6); background: var(--mantine-color-brand-0); }
       `}</style>
 
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
@@ -776,6 +852,68 @@ export function LoanProductAssignment() {
           </Stack>
         </Group>
         <Group gap={8}>
+          <Popover position="bottom-end" width={320} shadow="md" radius="md" withinPortal>
+            <Popover.Target>
+              <Button
+                size="sm"
+                radius="xl"
+                variant="default"
+                leftSection={<IconAdjustmentsHorizontal size={15} />}
+                rightSection={
+                  defaultMissing ? <Box style={{ width: 7, height: 7, borderRadius: 999, background: "var(--mantine-color-danger-6)" }} /> : undefined
+                }
+              >
+                Matching
+              </Button>
+            </Popover.Target>
+            <Popover.Dropdown p="md">
+              <Stack gap="sm">
+                <Box>
+                  <Text fz={13} fw={700} c="slate.8">
+                    Matching
+                  </Text>
+                  <Text fz={11.5} c="slate.5">
+                    Applies to every rule on this page.
+                  </Text>
+                </Box>
+                <Select
+                  label="When several rules match"
+                  data={MATCH_MODES}
+                  value={draft.matchMode}
+                  onChange={(v) => v && setDraft((d) => ({ ...d, matchMode: v as MatchMode }))}
+                  allowDeselect={false}
+                  comboboxProps={{ withinPortal: false }}
+                  styles={{ input: FIELD.input, label: { fontSize: 12, fontWeight: 500, marginBottom: 4 } }}
+                />
+                <Select
+                  label="If nothing matches"
+                  data={FALLBACKS}
+                  value={draft.fallback}
+                  onChange={(v) => v && setDraft((d) => ({ ...d, fallback: v as Fallback }))}
+                  allowDeselect={false}
+                  comboboxProps={{ withinPortal: false }}
+                  styles={{ input: FIELD.input, label: { fontSize: 12, fontWeight: 500, marginBottom: 4 } }}
+                />
+                {draft.fallback === "default" && (
+                  <Select
+                    label="Default product"
+                    placeholder="Choose default product"
+                    data={LOAN_TYPES.map((lt) => ({
+                      group: lt,
+                      items: productsFor([lt]).map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })),
+                    }))}
+                    value={draft.defaultProduct || null}
+                    onChange={(v) => setDraft((d) => ({ ...d, defaultProduct: v ?? "" }))}
+                    allowDeselect={false}
+                    searchable
+                    error={defaultMissing ? "Required when no rule matches" : undefined}
+                    comboboxProps={{ withinPortal: false }}
+                    styles={{ input: FIELD.input, label: { fontSize: 12, fontWeight: 500, marginBottom: 4 } }}
+                  />
+                )}
+              </Stack>
+            </Popover.Dropdown>
+          </Popover>
           <Button size="sm" radius="xl" variant="default" leftSection={<IconPlus size={14} />} onClick={openAdd}>
             Add rule
           </Button>
@@ -784,7 +922,7 @@ export function LoanProductAssignment() {
               Discard
             </Button>
           )}
-          <Tooltip label={`Fix ${errorCount} ${errorCount === 1 ? "rule" : "rules"} first`} disabled={errorCount === 0} withinPortal>
+          <Tooltip label={defaultMissing && errorCount === 1 ? "Choose the default product first" : `Fix ${errorCount} ${errorCount === 1 ? "issue" : "issues"} first`} disabled={errorCount === 0} withinPortal>
             <Box>
               <Button
                 size="sm"
@@ -839,44 +977,9 @@ export function LoanProductAssignment() {
               { label: "Direct mapping", value: "direct" },
             ]}
           />
-          <Group gap="sm" ml="auto" wrap="nowrap">
-            <Group gap={6} wrap="nowrap">
-              <Text fz={12} c="slate.6">
-                Assign
-              </Text>
-              <Select
-                size="sm"
-                radius="xl"
-                w={150}
-                aria-label="When several rules match"
-                data={MATCH_MODES}
-                value={draft.matchMode}
-                onChange={(v) => v && setDraft((d) => ({ ...d, matchMode: v as MatchMode }))}
-                allowDeselect={false}
-                rightSection={chevronDown}
-                comboboxProps={{ withinPortal: true }}
-                styles={{ input: { fontSize: 12.5, height: 34, minHeight: 34 } }}
-              />
-            </Group>
-            <Group gap={6} wrap="nowrap">
-              <Text fz={12} c="slate.6">
-                If nothing matches
-              </Text>
-              <Select
-                size="sm"
-                radius="xl"
-                w={140}
-                aria-label="If nothing matches"
-                data={FALLBACKS}
-                value={draft.fallback}
-                onChange={(v) => v && setDraft((d) => ({ ...d, fallback: v as Fallback }))}
-                allowDeselect={false}
-                rightSection={chevronDown}
-                comboboxProps={{ withinPortal: true }}
-                styles={{ input: { fontSize: 12.5, height: 34, minHeight: 34 } }}
-              />
-            </Group>
-          </Group>
+          <Text fz={12} c="slate.5" ml="auto" pr="xs">
+            {totalRows} of {rows.length} {rows.length === 1 ? "rule" : "rules"}
+          </Text>
         </Group>
       </Paper>
 
@@ -884,8 +987,8 @@ export function LoanProductAssignment() {
         <Table.ScrollContainer minWidth={980}>
           <Table w="100%" style={{ borderCollapse: "separate", borderSpacing: "0 5px", tableLayout: "fixed" }}>
             <colgroup>
-              <col style={{ width: 228 }} />
-              <col style={{ width: 150 }} />
+              <col style={{ width: 250 }} />
+              <col style={{ width: 204 }} />
               <col />
               <col style={{ width: 272 }} />
               <col style={{ width: 84 }} />
@@ -928,7 +1031,7 @@ export function LoanProductAssignment() {
                 pageRows.map((row) => {
                   const error = rowError(row);
                   const shadow = !error && draft.matchMode === "first" && isShadowed(rows, rows.indexOf(row));
-                  const stripe = error ? "danger" : shadow ? "orange" : row.clauses.length === 0 ? "success" : "brand";
+                  const stripe = error ? "danger" : shadow ? "orange" : !hasCondition(row) ? "success" : "brand";
                   const isDropTarget = dragOver === row.id && dragging !== null && dragging !== row.id;
                   const cell = {
                     padding: "7px 10px",
@@ -936,7 +1039,7 @@ export function LoanProductAssignment() {
                     boxShadow: isDropTarget ? "inset 0 2px 0 var(--mantine-color-brand-5), var(--mantine-shadow-xs)" : "var(--mantine-shadow-xs)",
                     verticalAlign: "middle" as const,
                   };
-                  const open = () => setEditing({ mode: "edit", row, attempted: false });
+                  const open = () => setEditing({ mode: "edit", row, attempted: false, original: JSON.stringify(row) });
                   return (
                     <Table.Tr
                       key={row.id}
@@ -973,9 +1076,9 @@ export function LoanProductAssignment() {
                         <InlinePicker kind="loanType" value={row.loanTypes} onChange={(loanTypes) => changeRowLoanTypes(row, loanTypes)} />
                       </Table.Td>
                       <Table.Td style={cell}>
-                        <Tooltip label={conditionText(row.clauses)} disabled={row.clauses.length === 0} multiline w={380} openDelay={250} position="top-start" withinPortal>
+                        <Tooltip label={conditionText(row)} disabled={!hasCondition(row)} multiline w={380} openDelay={250} position="top-start" withinPortal>
                           <Box>
-                            <ConditionSummary clauses={row.clauses} />
+                            <ConditionSummary row={row} />
                             {(error || shadow) && (
                               <Text fz={10} c={error ? "danger.7" : "orange.8"} mt={2} truncate>
                                 {error ?? "Never used: a rule above has no condition and already covers these applications."}
@@ -1036,104 +1139,159 @@ export function LoanProductAssignment() {
       <Modal
         opened={editing !== null}
         onClose={() => setEditing(null)}
-        size={740}
+        size={1120}
         padding={0}
+        radius="lg"
         centered
         styles={{
-          content: { display: "flex", flexDirection: "column", overflow: "hidden" },
+          content: { display: "flex", flexDirection: "column", overflow: "hidden", maxHeight: "calc(100dvh - 48px)" },
           header: { display: "none" },
-          body: { padding: 0, display: "flex", flexDirection: "column" },
+          body: { padding: 0, display: "flex", flexDirection: "column", minHeight: 0, flex: 1 },
         }}
+        trapFocus={false}
       >
         {editing && (
           <>
-            <Group justify="space-between" align="center" px="lg" py={10} bg="brand.6">
-              <Group gap={10} wrap="nowrap">
-                <ThemeIcon radius="md" size={26} variant="white" color="brand">
-                  <IconRoute size={14} />
-                </ThemeIcon>
-                <Text fz={14} fw={700} c="white">
-                  {editing.mode === "add" ? "Add rule" : "Edit rule"}
-                </Text>
+            <Group justify="space-between" align="center" wrap="nowrap" px={24} py={16} style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
+              <Group gap={12} wrap="nowrap">
+                <Box
+                  style={{
+                    width: 36,
+                    height: 36,
+                    flexShrink: 0,
+                    borderRadius: 10,
+                    background: theme.other?.brandGradient,
+                    boxShadow: theme.other?.brandGlowShadowSm,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <IconRoute size={18} color="var(--mantine-color-white)" />
+                </Box>
+                <Box>
+                  <Group gap={8} wrap="nowrap">
+                    <Text fz={16} fw={700} c="slate.9" lh={1.3}>
+                      {editing.mode === "add" ? "Add rule" : "Edit rule"}
+                    </Text>
+                    <Badge variant="light" color={hasCondition(editing.row) ? "brand" : "success"} radius="sm" size="sm" tt="none" fw={600}>
+                      {hasCondition(editing.row) ? "Conditional" : "Direct mapping"}
+                    </Badge>
+                  </Group>
+                  {editing.mode === "add" && (
+                    <Text fz={12.5} c="slate.5" lh={1.4}>
+                      Added at the top of the list, so it is checked first.
+                    </Text>
+                  )}
+                </Box>
               </Group>
-              <ActionIcon variant="subtle" color="white" radius="xl" size="sm" onClick={() => setEditing(null)} aria-label="Close">
-                <IconX size={15} color="white" />
+              <ActionIcon variant="subtle" color="slate" radius="xl" size="lg" onClick={() => setEditing(null)} aria-label="Close">
+                <IconX size={18} />
               </ActionIcon>
             </Group>
 
-            <Stack gap={14} px="lg" py="md">
-              <FormRow label="Source">
-                <ChipPicker kind="source" value={editing.row.sources} onChange={(sources) => editRow({ sources })} />
-              </FormRow>
-              <FormRow label="Loan type">
-                <ChipPicker kind="loanType" value={editing.row.loanTypes} onChange={changeLoanTypes} />
-              </FormRow>
-              <FormRow label="Condition" align="flex-start">
-                <Stack gap={6}>
-                  <ConditionEditor clauses={editing.row.clauses} onChange={(clauses) => editRow({ clauses })} />
-                  <Group gap={4} ml={editing.row.clauses.length ? 34 : 0}>
-                    <Button
-                      size="compact-xs"
-                      variant="subtle"
-                      color="brand"
-                      leftSection={<IconPlus size={12} />}
-                      onClick={() => editRow({ clauses: [...editing.row.clauses, newClause("AND")] })}
-                    >
-                      {editing.row.clauses.length === 0 ? "Add condition" : "AND"}
-                    </Button>
-                    {editing.row.clauses.length > 0 && (
-                      <>
-                        <Button
-                          size="compact-xs"
-                          variant="subtle"
-                          color="orange"
-                          leftSection={<IconPlus size={12} />}
-                          onClick={() => editRow({ clauses: [...editing.row.clauses, newClause("OR")] })}
-                        >
-                          OR
-                        </Button>
-                        <Button size="compact-xs" variant="subtle" color="slate" onClick={() => editRow({ clauses: [] })} ml="auto">
-                          Remove condition
-                        </Button>
-                      </>
-                    )}
-                  </Group>
-                </Stack>
-              </FormRow>
-              <FormRow label="Product">
-                <Select
-                  aria-label="Product"
-                  placeholder={editing.row.loanTypes.length ? "Select product" : "Pick a loan type first"}
-                  data={modalProductData}
-                  value={editing.row.productCode || null}
-                  onChange={(v) => editRow({ productCode: v ?? "" })}
-                  allowDeselect={false}
-                  disabled={editing.row.loanTypes.length === 0}
-                  searchable
-                  leftSection={modalProduct ? <span style={codeBadge}>{modalProduct.code}</span> : null}
-                  leftSectionWidth={modalProduct ? 70 : undefined}
-                  leftSectionPointerEvents="none"
-                  renderOption={({ option }) => (
-                    <Group gap={8} wrap="nowrap">
-                      <Text fz={10} fw={700} c="brand.8" w={56} style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
-                        {option.value}
-                      </Text>
-                      <Text fz={12.5}>{option.label}</Text>
-                    </Group>
-                  )}
-                  styles={{ input: { ...FIELD.input, paddingLeft: modalProduct ? 72 : 10, fontWeight: 600 } }}
-                  w={320}
+            <Stack gap={16} px={24} py={16} style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+              <Box>
+                <Box style={{ display: "grid", gridTemplateColumns: "minmax(0, 35fr) minmax(0, 35fr) minmax(0, 30fr)", columnGap: 32, alignItems: "start" }}>
+                  <Box style={{ minWidth: 0 }}>
+                    <FieldLabel>Source</FieldLabel>
+                    <InlinePicker field kind="source" value={editing.row.sources} onChange={(sources) => editRow({ sources })} />
+                  </Box>
+                  <Box style={{ minWidth: 0 }}>
+                    <FieldLabel>Loan type</FieldLabel>
+                    <InlinePicker field kind="loanType" value={editing.row.loanTypes} onChange={changeLoanTypes} />
+                  </Box>
+                  <Box style={{ minWidth: 0, position: "relative" }}>
+                    <Box style={{ position: "absolute", left: -24, top: 23, height: 32, width: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--mantine-color-slate-4)" }}>
+                      <IconArrowRight size={16} />
+                    </Box>
+                    <FieldLabel>Product</FieldLabel>
+                    <Select
+                      aria-label="Product"
+                      placeholder={editing.row.loanTypes.length ? "Select product" : "Pick a loan type first"}
+                      data={modalProductData}
+                      value={editing.row.productCode || null}
+                      onChange={(v) => editRow({ productCode: v ?? "" })}
+                      allowDeselect={false}
+                      disabled={editing.row.loanTypes.length === 0}
+                      searchable
+                      leftSection={modalProduct ? <span style={codeBadge}>{modalProduct.code}</span> : null}
+                      leftSectionWidth={modalProduct ? 76 : undefined}
+                      leftSectionPointerEvents="none"
+                      renderOption={({ option }) => (
+                        <Group gap={8} wrap="nowrap">
+                          <Text fz={10} fw={700} c="brand.8" w={56} style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
+                            {option.value}
+                          </Text>
+                          <Text fz={13}>{option.label}</Text>
+                        </Group>
+                      )}
+                      styles={{ input: { ...FIELD.input, paddingLeft: modalProduct ? 78 : 12, fontWeight: 600 } }}
+                    />
+                  </Box>
+                </Box>
+              </Box>
+
+              <Box>
+                <SectionTitle
+                  title="Condition"
+                  hint="Optional"
+                  action={
+                    hasCondition(editing.row) ? (
+                      <Button size="compact-xs" variant="subtle" color="danger" onClick={() => editRow({ groups: [] })}>
+                        Clear condition
+                      </Button>
+                    ) : undefined
+                  }
                 />
-              </FormRow>
+                {hasCondition(editing.row) ? (
+                  <ConditionBuilder groups={editing.row.groups} onChange={(groups) => editRow({ join: "AND", groups })} />
+                ) : (
+                  <Group justify="space-between" wrap="nowrap" px={16} py={12} style={{ borderRadius: 10, border: "1px dashed var(--mantine-color-slate-3)" }}>
+                    <Box>
+                      <Text fz={13} fw={600} c="slate.7">
+                        No condition
+                      </Text>
+                      <Text fz={12} c="slate.5">
+                        Every application above gets this product directly.
+                      </Text>
+                    </Box>
+                    <Button size="xs" radius="md" variant="light" color="brand" leftSection={<IconPlus size={13} />} onClick={() => editRow({ join: "AND", groups: [newGroup()] })}>
+                      Add condition
+                    </Button>
+                  </Group>
+                )}
+              </Box>
+
+              <Box px={14} py={10} style={{ borderRadius: 10, background: "var(--mantine-color-brand-0)", borderLeft: "3px solid var(--mantine-color-brand-5)", flexShrink: 0 }}>
+                <RuleSummary row={editing.row} />
+              </Box>
             </Stack>
 
-            <ModalFooter
-              variant="theme"
-              onClose={() => setEditing(null)}
-              submitLabel={editing.mode === "add" ? "Add rule" : "Save rule"}
-              errorMessage={editing.attempted && editingError ? editingError : undefined}
-              onSubmit={saveRule}
-            />
+            <Group justify="space-between" align="center" px={24} py={14} style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
+              <Text fz={12.5} c={editing.attempted && editingError ? "danger.6" : editingChanged ? "brand.6" : "slate.5"} fw={editing.attempted && editingError ? 600 : 400}>
+                {editing.attempted && editingError ? editingError : editingChanged ? "Unsaved changes" : "No changes yet"}
+              </Text>
+              <Group gap="xs">
+                <Button size="sm" variant="subtle" color="slate" radius="md" onClick={() => setEditing(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  radius="md"
+                  px="lg"
+                  disabled={!editingChanged}
+                  onClick={saveRule}
+                  style={
+                    editingChanged
+                      ? { background: theme.other?.brandGradient, boxShadow: theme.other?.brandGlowShadowSm }
+                      : { background: "var(--mantine-color-brand-1)", color: "var(--mantine-color-brand-4)" }
+                  }
+                >
+                  {editing.mode === "add" ? "Add rule" : "Save rule"}
+                </Button>
+              </Group>
+            </Group>
           </>
         )}
       </Modal>
