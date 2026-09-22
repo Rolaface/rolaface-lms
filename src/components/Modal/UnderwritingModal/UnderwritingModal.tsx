@@ -47,6 +47,7 @@ import {
   IconMinus,
   IconPencil, IconGavel, IconKey, IconCalendarEvent, IconUserCheck,
   IconTrash,
+  IconUpload,
 } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
@@ -659,6 +660,8 @@ function CompactCheckRow({
 // ---------------------------------------------------------------------------
 
 function DocumentsTable({ title, docs, setDocs }: { title: string; docs: AssetDoc[]; setDocs: (d: AssetDoc[]) => void }) {
+  const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
   const update = (i: number, patch: Partial<AssetDoc>) => setDocs(docs.map((d, idx) => (idx === i ? { ...d, ...patch } : d)));
   const addDoc = () =>
     setDocs([
@@ -666,6 +669,23 @@ function DocumentsTable({ title, docs, setDocs }: { title: string; docs: AssetDo
       { name: "New document", tier: "required", status: "Missing", uploadedDate: "", uploadedBy: "", validUntil: "", fileMeta: "", comment: "" },
     ]);
   const removeDoc = (i: number) => setDocs(docs.filter((_, idx) => idx !== i));
+
+  const triggerUpload = (i: number) => fileInputRefs.current[i]?.click();
+
+  const handleFileSelected = (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+    const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    update(i, {
+      status: "Uploaded",
+      fileMeta: `${file.name} (${sizeMb} MB)`,
+      uploadedDate: today,
+      uploadedBy: "You",
+    });
+    // reset input so the same file can be re-selected later if needed
+    e.target.value = "";
+  };
 
   return (
     <Box>
@@ -720,10 +740,32 @@ function DocumentsTable({ title, docs, setDocs }: { title: string; docs: AssetDo
               {d.fileMeta || `uploaded ${d.uploadedDate || "—"}${d.uploadedBy ? ` by ${d.uploadedBy}` : ""}`}
               {d.validUntil ? ` · valid until ${d.validUntil}` : ""}
             </Text>
+
+            {/* hidden native file input, one per card, used to actually pick a file */}
+            <input
+              type="file"
+              ref={(el) => (fileInputRefs.current[i] = el)}
+              style={{ display: "none" }}
+              onChange={(e) => handleFileSelected(i, e)}
+            />
+
             <Group gap={6} wrap="nowrap" mb={8}>
-              <Button size="compact-xs" variant="light" color="brand" radius="xl" style={{ flex: 1 }}>
-                Preview
+              <Button
+                size="compact-xs"
+                variant="light"
+                color="brand"
+                radius="xl"
+                style={{ flex: 1 }}
+                leftSection={<IconUpload size={12} />}
+                onClick={() => triggerUpload(i)}
+              >
+                {d.fileMeta ? "Replace" : "Upload"}
               </Button>
+              {d.fileMeta && (
+                <Button size="compact-xs" variant="default" radius="xl" style={{ flex: 1 }}>
+                  Preview
+                </Button>
+              )}
               <Select
                 data={DOC_STATUSES}
                 value={d.status}
