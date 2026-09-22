@@ -14,11 +14,14 @@ import { mantineTheme } from "./mantine.theme";
 
 const params = new URLSearchParams(window.location.search);
 const sidFromUrl = params.get("sid");
+const modeFromUrl = params.get("mode");
 
 if (sidFromUrl) {
   localStorage.setItem("session_id", sidFromUrl);
-  window.history.replaceState({}, "", window.location.pathname);
+ localStorage.setItem("lms_entry_mode", modeFromUrl === "los" ? "los" : "lending");
 }
+
++window.history.replaceState({}, "", window.location.pathname);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

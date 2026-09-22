@@ -378,15 +378,15 @@ const GL_TABS: GLTabConfig[] = [
 ];
 
 function GeneralLedgerTabs() {
-   const { can } = usePermission();
- const visibleTabs = useMemo(    () =>
-      GL_TABS.filter((tab) =>
-        tab.moduleChecks.some(({ module, action }) => can(module, action))
-      ),
+  const { can } = usePermission();
+  const visibleTabs = useMemo(() =>
+    GL_TABS.filter((tab) =>
+      tab.moduleChecks.some(({ module, action }) => can(module, action))
+    ),
     [can]
   );
   return <RouteTabs tabs={visibleTabs} />;
- }
+}
 
 function GeneralLedgerReportRoute() {
   const { account } = generalLedgerRoute.useSearch();
@@ -489,7 +489,7 @@ const settingsRoute = createRoute({
   component: Outlet,
 });
 const lendingConfigurationRoute = createRoute({
-  getParentRoute: () => settingsRoute,
+  getParentRoute: () => setupRoute,
   path: "/lending-configuration",
   component: LendingConfiguration,
 });
@@ -536,8 +536,9 @@ const routeTree = rootRoute.addChildren([
     setupContractTemplatesRoute,
     setupContractTemplateCreateRoute,
     setupMapProductsRoute,
+    lendingConfigurationRoute
   ]),
-  originationRoute.addChildren([originationLoanApplicationRoute, originationPrescreeningRoute, originationEnrichmentRoute, originationUnderwritingRoute , originationOfferIssuanceRoute]),
+  originationRoute.addChildren([originationLoanApplicationRoute, originationPrescreeningRoute, originationEnrichmentRoute, originationUnderwritingRoute, originationOfferIssuanceRoute]),
   operationsRoute.addChildren([
     operationsBookingRoute,
     operationsDisbursementRoute,
@@ -565,13 +566,11 @@ const routeTree = rootRoute.addChildren([
     balancesheetRoute,
     cashflowRoute,
   ]),
-// originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
-originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute]),
-// originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, enrichmentStageRoute, loanApplicationTabsRoute, preScreeningStageRoute]),
+  // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
+  originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute]),
+  // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, enrichmentStageRoute, loanApplicationTabsRoute, preScreeningStageRoute]),
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
   settingsRoute.addChildren([
-    lendingConfigurationRoute,
-
     emailTemplateRoute,
     schedulerRoute,
     userRoute.addChildren([userManagementRoute, userRolesRoute]),

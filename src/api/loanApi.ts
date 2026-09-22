@@ -117,3 +117,37 @@ export async function getAllLoans(params: GetLoansParams = {}) {
   const { data } = await apiClient.get(API.loan.getLoans, { params: queryParams });
   return data;
 }
+
+export interface RepaymentScheduleResponse {
+  loan_amount: number;
+  rate_of_interest: number;
+  monthly_repayment_amount: number;
+  repayment_start_date: string;
+  repayment_periods: {
+    payment_date: string;
+    principal_amount: number;
+    interest_amount: number;
+    total_payment: number;
+    balance_loan_amount: number;
+  }[];
+}
+export interface RepaymentScheduleParams {
+  loan_amount: number;
+  rate_of_interest: number;
+  monthly_repayment_amount: number;
+  repayment_frequency: string;
+  repayment_start_date: string;
+}
+
+
+export async function getEmiRepaymentSchedule(
+  params: RepaymentScheduleParams
+): Promise<RepaymentScheduleResponse> {
+   const { data } = await apiClient.get(API.loan.getEmiScheduleById,
+    { params }
+  );
+  if (!data?.message) {
+    throw new Error("Failed to fetch repayment schedule.");
+  }
+  return data.message;   
+}
