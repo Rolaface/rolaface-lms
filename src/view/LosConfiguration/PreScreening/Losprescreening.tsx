@@ -336,15 +336,21 @@ const reorderRules = (groupId: string, rules: Rule[]) =>
   const addGroup = () => {
     const id = "g" + Date.now();
     setRuleSet({ ...ruleSet, groups: [...ruleSet.groups, { id, name: "New Rule Group", logic: "ALL", rules: [] }] });
+    toast("Rule group added");
   };
   const renameGroup = (gid: string, name: string) => setRuleSet({ ...ruleSet, groups: ruleSet.groups.map((g) => (g.id === gid ? { ...g, name } : g)) });
   const setLogic = (gid: string, logic: "ALL" | "ANY") => setRuleSet({ ...ruleSet, groups: ruleSet.groups.map((g) => (g.id === gid ? { ...g, logic } : g)) });
-  const deleteGroup = (gid: string) => setRuleSet({ ...ruleSet, groups: ruleSet.groups.filter((g) => g.id !== gid) });
+  const deleteGroup = (gid: string) => {
+    setRuleSet({ ...ruleSet, groups: ruleSet.groups.filter((g) => g.id !== gid) });
+    toast("Rule group removed");
+  };
 
   const toggleRule = (gid: string, rid: string) =>
     setRuleSet({ ...ruleSet, groups: ruleSet.groups.map((g) => (g.id !== gid ? g : { ...g, rules: g.rules.map((r) => (r.id === rid ? { ...r, disabled: !r.disabled } : r)) })) });
-  const duplicateRule = (gid: string, rule: Rule) =>
+  const duplicateRule = (gid: string, rule: Rule) => {
     setRuleSet({ ...ruleSet, groups: ruleSet.groups.map((g) => (g.id !== gid ? g : { ...g, rules: [...g.rules, { ...rule, id: "r" + Date.now() }] })) });
+    toast("Rule duplicated");
+  };
 
   const saveRule = (groupId: string, rule: Rule, isNew: boolean) => {
     setRuleSet({
@@ -467,7 +473,6 @@ const reorderRules = (groupId: string, rules: Rule[]) =>
             onDuplicateRule={duplicateRule}
             onSaveRule={saveRule}
             onDeleteRule={deleteRule}
-            onActivateClick={() => setShowActivateConfirm(true)}
           />
         )}
         {tab === "test" && <TestTab ruleSet={ruleSet} />}
