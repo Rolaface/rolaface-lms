@@ -9,7 +9,7 @@ import {
   ActionIcon,
   ScrollArea,
   ThemeIcon,
-  Divider,UnstyledButton
+  Divider, UnstyledButton
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import {
@@ -22,7 +22,7 @@ import {
   IconFileInvoice,
   IconUsers,
   IconArrowRight,
-  IconMinus,IconCheck
+  IconMinus, IconCheck
 } from "@tabler/icons-react";
 import { PersonalBusinessInfoStep } from "./PersonalBusinessInfoStep";
 import { ResidenceEmploymentStep } from "./ResidenceEmploymentStep";
@@ -227,7 +227,7 @@ const STEP_LABELS: Record<LoanType, string[]> = {
 
 const STEP_ICONS: Record<LoanType, React.FC<any>[]> = {
   Personal: [IconUsers, IconFileInvoice, IconUser, IconBriefcase, IconBriefcase, IconFileText, IconCheck],
-  Business: [IconUsers, IconFileInvoice, IconBuilding, IconBuilding,IconUsers, IconFileText, IconCheck],
+  Business: [IconUsers, IconFileInvoice, IconBuilding, IconBuilding, IconUsers, IconFileText, IconCheck],
 };
 
 function buildPersonalPayload(
@@ -704,7 +704,7 @@ export function LoanApplicationModal({
     setActiveStep(0);
   };
 
- const handleReset = () => {
+  const handleReset = () => {
     form.setValues(INITIAL_VALUES);
     form.resetDirty(INITIAL_VALUES);
     setDirectorDocsError(null);
@@ -915,7 +915,7 @@ export function LoanApplicationModal({
       ),
       tpinCertificate: getDocFile(
         pDocs,
-         ["TPIN certificate", "TPIN Certificate"],
+        ["TPIN certificate", "TPIN Certificate"],
         "tpinCertificate",
       ),
 
@@ -933,7 +933,7 @@ export function LoanApplicationModal({
       ),
       taxComplianceReturn: getDocFile(
         bDocs,
-         ["Latest tax compliance return", "Latest Tax Compliance Return"],
+        ["Latest tax compliance return", "Latest Tax Compliance Return"],
         "taxComplianceReturn",
       ),
       orderInvoice: getDocFile(bDocs, ["Order / Invoice", "Order/Invoice"], "orderInvoice"),
@@ -949,7 +949,7 @@ export function LoanApplicationModal({
       ),
       boardResolution: getDocFile(
         bDocs,
-         ["Board resolution", "Board Resolution"],
+        ["Board resolution", "Board Resolution"],
         "boardResolution",
       ),
 
@@ -1070,32 +1070,32 @@ export function LoanApplicationModal({
     const fieldsToResolve: [string, File | null][] =
       loanType === "Personal"
         ? [
-            ["payslips", form.values.payslips],
-            ["bankStatementsPersonal", form.values.bankStatementsPersonal],
-            ["nrcCopy", form.values.nrcCopy],
-            ["passportPhotoPersonal", form.values.passportPhotoPersonal],
-            ["tpinCertificate", form.values.tpinCertificate],
-          ]
+          ["payslips", form.values.payslips],
+          ["bankStatementsPersonal", form.values.bankStatementsPersonal],
+          ["nrcCopy", form.values.nrcCopy],
+          ["passportPhotoPersonal", form.values.passportPhotoPersonal],
+          ["tpinCertificate", form.values.tpinCertificate],
+        ]
         : [
-            ["pacraCertificate", form.values.pacraCertificate],
-            ["form2", form.values.form2],
-            ["taxClearanceCertificate", form.values.taxClearanceCertificate],
-            ["taxComplianceReturn", form.values.taxComplianceReturn],
-            ["orderInvoice", form.values.orderInvoice],
-            ["bankStatementsBusiness", form.values.bankStatementsBusiness],
-            ["applicantPassportPhoto", form.values.applicantPassportPhoto],
-            ["boardResolution", form.values.boardResolution],
-            ...form.values.directorDocuments.flatMap((doc, index) => [
-              [`directorDocuments.${index}.nrcFile`, doc.nrcFile] as [
-                string,
-                File | null,
-              ],
-              [`directorDocuments.${index}.photoFile`, doc.photoFile] as [
-                string,
-                File | null,
-              ],
-            ]),
-          ];
+          ["pacraCertificate", form.values.pacraCertificate],
+          ["form2", form.values.form2],
+          ["taxClearanceCertificate", form.values.taxClearanceCertificate],
+          ["taxComplianceReturn", form.values.taxComplianceReturn],
+          ["orderInvoice", form.values.orderInvoice],
+          ["bankStatementsBusiness", form.values.bankStatementsBusiness],
+          ["applicantPassportPhoto", form.values.applicantPassportPhoto],
+          ["boardResolution", form.values.boardResolution],
+          ...form.values.directorDocuments.flatMap((doc, index) => [
+            [`directorDocuments.${index}.nrcFile`, doc.nrcFile] as [
+              string,
+              File | null,
+            ],
+            [`directorDocuments.${index}.photoFile`, doc.photoFile] as [
+              string,
+              File | null,
+            ],
+          ]),
+        ];
 
     setIsUploadingDocs(true);
     try {
@@ -1119,7 +1119,7 @@ export function LoanApplicationModal({
     }
   };
 
-   const renderStep = () => {
+  const renderStep = () => {
     switch (activeStep) {
       case 0:
         return <CustomerLoanStep form={form} readOnly={readOnly} />;
@@ -1164,17 +1164,17 @@ export function LoanApplicationModal({
         return null;
     }
   };
-    const bodyContent = (
-        <Box
-          style={{
-            position: "relative",
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            minHeight: 0,
-          }}
-        >
-  {/* return (
+  const bodyContent = (
+    <Box
+      style={{
+        position: "relative",
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+      }}
+    >
+      {/* return (
     <>
       <Modal
         opened={opened}
@@ -1217,225 +1217,275 @@ export function LoanApplicationModal({
             minHeight: 0,
           }}
         > */}
-         {!embedded && (
-          <Group
-            justify="space-between"
-            align="center"
-            px="xl"
-            py="sm"
-            bg="brand.6"
-            style={{
-              borderBottom: "1px solid var(--mantine-color-brand-7)",
-              flexShrink: 0,
-            }}
-          >
-            <Group gap="sm">
-              <ThemeIcon radius="md" size={34} variant="white" color="brand">
-                <IconFileText size={16} />
-              </ThemeIcon>
-              <Box>
-                <Text
-                  size="md"
-                  fw={700}
-                  c="white"
-                  style={{ letterSpacing: "-0.01em" }}
-                >
-                  {loanApplicationId
-                    ? "Update Loan Application"
-                    : "New Loan Application"}
-                </Text>
-                <Text size="xs" fw={500} c="brand.1">
-                  Applicant, loan and repayment details
-                </Text>
-              </Box>
-            </Group>
-                        {!embedded && (
-              <Group gap="xs" wrap="nowrap">
-                <ActionIcon
-                  variant="subtle"
-                  color="white"
-                  radius="xl"
-                  size="md"
-                  onClick={onMinimize}
-                  aria-label="Minimize"
-                >
-                  <IconMinus size={16} color="white" />
-                </ActionIcon>
-
-                <ActionIcon
-                  variant="subtle"
-                  color="white"
-                  radius="xl"
-                  size="md"
-                  onClick={handleModalClose}
-                  aria-label="Close"
-                >
-                  <IconX size={16} color="white" />
-                </ActionIcon>
-              </Group>
-            )}
+      {!embedded && (
+        <Group
+          justify="space-between"
+          align="center"
+          px="xl"
+          py="sm"
+          bg="brand.6"
+          style={{
+            borderBottom: "1px solid var(--mantine-color-brand-7)",
+            flexShrink: 0,
+          }}
+        >
+          <Group gap="sm">
+            <ThemeIcon radius="md" size={34} variant="white" color="brand">
+              <IconFileText size={16} />
+            </ThemeIcon>
+            <Box>
+              <Text
+                size="md"
+                fw={700}
+                c="white"
+                style={{ letterSpacing: "-0.01em" }}
+              >
+                {loanApplicationId
+                  ? "Update Loan Application"
+                  : "New Loan Application"}
+              </Text>
+              <Text size="xs" fw={500} c="brand.1">
+                Applicant, loan and repayment details
+              </Text>
+            </Box>
           </Group>
-        )}
-                    <Box
-            px="md"
-            py={6}
-            style={{
-              borderBottom: "1px solid var(--mantine-color-slate-2)",
-              flexShrink: 0,
-            }}
-            bg="slate.0"
-          >
-            <ScrollArea type="auto" scrollbarSize={4} offsetScrollbars={false}>
-              <Group gap={18} wrap="nowrap">
-                {stepLabels.map((label, idx) => {
-                  const isActive = activeStep === idx;
-                  const isComplete = idx < activeStep;
-                  const StepIcon = STEP_ICONS[loanType][idx];
-                  return (
-                    <Group key={label} gap={18} wrap="nowrap">
-                      <UnstyledButton
-                        type="button"
-                        onClick={() => setActiveStep(idx)}
-                        px={14}
-                        py={7}
-                        style={{
-                          borderRadius: "var(--mantine-radius-sm)",
-                          whiteSpace: "nowrap",
-                          flexShrink: 0,
-                          background: isActive ? "var(--mantine-color-white)" : "transparent",
-                          boxShadow: isActive ? "var(--mantine-shadow-sm)" : "none",
-                          border: isActive
-                            ? "1px solid var(--mantine-color-slate-2)"
-                            : "1px solid transparent",
-                          transition: "background-color 120ms ease, box-shadow 120ms ease",
-                        }}
-                      >
-                        <Group gap={6} wrap="nowrap">
-                          <ThemeIcon
-                            radius="xl"
-                            size={20}
-                            variant={isActive || isComplete ? "filled" : "outline"}
-                            color={isActive || isComplete ? "brand" : "slate"}
-                            style={{ flexShrink: 0 }}
-                          >
-                            {isComplete ? <IconCheck size={10} /> : <StepIcon size={10} />}
-                          </ThemeIcon>
-                          <Text
-                            size="xs"
-                            fw={isActive ? 700 : 500}
-                            c={isActive ? "brand.7" : isComplete ? "slate.7" : "slate.5"}
-                            style={{ whiteSpace: "nowrap" }}
-                          >
-                            {label}
-                          </Text>
-                        </Group>
-                      </UnstyledButton>
-                      {idx < stepLabels.length - 1 && (
-                        <IconChevronRight
-                          size={11}
-                          color="var(--mantine-color-slate-3)"
-                          style={{ flexShrink: 0 }}
-                        />
-                      )}
-                    </Group>
-                  );
-                })}
-              </Group>
-            </ScrollArea>
-          </Box>
+          {!embedded && (
+            <Group gap="xs" wrap="nowrap">
+              <ActionIcon
+                variant="subtle"
+                color="white"
+                radius="xl"
+                size="md"
+                onClick={onMinimize}
+                aria-label="Minimize"
+              >
+                <IconMinus size={16} color="white" />
+              </ActionIcon>
 
-          <Box
-            style={{
-              flex: 1,
-              minHeight: 0,
-              display: "flex",
-              flexDirection: "row",
-              overflow: "hidden",
-            }}
-          >
-          <ScrollArea type="hover" scrollbarSize={6} style={{ flex: 1, minHeight: 0 }}>
-              <Box px="xl" py="xl" style={{ flex: 1, minWidth: 0 }}>
-                <Box className="bg-white border border-slate-200 rounded-xl p-6 mb-4">
-                  {renderStep()}
-                </Box>
-              </Box>
-          </ScrollArea>
-
-            {loanTypeSelected && !readOnly &&  (
-              <ApplicationSummary
-                values={form.values}
-                totalRepayable={totalRepayable}
-                monthlyRepayment={monthlyRepayment}
-                activeStep={activeStep}
-              />
-            )}
-          </Box>
-          {loanTypeSelected && !readOnly && (
-            <Group
-              justify="space-between"
-              align="center"
-              px="xl"
-              py="md"
-              bg="white"
-              style={{
-                borderTop: "1px solid var(--mantine-color-gray-2)",
-                flexShrink: 0,
-              }}
-            >
-              <Group gap="lg">
-                <Button
-                  variant="transparent"
-                  c="dark.8"
-                  px={0}
-                  fw={600}
-                  onClick={handleModalClose}
-                >
-                  Cancel
-                </Button>
-                <Divider orientation="vertical" />
-                <Button
-                  variant="transparent"
-                  color="red.8"
-                  px={0}
-                  fw={600}
-                  onClick={handleReset}
-                >
-                  Reset Form
-                </Button>
-              </Group>
-
-                  <Group gap="md">
-            {activeStep > 0 && (
-  <Button 
-    variant="default" 
-    radius="md" 
-    onClick={handleBack}
-  >
-    Back
-  </Button>
-            )}
- <Button
-                  color="brand"
-                  radius="md"
-                  onClick={
-                    activeStep < 6 ? handleNext : handleSubmitApplication
-                  }
-                  loading={
-                    activeStep === 6 &&
-                    (isUploadingDocs || isSubmitting || isUpdating)
-                  }
-                  rightSection={<IconArrowRight size={16} />}
-                >
-                  {activeStep < 6
-                    ? "Save & Continue"
-                    : loanApplicationId
-                      ? "Update Application"
-                      : "Save Application"}
-                </Button>
-              </Group>
+              <ActionIcon
+                variant="subtle"
+                color="white"
+                radius="xl"
+                size="md"
+                onClick={handleModalClose}
+                aria-label="Close"
+              >
+                <IconX size={16} color="white" />
+              </ActionIcon>
             </Group>
           )}
-                </Box>
+        </Group>
+      )}
+      <Box
+        px="md"
+        py={6}
+        style={{
+          borderBottom: "1px solid var(--mantine-color-slate-2)",
+          flexShrink: 0,
+        }}
+        bg="slate.0"
+      >
+        <Group
+          gap={4}
+          wrap="nowrap"
+          style={{
+            width: "100%",
+            overflow: "hidden",
+          }}
+        >
+          {stepLabels.map((label, idx) => {
+            const isActive = activeStep === idx;
+            const isComplete = idx < activeStep;
+            const StepIcon = STEP_ICONS[loanType][idx];
+
+            return (
+              <Box
+                key={label}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  position: "relative",
+                }}
+              >
+                <UnstyledButton
+                  type="button"
+                  onClick={() => setActiveStep(idx)}
+                  style={{
+                    width: "100%",
+                    minWidth: 0,
+                    padding: "6px 4px",
+                    borderRadius: "var(--mantine-radius-sm)",
+                    background: isActive
+                      ? "var(--mantine-color-white)"
+                      : "transparent",
+                    boxShadow: isActive
+                      ? "var(--mantine-shadow-sm)"
+                      : "none",
+                    border: isActive
+                      ? "1px solid var(--mantine-color-slate-2)"
+                      : "1px solid transparent",
+                    transition:
+                      "background-color 120ms ease, box-shadow 120ms ease",
+                  }}
+                >
+                  <Group
+                    gap={5}
+                    wrap="nowrap"
+                    justify="center"
+                    style={{
+                      width: "100%",
+                      minWidth: 0,
+                    }}
+                  >
+                    <ThemeIcon
+                      radius="xl"
+                      size={20}
+                      variant={isActive || isComplete ? "filled" : "outline"}
+                      color={isActive || isComplete ? "brand" : "slate"}
+                      style={{
+                        flexShrink: 0,
+                      }}
+                    >
+                      {isComplete ? (
+                        <IconCheck size={10} />
+                      ) : (
+                        <StepIcon size={10} />
+                      )}
+                    </ThemeIcon>
+
+                    <Text
+                      size="xs"
+                      fw={isActive ? 700 : 500}
+                      c={
+                        isActive
+                          ? "brand.7"
+                          : isComplete
+                            ? "slate.7"
+                            : "slate.5"
+                      }
+                      style={{
+                        whiteSpace: "nowrap",
+                        fontSize: "11px",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {label}
+                    </Text>
+                  </Group>
+                </UnstyledButton>
+
+                {idx < stepLabels.length - 1 && (
+                  <IconChevronRight
+                    size={10}
+                    color="var(--mantine-color-slate-3)"
+                    style={{
+                      position: "absolute",
+                      right: -7,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      zIndex: 2,
+                      pointerEvents: "none",
+                    }}
+                  />
+                )}
+              </Box>
+            );
+          })}
+        </Group>
+      </Box>
+
+      <Box
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "row",
+          overflow: "hidden",
+        }}
+      >
+        <ScrollArea type="hover" scrollbarSize={6} style={{ flex: 1, minHeight: 0 }}>
+          <Box px="xl" py="xl" style={{ flex: 1, minWidth: 0 }}>
+            <Box className="bg-white border border-slate-200 rounded-xl p-6 mb-4">
+              {renderStep()}
+            </Box>
+          </Box>
+        </ScrollArea>
+
+        {loanTypeSelected && !readOnly && (
+          <ApplicationSummary
+            values={form.values}
+            totalRepayable={totalRepayable}
+            monthlyRepayment={monthlyRepayment}
+            activeStep={activeStep}
+          />
+        )}
+      </Box>
+      {loanTypeSelected && !readOnly && (
+        <Group
+          justify="space-between"
+          align="center"
+          px="xl"
+          py="md"
+          bg="white"
+          style={{
+            borderTop: "1px solid var(--mantine-color-gray-2)",
+            flexShrink: 0,
+          }}
+        >
+          <Group gap="lg">
+            <Button
+              variant="transparent"
+              c="dark.8"
+              px={0}
+              fw={600}
+              onClick={handleModalClose}
+            >
+              Cancel
+            </Button>
+            <Divider orientation="vertical" />
+            <Button
+              variant="transparent"
+              color="red.8"
+              px={0}
+              fw={600}
+              onClick={handleReset}
+            >
+              Reset Form
+            </Button>
+          </Group>
+
+          <Group gap="md">
+            {activeStep > 0 && (
+              <Button
+                variant="default"
+                radius="md"
+                onClick={handleBack}
+              >
+                Back
+              </Button>
+            )}
+            <Button
+              color="brand"
+              radius="md"
+              onClick={
+                activeStep < 6 ? handleNext : handleSubmitApplication
+              }
+              loading={
+                activeStep === 6 &&
+                (isUploadingDocs || isSubmitting || isUpdating)
+              }
+              rightSection={<IconArrowRight size={16} />}
+            >
+              {activeStep < 6
+                ? "Save & Continue"
+                : loanApplicationId
+                  ? "Update Application"
+                  : "Save Application"}
+            </Button>
+          </Group>
+        </Group>
+      )}
+    </Box>
   );
 
   if (embedded) {
@@ -1464,7 +1514,7 @@ export function LoanApplicationModal({
           },
         }}
         // size={1400}
-         size="90vw"
+        size="90vw"
         padding={0}
         lockScroll
         closeOnClickOutside={false}
@@ -1477,16 +1527,16 @@ export function LoanApplicationModal({
         //     flexDirection: "column",
         //     overflow: "hidden",
         //   },
-         styles={{
-        content: {
-          height: "92vh",
-          maxHeight: "99vh",
-          width: "90vw",
-          maxWidth: "1600px",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        },
+        styles={{
+          content: {
+            height: "92vh",
+            maxHeight: "99vh",
+            width: "90vw",
+            maxWidth: "1600px",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          },
           header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
           body: {
             flex: 1,
