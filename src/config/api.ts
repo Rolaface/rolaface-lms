@@ -152,6 +152,7 @@ export const API = {
     deleteLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.delete_loan`,
     statusLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.update_loan_status`,
     getLoanScheduleById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.api.get_repayment_schedule_by_id`,
+    getEmiScheduleById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.repayment.schedule.api.calculate_fixed_amount_schedule`,
   },
   loanView: {
     getOverview: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.loan.loan_view.api.get_loan_overview`,

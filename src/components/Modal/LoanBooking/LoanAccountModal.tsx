@@ -26,6 +26,7 @@ import {
   getLoanById,
   updateLoan,
   getReapymentScheduleById,
+  getEmiRepaymentSchedule,
   attachLoanDocuments,
   uploadFile,
 } from "../../../api/loanApi";
@@ -530,63 +531,89 @@ export function LoanAccountModal({
     ],
   );
 
-  const scheduleMissingFields = useMemo(() => {
-    const missing: string[] = [];
-    if (!scheduleParams.loan_product) missing.push("Product Code");
-    if (scheduleParams.loan_amount <= 0) missing.push("Loan Amount");
-    if (scheduleParams.rate_of_interest < 0) missing.push("Interest Rate");
+const scheduleMissingFields = useMemo(() => {
+  const missing: string[] = [];
+  if (!scheduleParams.loan_product) missing.push("Product Code");
+  if (scheduleParams.loan_amount <= 0) missing.push("Loan Amount");
+  if (scheduleParams.rate_of_interest < 0) missing.push("Interest Rate");
+
+  if (form.values.fixedRepaymentsIn === "TENOR") {
     if (scheduleParams.tenure <= 0) missing.push("Tenure");
-    if (!scheduleParams.repayment_frequency) missing.push("Frequency");
-    if (!scheduleParams.repayment_start_date)
-      missing.push("Repayment Start Date");
-    return missing;
-  }, [scheduleParams]);
+  } else {
+    if (!Number(form.values.repaymentAmount) || Number(form.values.repaymentAmount) <= 0)
+      missing.push("Repayment Amount");
+  }
+
+  if (!scheduleParams.repayment_frequency) missing.push("Frequency");
+  if (!scheduleParams.repayment_start_date)
+    missing.push("Repayment Start Date");
+  return missing;
+}, [scheduleParams, form.values.fixedRepaymentsIn, form.values.repaymentAmount]);
 
   const [schedulePreview, setSchedulePreview] =
     useState<RepaymentScheduleResponse | null>(null);
   const [isFetchingSchedule, setIsFetchingSchedule] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!opened) return;
+ useEffect(() => {
+  if (!opened) return;
 
-    if (scheduleMissingFields.length > 0) {
-      setSchedulePreview(null);
-      setScheduleError(null);
-      return;
-    }
-
-    let cancelled = false;
-    setIsFetchingSchedule(true);
+  if (scheduleMissingFields.length > 0) {
+    setSchedulePreview(null);
     setScheduleError(null);
+    return;
+  }
 
-    getRepaymentSchedule({
-      loan_product: scheduleParams.loan_product,
-      loan_amount: scheduleParams.loan_amount,
-      rate_of_interest: scheduleParams.rate_of_interest,
-      tenure: scheduleParams.tenure,
-      repayment_frequency: scheduleParams.repayment_frequency,
-      repayment_start_date: dayjs(scheduleParams.repayment_start_date).format(
-        "YYYY-MM-DD",
-      ),
+  let cancelled = false;
+  setIsFetchingSchedule(true);
+  setScheduleError(null);
+
+  const fetchPromise =
+    form.values.fixedRepaymentsIn === "TENOR"
+      ? getRepaymentSchedule({
+          loan_product: scheduleParams.loan_product,
+          loan_amount: scheduleParams.loan_amount,
+          rate_of_interest: scheduleParams.rate_of_interest,
+          tenure: scheduleParams.tenure,
+          repayment_frequency: scheduleParams.repayment_frequency,
+          repayment_start_date: dayjs(
+            scheduleParams.repayment_start_date,
+          ).format("YYYY-MM-DD"),
+        })
+      : getEmiRepaymentSchedule({
+          loan_amount: scheduleParams.loan_amount,
+          rate_of_interest: scheduleParams.rate_of_interest,
+          monthly_repayment_amount: Number(form.values.repaymentAmount) || 0,
+          repayment_frequency: scheduleParams.repayment_frequency,
+          repayment_start_date: dayjs(
+            scheduleParams.repayment_start_date,
+          ).format("YYYY-MM-DD"),
+        });
+
+  fetchPromise
+    .then((res) => {
+      if (!cancelled) setSchedulePreview(res);
     })
-      .then((res) => {
-        if (!cancelled) setSchedulePreview(res);
-      })
-      .catch((err) => {
-        if (!cancelled)
-          setScheduleError(
-            err?.message || "Failed to load repayment schedule.",
-          );
-      })
-      .finally(() => {
-        if (!cancelled) setIsFetchingSchedule(false);
-      });
+    .catch((err) => {
+      if (!cancelled)
+        setScheduleError(
+          err?.message || "Failed to load repayment schedule.",
+        );
+    })
+    .finally(() => {
+      if (!cancelled) setIsFetchingSchedule(false);
+    });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [opened, scheduleMissingFields, scheduleParams]);
+  return () => {
+    cancelled = true;
+  };
+}, [
+  opened,
+  scheduleMissingFields,
+  scheduleParams,
+  form.values.fixedRepaymentsIn,
+  form.values.repaymentAmount,
+]);
 
   const fetchedRepaymentSchedule = useMemo(
     () =>

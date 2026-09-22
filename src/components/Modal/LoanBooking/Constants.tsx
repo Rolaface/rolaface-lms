@@ -7,8 +7,6 @@ import {
   IconFileUpload,
 } from "@tabler/icons-react";
 
-// Fixed rate used for the Basic Details EMI preview — in a real app this
-// would come from the selected Product Code.
 export const ANNUAL_RATE = 14.5;
 
 export interface DocumentRow {
@@ -19,11 +17,8 @@ export interface DocumentRow {
 
 export const FEE_TYPES = ["Processing Fee", "Documentation Charges", "Insurance Premium", "Legal Fee"];
 export const CURRENCIES = ["USD", "INR", "EUR", "GBP"];
-export const FREQUENCIES = ["Monthly", "Daily", "Weekly", "Bi-Weekly", "Quarterly", "One Time"];
+export const FREQUENCIES = ["Monthly", "Daily", "Weekly", "Bi-Weekly", "Quarterly"];
 
-// "None" added so the SegmentedControl has a matching option for the
-// default state — previously the control's value/onChange were commented
-// out, so this list never actually connected to state at all.
 export const MORATORIUM_TYPES = ["Principal", "EMI (Principal + Interest)"];
 
 export const DEFAULT_DOCUMENTS: DocumentRow[] = [
