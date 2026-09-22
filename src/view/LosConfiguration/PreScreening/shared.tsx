@@ -1,5 +1,5 @@
 import { Badge, Text } from "@mantine/core";
-import { IconCheck, IconX } from "@tabler/icons-react";
+import { IconAlertTriangle, IconCheck, IconClipboardCheck, IconCircleX, IconX } from "@tabler/icons-react";
 import type { Severity } from "./types";
 
 /* ============================================================
@@ -30,8 +30,9 @@ const SEVERITY_COLOR: Record<Severity, string> = {
 };
 
 export function SeverityBadge({ severity }: { severity: Severity }) {
+  const icon = severity === "Blocking" ? <IconCircleX size={12} stroke={2.4} /> : severity === "Warning" ? <IconAlertTriangle size={12} stroke={2.2} /> : <IconClipboardCheck size={12} stroke={2.2} />;
   return (
-    <Badge color={SEVERITY_COLOR[severity]} variant="light" size="sm" radius="sm">
+    <Badge color={SEVERITY_COLOR[severity]} variant="light" size="sm" radius="xl" leftSection={icon} style={{ minWidth: 78, justifyContent: "center", whiteSpace: "nowrap", fontFamily: "Inter, var(--font-main), sans-serif", fontWeight: 700 }}>
       {severity}
     </Badge>
   );
