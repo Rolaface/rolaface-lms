@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { 
-  SimpleGrid, 
-  TextInput, 
-  Select, 
-  Box, 
-  Group, 
-  Text, 
-  Button, 
-  Stack, 
+import {
+  SimpleGrid,
+  TextInput,
+  Select,
+  Box,
+  Group,
+  Text,
+  Button,
+  Stack,
   Modal,
   ActionIcon,
   Checkbox,
@@ -29,7 +29,7 @@ interface StepProps {
   readOnly?: boolean;
 }
 
-const RELATIONSHIPS = [ "Spouse", "Parent", "Child", "Sibling", "Other",];
+const RELATIONSHIPS = ["Spouse", "Parent", "Child", "Sibling", "Other",];
 const GENDERS = ["Male", "Female", "Other"];
 const MARITAL_STATUSES = [
   "Single",
@@ -56,121 +56,122 @@ export function ResidenceEmploymentStep({ form, loanType, directorsError, readOn
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const { data: countryResponse, isLoading: isCountriesLoading } = useQuery({
-  queryKey: ["countries"],
-  queryFn: getAllCountries,
-});
+    queryKey: ["countries"],
+    queryFn: getAllCountries,
+  });
 
-const countryOptions = useMemo(() => {
-  const countries = countryResponse?.message?.data || [];
-  return countries.map((c: any) => ({ value: c.value, label: c.label }));
-}, [countryResponse]);
+  const countryOptions = useMemo(() => {
+    const countries = countryResponse?.message?.data || [];
+    return countries.map((c: any) => ({ value: c.value, label: c.label }));
+  }, [countryResponse]);
 
-if (loanType === "Personal") {
-  return (
-    <Stack gap="sm">
-      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" style={{ gridColumn: "1 / -1" }}>
-      {/* Present / Residential Address */}
-      <Box p="md" bd="1px solid var(--mantine-color-slate-3)" style={{ borderRadius: "var(--mantine-radius-md)" }}>
-        <Text fw={600} mb="md">Residential Address</Text>
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" verticalSpacing="sm">
-          <div style={{ display: "flex", gap: "16px", gridColumn: "1 / -1" }}>
-            <TextInput radius="md" label={<Label text="Address Line 1" required />} placeholder="Plot / street, area" readOnly={readOnly} style={{ flex: 1 }} />
-            <TextInput radius="md" label={<Label text="Address Line 2" />} placeholder="Apartment, suite, etc." readOnly={readOnly} style={{ flex: 1 }} />
-          </div>
-          <TextInput radius="md" label={<Label text="City / Town" required />} placeholder="e.g. Lusaka" readOnly={readOnly} />
-          <Select radius="md" searchable label={<Label text="State / Province" />} placeholder="Select" disabled={readOnly} data={["Lusaka", "Copperbelt", "Southern", "Eastern", "Northern"]} />
-          <Select radius="md" searchable label={<Label text="Country" required />} placeholder={isCountriesLoading ? "Loading..." : "Select"} disabled={isCountriesLoading || readOnly} data={countryOptions} />
-          <TextInput radius="md" label={<Label text="Postal Code" />} placeholder="e.g. 10101" readOnly={readOnly} />
+  if (loanType === "Personal") {
+    return (
+      <Stack gap="sm">
+        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" style={{ gridColumn: "1 / -1" }}>
+          {/* Present / Residential Address */}
+          <Box p="md" bd="1px solid var(--mantine-color-slate-3)" style={{ borderRadius: "var(--mantine-radius-md)" }}>
+            <Text fw={600} mb="md">Residential Address</Text>
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" verticalSpacing="sm">
+              <div style={{ display: "flex", gap: "16px", gridColumn: "1 / -1" }}>
+                <TextInput radius="md" label={<Label text="Address Line 1" required />} placeholder="Plot / street, area" readOnly={readOnly} style={{ flex: 1 }} />
+                <TextInput radius="md" label={<Label text="Address Line 2" />} placeholder="Apartment, suite, etc." readOnly={readOnly} style={{ flex: 1 }} />
+              </div>
+              <TextInput radius="md" label={<Label text="City / Town" required />} placeholder="e.g. Lusaka" readOnly={readOnly} />
+              <Select radius="md" searchable label={<Label text="State / Province" />} placeholder="Select" disabled={readOnly} data={["Lusaka", "Copperbelt", "Southern", "Eastern", "Northern"]} />
+              <Select radius="md" searchable label={<Label text="Country" required />} placeholder={isCountriesLoading ? "Loading..." : "Select"} disabled={isCountriesLoading || readOnly} data={countryOptions} />
+              <TextInput radius="md" label={<Label text="Postal Code" />} placeholder="e.g. 10101" readOnly={readOnly} />
+            </SimpleGrid>
+          </Box>
+
+          {/* Permanent / Mailing Address */}
+          <Box p="md" bd="1px solid var(--mantine-color-slate-3)" style={{ borderRadius: "var(--mantine-radius-md)" }}>
+            <Group justify="space-between" mb="md">
+              <Text fw={600}>Permanent Address</Text>
+              <Checkbox label="Same as residential" size="sm" />
+            </Group>
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" verticalSpacing="sm">
+              <div style={{ display: "flex", gap: "16px", gridColumn: "1 / -1" }}>
+                <TextInput radius="md" label={<Label text="Address Line 1" required />} placeholder="Plot / street, area" readOnly={readOnly} style={{ flex: 1 }} />
+                <TextInput radius="md" label={<Label text="Address Line 2" />} placeholder="Apartment, suite, etc." readOnly={readOnly} style={{ flex: 1 }} />
+              </div>
+              <TextInput radius="md" label={<Label text="City / Town" required />} placeholder="e.g. Lusaka" readOnly={readOnly} />
+              <Select radius="md" searchable label={<Label text="State / Province" />} placeholder="Select" disabled={readOnly} data={["Lusaka", "Copperbelt", "Southern", "Eastern", "Northern"]} />
+              <Select radius="md" searchable label={<Label text="Country" required />} placeholder={isCountriesLoading ? "Loading..." : "Select"} disabled={isCountriesLoading || readOnly} data={countryOptions} />
+              <TextInput radius="md" label={<Label text="Postal Code" />} placeholder="e.g. 10101" readOnly={readOnly} />
+            </SimpleGrid>
+          </Box>
         </SimpleGrid>
-      </Box>
-
-      {/* Permanent / Mailing Address */}
-      <Box p="md" bd="1px solid var(--mantine-color-slate-3)" style={{ borderRadius: "var(--mantine-radius-md)" }}>
-        <Group justify="space-between" mb="md">
-          <Text fw={600}>Permanent Address</Text>
-          <Checkbox label="Same as residential" size="sm" />
+        <Group gap="xs" mt={2} mb={0} wrap="nowrap">
+          <Text fz="sm" fw={700} c="slate.8" style={{ whiteSpace: "nowrap" }}>
+            Next of Kin Details
+          </Text>
+          <Box
+            style={{
+              height: 1,
+              flex: 1,
+              backgroundColor: "var(--mantine-color-slate-2)",
+            }}
+          />
         </Group>
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" verticalSpacing="sm">
-          <div style={{ display: "flex", gap: "16px", gridColumn: "1 / -1" }}>
-            <TextInput radius="md" label={<Label text="Address Line 1" required />} placeholder="Plot / street, area" readOnly={readOnly} style={{ flex: 1 }} />
-            <TextInput radius="md" label={<Label text="Address Line 2" />} placeholder="Apartment, suite, etc." readOnly={readOnly} style={{ flex: 1 }} />
-          </div>
-          <TextInput radius="md" label={<Label text="City / Town" required />} placeholder="e.g. Lusaka" readOnly={readOnly} />
-          <Select radius="md" searchable label={<Label text="State / Province" />} placeholder="Select" disabled={readOnly} data={["Lusaka", "Copperbelt", "Southern", "Eastern", "Northern"]} />
-          <Select radius="md" searchable label={<Label text="Country" required />} placeholder={isCountriesLoading ? "Loading..." : "Select"} disabled={isCountriesLoading || readOnly} data={countryOptions} />
-          <TextInput radius="md" label={<Label text="Postal Code" />} placeholder="e.g. 10101" readOnly={readOnly} />
-        </SimpleGrid>
-      </Box>
-    </SimpleGrid>
-      <Group gap="xs" mt={2} mb={0} wrap="nowrap">
-        <Text fz="sm" fw={700} c="slate.8" style={{ whiteSpace: "nowrap" }}>
-          Next of Kin Details
-        </Text>
-        <Box
-          style={{
-            height: 1,
-            flex: 1,
-            backgroundColor: "var(--mantine-color-slate-2)",
-          }}
-        />
-      </Group>
 
-      <SimpleGrid
-        cols={{ base: 1, sm: 3 }}
-        spacing="md"
-        verticalSpacing="sm"
-      >
-                <TextInput
-          radius="md"
-          label={<Label text="Next of kin name" required />}
-          placeholder="e.g. John Doe"
-          {...form.getInputProps("kinName")}
-          readOnly={readOnly}
-        />
+        <SimpleGrid
+  cols={{ base: 1, sm: 4 }}
+  spacing="md"
+  verticalSpacing="sm"
+>
+  <TextInput
+    radius="md"
+    label={<Label text="Next of kin name" required />}
+    placeholder="e.g. John Doe"
+    {...form.getInputProps("kinName")}
+    readOnly={readOnly}
+  />
 
-        <TextInput
-          radius="md"
-          type="tel"
-          label={<Label text="Next of kin phone" required />}
-          placeholder="e.g. 0971234567"
-          value={form.values.kinPhone}
-          onChange={(e) =>
-            form.setFieldValue(
-              "kinPhone",
-              e.currentTarget.value.replace(/\D/g, "")
-            )
-          }
-          error={form.errors.kinPhone}
-          readOnly={readOnly}
-        />
+  <TextInput
+    radius="md"
+    type="tel"
+    label={<Label text="Next of kin phone" required />}
+    placeholder="e.g. 0971234567"
+    value={form.values.kinPhone}
+    onChange={(e) =>
+      form.setFieldValue(
+        "kinPhone",
+        e.currentTarget.value.replace(/\D/g, "")
+      )
+    }
+    error={form.errors.kinPhone}
+    readOnly={readOnly}
+  />
 
-        <TextInput
-          radius="md"
-          type="email"
-          label={<Label text="Next of kin email" required />}
-          placeholder="e.g. john.doe@example.com"
-          value={form.values.kinEmail}
-          onChange={(e) => {
-            form.setFieldValue("kinEmail", e.currentTarget.value);
-            form.validateField("kinEmail");
-          }}
-          error={form.errors.kinEmail}
-          readOnly={readOnly}
-        />
+  <TextInput
+    radius="md"
+    type="email"
+    label={<Label text="Next of kin email" required />}
+    placeholder="e.g. john.doe@example.com"
+    value={form.values.kinEmail}
+    onChange={(e) => {
+      form.setFieldValue("kinEmail", e.currentTarget.value);
+      form.validateField("kinEmail");
+    }}
+    error={form.errors.kinEmail}
+    readOnly={readOnly}
+  />
 
-        <Select
-          radius="md"
-          label={<Label text="Relationship" required />}
-          placeholder="Select relationship"
-          data={RELATIONSHIPS}
-          {...form.getInputProps("kinRelationship")}
-          style={{ gridColumn: "1 / -1" }}
-          disabled={readOnly}
-        />
-      </SimpleGrid>
-    </Stack>
-  );
-}
+  <Select
+    radius="md"
+    label={<Label text="Relationship" required />}
+    placeholder="Select relationship"
+    data={RELATIONSHIPS}
+    {...form.getInputProps("kinRelationship")}
+    /* style={{ gridColumn: "1 / -1" }} <-- Removed this line */
+    disabled={readOnly}
+  />
+</SimpleGrid>
+
+      </Stack>
+    );
+  }
 
   // --- Business: Directors & Applicant ---
   const directors = form.values.directors || [];
@@ -226,7 +227,7 @@ if (loanType === "Personal") {
   return (
     <>
       <Stack gap="sm">
-          {/* Directors Section */}
+        {/* Directors Section */}
         <Box p="xl" bd="1px solid var(--mantine-color-slate-2)" style={{ borderRadius: "var(--mantine-radius-md)" }}>
           <Group justify="space-between" align="flex-start" mb="xs">
             <Box>
@@ -263,7 +264,7 @@ if (loanType === "Personal") {
 
           <Box style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", margin: "20px 0" }} />
 
-         <Stack gap="sm">
+          <Stack gap="sm">
             {directors.map((dir, idx) => {
               const getInitials = (name: string) => name ? name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "D";
               const colors = [
@@ -293,7 +294,7 @@ if (loanType === "Personal") {
                           <IconChevronUp size={18} stroke={1.5} color="var(--mantine-color-slate-4)" />
                         </ActionIcon>
                       </Group>
-                      
+
                       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg" verticalSpacing="md">
                         <TextInput
                           radius="md"
@@ -344,21 +345,21 @@ if (loanType === "Personal") {
                     </Box>
                   ) : (
                     /* Summary Row */
-                    <Group 
+                    <Group
                       wrap="nowrap"
-                      justify="space-between" 
+                      justify="space-between"
                       align="center"
                       p="md"
                       bg="transparent"
                     >
                       <Group wrap="nowrap" gap="md" style={{ flex: 1, minWidth: 0 }}>
-                        <Box 
-                          w={42} 
-                          h={42} 
-                          bg={colorTheme.bg} 
-                          c={colorTheme.c} 
+                        <Box
+                          w={42}
+                          h={42}
+                          bg={colorTheme.bg}
+                          c={colorTheme.c}
                           fz="sm"
-                          fw={700} 
+                          fw={700}
                           style={{ borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
                         >
                           {getInitials(dir.name)}
@@ -376,7 +377,7 @@ if (loanType === "Personal") {
                           </Group>
                           <Group gap="lg" align="center" wrap="nowrap">
                             <Text fz="sm" c="slate.5" truncate>
-                              <span style={{ color: "var(--mantine-color-slate-4)" }}>NRC:</span> {dir.nrc || "Pending"} 
+                              <span style={{ color: "var(--mantine-color-slate-4)" }}>NRC:</span> {dir.nrc || "Pending"}
                             </Text>
                             <Text fz="xs" c="slate.3">•</Text>
                             <Text fz="sm" c="slate.6" truncate>
@@ -417,7 +418,7 @@ if (loanType === "Personal") {
             })}
           </Stack>
         </Box>
-       </Stack>
+      </Stack>
     </>
   );
 }
