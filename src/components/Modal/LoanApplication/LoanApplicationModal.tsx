@@ -1403,13 +1403,33 @@ export function LoanApplicationModal({
           overflow: "hidden",
         }}
       >
-        <ScrollArea type="hover" scrollbarSize={6} style={{ flex: 1, minHeight: 0 }}>
-          <Box px="xl" py="xl" style={{ flex: 1, minWidth: 0 }}>
-            <Box className="bg-white border border-slate-200 rounded-xl p-6 mb-4">
-              {renderStep()}
+        {activeStep === 3 ? (
+          <Box
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflow: "hidden",
+            }}
+          >
+            <Box px="xl" py="xl" style={{ flex: 1, minWidth: 0 }}>
+              <Box className="bg-white border border-slate-200 rounded-xl p-6 mb-4">
+                {renderStep()}
+              </Box>
             </Box>
           </Box>
-        </ScrollArea>
+        ) : (
+          <ScrollArea
+            type="hover"
+            scrollbarSize={6}
+            style={{ flex: 1, minHeight: 0 }}
+          >
+            <Box px="xl" py="xl" style={{ flex: 1, minWidth: 0 }}>
+              <Box className="bg-white border border-slate-200 rounded-xl p-6 mb-4">
+                {renderStep()}
+              </Box>
+            </Box>
+          </ScrollArea>
+        )}
 
         {loanTypeSelected && !readOnly && (
           <ApplicationSummary
