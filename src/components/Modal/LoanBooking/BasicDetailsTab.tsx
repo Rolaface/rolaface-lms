@@ -282,15 +282,22 @@ const customerOptions = useMemo(() => {
           </SimpleGrid>
 
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm" verticalSpacing="xs">
-            <Input.Wrapper label="Fixed Repayments In">
-              <SegmentedControl
-                data={["TENOR", "EMI"]}
-                fullWidth
-                color="brand"
-                value={form.values.fixedRepaymentsIn}
-                onChange={(val) => form.setFieldValue("fixedRepaymentsIn", val)}
-              />
-            </Input.Wrapper>
+           <Input.Wrapper label="Fixed Repayments In">
+  <SegmentedControl
+    data={["TENOR", "EMI"]}
+    fullWidth
+    color="brand"
+    value={form.values.fixedRepaymentsIn}
+    onChange={(val) => {
+      form.setFieldValue("fixedRepaymentsIn", val);
+      if (val === "EMI") {
+        form.setFieldValue("tenureValue", "");
+      } else {
+        form.setFieldValue("repaymentAmount", "");
+      }
+    }}
+  />
+</Input.Wrapper>
             <NumberInput
               label="Tenure (months)"
               placeholder="0"
