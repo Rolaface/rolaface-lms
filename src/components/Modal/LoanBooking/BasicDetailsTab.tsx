@@ -17,8 +17,6 @@ import type { UseFormReturnType } from "@mantine/form";
 import { DateInput } from "@mantine/dates";
 import {
   IconChevronDown,
-  IconUserSquareRounded,
-  IconReceiptDollar,
   IconNotes,
 } from "@tabler/icons-react";
 
@@ -39,12 +37,14 @@ interface BasicDetailsTabProps {
   form: UseFormReturnType<any>;
   maturityDate: string;
   // loanAcNumber: string;
+  repaymentAmountError?: string | null;
 }
 
 export function BasicDetailsTab({
   form,
   maturityDate,
   // loanAcNumber,
+  repaymentAmountError,
 }: BasicDetailsTabProps) {
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencySymbol = getSymbol(companyCurrency);
@@ -56,7 +56,12 @@ export function BasicDetailsTab({
     return d.toISOString().slice(0, 10);
   };
 
-  // ---- Customer Number: backend search, debounced ----
+const emiTooHigh =
+  form.values.fixedRepaymentsIn === "EMI" &&
+  Number(form.values.repaymentAmount) > 0 &&
+  Number(form.values.loanAmount) > 0 &&
+  Number(form.values.repaymentAmount) >= Number(form.values.loanAmount);
+  
   const [customerSearchInput, setCustomerSearchInput] = useState("");
   const [debouncedCustomerSearch] = useDebouncedValue(customerSearchInput, 400);
 
@@ -308,13 +313,19 @@ const customerOptions = useMemo(() => {
               required
             />
             <NumberInput
-              label="Repayment Amount"
-              placeholder="0"
-              hideControls
-              min={0}
-              disabled={form.values.fixedRepaymentsIn === "TENOR"}
-              {...form.getInputProps("repaymentAmount")}
-            />
+  label="Repayment Amount"
+  placeholder="0"
+  hideControls
+  min={0}
+  disabled={form.values.fixedRepaymentsIn === "TENOR"}
+  {...form.getInputProps("repaymentAmount")}
+  error={
+    emiTooHigh
+      ? "EMI should be less than the Loan Amount"
+      : repaymentAmountError || undefined
+  }
+  required
+/>
             <Select
               label="Frequency"
               data={FREQUENCIES}
@@ -367,44 +378,42 @@ const customerOptions = useMemo(() => {
       </Paper>
 
       <Paper withBorder radius="lg" shadow="md" p="sm">
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm" verticalSpacing="xs">
-          <Input.Wrapper label="Moratorium Type">
-            <SegmentedControl
-              size="xs"
-              data={[
-                { label: "Principal", value: "Principal" },
-                { label: "EMI", value: "EMI" },
-              ]}
-              fullWidth
-              color="brand"
-              value={form.values.moratoriumType}
-              onChange={(val) => form.setFieldValue("moratoriumType", val)}
-            />
-          </Input.Wrapper>
-          <NumberInput
-            label="Moratorium Period"
-            placeholder="0"
-            hideControls
-            min={0}
-            disabled={!moratoriumEnabled}
-            {...form.getInputProps("moratoriumPeriod")}
-          />
-        </SimpleGrid>
-
-        <Box mt="sm">
-           <Textarea
+  <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm" verticalSpacing="xs">
+    <Input.Wrapper label="Moratorium Type">
+      <SegmentedControl
+        size="xs"
+        data={[
+          { label: "Principal", value: "Principal" },
+          { label: "EMI", value: "EMI" },
+        ]}
+        fullWidth
+        color="brand"
+        value={form.values.moratoriumType}
+        onChange={(val) => form.setFieldValue("moratoriumType", val)}
+      />
+    </Input.Wrapper>
+    
+    <NumberInput
+      label="Moratorium Period"
+      placeholder="0"
+      hideControls
+      min={0}
+      disabled={!moratoriumEnabled}
+      {...form.getInputProps("moratoriumPeriod")}
+    />
+    
+  <Textarea
   size="sm"
   label="Comment"
   placeholder="Add a comment or description..."
-  minRows={2}
-  maxRows={4}
   autosize
   leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
   leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+  style={{ gridColumn: 'span 2' }}
   {...form.getInputProps("_comments")}
 />
-          </Box>
-      </Paper>
+  </SimpleGrid>
+</Paper>
     </div>
   );
 }

@@ -136,21 +136,25 @@ export function LoanAccountModal({
       _comments: "",
     },
     validate: {
-      customerNumber: (v) => (!v ? "Customer is required" : null),
-      productCode: (v) => (!v ? "Product is required" : null),
-      loanAmount: (v) => (!v ? "Loan Amount is required" : null),
-      valueDate: (v) => (!v ? "Value Date is required" : null),
-      repaymentStartDate: (v) =>
-        !v ? "Repayment Start Date is required" : null,
-      tenureValue: (v, values) =>
-        values.fixedRepaymentsIn === "TENOR" && !v
-          ? "Tenure is required"
-          : null,
-      repaymentAmount: (v, values) =>
-        values.fixedRepaymentsIn === "EMI" && !v
-          ? "Repayment Amount is required"
-          : null,
-    },
+  customerNumber: (v) => (!v ? "Customer is required" : null),
+  productCode: (v) => (!v ? "Product is required" : null),
+  loanAmount: (v) => (!v ? "Loan Amount is required" : null),
+  valueDate: (v) => (!v ? "Value Date is required" : null),
+  repaymentStartDate: (v) =>
+    !v ? "Repayment Start Date is required" : null,
+  tenureValue: (v, values) =>
+    values.fixedRepaymentsIn === "TENOR" && !v
+      ? "Tenure is required"
+      : null,
+  repaymentAmount: (v, values) => {
+    if (values.fixedRepaymentsIn !== "EMI") return null;
+    if (!v) return "Repayment Amount is required";
+    if (Number(v) >= Number(values.loanAmount)) {
+      return "EMI should be less than the Loan Amount";
+    }
+    return null;
+  },
+},
   });
 
   const handleFormError = (errors: typeof form.errors) => {
@@ -383,6 +387,11 @@ export function LoanAccountModal({
   });
 
   const handleSubmit = (values: typeof form.values) => {
+     if (values.fixedRepaymentsIn === "EMI" && scheduleError) {
+    form.setFieldError("repaymentAmount", scheduleError);
+    setActiveTab("basic");
+    return;
+  }
     const payload: any = {
       applicant_type: "Customer",
       applicant: values.customerNumber,
@@ -436,10 +445,12 @@ export function LoanAccountModal({
     }
 
     if (values.fixedRepaymentsIn === "TENOR") {
-      payload.repayment_periods = tenureMonths;
-    } else {
-      payload.monthly_repayment_amount = Number(values.repaymentAmount);
-    }
+  payload.repayment_periods = tenureMonths;
+  payload.monthly_repayment_amount = 0;
+} else {
+  payload.monthly_repayment_amount = Number(values.repaymentAmount);
+  payload.repayment_periods = 0;
+}
 
     if (values.repaymentStartDate) {
       payload.repayment_start_date = values.repaymentStartDate;
@@ -554,7 +565,7 @@ const scheduleMissingFields = useMemo(() => {
     useState<RepaymentScheduleResponse | null>(null);
   const [isFetchingSchedule, setIsFetchingSchedule] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
-
+const previousScheduleErrorRef = useRef<string | null>(null);
  useEffect(() => {
   if (!opened) return;
 
@@ -595,11 +606,10 @@ const scheduleMissingFields = useMemo(() => {
       if (!cancelled) setSchedulePreview(res);
     })
     .catch((err) => {
-      if (!cancelled)
-        setScheduleError(
-          err?.message || "Failed to load repayment schedule.",
-        );
-    })
+  if (!cancelled) {
+    setScheduleError(parseFrappeError(err));
+  }
+})
     .finally(() => {
       if (!cancelled) setIsFetchingSchedule(false);
     });
@@ -1027,6 +1037,7 @@ const scheduleMissingFields = useMemo(() => {
                   form={form}
                   // loanAcNumber={loanAcNumber}
                   maturityDate={finalMaturityDate}
+                  repaymentAmountError={form.values.fixedRepaymentsIn === "EMI" ? scheduleError : null}
                 />
               )}
               {activeTab === "schedule" && (
