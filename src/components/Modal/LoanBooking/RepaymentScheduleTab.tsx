@@ -1,4 +1,5 @@
-import { Text, Table, Paper, Loader } from "@mantine/core";
+import { useMemo, useState } from "react";
+import { Text, Table, Paper, Loader, Pagination, Group } from "@mantine/core";
 import { IconCalendarStats } from "@tabler/icons-react";
 
 interface FetchedScheduleRow {
@@ -17,6 +18,7 @@ interface RepaymentScheduleTabProps {
   error?: string | null;
 }
 
+const PAGE_SIZE = 9;
 
 function EmptyState({ children }: { children: React.ReactNode }) {
   return (
@@ -33,8 +35,6 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   );
 }
 
-
-
 export function RepaymentScheduleTab({
   repaymentSchedule = [],
   isFetchingSchedule,
@@ -42,6 +42,14 @@ export function RepaymentScheduleTab({
   error,
 }: RepaymentScheduleTabProps) {
   const useFetched = repaymentSchedule.length > 0;
+  const [activePage, setActivePage] = useState(1);
+
+  const totalPages = Math.ceil(repaymentSchedule.length / PAGE_SIZE);
+
+  const paginatedSchedule = useMemo(() => {
+    const start = (activePage - 1) * PAGE_SIZE;
+    return repaymentSchedule.slice(start, start + PAGE_SIZE);
+  }, [repaymentSchedule, activePage]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -79,7 +87,7 @@ export function RepaymentScheduleTab({
                 ) : error ? (
                   <EmptyState>{error}</EmptyState>
                 ) : useFetched ? (
-                  repaymentSchedule.map((row) => (
+                  paginatedSchedule.map((row) => (
                     <Table.Tr key={row.no}>
                       <Table.Td>{row.no}</Table.Td>
                       <Table.Td>{row.payment_date}</Table.Td>
@@ -100,6 +108,18 @@ export function RepaymentScheduleTab({
           </Table.ScrollContainer>
         </div>
       </Paper>
+
+      {useFetched && totalPages > 1 && (
+        <Group justify="flex-end">
+          <Pagination
+            total={totalPages}
+            value={activePage}
+            onChange={setActivePage}
+            size="sm"
+            color="brand"
+          />
+        </Group>
+      )}
     </div>
   );
 }
