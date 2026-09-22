@@ -5,6 +5,7 @@
    ============================================================ */
 
 export type FieldType = "numeric" | "text" | "dropdown" | "boolean" | "date";
+export type RuleValue = string | number | boolean | null;
 
 export interface FieldDef {
   id: string;
@@ -21,8 +22,8 @@ export interface Rule {
   id: string;
   fieldId: string | null;
   operator?: string;
-  value?: any;
-  value2?: any;
+  value?: RuleValue;
+  value2?: RuleValue;
   values?: string[];
   dateUnit?: string;
   severity: Severity;
@@ -152,12 +153,12 @@ export const OPERATORS: Record<FieldType, { id: string; label: string }[]> = {
 };
 
 export const opLabel = (type: FieldType, id?: string) =>
-  (OPERATORS[type].find((o) => o.id === id) || ({} as any)).label || id;
+  OPERATORS[type].find((o) => o.id === id)?.label || id;
 
 export const SEVERITIES: Record<Severity, { color: string; wash: string; defaultAction: string; desc: string }> = {
-  Blocking: { color: "var(--psm-danger)", wash: "var(--psm-danger-wash)", defaultAction: "Reject Application", desc: "Application cannot proceed." },
-  Warning: { color: "var(--psm-warn)", wash: "var(--psm-warn-wash)", defaultAction: "Continue with Warning", desc: "Application may continue but shows a warning." },
-  Review: { color: "var(--psm-review)", wash: "var(--psm-review-wash)", defaultAction: "Send for Manual Review", desc: "Application is routed to Credit Review." },
+  Blocking: { color: "#C0322A", wash: "#FBEAE9", defaultAction: "Reject Application", desc: "Application cannot proceed." },
+  Warning: { color: "#B45309", wash: "#FEF3E1", defaultAction: "Continue with Warning", desc: "Application may continue but shows a warning." },
+  Review: { color: "#2B6CB0", wash: "#E8F1FB", defaultAction: "Send for Manual Review", desc: "Application is routed to Credit Review." },
 };
 
 export const ACTIONS = ["Reject Application", "Mark as Ineligible", "Send for Manual Review", "Continue with Warning"];
@@ -165,7 +166,7 @@ export const ACTIONS = ["Reject Application", "Mark as Ineligible", "Send for Ma
 /* ============================================================
    FORMATTING + SENTENCE GENERATION
    ============================================================ */
-export function fmtVal(field: FieldDef | undefined, v: any): string {
+export function fmtVal(field: FieldDef | undefined, v: RuleValue | undefined): string {
   if (!field) return "…";
   if (v === undefined || v === null || v === "") return "…";
   if (field.type === "numeric") {
@@ -226,6 +227,19 @@ export function ruleSentence(rule: Rule): string {
   return field.label;
 }
 
+export function negativeRuleSentence(rule: Rule): string {
+  const sentence = ruleSentence(rule);
+  if (sentence === "Select a criterion to begin" || sentence.includes(" …")) return sentence;
+  const field = fieldById(rule.fieldId)?.label || sentence.split(" ")[0];
+  const condition = sentence.slice(field.length + 1);
+  if (/^is not /i.test(condition)) return `${field} is Not${condition.slice(6)}`;
+  if (/^is /i.test(condition)) return `${field} is Not${condition.slice(2)}`;
+  if (/^contains /i.test(condition)) return `${field} does Not${condition.slice(8)}`;
+  if (/^starts with /i.test(condition)) return `${field} does Not${condition.slice(11)}`;
+  if (/^equals /i.test(condition)) return `${field} does Not equal${condition.slice(7)}`;
+  return `${field} Not ${condition}`;
+}
+
 export function ruleIsComplete(rule: Rule): boolean {
   const field = fieldById(rule.fieldId);
   if (!field) return false;
@@ -253,7 +267,7 @@ export function ruleIsComplete(rule: Rule): boolean {
 /* ============================================================
    EVALUATION (for Test / Simulation)
    ============================================================ */
-export function evalRule(rule: Rule, sampleValue: any): boolean | null {
+export function evalRule(rule: Rule, sampleValue: RuleValue | undefined): boolean | null {
   const field = fieldById(rule.fieldId);
   if (!field) return null;
   if (sampleValue === undefined || sampleValue === "") return null; // no data supplied
@@ -396,7 +410,7 @@ export const OTHER_RULE_SETS: RuleSetSummary[] = [
   { id: "rs-4", name: "Education Loan — Pre-Screening Rules", product: "Education Loan", status: "Inactive", version: "1.4", rulesCount: 7, modifiedDate: "2026-05-14", modifiedBy: "M. Chanda" },
 ];
 
-export const SAMPLE_APPLICANTS: Record<string, Record<string, any>> = {
+export const SAMPLE_APPLICANTS: Record<string, Record<string, RuleValue>> = {
   "Eligible applicant": { age: 25, monthlyIncome: 12500, employmentStatus: "Permanent", hasPreviousDefault: false, existingLoans: 1, dti: 32 },
   "Below income threshold": { age: 27, monthlyIncome: 7500, employmentStatus: "Permanent", hasPreviousDefault: false, existingLoans: 0, dti: 21 },
   "Prior default on file": { age: 31, monthlyIncome: 15000, employmentStatus: "Contract", hasPreviousDefault: true, existingLoans: 2, dti: 40 },
