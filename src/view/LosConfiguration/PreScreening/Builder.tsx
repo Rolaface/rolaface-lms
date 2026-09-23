@@ -28,10 +28,8 @@ import {
   IconSearch,
   IconGripVertical,
   IconTrash,
-  IconEye,
-  IconEyeOff,
   IconCopy,
-  IconEdit,
+  IconPencil,
   IconInfoCircle,
   IconSparkles,
 } from "@tabler/icons-react";
@@ -79,12 +77,14 @@ function FieldPicker({ value, onSelect }: { value: string | null; onSelect: (fid
     <Box ref={ref} pos="relative">
       <Button
         fullWidth
+        size="xs"
         variant="default"
-        rightSection={<IconChevronDown size={14} color="var(--mantine-color-slate-4)" />}
+        rightSection={<IconChevronDown size={13} color="var(--mantine-color-slate-4)" />}
         onClick={() => setOpen(!open)}
         styles={{
+          root: { height: 30, minHeight: 30, paddingLeft: 10, paddingRight: 8 },
           inner: { justifyContent: "space-between", width: "100%" },
-          label: { fontWeight: field ? 600 : 400, color: field ? "var(--mantine-color-slate-8)" : "var(--mantine-color-slate-4)" },
+          label: { fontSize: 12.5, fontWeight: field ? 600 : 400, color: field ? "var(--mantine-color-slate-8)" : "var(--mantine-color-slate-4)" },
         }}
       >
         {field ? field.label : "Search criteria…"}
@@ -100,10 +100,11 @@ function FieldPicker({ value, onSelect }: { value: string | null; onSelect: (fid
           right={0}
           style={{ zIndex: 40, maxHeight: 320, overflow: "auto" }}
         >
-          <Box p="sm" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", position: "sticky", top: 0, background: "var(--mantine-color-white)", zIndex: 1 }}>
+          <Box p={8} style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", position: "sticky", top: 0, background: "var(--mantine-color-white)", zIndex: 1 }}>
             <TextInput
               autoFocus
-              leftSection={<IconSearch size={14} />}
+              size="xs"
+              leftSection={<IconSearch size={13} />}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search criteria…"
@@ -113,8 +114,8 @@ function FieldPicker({ value, onSelect }: { value: string | null; onSelect: (fid
             const items = filtered.filter((f) => f.category === cat);
             if (!items.length) return null;
             return (
-              <Box key={cat} py="xs">
-                <Text fz={10.5} fw={700} c="dimmed" tt="uppercase" px="sm" py={4} style={{ letterSpacing: ".04em" }}>
+              <Box key={cat} py={4}>
+                <Text fz={10} fw={700} c="dimmed" tt="uppercase" px={8} py={2} style={{ letterSpacing: ".04em" }}>
                   {cat}
                 </Text>
                 {items.map((f) => (
@@ -122,7 +123,7 @@ function FieldPicker({ value, onSelect }: { value: string | null; onSelect: (fid
                     key={f.id}
                     label={f.label}
                     onClick={() => { onSelect(f.id); setOpen(false); setQ(""); }}
-                    styles={{ label: { fontSize: 13.5 }, root: { borderRadius: "var(--mantine-radius-sm)" } }}
+                    styles={{ label: { fontSize: 12.5 }, root: { borderRadius: "var(--mantine-radius-sm)", padding: "5px 8px" } }}
                   />
                 ))}
               </Box>
@@ -143,10 +144,10 @@ function FieldPicker({ value, onSelect }: { value: string | null; onSelect: (fid
 function ChipInput({ values, onChange, placeholder }: { values: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
   const [text, setText] = useState("");
   return (
-    <PillsInput>
+    <PillsInput size="xs">
       <Pill.Group>
         {values.map((v) => (
-          <Pill key={v} withRemoveButton onRemove={() => onChange(values.filter((x) => x !== v))}>
+          <Pill key={v} size="xs" withRemoveButton onRemove={() => onChange(values.filter((x) => x !== v))}>
             {v}
           </Pill>
         ))}
@@ -171,23 +172,23 @@ function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldB
     if (rule.operator === "between") {
       return (
         <Group gap="sm" align="center" wrap="nowrap">
-          <Input component="input" type="number" placeholder="From" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
-          <Text c="dimmed" fz="sm">and</Text>
-          <Input component="input" type="number" placeholder="To" value={rule.value2 ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value2: e.target.value })} style={{ flex: 1 }} />
-          {field.unit && <Text c="dimmed" fz="sm" style={{ whiteSpace: "nowrap" }}>{field.unit}</Text>}
+          <Input size="xs" component="input" type="number" placeholder="From" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
+          <Text c="dimmed" fz={11.5}>and</Text>
+          <Input size="xs" component="input" type="number" placeholder="To" value={rule.value2 ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value2: e.target.value })} style={{ flex: 1 }} />
+          {field.unit && <Text c="dimmed" fz={11.5} style={{ whiteSpace: "nowrap" }}>{field.unit}</Text>}
         </Group>
       );
     }
     return (
       <Group gap="sm" align="center" wrap="nowrap">
-        <Input component="input" type="number" placeholder="Value" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
-        {field.unit && <Text c="dimmed" fz="sm" style={{ whiteSpace: "nowrap" }}>{field.unit}</Text>}
+        <Input size="xs" component="input" type="number" placeholder="Value" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
+        {field.unit && <Text c="dimmed" fz={11.5} style={{ whiteSpace: "nowrap" }}>{field.unit}</Text>}
       </Group>
     );
   }
   if (field.type === "text") {
     if (rule.operator === "oneOf") return <ChipInput values={rule.values || []} onChange={(vals) => setRule({ ...rule, values: vals })} placeholder="Type a value and press Enter" />;
-    return <Input component="input" placeholder="Value" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} />;
+    return <Input size="xs" component="input" placeholder="Value" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} />;
   }
   if (field.type === "dropdown") {
     if (rule.operator === "isOneOf" || rule.operator === "isNotOneOf") {
@@ -195,7 +196,7 @@ function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldB
         <Chip.Group multiple value={rule.values || []} onChange={(vals) => setRule({ ...rule, values: vals })}>
           <Group gap="xs">
             {field.options!.map((o) => (
-              <Chip key={o} value={o} variant="light" color="brand" radius="sm">
+              <Chip key={o} size="xs" value={o} variant="light" color="brand" radius="sm">
                 {o}
               </Chip>
             ))}
@@ -205,6 +206,7 @@ function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldB
     }
     return (
       <Select
+        size="xs"
         placeholder="Select a value…"
         data={field.options!}
         value={rule.value ?? null}
@@ -216,6 +218,7 @@ function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldB
     return (
       <SegmentedControl
         fullWidth
+        size="xs"
         color="brand"
         value={rule.value === true ? "yes" : rule.value === false ? "no" : ""}
         onChange={(val) => setRule({ ...rule, value: val === "yes" })}
@@ -227,8 +230,9 @@ function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldB
     if (rule.operator === "relative") {
       return (
         <Group gap="sm" wrap="nowrap">
-          <Input component="input" type="number" placeholder="Number" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
+          <Input size="xs" component="input" type="number" placeholder="Number" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
           <Select
+            size="xs"
             data={[
               { value: "days", label: "days ago" },
               { value: "months", label: "months ago" },
@@ -244,13 +248,13 @@ function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldB
     if (rule.operator === "between") {
       return (
         <Group gap="sm" align="center" wrap="nowrap">
-          <Input component="input" type="date" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
-          <Text c="dimmed" fz="sm">and</Text>
-          <Input component="input" type="date" value={rule.value2 ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value2: e.target.value })} style={{ flex: 1 }} />
+          <Input size="xs" component="input" type="date" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
+          <Text c="dimmed" fz={11.5}>and</Text>
+          <Input size="xs" component="input" type="date" value={rule.value2 ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value2: e.target.value })} style={{ flex: 1 }} />
         </Group>
       );
     }
-    return <Input component="input" type="date" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} />;
+    return <Input size="xs" component="input" type="date" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} />;
   }
   return null;
 }
@@ -259,19 +263,18 @@ function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldB
    RULE ROW
    ============================================================ */
 function RuleRow({
-  rule, editing, isNew, displayIndex, onStartEdit, onCancelEdit, onSave, onDelete, onToggle, onDuplicate,
+  rule, editing, isNew, displayIndex, onStartEdit, onCancelEdit, onSave, onDelete, onDuplicate,
 }: {
   rule: Rule; editing: boolean; isNew?: boolean; displayIndex?: number;
   onStartEdit: () => void; onCancelEdit: () => void;
   onSave: (rule: Rule) => void; onDelete: () => void;
-  onToggle: () => void; onDuplicate: () => void;
+  onDuplicate: () => void;
 }) {
   const [draft, setDraft] = useState<Rule>(rule);
 
   const field = fieldById(draft.fieldId);
   const operators = field ? OPERATORS[field.type] : [];
   const complete = !!field && !!draft.operator && ruleIsComplete(draft);
-  const disabled = rule.disabled;
   const conditionOptions = operators.map((operator) => ({
     value: operator.id,
     label: {
@@ -309,64 +312,58 @@ function RuleRow({
       <Paper
         withBorder
         radius="md"
-        p="sm"
-        mb="sm"
+        p={7}
+        mb={5}
         style={{
-          background: disabled ? "var(--mantine-color-slate-0)" : "var(--mantine-color-white)",
-          opacity: disabled ? 0.6 : 1,
+          background: "var(--mantine-color-white)",
           borderColor: "var(--mantine-color-slate-2)",
           boxShadow: "0 1px 1px rgba(15, 23, 42, 0.04)",
-          minHeight: 62,
+          minHeight: 44,
         }}
       >
-        <Group wrap="nowrap" gap="sm" align="center">
+        <Group wrap="nowrap" gap={6} align="center">
           <Box
             style={{
-              width: 22,
-              height: 22,
-              minWidth: 22,
-              borderRadius: 6,
+              width: 18,
+              height: 18,
+              minWidth: 18,
+              borderRadius: 5,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               background: "var(--mantine-color-slate-1)",
               color: "var(--mantine-color-slate-6)",
-              fontSize: 12,
+              fontSize: 10.5,
               fontWeight: 700,
             }}
           >
             {displayIndex ?? "•"}
           </Box>
           <Tooltip label="Drag to reorder rule" withArrow position="top" transitionProps={{ transition: "fade", duration: 150 }}>
-            <ActionIcon variant="subtle" color="gray" radius="sm" aria-label="Reorder rule" style={{ width: 30, height: 30, cursor: "grab", background: "var(--mantine-color-slate-0)" }}>
-              <IconGripVertical size={17} stroke={1.8} />
+            <ActionIcon variant="subtle" color="gray" radius="sm" aria-label="Reorder rule" style={{ width: 24, height: 24, minWidth: 24, cursor: "grab", background: "var(--mantine-color-slate-0)" }}>
+              <IconGripVertical size={14} stroke={1.8} />
             </ActionIcon>
           </Tooltip>
           <Box style={{ flex: 1, cursor: "pointer", minWidth: 0 }} onClick={handleStartEdit}>
             <Tooltip label={`If met -> ${rule.action || SEVERITIES[rule.severity].defaultAction}`} withArrow position="top-start" transitionProps={{ transition: "fade", duration: 150 }}>
-              <Text fz={15.5} fw={600} c="slate.8" lineClamp={1}>{ruleSentence(rule)}</Text>
+              <Text fz={12.5} fw={600} c="slate.8" lineClamp={1}>{ruleSentence(rule)}</Text>
             </Tooltip>
           </Box>
           <SeverityBadge severity={rule.severity} />
-          <Group gap={4} wrap="nowrap">
-            <Tooltip label={disabled ? "Enable rule" : "Disable rule"} withArrow transitionProps={{ transition: "fade", duration: 150 }}>
-              <ActionIcon variant="subtle" color="gray" radius="sm" aria-label={disabled ? "Enable rule" : "Disable rule"} onClick={onToggle} style={{ width: 30, height: 30 }}>
-                {disabled ? <IconEye size={17} stroke={2} /> : <IconEyeOff size={17} stroke={2} />}
-              </ActionIcon>
-            </Tooltip>
+          <Group gap={2} wrap="nowrap">
             <Tooltip label="Duplicate rule" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
-              <ActionIcon variant="subtle" color="gray" radius="sm" aria-label="Duplicate rule" onClick={onDuplicate} style={{ width: 30, height: 30 }}>
-                <IconCopy size={17} stroke={2} />
+              <ActionIcon variant="subtle" color="gray" radius="sm" aria-label="Duplicate rule" onClick={onDuplicate} style={{ width: 24, height: 24, minWidth: 24 }}>
+                <IconCopy size={14} stroke={2} />
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Edit rule" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
-              <ActionIcon variant="subtle" color="brand" radius="sm" aria-label="Edit rule" onClick={handleStartEdit} style={{ width: 30, height: 30 }}>
-                <IconEdit size={17} stroke={2} />
+              <ActionIcon variant="subtle" color="brand" radius="sm" aria-label="Edit rule" onClick={handleStartEdit} style={{ width: 24, height: 24, minWidth: 24 }}>
+                <IconPencil size={14} stroke={2} />
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Delete rule" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
-              <ActionIcon variant="subtle" color="red" radius="sm" aria-label="Delete rule" onClick={onDelete} style={{ width: 30, height: 30 }}>
-                <IconTrash size={17} stroke={2} />
+              <ActionIcon variant="subtle" color="red" radius="sm" aria-label="Delete rule" onClick={onDelete} style={{ width: 24, height: 24, minWidth: 24 }}>
+                <IconTrash size={14} stroke={2} />
               </ActionIcon>
             </Tooltip>
           </Group>
@@ -380,78 +377,83 @@ function RuleRow({
       opened
       onClose={handleCancelEdit}
       title={isNew ? "Add Rule" : "Edit Rule"}
-      size={640}
+      withCloseButton
+      size={768}
       radius="lg"
       centered
       padding={0}
       overlayProps={{ backgroundOpacity: 0.52, blur: 2 }}
       styles={{
         content: { overflow: "hidden", boxShadow: "0 24px 60px -12px rgba(20,23,38,0.35)" },
-        header: { padding: "16px 20px", borderBottom: "1px solid var(--mantine-color-slate-2)" },
-        title: { fontSize: 15, fontWeight: 700, color: "var(--mantine-color-slate-9)" },
+        header: { padding: "12px 16px", minHeight: 0, borderBottom: "1px solid var(--mantine-color-slate-2)" },
+        title: { fontSize: 13.5, fontWeight: 700, color: "var(--mantine-color-slate-9)" },
         close: { color: "var(--mantine-color-slate-4)" },
         body: { padding: 0 },
       }}
     >
       <Stack gap={0}>
-        <Stack gap="md" p="lg">
-          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" verticalSpacing="md">
+        <Stack gap={12} p={16}>
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing={12} verticalSpacing={12}>
             <Box>
-              <Text fz={11} fw={700} c="slate.6" tt="uppercase" mb={6} style={{ letterSpacing: ".03em" }}>Criteria</Text>
+              <Text fz={10} fw={700} c="slate.6" tt="uppercase" mb={5} style={{ letterSpacing: ".03em" }}>Criteria</Text>
               <FieldPicker value={draft.fieldId} onSelect={chooseField} />
             </Box>
-            <Select
-              label="Condition"
-              data={conditionOptions}
-              value={draft.operator}
-              onChange={(val) => val && changeOperator(val)}
-              styles={{ label: { fontSize: 11, fontWeight: 700, color: "var(--mantine-color-slate-6)", textTransform: "uppercase", letterSpacing: ".03em", marginBottom: 6 } }}
-            />
             <Box>
-              <Text fz={11} fw={700} c="slate.6" tt="uppercase" mb={6} style={{ letterSpacing: ".03em" }}>Value</Text>
-              {field ? <ValueEditor field={field} rule={draft} setRule={setDraft} /> : <Input disabled placeholder="Select a criterion" />}
+              <Text fz={10} fw={700} c="slate.6" tt="uppercase" mb={5} style={{ letterSpacing: ".03em" }}>Condition</Text>
+              <Select
+                size="xs"
+                data={conditionOptions}
+                value={draft.operator}
+                onChange={(val) => val && changeOperator(val)}
+              />
+            </Box>
+            <Box>
+              <Text fz={10} fw={700} c="slate.6" tt="uppercase" mb={5} style={{ letterSpacing: ".03em" }}>Value</Text>
+              {field ? <ValueEditor field={field} rule={draft} setRule={setDraft} /> : <Input size="xs" disabled placeholder="Select a criterion" />}
             </Box>
           </SimpleGrid>
 
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={12}>
             <Box>
-              <Text fz={11} fw={700} c="slate.6" tt="uppercase" mb={6} style={{ letterSpacing: ".03em" }}>Severity Level</Text>
-              <Group gap={0} wrap="nowrap" style={{ border: "1px solid var(--mantine-color-slate-3)", borderRadius: 8, overflow: "hidden", width: "100%" }}>
+              <Text fz={10} fw={700} c="slate.6" tt="uppercase" mb={5} style={{ letterSpacing: ".03em" }}>Severity Level</Text>
+              <Group gap={0} wrap="nowrap" style={{ border: "1px solid var(--mantine-color-slate-3)", borderRadius: 6, overflow: "hidden", width: "100%" }}>
                 {(Object.keys(SEVERITIES) as Severity[]).map((sev) => (
                   <Button
                     key={sev}
-                    size="sm"
+                    size="xs"
                     radius={0}
                     variant="subtle"
                     onClick={() => changeSeverity(sev)}
-                    styles={{ root: { flex: "1 1 0", minWidth: 0, borderRight: sev !== "Review" ? "1px solid var(--mantine-color-slate-3)" : undefined, background: draft.severity === sev ? SEVERITIES[sev].wash : "var(--mantine-color-white)", color: draft.severity === sev ? SEVERITIES[sev].color : "var(--mantine-color-slate-7)", fontWeight: 700, whiteSpace: "nowrap", paddingLeft: 5, paddingRight: 5 }, label: { overflow: "visible" } }}
+                    styles={{ root: { flex: "1 1 0", minWidth: 0, borderRight: sev !== "Review" ? "1px solid var(--mantine-color-slate-3)" : undefined, background: draft.severity === sev ? SEVERITIES[sev].wash : "var(--mantine-color-white)", color: draft.severity === sev ? SEVERITIES[sev].color : "var(--mantine-color-slate-7)", fontWeight: 700, whiteSpace: "nowrap", height: 30, minHeight: 30, paddingLeft: 5, paddingRight: 5 }, label: { overflow: "visible", fontSize: 11.5 } }}
                   >
-                    {sev}
+                    {SEVERITIES[sev].label}
                   </Button>
                 ))}
               </Group>
-              <Text fz={11.5} c="slate.4" mt={6}>{SEVERITIES[draft.severity]?.desc}</Text>
+              <Text fz={11} c="slate.4" mt={5}>{SEVERITIES[draft.severity]?.desc}</Text>
             </Box>
-            <Select
-              label="Outcome"
-              data={ACTIONS}
-              value={draft.action || SEVERITIES[draft.severity].defaultAction}
-              onChange={(val) => val && setDraft({ ...draft, action: val, actionTouched: true })}
-              styles={{ label: { fontSize: 11, fontWeight: 700, color: "var(--mantine-color-slate-6)", textTransform: "uppercase", letterSpacing: ".03em", marginBottom: 6 } }}
-            />
+            <Box>
+              <Text fz={10} fw={700} c="slate.6" tt="uppercase" mb={5} style={{ letterSpacing: ".03em" }}>Outcome</Text>
+              <Select
+                size="xs"
+                data={ACTIONS}
+                value={draft.action || SEVERITIES[draft.severity].defaultAction}
+                onChange={(val) => val && setDraft({ ...draft, action: val, actionTouched: true })}
+              />
+              <Text fz={11} c="transparent" mt={5} aria-hidden style={{ userSelect: "none" }}>&nbsp;</Text>
+            </Box>
           </SimpleGrid>
 
-          <Paper withBorder radius="md" p="sm" style={{ background: "var(--mantine-color-brand-0)", borderColor: "#d9dbfa" }}>
-            <Text fz={10.5} fw={700} c="brand.7" tt="uppercase" mb={4} style={{ letterSpacing: ".04em" }}>Rule Preview</Text>
-            <Text fz={13} c="slate.8" style={{ lineHeight: 1.5, fontFamily: "var(--font-mono, monospace)", fontWeight: 500 }}>
-              If <Text span fw={700} c="brand.8">{ruleSentence(draft)}</Text> is true → <Text span fw={700} c="brand.8">{draft.action || SEVERITIES[draft.severity].defaultAction}</Text>
+          <Paper withBorder radius="md" p={8} style={{ background: "var(--mantine-color-brand-0)", borderColor: "#d9dbfa" }}>
+            <Text fz={11} c="slate.8" style={{ lineHeight: 1.45, fontFamily: "var(--font-mono, monospace)", fontWeight: 500 }}>
+              If <Text span inherit fw={700} c="brand.8">{ruleSentence(draft)}</Text> is true → <Text span inherit fw={700} c="brand.8">{draft.action || SEVERITIES[draft.severity].defaultAction}</Text>
             </Text>
           </Paper>
         </Stack>
 
-        <Group justify="flex-end" gap="sm" p="md" style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
-          <Button variant="default" onClick={handleCancelEdit}>Cancel</Button>
-          <Button color="brand" disabled={!complete} onClick={() => onSave(draft)}>Save Rule</Button>
+        <Group justify="flex-end" gap={8} px={16} py={12} style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
+          <Button size="xs" radius="md" variant="default" onClick={handleCancelEdit}>Cancel</Button>
+          <Button size="xs" radius="md" color="brand" disabled={!complete} onClick={() => onSave(draft)}>Save Rule</Button>
         </Group>
       </Stack>
     </Modal>
@@ -461,14 +463,13 @@ function RuleRow({
    GROUP CARD
    ============================================================ */
 function GroupCard({
-  group, groupIndex, onSaveRule, onDeleteRule, onReorderRules, onToggleRule, onDuplicateRule, onDeleteGroup, onRenameGroup, onSetLogic,
+  group, groupIndex, onSaveRule, onDeleteRule, onReorderRules, onDuplicateRule, onDeleteGroup, onRenameGroup, onSetLogic,
 }: {
   group: RuleGroup;
   groupIndex: number;
   onSaveRule: (groupId: string, rule: Rule, isNew: boolean) => void;
   onDeleteRule: (groupId: string, ruleId: string) => void;
   onReorderRules: (groupId: string, rules: Rule[]) => void;
-  onToggleRule: (gid: string, rid: string) => void;
   onDuplicateRule: (gid: string, rule: Rule) => void;
   onDeleteGroup: (gid: string) => void;
   onRenameGroup: (gid: string, name: string) => void;
@@ -494,14 +495,12 @@ function GroupCard({
   };
   const handleDragEnd = () => { onReorderRules(group.id, localRules); setDraggedIndex(null); };
 
-  const activeRules = visibleRules.filter((rule) => !rule.disabled).length;
-
   return (
     <Paper
       withBorder
-      radius="lg"
-      p="lg"
-      mb="lg"
+      radius="md"
+      p={12}
+      mb={10}
       style={{
         background: "var(--mantine-color-white)",
         borderColor: "var(--mantine-color-slate-2)",
@@ -510,62 +509,68 @@ function GroupCard({
         overflow: "hidden",
       }}
     >
-      <Group justify="space-between" align="center" mb="md" pt={2}>
+      <Group justify="space-between" align="center" mb={8} pt={0} wrap="nowrap">
         {editingName ? (
-          <TextInput autoFocus value={name} onChange={(e) => setName(e.currentTarget.value)}
+          <TextInput autoFocus size="xs" value={name} onChange={(e) => setName(e.currentTarget.value)}
             onBlur={() => { onRenameGroup(group.id, name); setEditingName(false); }}
-            onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} w={260} />
+            onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} w={210} />
         ) : (
-          <Group gap="sm" align="center">
+          <Group gap={8} align="center" wrap="nowrap">
             <Box
               style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
+                width: 22,
+                height: 22,
+                borderRadius: 6,
                 background: "linear-gradient(135deg, var(--mantine-color-brand-6), var(--mantine-color-brand-4))",
                 color: "var(--mantine-color-white)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 12,
+                fontSize: 10.5,
                 fontWeight: 700,
                 boxShadow: "0 4px 10px rgba(99, 102, 241, 0.18)",
+                flexShrink: 0,
               }}
             >
               {groupIndex}
             </Box>
-            <Title order={4} fz={18} c="slate.8" style={{ cursor: "text" }} onDoubleClick={() => setEditingName(true)}>{group.name}</Title>
-            <Text fz={11} fw={700} c="green.7" tt="uppercase" style={{ letterSpacing: ".04em", background: "var(--mantine-color-green-0)", border: "1px solid var(--mantine-color-green-2)", color: "var(--mantine-color-green-7)", padding: "4px 6px", borderRadius: 6 }}>
-              {activeRules} active
-            </Text>
+            <Group gap={3} align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
+              <Title order={4} fz={13} c="slate.8" style={{ cursor: "pointer" }} onClick={() => setEditingName(true)}>{group.name}</Title>
+              <Tooltip label="Rename group" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
+                <ActionIcon variant="subtle" color="slate" radius="sm" aria-label="Rename group" onClick={() => setEditingName(true)} style={{ width: 18, height: 18, minWidth: 18 }}>
+                  <IconPencil size={11} stroke={2} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
+            <Group gap={6} align="center" wrap="nowrap" ml={4}>
+              <Text fz={11.5} c="dimmed" style={{ flexShrink: 0 }}>Match</Text>
+              <SegmentedControl
+                size="xs"
+                radius="md"
+                value={group.logic}
+                onChange={(val) => onSetLogic(group.id, val as "ALL" | "ANY")}
+                color="brand"
+                data={[{ label: "ALL", value: "ALL" }, { label: "ANY", value: "ANY" }]}
+                styles={{
+                  root: { background: "var(--mantine-color-slate-1)", padding: 2, borderRadius: 6 },
+                  label: { fontSize: 10.5, fontWeight: 700, padding: "1px 10px", minHeight: 0, lineHeight: "16px" },
+                  indicator: { background: "var(--mantine-color-brand-6)", boxShadow: "none" },
+                }}
+              />
+              <Text fz={11.5} c="dimmed" style={{ flexShrink: 0 }}>of the following</Text>
+            </Group>
           </Group>
         )}
         <Tooltip label="Remove group" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
-          <ActionIcon variant="subtle" color="red" radius="sm" aria-label="Remove group" onClick={() => onDeleteGroup(group.id)} style={{ width: 30, height: 30 }}>
-            <IconTrash size={17} stroke={2} />
+          <ActionIcon variant="subtle" color="red" radius="sm" aria-label="Remove group" onClick={() => onDeleteGroup(group.id)} style={{ width: 24, height: 24, minWidth: 24, flexShrink: 0 }}>
+            <IconTrash size={13} stroke={2} />
           </ActionIcon>
         </Tooltip>
       </Group>
 
-      <Group gap="sm" align="center" mb="md">
-        <Text fz={13} c="dimmed">Applicant must meet</Text>
-        <SegmentedControl
-          value={group.logic}
-          onChange={(val) => onSetLogic(group.id, val as "ALL" | "ANY")}
-          color="brand"
-          data={[{ label: "ALL", value: "ALL" }, { label: "ANY", value: "ANY" }]}
-          styles={{
-            root: { background: "var(--mantine-color-slate-1)", padding: 2, borderRadius: 8 },
-            label: { fontWeight: 600 },
-            indicator: { background: "var(--mantine-color-brand-6)", boxShadow: "none" },
-          }}
-        />
-        <Text fz={13} c="dimmed">of the following</Text>
-      </Group>
-
       {visibleRules.length === 0 && !addingNew ? (
-        <Paper radius="md" p="lg" mb="sm" style={{ border: "1px dashed var(--mantine-color-slate-3)", textAlign: "center", background: "var(--mantine-color-slate-0)" }}>
-          <Text fz={13} c="dimmed">No rules in this group yet.</Text>
+        <Paper radius="md" p={14} mb={6} style={{ border: "1px dashed var(--mantine-color-slate-3)", textAlign: "center", background: "var(--mantine-color-slate-0)" }}>
+          <Text fz={11.5} c="dimmed">No rules in this group yet.</Text>
         </Paper>
       ) : (
         orderedRules.map((r, i) => (
@@ -578,7 +583,6 @@ function GroupCard({
               onCancelEdit={() => setEditingRuleId(null)}
               onSave={(updated) => { onSaveRule(group.id, updated, false); setEditingRuleId(null); }}
               onDelete={() => { onDeleteRule(group.id, r.id); setEditingRuleId(null); }}
-              onToggle={() => onToggleRule(group.id, r.id)}
               onDuplicate={() => onDuplicateRule(group.id, r)}
             />
           </Box>
@@ -594,19 +598,20 @@ function GroupCard({
           onCancelEdit={() => setAddingNew(false)}
           onSave={(rule) => { onSaveRule(group.id, rule, true); setAddingNew(false); }}
           onDelete={() => setAddingNew(false)}
-          onToggle={() => {}}
           onDuplicate={() => {}}
         />
       )}
 
       <Button
-        size="sm"
+        size="xs"
+        radius="md"
         variant="outline"
         color="brand"
-        leftSection={<IconPlus size={14} />}
+        leftSection={<IconPlus size={12} stroke={2.4} />}
         onClick={() => setAddingNew(true)}
         disabled={addingNew}
         fullWidth
+        styles={{ root: { height: 26, minHeight: 26 }, label: { fontSize: 11.5, fontWeight: 600 } }}
         style={{ borderStyle: "dashed", borderWidth: 1, background: "var(--mantine-color-slate-0)" }}
       >
         Add Rule
@@ -623,7 +628,6 @@ export interface BuilderTabProps {
   onRenameGroup: (gid: string, name: string) => void;
   onSetLogic: (gid: string, logic: "ALL" | "ANY") => void;
   onDeleteGroup: (gid: string) => void;
-  onToggleRule: (gid: string, rid: string) => void;
   onDuplicateRule: (gid: string, rule: Rule) => void;
   onSaveRule: (groupId: string, rule: Rule, isNew: boolean) => void;
   onDeleteRule: (groupId: string, ruleId: string) => void;
@@ -632,7 +636,7 @@ export interface BuilderTabProps {
 
 export default function BuilderTab({
   ruleSet, onAddGroup, onRenameGroup, onSetLogic, onDeleteGroup,
-  onToggleRule, onDuplicateRule, onSaveRule, onDeleteRule, onReorderRules,
+  onDuplicateRule, onSaveRule, onDeleteRule, onReorderRules,
 }: BuilderTabProps) {
   const v = computeValidation(ruleSet);
   const summaryGroups = ruleSet.groups.filter((group) => group.rules.some((rule) => !rule.disabled));
@@ -649,7 +653,6 @@ export default function BuilderTab({
               onSaveRule={onSaveRule}
               onDeleteRule={onDeleteRule}
               onReorderRules={onReorderRules}
-              onToggleRule={onToggleRule}
               onDuplicateRule={onDuplicateRule}
               onDeleteGroup={onDeleteGroup}
               onRenameGroup={onRenameGroup}
@@ -658,26 +661,20 @@ export default function BuilderTab({
           </Box>
         ))}
 
-        <Button variant="default" leftSection={<IconPlus size={14} />} onClick={onAddGroup}>
+        <Button size="xs" radius="md" variant="default" leftSection={<IconPlus size={12} stroke={2.4} />} onClick={onAddGroup}>
           Add Rule Group
         </Button>
       </Grid.Col>
 
       <Grid.Col span={{ base: 12, md: 4 }}>
         <Box style={{ position: "sticky", top: 120 }}>
-          <Paper withBorder radius="lg" shadow="sm" p={0} mb="md" style={{ background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-brand-2)", overflow: "hidden" }}>
-            <Box p="md" style={{ background: "linear-gradient(135deg, var(--mantine-color-brand-0), var(--mantine-color-white))", borderBottom: "1px solid var(--mantine-color-brand-1)" }}>
-              <Group gap="xs" align="center">
-                <Box style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--mantine-color-brand-6)", color: "white" }}>
-                  <IconInfoCircle size={16} stroke={2} />
-                </Box>
-                <Box>
-                  <Text fz={11} fw={800} c="brand.7" tt="uppercase" style={{ letterSpacing: ".05em" }}>Rule Set Details</Text>
-                  <Text fz={11.5} c="slate.5" mt={2}>Policy metadata</Text>
-                </Box>
-              </Group>
-            </Box>
-            <Stack gap={0} px="md" pb="sm">
+          <Paper withBorder radius="md" p={12} mb={10} style={{ background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderTop: "2px solid var(--mantine-color-brand-6)" }}>
+            <Group gap={8} align="center" mb={8} wrap="nowrap">
+              <Box style={{ width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--mantine-color-brand-6)", color: "white", flexShrink: 0 }}>
+                <IconInfoCircle size={13} stroke={2} />
+              </Box>
+              <Title order={4} fz={13} c="slate.8">Rule Set Details</Title>
+            </Group>
             <Stack gap={0}>
               {([
                 ["Loan Product", ruleSet.product],
@@ -686,65 +683,60 @@ export default function BuilderTab({
                 ["Last Modified", `${ruleSet.modifiedDate} · ${ruleSet.modifiedBy}`],
               ] as const).map(([k, val], i) => (
                 <Box key={k}>
-                  {i > 0 && <Divider />}
-                  <Group justify="space-between" py={9} gap="md" wrap="nowrap">
-                    <Text fz={12} c="slate.5">{k}</Text>
-                    <Text fz={12} fw={700} c="slate.8" ta="right" style={{ overflowWrap: "anywhere" }}>{val}</Text>
+                  {i > 0 && <Divider color="var(--mantine-color-slate-1)" />}
+                  <Group justify="space-between" py={7} gap={8} wrap="nowrap">
+                    <Text fz={11.5} c="slate.5">{k}</Text>
+                    <Text fz={11.5} fw={600} c="slate.8" ta="right" style={{ overflowWrap: "anywhere" }}>{val}</Text>
                   </Group>
                 </Box>
               ))}
             </Stack>
-            </Stack>
           </Paper>
 
-          <Paper withBorder radius="lg" shadow="sm" p="md" style={{ background: "linear-gradient(145deg, var(--mantine-color-white), var(--mantine-color-slate-0))", borderColor: "var(--mantine-color-slate-2)" }}>
-            <Group justify="space-between" align="flex-start" mb="sm">
-              <Box>
-                <Text fz={11} fw={800} c="slate.6" tt="uppercase" style={{ letterSpacing: ".05em" }}>Before you activate</Text>
-                <Text fz={11.5} c="slate.5" mt={3}>Final validation checks</Text>
+          <Paper withBorder radius="md" p={12} mb={10} style={{ background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderTop: "2px solid var(--mantine-color-brand-6)" }}>
+            <Group gap={8} align="center" mb={8} wrap="nowrap">
+              <Box style={{ width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--mantine-color-brand-6)", color: "white", flexShrink: 0 }}>
+                <IconSparkles size={13} stroke={2} />
               </Box>
-              <IconSparkles size={18} color="var(--mantine-color-brand-5)" stroke={1.8} />
+              <Title order={4} fz={13} c="slate.8">Before you activate</Title>
             </Group>
-            <Stack gap="xs" p="xs" style={{ borderRadius: 8, background: "var(--mantine-color-white)", border: "1px solid var(--mantine-color-slate-2)" }}>
+            <Stack gap={5} p={8} style={{ borderRadius: 6, background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}>
               <ValidationLine ok={v.issues.length === 0} text={v.issues.length === 0 ? "Conditions complete" : `${v.issues.length} incomplete`} />
               <ValidationLine ok={v.warnings.length === 0} text={v.warnings.length === 0 ? "No conflicts" : `${v.warnings.length} possible conflict`} warnOnly />
             </Stack>
-            <Group gap={6} justify="center" mt="md" pt="sm" style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
-              <IconInfoCircle size={14} color="var(--mantine-color-slate-4)" />
-              <Text fz={11.5} c="slate.4" ta="center">Activate Rule Set — complete pending items above</Text>
+            <Group gap={5} justify="center" mt={8} pt={8} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
+              <IconInfoCircle size={12} color="var(--mantine-color-slate-4)" />
+              <Text fz={10.5} c="slate.4" ta="center">Activate Rule Set — complete pending items above</Text>
             </Group>
           </Paper>
 
-          <Paper withBorder radius="lg" shadow="sm" p="md" mt="md" style={{ background: "linear-gradient(145deg, var(--mantine-color-brand-0), var(--mantine-color-white) 55%)", borderColor: "var(--mantine-color-brand-2)" }}>
-            <Group gap="xs" align="center" mb="sm">
-              <Box style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--mantine-color-brand-1)", color: "var(--mantine-color-brand-7)" }}>
-                <IconSparkles size={15} stroke={2} />
+          <Paper withBorder radius="md" p={12} style={{ background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderTop: "2px solid var(--mantine-color-brand-6)" }}>
+            <Group gap={8} align="center" mb={8} wrap="nowrap">
+              <Box style={{ width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--mantine-color-brand-6)", color: "white", flexShrink: 0 }}>
+                <IconSparkles size={13} stroke={2} />
               </Box>
-              <Box>
-                <Text fz={11} fw={800} c="brand.7" tt="uppercase" style={{ letterSpacing: ".05em" }}>Summary</Text>
-                <Text fz={11.5} c="slate.5" mt={2}>How this policy evaluates</Text>
-              </Box>
+              <Title order={4} fz={13} c="slate.8">Summary</Title>
             </Group>
             {summaryGroups.length === 0 ? (
-              <Text fz={12.5} lh={1.55} c="slate.4" fs="italic" p="sm" style={{ overflowWrap: "anywhere", background: "var(--mantine-color-white)", borderRadius: 8 }}>
+              <Text fz={13} lh={1.65} c="slate.4" fs="italic" px={14} py={10} style={{ overflowWrap: "anywhere", borderRadius: 10, background: "var(--mantine-color-brand-0)", borderLeft: "3px solid var(--mantine-color-brand-5)" }}>
                 Add a rule group with at least one rule to see a summary here.
               </Text>
             ) : (
-              <Text fz={12.5} lh={1.55} c="slate.6" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>
-                For <Text span fw={700} c="slate.8">{ruleSet.product}</Text> applications, where{" "}
+              <Text fz={13} lh={1.65} c="slate.6" px={14} py={10} style={{ overflowWrap: "anywhere", wordBreak: "break-word", borderRadius: 10, background: "var(--mantine-color-brand-0)", borderLeft: "3px solid var(--mantine-color-brand-5)" }}>
+                For <Text span inherit fw={600} c="slate.9">{ruleSet.product}</Text> applications, where{" "}
                 {summaryGroups.map((group, groupIndex) => {
                   const activeRules = group.rules.filter((rule) => !rule.disabled);
                   return (
-                    <Text span key={group.id}>
-                      {groupIndex > 0 && <Text span fw={700} c="brand.7"> and </Text>}
-                      <Text span fw={700} c="slate.8">({group.name}: </Text>
+                    <Text span key={group.id} inherit>
+                      {groupIndex > 0 && <Text span inherit fw={600} c="slate.9"> and </Text>}
+                      <Text span inherit fw={600} c="slate.9">({group.name}: </Text>
                       {activeRules.map((rule, ruleIndex) => (
-                        <Text span key={rule.id}>
-                          {ruleIndex > 0 && <Text span fw={700} c={group.logic === "ANY" ? "orange.7" : "brand.7"}> {group.logic === "ANY" ? "or" : "and"} </Text>}
+                        <Text span key={rule.id} inherit>
+                          {ruleIndex > 0 && <Text span inherit fw={600} c="slate.9"> {group.logic === "ANY" ? "or" : "and"} </Text>}
                           {ruleSentence(rule)}
                         </Text>
                       ))}
-                      <Text span fw={700} c="slate.8">)</Text>
+                      <Text span inherit fw={600} c="slate.9">)</Text>
                     </Text>
                   );
                 })}.

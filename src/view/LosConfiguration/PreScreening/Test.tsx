@@ -1,13 +1,14 @@
-import { useMemo, useState } from "react";
-import { Badge, Button, Paper, Box, Group, Stack, Text, Select, SegmentedControl, Grid, Divider, NumberInput, ThemeIcon } from "@mantine/core";
-import { IconAlertTriangle, IconCheck, IconClipboardCheck, IconPlayerPlay, IconX } from "@tabler/icons-react";
+import { useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import { Badge, Button, Paper, Box, Group, Stack, Text, Title, Select, SegmentedControl, Grid, Input, ThemeIcon } from "@mantine/core";
+import { DateInput } from "@mantine/dates";
+import { IconAlertTriangle, IconCheck, IconClipboardCheck, IconFlask, IconPlayerPlay, IconX } from "@tabler/icons-react";
 import {
   SAMPLE_APPLICANTS,
-  TEST_FIELDS,
   evalRule,
   fieldById,
   fmtVal,
   ruleSentence,
+  type RuleValue,
   type RuleSet,
 } from "./types";
 
@@ -15,9 +16,54 @@ export interface TestTabProps {
   ruleSet: RuleSet;
 }
 
+function FieldLabel({ children }: { children: ReactNode }) {
+  return (
+    <Text fz={10} fw={700} c="slate.6" tt="uppercase" mb={5} style={{ letterSpacing: ".03em" }}>
+      {children}
+    </Text>
+  );
+}
+
+function CardHeader({ icon, title, hint }: { icon: ReactNode; title: string; hint?: string }) {
+  return (
+    <Group gap={8} align="center" mb={8} wrap="nowrap">
+      <Box style={{ width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--mantine-color-brand-6)", color: "white", flexShrink: 0 }}>
+        {icon}
+      </Box>
+      <Title order={4} fz={13} c="slate.8">{title}</Title>
+      {hint && <Text fz={11.5} c="slate.5">{hint}</Text>}
+    </Group>
+  );
+}
+
 export default function TestTab({ ruleSet }: TestTabProps) {
-  const [sample, setSample] = useState<Record<string, string | number | boolean | null | undefined>>({ ...SAMPLE_APPLICANTS["Eligible applicant"] });
-  const [preset, setPreset] = useState("Eligible applicant");
+  const usedFieldIds = useMemo(() => {
+    const seen = new Set<string>();
+    const ids: string[] = [];
+    ruleSet.groups.forEach((g) =>
+      g.rules.forEach((r) => {
+        if (r.fieldId && !seen.has(r.fieldId)) {
+          seen.add(r.fieldId);
+          ids.push(r.fieldId);
+        }
+      })
+    );
+    return ids;
+  }, [ruleSet]);
+
+  const presets = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(SAMPLE_APPLICANTS).map(([name, values]) => [
+          name,
+          Object.fromEntries(usedFieldIds.map((fid) => [fid, values[fid]])),
+        ])
+      ),
+    [usedFieldIds]
+  );
+
+  const [sample, setSample] = useState<Record<string, RuleValue | undefined>>({});
+  const [preset, setPreset] = useState<string>("Custom");
 
   const results = useMemo(() => {
     const groupResults = ruleSet.groups.map((g) => {
@@ -39,135 +85,172 @@ export default function TestTab({ ruleSet }: TestTabProps) {
   }, [sample, ruleSet]);
 
   const verdictStyle = {
-    Eligible: { bg: "var(--mantine-color-green-0)", fg: "var(--mantine-color-green-7)", label: "Eligible", icon: <IconCheck size={18} /> },
-    "Eligible with Warnings": { bg: "var(--mantine-color-orange-0)", fg: "var(--mantine-color-orange-7)", label: "Eligible with Warnings", icon: <IconAlertTriangle size={18} /> },
-    "Manual Review": { bg: "var(--mantine-color-blue-0)", fg: "var(--mantine-color-blue-7)", label: "Sent for Manual Review", icon: <IconClipboardCheck size={18} /> },
-    "Not Eligible": { bg: "var(--mantine-color-red-0)", fg: "var(--mantine-color-red-7)", label: "Not Eligible", icon: <IconX size={18} /> },
+    Eligible: { tone: "green", label: "Eligible", icon: <IconCheck size={15} />, note: "All blocking criteria passed." },
+    "Eligible with Warnings": { tone: "orange", label: "Eligible with Warnings", icon: <IconAlertTriangle size={15} />, note: "All blocking criteria passed; some non-blocking checks flagged." },
+    "Manual Review": { tone: "blue", label: "Sent for Manual Review", icon: <IconClipboardCheck size={15} />, note: "Basic criteria met, but file needs manual review." },
+    "Not Eligible": { tone: "red", label: "Not Eligible", icon: <IconX size={15} />, note: "One or more blocking criteria failed." },
   }[results.verdict];
+
+  const setField = (fid: string, val: RuleValue) => {
+    setSample((s) => ({ ...s, [fid]: val }));
+    setPreset("Custom");
+  };
 
   return (
     <Grid gutter="lg">
       <Grid.Col span={{ base: 12, md: 6 }}>
-        <Paper withBorder radius="lg" shadow="xs" p={0} style={{ alignSelf: "start", overflow: "hidden", borderColor: "var(--mantine-color-slate-2)" }}>
-          <Box p="md" style={{ background: "var(--mantine-color-brand-0)", borderBottom: "1px solid var(--mantine-color-brand-1)" }}>
-            <Text fz={11} fw={800} c="brand.7" tt="uppercase" style={{ letterSpacing: ".06em" }}>Sample Applicant</Text>
-            <Text fz={12.5} c="slate.6" mt={3}>Enter applicant values to test the configured rules.</Text>
-          </Box>
-          <Stack gap="md" p="lg">
-          <Select
-            label="Preset"
-            value={preset}
-            onChange={(val) => {
-              if (!val) return;
-              setPreset(val);
-              if (val !== "Custom") setSample({ ...SAMPLE_APPLICANTS[val] });
-            }}
-            data={[...Object.keys(SAMPLE_APPLICANTS), "Custom"]}
-            mb="md"
-          />
-          <Grid gutter="sm">
-            {TEST_FIELDS.map((fid) => {
-              const f = fieldById(fid)!;
-              return (
-                <Grid.Col span={6} key={fid}>
-                  {f.type === "boolean" ? (
-                    <>
-                      <Text fz="sm" fw={600} mb={6}>{f.label}</Text>
-                      <SegmentedControl
-                        fullWidth
-                        color="brand"
-                        value={sample[fid] === true ? "yes" : sample[fid] === false ? "no" : ""}
-                        onChange={(val) => { setSample({ ...sample, [fid]: val === "yes" }); setPreset("Custom"); }}
-                        data={[{ label: "Yes", value: "yes" }, { label: "No", value: "no" }]}
-                      />
-                    </>
-                  ) : f.type === "dropdown" ? (
-                    <Select
-                      label={f.label}
-                      value={sample[fid] ?? null}
-                      onChange={(val) => { setSample({ ...sample, [fid]: val }); setPreset("Custom"); }}
-                      data={f.options!}
-                    />
-                  ) : (
-                    <NumberInput
-                      label={f.label}
-                      value={sample[fid] ?? ""}
-                      onChange={(val) => { setSample({ ...sample, [fid]: val === "" ? "" : Number(val) }); setPreset("Custom"); }}
-                    />
-                  )}
-                </Grid.Col>
-              );
-            })}
-          </Grid>
-          <Button fullWidth mt={2} color="brand" leftSection={<IconPlayerPlay size={15} />} style={{ fontWeight: 700 }}>Run Simulation</Button>
-          </Stack>
+        <Paper withBorder radius="md" p={12} style={{ alignSelf: "start", background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderTop: "2px solid var(--mantine-color-brand-6)" }}>
+          <CardHeader icon={<IconFlask size={13} stroke={2} />} title="Sample Applicant" hint={usedFieldIds.length ? `${usedFieldIds.length} criteria` : undefined} />
+          <Text fz={11.5} c="slate.5" mb={10}>Enter values for the criteria used by this rule set to test it.</Text>
+
+          {usedFieldIds.length === 0 ? (
+            <Paper radius="md" p={14} style={{ border: "1px dashed var(--mantine-color-slate-3)", textAlign: "center", background: "var(--mantine-color-slate-0)" }}>
+              <Text fz={11.5} c="dimmed">Add rules in the Builder tab to test applicant scenarios here.</Text>
+            </Paper>
+          ) : (
+            <>
+              <Box mb={10}>
+                <FieldLabel>Preset</FieldLabel>
+                <Select
+                  size="xs"
+                  value={preset}
+                  onChange={(val) => {
+                    if (!val) return;
+                    setPreset(val);
+                    if (val !== "Custom") setSample({ ...presets[val] });
+                  }}
+                  data={[...Object.keys(SAMPLE_APPLICANTS), "Custom"]}
+                />
+              </Box>
+
+              <Grid gutter={10}>
+                {usedFieldIds.map((fid) => {
+                  const f = fieldById(fid)!;
+                  const value = sample[fid];
+                  return (
+                    <Grid.Col span={6} key={fid}>
+                      <FieldLabel>{f.label}</FieldLabel>
+                      {f.type === "boolean" ? (
+                        <SegmentedControl
+                          fullWidth
+                          size="xs"
+                          color="brand"
+                          value={value === true ? "yes" : value === false ? "no" : ""}
+                          onChange={(val) => setField(fid, val === "yes")}
+                          data={[{ label: "Yes", value: "yes" }, { label: "No", value: "no" }]}
+                          styles={{ label: { fontSize: 11.5, fontWeight: 600 } }}
+                        />
+                      ) : f.type === "dropdown" ? (
+                        <Select
+                          size="xs"
+                          placeholder="Select a value…"
+                          value={(value as string) ?? null}
+                          onChange={(val) => setField(fid, val)}
+                          data={f.options!}
+                        />
+                      ) : f.type === "date" ? (
+                        <DateInput
+                          size="xs"
+                          valueFormat="DD-MMM-YYYY"
+                          placeholder="DD-MMM-YYYY"
+                          value={(value as string) || null}
+                          onChange={(val) => setField(fid, val)}
+                        />
+                      ) : f.type === "text" ? (
+                        <Input
+                          size="xs"
+                          component="input"
+                          placeholder="Value"
+                          value={(value as string) ?? ""}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => setField(fid, e.target.value)}
+                        />
+                      ) : (
+                        <Group gap={6} wrap="nowrap" align="center">
+                          <Input
+                            size="xs"
+                            component="input"
+                            type="number"
+                            placeholder="Value"
+                            value={value === undefined || value === null ? "" : String(value)}
+                            onChange={(e: ChangeEvent<HTMLInputElement>) => setField(fid, e.target.value === "" ? null : Number(e.target.value))}
+                            style={{ flex: 1 }}
+                          />
+                          {f.unit && <Text fz={11} c="slate.5" style={{ whiteSpace: "nowrap" }}>{f.unit}</Text>}
+                        </Group>
+                      )}
+                    </Grid.Col>
+                  );
+                })}
+              </Grid>
+
+              <Button size="xs" radius="md" fullWidth mt={12} color="brand" leftSection={<IconPlayerPlay size={12} stroke={2.4} />}>
+                Run Simulation
+              </Button>
+            </>
+          )}
         </Paper>
       </Grid.Col>
 
       <Grid.Col span={{ base: 12, md: 6 }}>
-        <Paper withBorder radius="lg" p="md" mb="md" style={{ background: verdictStyle.bg, borderColor: verdictStyle.fg, borderLeft: `4px solid ${verdictStyle.fg}` }}>
-          <Group justify="space-between" align="center" wrap="nowrap">
-            <Group gap="sm" align="center" wrap="nowrap">
-              <ThemeIcon variant="light" color={results.verdict === "Eligible" ? "green" : results.verdict === "Eligible with Warnings" ? "orange" : results.verdict === "Manual Review" ? "blue" : "red"} radius="xl" size={34}>
+        <Paper withBorder radius="md" p={12} mb={8} style={{ background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderLeft: `3px solid var(--mantine-color-${verdictStyle.tone}-4)` }}>
+          <Group justify="space-between" align="center" wrap="nowrap" gap={10}>
+            <Group gap={8} align="center" wrap="nowrap">
+              <ThemeIcon variant="light" color={verdictStyle.tone} radius="xl" size={28}>
                 {verdictStyle.icon}
               </ThemeIcon>
               <Box>
-                <Text fz={10.5} fw={800} c={verdictStyle.fg} tt="uppercase" style={{ letterSpacing: ".06em" }}>Pre-Screening Result</Text>
-                <Text fz={15} fw={800} c={verdictStyle.fg}>{verdictStyle.label}</Text>
+                <Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: ".04em" }}>Pre-Screening Result</Text>
+                <Text fz={13} fw={700} c={`${verdictStyle.tone}.7`}>{verdictStyle.label}</Text>
               </Box>
             </Group>
-            <Text fz={12} c={verdictStyle.fg} ta="right" maw={240}>
-              {results.verdict === "Eligible" && "All blocking criteria passed."}
-              {results.verdict === "Eligible with Warnings" && "All blocking criteria passed; some non-blocking checks flagged."}
-              {results.verdict === "Manual Review" && "Basic criteria met, but file needs manual review."}
-              {results.verdict === "Not Eligible" && "One or more blocking criteria failed."}
-            </Text>
+            <Text fz={11} c="slate.5" ta="right" maw={220}>{verdictStyle.note}</Text>
           </Group>
         </Paper>
 
-        {results.groupResults.map(({ group, groupPass }) => (
-          <Paper withBorder radius="lg" shadow="xs" p={0} mb="md" key={group.id} style={{ overflow: "hidden", borderColor: "var(--mantine-color-slate-2)" }}>
-            <Group justify="space-between" p="md" style={{ background: "var(--mantine-color-slate-0)", borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
-              <Group gap="xs">
-                <Box style={{ width: 24, height: 24, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--mantine-color-brand-6)", color: "white", fontSize: 11, fontWeight: 800 }}>{results.groupResults.indexOf(results.groupResults.find((result) => result.group.id === group.id)!) + 1}</Box>
-                <Text fw={700} fz={13.5}>{group.name}</Text>
+        {results.groupResults.map(({ group, groupPass }, index) => {
+          const tone = groupPass === null ? "slate" : groupPass ? "green" : "red";
+          return (
+            <Paper withBorder radius="md" p={0} mb={8} key={group.id} style={{ overflow: "hidden", background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderLeft: `3px solid var(--mantine-color-${tone}-4)` }}>
+              <Group justify="space-between" px={12} py={8} wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+                <Group gap={8} wrap="nowrap">
+                  <Box style={{ width: 18, height: 18, minWidth: 18, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--mantine-color-slate-1)", color: "var(--mantine-color-slate-6)", fontSize: 10.5, fontWeight: 700 }}>{index + 1}</Box>
+                  <Text fw={600} fz={12.5} c="slate.8">{group.name}</Text>
+                  <Text fz={10.5} c="slate.5">Match {group.logic}</Text>
+                </Group>
+                {groupPass === null ? (
+                  <Text fz={11} c="dimmed">Not evaluated</Text>
+                ) : (
+                  <Badge size="xs" radius="xl" variant="light" color={groupPass ? "green" : "red"} fw={700}>
+                    {groupPass ? "Passed" : "Failed"}
+                  </Badge>
+                )}
               </Group>
-              {groupPass === null ? (
-                <Text fz={12} c="dimmed">Not evaluated</Text>
-              ) : groupPass ? (
-                <Badge size="sm" radius="xl" variant="light" color="green">Passed</Badge>
-              ) : (
-                <Badge size="sm" radius="xl" variant="light" color="red">Failed</Badge>
-              )}
-            </Group>
-            <Stack gap={0} p="xs">
-              {group.rules.filter((r) => !r.disabled).map((r, i) => {
-                const f = fieldById(r.fieldId)!;
-                const pass = evalRule(r, sample[r.fieldId as string]);
-                return (
-                  <Box key={r.id}>
-                    {i > 0 && <Divider my={6} />}
-                    <Group justify="space-between" align="center" py="xs" px="sm" wrap="nowrap" style={{ borderRadius: "var(--mantine-radius-sm)" }}>
-                      <Group gap="xs" wrap="nowrap" style={{ overflow: "hidden" }}>
-                        <Text fz={13} fw={500} truncate>{f.label}:</Text>
-                        <Text fz={12} c="dimmed" truncate>
+              <Stack gap={0} p={6}>
+                {group.rules.filter((r) => !r.disabled).map((r) => {
+                  const f = fieldById(r.fieldId)!;
+                  const pass = evalRule(r, sample[r.fieldId as string]);
+                  return (
+                    <Group key={r.id} justify="space-between" align="center" py={5} px={8} wrap="nowrap" gap={8} style={{ borderRadius: 6 }}>
+                      <Stack gap={0} style={{ minWidth: 0 }}>
+                        <Text fz={11.5} fw={600} c="slate.8" truncate>{f.label}</Text>
+                        <Text fz={10.5} c="slate.5" truncate>
                           Required: {ruleSentence(r).replace(f.label + " ", "")} · Applicant: {fmtVal(f, sample[r.fieldId as string])}
                         </Text>
-                      </Group>
+                      </Stack>
                       {pass === null ? (
-                        <Text c="dimmed" fz={12}>—</Text>
+                        <Text c="dimmed" fz={11} style={{ flexShrink: 0 }}>—</Text>
                       ) : pass ? (
-                        <IconCheck size={16} color="var(--mantine-color-green-6)" style={{ flexShrink: 0 }} />
+                        <IconCheck size={14} color="var(--mantine-color-green-6)" style={{ flexShrink: 0 }} />
                       ) : (
-                        <IconX size={16} color="var(--mantine-color-red-6)" style={{ flexShrink: 0 }} />
+                        <IconX size={14} color="var(--mantine-color-red-6)" style={{ flexShrink: 0 }} />
                       )}
                     </Group>
-                  </Box>
-                );
-              })}
-            </Stack>
-          </Paper>
-        ))}
+                  );
+                })}
+              </Stack>
+            </Paper>
+          );
+        })}
       </Grid.Col>
     </Grid>
   );

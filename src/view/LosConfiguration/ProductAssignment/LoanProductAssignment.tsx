@@ -518,7 +518,7 @@ function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onCh
                   onChange={(e) => updateGroup(gr.id, { name: e.currentTarget.value })}
                   maxLength={40}
                   w={150}
-                  rightSection={<IconPencil size={12} />}
+                  rightSection={<IconPencil size={11} stroke={2} />}
                   rightSectionWidth={22}
                   rightSectionPointerEvents="none"
                 />
@@ -531,8 +531,8 @@ function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onCh
                     value={gr.join}
                     onChange={(v) => updateGroup(gr.id, { join: v as Joiner })}
                     data={[
-                      { label: "Any", value: "OR" },
                       { label: "All", value: "AND" },
+                      { label: "Any", value: "OR" },
                     ]}
                     aria-label="Any or all of the following"
                     styles={{ root: { padding: 2 }, label: { fontSize: 10.5, fontWeight: 700, padding: "1px 10px", minHeight: 0, lineHeight: "16px" } }}
@@ -549,7 +549,7 @@ function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onCh
                   style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, color: "var(--mantine-color-brand-6)", padding: "0 6px" }}
                 >
                   <IconPlus size={11} stroke={2.4} />
-                  Add line
+                  Add rule
                 </UnstyledButton>
                 {groups.length > 1 && (
                   <Tooltip label="Remove group" withinPortal>
@@ -619,7 +619,7 @@ function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onCh
                       size="sm"
                       radius="xl"
                       onClick={() => updateGroup(gr.id, { clauses: gr.clauses.filter((cl) => cl.id !== clause.id) })}
-                      aria-label="Remove line"
+                      aria-label="Remove rule"
                     >
                       <IconX size={13} />
                     </ActionIcon>

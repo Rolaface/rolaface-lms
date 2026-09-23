@@ -1,5 +1,5 @@
-import { Paper, Box, Group, Text } from "@mantine/core";
-import { IconArchive, IconCheck, IconClock } from "@tabler/icons-react";
+import { Paper, Box, Group, Stack, Text, Title } from "@mantine/core";
+import { IconArchive, IconCheck, IconClock, IconHistory } from "@tabler/icons-react";
 import type { RuleSet } from "./types";
 import { StatusBadge } from "./shared";
 
@@ -7,50 +7,73 @@ export interface VersionsTabProps {
   ruleSet: RuleSet;
 }
 
+const toneFor = (status: string) =>
+  status === "Active" ? "green" : status === "Scheduled" ? "blue" : "slate";
+
 export default function VersionsTab({ ruleSet }: VersionsTabProps) {
+  const versions = ruleSet.versions.slice().reverse();
+
   return (
-    <Box maw={720}>
-      {ruleSet.versions.slice().reverse().map((v) => (
-        <Paper
-          withBorder
-          radius="lg"
-          shadow="xs"
-          p="lg"
-          mb="md"
-          key={v.version}
-          style={{
-            borderLeft: `3px solid ${v.status === "Active" ? "var(--mantine-color-green-6)" : v.status === "Scheduled" ? "var(--mantine-color-blue-6)" : "var(--mantine-color-slate-4)"}`,
-          }}
-        >
-          <Group align="flex-start" gap="lg" wrap="nowrap">
-            <Box
-              w={58}
+    <Box maw={760}>
+      <Group gap={8} align="center" mb={10} wrap="nowrap">
+        <Box style={{ width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--mantine-color-brand-6)", color: "white", flexShrink: 0 }}>
+          <IconHistory size={13} stroke={2} />
+        </Box>
+        <Title order={4} fz={13} c="slate.8">Version History</Title>
+        <Text fz={11.5} c="slate.5">{versions.length} versions</Text>
+      </Group>
+
+      {versions.length === 0 ? (
+        <Paper withBorder radius="md" p={14} style={{ border: "1px dashed var(--mantine-color-slate-3)", textAlign: "center", background: "var(--mantine-color-slate-0)" }}>
+          <Text fz={11.5} c="dimmed">No versions published yet.</Text>
+        </Paper>
+      ) : (
+        versions.map((v) => {
+          const tone = toneFor(v.status);
+          return (
+            <Paper
+              withBorder
+              radius="md"
+              p={12}
+              mb={8}
+              key={v.version}
               style={{
-                flexShrink: 0,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-                padding: "8px 4px",
-                borderRadius: "var(--mantine-radius-md)",
-                background: v.status === "Active" ? "var(--mantine-color-green-0)" : v.status === "Scheduled" ? "var(--mantine-color-blue-0)" : "var(--mantine-color-slate-1)",
-                color: v.status === "Active" ? "var(--mantine-color-green-7)" : v.status === "Scheduled" ? "var(--mantine-color-blue-7)" : "var(--mantine-color-slate-6)",
+                background: "var(--mantine-color-white)",
+                borderColor: "var(--mantine-color-slate-2)",
+                borderLeft: `3px solid var(--mantine-color-${tone}-4)`,
               }}
             >
-              {v.status === "Active" ? <IconCheck size={16} /> : v.status === "Scheduled" ? <IconClock size={16} /> : <IconArchive size={16} />}
-              <Text fz={16} fw={700} lh={1}>v{v.version}</Text>
-            </Box>
-            <Box style={{ flex: 1 }}>
-              <Group gap="sm" mb={6}>
-                <StatusBadge status={v.status} />
-                <Text fz={12.5} c="dimmed">{v.effective}</Text>
+              <Group align="flex-start" gap={10} wrap="nowrap">
+                <Box
+                  w={46}
+                  style={{
+                    flexShrink: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 2,
+                    padding: "6px 4px",
+                    borderRadius: 6,
+                    background: `var(--mantine-color-${tone}-0)`,
+                    color: `var(--mantine-color-${tone}-7)`,
+                  }}
+                >
+                  {v.status === "Active" ? <IconCheck size={13} stroke={2.2} /> : v.status === "Scheduled" ? <IconClock size={13} stroke={2.2} /> : <IconArchive size={13} stroke={2.2} />}
+                  <Text fz={12} fw={700} lh={1}>v{v.version}</Text>
+                </Box>
+                <Stack gap={3} style={{ flex: 1, minWidth: 0 }}>
+                  <Group gap={8} align="center" wrap="nowrap">
+                    <StatusBadge status={v.status} />
+                    <Text fz={11} c="slate.5" truncate>{v.effective}</Text>
+                  </Group>
+                  <Text fz={12} c="slate.8">{v.note}</Text>
+                  <Text fz={11} c="slate.5">Published by {v.by}</Text>
+                </Stack>
               </Group>
-              <Text fz={13.5} mb={4}>{v.note}</Text>
-              <Text fz={12} c="dimmed">Published by {v.by}</Text>
-            </Box>
-          </Group>
-        </Paper>
-      ))}
+            </Paper>
+          );
+        })
+      )}
     </Box>
   );
 }

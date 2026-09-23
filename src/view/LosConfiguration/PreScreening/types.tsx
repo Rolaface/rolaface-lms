@@ -155,10 +155,10 @@ export const OPERATORS: Record<FieldType, { id: string; label: string }[]> = {
 export const opLabel = (type: FieldType, id?: string) =>
   OPERATORS[type].find((o) => o.id === id)?.label || id;
 
-export const SEVERITIES: Record<Severity, { color: string; wash: string; defaultAction: string; desc: string }> = {
-  Blocking: { color: "#C0322A", wash: "#FBEAE9", defaultAction: "Reject Application", desc: "Application cannot proceed." },
-  Warning: { color: "#B45309", wash: "#FEF3E1", defaultAction: "Continue with Warning", desc: "Application may continue but shows a warning." },
-  Review: { color: "#2B6CB0", wash: "#E8F1FB", defaultAction: "Send for Manual Review", desc: "Application is routed to Credit Review." },
+export const SEVERITIES: Record<Severity, { label: string; color: string; wash: string; defaultAction: string; desc: string }> = {
+  Blocking: { label: "Block", color: "#C0322A", wash: "#FBEAE9", defaultAction: "Reject Application", desc: "Application cannot proceed." },
+  Warning: { label: "Warn", color: "#B45309", wash: "#FEF3E1", defaultAction: "Continue with Warning", desc: "Application may continue but shows a warning." },
+  Review: { label: "Review", color: "#2B6CB0", wash: "#E8F1FB", defaultAction: "Send for Manual Review", desc: "Application is routed to Credit Review." },
 };
 
 export const ACTIONS = ["Reject Application", "Mark as Ineligible", "Send for Manual Review", "Continue with Warning"];
