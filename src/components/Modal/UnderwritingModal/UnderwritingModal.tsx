@@ -48,6 +48,7 @@ import {
   IconPencil, IconGavel, IconKey, IconCalendarEvent, IconUserCheck,
   IconTrash,
   IconUpload,
+  IconLock,
 } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
@@ -281,10 +282,10 @@ interface PanelItem {
 // etc.) but navigation only ever exposes the two groups below.
 const PANEL_ITEMS: PanelItem[] = [
   { id: "assetDetails", label: "Asset Details", icon: IconIdBadge2, color: "blue" },
-  { id: "valuation", label: "Valuation", icon: IconCar, color: "brand" },
   { id: "assetDocs", label: "Supporting Documents", icon: IconFileText, color: "blue" },
-  { id: "legal", label: "Verifier information", icon: IconIdBadge2, color: "violet" },
+  { id: "valuation", label: "Valuation", icon: IconCar, color: "brand" },
   { id: "legalDocs", label: "Supporting Documents", icon: IconFileText, color: "violet" },
+  { id: "legal", label: "Verifier information", icon: IconIdBadge2, color: "violet" },
   { id: "notes", label: "Underwriter Notes", icon: IconFileText, color: "gray" },
   { id: "assetConclusion", label: "Conclusion", icon: IconClipboardCheck, color: "blue" },
   { id: "conclusion", label: "Conclusion", icon: IconClipboardCheck, color: "brand" },
@@ -292,6 +293,13 @@ const PANEL_ITEMS: PanelItem[] = [
 
 // The only two sub-tabs shown in the sidebar. Each groups a sequence of
 // panels, paged through via the in-content "next" arrow.
+//
+// IMPORTANT ORDERING FIX:
+// Documents must always come BEFORE the step that relies on them, because
+// a valuation or a legal check should never be marked "Passed"/"Verified"
+// against evidence nobody has uploaded yet:
+//   Asset tab:  Details -> Supporting Documents -> Valuation -> Notes -> Conclusion
+//   Legal tab:  Supporting Documents -> Verifier & Checks -> Notes -> Conclusion
 interface TabItem {
   id: TabId;
   label: string;
@@ -299,8 +307,8 @@ interface TabItem {
   steps: PanelId[];
 }
 const TAB_ITEMS: TabItem[] = [
-  { id: "asset", label: "Asset Valuation", icon: IconCircleCheck, steps: ["assetDetails", "valuation", "assetDocs", "notes", "assetConclusion"] },
-  { id: "legal", label: "Legal Verification", icon: IconShieldCheck, steps: ["legal", "legalDocs", "notes", "conclusion"] },
+  { id: "asset", label: "Asset Valuation", icon: IconCircleCheck, steps: ["assetDetails", "valuation", "notes", "assetConclusion"] },
+  { id: "legal", label: "Legal Verification", icon: IconShieldCheck, steps: ["legal", "notes", "conclusion"] },
 ];
 
 // ---------------------------------------------------------------------------
@@ -596,6 +604,34 @@ function makeSeedAsset(): Asset {
 }
 
 // ---------------------------------------------------------------------------
+// Doc readiness helpers — used everywhere a check / valuation status is
+// about to be marked "Passed"/"Verified" so that can never happen ahead of
+// the evidence (required documents) actually being verified.
+// ---------------------------------------------------------------------------
+
+function requiredDocsVerified(docs: AssetDoc[]): boolean {
+  const required = docs.filter((d) => d.tier === "required");
+  if (required.length === 0) return true;
+  return required.every((d) => d.status === "Verified");
+}
+
+function missingRequiredDocs(docs: AssetDoc[]): AssetDoc[] {
+  return docs.filter((d) => d.tier === "required" && d.status !== "Verified");
+}
+
+function DocsGateBanner({ missing, context }: { missing: AssetDoc[]; context: string }) {
+  if (missing.length === 0) return null;
+  return (
+    <Group gap={8} p={10} mb={14} bg="orange.0" style={{ border: "1px solid var(--mantine-color-orange-3)", borderRadius: 9 }} wrap="nowrap" align="flex-start">
+      <IconLock size={14} color="var(--mantine-color-orange-7)" style={{ flexShrink: 0, marginTop: 1 }} />
+      <Text fz={11.5} lh={1.4} c="orange.9">
+        {missing.length} required document{missing.length > 1 ? "s" : ""} still need{missing.length > 1 ? "" : "s"} to be verified before {context} can be marked Passed — {missing.map((d) => d.name).join(", ")}.
+      </Text>
+    </Group>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Compact check row — checkbox + flag-as-exception
 // ---------------------------------------------------------------------------
 
@@ -607,6 +643,8 @@ function CompactCheckRow({
   onToggle,
   onFlag,
   onNoteChange,
+  disabled,
+  disabledReason,
 }: {
   label: string;
   checked: boolean;
@@ -615,14 +653,19 @@ function CompactCheckRow({
   onToggle: () => void;
   onFlag: () => void;
   onNoteChange: (v: string) => void;
+  disabled?: boolean;
+  disabledReason?: string;
 }) {
   return (
     <Box py={5} style={{ borderBottom: "1px solid var(--mantine-color-gray-1)" }}>
       <Group gap={8} wrap="nowrap" align="center">
-        <Checkbox checked={checked} disabled={exception} onChange={onToggle} size="xs" />
-        <Text fz={12.5} c={exception ? "orange.8" : "dark.6"} style={{ flex: 1 }}>
+        <Tooltip label={disabledReason} disabled={!disabled} withArrow>
+          <Checkbox checked={checked} disabled={exception || disabled} onChange={onToggle} size="xs" />
+        </Tooltip>
+        <Text fz={12.5} c={exception ? "orange.8" : disabled ? "gray.5" : "dark.6"} style={{ flex: 1 }}>
           {label}
         </Text>
+        {disabled && !checked && <IconLock size={12} color="var(--mantine-color-gray-4)" />}
         <ActionIcon variant="subtle" color={exception ? "orange" : "gray"} size="sm" onClick={onFlag} title="Flag as exception">
           <IconAlertTriangle size={14} />
         </ActionIcon>
@@ -674,12 +717,19 @@ function DocumentsTable({ title, docs, setDocs }: { title: string; docs: AssetDo
     e.target.value = "";
   };
 
+  const required = docs.filter((d) => d.tier === "required");
+  const requiredVerified = required.filter((d) => d.status === "Verified").length;
+
   return (
     <Box>
-      {/* Heading removed here — the "Supporting Documents" step label is
-          already shown in the top step/tab bar above, so this panel only
-          keeps the "Add documents" action, right-aligned. */}
-      <Group justify="flex-end" mb={10}>
+      {/* Progress summary so the reviewer always knows how much is left
+          before the next (Valuation / Legal checks) step can pass. */}
+      <Group justify="space-between" mb={10} align="center">
+        <Text fz={11.5} c={requiredVerified === required.length ? "green.7" : "orange.7"} fw={600}>
+          {required.length === 0
+            ? "No required documents configured"
+            : `${requiredVerified}/${required.length} required documents verified`}
+        </Text>
         <Button size="compact-sm" variant="light" color="brand" radius="xl" leftSection={<IconPlus size={13} />} onClick={addDoc}>
           Add documents
         </Button>
@@ -754,13 +804,14 @@ function DocumentsTable({ title, docs, setDocs }: { title: string; docs: AssetDo
                 </Button>
               )}
               <Select
-                data={DOC_STATUSES}
+                data={d.fileMeta ? DOC_STATUSES : DOC_STATUSES.filter((s) => s === "Missing")}
                 value={d.status}
                 onChange={(v) => update(i, { status: v || d.status })}
                 size="xs"
                 radius="xl"
                 style={{ flex: 1 }}
                 allowDeselect={false}
+                disabled={!d.fileMeta}
                 color={STATUS_COLORS[d.status]}
                 styles={{
                   input: {
@@ -1095,9 +1146,13 @@ function AssetDetailView({
 
   const requiredAssetDocs = asset.docs.filter((d) => d.tier === "required");
   const missingAssetDocs = requiredAssetDocs.filter((d) => d.status !== "Verified");
+  const docsReady = requiredDocsVerified(asset.docs);
   const assetValidationStatus = asset.status === "Passed" ? "Passed" : asset.status === "Failed" ? "Failed" : "Review Required";
   const assetValuationStatus = asset.status === "Passed" ? "Verified" : "Pending";
   const assetDocsStatus = missingAssetDocs.length === 0 ? "Complete" : "Incomplete";
+
+  // Validations have been removed per user request
+  const statusOptions = CHECK_STATUSES;
 
   return (
     <Box px={16} pt={16} pb={12}>
@@ -1173,6 +1228,7 @@ function AssetDetailView({
                   {valuationBadge.label}
                 </Badge>
             </Group>
+
             <SimpleGrid cols={2} spacing={20} mb={8}>
               <Box>
                 <SimpleGrid cols={2} spacing={8}>
@@ -1276,7 +1332,15 @@ function AssetDetailView({
             <Box style={{ borderLeft: "1px solid var(--mantine-color-gray-2)", paddingLeft: 20 }}>
               <Group justify="space-between" mb={6}>
                 <SectionLabel color="brand.8" icon={IconCalendarEvent}>Valuation date &amp; status</SectionLabel>
-                <Select data={CHECK_STATUSES} value={asset.status} onChange={(v) => onUpdate({ status: v || asset.status })} size="xs" radius="xl" w={140} allowDeselect={false} />
+                <Select
+                  data={statusOptions}
+                  value={asset.status}
+                  onChange={(v) => onUpdate({ status: v || asset.status })}
+                  size="xs"
+                  radius="xl"
+                  w={140}
+                  allowDeselect={false}
+                />
               </Group>
               <Stack gap={4}>
                 <TextInput size="xs" type="date" label="Valuation date" value={asset.valuationDate} onChange={(e) => onUpdate({ valuationDate: e.currentTarget.value })} radius="md" />
@@ -1301,11 +1365,12 @@ function AssetDetailView({
               )}
             </Box>
           </SimpleGrid>
-        </Box>
-      )}
 
-      {panel === "assetDocs" && (
-        <DocumentsTable title="" docs={asset.docs} setDocs={(docs) => onUpdate({ docs })} />
+          <Box mt={24} mb={8}>
+            <SectionLabel color="brand.8" icon={IconFileText}>Supporting Documents</SectionLabel>
+            <DocumentsTable title="" docs={asset.docs} setDocs={(docs) => onUpdate({ docs })} />
+          </Box>
+        </Box>
       )}
 
       {panel === "notes" && (
@@ -1398,8 +1463,20 @@ function AssetDetailView({
 
           {!asset.assetDecision ? (
             <SimpleGrid cols={4} spacing={8}>
-              <DecisionButton label="Approve / Proceed" caption="No conditions" color="green" icon={IconCircleCheck} onClick={() => onUpdate({ assetDecision: "approve" })} />
-              <DecisionButton label="Approve with Conditions" caption="Add pre-disbursement terms" color="orange" icon={IconAlertTriangle} onClick={() => onUpdate({ assetDecision: "conditions" })} />
+              <DecisionButton
+                label="Approve / Proceed"
+                caption="No conditions"
+                color="green"
+                icon={IconCircleCheck}
+                onClick={() => onUpdate({ assetDecision: "approve" })}
+              />
+              <DecisionButton
+                label="Approve with Conditions"
+                caption="Add pre-disbursement terms"
+                color="orange"
+                icon={IconAlertTriangle}
+                onClick={() => onUpdate({ assetDecision: "conditions" })}
+              />
               <DecisionButton label="Refer / Further Revision" caption="Send back for more info" color="brand" icon={IconArrowRight} onClick={() => onUpdate({ assetDecision: "refer" })} />
               <DecisionButton label="Reject" caption="Close this asset" color="red" icon={IconCircleX} onClick={() => onUpdate({ assetDecision: "reject" })} />
             </SimpleGrid>
@@ -1539,11 +1616,16 @@ function LegalDetailView({
   onUpdateChecklist: (itemId: string, patch: Partial<TitleChecklistItem>) => void;
   onUpdateLegalCheck: (checkId: string, patch: Partial<LegalCheck>) => void;
 }) {
+  const missingTitleDocs = missingRequiredDocs(asset.titleDocs);
+  const docsReady = requiredDocsVerified(asset.titleDocs);
+  const disabledReason = "Verify all required Supporting Documents first";
+
   return (
     <Box px={16} pt={16} pb={12}>
       {panel === "legal" && (
         <Box>
-          
+
+          <SectionLabel color="brand.8" icon={IconScale}>Verifier Information</SectionLabel>
           <SimpleGrid cols={4} spacing={20} mt={16} mb={16}>
             <TextInput size="xs" label="Verifier name" value={asset.legalVerifier.name} onChange={(e) => onUpdate({ legalVerifier: { ...asset.legalVerifier, name: e.currentTarget.value } })} placeholder="e.g. M. Tembo" radius="md" />
             <TextInput size="xs" label="Company / firm" value={asset.legalVerifier.company} onChange={(e) => onUpdate({ legalVerifier: { ...asset.legalVerifier, company: e.currentTarget.value } })} placeholder="e.g. Tembo & Associates" radius="md" />
@@ -1593,10 +1675,13 @@ function LegalDetailView({
               ))}
             </Box>
           </SimpleGrid>
+
+          <Box mt={24} mb={8}>
+            <SectionLabel color="brand.8" icon={IconFileText}>Supporting Documents</SectionLabel>
+            <DocumentsTable title="" docs={asset.titleDocs} setDocs={(titleDocs) => onUpdate({ titleDocs })} />
+          </Box>
         </Box>
       )}
-
-      {panel === "legalDocs" && <DocumentsTable title="" docs={asset.titleDocs} setDocs={(titleDocs) => onUpdate({ titleDocs })} />}
 
       {panel === "notes" && (
         <Box>
@@ -1673,13 +1758,13 @@ function UnderwritingWorkspace({
   const [completed, setCompleted] = useState(false);
 
   // "Add Asset" is now a mini multi-step draft flow: Basic Details ->
-  // Valuation -> Supporting Documents. The asset only actually gets added
+  // Supporting Documents -> Valuation. The asset only actually gets added
   // to the list at the very end, once everything (including documents) has
   // been filled in — not the moment basic info is entered.
   const [draftAsset, setDraftAsset] = useState<Asset | null>(null);
   const [draftPanel, setDraftPanel] = useState<PanelId>("assetDetails");
   // Reuses the same step list as the Asset Valuation tab (Details ->
-  // Valuation -> Documents -> Underwriter Notes -> Conclusion), so the
+  // Documents -> Valuation -> Underwriter Notes -> Conclusion), so the
   // draft wizard and the "edit an existing asset" view stay in sync.
   const draftSteps = steps;
 
@@ -1725,7 +1810,7 @@ function UnderwritingWorkspace({
     setConditions((prev) => prev.filter((_, idx) => idx !== i));
   }
   function openAddAsset() {
-    const draft = makeAsset("manual", {
+    const newAsset = makeAsset("manual", {
       type: DUMMY_ASSET_TYPES[0],
       description: "",
       assetId: "",
@@ -1733,29 +1818,10 @@ function UnderwritingWorkspace({
       owner: "",
       acquisition: "",
     });
-    setDraftAsset(draft);
-    setDraftPanel("assetDetails");
-  }
-  function cancelAddAsset() {
-    setDraftAsset(null);
-    setDraftPanel("assetDetails");
-  }
-  function updateDraftAsset(patch: Partial<Asset>) {
-    setDraftAsset((prev) => (prev ? { ...prev, ...patch } : prev));
-  }
-  function commitAddAsset() {
-    if (!draftAsset) return;
-    if (!draftAsset.base.description.trim()) {
-      setDraftPanel("assetDetails");
-      return;
-    }
-    // If a valuation amount was captured along the way, treat the
-    // valuation as already passed rather than leaving it "Pending".
-    const finalAsset =
-      draftAsset.valuation.amount && draftAsset.status === "Pending" ? { ...draftAsset, status: "Passed" } : draftAsset;
-    setAssets((prev) => [...prev, finalAsset]);
-    setDraftAsset(null);
-    setDraftPanel("assetDetails");
+    setAssets(prev => [...prev, newAsset]);
+    setSelectedAssetId(newAsset.id);
+    setAssetViewMode('detail');
+    setPanel('assetDetails');
   }
 
   const totalAssetValue = assets.reduce((sum, a) => sum + (Number(a.valuation.amount) || 0), 0);
@@ -1771,10 +1837,23 @@ function UnderwritingWorkspace({
 
     assets.forEach((a, i) => {
       const label = `Asset ${i + 1}`;
+
+      const assetDocsMissing = missingRequiredDocs(a.docs);
+      if (assetDocsMissing.length) {
+        docsOk = false;
+        blockers.push(`${label}: ${assetDocsMissing.length} required asset document(s) not yet verified — ${assetDocsMissing.map((d) => d.name).join(", ")}.`);
+      }
+
       const aValuationOk = a.status === "Passed" || (["Failed", "Exception"].includes(a.status) && a.reason.trim());
       if (!aValuationOk) {
         valuationOk = false;
         blockers.push(`${label}: valuation status has not been finalized.`);
+      }
+
+      const titleDocsMissing = missingRequiredDocs(a.titleDocs);
+      if (titleDocsMissing.length) {
+        docsOk = false;
+        blockers.push(`${label}: ${titleDocsMissing.length} required title document(s) not yet verified — ${titleDocsMissing.map((d) => d.name).join(", ")}.`);
       }
 
       const titleUnresolved = a.titleChecklist.filter(
@@ -1789,13 +1868,6 @@ function UnderwritingWorkspace({
       if (legalUnresolved.length) {
         legalOk = false;
         blockers.push(`${label}: legal checks have ${legalUnresolved.length} unresolved exception/failure — ${legalUnresolved.map((c) => c.name).join(", ")}.`);
-      }
-
-      const requiredDocs = [...a.docs, ...a.titleDocs].filter((d) => d.tier === "required");
-      const missingDocs = requiredDocs.filter((d) => d.status !== "Verified");
-      if (missingDocs.length) {
-        docsOk = false;
-        blockers.push(`${label}: ${missingDocs.length} required document(s) not yet verified — ${missingDocs.map((d) => d.name).join(", ")}.`);
       }
     });
 
@@ -1862,91 +1934,7 @@ function UnderwritingWorkspace({
 
       {tab === "asset" ? (
         <Box>
-          {draftAsset ? (
-            <Box>
-              <Group mb={8} justify="space-between">
-                 <UnstyledButton onClick={cancelAddAsset} p={4}>
-                    <Group gap={4} wrap="nowrap" c="dimmed" style={{ transition: 'color 150ms ease' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--mantine-color-brand-6)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--mantine-color-gray-5)'}>
-                       <IconChevronLeft size={16} />
-                       <Text fz={13} fw={600}>Cancel</Text>
-                    </Group>
-                 </UnstyledButton>
-
-                 <Group gap={8}>
-                   <Badge variant="light" color="brand" radius="xl">
-                     New Asset
-                   </Badge>
-                 </Group>
-              </Group>
-
-              <Paper withBorder radius="lg" mb={4} style={{ overflow: "hidden" }}>
-                <Group gap={0} px={10} pt={10} pb={0} wrap="wrap">
-                  {draftSteps.map((stepId) => {
-                    const item = PANEL_ITEMS.find((p) => p.id === stepId)!;
-                    const stepActive = draftPanel === stepId;
-                    const SIcon = item.icon;
-                    return (
-                      <UnstyledButton
-                        key={stepId}
-                        onClick={() => setDraftPanel(stepId)}
-                        px={12}
-                        pb={10}
-                        style={{
-                          borderBottom: `2px solid ${stepActive ? "var(--mantine-color-brand-6)" : "transparent"}`,
-                          transition: "border-color 120ms ease",
-                        }}
-                      >
-                        <Group gap={7}>
-                          <SIcon size={14} color={stepActive ? "var(--mantine-color-brand-7)" : "var(--mantine-color-gray-5)"} />
-                          <Text fz={12.5} fw={stepActive ? 700 : 500} c={stepActive ? "brand.7" : "dark.5"}>
-                            {item.label}
-                          </Text>
-                        </Group>
-                      </UnstyledButton>
-                    );
-                  })}
-                </Group>
-              </Paper>
-
-              <AssetDetailView
-                asset={draftAsset}
-                finalAmount={finalAmount}
-                panel={draftPanel}
-                notes={notes}
-                setNotes={setNotes}
-                onUpdate={updateDraftAsset}
-                editableBase
-              />
-
-              {(() => {
-                const idx = draftSteps.indexOf(draftPanel);
-                const isLastStep = idx === draftSteps.length - 1;
-                if (!isLastStep) {
-                  return (
-                    <Group justify="flex-end" mt={24} mb={12}>
-                      <Button radius="xl" variant="filled" color="brand" onClick={() => setDraftPanel(draftSteps[idx + 1])} rightSection={<IconArrowRight size={16} />}>
-                        Next
-                      </Button>
-                    </Group>
-                  );
-                }
-                return (
-                  <Box mt={24} mb={12}>
-                    <Group justify="flex-end">
-                      <Button variant="filled" color="brand" radius="xl" onClick={commitAddAsset} rightSection={<IconPlus size={16} />}>
-                        Add Asset
-                      </Button>
-                    </Group>
-                    {!draftAsset.base.description.trim() && (
-                      <Text fz={11.5} c="dimmed" ta="right" mt={6}>
-                        Description is required — it's on the Asset Details step.
-                      </Text>
-                    )}
-                  </Box>
-                );
-              })()}
-            </Box>
-          ) : assetViewMode === 'detail' && selectedAsset ? (
+          {assetViewMode === 'detail' && selectedAsset ? (
             <Box>
               <Group mb={8} justify="space-between">
                  <UnstyledButton onClick={() => setAssetViewMode('list')} p={4}>
@@ -1978,6 +1966,7 @@ function UnderwritingWorkspace({
                         style={{
                           borderBottom: `2px solid ${stepActive ? "var(--mantine-color-brand-6)" : "transparent"}`,
                           transition: "border-color 120ms ease",
+                          cursor: "pointer",
                         }}
                       >
                         <Group gap={7}>
@@ -1999,6 +1988,7 @@ function UnderwritingWorkspace({
                 notes={notes}
                 setNotes={setNotes}
                 onUpdate={(patch) => updateAsset(selectedAsset.id, patch)}
+                editableBase
               />
 
               {(() => {
@@ -2007,7 +1997,13 @@ function UnderwritingWorkspace({
                 if (!isLastStep) {
                   return (
                     <Group justify="flex-end" mt={24} mb={12}>
-                      <Button radius="xl" variant="filled" color="brand" onClick={() => setPanel(steps[idx + 1])} rightSection={<IconArrowRight size={16} />}>
+                      <Button
+                        radius="xl"
+                        variant="filled"
+                        color="brand"
+                        onClick={() => setPanel(steps[idx + 1])}
+                        rightSection={<IconArrowRight size={16} />}
+                      >
                         Next
                       </Button>
                     </Group>
@@ -2036,11 +2032,9 @@ function UnderwritingWorkspace({
                     </Text>
                   </Text>
                 </Group>
-                {!draftAsset && (
-                  <Button radius="xl" color="brand" leftSection={<IconPlus size={14} />} onClick={openAddAsset}>
-                    Add Asset
-                  </Button>
-                )}
+                <Button radius="xl" color="brand" leftSection={<IconPlus size={14} />} onClick={openAddAsset}>
+                  Add Asset
+                </Button>
               </Group>
 
               {assets.length === 0 ? (
@@ -2112,6 +2106,7 @@ function UnderwritingWorkspace({
                         style={{
                           borderBottom: `2px solid ${stepActive ? "var(--mantine-color-brand-6)" : "transparent"}`,
                           transition: "border-color 120ms ease",
+                          cursor: "pointer",
                         }}
                       >
                         <Group gap={7}>
@@ -2241,17 +2236,12 @@ function UnderwritingWorkspace({
 
                     {!decision ? (
                       <>
-                        <SimpleGrid cols={4} spacing={8} style={{ opacity: readiness.ready ? 1 : 0.45, pointerEvents: readiness.ready ? "auto" : "none" }}>
+                        <SimpleGrid cols={4} spacing={8}>
                           <DecisionButton label="Approve / Proceed" caption="No conditions" color="green" icon={IconCircleCheck} onClick={() => setDecision("approve")} />
                           <DecisionButton label="Approve with Conditions" caption="Add pre-disbursement terms" color="orange" icon={IconAlertTriangle} onClick={() => setDecision("conditions")} />
                           <DecisionButton label="Refer / Further Revision" caption="Send back for more info" color="brand" icon={IconArrowRight} onClick={() => setDecision("refer")} />
                           <DecisionButton label="Reject" caption="Close the application" color="red" icon={IconCircleX} onClick={() => setDecision("reject")} />
                         </SimpleGrid>
-                        {!readiness.ready && (
-                          <Text fz={11.5} c="dimmed" mt={8}>
-                            Approve options unlock once valuation, title and legal checks have no unresolved items. You can still refer or reject at any point.
-                          </Text>
-                        )}
                       </>
                     ) : (
                       <Box>
@@ -2351,7 +2341,13 @@ function UnderwritingWorkspace({
                 if (!isLastStep) {
                   return (
                     <Group justify="flex-end" mt={24} mb={12}>
-                      <Button radius="xl" variant="filled" color="brand" onClick={() => setPanel(detailSteps[idx + 1])} rightSection={<IconArrowRight size={16} />}>
+                      <Button
+                        radius="xl"
+                        variant="filled"
+                        color="brand"
+                        onClick={() => setPanel(detailSteps[idx + 1])}
+                        rightSection={<IconArrowRight size={16} />}
+                      >
                         Next
                       </Button>
                     </Group>
@@ -2490,17 +2486,12 @@ function UnderwritingWorkspace({
 
                     {!decision ? (
                       <>
-                        <SimpleGrid cols={4} spacing={8} style={{ opacity: readiness.ready ? 1 : 0.45, pointerEvents: readiness.ready ? "auto" : "none" }}>
+                        <SimpleGrid cols={4} spacing={8}>
                           <DecisionButton label="Approve / Proceed" caption="No conditions" color="green" icon={IconCircleCheck} onClick={() => setDecision("approve")} />
                           <DecisionButton label="Approve with Conditions" caption="Add pre-disbursement terms" color="orange" icon={IconAlertTriangle} onClick={() => setDecision("conditions")} />
                           <DecisionButton label="Refer / Further Revision" caption="Send back for more info" color="brand" icon={IconArrowRight} onClick={() => setDecision("refer")} />
                           <DecisionButton label="Reject" caption="Close the application" color="red" icon={IconCircleX} onClick={() => setDecision("reject")} />
                         </SimpleGrid>
-                        {!readiness.ready && (
-                          <Text fz={11.5} c="dimmed" mt={8}>
-                            Approve options unlock once valuation, title and legal checks have no unresolved items. You can still refer or reject at any point.
-                          </Text>
-                        )}
                       </>
                     ) : (
                       <Box>
@@ -2617,7 +2608,7 @@ function UnderwritingWorkspace({
                       onClick={() => {
                         setSelectedLegalId(a.id);
                         setLegalViewMode('detail');
-                        setPanel('legal');
+                        setPanel('legalDocs');
                       }}
                       onUpdateBase={(patch) => editAssetBase(a.id, patch)}
                       onRemove={() => removeAsset(a.id)}
