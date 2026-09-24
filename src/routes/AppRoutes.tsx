@@ -79,9 +79,6 @@ import LOSEligibilityCheck from "../view/LosConfiguration/EligibilityCheck/LOSEl
 import LoanProductAutoAssignment from "../view/LosConfiguration/ProductAssignment/LoanProductAssignment";
 import ProductAssignments from "../view/LosConfiguration/ProductAssignment/ProductAssignments";
 import { OfferIssuanceStage } from "../view/Origination/OfferIssuanceStage/OfferIssuanceStage";
-import EnrichmentStage from "../view/LosConfiguration/EnrichmentStage/EnrichmentStage";
-import LoanApplicationTabs from "../view/LosConfiguration/LoanApplicationtabs/LoanApplicationtabs";
-import PreScreeningStage from "../view/LosConfiguration/PreScreeningStage/PreScreeningStage";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -196,21 +193,6 @@ const loanProductAssignmentRoute = createRoute({
   getParentRoute: () => originationSetupRoute,
   path: "/product-assignment",
   component: LoanProductAutoAssignment,
-});
-const enrichmentStageRoute = createRoute({
-  getParentRoute: () => originationSetupRoute,
-  path: "/enrichment-stage",
-  component: EnrichmentStage,
-});
-const loanApplicationTabsRoute = createRoute({
-  getParentRoute: () => originationSetupRoute,
-  path: "/loanApplication-tabs",
-  component: LoanApplicationTabs,
-});
-const preScreeningStageRoute = createRoute({
-  getParentRoute: () => originationSetupRoute,
-  path: "/pre-screening-stage",
-  component: PreScreeningStage,
 });
 // const tempProductAssignmentRoute = createRoute({
 //   getParentRoute: () => originationSetupRoute,
@@ -568,7 +550,6 @@ const routeTree = rootRoute.addChildren([
   ]),
   // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
   originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute]),
-  // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, enrichmentStageRoute, loanApplicationTabsRoute, preScreeningStageRoute]),
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
   settingsRoute.addChildren([
     emailTemplateRoute,

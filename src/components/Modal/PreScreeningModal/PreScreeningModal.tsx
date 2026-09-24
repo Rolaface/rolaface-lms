@@ -1246,7 +1246,7 @@ function DecisionCard({
                   onClick={onContinue}
                   rightSection={<IconArrowRight size={15} />}
                 >
-                  Continue to enrichment
+                  Continue to loan appraisal
                 </Button>
               )}
               {isPartial && !confirm && (
@@ -1596,7 +1596,7 @@ function PrescreeningWorkspace({
           <IconCircleCheck size={26} />
         </ThemeIcon>
         <Text fz="md" fw={700} c="slate.9">
-          Moving to Stage 3 — Enrichment
+          Moving to Stage 3 — Loan Appraisal
         </Text>
         <Text fz={12.5} c="slate.5" mt={6}>
           Requested amount confirmed at {zmw(requested)}.

@@ -257,22 +257,18 @@ function creditBandFor(score: number, bands: CreditBand[]): CreditBand {
   );
 }
 
-const OBLIGATION_SOURCES: [string, boolean, boolean][] = [
-  ["Existing Loan Balance", true, true],
-  ["Existing Monthly EMI", true, true],
-  ["Credit Card Balance", true, true],
-  ["Overdraft Balance", true, true],
-  ["Mortgage Payment", true, true],
-  ["Other Monthly Debt", false, true],
+export interface ObligationDef {
+  name: string;
+  ver: boolean;
+  inc: boolean;
+  pct: number;
+}
+
+const OBLIGATION_SOURCES: ObligationDef[] = [
+  { name: "Existing Monthly EMI", ver: true, inc: true, pct: 100 },
+  { name: "Rental Obligation", ver: false, inc: false, pct: 100 },
+  { name: "Other Monthly Debt", ver: false, inc: true, pct: 100 },
 ];
-const OBLIGATION_MAPPING: Record<string, "balance" | "monthlyPayment"> = {
-  "Existing Loan Balance": "balance",
-  "Existing Monthly EMI": "monthlyPayment",
-  "Credit Card Balance": "balance",
-  "Overdraft Balance": "balance",
-  "Mortgage Payment": "monthlyPayment",
-  "Other Monthly Debt": "monthlyPayment",
-};
 const COLLATERAL_TYPES = [
   "Property",
   "Vehicle",
@@ -306,18 +302,14 @@ function collateralItemLimit(item: CollateralItem) {
 }
 
 const FORMULA_ITEMS: [string, string][] = [
-  ["Income Limit", "Eligible Monthly Income x Income Multiple"],
+  ["Income limit", "Eligible Monthly Income × Income Multiple"],
   [
-    "Affordability Limit",
-    "(Eligible Income x Max EMI Ratio - Existing EMI) x Tenure x Affordability Buffer",
+    "Affordability limit",
+    "(Eligible Income × Max EMI Ratio - Existing Obligation) × Tenure × Buffer",
   ],
-  ["Credit Limit", "Net Salary x Credit Score Multiple"],
-  [
-    "Existing Exposure Limit",
-    "Affordability Limit x (1 - Existing Exposure Ratio)",
-  ],
-  ["Collateral Limit", "Sum (Market Value x (1 - Haircut %) x Max LTV %)"],
-  ["Product Limit", "Product Maximum (configured cap)"],
+  ["Credit limit", "Net Salary × Credit Score Multiple"],
+  ["Collateral limit", "Sum(Market Value × (1 - Haircut %) × Max LTV %)"],
+  ["Product limit", "Product Maximum (configured cap)"],
 ];
 
 interface FormulaParams {
@@ -343,7 +335,7 @@ const FORMULA_SAMPLE = {
   netSalary: 12500,
   otherIncome: 3000,
   existingEMI: 2000,
-  existingBalance: 20000,
+  existingDSR: 2500,
   creditScore: 735,
   tenure: 24,
   onTime: 94,
@@ -366,24 +358,18 @@ function computeFormulaPreview(
   const affordabilityLimit =
     maxEMI * FORMULA_SAMPLE.tenure * (p.affordabilityBuffer / 100);
   const creditLimit = FORMULA_SAMPLE.netSalary * creditMultiple;
-  const exposureRatio = Math.min(
-    FORMULA_SAMPLE.existingBalance / (eligibleIncome * 12 || 1),
-    p.maxDtiRatio / 100
-  );
-  const exposureLimit = affordabilityLimit * (1 - exposureRatio);
   const limits = [
     { name: "Income Limit", value: incomeLimit },
     { name: "Affordability Limit", value: affordabilityLimit },
     { name: "Credit Limit", value: creditLimit },
-    { name: "Existing Exposure Limit", value: exposureLimit },
     { name: "Collateral Limit", value: collateralLimit },
     { name: "Product Limit", value: p.productMax },
   ];
   const final = Math.min(...limits.map((l) => l.value));
   const limitingFactor = limits.find((l) => l.value === final)?.name || "";
-  const existingDti = FORMULA_SAMPLE.existingEMI / (eligibleIncome || 1);
+  const existingDti = FORMULA_SAMPLE.existingDSR / (eligibleIncome || 1);
   const dtiPassed = existingDti <= p.maxDtiRatio / 100;
-  return { limits, final: dtiPassed ? final : 0, limitingFactor: dtiPassed ? limitingFactor : "DTI Limit", dtiPassed, existingDti };
+  return { limits, final: dtiPassed ? final : 0, limitingFactor: dtiPassed ? limitingFactor : "DSR Limit", dtiPassed, existingDti };
 }
 
 const TIERS = [
@@ -428,7 +414,7 @@ interface HardStop {
   hint?: string;
 }
 const DEFAULT_HARD_STOPS: HardStop[] = [
-  { id: "hs1", factor: "DTI Ratio", operator: "Greater Than", value: "70%" },
+  { id: "hs1", factor: "DSR Ratio", operator: "Greater Than", value: "70%" },
   {
     id: "hs2",
     factor: "Fraud Flag Present",
@@ -489,7 +475,7 @@ const RULE_FACTORS = [
   "Insolvency / Bankruptcy Status",
   "Application Misrepresentation Flag",
   "Credit Score",
-  "DTI Ratio",
+  "DSR Ratio",
   "EMI-to-Income Ratio",
   "Loan Amount",
 ];
@@ -579,20 +565,19 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
   };
 
   const [obligationSources, setObligationSources] =
-    useState<[string, boolean, boolean][]>(OBLIGATION_SOURCES);
+    useState<ObligationDef[]>(OBLIGATION_SOURCES);
   const updateObligationSource = (
     index: number,
-    patch: Partial<{ ver: boolean; inc: boolean }>,
+    patch: Partial<ObligationDef>,
   ) => {
     setObligationSources((sources) =>
       sources.map((s, i) => {
         if (i !== index) return s;
-        let newInc = patch.inc !== undefined ? patch.inc : s[2];
-        let newVer = patch.ver !== undefined ? patch.ver : s[1];
-        if (patch.inc === false) {
-          newVer = false;
+        const next = { ...s, ...patch };
+        if (!next.inc) {
+          next.ver = false;
         }
-        return [s[0], newVer, newInc];
+        return next;
       }),
     );
   };
@@ -1278,72 +1263,6 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                     title="Income assessment"
                     description="Add every income source this rule recognizes and the share counted toward eligibility."
                   />
-                  <Box>
-                    <Text fz={10} fw={600} c="slate.7" mb={4} ta="right">
-                      Income multiple
-                    </Text>
-                    <Group gap={6} wrap="nowrap">
-                      <ActionIcon
-                        size="md"
-                        variant="default"
-                        radius="md"
-                        onClick={() =>
-                          setFormulaParam("salaryMultiple")(
-                            Math.max(1, formulaParams.salaryMultiple - 1),
-                          )
-                        }
-                        style={{ borderColor: "var(--mantine-color-slate-3)" }}
-                      >
-                        <IconMinus
-                          size={14}
-                          color="var(--mantine-color-slate-6)"
-                        />
-                      </ActionIcon>
-                      <TextInput
-                        radius="md"
-                        w={54}
-                        type="number"
-                        value={formulaParams.salaryMultiple}
-                        onChange={(e) =>
-                          setFormulaParam("salaryMultiple")(
-                            e.target.value === "" ? 0 : Number(e.target.value),
-                          )
-                        }
-                        rightSection={
-                          <Text fz={12} c="slate.4" mr={4}>
-                            ×
-                          </Text>
-                        }
-                        rightSectionWidth={20}
-                        styles={{
-                          input: {
-                            textAlign: "center",
-                            height: 32,
-                            minHeight: 32,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            borderColor: "var(--mantine-color-slate-3)",
-                          },
-                        }}
-                      />
-                      <ActionIcon
-                        size="md"
-                        variant="default"
-                        radius="md"
-                        onClick={() =>
-                          setFormulaParam("salaryMultiple")(
-                            formulaParams.salaryMultiple + 1,
-                          )
-                        }
-                        style={{ borderColor: "var(--mantine-color-slate-3)" }}
-                      >
-                        <IconPlus
-                          size={14}
-                          color="var(--mantine-color-slate-6)"
-                        />
-                      </ActionIcon>
-                    </Group>
-                  </Box>
                 </Group>
 
                 <Box mb="xs">
@@ -1526,21 +1445,32 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                 </Box>
 
                 <InfoCard color="brand">
-                  <Group gap={6} align="flex-start">
+                  <Group gap={8} align="flex-start">
                     <IconInfoCircle
-                      size={14}
+                      size={16}
                       color="var(--mantine-color-brand-6)"
-                      style={{ marginTop: 2 }}
+                      style={{ marginTop: 1 }}
                     />
                     <Box style={{ flex: 1 }}>
-                      <Text fz={11} c="brand.7" fw={500}>
-                        Eligible Monthly Income = sum of each included source x
-                        its recognition %.
+                      <Text fz={12} c="brand.7" fw={500}>
+                        Eligible monthly income = sum of each source × recognition percentage
                       </Text>
-                      <Text fz={11} c="brand.7" fw={500}>
-                        Income limit = Eligible Monthly Income x income
-                        multiple.
-                      </Text>
+                      <Group gap={4} wrap="nowrap" align="center" mt={8}>
+                        <Text fz={12} c="brand.7" fw={500}>
+                          Income limit = eligible monthly income ×
+                        </Text>
+                        <TextInput
+                          type="number"
+                          value={formulaParams.salaryMultiple}
+                          onChange={(e) => setFormulaParam("salaryMultiple")(Number(e.target.value) || 0)}
+                          size="xs"
+                          w={40}
+                          styles={{ input: { minHeight: 24, height: 24, padding: "0 4px", textAlign: "center", fontSize: 12, borderColor: "var(--mantine-color-brand-3)", backgroundColor: "rgba(255,255,255,0.8)", fontWeight: 600 } }}
+                        />
+                        <Text fz={12} c="brand.7" fw={500}>
+                          multiple
+                        </Text>
+                      </Group>
                     </Box>
                   </Group>
                 </InfoCard>
@@ -1551,13 +1481,12 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
             {step === 2 && (
               <Box>
                 <SectionHead
-                  title="Obligation Assessment"
-                  description="Configure which existing obligations reduce the customer's borrowing capacity. Balance-type obligations count toward the Debt-to-Income ratio; recurring payment obligations count toward the EMI-to-Income ratio."
+                  title="Obligation assessment"
+                  description="Configure which existing obligations reduce the customer's borrowing capacity."
                 />
 
-                <SimpleGrid cols={2} spacing="sm">
-
-                  {/* ── DTI Section ── */}
+                <SimpleGrid cols={2} spacing="sm" mb="md">
+                  {/* ── DSR Section ── */}
                   <Paper
                     px="sm"
                     py="sm"
@@ -1565,14 +1494,14 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                     style={{ border: "1px solid var(--mantine-color-slate-2)" }}
                   >
                     <Group gap={8} mb={4}>
-                      <Badge color="violet" variant="light" size="sm" radius="sm">DTI</Badge>
-                      <Text fz="xs" fw={700} c="slate.8">Debt-to-Income Ratio</Text>
+                      <Badge color="violet" variant="light" size="sm" radius="sm">DSR</Badge>
+                      <Text fz="xs" fw={700} c="slate.8">Debt Service Ratio</Text>
                     </Group>
                     <Text fz={10} c="slate.5" mb="sm">
                       Measures a customer's total monthly debt obligations as a percentage of their gross monthly income.
                     </Text>
                     <Field
-                      label={`Maximum DTI Ratio — ${formulaParams.maxDtiRatio}%`}
+                      label={`Maximum DSR — ${formulaParams.maxDtiRatio}%`}
                       hint="If total qualifying monthly debt / gross monthly income exceeds this, the applicant is declined or flagged."
                     >
                       <Group gap="sm" wrap="nowrap" mt={4}>
@@ -1591,71 +1520,6 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                         </Text>
                       </Group>
                     </Field>
-
-                    <Divider my="sm" color="slate.1" />
-
-                    <Text fz={10} fw={600} c="slate.5" tt="uppercase" mb={6} style={{ letterSpacing: ".04em" }}>
-                      Obligations counted toward DTI
-                    </Text>
-                    <Stack gap={4}>
-                      {obligationSources.map(([n, ver, inc], index) => {
-                        if (OBLIGATION_MAPPING[n] !== "balance") return null;
-                        const Icon =
-                          n === "Existing Loan Balance" ? IconScale
-                          : n === "Credit Card Balance" ? IconFileDescription
-                          : n === "Overdraft Balance" ? IconAlertTriangle
-                          : IconDots;
-                        return (
-                          <Group
-                            key={n}
-                            justify="space-between"
-                            px={8}
-                            py={6}
-                            style={{
-                              border: "1px solid var(--mantine-color-slate-1)",
-                              borderRadius: 4,
-                              background: inc ? "white" : "var(--mantine-color-slate-0)",
-                              opacity: inc ? 1 : 0.5,
-                            }}
-                          >
-                            <Group gap={8}>
-                              <Icon size={13} color="var(--mantine-color-violet-5)" />
-                              <Text fz={11} fw={500} c="slate.8">{n}</Text>
-                            </Group>
-                            <Group gap="sm">
-                              <Group gap={4}>
-                                <Text fz={9} c="slate.5">Verify</Text>
-                                <Switch
-                                  checked={ver as boolean}
-                                  onChange={(e) =>
-                                    updateObligationSource(index, {
-                                      ver: e.currentTarget.checked,
-                                    })
-                                  }
-                                  disabled={!inc}
-                                  size="xs"
-                                  color="violet"
-                                />
-                              </Group>
-                              <Group gap={4}>
-                                <Text fz={9} c="slate.5">Include</Text>
-                                <Switch
-                                  checked={inc as boolean}
-                                  onChange={(e) =>
-                                    updateObligationSource(index, {
-                                      inc: e.currentTarget.checked,
-                                    })
-                                  }
-                                  size="xs"
-                                  color="violet"
-                                />
-                              </Group>
-                            </Group>
-                          </Group>
-                        );
-                      })}
-                    </Stack>
-
                     <Paper mt="sm" px={8} py={6} radius="sm" style={{ background: "var(--mantine-color-violet-0)", border: "1px solid var(--mantine-color-violet-1)" }}>
                       <Text fz={10} c="violet.7" fw={500}>
                         <b>Formula:</b> Total qualifying monthly debt payments ÷ Gross monthly income × 100
@@ -1697,78 +1561,184 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
                         </Text>
                       </Group>
                     </Field>
-
-                    <Divider my="sm" color="slate.1" />
-
-                    <Text fz={10} fw={600} c="slate.5" tt="uppercase" mb={6} style={{ letterSpacing: ".04em" }}>
-                      Obligations counted toward EMI ratio
-                    </Text>
-                    <Stack gap={4}>
-                      {obligationSources.map(([n, ver, inc], index) => {
-                        if (OBLIGATION_MAPPING[n] !== "monthlyPayment") return null;
-                        const Icon =
-                          n === "Existing Monthly EMI" ? IconMath
-                          : n === "Mortgage Payment" ? IconBuilding
-                          : IconDots;
-                        return (
-                          <Group
-                            key={n}
-                            justify="space-between"
-                            px={8}
-                            py={6}
-                            style={{
-                              border: "1px solid var(--mantine-color-slate-1)",
-                              borderRadius: 4,
-                              background: inc ? "white" : "var(--mantine-color-slate-0)",
-                              opacity: inc ? 1 : 0.5,
-                            }}
-                          >
-                            <Group gap={8}>
-                              <Icon size={13} color="var(--mantine-color-brand-5)" />
-                              <Text fz={11} fw={500} c="slate.8">{n}</Text>
-                            </Group>
-                            <Group gap="sm">
-                              <Group gap={4}>
-                                <Text fz={9} c="slate.5">Verify</Text>
-                                <Switch
-                                  checked={ver as boolean}
-                                  onChange={(e) =>
-                                    updateObligationSource(index, {
-                                      ver: e.currentTarget.checked,
-                                    })
-                                  }
-                                  disabled={!inc}
-                                  size="xs"
-                                  color="brand"
-                                />
-                              </Group>
-                              <Group gap={4}>
-                                <Text fz={9} c="slate.5">Include</Text>
-                                <Switch
-                                  checked={inc as boolean}
-                                  onChange={(e) =>
-                                    updateObligationSource(index, {
-                                      inc: e.currentTarget.checked,
-                                    })
-                                  }
-                                  size="xs"
-                                  color="brand"
-                                />
-                              </Group>
-                            </Group>
-                          </Group>
-                        );
-                      })}
-                    </Stack>
-
                     <Paper mt="sm" px={8} py={6} radius="sm" style={{ background: "var(--mantine-color-brand-0)", border: "1px solid var(--mantine-color-brand-1)" }}>
                       <Text fz={10} c="brand.7" fw={500}>
                         <b>Formula:</b> Qualifying monthly EMI/debt payments ÷ Monthly income × 100
                       </Text>
                     </Paper>
                   </Paper>
-
                 </SimpleGrid>
+
+                <Box mb="xs">
+                  <Table verticalSpacing={4} fz={11} highlightOnHover>
+                    <Table.Thead style={{ background: "transparent" }}>
+                      <Table.Tr>
+                        <Table.Th
+                          style={{
+                            borderColor: "transparent",
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: "var(--mantine-color-slate-5)",
+                            textTransform: "none",
+                            paddingLeft: 8,
+                          }}
+                        >
+                          Obligation Source
+                        </Table.Th>
+                        <Table.Th
+                          style={{
+                            borderColor: "transparent",
+                            width: "50%",
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: "var(--mantine-color-slate-5)",
+                            textTransform: "none",
+                          }}
+                        >
+                          Consider %
+                        </Table.Th>
+                        <Table.Th
+                          style={{
+                            borderColor: "transparent",
+                            width: 60,
+                            textAlign: "center",
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: "var(--mantine-color-slate-5)",
+                            textTransform: "none",
+                          }}
+                        >
+                          Verify
+                        </Table.Th>
+                        <Table.Th
+                          style={{
+                            borderColor: "transparent",
+                            width: 70,
+                            textAlign: "center",
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: "var(--mantine-color-slate-5)",
+                            textTransform: "none",
+                          }}
+                        >
+                          Included
+                        </Table.Th>
+                        <Table.Th style={{ borderColor: "transparent", width: 36 }}></Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {obligationSources.map((obs, index) => {
+                        const Icon =
+                          obs.name === "Existing Monthly EMI"
+                            ? IconMath
+                            : obs.name === "Other Monthly Debt"
+                              ? IconDots
+                              : obs.name === "Rental Obligation"
+                                ? IconBuilding
+                                : IconDots;
+                        return (
+                          <Table.Tr key={obs.name}>
+                            <Table.Td
+                              style={{
+                                borderColor: "var(--mantine-color-slate-1)",
+                                paddingLeft: 8,
+                              }}
+                            >
+                              <Group gap={8}>
+                                <Icon size={12} color="var(--mantine-color-slate-5)" />
+                                <Text fz={11} fw={500} c="slate.8">
+                                  {obs.name}
+                                </Text>
+                              </Group>
+                            </Table.Td>
+                            <Table.Td
+                              style={{
+                                borderColor: "var(--mantine-color-slate-1)",
+                                width: "50%",
+                              }}
+                            >
+                              <Group gap={12} wrap="nowrap" align="center">
+                                <Slider
+                                  value={obs.pct}
+                                  onChange={(v) =>
+                                    updateObligationSource(index, { pct: v })
+                                  }
+                                  disabled={!obs.inc}
+                                  min={0}
+                                  max={100}
+                                  style={{ flex: 1 }}
+                                  size="xs"
+                                  color="brand"
+                                  label={(v) => `${v}%`}
+                                />
+                                <Text fz={10} fw={600} c="slate.7" w={28}>
+                                  {obs.pct}%
+                                </Text>
+                              </Group>
+                            </Table.Td>
+                            <Table.Td
+                              style={{
+                                borderColor: "var(--mantine-color-slate-1)",
+                                textAlign: "center",
+                                width: 60,
+                              }}
+                            >
+                              <Switch
+                                checked={obs.ver}
+                                onChange={(e) =>
+                                  updateObligationSource(index, {
+                                    ver: e.currentTarget.checked,
+                                  })
+                                }
+                                disabled={!obs.inc}
+                                size="xs"
+                                color="brand"
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "center",
+                                }}
+                              />
+                            </Table.Td>
+                            <Table.Td
+                              style={{
+                                borderColor: "var(--mantine-color-slate-1)",
+                                textAlign: "center",
+                                width: 70,
+                              }}
+                            >
+                              <Switch
+                                checked={obs.inc}
+                                onChange={(e) =>
+                                  updateObligationSource(index, {
+                                    inc: e.currentTarget.checked,
+                                  })
+                                }
+                                size="xs"
+                                color="brand"
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "center",
+                                }}
+                              />
+                            </Table.Td>
+                            <Table.Td
+                              style={{
+                                borderColor: "var(--mantine-color-slate-1)",
+                                textAlign: "center",
+                                width: 36,
+                                paddingRight: 8,
+                              }}
+                            >
+                              <ActionIcon variant="subtle" color="slate.4" size="sm">
+                                <IconTrash size={12} />
+                              </ActionIcon>
+                            </Table.Td>
+                          </Table.Tr>
+                        );
+                      })}
+                    </Table.Tbody>
+                  </Table>
+                </Box>
               </Box>
             )}
 
@@ -2536,100 +2506,113 @@ export function CreateRule({ onExit }: { onExit: () => void }) {
             )}
 
             {/* 6 — Eligibility Formula */}
+            {/* 6 — Eligibility Formula */}
             {step === 6 && (
               <Box>
                 <Group justify="space-between" align="flex-start" mb="sm">
                   <SectionHead
-                    title="Eligibility Formula"
+                    title="Eligibility formula"
                     description="The eligible amount is always the lowest of the limits below. Values update live."
                   />
                 </Group>
-                <Paper px="sm" py="sm" mb="sm" radius="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", background: "var(--mantine-color-slate-0)" }}>
-                  <Text fz={11} fw={700} c="slate.8" mb={6}>Affordability controls</Text>
-                  <SimpleGrid cols={2} spacing="sm">
-                    <Field label="Affordability buffer" hint="Percentage of calculated repayment capacity retained after the affordability assessment." required>
-                      <TextInput type="number" value={formulaParams.affordabilityBuffer} onChange={(e) => setFormulaParam("affordabilityBuffer")(Number(e.currentTarget.value || 0))} rightSection={<Text fz={9} c="slate.5">%</Text>} rightSectionWidth={22} size="xs" />
-                    </Field>
-                    <Box>
-                      <Text fz={10} fw={600} c="slate.5" tt="uppercase" mb={3}>Current formula inputs</Text>
-                      <Text fz={11} c="slate.6">Max EMI ratio {formulaParams.maxEmiRatio}% · Max DTI {formulaParams.maxDtiRatio}%</Text>
-                    </Box>
-                  </SimpleGrid>
-                </Paper>
-                <Stack gap={0}>
-                  {FORMULA_ITEMS.map(([name, formula], i, arr) => {
-                    return (
-                      <Box key={name}>
-                        <Paper
-                          px="sm"
-                          py={7}
-                          radius="sm"
-                          style={{
-                            border: `1px solid var(--mantine-color-slate-2)`,
-                            background: "var(--mantine-color-white)",
-                          }}
-                        >
-                          <Group justify="space-between" wrap="nowrap">
-                            <Group gap="sm" wrap="nowrap">
-                              <ThemeIcon
-                                size={18}
-                                radius="sm"
-                                variant="light"
-                                color="brand"
-                              >
-                                <Text fz={9} fw={700}>
-                                  {i + 1}
-                                </Text>
-                              </ThemeIcon>
-                              <Box>
-                                <Text fz="xs" fw={600} c="slate.8">
-                                  {name}
-                                </Text>
-                                <Text fz={9} c="slate.4" ff="monospace">
-                                  {formula}
-                                </Text>
-                              </Box>
-                            </Group>
-                          </Group>
-                        </Paper>
-                        {i < arr.length - 1 && (
-                          <Group justify="center" py={2}>
-                            <IconChevronDown
-                              size={12}
-                              color="var(--mantine-color-slate-4)"
-                            />
-                          </Group>
-                        )}
-                      </Box>
-                    );
-                  })}
-                </Stack>
+
+                <Group gap="md" mb="md" align="center">
+                  <Group gap={8}>
+                    <Text fz={11} c="slate.6" fw={500}>
+                      Affordability buffer
+                    </Text>
+                    <TextInput
+                      type="number"
+                      w={64}
+                      value={formulaParams.affordabilityBuffer}
+                      onChange={(e) =>
+                        setFormulaParam("affordabilityBuffer")(
+                          Number(e.currentTarget.value || 0),
+                        )
+                      }
+                      rightSection={
+                        <Text fz={9} c="slate.5">
+                          %
+                        </Text>
+                      }
+                      rightSectionWidth={22}
+                      size="xs"
+                      styles={{ input: { minHeight: 28, height: 28 } }}
+                    />
+                  </Group>
+
+                  <Divider orientation="vertical" color="slate.2" />
+
+                  <Text fz={11} c="slate.6" fw={500}>
+                    Max EMI ratio {formulaParams.maxEmiRatio}% · Max DSR {formulaParams.maxDtiRatio}%
+                  </Text>
+                </Group>
+
                 <Paper
-                  px="sm"
-                  py={8}
-                  mt="sm"
-                  radius="sm"
+                  radius="md"
                   style={{
-                    background:
-                      "linear-gradient(135deg, var(--mantine-color-brand-6) 0%, var(--mantine-color-brand-5) 100%)",
+                    border: "1px solid var(--mantine-color-slate-2)",
+                    background: "var(--mantine-color-white)",
+                    overflow: "hidden",
                   }}
                 >
-                  <Group justify="space-between">
-                    <Group gap={6}>
-                      <IconShieldCheck
-                        size={13}
-                        color="rgba(255,255,255,0.9)"
-                      />
-                      <Text fz="xs" fw={600} c="white">
-                        Final Eligible Amount = MIN(all limits above)
-                      </Text>
-                    </Group>
-                  </Group>
+                  <Stack gap={0}>
+                    {FORMULA_ITEMS.map(([name, formula], i, arr) => (
+                      <Box
+                        key={name}
+                        px="md"
+                        py="sm"
+                        style={{
+                          borderBottom:
+                            i < arr.length - 1
+                              ? "1px solid var(--mantine-color-slate-1)"
+                              : "none",
+                        }}
+                      >
+                        <Group wrap="nowrap" align="center">
+                          <Text
+                            fz={11}
+                            fw={700}
+                            c="brand.6"
+                            w={16}
+                            ta="center"
+                          >
+                            {i + 1}
+                          </Text>
+                          <Text fz="xs" fw={600} c="slate.8" w={140}>
+                            {name}
+                          </Text>
+                          <Text fz={11} c="slate.6" fw={500}>
+                            {formula}
+                          </Text>
+                        </Group>
+                      </Box>
+                    ))}
+                  </Stack>
+
+                  <Box p="xs" bg="slate.0" style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
+                    <Paper
+                      px="sm"
+                      py="xs"
+                      radius="md"
+                      style={{
+                        background: "var(--mantine-color-white)",
+                        border: "1px solid var(--mantine-color-slate-2)",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                      }}
+                    >
+                      <Group gap={8}>
+                        <IconShieldCheck size={14} color="var(--mantine-color-slate-8)" />
+                        <Text fz="xs" fw={600} c="slate.8">
+                          Final eligible amount = MIN(all limits above)
+                        </Text>
+                      </Group>
+                    </Paper>
+                  </Box>
                 </Paper>
-                <Text fz={10} c="slate.4" mt={4}>
-                  Worked example: Basic Salary ZMW 15,000 · Net Salary ZMW
-                  12,500 · Other Income ZMW 3,000 · Credit Score 735 · Tenure 24
-                  months.
+
+                <Text fz={10} c="slate.5" mt="sm">
+                  Worked example: basic salary ZMW 15,000 · net salary ZMW 12,500 · other income ZMW 3,000 · credit score 735 · tenure 24 months.
                 </Text>
               </Box>
             )}
@@ -3448,7 +3431,7 @@ function RuleSimulator({
   hardStops,
 }: {
   incomeSources: [string, number, boolean, boolean][];
-  obligationSources: [string, boolean, boolean][];
+  obligationSources: ObligationDef[];
   creditBands: CreditBand[];
   collateralItems: CollateralItem[];
   formulaParams: FormulaParams;
@@ -3461,7 +3444,8 @@ function RuleSimulator({
   });
   const [obligations, setObligations] = useState<Record<string, number>>({
     "Existing Monthly EMI": 2000,
-    "Existing Loan Balance": 20000,
+    "Rental Obligation": 0,
+    "Other Monthly Debt": 500,
   });
   const [collaterals, setCollaterals] = useState<Record<string, number>>({});
   const [creditScore, setCreditScore] = useState(735);
@@ -3471,7 +3455,7 @@ function RuleSimulator({
   const [npa, setNpa] = useState(false);
 
   const activeIncomes = incomeSources.filter((s) => s[3]);
-  const activeObligations = obligationSources.filter((s) => s[2]);
+  const activeObligations = obligationSources.filter((s) => s.inc);
 
   const setInc = (k: string) => (v: number | string) =>
     setIncomes((p) => ({ ...p, [k]: Number(v) || 0 }));
@@ -3485,15 +3469,11 @@ function RuleSimulator({
     0,
   );
   const existingEMI = activeObligations.reduce(
-    (sum, s) =>
-      sum +
-      (OBLIGATION_MAPPING[s[0]] === "monthlyPayment"
-        ? Number(obligations[s[0]] || 0)
-        : 0),
+    (sum, s) => sum + (s.inc ? Number(obligations[s.name] || 0) * (s.pct / 100) : 0),
     0,
   );
-  const existingBalance = activeObligations.reduce(
-    (sum, s) => sum + (OBLIGATION_MAPPING[s[0]] === "balance" ? Number(obligations[s[0]] || 0) : 0),
+  const existingDSR = activeObligations.reduce(
+    (sum, s) => sum + (s.inc ? Number(obligations[s.name] || 0) * (s.pct / 100) : 0),
     0,
   );
 
@@ -3509,12 +3489,6 @@ function RuleSimulator({
   const netSalaryValue = Number(incomes["Net Salary"] || 0);
   const creditLimit = netSalaryValue * creditMultiple;
 
-  const exposureRatio = Math.min(
-    existingBalance / (eligibleIncome * 12 || 1),
-    formulaParams.maxDtiRatio / 100
-  );
-  const exposureLimit = affordabilityLimit * (1 - exposureRatio);
-
   const collateralLimit = collateralItems.reduce((sum, item) => {
     return (
       sum +
@@ -3528,7 +3502,6 @@ function RuleSimulator({
     { name: "Income limit", value: incomeLimit },
     { name: "Affordability limit", value: affordabilityLimit },
     { name: "Credit limit", value: creditLimit },
-    { name: "Exposure limit", value: exposureLimit },
     ...(collateralItems.length > 0
       ? [{ name: "Collateral limit", value: collateralLimit }]
       : []),
@@ -3540,7 +3513,7 @@ function RuleSimulator({
   let decision = "Eligible";
 
   const risk = riskTier(creditScore, onTime, maxDPD, npa);
-  const existingDti = existingEMI / (eligibleIncome || 1);
+  const existingDti = existingDSR / (eligibleIncome || 1);
 
   if (npa && hardStops.some((h) => h.factor === "Active NPA")) {
     final = 0;
@@ -3568,7 +3541,7 @@ function RuleSimulator({
   } else if (existingDti > formulaParams.maxDtiRatio / 100) {
     final = 0;
     decision = "Decline";
-    limitingFactor = "DTI Limit";
+    limitingFactor = "DSR Limit";
   }
 
   const sampleTier = TIERS.find((t) => t.label === risk.label);
@@ -3627,7 +3600,7 @@ function RuleSimulator({
               <Text fz="md" fw={700} c="slate.8" mb="sm">Existing obligations</Text>
               <SimpleGrid cols={2} spacing="sm">
                 {activeObligations.map((s) => (
-                  <SimField key={s[0]} label={s[0]} value={obligations[s[0]] || 0} onChange={setObl(s[0])} />
+                  <SimField key={s.name} label={s.name} value={obligations[s.name] || 0} onChange={setObl(s.name)} />
                 ))}
               </SimpleGrid>
             </Paper>
@@ -3680,14 +3653,14 @@ function RuleSimulator({
           </Box>
 
           <Paper px={8} py={7} mb="sm" radius="sm" style={{ border: "1px solid var(--mantine-color-slate-2)", background: "var(--mantine-color-slate-0)" }}>
-            <Text fz={10} fw={700} c="slate.6" mb={4}>Debt and DTI calculation</Text>
+            <Text fz={10} fw={700} c="slate.6" mb={4}>Debt Service Ratio (DSR) calculation</Text>
             <Group justify="space-between" gap="xs">
-              <Text fz={11} c="slate.6">Total monthly debt = {Math.round(existingEMI).toLocaleString()} ZMW</Text>
+              <Text fz={11} c="slate.6">Total qualifying monthly debt = {Math.round(existingDSR).toLocaleString()} ZMW</Text>
               <Text fz={11} fw={700} c={existingDti <= formulaParams.maxDtiRatio / 100 ? "green.7" : "red.7"}>
-                DTI = {((existingDti || 0) * 100).toFixed(1)}% / {formulaParams.maxDtiRatio}%
+                DSR = {((existingDti || 0) * 100).toFixed(1)}% / {formulaParams.maxDtiRatio}%
               </Text>
             </Group>
-            <Text fz={9} c="slate.5" mt={3}>Total monthly debt is the sum of included monthly-payment obligations. Balances are shown separately and are used for exposure.</Text>
+            <Text fz={9} c="slate.5" mt={3}>Includes parameters checked for DSR, adjusted by their consider percentage.</Text>
           </Paper>
 
           {/* Limiting factor */}

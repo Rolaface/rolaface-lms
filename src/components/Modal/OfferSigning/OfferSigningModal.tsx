@@ -28,7 +28,6 @@ import {
   IconSignature,
   IconCheck,
   IconX,
-  IconPaperclip,
   IconChevronUp,
   IconAlertTriangle,
   IconCircleCheck,
@@ -535,6 +534,10 @@ function OfferPendingView({
   );
 }
 
+const amendLabelStyles = {
+  label: { fontSize: 12, fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 },
+};
+
 function OfferWorkspace() {
   const [offerStatus, setOfferStatus] = useState("pending"); // pending | accepted | rejected | amendment
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -662,74 +665,67 @@ function OfferWorkspace() {
       )}
 
       {offerStatus === "pending" && showAmendForm && (
-        <Paper withBorder radius="md" bg="white" mb="sm">
-          <Box p="sm" pb="md" >
-            <Group gap={4} mb="sm">
-               <ActionIcon variant="default" size="lg" radius="md" onClick={() => setShowAmendForm(false)}>
-                  <IconArrowLeft size={16} color="var(--mantine-color-slate-7)" />
-                </ActionIcon>
-              <Text p="sm" fz={15} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: 0.5 }}>Request Amendment</Text>
-            </Group>
-          </Box>
-          
-          <Box p="sm">
+        <Paper withBorder radius="md" bg="white" mb="sm" style={{ overflow: "hidden" }}>
+          <Group gap={10} px="md" py={10} wrap="nowrap" style={{ background: "linear-gradient(90deg, var(--mantine-color-indigo-0), white)", borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+            <ActionIcon variant="default" size="md" radius="md" onClick={() => setShowAmendForm(false)} aria-label="Back to offer">
+              <IconArrowLeft size={15} color="var(--mantine-color-slate-7)" />
+            </ActionIcon>
+            <ThemeIcon radius="md" size={30} variant="light" color="indigo">
+              <IconPencil size={15} />
+            </ThemeIcon>
+            <Box>
+              <Text fz={14} fw={700} c="slate.9">Request amendment</Text>
+              <Text fz={11.5} c="slate.5">Capture the change and route the application back for review.</Text>
+            </Box>
+          </Group>
+
+          <Box p="md">
             <SimpleGrid cols={3} spacing="sm" mb="sm">
-              <Select 
-                label={<Text fz={13} fw={700} c="slate.8" mb={6}>What is changing</Text>} 
-                value={amendField} 
-                onChange={(v) => setAmendField(v || AMEND_FIELDS[0])} 
-                data={AMEND_FIELDS} 
+              <Select
+                label="What is changing"
+                value={amendField}
+                onChange={(v) => setAmendField(v || AMEND_FIELDS[0])}
+                data={AMEND_FIELDS}
                 radius="md"
-                size="md" 
+                allowDeselect={false}
+                styles={amendLabelStyles}
               />
-              
               <TextInput
-                label={
-                  <Text fz={13} fw={700} c="slate.8" mb={6}>
-                    {amendField === "Requested amount" ? "Requested Amount" : amendField === "Other terms" ? "Other Terms" : `Requested ${amendField}`}
-                  </Text>
-                }
+                label={amendField === "Requested amount" ? "Requested Amount" : amendField === "Other terms" ? "Other Terms" : `Requested ${amendField}`}
                 placeholder={`Enter new ${amendField.toLowerCase()}`}
                 radius="md"
-                size="md"
+                styles={amendLabelStyles}
               />
-
-              <Select 
-                label={<Text fz={13} fw={700} c="slate.8" mb={6}>Route back to</Text>} 
-                value={amendRoute} 
-                onChange={(v) => setAmendRoute(v || ROUTE_STAGES[0])} 
-                data={ROUTE_STAGES} 
-                radius="md" 
-                size="md"
+              <Select
+                label="Route back to"
+                value={amendRoute}
+                onChange={(v) => setAmendRoute(v || ROUTE_STAGES[0])}
+                data={ROUTE_STAGES}
+                radius="md"
+                allowDeselect={false}
+                styles={amendLabelStyles}
               />
             </SimpleGrid>
-            
-            <Textarea 
-              label={<Text fz={13} fw={700} c="slate.8" mb={6}>Describe the requested change</Text>} 
-              value={amendDetail} 
-              onChange={(e) => setAmendDetail(e.currentTarget.value)} 
-              placeholder="e.g. Customer wants tenure extended to 36 months to lower the installment." 
-              radius="md" 
-              size="md"
-              minRows={5}
-              mb="xl"
-            />
-            
-            <Group justify="space-between" align="center" mb="md">
-              <Group gap={10}>
-                <IconPaperclip size={18} color="var(--mantine-color-slate-4)" />
-                <Text fz={13} c="slate.5">Supporting document (optional)</Text>
-              </Group>
-              <UnstyledButton>
-                <Text fz={13} fw={700} c="indigo.7">Attach file</Text>
-              </UnstyledButton>
-            </Group>
 
-            <Group justify="flex-end" mt={32}>
-              <Button variant="default" radius="md" onClick={() => setShowAmendForm(false)}>Cancel</Button>
-              <Button color="indigo" radius="md" disabled={!amendDetail.trim()} onClick={() => setOfferStatus("amendment")}>Submit revisions</Button>
-            </Group>
+            <Textarea
+              label="Describe the requested change"
+              value={amendDetail}
+              onChange={(e) => setAmendDetail(e.currentTarget.value)}
+              placeholder="e.g. Customer wants tenure extended to 36 months to lower the installment."
+              radius="md"
+              autosize
+              minRows={3}
+              maxRows={6}
+              styles={amendLabelStyles}
+            />
           </Box>
+
+          <Group justify="flex-end" gap={8} px="md" py={10} bg="slate.0" style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
+            <Button variant="default" radius="md" size="sm" onClick={() => setShowAmendForm(false)}>Cancel</Button>
+            <Button color="indigo" radius="md" size="sm" disabled={!amendDetail.trim()} onClick={() => setOfferStatus("amendment")} rightSection={<IconSend size={14} />}>
+              Submit revisions
+            </Button>
+          </Group>
         </Paper>
       )}
 
