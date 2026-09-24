@@ -21,6 +21,7 @@ function unwrap<T>(envelope: FrappeEnvelope<T> | undefined, fallbackMsg: string)
 
 export const RESTRUCTURE_STATUSES = ["Initiated", "Approved", "Draft", "Cancelled"] as const;
 export type LoanRestructureStatus = (typeof RESTRUCTURE_STATUSES)[number];
+const LOAN_ACCOUNT_STATUSES = ["Partially Disbursed", "Disbursed"] as const;  
 
 export interface LoanRestructureCharge {
   name?: string;
@@ -173,7 +174,13 @@ export async function searchLoanRepaymentAccounts(
   if (!searchTerm.trim()) return [];
   const resp: AxiosResponse<{ message: FrappeEnvelope<LoanRepaymentAccount[]> }> = await apiClient.get(
     API.loanRestructure.search,
-   { params: { search_term: searchTerm, initiated_restructure: true } }
+    {
+      params: {
+        search_term: searchTerm,
+        initiated_restructure: true,
+        status: JSON.stringify(LOAN_ACCOUNT_STATUSES),  
+      },
+    }
   );
   return unwrap(resp.data?.message, "Failed to search loan accounts.") ?? [];
 }
