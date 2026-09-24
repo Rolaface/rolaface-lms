@@ -22,7 +22,8 @@ import {
   IconFileInvoice,
   IconUsers,
   IconArrowRight,
-  IconMinus,IconCheck
+  IconMinus,IconCheck,
+  IconHomeDollar
 } from "@tabler/icons-react";
 import { PersonalBusinessInfoStep } from "./PersonalBusinessInfoStep";
 import { ResidenceEmploymentStep } from "./ResidenceEmploymentStep";
@@ -46,6 +47,7 @@ import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { ApplicationSummary } from "./ApplicationSummary";
 import { EmploymentDetails } from "./EmploymentDetails";
 import { Applicant } from "./Applicant";
+import { Collateral, type CollateralEntry } from "./Collateral";
 
 export type LoanType = "Personal" | "Business";
 
@@ -126,6 +128,7 @@ export interface LoanApplicationValues {
   directorDocuments: DirectorDocEntry[];
   loanAmount: number;
   tenureMonths: number | "";
+    collaterals: CollateralEntry[];
 }
 
 const nextId = () => Math.random().toString(36).slice(2, 10);
@@ -197,6 +200,7 @@ const INITIAL_VALUES: LoanApplicationValues = {
   directorsDocunentCount: "",
   loanAmount: 4000,
   tenureMonths: 6,
+    collaterals: [],
 };
 
 const LOAN_RANGE: Record<LoanType, { min: number; max: number }> = {
@@ -207,27 +211,30 @@ const LOAN_RANGE: Record<LoanType, { min: number; max: number }> = {
 const STEP_LABELS: Record<LoanType, string[]> = {
   Personal: [
     "Customer & Loan",
-    "Eligibility & Simulation",
+   
     "Applicant information",
     "Residence Details",
     "Employment Details",
+    "Collateral Details",
     "Documents",
     "Review",
+    "Simulation",
   ],
   Business: [
     "Customer & Loan",
-    "Eligibility & Simulation",
     "Business information",
     "Directors Details",
     "Applicant Details",
+    "Collateral Details",
     "Documents",
     "Review",
+    "Simulation",
   ],
 };
 
 const STEP_ICONS: Record<LoanType, React.FC<any>[]> = {
-  Personal: [IconUsers, IconFileInvoice, IconUser, IconBriefcase, IconBriefcase, IconFileText, IconCheck],
-  Business: [IconUsers, IconFileInvoice, IconBuilding, IconBuilding,IconUsers, IconFileText, IconCheck],
+  Personal: [IconUsers, IconUser, IconBriefcase, IconBriefcase, IconHomeDollar,IconFileText, IconCheck,IconFileInvoice],
+  Business: [IconUsers, IconBuilding, IconBuilding, IconUsers, IconHomeDollar, IconFileText, IconCheck, IconFileInvoice],
 };
 
 function buildPersonalPayload(
@@ -441,6 +448,7 @@ export function LoanApplicationModal({
 }: LoanApplicationModalProps) {
   const originalDocumentUrls = useRef<Record<string, string>>({});
   const [directorsError, setDirectorsError] = useState<string | null>(null);
+  const [collateralsError, setCollateralsError] = useState<string | null>(null);
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
   const queryClient = useQueryClient();
   const [activeStep, setActiveStep] = useState(0);
@@ -709,6 +717,7 @@ export function LoanApplicationModal({
     form.resetDirty(INITIAL_VALUES);
     setDirectorDocsError(null);
     setDirectorsError(null);
+    setCollateralsError(null);
     setActiveStep(0);
   };
 
@@ -1124,8 +1133,6 @@ export function LoanApplicationModal({
       case 0:
         return <CustomerLoanStep form={form} readOnly={readOnly} />;
       case 1:
-        return <EligibilitySimulationStep form={form} readOnly={readOnly} />;
-      case 2:
         return (
           <PersonalBusinessInfoStep
             form={form}
@@ -1133,7 +1140,7 @@ export function LoanApplicationModal({
             readOnly={readOnly}
           />
         );
-      case 3:
+      case 2:
         return (
           <ResidenceEmploymentStep
             form={form}
@@ -1142,12 +1149,14 @@ export function LoanApplicationModal({
             readOnly={readOnly}
           />
         );
-      case 4:
+      case 3:
         return loanType === "Personal" ? (
           <EmploymentDetails form={form} readOnly={readOnly} />
         ) : (
           <Applicant form={form} readOnly={readOnly} />
         );
+      case 4:
+        return <Collateral form={form} collateralsError={collateralsError} readOnly={readOnly} />;
       case 5:
         return (
           <DocumentsStep
@@ -1160,6 +1169,8 @@ export function LoanApplicationModal({
         );
       case 6:
         return <Review form={form} loanType={loanType} />;
+      case 7:
+        return <EligibilitySimulationStep form={form} readOnly={readOnly} />;
       default:
         return null;
     }

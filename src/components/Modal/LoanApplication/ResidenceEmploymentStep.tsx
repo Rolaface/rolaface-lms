@@ -164,7 +164,7 @@ if (loanType === "Personal") {
           placeholder="Select relationship"
           data={RELATIONSHIPS}
           {...form.getInputProps("kinRelationship")}
-          style={{ gridColumn: "1 / -1" }}
+          // style={{ gridColumn: "1 / -1" }}
           disabled={readOnly}
         />
       </SimpleGrid>
@@ -227,7 +227,7 @@ if (loanType === "Personal") {
     <>
       <Stack gap="sm">
           {/* Directors Section */}
-        <Box p="xl" bd="1px solid var(--mantine-color-slate-2)" style={{ borderRadius: "var(--mantine-radius-md)" }}>
+        {/* <Box p="xl" bd="1px solid var(--mantine-color-slate-2)" style={{ borderRadius: "var(--mantine-radius-md)" }}> */}
           <Group justify="space-between" align="flex-start" mb="xs">
             <Box>
               <Group gap="xs" align="center">
@@ -261,7 +261,7 @@ if (loanType === "Personal") {
             )}
           </Group>
 
-          <Box style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", margin: "20px 0" }} />
+          {/* <Box style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", margin: "20px 0" }} /> */}
 
          <Stack gap="sm">
             {directors.map((dir, idx) => {
@@ -416,7 +416,7 @@ if (loanType === "Personal") {
               );
             })}
           </Stack>
-        </Box>
+        {/* </Box> */}
        </Stack>
     </>
   );
