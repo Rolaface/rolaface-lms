@@ -91,19 +91,18 @@ export interface AssignmentRow {
   productCode: string;
 }
 
-export type MatchMode = "first" | "manual" | "all";
+export type MatchMode = "first" | "manual";
 
 export const MATCH_MODES: { value: MatchMode; label: string }[] = [
   { value: "first", label: "First match only" },
   { value: "manual", label: "Manual review" },
-  { value: "all", label: "All matches" },
 ];
 
 export type Fallback = "manual" | "default";
 
 export const FALLBACKS: { value: Fallback; label: string }[] = [
   { value: "manual", label: "Manual review" },
-  { value: "default", label: "Assign default product" },
+  { value: "default", label: "Loan type default" },
 ];
 
 export const uid = (): string => Math.random().toString(36).slice(2, 9);

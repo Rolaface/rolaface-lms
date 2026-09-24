@@ -38,6 +38,7 @@ import {
   IconShieldCog,
   IconStack2,
   IconTrash,
+  IconUserSearch,
   IconWorldWww,
   IconX,
   type Icon,
@@ -76,7 +77,7 @@ interface Config {
   rows: AssignmentRow[];
   matchMode: MatchMode;
   fallback: Fallback;
-  defaultProduct: string;
+  defaultByLoanType: Record<string, string>;
 }
 
 const c = (variable: string, operator: Operator, value: string): Clause => ({ id: uid(), variable, operator, value });
@@ -85,8 +86,8 @@ const named = (name: string, group: ConditionGroup): ConditionGroup => ({ ...gro
 
 const SEED: Config = {
   matchMode: "first",
-  fallback: "manual",
-  defaultProduct: "",
+  fallback: "default",
+  defaultByLoanType: { Personal: "PL-SAL", Business: "SME-WC", Auto: "AL-USED" },
   rows: [
     { id: "r1", sources: ["Branch"], loanTypes: ["Personal"], join: "AND", groups: [g("AND", c("customer_type", "=", "Staff"))], productCode: "PL-STF" },
     {
@@ -640,6 +641,71 @@ function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onCh
   );
 }
 
+const MANUAL = "manual";
+
+function LoanTypeDefault({ loanType, value, onChange, first }: { loanType: string; value: string; onChange: (code: string) => void; first: boolean }) {
+  const product = productByCode(value);
+  const tone = LOAN_TONE[loanType] ?? "slate";
+
+  return (
+    <Group
+      gap={10}
+      wrap="nowrap"
+      px={10}
+      py={6}
+      style={{ borderTop: first ? undefined : "1px solid var(--mantine-color-slate-2)", borderLeft: `3px solid var(--mantine-color-${product ? tone : "slate"}-${product ? 4 : 2})` }}
+    >
+      <Group gap={7} wrap="nowrap" w={92} style={{ flexShrink: 0 }}>
+        <OptionMark kind="loanType" value={loanType} />
+        <Text fz={12.5} fw={600} c="slate.8" truncate>
+          {loanType}
+        </Text>
+      </Group>
+      <Select
+        aria-label={`Default product for ${loanType}`}
+        data={[{ value: MANUAL, label: "Manual review" }, ...productsFor([loanType]).map((p) => ({ value: p.code, label: p.name }))]}
+        value={product ? product.code : MANUAL}
+        onChange={(v) => onChange(v && v !== MANUAL ? v : "")}
+        allowDeselect={false}
+        comboboxProps={{ withinPortal: false }}
+        leftSection={product ? <span style={codeBadge}>{product.code}</span> : <IconUserSearch size={14} />}
+        leftSectionWidth={product ? 70 : 30}
+        leftSectionPointerEvents="none"
+        renderOption={({ option, checked }) => (
+          <Group gap={8} wrap="nowrap" style={{ flex: 1 }}>
+            {option.value === MANUAL ? (
+              <Box w={56} style={{ display: "flex", color: "var(--mantine-color-slate-5)" }}>
+                <IconUserSearch size={14} />
+              </Box>
+            ) : (
+              <Text fz={10} fw={700} c="brand.8" w={56} style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
+                {option.value}
+              </Text>
+            )}
+            <Text fz={12.5} fw={checked ? 600 : 400} c={option.value === MANUAL ? "slate.6" : "slate.8"}>
+              {option.label}
+            </Text>
+          </Group>
+        )}
+        styles={{
+          input: {
+            height: 28,
+            minHeight: 28,
+            fontSize: 12,
+            borderRadius: 8,
+            paddingLeft: product ? 72 : 30,
+            fontWeight: product ? 600 : 400,
+            color: product ? "var(--mantine-color-slate-8)" : "var(--mantine-color-slate-5)",
+            background: "var(--mantine-color-white)",
+          },
+          section: { color: "var(--mantine-color-slate-4)" },
+        }}
+        style={{ flex: 1, minWidth: 0 }}
+      />
+    </Group>
+  );
+}
+
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
     <Text fz={12} fw={500} c="slate.6" mb={5}>
@@ -728,7 +794,15 @@ export function LoanProductAssignment() {
   const resetPage = () => setPagination((p) => ({ ...p, pageIndex: 0 }));
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
-  const defaultMissing = draft.fallback === "default" && !productByCode(draft.defaultProduct);
+  const defaultCount = LOAN_TYPES.filter((lt) => productByCode(draft.defaultByLoanType[lt] ?? "")).length;
+  const defaultMissing = draft.fallback === "default" && defaultCount === 0;
+  const setLoanTypeDefault = (loanType: string, code: string) =>
+    setDraft((d) => {
+      const next = { ...d.defaultByLoanType };
+      if (code) next[loanType] = code;
+      else delete next[loanType];
+      return { ...d, defaultByLoanType: next };
+    });
   const errorCount = rows.filter((r) => rowError(r)).length + (defaultMissing ? 1 : 0);
 
   const updateRow = (id: string, patch: Partial<AssignmentRow>) => setDraft((d) => ({ ...d, rows: d.rows.map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
@@ -852,7 +926,7 @@ export function LoanProductAssignment() {
           </Stack>
         </Group>
         <Group gap={8}>
-          <Popover position="bottom-end" width={320} shadow="md" radius="md" withinPortal>
+          <Popover position="bottom-end" width={400} shadow="md" radius="md" withinPortal>
             <Popover.Target>
               <Button
                 size="sm"
@@ -885,31 +959,47 @@ export function LoanProductAssignment() {
                   comboboxProps={{ withinPortal: false }}
                   styles={{ input: FIELD.input, label: { fontSize: 12, fontWeight: 500, marginBottom: 4 } }}
                 />
-                <Select
-                  label="If nothing matches"
-                  data={FALLBACKS}
-                  value={draft.fallback}
-                  onChange={(v) => v && setDraft((d) => ({ ...d, fallback: v as Fallback }))}
-                  allowDeselect={false}
-                  comboboxProps={{ withinPortal: false }}
-                  styles={{ input: FIELD.input, label: { fontSize: 12, fontWeight: 500, marginBottom: 4 } }}
-                />
-                {draft.fallback === "default" && (
-                  <Select
-                    label="Default product"
-                    placeholder="Choose default product"
-                    data={LOAN_TYPES.map((lt) => ({
-                      group: lt,
-                      items: productsFor([lt]).map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })),
-                    }))}
-                    value={draft.defaultProduct || null}
-                    onChange={(v) => setDraft((d) => ({ ...d, defaultProduct: v ?? "" }))}
-                    allowDeselect={false}
-                    searchable
-                    error={defaultMissing ? "Required when no rule matches" : undefined}
-                    comboboxProps={{ withinPortal: false }}
-                    styles={{ input: FIELD.input, label: { fontSize: 12, fontWeight: 500, marginBottom: 4 } }}
+                <Box>
+                  <Text fz={12} fw={500} c="slate.7" mb={4}>
+                    If nothing matches
+                  </Text>
+                  <SegmentedControl
+                    fullWidth
+                    size="xs"
+                    radius="md"
+                    color="brand"
+                    data={FALLBACKS}
+                    value={draft.fallback}
+                    onChange={(v) => setDraft((d) => ({ ...d, fallback: v as Fallback }))}
+                    styles={{ label: { fontSize: 12, fontWeight: 600 } }}
                   />
+                </Box>
+                {draft.fallback === "default" ? (
+                  <Box>
+                    <Group justify="space-between" align="baseline" mb={6}>
+                      <Text fz={12} fw={500} c="slate.7">
+                        Default product per loan type
+                      </Text>
+                      <Text fz={11} fw={600} c={defaultMissing ? "danger.6" : "brand.6"}>
+                        {defaultCount} of {LOAN_TYPES.length} set
+                      </Text>
+                    </Group>
+                    <Box style={{ borderRadius: 10, border: `1px solid var(--mantine-color-${defaultMissing ? "danger-3" : "slate-2"})`, background: "var(--mantine-color-slate-0)" }}>
+                      {LOAN_TYPES.map((lt, i) => (
+                        <LoanTypeDefault key={lt} loanType={lt} first={i === 0} value={draft.defaultByLoanType[lt] ?? ""} onChange={(code) => setLoanTypeDefault(lt, code)} />
+                      ))}
+                    </Box>
+                    <Text fz={11} c={defaultMissing ? "danger.6" : "slate.5"} mt={6}>
+                      {defaultMissing ? "Choose a default product for at least one loan type." : "Loan types left on manual review go to a reviewer."}
+                    </Text>
+                  </Box>
+                ) : (
+                  <Group gap={8} wrap="nowrap" px={10} py={8} style={{ borderRadius: 10, background: "var(--mantine-color-slate-0)" }}>
+                    <IconUserSearch size={15} color="var(--mantine-color-slate-5)" style={{ flexShrink: 0 }} />
+                    <Text fz={11.5} c="slate.6">
+                      Unmatched applications go to a reviewer to pick the product.
+                    </Text>
+                  </Group>
                 )}
               </Stack>
             </Popover.Dropdown>
@@ -922,7 +1012,7 @@ export function LoanProductAssignment() {
               Discard
             </Button>
           )}
-          <Tooltip label={defaultMissing && errorCount === 1 ? "Choose the default product first" : `Fix ${errorCount} ${errorCount === 1 ? "issue" : "issues"} first`} disabled={errorCount === 0} withinPortal>
+          <Tooltip label={defaultMissing && errorCount === 1 ? "Choose a loan type default first" : `Fix ${errorCount} ${errorCount === 1 ? "issue" : "issues"} first`} disabled={errorCount === 0} withinPortal>
             <Box>
               <Button
                 size="sm"
