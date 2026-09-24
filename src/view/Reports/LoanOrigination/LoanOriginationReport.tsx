@@ -171,8 +171,12 @@ function formatNumber(value: number) {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
-function formatCompactCurrency(value: number) {
-  return formatNumber(value);
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "ZMW",
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(value) ? value : 0);
 }
 
 function sortIcon(sorted: false | "asc" | "desc") {
@@ -395,7 +399,7 @@ export function LoanOriginationReport() {
     const approved = filteredRows.filter(
       (row) => effectiveStatus(row) === "Approved",
     ).length;
-    const requestedAmount = filteredRows.reduce(
+    const disbursedAmount = filteredRows.reduce(
       (sum, row) => sum + (Number(row.amount) || 0),
       0,
     );
@@ -404,7 +408,7 @@ export function LoanOriginationReport() {
       total,
       review,
       approved,
-      requestedAmount,
+      disbursedAmount,
     };
   }, [filteredRows]);
 
@@ -482,7 +486,7 @@ export function LoanOriginationReport() {
               whiteSpace: "nowrap",
             }}
           >
-            {formatCompactCurrency(Number(row.original.amount) || 0)}
+            {formatCurrency(Number(row.original.amount) || 0)}
           </Text>
         ),
       }),
@@ -765,7 +769,7 @@ export function LoanOriginationReport() {
           }}
         >
           <SummaryCard
-            label="Applications"
+            label="Total Applications"
             value={formatNumber(summary.total)}
             hint="Matching current filters"
           />
@@ -780,8 +784,8 @@ export function LoanOriginationReport() {
             hint="Current filtered result"
           />
           <SummaryCard
-            label="Requested Amount"
-            value={formatCompactCurrency(summary.requestedAmount)}
+            label="Disbursed Amount"
+            value={formatCurrency(summary.disbursedAmount)}
             hint="Sum of application amounts"
           />
         </Box>
