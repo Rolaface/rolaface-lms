@@ -17,11 +17,12 @@ const EMPLOYMENT_TYPE_MAP: Record<string, string[]> = {
   "Others": ["Others"],
 };
 const DEFAULT_EMPLOYMENT_TYPES = ["Government", "Private", "Self-Employed", "Others"];
-const INCOME_TYPES = [ "Salary", "Business Income", "Rental Income", "Commission", "Agricultural Income", "Pension", "Investment Income", "Spouse Income",];
+const INCOME_TYPES = ["Net Salary", "Business Income", "Rental Income", "Other Income"];
 // const EMPLOYMENT_STATUSES = ["Salaried", "Self Employed", "Pensioner", "Others"];
 const EMPLOYMENT_TYPES = ["Government", "Private", "Self-Employed", "Other"];
 // const INCOME_TYPES = ["Salary", "Business", "Interest Income", "Rentals", "Others"];
 const EXPENSE_TYPES = [ "Medical", "Education", "Travel", "Rentals", "Others"];
+const OBLIGATION_TYPES = ["Existing Monthly EMI", "Other Monthly Debt"];
 
 const LABEL_STYLES = {
   label: { display: "flex", alignItems: "center", marginBottom: 4 },
@@ -51,12 +52,22 @@ export function EmploymentDetails({ form, readOnly = false }: EmploymentDetailsP
   const [incomes, setIncomes] = useState(
     INCOME_TYPES.map((type) => ({ type, amount: "" as number | string }))
   );
+  const [obligations, setObligations] = useState(
+    OBLIGATION_TYPES.map((type) => ({ type, amount: "" as number | string }))
+  );
 
   const updateIncomeAmount = (index: number, val: number | string) => {
     const newIncomes = [...incomes];
     newIncomes[index].amount = val;
     setIncomes(newIncomes);
     form.setFieldValue("monthlyIncome", newIncomes);
+  };
+
+  const updateObligationAmount = (index: number, val: number | string) => {
+    const newObligations = [...obligations];
+    newObligations[index].amount = val;
+    setObligations(newObligations);
+    form.setFieldValue("monthlyObligation", newObligations);
   };
 
   const currentStatus = form.values.employmentStatus;
@@ -159,8 +170,8 @@ return (
 {/* Income and Expense Tables */}
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm" style={{ gridColumn: "1 / -1", marginTop: "12px" }}>
 
-        {/* Monthly Income - Full Width, 2 Columns */}
-      <Box style={{ gridColumn: "1 / -1", marginTop: "12px" }}>
+        {/* Monthly Income - Left Side */}
+      <Box>
         <Box p="sm" bd="1px solid var(--mantine-color-gray-2)" style={{ borderRadius: "var(--mantine-radius-xl)" }}>
           <Group justify="space-between" mb="md">
             <Group gap="xs">
@@ -172,7 +183,7 @@ return (
             </Box>
           </Group>
 
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+         <SimpleGrid cols={1} spacing="md">
             {incomes.map((item, index) => (
               <Group key={item.type} wrap="nowrap" gap="xs">
                 <Select
@@ -212,6 +223,64 @@ return (
             <Text size="10px" fw={700} c="dimmed" style={{ letterSpacing: "0.5px" }}>GROSS MONTHLY INFLOW</Text>
             <Text size="sm" fw={800} c="dark.9">
               ZMW {incomes.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </Text>
+          </Group>
+        </Box>
+      </Box>
+
+        {/* Monthly Obligation - Right Side */}
+      <Box>
+        <Box p="sm" bd="1px solid var(--mantine-color-gray-2)" style={{ borderRadius: "var(--mantine-radius-xl)" }}>
+          <Group justify="space-between" mb="md">
+            <Group gap="xs">
+              <Box w={8} h={8} style={{ borderRadius: "50%", backgroundColor: "var(--mantine-color-red-5)" }} />
+              <Text fw={700} size="xs" c="dark.8" style={{ letterSpacing: "0.5px" }}>MONTHLY OBLIGATION</Text>
+            </Group>
+            <Box px={8} py={2} bg="red.0" c="red.8" fw={700} style={{ borderRadius: "var(--mantine-radius-sm)", border: "1px solid var(--mantine-color-red-2)", fontSize: "10px" }}>
+              ZMW
+            </Box>
+          </Group>
+
+         <SimpleGrid cols={1} spacing="md">
+            {obligations.map((item, index) => (
+              <Group key={item.type} wrap="nowrap" gap="xs">
+                <Select
+                  size="sm"
+                  radius="md"
+                  data={[item.type]}
+                  value={item.type}
+                  readOnly
+                  allowDeselect={false}
+                  style={{ flex: 1.5 }}
+                  styles={{
+                    input: {
+                      backgroundColor: "var(--mantine-color-gray-0)",
+                      color: "var(--mantine-color-dark-4)",
+                      pointerEvents: "none",
+                    },
+                  }}
+                />
+                <NumberInput
+                  size="sm"
+                  radius="md"
+                  hideControls
+                  placeholder="0.00"
+                  thousandSeparator=","
+                  value={item.amount}
+                  onChange={(val) => updateObligationAmount(index, val)}
+                  readOnly={readOnly}
+                  leftSection={<Text size="xs" c="dimmed" pl={4}>ZMW</Text>}
+                  styles={{ input: { textAlign: 'right', fontWeight: 600 } }}
+                  style={{ flex: 1 }}
+                />
+              </Group>
+            ))}
+          </SimpleGrid>
+
+          <Group justify="space-between" mt="xl" pt="sm" align="flex-end" style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}>
+            <Text size="10px" fw={700} c="dimmed" style={{ letterSpacing: "0.5px" }}>TOTAL MONTHLY OUTFLOW</Text>
+            <Text size="sm" fw={800} c="dark.9">
+              ZMW {obligations.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Text>
           </Group>
         </Box>
