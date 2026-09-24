@@ -1,49 +1,88 @@
-import { Paper, Box, Text, Divider, Badge } from "@mantine/core";
-import { IconCheck, IconEdit, IconPlus, IconUpload } from "@tabler/icons-react";
+import { Paper, Box, Group, Stack, Table, Text, Title } from "@mantine/core";
+import { IconCheck, IconClipboardList, IconPencil, IconPlus, IconUpload } from "@tabler/icons-react";
 import type { RuleSet } from "./types";
 
 export interface AuditTabProps {
   ruleSet: RuleSet;
 }
 
+const headStyle = {
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase" as const,
+  color: "var(--mantine-color-slate-5)",
+  whiteSpace: "nowrap" as const,
+  padding: "0 10px 4px",
+  border: "none",
+};
+
+const cellStyle = {
+  padding: "7px 10px",
+  border: "none",
+  boxShadow: "var(--mantine-shadow-xs)",
+  background: "var(--mantine-color-white)",
+  verticalAlign: "middle" as const,
+};
+
 export default function AuditTab({ ruleSet }: AuditTabProps) {
   const eventStyle = (action: string) => {
-    if (action.toLowerCase().includes("published")) return { color: "var(--mantine-color-green-7)", wash: "var(--mantine-color-green-0)", icon: <IconCheck size={13} /> };
-    if (action.toLowerCase().includes("added")) return { color: "var(--mantine-color-brand-7)", wash: "var(--mantine-color-brand-0)", icon: <IconPlus size={13} /> };
-    if (action.toLowerCase().includes("edited")) return { color: "var(--mantine-color-orange-7)", wash: "var(--mantine-color-orange-0)", icon: <IconEdit size={13} /> };
-    return { color: "var(--mantine-color-blue-7)", wash: "var(--mantine-color-blue-0)", icon: <IconUpload size={13} /> };
+    if (action.toLowerCase().includes("published")) return { color: "green", icon: <IconCheck size={11} stroke={2.4} /> };
+    if (action.toLowerCase().includes("added")) return { color: "brand", icon: <IconPlus size={11} stroke={2.4} /> };
+    if (action.toLowerCase().includes("edited")) return { color: "orange", icon: <IconPencil size={11} stroke={2.2} /> };
+    return { color: "blue", icon: <IconUpload size={11} stroke={2.2} /> };
   };
 
   return (
-    <Paper withBorder radius="lg" shadow="xs" maw={800} style={{ overflow: "hidden" }}>
-      {ruleSet.audit.map((a, i) => (
-        <Box key={i}>
-          {i > 0 && <Divider />}
-          {(() => {
-            const style = eventStyle(a.action);
-            return (
-          <Box
-            px="lg"
-            py="md"
-            style={{ display: "grid", gridTemplateColumns: "150px 130px 1fr", gap: 12, borderLeft: `3px solid ${style.color}` }}
-          >
-            <Box>
-              <Badge color="gray" variant="light" size="sm" radius="sm" style={{ background: style.wash, color: style.color, fontFamily: "Inter, var(--font-main), sans-serif" }}>
-                {a.date}
-              </Badge>
-            </Box>
-            <Text fz={13} fw={600}>{a.user}</Text>
-            <Text fz={13}>
-              <Text span fw={700} c={style.color} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                {style.icon}{a.action}
-              </Text>
-              <Text span c="dimmed"> — {a.detail}</Text>
-            </Text>
-          </Box>
-            );
-          })()}
+    <Box maw={900}>
+      <Group gap={8} align="center" mb={10} wrap="nowrap">
+        <Box style={{ width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--mantine-color-brand-6)", color: "white", flexShrink: 0 }}>
+          <IconClipboardList size={13} stroke={2} />
         </Box>
-      ))}
-    </Paper>
+        <Title order={4} fz={13} c="slate.8">Audit Trail</Title>
+        <Text fz={11.5} c="slate.5">{ruleSet.audit.length} events</Text>
+      </Group>
+
+      <Paper radius="lg" p="sm" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}>
+        <Table verticalSpacing={5} horizontalSpacing="sm" fz={12.5} w="100%" style={{ borderCollapse: "separate", borderSpacing: "0 5px", tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: 140 }} />
+            <col style={{ width: 120 }} />
+            <col />
+          </colgroup>
+          <Table.Thead>
+            <Table.Tr>
+              {["When", "User", "Event"].map((h) => (
+                <Table.Th key={h} style={headStyle}>{h}</Table.Th>
+              ))}
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {ruleSet.audit.map((a, i) => {
+              const style = eventStyle(a.action);
+              return (
+                <Table.Tr key={i}>
+                  <Table.Td style={{ ...cellStyle, borderLeft: `3px solid var(--mantine-color-${style.color}-4)`, borderTopLeftRadius: "var(--mantine-radius-md)", borderBottomLeftRadius: "var(--mantine-radius-md)" }}>
+                    <Text fz={11.5} c="slate.6" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>{a.date}</Text>
+                  </Table.Td>
+                  <Table.Td style={cellStyle}>
+                    <Text fz={11.5} fw={600} c="slate.8" truncate>{a.user}</Text>
+                  </Table.Td>
+                  <Table.Td style={{ ...cellStyle, borderTopRightRadius: "var(--mantine-radius-md)", borderBottomRightRadius: "var(--mantine-radius-md)" }}>
+                    <Stack gap={1}>
+                      <Group gap={5} wrap="nowrap">
+                        <Box style={{ display: "inline-flex", color: `var(--mantine-color-${style.color}-7)` }}>{style.icon}</Box>
+                        <Text fz={11.5} fw={600} c={`${style.color}.7`}>{a.action}</Text>
+                      </Group>
+                      <Text fz={11} c="slate.5">{a.detail}</Text>
+                    </Stack>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      </Paper>
+    </Box>
   );
 }

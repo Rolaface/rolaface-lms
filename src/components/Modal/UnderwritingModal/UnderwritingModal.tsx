@@ -209,19 +209,6 @@ function StatusBadge({ status }: { status: string }) {
 const CHECK_STATUSES = ["Pending", "In Progress", "Passed", "Failed", "Exception"];
 const DOC_STATUSES = ["Missing", "Uploaded", "Verified", "Rejected"];
 
-function SourceBadge({ source }: { source: "application" | "manual" }) {
-  const map: Record<string, { label: string; color: string }> = {
-    application: { label: "From application", color: "blue" },
-    manual: { label: "Manual entry", color: "blue" },
-  };
-  const s = map[source] || map.application;
-  return (
-    <Badge size="sm" radius="xl" color={s.color} variant="light">
-      {s.label}
-    </Badge>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Top app bar
 // ---------------------------------------------------------------------------
@@ -860,231 +847,6 @@ function AssetBaseForm({
   );
 }
 
-function AssetSwitcher({
-  assets,
-  selectedId,
-  onSelect,
-  onAdd,
-  onEdit,
-  onRemove,
-}: {
-  assets: Asset[];
-  selectedId: string;
-  onSelect: (id: string) => void;
-  onAdd: (base: DummyAssetBase) => void;
-  onEdit: (id: string, patch: Partial<DummyAssetBase>) => void;
-  onRemove: (id: string) => void;
-}) {
-  const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  const [newType, setNewType] = useState(DUMMY_ASSET_TYPES[0]);
-  const [newAssetId, setNewAssetId] = useState("");
-  const [newDesc, setNewDesc] = useState("");
-  const [descError, setDescError] = useState(false);
-
-  function openAdd() {
-    setEditingId(null);
-    setNewType(DUMMY_ASSET_TYPES[0]);
-    setNewAssetId("");
-    setNewDesc("");
-    setDescError(false);
-    setAdding(true);
-  }
-
-  function toggleEdit(a: Asset) {
-    if (editingId === a.id) {
-      setEditingId(null);
-      return;
-    }
-    setAdding(false);
-    setNewType(a.base.type);
-    setNewAssetId(a.base.assetId || "");
-    setNewDesc(a.base.description || "");
-    setDescError(false);
-    setEditingId(a.id);
-    onSelect(a.id);
-  }
-
-  function closeForm() {
-    setAdding(false);
-    setEditingId(null);
-    setNewAssetId("");
-    setNewDesc("");
-    setDescError(false);
-  }
-
-  function submit() {
-    if (!newDesc.trim()) {
-      setDescError(true);
-      return;
-    }
-    if (editingId) {
-      onEdit(editingId, { type: newType, description: newDesc, assetId: newAssetId });
-    } else {
-      onAdd({ type: newType, description: newDesc, assetId: newAssetId, location: "", owner: "", acquisition: "" });
-    }
-    closeForm();
-  }
-
-const editFields = (
-  <Box mt={0}>
-    <Group
-      gap={8}
-      px={14}
-      py={10}
-      bg="brand.0"
-      style={{ borderBottom: "1px solid var(--mantine-color-brand-1)" }}
-    >
-      <ThemeIcon radius="md" size={22} variant="light" color="brand">
-        <IconPencil size={12} />
-      </ThemeIcon>
-      <Text fz={13} fw={700} c="dark.8">
-        {editingId ? "Edit asset" : "Add asset"}
-      </Text>
-    </Group>
-
-    <Group align="flex-end" gap={8} px={14} py={12} wrap="wrap">
-      <Box style={{ flex: "0 0 160px" }}>
-        <Text fz={11} fw={600} c="dark.6" mb={4}>
-          Asset type
-        </Text>
-        <Select
-          size="xs"
-          data={DUMMY_ASSET_TYPES}
-          value={newType}
-          onChange={(v) => setNewType(v || DUMMY_ASSET_TYPES[0])}
-          radius="md"
-          allowDeselect={false}
-          leftSection={<IconCar size={13} />}
-        />
-      </Box>
-      <Box style={{ flex: "0 0 140px" }}>
-        <Text fz={11} fw={600} c="dark.6" mb={4}>
-          Asset ID
-        </Text>
-        <TextInput size="xs" value={newAssetId} onChange={(e) => setNewAssetId(e.currentTarget.value)} placeholder="e.g. AST-33022" radius="md" />
-      </Box>
-      <Box style={{ flex: 1, minWidth: 180 }}>
-        <Text fz={11} fw={600} c="dark.6" mb={4}>
-          Description
-        </Text>
-        <TextInput
-          size="xs"
-          value={newDesc}
-          onChange={(e) => {
-            setNewDesc(e.currentTarget.value);
-            if (e.currentTarget.value.trim()) setDescError(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") submit();
-          }}
-          placeholder="e.g. Stand 4521, Kabwata, Lusaka"
-          radius="md"
-          error={descError ? "Required" : undefined}
-        />
-      </Box>
-      <Group gap={8} wrap="nowrap">
-       
-        <Button color="brand" size="xs" radius="md" onClick={submit}>
-          Save
-        </Button>
-         <Button variant="subtle" color="gray" size="xs" radius="md" onClick={closeForm}>
-          Cancel
-        </Button>
-      </Group>
-    </Group>
-  </Box>
-);
-
-  return (
-    <Box mb={10}>
-      <Group justify="space-between" align="center" mb={10}>
-        <Group gap={10}>
-          <ThemeIcon radius="md" size={34} variant="light" color="brand">
-            <IconShieldCheck size={17} />
-          </ThemeIcon>
-          <Text fz={16} fw={700} c="dark.8">
-            Assets offered as security{" "}
-            <Text span c="dimmed" fw={600}>
-              ({assets.length})
-            </Text>
-          </Text>
-        </Group>
-        <Button radius="xl" color="brand" leftSection={<IconPlus size={14} />} onClick={openAdd}>
-          Add asset
-        </Button>
-      </Group>
-
-      <Group gap={8} wrap="wrap" align="flex-start">
-       {assets.map((a, i) => {
-  const isEditing = editingId === a.id;
-  const AssetIcon = (a.base.type || "").toLowerCase().includes("vehicle") ? IconCar : IconBuildingBank;
-  const name = a.base.description ? a.base.description.split(",")[0] : a.base.type || "—";
-  return (
-    <Box key={a.id} style={{ flex: isEditing ? "1 1 100%" : "0 0 auto", maxWidth: isEditing ? "100%" : 340 }}>
-      <Paper withBorder radius="xl" style={{ overflow: "hidden" }}>
-        <Group justify="space-between" align="center" wrap="nowrap" gap={8} px={10} py={6}>
-          <Group gap={8} wrap="nowrap" align="center" style={{ flex: 1, minWidth: 0 }}>
-            <ThemeIcon radius="xl" size={26} variant="light" color="brand" style={{ flexShrink: 0 }}>
-              <AssetIcon size={13} />
-            </ThemeIcon>
-            <Badge size="xs" radius="xl" color="brand" variant="light" style={{ flexShrink: 0 }}>
-              Asset {i + 1}
-            </Badge>
-            <Text fz={12.5} fw={700} c="dark.8" truncate>
-              {name}
-            </Text>
-            {a.base.assetId && (
-              <Text fz={11} c="dimmed" truncate>
-                · {a.base.assetId}
-              </Text>
-            )}
-            <StatusBadge status={a.status} />
-          </Group>
-
-          <Group gap={4} wrap="nowrap" style={{ flexShrink: 0 }}>
-            <ActionIcon
-              variant={isEditing ? "filled" : "light"}
-              color="brand"
-              radius="xl"
-              size={24}
-              onClick={() => toggleEdit(a)}
-              title="Edit asset"
-            >
-              <IconPencil size={12} />
-            </ActionIcon>
-            {assets.length > 1 && (
-              <ActionIcon
-                variant="light"
-                color="red"
-                radius="xl"
-                size={24}
-                onClick={() => onRemove(a.id)}
-                title="Remove asset"
-              >
-                <IconTrash size={12} />
-              </ActionIcon>
-            )}
-          </Group>
-        </Group>
-
-        {isEditing && editFields}
-      </Paper>
-    </Box>
-  );
-})}
-      </Group>
-
-      {adding && (
-        <Paper withBorder radius="lg" mt={10} style={{ overflow: "hidden" }}>
-          {editFields}
-        </Paper>
-      )}
-    </Box>
-  );
-}
-
 function ValidityNote({ date, days }: { date: string; days: number }) {
   if (!date)
     return (
@@ -1313,6 +1075,7 @@ function AssetDetailView({
   notes,
   setNotes,
   onUpdate,
+  editableBase,
 }: {
   asset: Asset;
   finalAmount: number;
@@ -1320,6 +1083,7 @@ function AssetDetailView({
   notes: string;
   setNotes: (v: string) => void;
   onUpdate: (patch: Partial<Asset>) => void;
+  editableBase?: boolean;
 }) {
   const coverage = asset.valuation.amount ? Math.round((Number(asset.valuation.amount) / finalAmount) * 100) : null;
   const valuationBadge =
@@ -1340,11 +1104,42 @@ function AssetDetailView({
       {panel === "assetDetails" && (
         <Box>
           <SectionLabel color="brand.8" icon={IconInfoCircle}>Basic Information</SectionLabel>
-          <SimpleGrid cols={3} spacing={24} mt={16} mb={24}>
-            <ReadRow label="Asset type" value={asset.base.type || "�"} />
-            <ReadRow label="Asset ID" value={asset.base.assetId || "�"} />
-            <ReadRow label="Description" value={asset.base.description || "�"} />
-          </SimpleGrid>
+          {editableBase ? (
+            <SimpleGrid cols={3} spacing={12} mt={16} mb={24}>
+              <Select
+                size="xs"
+                label="Asset type"
+                data={DUMMY_ASSET_TYPES}
+                value={asset.base.type}
+                onChange={(v) => onUpdate({ base: { ...asset.base, type: v || asset.base.type } })}
+                radius="md"
+                allowDeselect={false}
+              />
+              <TextInput
+                size="xs"
+                label="Asset ID"
+                value={asset.base.assetId || ""}
+                onChange={(e) => onUpdate({ base: { ...asset.base, assetId: e.currentTarget.value } })}
+                placeholder="e.g. AST-33022"
+                radius="md"
+              />
+              <TextInput
+                size="xs"
+                label="Description"
+                value={asset.base.description || ""}
+                onChange={(e) => onUpdate({ base: { ...asset.base, description: e.currentTarget.value } })}
+                placeholder="e.g. Stand 4521, Kabwata, Lusaka"
+                radius="md"
+                error={!asset.base.description?.trim() ? "Required" : undefined}
+              />
+            </SimpleGrid>
+          ) : (
+            <SimpleGrid cols={3} spacing={24} mt={16} mb={24}>
+              <ReadRow label="Asset type" value={asset.base.type || "�"} />
+              <ReadRow label="Asset ID" value={asset.base.assetId || "�"} />
+              <ReadRow label="Description" value={asset.base.description || "�"} />
+            </SimpleGrid>
+          )}
 
           <Group
             gap={12}
@@ -1877,22 +1672,22 @@ function UnderwritingWorkspace({
   const [reasonDetail, setReasonDetail] = useState("");
   const [completed, setCompleted] = useState(false);
 
-  const [addingAsset, setAddingAsset] = useState(false);
-  const [newAssetType, setNewAssetType] = useState(DUMMY_ASSET_TYPES[0]);
-  const [newAssetIdField, setNewAssetIdField] = useState("");
-  const [newAssetDesc, setNewAssetDesc] = useState("");
-  const [newAssetDescError, setNewAssetDescError] = useState(false);
+  // "Add Asset" is now a mini multi-step draft flow: Basic Details ->
+  // Valuation -> Supporting Documents. The asset only actually gets added
+  // to the list at the very end, once everything (including documents) has
+  // been filled in — not the moment basic info is entered.
+  const [draftAsset, setDraftAsset] = useState<Asset | null>(null);
+  const [draftPanel, setDraftPanel] = useState<PanelId>("assetDetails");
+  // Reuses the same step list as the Asset Valuation tab (Details ->
+  // Valuation -> Documents -> Underwriter Notes -> Conclusion), so the
+  // draft wizard and the "edit an existing asset" view stay in sync.
+  const draftSteps = steps;
 
   const selectedAsset = assets.find((a) => a.id === selectedAssetId);
   const selectedLegal = assets.find((a) => a.id === selectedLegalId);
 
   function updateAsset(id: string, patch: Partial<Asset>) {
     setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
-  }
-  function addAsset(base: DummyAssetBase) {
-    const a = makeAsset("manual", { ...base, owner: base.owner || "" });
-    setAssets((prev) => [...prev, a]);
-    setAddingAsset(false);
   }
   function editAssetBase(id: string, patch: Partial<DummyAssetBase>) {
     const asset = assets.find((a) => a.id === id);
@@ -1930,18 +1725,37 @@ function UnderwritingWorkspace({
     setConditions((prev) => prev.filter((_, idx) => idx !== i));
   }
   function openAddAsset() {
-    setNewAssetType(DUMMY_ASSET_TYPES[0]);
-    setNewAssetIdField("");
-    setNewAssetDesc("");
-    setNewAssetDescError(false);
-    setAddingAsset(true);
+    const draft = makeAsset("manual", {
+      type: DUMMY_ASSET_TYPES[0],
+      description: "",
+      assetId: "",
+      location: "",
+      owner: "",
+      acquisition: "",
+    });
+    setDraftAsset(draft);
+    setDraftPanel("assetDetails");
   }
-  function submitNewAsset() {
-    if (!newAssetDesc.trim()) {
-      setNewAssetDescError(true);
+  function cancelAddAsset() {
+    setDraftAsset(null);
+    setDraftPanel("assetDetails");
+  }
+  function updateDraftAsset(patch: Partial<Asset>) {
+    setDraftAsset((prev) => (prev ? { ...prev, ...patch } : prev));
+  }
+  function commitAddAsset() {
+    if (!draftAsset) return;
+    if (!draftAsset.base.description.trim()) {
+      setDraftPanel("assetDetails");
       return;
     }
-    addAsset({ type: newAssetType, description: newAssetDesc, assetId: newAssetIdField, location: "", owner: "", acquisition: "" });
+    // If a valuation amount was captured along the way, treat the
+    // valuation as already passed rather than leaving it "Pending".
+    const finalAsset =
+      draftAsset.valuation.amount && draftAsset.status === "Pending" ? { ...draftAsset, status: "Passed" } : draftAsset;
+    setAssets((prev) => [...prev, finalAsset]);
+    setDraftAsset(null);
+    setDraftPanel("assetDetails");
   }
 
   const totalAssetValue = assets.reduce((sum, a) => sum + (Number(a.valuation.amount) || 0), 0);
@@ -1950,6 +1764,7 @@ function UnderwritingWorkspace({
   const readiness: Readiness = useMemo(() => {
     const blockers: string[] = [];
     let valuationOk = true,
+
       titleOk = true,
       legalOk = true,
       docsOk = true;
@@ -2047,7 +1862,91 @@ function UnderwritingWorkspace({
 
       {tab === "asset" ? (
         <Box>
-          {assetViewMode === 'detail' && selectedAsset ? (
+          {draftAsset ? (
+            <Box>
+              <Group mb={8} justify="space-between">
+                 <UnstyledButton onClick={cancelAddAsset} p={4}>
+                    <Group gap={4} wrap="nowrap" c="dimmed" style={{ transition: 'color 150ms ease' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--mantine-color-brand-6)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--mantine-color-gray-5)'}>
+                       <IconChevronLeft size={16} />
+                       <Text fz={13} fw={600}>Cancel</Text>
+                    </Group>
+                 </UnstyledButton>
+
+                 <Group gap={8}>
+                   <Badge variant="light" color="brand" radius="xl">
+                     New Asset
+                   </Badge>
+                 </Group>
+              </Group>
+
+              <Paper withBorder radius="lg" mb={4} style={{ overflow: "hidden" }}>
+                <Group gap={0} px={10} pt={10} pb={0} wrap="wrap">
+                  {draftSteps.map((stepId) => {
+                    const item = PANEL_ITEMS.find((p) => p.id === stepId)!;
+                    const stepActive = draftPanel === stepId;
+                    const SIcon = item.icon;
+                    return (
+                      <UnstyledButton
+                        key={stepId}
+                        onClick={() => setDraftPanel(stepId)}
+                        px={12}
+                        pb={10}
+                        style={{
+                          borderBottom: `2px solid ${stepActive ? "var(--mantine-color-brand-6)" : "transparent"}`,
+                          transition: "border-color 120ms ease",
+                        }}
+                      >
+                        <Group gap={7}>
+                          <SIcon size={14} color={stepActive ? "var(--mantine-color-brand-7)" : "var(--mantine-color-gray-5)"} />
+                          <Text fz={12.5} fw={stepActive ? 700 : 500} c={stepActive ? "brand.7" : "dark.5"}>
+                            {item.label}
+                          </Text>
+                        </Group>
+                      </UnstyledButton>
+                    );
+                  })}
+                </Group>
+              </Paper>
+
+              <AssetDetailView
+                asset={draftAsset}
+                finalAmount={finalAmount}
+                panel={draftPanel}
+                notes={notes}
+                setNotes={setNotes}
+                onUpdate={updateDraftAsset}
+                editableBase
+              />
+
+              {(() => {
+                const idx = draftSteps.indexOf(draftPanel);
+                const isLastStep = idx === draftSteps.length - 1;
+                if (!isLastStep) {
+                  return (
+                    <Group justify="flex-end" mt={24} mb={12}>
+                      <Button radius="xl" variant="filled" color="brand" onClick={() => setDraftPanel(draftSteps[idx + 1])} rightSection={<IconArrowRight size={16} />}>
+                        Next
+                      </Button>
+                    </Group>
+                  );
+                }
+                return (
+                  <Box mt={24} mb={12}>
+                    <Group justify="flex-end">
+                      <Button variant="filled" color="brand" radius="xl" onClick={commitAddAsset} rightSection={<IconPlus size={16} />}>
+                        Add Asset
+                      </Button>
+                    </Group>
+                    {!draftAsset.base.description.trim() && (
+                      <Text fz={11.5} c="dimmed" ta="right" mt={6}>
+                        Description is required — it's on the Asset Details step.
+                      </Text>
+                    )}
+                  </Box>
+                );
+              })()}
+            </Box>
+          ) : assetViewMode === 'detail' && selectedAsset ? (
             <Box>
               <Group mb={8} justify="space-between">
                  <UnstyledButton onClick={() => setAssetViewMode('list')} p={4}>
@@ -2137,14 +2036,14 @@ function UnderwritingWorkspace({
                     </Text>
                   </Text>
                 </Group>
-                {!addingAsset && (
+                {!draftAsset && (
                   <Button radius="xl" color="brand" leftSection={<IconPlus size={14} />} onClick={openAddAsset}>
                     Add Asset
                   </Button>
                 )}
               </Group>
 
-              {assets.length === 0 && !addingAsset ? (
+              {assets.length === 0 ? (
                 <Paper withBorder radius="lg" py={60} ta="center" bg="gray.0">
                   <ThemeIcon size={48} radius="xl" color="gray" variant="light" mb={12}>
                     <IconCar size={24} />
@@ -2174,24 +2073,6 @@ function UnderwritingWorkspace({
                     />
                   ))}
                 </Paper>
-                </Box>
-              )}
-
-              {addingAsset && (
-                <Box mt={16}>
-                  <AssetBaseForm
-                    type={newAssetType}
-                    assetId={newAssetIdField}
-                    desc={newAssetDesc}
-                    onTypeChange={setNewAssetType}
-                    onAssetIdChange={setNewAssetIdField}
-                    onDescChange={setNewAssetDesc}
-                    descError={newAssetDescError}
-                    onSubmit={submitNewAsset}
-                    onCancel={() => setAddingAsset(false)}
-                    submitLabel="Add Asset"
-                    title="Add Asset"
-                  />
                 </Box>
               )}
             </Box>
@@ -2716,7 +2597,7 @@ function UnderwritingWorkspace({
                 </Group>
               </Group>
 
-              {assets.length === 0 && !addingAsset ? (
+              {assets.length === 0 ? (
                 <Paper withBorder radius="lg" py={60} ta="center" bg="gray.0">
                   <ThemeIcon size={48} radius="xl" color="gray" variant="light" mb={12}>
                     <IconIdBadge2 size={24} />
