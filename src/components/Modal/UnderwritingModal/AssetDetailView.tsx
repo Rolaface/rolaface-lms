@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Group, Text, SimpleGrid, Paper, TextInput, NumberInput, Select, Checkbox, Textarea, Badge, Stack, Button, Divider, ActionIcon } from '@mantine/core';
-import { IconCar, IconInfoCircle, IconAlertTriangle, IconCalendarEvent, IconUserCheck, IconFileText, IconShieldCheck, IconCircleCheck, IconCircleX, IconArrowRight, IconGavel, IconX } from '@tabler/icons-react';
+import { IconCar, IconInfoCircle, IconAlertTriangle, IconCalendarEvent, IconUpload, IconUserCheck, IconFileText, IconShieldCheck, IconCircleCheck, IconCircleX, IconArrowRight, IconGavel, IconX } from '@tabler/icons-react';
 import type { DummyAssetBase } from '../PreScreeningModal/Dummyloanapplicationdata';
 import { DUMMY_ASSET_TYPES } from '../PreScreeningModal/Dummyloanapplicationdata';
 import { type Asset, type PanelId, type Decision, type Condition, type AssetDoc, CHECK_STATUSES, DECISION_LABEL, REJECT_REASONS, zmw, requiredDocsVerified, missingRequiredDocs, SectionLabel, ReadRow, MiniStat, ValidityNote, DocumentsTable, DecisionButton } from './UnderwritingModal';
@@ -106,36 +106,60 @@ export function AssetDetailView({
         </Box>
       )}
 
+      
       {panel === "valuation" && (
         <Box>
-          <Group justify="space-between" mb={16} mt={6} align="center">
-                <SectionLabel color="brand.8" icon={IconCar}>Asset Valuation</SectionLabel>
-                <Badge size="sm" radius="xl" color={valuationBadge.color} variant="light" leftSection={<IconAlertTriangle size={11} />}>
-                  {valuationBadge.label}
-                </Badge>
-            </Group>
+          <Group align="flex-start" wrap="nowrap" gap={24}>
+            <Box style={{ flex: 1.5 }}>
+              <Group justify="space-between" align="center" mb={8}>
+                <Text fz={10} fw={700} c="dark.5" tt="uppercase">Valuation Report</Text>
+                <Button variant="default" size="compact-xs" radius="xl" style={{ border: "none", background: "transparent", color: "var(--mantine-color-brand-6)" }}>Opened</Button>
+              </Group>
+              <Paper 
+                withBorder 
+                style={{ 
+                  borderStyle: "dashed", 
+                  borderWidth: 2, 
+                  borderColor: "var(--mantine-color-brand-3)",
+                  backgroundColor: "var(--mantine-color-brand-0)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: 320
+                }} 
+                p="xl"
+                radius="md"
+              >
+                <ActionIcon variant="light" color="brand" size={50} radius="xl" mb={16}>
+                  <IconUpload size={24} />
+                </ActionIcon>
+                <Text fw={700} fz={16} c="brand.9" mb={8}>Upload the valuation report</Text>
+                <Text fz={12} c="dimmed" ta="center" maw={300} mb={20}>
+                  Market value, forced sale value, valuation date and the valuer's details are all read off this report. Attach it first.
+                </Text>
+                <Group>
+                  <Button size="sm" radius="xl">Choose a file</Button>
+                  <Text fz={12} c="dimmed">or drop a file here</Text>
+                </Group>
+                <Text fz={9} c="dimmed" mt={16}>PDF, JPG, PNG, up to 20 MB</Text>
+              </Paper>
+              <Group mt={12} justify="space-between" align="center" p={12} bg="orange.0" style={{ borderRadius: "var(--mantine-radius-md)", border: "1px solid var(--mantine-color-orange-2)" }}>
+                <Group gap={8}>
+                  <IconAlertTriangle size={16} color="var(--mantine-color-orange-6)" />
+                  <Text fz={12} fw={500} c="orange.8">No valuation report available for this asset</Text>
+                </Group>
+                <Button size="compact-sm" variant="light" color="orange" radius="xl">Request on application</Button>
+              </Group>
+            </Box>
 
-            <SimpleGrid cols={2} spacing={20} mb={8}>
-              <Box>
-                <SimpleGrid cols={2} spacing={8}>
-                <NumberInput
-                  size="xs"
-                  label="Valuation amount"
-                  value={asset.valuation.amount ? Number(asset.valuation.amount) : undefined}
-                  onChange={(v) => onUpdate({ valuation: { ...asset.valuation, amount: v ? String(v) : "" } })}
-                  placeholder="e.g. 95000"
-                  prefix="ZMW "
-                  radius="md"
-                  thousandSeparator=","
-                />
-                <Select
-                  size="xs"
-                  label="Valuation method"
-                  value={asset.valuation.method}
-                  onChange={(v) => onUpdate({ valuation: { ...asset.valuation, method: v || asset.valuation.method } })}
-                  data={["Market comparison", "Cost approach", "Income approach"]}
-                  radius="md"
-                />
+            <Box style={{ flex: 1 }}>
+              <Text fz={10} fw={700} c="dark.5" tt="uppercase" mb={4}>Figures from the report</Text>
+              <Text fz={11} c="dimmed" mb={12}>
+                These open once a report is attached, so no figure is recorded without the document behind it.
+              </Text>
+              
+              <SimpleGrid cols={2} spacing={8} mb={24}>
                 <NumberInput
                   size="xs"
                   label="Market value"
@@ -156,126 +180,52 @@ export function AssetDetailView({
                   radius="md"
                   thousandSeparator=","
                 />
-              </SimpleGrid>
-            </Box>
-            <Box style={{ borderLeft: "1px solid var(--mantine-color-gray-2)", paddingLeft: 20 }}>
-              <Stack gap={8} h="100%">
-                <Textarea
-                  size="xs"
-                  label="Valuation notes"
-                  value={asset.valuation.notes}
-                  onChange={(e) => onUpdate({ valuation: { ...asset.valuation, notes: e.currentTarget.value } })}
-                  placeholder="Condition, mileage, any relevant observations…"
-                  minRows={coverage != null ? 5 : 7}
-                  radius="md"
-                  style={{ flex: 1 }}
+                <TextInput 
+                  size="xs" 
+                  type="date" 
+                  label="Valuation date" 
+                  value={asset.valuationDate} 
+                  onChange={(e) => onUpdate({ valuationDate: e.currentTarget.value })} 
+                  radius="md" 
                 />
-                {coverage != null && (
-                  <Paper bg="brand.0" p={8} radius="md" style={{ border: "1px solid var(--mantine-color-brand-2)" }}>
-                    <Stack gap={6}>
-                      <MiniStat label="This asset's value" value={zmw(asset.valuation.amount)} />
-                      <MiniStat label="Final loan amount" value={zmw(finalAmount)} />
-                      <MiniStat label="Coverage" value={`${coverage}%`} accent={coverage < 120} />
-                    </Stack>
-                  </Paper>
-                )}
-              </Stack>
-            </Box>
-          </SimpleGrid>
-
-          <Divider mb={6} />
-          <SimpleGrid cols={2} spacing={20}>
-            <Box>
-              <SectionLabel color="brand.8" icon={IconUserCheck}>Valuer information</SectionLabel>
-              <SimpleGrid cols={2} spacing={8} mt={6} mb={6}>
-                <TextInput size="xs" label="Valuer name" value={asset.valuer.name} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, name: e.currentTarget.value } })} placeholder="e.g. K. Zulu" radius="md" />
-                <TextInput size="xs" label="Valuer / company" value={asset.valuer.company} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, company: e.currentTarget.value } })} placeholder="e.g. Apex Valuers Ltd" radius="md" />
-                <TextInput size="xs" label="License number" value={asset.valuer.license} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, license: e.currentTarget.value } })} placeholder="e.g. VAL-2321" radius="md" />
-                <TextInput size="xs" label="Contact" value={asset.valuer.contact} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, contact: e.currentTarget.value } })} placeholder="Phone or email" radius="md" />
-              </SimpleGrid>
-              <Group
-                gap={8}
-                p={5}
-                bg={asset.valuer.verified ? "brand.0" : "gray.0"}
-                style={{ border: `1px solid var(--mantine-color-${asset.valuer.verified ? "brand" : "gray"}-2)`, borderRadius: 9 }}
-                wrap="nowrap"
-                align="center"
-              >
-                <IconInfoCircle size={13} color="var(--mantine-color-brand-6)" style={{ flexShrink: 0 }} />
-                <Text fz={11} lh={1.3} c="dark.6" style={{ flex: 1 }}>
-                  Confirm the valuer meets the configured panel requirement.
-                </Text>
-                <Checkbox
-                  checked={asset.valuer.verified}
-                  onChange={(e) => onUpdate({ valuer: { ...asset.valuer, verified: e.currentTarget.checked } })}
-                  label="Confirmed"
-                  size="xs"
-                  styles={{ label: { fontSize: 11.5 } }}
-                />
-              </Group>
-            </Box>
-
-            <Box style={{ borderLeft: "1px solid var(--mantine-color-gray-2)", paddingLeft: 20 }}>
-              <Group justify="space-between" mb={6}>
-                <SectionLabel color="brand.8" icon={IconCalendarEvent}>Valuation date &amp; status</SectionLabel>
                 <Select
-                  data={statusOptions}
-                  value={asset.status}
-                  onChange={(v) => onUpdate({ status: v || asset.status })}
                   size="xs"
-                  radius="xl"
-                  w={140}
-                  allowDeselect={false}
-                />
-              </Group>
-              <Stack gap={4}>
-                <TextInput size="xs" type="date" label="Valuation date" value={asset.valuationDate} onChange={(e) => onUpdate({ valuationDate: e.currentTarget.value })} radius="md" />
-                <Box mt={10}>
-                  <Text fz={12} fw={500} c="dark.6" mb={5}>
-                    Validity
-                  </Text>
-                  <ValidityNote date={asset.valuationDate} days={asset.expiryDays} />
-                </Box>
-              </Stack>
-              {["Failed", "Exception"].includes(asset.status) && (
-                <Textarea
-                  size="xs"
-                  label="Finding / reason (required)"
-                  value={asset.reason}
-                  onChange={(e) => onUpdate({ reason: e.currentTarget.value })}
-                  placeholder="Explain why the valuation failed or is an exception…"
-                  minRows={1}
+                  label="Valuation method"
+                  value={asset.valuation.method}
+                  onChange={(v) => onUpdate({ valuation: { ...asset.valuation, method: v || asset.valuation.method } })}
+                  data={["Market comparison", "Cost approach", "Income approach"]}
                   radius="md"
-                  mt={8}
                 />
-              )}
+              </SimpleGrid>
+
+              <Text fz={10} fw={700} c="dark.5" tt="uppercase" mb={8}>Valuer prepared by</Text>
+              <SimpleGrid cols={2} spacing={8} mb={16}>
+                <TextInput size="xs" label="Valuer name" value={asset.valuer.name} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, name: e.currentTarget.value } })} placeholder="e.g. K. Zulu" radius="md" />
+                <TextInput size="xs" label="Firm" value={asset.valuer.company} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, company: e.currentTarget.value } })} placeholder="e.g. Apex Valuers Ltd" radius="md" />
+                <TextInput size="xs" label="License number" value={asset.valuer.license} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, license: e.currentTarget.value } })} placeholder="e.g. VAL-2321" radius="md" />
+                <Box pt={22}>
+                  <Checkbox
+                    checked={asset.valuer.verified}
+                    onChange={(e) => onUpdate({ valuer: { ...asset.valuer, verified: e.currentTarget.checked } })}
+                    label="Practising certificate signed"
+                    size="xs"
+                  />
+                </Box>
+              </SimpleGrid>
+
+              <Textarea
+                size="xs"
+                label="Underwriter comment - optional"
+                value={notes}
+                onChange={(e) => setNotes(e.currentTarget.value)}
+                placeholder="Anything that qualifies these figures..."
+                minRows={3}
+                radius="md"
+              />
             </Box>
-          </SimpleGrid>
-
-          <Box mt={24} mb={8}>
-            <SectionLabel color="brand.8" icon={IconFileText}>Supporting Documents</SectionLabel>
-            <DocumentsTable title="" docs={asset.docs} setDocs={(docs) => onUpdate({ docs })} />
-          </Box>
+          </Group>
         </Box>
       )}
-
-      {panel === "notes" && (
-        <Box>
-          
-          <Textarea
-            size="xs"
-            value={notes}
-            onChange={(e) => setNotes(e.currentTarget.value)}
-            placeholder="General comments, findings, risks, exceptions and recommendations that apply across the review…"
-            minRows={2}
-            radius="md"
-          />
-          <Text fz={11} c="dimmed" mt={6}>
-            Shared across all assets and tabs, and included in the underwriting audit trail.
-          </Text>
-        </Box>
-      )}
-
       {panel === "assetConclusion" && (
         <Box>
           <SectionLabel color="brand.8" icon={IconShieldCheck}>Validation Summary</SectionLabel>

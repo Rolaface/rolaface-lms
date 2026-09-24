@@ -283,14 +283,14 @@ interface PanelItem {
 // Content panels are still tracked individually (used for section headers,
 // etc.) but navigation only ever exposes the two groups below.
 const PANEL_ITEMS: PanelItem[] = [
-  { id: "assetDetails", label: "Asset Details", icon: IconIdBadge2, color: "blue" },
+  { id: "assetDetails", label: "Asset", icon: IconIdBadge2, color: "blue" },
   { id: "assetDocs", label: "Supporting Documents", icon: IconFileText, color: "blue" },
   { id: "valuation", label: "Valuation", icon: IconCar, color: "brand" },
   { id: "legalDocs", label: "Supporting Documents", icon: IconFileText, color: "violet" },
-  { id: "legal", label: "Verifier information", icon: IconIdBadge2, color: "violet" },
+  { id: "legal", label: "Legal", icon: IconIdBadge2, color: "violet" },
   { id: "notes", label: "Underwriter Notes", icon: IconFileText, color: "gray" },
-  { id: "assetConclusion", label: "Conclusion", icon: IconClipboardCheck, color: "blue" },
-  { id: "conclusion", label: "Conclusion", icon: IconClipboardCheck, color: "brand" },
+  { id: "assetConclusion", label: "Security outcome", icon: IconClipboardCheck, color: "blue" },
+  { id: "conclusion", label: "Security outcome", icon: IconClipboardCheck, color: "brand" },
 ];
 
 // The only two sub-tabs shown in the sidebar. Each groups a sequence of
@@ -309,8 +309,8 @@ interface TabItem {
   steps: PanelId[];
 }
 const TAB_ITEMS: TabItem[] = [
-  { id: "asset", label: "Asset Valuation", icon: IconCircleCheck, steps: ["assetDetails", "valuation", "notes", "assetConclusion"] },
-  { id: "legal", label: "Legal Verification", icon: IconShieldCheck, steps: ["legal", "notes", "conclusion"] },
+  { id: "asset", label: "Asset Valuation", icon: IconCircleCheck, steps: ["assetDetails", "valuation", "assetConclusion"] },
+  { id: "legal", label: "Legal Verification", icon: IconShieldCheck, steps: ["legal", "conclusion"] },
 ];
 
 // ---------------------------------------------------------------------------
