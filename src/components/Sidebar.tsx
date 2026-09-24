@@ -4,7 +4,6 @@ import {
   IconCalendarClock,
   IconMail,
   IconSettingsCheck,
-  IconTimelineEvent,
   IconUserCog,
   IconLayersLinked,
   IconSignature,
@@ -272,6 +271,21 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/reports/statement", label: "Loan Statement", icon: IconFileText, modules: ["Loan"] },
       { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics, modules: ["Loan"] },
       { path: "/reports/schedule", label: "Repayment Schedule", icon: IconFileText, modules: ["Loan"] },
+
+    ],
+  },
+  {
+    path: "/reports",
+    label: "Reports",
+    icon: IconReportAnalytics,
+    matchPrefix: true,
+    subItems: [
+      {
+        path: "/reports/loan-origination",
+        label: "Loan Origination Report",
+        icon: IconReportAnalytics,
+        modules: ["Loan"],
+      },
     ],
   },
   {
@@ -515,7 +529,7 @@ function getInitialOpenMenus(pathname: string): Record<string, boolean> {
     "0-Lending Operations": pathname.startsWith("/operations"),
     "0-Accounting": pathname.startsWith("/accounting"),
     "1-General Ledger": pathname.startsWith("/accounting/general-ledger"),
-    "0-Lending Reports": pathname.startsWith("/reports"),
+    "0-Reports": pathname.startsWith("/reports"),
     "0-Settings": pathname.startsWith("/settings"),
     "1-User": pathname.startsWith("/settings/user"),
   };
@@ -544,8 +558,8 @@ export function Sidebar({
       : "lending";
 
 
-  const HIDDEN_IN_LENDING_MODE = ["/origination", "/origination-setup"];
-  const HIDDEN_IN_LOS_MODE = ["/setup", "/operations", "/reports"];
+  const HIDDEN_IN_LENDING_MODE = ["/origination", "/origination-setup", "/reports"];
+  const HIDDEN_IN_LOS_MODE = ["/setup", "/operations"];
 
   const navItemsForSubscription = React.useMemo(
     () =>
