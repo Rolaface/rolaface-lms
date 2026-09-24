@@ -1,4 +1,5 @@
 import { Group, Paper, TextInput, Select, Text, Switch, Tooltip } from "@mantine/core";
+import { DateInput } from "@mantine/dates";
 import { IconFilter, IconChevronDown, IconSearch, IconInfoCircle } from "@tabler/icons-react";
 
 const cv = (name: string, shade: number) => `var(--mantine-color-${name}-${shade})`;
@@ -8,13 +9,13 @@ const inputClassNames = {
   input: "min-h-[32px] h-[32px] text-[12px] border-slate-200 rounded-lg focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)]",
 };
 
-const dateInputClassNames = {
-  label: "text-[12px] font-semibold text-slate-700 mb-1",
-  input:
-    "min-h-[32px] h-[32px] text-[12px] border-slate-200 rounded-lg pr-2 " +
-    "focus:border-[var(--mantine-color-brand-5)] focus:ring-1 focus:ring-[var(--mantine-color-brand-1)] " +
-    "[&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:cursor-pointer " +
-    "[&::-webkit-calendar-picker-indicator]:ml-1",
+
+
+const toDateObj = (value: string | null | undefined) => (value ? new Date(value) : null);
+const toDateString = (date: Date | string | null) => {
+  if (!date) return "";
+  const d = date instanceof Date ? date : new Date(date);
+  return d.toISOString().slice(0, 10);
 };
 
 export function ArrearFilters({ filters, lookups, actions }: any) {
@@ -26,10 +27,12 @@ export function ArrearFilters({ filters, lookups, actions }: any) {
       </Group>
 
       <div className="grid grid-cols-5 gap-6">
-        <TextInput 
-          label="As On Date" withAsterisk type="date" 
-          value={filters.asOnDate} onChange={(e) => filters.setAsOnDate(e.currentTarget.value)}
-          classNames={dateInputClassNames} 
+        <DateInput 
+          label="As On Date" withAsterisk
+          valueFormat="DD-MMM-YYYY"
+          placeholder="DD-MMM-YYYY"
+          value={toDateObj(filters.asOnDate)}
+          onChange={(date) => filters.setAsOnDate(toDateString(date))}
         />
         <Select 
           label="Branch" placeholder="Select branch" data={["Delhi", "Mumbai", "Bangalore", "Pune"]} clearable

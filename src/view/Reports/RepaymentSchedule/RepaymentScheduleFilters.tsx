@@ -58,7 +58,7 @@ export function RepaymentScheduleFilters({ filters, lookups }: RepaymentSchedule
         withAsterisk
         styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 } }}
       />
-      <DateInput valueFormat="MM/DD/YYYY" popoverProps={{ withinPortal: true, position: "bottom-start" }}
+      <DateInput valueFormat="DD-MMM-YYYY" popoverProps={{ withinPortal: true, position: "bottom-start" }}
         className="w-[200px]"
         label="From Date"
         value={filters.fromDate}
@@ -68,7 +68,7 @@ export function RepaymentScheduleFilters({ filters, lookups }: RepaymentSchedule
         withAsterisk
         styles={{ label: { fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 } }}
       />
-      <DateInput valueFormat="MM/DD/YYYY" popoverProps={{ withinPortal: true, position: "bottom-start" }}
+      <DateInput valueFormat="DD-MMM-YYYY" popoverProps={{ withinPortal: true, position: "bottom-start" }}
         className="w-[200px]"
         label="To Date"
         value={filters.toDate}
