@@ -773,20 +773,23 @@ export function LoanOriginationReport() {
             value={formatNumber(summary.total)}
             hint="Matching current filters"
           />
+
           <SummaryCard
             label="In Review"
             value={formatNumber(summary.review)}
             hint="Pending or workflow review"
           />
+
           <SummaryCard
             label="Approved"
             value={formatNumber(summary.approved)}
             hint="Current filtered result"
           />
+
           <SummaryCard
             label="Disbursed Amount"
             value={formatCurrency(summary.disbursedAmount)}
-            hint="Sum of application amounts"
+            hint="Total amount disbursed"
           />
         </Box>
 
