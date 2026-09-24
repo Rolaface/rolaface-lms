@@ -83,6 +83,9 @@ import EnrichmentStage from "../view/LosConfiguration/EnrichmentStage/Enrichment
 import LoanApplicationTabs from "../view/LosConfiguration/LoanApplicationtabs/LoanApplicationtabs";
 import PreScreeningStage from "../view/LosConfiguration/PreScreeningStage/PreScreeningStage";
 
+
+import { LoanOriginationReport } from "../view/Reports/LoanOrigination/LoanOriginationReport";
+
 const rootRoute = createRootRoute({
   component: () => (
     <AppLayout>
@@ -344,6 +347,11 @@ const operationsTransferRoute = createRoute({
   path: "/transfer",
   component: LoanTransfer,
 });
+const reportsLoanOriginationRoute = createRoute({
+  getParentRoute: () => reportsRoute,
+  path: "/loan-origination",
+  component: LoanOriginationReport,
+});
 
 /* ---------- Lending Reports (layout + children) ---------- */
 const reportsRoute = createRoute({
@@ -569,7 +577,12 @@ const routeTree = rootRoute.addChildren([
   // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
   originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute]),
   // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, enrichmentStageRoute, loanApplicationTabsRoute, preScreeningStageRoute]),
-  reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
+reportsRoute.addChildren([
+  reportsLoanOriginationRoute,
+  reportsStatementRoute,
+  reportsArrearsRoute,
+  reportsScheduleRoute,
+]),
   settingsRoute.addChildren([
     emailTemplateRoute,
     schedulerRoute,
