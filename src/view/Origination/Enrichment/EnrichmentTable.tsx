@@ -62,7 +62,7 @@ const MOCK_DATA: EnrichmentRow[] = [
     approvedAmount: 76500,
     tenure: 24,
     rate: 25,
-    status: "Pending Data",
+    status: "Pending Appraisal",
   },
   {
     id: "APP-58232",
@@ -71,7 +71,7 @@ const MOCK_DATA: EnrichmentRow[] = [
     approvedAmount: 50000,
     tenure: 12,
     rate: 21,
-    status: "Enriched",
+    status: "Appraised",
   },
   {
     id: "APP-58233",
@@ -87,8 +87,8 @@ const MOCK_DATA: EnrichmentRow[] = [
 const columnHelper = createColumnHelper<EnrichmentRow>();
 
 export const STATUS_COLOR: Record<string, string> = {
-  "Pending Data": "warning",
-  Enriched: "success",
+  "Pending Appraisal": "warning",
+  Appraised: "success",
   Failed: "danger",
 };
 
@@ -332,7 +332,7 @@ export function EnrichmentTable() {
           </Box>
           <Stack gap={2}>
             <Title order={2} fz={22} fw={800} c="slate.9">
-              Data Enrichment
+              Loan Appraisal
             </Title>
             <Text fz="sm" c="slate.5">
               Review and finalize loan terms for approved applications
@@ -393,8 +393,8 @@ export function EnrichmentTable() {
             }}
             data={[
               { label: "All", value: "All" },
-              { label: "Pending", value: "Pending Data" },
-              { label: "Enriched", value: "Enriched" },
+              { label: "Pending Appraisal", value: "Pending Appraisal" },
+              { label: "Appraised", value: "Appraised" },
               { label: "Failed", value: "Failed" },
             ]}
           />
@@ -500,7 +500,7 @@ export function EnrichmentTable() {
                       />
                     </Box>
                     <Text ta="center" c="slate.5" fz={11}>
-                      No enrichment applications match your filters.
+                      No loan appraisal applications match your filters.
                     </Text>
                   </Stack>
                 </Table.Td>

@@ -14,7 +14,7 @@ interface EnrichmentModalProps {
   applicationValues?: LoanApplicationValues;
 }
 function getTitle() {
-  return 'Loan Enrichment';
+  return 'Loan Appraisal';
 }
 
 export const enrichmentModal = createModal<EnrichmentModalParams, EnrichmentModalProps>(

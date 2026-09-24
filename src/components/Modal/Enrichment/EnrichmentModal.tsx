@@ -14,9 +14,11 @@ import {
   TextInput,
   NumberInput,
   Select,
-  Checkbox,
   Button,
   ActionIcon,
+  Pagination,
+  SegmentedControl,
+  useMantineTheme,
 } from "@mantine/core";
 import {
   IconBuildingBank,
@@ -24,14 +26,18 @@ import {
   IconGauge,
   IconCheck,
   IconX,
-  IconChevronDown,
   IconChevronUp,
   IconInfoCircle,
   IconCircleCheck,
   IconHelp,
   IconArrowRight,
   IconMinus,
+  IconDownload,
+  IconTrash,
+  IconPlus,
 } from "@tabler/icons-react";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
 import { PreScreeningModal } from "../PreScreeningModal/PreScreeningModal";
@@ -57,6 +63,44 @@ const POLICY: Record<"personal" | "business" | "mortgage", { minCreditScore: num
 };
 
 const PRODUCT_LIMITS = { amountMin: 5000, rateMin: 18, rateMax: 32, tenureMin: 6, tenureMax: 60 };
+
+type ChargeBasis = "Amount" | "Percentage";
+type ChargeTreatment = "Add to First Repayment" | "Billed Separately";
+
+interface ChargeRow {
+  id: string;
+  name: string;
+  basis: ChargeBasis;
+  value: number | "";
+  account: string;
+  treatment: ChargeTreatment;
+}
+
+const CHARGE_NAME_OPTIONS = [
+  "Processing Fee", "VAT", "Credit Life Insurance", "Valuation Fee", "Legal Fee",
+  "Stamp Duty", "Registration Fee", "Disbursement Fee", "Documentation Fee", "Other",
+];
+const CHARGE_ACCOUNT_OPTIONS = [
+  "Fee Income — Processing", "VAT Payable", "Fee Income — Insurance",
+  "Legal Fees Expense", "Stamp Duty Payable", "Suspense — Fees",
+];
+const CHARGE_TREATMENT_OPTIONS: ChargeTreatment[] = ["Add to First Repayment", "Billed Separately"];
+
+function makeChargeRow(): ChargeRow {
+  return {
+    id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+    name: "",
+    basis: "Amount",
+    value: "",
+    account: "",
+    treatment: "Add to First Repayment",
+  };
+}
+
+function resolveChargeAmount(charge: ChargeRow, approvedAmount: number): number {
+  const v = Number(charge.value) || 0;
+  return charge.basis === "Percentage" ? approvedAmount * (v / 100) : v;
+}
 
 const zmw = (n: number | null) => (n == null ? "—" : "ZMW " + Math.round(n).toLocaleString());
 
@@ -104,42 +148,65 @@ function calcEligibility({
   };
 }
 
+function addMonths(base: Date, months: number) {
+  const target = new Date(base.getFullYear(), base.getMonth() + months, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(base.getDate(), lastDay));
+  return target;
+}
+
+function parseEffectiveDate(value?: string) {
+  if (!value) return new Date();
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
 function computeSimulation(
   amount: number,
   tenure: number,
   rate: number,
   frequency: string,
-  feePct = 0,
+  calcMethod = "Reducing balance",
+  effectiveDate?: string,
 ) {
   const nPeriods = frequency === "Bi-weekly" ? Math.round((tenure / 12) * 26) : tenure;
   const periodsPerYear = frequency === "Bi-weekly" ? 26 : 12;
   const periodicRate = rate / 100 / periodsPerYear;
+  const isFlat = calcMethod === "Flat rate";
+
+  const flatTotalInterest = amount * (rate / 100) * (tenure / 12);
   let installment: number;
-  if (periodicRate > 0)
+  if (isFlat) {
+    installment = nPeriods > 0 ? (amount + flatTotalInterest) / nPeriods : 0;
+  } else if (periodicRate > 0) {
     installment =
       (amount * periodicRate * Math.pow(1 + periodicRate, nPeriods)) /
       (Math.pow(1 + periodicRate, nPeriods) - 1);
-  else installment = amount / nPeriods;
+  } else {
+    installment = nPeriods > 0 ? amount / nPeriods : 0;
+  }
+
   const totalRepayment = installment * nPeriods;
   const totalInterest = totalRepayment - amount;
-  const fee = amount * feePct;
-  const first = new Date();
-  first.setMonth(first.getMonth() + 1);
-  const final = new Date(first);
-  if (frequency === "Bi-weekly") final.setDate(final.getDate() + 14 * (nPeriods - 1));
-  else final.setMonth(final.getMonth() + (nPeriods - 1));
-  const schedule: { n: number; due: Date; principal: number; interest: number; balance: number }[] = [];
+
+  const start = parseEffectiveDate(effectiveDate);
+  const dueAt = (i: number) =>
+    frequency === "Bi-weekly"
+      ? new Date(start.getFullYear(), start.getMonth(), start.getDate() + 14 * i)
+      : addMonths(start, i);
+  const first = dueAt(1);
+  const final = dueAt(nPeriods);
+
+  const schedule: { n: number; due: Date; opening: number; principal: number; interest: number; balance: number }[] = [];
   let balance = amount;
-  for (let i = 1; i <= Math.min(nPeriods, 6); i++) {
-    const interestPortion = balance * periodicRate;
-    const principalPortion = installment - interestPortion;
+  for (let i = 1; i <= nPeriods; i++) {
+    const opening = balance;
+    const interestPortion = isFlat ? flatTotalInterest / nPeriods : balance * periodicRate;
+    const principalPortion = isFlat ? amount / nPeriods : installment - interestPortion;
     balance = Math.max(0, balance - principalPortion);
-    const due = new Date(first);
-    if (frequency === "Bi-weekly") due.setDate(due.getDate() + 14 * (i - 1));
-    else due.setMonth(due.getMonth() + (i - 1));
-    schedule.push({ n: i, due, principal: principalPortion, interest: interestPortion, balance });
+    schedule.push({ n: i, due: dueAt(i), opening, principal: principalPortion, interest: interestPortion, balance });
   }
-  return { installment, totalRepayment: totalRepayment + fee, totalInterest, fee, nPeriods, first, final, schedule };
+  return { installment, totalRepayment, totalInterest, nPeriods, periodsPerYear, first, final, schedule };
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -168,7 +235,7 @@ function SimRow({ label, value, last, strong }: { label: string; value: string; 
 }
 function EnrichmentTabs({ tab, setTab }: { tab: "terms" | "schedule"; setTab: (t: "terms" | "schedule") => void }) {
   return (
-    <Group gap={4} mb={16}>
+    <Group gap={4} mb={8}>
       {(["terms", "schedule"] as const).map((t) => (
         <UnstyledButton
           key={t}
@@ -208,14 +275,20 @@ function MilestoneCard({ label, value, sub, highlight }: { label: string; value:
 
 const th = { textAlign: "left" as const, padding: "8px 12px", fontWeight: 600, color: "var(--mantine-color-slate-5)", fontSize: 11 };
 const td = { padding: "8px 12px", color: "var(--mantine-color-slate-7)" };
+const thNum = { ...th, textAlign: "right" as const };
+const tdNum = { ...td, textAlign: "right" as const, fontVariantNumeric: "tabular-nums" as const };
+const tdTop = { ...td, verticalAlign: "top" as const };
+const tdCharge = { ...tdTop, padding: "5px 10px" };
 
-type Section = "application" | "prescreening" | "enrichment";
+const SCHEDULE_PAGE_SIZE = 10;
+
+type Section = "application" | "prescreening" | "appraisal";
 
 function LeftNav({ section, setSection }: { section: Section; setSection: (s: Section) => void }) {
   const items: { id: Section; label: string; icon: React.FC<any> }[] = [
     { id: "application", label: "Loan application", icon: IconFileText },
     { id: "prescreening", label: "Prescreening", icon: IconGauge },
-    { id: "enrichment", label: "Enrichment", icon: IconBuildingBank },
+    { id: "appraisal", label: "Loan Appraisal", icon: IconBuildingBank },
   ];
   return (
     <Box
@@ -230,7 +303,7 @@ function LeftNav({ section, setSection }: { section: Section; setSection: (s: Se
         {items.map((it) => {
           const active = section === it.id;
           const Icon = it.icon;
-          const isDone = it.id !== "enrichment";
+          const isDone = it.id !== "appraisal";
           return (
             <UnstyledButton
               key={it.id}
@@ -270,11 +343,9 @@ function LeftNav({ section, setSection }: { section: Section; setSection: (s: Se
 function ContextHeader({
   values,
   applicationId,
-  approvedAmount,
 }: {
   values: LoanApplicationValues;
   applicationId: string;
-  approvedAmount: number;
 }) {
   const isBusiness = values.loanType === "Business";
   const name = isBusiness
@@ -287,12 +358,12 @@ function ContextHeader({
       justify="space-between"
       align="center"
       px="xl"
-      py="sm"
+      py={6}
       bg="white"
       style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
     >
       <Group gap={12}>
-        <ThemeIcon radius="xl" size={36} variant="light" color="brand">
+        <ThemeIcon radius="xl" size={30} variant="light" color="brand">
           <Text fz="sm" fw={700}>
             {initials || "—"}
           </Text>
@@ -309,14 +380,6 @@ function ContextHeader({
       <Group gap={26}>
         <Box ta="right">
           <Text fz={10.5} c="slate.4">
-            Approved amount
-          </Text>
-          <Text fz={13.5} fw={700} c="slate.9">
-            {zmw(approvedAmount)}
-          </Text>
-        </Box>
-        <Box ta="right">
-          <Text fz={10.5} c="slate.4">
             Application ID
           </Text>
           <Text fz={13.5} fw={700} c="slate.9">
@@ -330,14 +393,23 @@ function ContextHeader({
 
 function EnrichmentWorkspace({
   values,
-  approvedAmount,
+  approvedAmount: initialApprovedAmount,
+  eligibleAmount,
+  income,
+  obligations,
+  maxDTI,
   onSubmitReady,
 }: {
   values: LoanApplicationValues;
   approvedAmount: number;
+  eligibleAmount: number;
+  income: number;
+  obligations: number;
+  maxDTI: number;
   onSubmitReady?: (canSubmit: boolean, submit: () => void) => void;
 }) {
-  const [amount, setAmount] = useState<number>(approvedAmount);
+  const [approvedAmount, setApprovedAmount] = useState<number>(initialApprovedAmount);
+  const [overrideReason, setOverrideReason] = useState("");
   const [tab, setTab] = useState<"terms" | "schedule">("terms");
   const [tenure, setTenure] = useState<number>(Number(values.tenureMonths) || 0);
   const [frequency, setFrequency] = useState<string>(values.repaymentFrequency);
@@ -348,21 +420,29 @@ function EnrichmentWorkspace({
     new Date().toISOString().slice(0, 10),
   );
 
-  const [processingFeePct, setProcessingFeePct] = useState(2);
-  const [insuranceEnabled, setInsuranceEnabled] = useState(true);
-  const [insurancePct, setInsurancePct] = useState(1);
-  const [taxPct, setTaxPct] = useState(16);
-  const [waiverEnabled, setWaiverEnabled] = useState(false);
-  const [waiverAmount, setWaiverAmount] = useState(0);
-  const [waiverReason, setWaiverReason] = useState("");
+  const [charges, setCharges] = useState<ChargeRow[]>([]);
 
-  const [scheduleOpen, setScheduleOpen] = useState(false);
+  function addCharge() {
+    setCharges((prev) => [...prev, makeChargeRow()]);
+  }
+  function updateCharge(id: string, patch: Partial<ChargeRow>) {
+    setCharges((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  }
+  function removeCharge(id: string) {
+    setCharges((prev) => prev.filter((c) => c.id !== id));
+  }
+
+  const [schedulePage, setSchedulePage] = useState(1);
   const [continued, setContinued] = useState(false);
+  const theme = useMantineTheme();
 
-  const amountError =
-    amount != null && (amount < PRODUCT_LIMITS.amountMin || amount > approvedAmount)
-      ? `Enter an amount between ${zmw(PRODUCT_LIMITS.amountMin)} and ${zmw(approvedAmount)} (the amount approved at prescreening).`
+  const requestedAmount = Number(values.loanAmount) || 0;
+  const isOverride = approvedAmount > eligibleAmount;
+  const overrideError =
+    isOverride && !overrideReason.trim()
+      ? "Record why the approved amount exceeds the calculated eligibility."
       : null;
+
   const tenureError =
     tenure != null && (tenure < PRODUCT_LIMITS.tenureMin || tenure > PRODUCT_LIMITS.tenureMax)
       ? `Enter a tenure between ${PRODUCT_LIMITS.tenureMin} and ${PRODUCT_LIMITS.tenureMax} months.`
@@ -372,24 +452,87 @@ function EnrichmentWorkspace({
       ? `Enter a rate between ${PRODUCT_LIMITS.rateMin}% and ${PRODUCT_LIMITS.rateMax}%.`
       : null;
 
-  const valid = !amountError && !tenureError && !rateError && amount && tenure && rate;
+  const valid = !tenureError && !rateError && !overrideError && approvedAmount && tenure && rate;
 
   const figures = useMemo(() => {
     if (!valid) return null;
-    const processingFee = amount * (processingFeePct / 100);
-    const insurance = insuranceEnabled ? amount * (insurancePct / 100) : 0;
-    const feesSubtotal = processingFee + insurance;
-    const tax = feesSubtotal * (taxPct / 100);
-    const waiver = waiverEnabled ? Number(waiverAmount || 0) : 0;
-    const netCharges = Math.max(0, feesSubtotal + tax - waiver);
-    const netDisbursement = amount - netCharges;
-    const sim = computeSimulation(amount, tenure, rate, frequency, 0);
-    const totalCostOfCredit = sim.totalInterest + netCharges;
-    return { processingFee, insurance, feesSubtotal, tax, waiver, netCharges, netDisbursement, sim, totalCostOfCredit };
-  }, [valid, amount, tenure, rate, frequency, processingFeePct, insuranceEnabled, insurancePct, taxPct, waiverEnabled, waiverAmount]);
+
+    const billedSeparately = charges.filter((c) => c.treatment === "Billed Separately");
+    const addToFirst = charges.filter((c) => c.treatment === "Add to First Repayment");
+
+    const billedSeparatelyTotal = billedSeparately.reduce((s, c) => s + resolveChargeAmount(c, approvedAmount), 0);
+    const addToFirstTotal = addToFirst.reduce((s, c) => s + resolveChargeAmount(c, approvedAmount), 0);
+    const financedCharges = addToFirstTotal;
+
+    const financedPrincipal = approvedAmount;
+    const netDisbursement = approvedAmount;
+    const sim = computeSimulation(financedPrincipal, tenure, rate, frequency, calcMethod, effectiveDate);
+
+    const totalRepayment = approvedAmount + sim.totalInterest + financedCharges;
+
+    const monthlyInstalment =
+      frequency === "Bi-weekly" ? (sim.installment * 26) / 12 : sim.installment;
+    const projectedDti = income > 0 ? ((obligations + monthlyInstalment) / income) * 100 : null;
+
+    return {
+      billedSeparatelyTotal, addToFirstTotal, financedCharges,
+      financedPrincipal, netDisbursement, sim, totalRepayment, monthlyInstalment, projectedDti,
+    };
+  }, [valid, approvedAmount, tenure, rate, frequency, calcMethod, effectiveDate, charges, income, obligations]);
   useEffect(() => {
     onSubmitReady?.(!!valid, () => setContinued(true));
   }, [valid]);
+
+  const scheduleTotalPages = figures ? Math.ceil(figures.sim.nPeriods / SCHEDULE_PAGE_SIZE) : 0;
+  const pagedSchedule = useMemo(
+    () =>
+      figures
+        ? figures.sim.schedule.slice(
+            (schedulePage - 1) * SCHEDULE_PAGE_SIZE,
+            schedulePage * SCHEDULE_PAGE_SIZE,
+          )
+        : [],
+    [figures, schedulePage],
+  );
+  useEffect(() => {
+    if (schedulePage > scheduleTotalPages) setSchedulePage(Math.max(1, scheduleTotalPages));
+  }, [schedulePage, scheduleTotalPages]);
+
+  const exportSchedule = () => {
+    if (!figures) return;
+    const sheetData = figures.sim.schedule.map((row) => {
+      const chargesAdded = row.n === 1 ? figures.addToFirstTotal : 0;
+      return {
+        "#": row.n,
+        "Due Date": fmtDate(row.due),
+        "Opening Balance": Math.round(row.opening),
+        Principal: Math.round(row.principal),
+        Interest: Math.round(row.interest),
+        "Charges Added": Math.round(chargesAdded),
+        Instalment: Math.round(row.principal + row.interest + chargesAdded),
+        "Closing Balance": Math.round(row.balance),
+      };
+    });
+    sheetData.push({
+      "#": "" as never,
+      "Due Date": "Total",
+      "Opening Balance": "" as never,
+      Principal: Math.round(figures.financedPrincipal),
+      Interest: Math.round(figures.sim.totalInterest),
+      "Charges Added": Math.round(figures.addToFirstTotal),
+      Instalment: Math.round(figures.totalRepayment),
+      "Closing Balance": "" as never,
+    });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheetData), "Repayment Schedule");
+    saveAs(
+      new Blob([XLSX.write(wb, { bookType: "xlsx", type: "array" })], {
+        type: "application/octet-stream",
+      }),
+      `Repayment_Schedule_${new Date().toISOString().split("T")[0]}.xlsx`,
+    );
+  };
+
   if (continued) {
     return (
       <Box py={70} px={30} ta="center">
@@ -400,61 +543,59 @@ function EnrichmentWorkspace({
           Moving to Stage 4 — Underwriting
         </Text>
         <Text fz={12.5} c="slate.5" mt={6}>
-          Final terms locked at {zmw(amount)} · {rate}% · {tenure} months.
+          Final terms locked at {zmw(approvedAmount)} · {rate}% · {tenure} months.
         </Text>
       </Box>
     );
   }
 
    return (
-    <Box p={20}>
-      {/* <Group
-        gap={10}
-        align="flex-start"
-        mb={16}
-        p="sm"
-        bg="brand.0"
-        style={{ border: "1px solid var(--mantine-color-brand-2)", borderRadius: "var(--mantine-radius-md)" }}
-      >
-        <IconInfoCircle size={15} color="var(--mantine-color-brand-6)" style={{ marginTop: 2, flexShrink: 0 }} />
-        <Group justify="space-between" style={{ flex: 1 }}>
-          <Text fz={13} c="brand.9">
-            Commercial terms prepared for underwriting and offer generation — subject to final risk approval.
-          </Text>
-          <Badge size="xs" radius="xl" color="gray" variant="light">
-            Non-Binding Simulation
-          </Badge>
-        </Group>
-      </Group> */}
-
-      <SimpleGrid cols={2} spacing={16}>
-        {/* LEFT COLUMN */}
+    <Box p={8}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)', gap: 14, alignItems: 'start' }}>
         <Box>
           <EnrichmentTabs tab={tab} setTab={setTab} />
 
           {tab === "terms" && (
             <>
-              <Paper withBorder radius="md" p="sm" mb={10}>
+              <Paper withBorder radius="lg" shadow="xs" p="sm" mb={6}>
                 <SectionLabel>Final loan terms</SectionLabel>
-                <SimpleGrid cols={3} spacing={10}>
+                <SimpleGrid cols={{ base: 2, md: 4 }} spacing={10} verticalSpacing={6}>
+                  <Box>
+                    <TextInput
+                      label="Requested"
+                      value={zmw(requestedAmount)}
+                      readOnly
+                      radius="md"
+                      size="xs"
+                      styles={{
+                        input: {
+                          background: "var(--mantine-color-slate-0)",
+                          color: "var(--mantine-color-slate-6)",
+                          cursor: "default",
+                        },
+                      }}
+                    />
+                    <Text fz={10} c="slate.4" mt={4}>
+                      At application
+                    </Text>
+                  </Box>
                   <Box>
                     <NumberInput
-                      label="Requested Principal"
-                      value={amount}
-                      onChange={(v) => setAmount(Number(v) || 0)}
+                      label="Approved"
+                      value={approvedAmount}
+                      onChange={(v) => setApprovedAmount(Number(v) || 0)}
                       prefix="ZMW "
-                      error={amountError}
-                      min={PRODUCT_LIMITS.amountMin}
-                      max={approvedAmount}
-                      step={500}
+                      hideControls
+                      thousandSeparator=","
+                      min={0}
                       radius="md"
                       size="xs"
                     />
-                    {/* {!amountError && (
-                      <Text fz={10} c="green.6" mt={4} fw={600}>
-                        100% Capped Limit
-                      </Text>
-                    )} */}
+                    <Text fz={10} c={isOverride ? "orange.7" : "slate.4"} mt={4}>
+                      {isOverride
+                        ? `Override — eligibility is ${zmw(eligibleAmount)}`
+                        : `Eligibility: ${zmw(eligibleAmount)}`}
+                    </Text>
                   </Box>
                   <Box>
                     <NumberInput
@@ -469,11 +610,6 @@ function EnrichmentWorkspace({
                       radius="md"
                       size="xs"
                     />
-                    {/* {!tenureError && (
-                      <Text fz={10} c="slate.4" mt={4}>
-                        Range: {PRODUCT_LIMITS.tenureMin}–{PRODUCT_LIMITS.tenureMax} mos
-                      </Text>
-                    )} */}
                   </Box>
                   <Select
                     label="Frequency"
@@ -484,31 +620,51 @@ function EnrichmentWorkspace({
                     size="xs"
                   />
                 </SimpleGrid>
-              </Paper>
-
-              <Paper withBorder radius="md" p="sm" mb={10}>
-                <SectionLabel>Interest rate & calculation method</SectionLabel>
-                <SimpleGrid cols={3} spacing={10}>
-                  <Box>
-                    <NumberInput
-                      label="Interest Rate"
-                      value={rate}
-                      hideControls
-                      onChange={(v) => setRate(Number(v) || 0)}
-                      suffix=" % p.a."
-                      error={rateError}
-                      min={PRODUCT_LIMITS.rateMin}
-                      max={PRODUCT_LIMITS.rateMax}
-                      step={0.5}
+                {isOverride && (
+                  <Box
+                    mt={10}
+                    p={10}
+                    style={{
+                      background: "var(--mantine-color-orange-0)",
+                      border: "1px solid var(--mantine-color-orange-2)",
+                      borderRadius: "var(--mantine-radius-md)",
+                    }}
+                  >
+                    <Group gap={6} mb={6} wrap="nowrap">
+                      <IconInfoCircle size={14} color="var(--mantine-color-orange-7)" />
+                      <Text fz={11.5} fw={600} c="orange.8">
+                        Approved amount exceeds calculated eligibility by{" "}
+                        {zmw(approvedAmount - eligibleAmount)}
+                      </Text>
+                    </Group>
+                    <TextInput
+                      label="Override reason"
+                      placeholder="e.g. amount negotiated and agreed with the customer by phone on 22 Sep"
+                      value={overrideReason}
+                      onChange={(e) => setOverrideReason(e.currentTarget.value)}
+                      error={overrideError}
                       radius="md"
                       size="xs"
                     />
-                    {/* {!rateError && (
-                      <Text fz={10} c="slate.4" mt={4}>
-                        {PRODUCT_LIMITS.rateMin}% · {PRODUCT_LIMITS.rateMax}%
-                      </Text>
-                    )} */}
                   </Box>
+                )}
+              </Paper>
+
+              <Paper withBorder radius="lg" shadow="xs" p="sm" mb={6}>
+                <SectionLabel>Interest rate & calculation method</SectionLabel>
+                <SimpleGrid cols={{ base: 2, md: 4 }} spacing={10} verticalSpacing={6}>
+                  <NumberInput
+                    label="Interest Rate"
+                    value={rate}
+                    hideControls
+                    onChange={(v) => setRate(Number(v) || 0)}
+                    suffix=" % p.a."
+                    error={rateError}
+                    min={PRODUCT_LIMITS.rateMin}
+                    max={PRODUCT_LIMITS.rateMax}
+                    radius="md"
+                    size="xs"
+                  />
                   <Select
                     label="Interest Type"
                     value={interestType}
@@ -518,315 +674,407 @@ function EnrichmentWorkspace({
                     size="xs"
                   />
                   <Select
-                    label="Calculation method"
+                    label="Calculation"
                     value={calcMethod}
                     onChange={(v) => setCalcMethod(v || "Reducing balance")}
                     data={["Reducing balance", "Flat rate"]}
                     radius="md"
                     size="xs"
                   />
+                  <Box>
+                    <TextInput
+                      type="date"
+                      label="Effective Date"
+                      value={effectiveDate}
+                      onChange={(e) => setEffectiveDate(e.currentTarget.value)}
+                      radius="md"
+                      size="xs"
+                    />
+                    {figures && (
+                      <Text fz={10} c="slate.4" mt={2}>
+                        1st due {fmtDate(figures.sim.first)}
+                      </Text>
+                    )}
+                  </Box>
                 </SimpleGrid>
-                <TextInput
-                  type="date"
-                  label="Effective Date"
-                  value={effectiveDate}
-                  onChange={(e) => setEffectiveDate(e.currentTarget.value)}
-                  radius="md"
-                  size="xs"
-                  mt={8}
-                  w="33%"
-                />
               </Paper>
 
-              <Paper withBorder radius="md" p="sm">
-                <Group justify="space-between" mb={4}>
-                  <SectionLabel>Statutory charges & deductions</SectionLabel>
-                  <Badge size="xs" radius="xl" color="green" variant="light">
-                    Deducted at Disbursement
-                  </Badge>
-                </Group>
-                <SimpleGrid cols={3} spacing={10} mb={10}>
-                  <Box>
-                    <NumberInput
-                      label="Processing Fee"
-                      value={processingFeePct}
-                      hideControls
-                      onChange={(v) => setProcessingFeePct(Number(v) || 0)}
-                      suffix=" %"
-                      min={0}
-                      max={10}
-                      step={0.5}
-                      radius="md"
-                      size="xs"
-                    />
-                    {figures && (
-                      <Text fz={10} c="slate.4" mt={4}>
-                        Amount: {zmw(figures.processingFee)}
-                      </Text>
-                    )}
-                  </Box>
-                  <Box>
-                    <NumberInput
-                      label="VAT on Fees"
-                      value={taxPct}
-                      hideControls
-                      onChange={(v) => setTaxPct(Number(v) || 0)}
-                      suffix=" %"
-                      min={0}
-                      max={30}
-                      step={1}
-                      radius="md"
-                      size="xs"
-                    />
-                    {figures && (
-                      <Text fz={10} c="slate.4" mt={4}>
-                        Amount: {zmw(figures.tax)}
-                      </Text>
-                    )}
-                  </Box>
-                  <Box>
-                    <NumberInput
-                      label="Credit Life Ins."
-                      value={insurancePct}
-                      hideControls
-                      onChange={(v) => setInsurancePct(Number(v) || 0)}
-                      suffix=" %"
-                      min={0}
-                      max={5}
-                      step={0.25}
-                      radius="md"
-                      size="xs"
-                      disabled={!insuranceEnabled}
-                    />
-                    {figures && (
-                      <Text fz={10} c="slate.4" mt={4}>
-                        Amount: {zmw(figures.insurance)}
-                      </Text>
-                    )}
-                  </Box>
-                </SimpleGrid>
-
-                <Group justify="space-between" align="center">
-                  <Checkbox
-                    size="xs"
-                    checked={insuranceEnabled}
-                    onChange={(e) => setInsuranceEnabled(e.currentTarget.checked)}
-                    label="Credit life insurance applicable"
-                  />
-                  {figures && (
-                    <Text fz={12} fw={700} c="slate.9">
-                      Total Deductions: {zmw(figures.netCharges)}
+              <Paper withBorder radius="lg" shadow="xs" p="sm">
+                <Group justify="space-between" mb={6}>
+                  <SectionLabel>Fees &amp; charges</SectionLabel>
+                  {charges.length > 0 && (
+                    <Text fz={11} c="slate.4">
+                      {charges.length} charge{charges.length === 1 ? "" : "s"}
                     </Text>
                   )}
                 </Group>
-                <Checkbox
-                  size="xs"
-                  mt={8}
-                  checked={waiverEnabled}
-                  onChange={(e) => setWaiverEnabled(e.currentTarget.checked)}
-                  label="Apply a waiver or discount"
-                />
-                {waiverEnabled && (
-                  <SimpleGrid cols={2} spacing={10} mt={10}>
-                    <NumberInput
-                      label="Waiver amount"
-                      value={waiverAmount}
-                      hideControls
-                      onChange={(v) => setWaiverAmount(Number(v) || 0)}
-                      suffix=" ZMW"
-                      min={0}
-                      radius="md"
-                      size="xs"
-                    />
-                    <TextInput
-                      label="Reason"
-                      value={waiverReason}
-                      onChange={(e) => setWaiverReason(e.currentTarget.value)}
-                      placeholder="e.g. loyalty discount"
-                      radius="md"
-                      size="xs"
-                    />
-                  </SimpleGrid>
-                )}
+
+                <Box style={{ maxHeight: 168, overflowY: "auto" }}>
+                  <Table.ScrollContainer minWidth={620}>
+                    <Table fz={12} verticalSpacing={4}>
+                      <Table.Thead bg="slate.0" style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                        <Table.Tr>
+                          <Table.Th style={th}>Name</Table.Th>
+                          <Table.Th style={th}>Value</Table.Th>
+                          <Table.Th style={th}>Treatment</Table.Th>
+                          <Table.Th style={th} />
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {charges.length === 0 ? (
+                          <Table.Tr>
+                            <Table.Td colSpan={4}>
+                              <Text fz={12} c="slate.4" ta="center" py={10}>
+                                No charges added yet. Click "Add charge" for processing fees, VAT,
+                                insurance, legal, valuation or any other cost on this facility.
+                              </Text>
+                            </Table.Td>
+                          </Table.Tr>
+                        ) : (
+                          charges.map((c) => {
+                            const resolved = resolveChargeAmount(c, approvedAmount);
+                            return (
+                              <Table.Tr key={c.id}>
+                                <Table.Td style={tdCharge}>
+                                  <Select
+                                    size="xs"
+                                    radius="md"
+                                    placeholder="Select or type"
+                                    searchable
+                                    data={CHARGE_NAME_OPTIONS}
+                                    value={c.name}
+                                    onChange={(v) => updateCharge(c.id, { name: v || "" })}
+                                  />
+                                </Table.Td>
+                                <Table.Td style={tdCharge}>
+                                  <Group gap={6} wrap="nowrap" align="flex-start">
+                                    <Box style={{ minWidth: 100, flex: 1 }}>
+                                      <NumberInput
+                                        size="xs"
+                                        radius="md"
+                                        hideControls
+                                        min={0}
+                                        thousandSeparator={c.basis === "Amount" ? "," : undefined}
+                                        prefix={c.basis === "Amount" ? "ZMW " : undefined}
+                                        suffix={c.basis === "Percentage" ? " %" : undefined}
+                                        value={c.value}
+                                        onChange={(v) => updateCharge(c.id, { value: v === "" ? "" : Number(v) })}
+                                      />
+                                      {c.basis === "Percentage" && (
+                                        <Text fz={10} c="slate.4" mt={1}>≈ {zmw(resolved)}</Text>
+                                      )}
+                                    </Box>
+                                    <SegmentedControl
+                                      size="xs"
+                                      value={c.basis}
+                                      onChange={(v) => updateCharge(c.id, { basis: v as ChargeBasis })}
+                                      data={[
+                                        { label: "%", value: "Percentage" },
+                                        { label: "Flat", value: "Amount" },
+                                      ]}
+                                      styles={{ root: { flexShrink: 0 } }}
+                                    />
+                                  </Group>
+                                </Table.Td>
+                                <Table.Td style={tdCharge}>
+                                  <Select
+                                    size="xs"
+                                    radius="md"
+                                    data={CHARGE_TREATMENT_OPTIONS}
+                                    value={c.treatment}
+                                    onChange={(v) =>
+                                      updateCharge(c.id, { treatment: (v as ChargeTreatment) || "Add to First Repayment" })
+                                    }
+                                  />
+                                </Table.Td>
+                                <Table.Td style={tdCharge}>
+                                  <ActionIcon variant="subtle" color="danger" size="sm" onClick={() => removeCharge(c.id)}>
+                                    <IconTrash size={14} />
+                                  </ActionIcon>
+                                </Table.Td>
+                              </Table.Tr>
+                            );
+                          })
+                        )}
+                      </Table.Tbody>
+                    </Table>
+                  </Table.ScrollContainer>
+                </Box>
+
+                <Group justify="space-between" align="center" mt={8}>
+                  <Button
+                    variant="subtle"
+                    color="brand"
+                    size="xs"
+                    radius="md"
+                    leftSection={<IconPlus size={14} stroke={2.5} />}
+                    onClick={addCharge}
+                  >
+                    Add charge
+                  </Button>
+                  {figures && charges.length > 0 && (
+                    <Text fz={12} fw={700} c="slate.9">
+                      Total charges: {zmw(figures.billedSeparatelyTotal + figures.addToFirstTotal)}
+                    </Text>
+                  )}
+                </Group>
               </Paper>
             </>
           )}
 
           {tab === "schedule" && (
-            <Paper withBorder radius="md" p="sm">
-              <SectionLabel>Repayment schedule</SectionLabel>
-              {figures ? (
-                <Box style={{ border: "1px solid var(--mantine-color-slate-2)", borderRadius: "var(--mantine-radius-md)", overflow: "hidden" }}>
-                  <Table fz={12}>
-                    <Table.Thead bg="slate.0">
-                      <Table.Tr>
-                        <Table.Th style={th}>#</Table.Th>
-                        <Table.Th style={th}>Due date</Table.Th>
-                        <Table.Th style={th}>Principal</Table.Th>
-                        <Table.Th style={th}>Interest</Table.Th>
-                        <Table.Th style={th}>Balance</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {figures.sim.schedule.map((row) => (
-                        <Table.Tr key={row.n}>
-                          <Table.Td style={td}>{row.n}</Table.Td>
-                          <Table.Td style={td}>{fmtDate(row.due)}</Table.Td>
-                          <Table.Td style={td}>{zmw(row.principal)}</Table.Td>
-                          <Table.Td style={td}>{zmw(row.interest)}</Table.Td>
-                          <Table.Td style={td}>{zmw(row.balance)}</Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                  {figures.sim.nPeriods > 6 && (
-                    <Text fz={11.5} c="slate.4" px="sm" py={8}>
-                      Showing first 6 of {figures.sim.nPeriods} payments.
+            <Paper withBorder radius="lg" shadow="xs" p="sm">
+              <Group justify="space-between" align="center" mb={10}>
+                <Box>
+                  <SectionLabel>Repayment schedule</SectionLabel>
+                  {figures && (
+                    <Text fz={11} c="slate.4">
+                      {figures.sim.nPeriods} instalments · {calcMethod} · {interestType.toLowerCase()} {rate}% p.a.
                     </Text>
                   )}
                 </Box>
+                <Button
+                  size="xs"
+                  radius="xl"
+                  color="brand"
+                  leftSection={<IconDownload size={13} />}
+                  onClick={exportSchedule}
+                  disabled={!figures}
+                  style={{
+                    background: theme.other.brandGradient,
+                    boxShadow: theme.other.brandGlowShadowSm,
+                  }}
+                >
+                  Export
+                </Button>
+              </Group>
+              {figures ? (
+                <>
+                  <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
+                    <Table.ScrollContainer minWidth={620}>
+                      <Table fz={12} verticalSpacing="sm" highlightOnHover>
+                        <Table.Thead bg="slate.0">
+                          <Table.Tr>
+                            <Table.Th style={th}>#</Table.Th>
+                            <Table.Th style={th}>Due date</Table.Th>
+                            <Table.Th style={thNum}>Opening</Table.Th>
+                            <Table.Th style={thNum}>Principal</Table.Th>
+                            <Table.Th style={thNum}>Interest</Table.Th>
+                            <Table.Th style={thNum}>Instalment</Table.Th>
+                            <Table.Th style={thNum}>Balance</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {pagedSchedule.map((row) => {
+                            const chargesAdded = row.n === 1 ? figures.addToFirstTotal : 0;
+                            return (
+                              <Table.Tr key={row.n}>
+                                <Table.Td style={td}>{row.n}</Table.Td>
+                                <Table.Td style={td}>{fmtDate(row.due)}</Table.Td>
+                                <Table.Td style={tdNum}>{zmw(row.opening)}</Table.Td>
+                                <Table.Td style={tdNum}>{zmw(row.principal)}</Table.Td>
+                                <Table.Td style={tdNum}>{zmw(row.interest)}</Table.Td>
+                                <Table.Td style={tdNum}>
+                                  {zmw(row.principal + row.interest + chargesAdded)}
+                                  {chargesAdded > 0 && (
+                                    <Text component="span" fz={10} c="orange.6"> *</Text>
+                                  )}
+                                </Table.Td>
+                                <Table.Td style={tdNum}>{zmw(row.balance)}</Table.Td>
+                              </Table.Tr>
+                            );
+                          })}
+                        </Table.Tbody>
+                        <Table.Tfoot>
+                          <Table.Tr style={{ background: "var(--mantine-color-slate-0)" }}>
+                            <Table.Th style={th} colSpan={3}>
+                              Total
+                            </Table.Th>
+                            <Table.Th style={thNum}>{zmw(figures.financedPrincipal)}</Table.Th>
+                            <Table.Th style={thNum}>{zmw(figures.sim.totalInterest)}</Table.Th>
+                            <Table.Th style={thNum}>{zmw(figures.totalRepayment)}</Table.Th>
+                            <Table.Th style={thNum}>—</Table.Th>
+                          </Table.Tr>
+                        </Table.Tfoot>
+                      </Table>
+                    </Table.ScrollContainer>
+                  </Paper>
+                  {figures.addToFirstTotal > 0 && (
+                    <Text fz={10.5} c="orange.7" mt={4}>
+                      * Instalment 1 includes {zmw(figures.addToFirstTotal)} in charges added to the first repayment.
+                    </Text>
+                  )}
+                  <Group justify="space-between" align="center" mt={10}>
+                    <Text fz={11} c="slate.4">
+                      Showing {(schedulePage - 1) * SCHEDULE_PAGE_SIZE + 1}–
+                      {Math.min(schedulePage * SCHEDULE_PAGE_SIZE, figures.sim.nPeriods)} of{" "}
+                      {figures.sim.nPeriods}
+                    </Text>
+                    {scheduleTotalPages > 1 && (
+                      <Pagination
+                        total={scheduleTotalPages}
+                        value={schedulePage}
+                        onChange={setSchedulePage}
+                        size="sm"
+                        radius="xl"
+                        color="brand"
+                      />
+                    )}
+                  </Group>
+                </>
               ) : (
                 <Text fz={12.5} c="slate.5">Fix the highlighted fields in Loan Terms to view the schedule.</Text>
               )}
             </Paper>
           )}
 
-          {/* <Button
-            disabled={!valid}
-            onClick={() => valid && setContinued(true)}
-            color="brand"
-            radius="md"
-            mt={16}
-            rightSection={<IconArrowRight size={16} />}
-          >
-            Review and continue
-          </Button> */}
         </Box>
 
-        {/* RIGHT COLUMN — SIMULATION MATRIX */}
-        <Box
-  p={16}
-  style={{
-    borderRadius: "var(--mantine-radius-md)",
-    background: "white",
-    border: "1px solid var(--mantine-color-slate-2)",
-  }}
+
+        <Paper
+  withBorder
+  radius="lg"
+  shadow="xs"
+  p={12}
+  style={{ overflow: "hidden", alignSelf: "flex-start", position: "sticky", top: 0 }}
 >
          <Box
-  p={14}
-  mx={-16}
-  mt={-16}
-  mb={14}
+  p={8}
+  mx={-12}
+  mt={-12}
+  mb={8}
   style={{
-    background: "linear-gradient(180deg, #4338CA 0%, #3730A3 100%)",
-    borderRadius: "var(--mantine-radius-md) var(--mantine-radius-md) 0 0",
+    background: theme.other.brandGradient,
+    borderRadius: "var(--mantine-radius-lg) var(--mantine-radius-lg) 0 0",
   }}
 >
-  <Group justify="space-between">
-    <Box>
-      {/* <Text fz={10} fw={600} c="rgba(255,255,255,0.65)">SIMULATION MATRIX</Text> */}
-      <Text fz={14} fw={700} c="white">Summary of Terms</Text>
-    </Box>
-    {/* <Badge size="xs" radius="xl" color="grape" variant="filled">
-      Tier-1 Terms
-    </Badge> */}
+  <Group justify="space-between" wrap="nowrap">
+    <Text fz={13} fw={700} c="white">Summary of Terms</Text>
+    <Badge size="xs" radius="xl" variant="white" c="brand.7">
+      {calcMethod}
+    </Badge>
   </Group>
 </Box>
 
           {figures ? (
             <>
-        <SimpleGrid cols={2} spacing={10} mb={10}>
-  <Box p={10} bg="green.0" style={{ borderRadius: "var(--mantine-radius-md)", border: "1px solid var(--mantine-color-green-2)" }}>
-    <Text fz={9.5} fw={600} c="green.7">NET DISBURSED TO CLIENT</Text>
-    <Group justify="space-between" align="flex-end" mt={2} gap={4} wrap="nowrap">
-      <Text fz={17} fw={700} c="slate.9">{zmw(figures.netDisbursement)}</Text>
-      <Text fz={9.5} c="green.7">After {zmw(figures.netCharges)} fees</Text>
-    </Group>
+        <SimpleGrid cols={2} spacing={8} mb={6}>
+  <Box p={8} bg="green.0" style={{ borderRadius: "var(--mantine-radius-md)", border: "1px solid var(--mantine-color-green-2)" }}>
+    <Text fz={9} fw={700} c="green.7" mb={3} style={{ whiteSpace: "nowrap" }}>NET DISBURSED</Text>
+    <Text fz={14.5} fw={800} c="slate.9" lh={1.05} style={{ whiteSpace: "nowrap" }}>{zmw(figures.netDisbursement)}</Text>
   </Box>
-  <Box p={10} bg="brand.0" style={{ borderRadius: "var(--mantine-radius-md)", border: "1px solid var(--mantine-color-brand-2)" }}>
-    <Text fz={9.5} fw={600} c="brand.7">EST. {frequency.toUpperCase()} INSTALLMENT</Text>
-    <Group justify="space-between" align="flex-end" mt={2} gap={4} wrap="nowrap">
-      <Text fz={17} fw={700} c="slate.9">{zmw(figures.sim.installment)}</Text>
-      <Text fz={9.5} c="brand.7">{figures.sim.nPeriods} installments</Text>
-    </Group>
+  <Box p={8} bg="brand.0" style={{ borderRadius: "var(--mantine-radius-md)", border: "1px solid var(--mantine-color-brand-2)" }}>
+    <Text fz={9} fw={700} c="brand.7" mb={3} style={{ whiteSpace: "nowrap" }}>EST. INSTALMENT</Text>
+    <Text fz={14.5} fw={800} c="slate.9" lh={1.05} style={{ whiteSpace: "nowrap" }}>{zmw(figures.sim.installment)}</Text>
+    <Text fz={9.5} c="brand.7" mt={2}>
+      {figures.addToFirstTotal > 0
+        ? `1st instalment +${zmw(figures.addToFirstTotal)}`
+        : `${figures.sim.nPeriods} × ${frequency.toLowerCase()}`}
+    </Text>
   </Box>
 </SimpleGrid>
 
-              <Box mb={14}>
-  <Group justify="space-between" py={6} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
-    <Text fz={12} c="slate.5">Gross loan amount</Text>
-    <Text fz={12} fw={600} c="slate.9">{zmw(amount)}</Text>
+              <Box mb={8}>
+  <Group justify="space-between" py={3} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+    <Text fz={12} c="slate.5">Principal</Text>
+    <Text fz={12} fw={600} c="slate.9">{zmw(approvedAmount)}</Text>
   </Group>
-  <Group justify="space-between" py={6} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
-    <Text fz={12} c="slate.5">Total charges & fees</Text>
-    <Text fz={12} fw={600} c="red.6">- {zmw(figures.netCharges)}</Text>
-  </Group>
-  <Group justify="space-between" py={6} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
-    <Text fz={12} c="slate.5">Total interest</Text>
+  <Group justify="space-between" py={3} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
+    <Text fz={12} c="slate.5">Interest</Text>
     <Text fz={12} fw={600} c="slate.9">{zmw(figures.sim.totalInterest)}</Text>
   </Group>
-  <Group justify="space-between" py={6} style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
-    <Text fz={12} c="slate.5">Total cost of credit</Text>
-    <Text fz={12} fw={600} c="slate.9">{zmw(figures.totalCostOfCredit)}</Text>
+  <Group justify="space-between" py={3}>
+    <Text fz={12} c="slate.5">Charges</Text>
+    <Text fz={12} fw={600} c="slate.9">{zmw(figures.financedCharges)}</Text>
   </Group>
-  <Group justify="space-between" py={8} bg="slate.0" px={8} mt={4} style={{ borderRadius: "var(--mantine-radius-sm)" }}>
-    <Text fz={12.5} fw={700} c="slate.9">Total Customer Repayment Commitment</Text>
-    <Text fz={12.5} fw={700} c="brand.7">{zmw(amount + figures.totalCostOfCredit)}</Text>
+  <Group justify="space-between" py={6} bg="slate.0" px={8} mt={4} style={{ borderRadius: "var(--mantine-radius-sm)" }}>
+    <Text fz={12.5} fw={700} c="slate.9">Total Customer Repayment</Text>
+    <Text fz={12.5} fw={700} c="brand.7">{zmw(figures.totalRepayment)}</Text>
   </Group>
+  {figures.billedSeparatelyTotal > 0 && (
+    <Group justify="space-between" py={3} mt={2}>
+      <Text fz={11} c="slate.4">Billed separately, outside this loan</Text>
+      <Text fz={11} fw={600} c="slate.5">{zmw(figures.billedSeparatelyTotal)}</Text>
+    </Group>
+  )}
 </Box>
 
-             {/* <Group justify="space-between" mb={8}>
-  <Text fz={10} fw={600} c="slate.4">REPAYMENT MILESTONES PREVIEW</Text>
-  <Text fz={10} fw={600} c="brand.5">{tenure}M Amortization</Text>
-</Group> */}
-              {/* <Group gap={8} mb={14} wrap="nowrap">
-               {[1, 6, 12, figures.sim.nPeriods].map((n, i) => {
-  const row = figures.sim.schedule.find((r) => r.n === n) ?? figures.sim.schedule[figures.sim.schedule.length - 1];
-  return (
-    <MilestoneCard
-      key={i}
-      label={`Month ${n}`}
-      value={zmw(figures.sim.installment)}
-      sub={`Bal ${zmw(row.balance)}`}
-      highlight={i === 3}
-    />
-  );
-})}
-              </Group> */}
+              <Text fz={9} fw={700} c="slate.4" tt="uppercase" mb={1} style={{ letterSpacing: 0.3 }}>Affordability</Text>
+              <Box
+                mb={8}
+                p={6}
+                style={{
+                  borderRadius: "var(--mantine-radius-md)",
+                  background:
+                    figures.projectedDti != null && figures.projectedDti > maxDTI
+                      ? "var(--mantine-color-red-0)"
+                      : "var(--mantine-color-slate-0)",
+                  border:
+                    figures.projectedDti != null && figures.projectedDti > maxDTI
+                      ? "1px solid var(--mantine-color-red-2)"
+                      : "1px solid var(--mantine-color-slate-2)",
+                }}
+              >
+                <Group justify="space-between" py={1}>
+                  <Text fz={11.5} c="slate.5">Monthly income</Text>
+                  <Text fz={11.5} fw={600} c="slate.9">{zmw(income)}</Text>
+                </Group>
+                <Group justify="space-between" py={1}>
+                  <Text fz={11.5} c="slate.5">Existing obligations</Text>
+                  <Text fz={11.5} fw={600} c="slate.9">{zmw(obligations)}</Text>
+                </Group>
+                <Group justify="space-between" py={1}>
+                  <Text fz={11.5} c="slate.5">This loan (monthly)</Text>
+                  <Text fz={11.5} fw={600} c="slate.9">{zmw(figures.monthlyInstalment)}</Text>
+                </Group>
+                <Group justify="space-between" py={1} mt={2} style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
+                  <Text fz={11.5} fw={600} c="slate.7">Projected DTI</Text>
+                  <Text
+                    fz={12}
+                    fw={700}
+                    c={figures.projectedDti != null && figures.projectedDti > maxDTI ? "red.7" : "green.7"}
+                  >
+                    {figures.projectedDti == null ? "—" : `${figures.projectedDti.toFixed(1)}%`} / {maxDTI}%
+                  </Text>
+                </Group>
+                {figures.projectedDti != null && figures.projectedDti > maxDTI && (
+                  <Text fz={10.5} c="red.7" mt={6}>
+                    These terms take the customer past the {maxDTI}% DTI policy limit.
+                  </Text>
+                )}
+              </Box>
 
-              <Group justify="space-between" mb={4} pt={10} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
+              <Group justify="space-between" mb={6} pt={6} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
   <Box>
-    <Text fz={12} c="slate.4">First Repayment:</Text>
+    <Text fz={10} c="slate.4">First repayment</Text>
+    <Text fz={12} fw={700} c="slate.9">{fmtDate(figures.sim.first)}</Text>
   </Box>
   <Box ta="right">
-    <Text fz={12} c="slate.4">Final Maturity:</Text>
+    <Text fz={10} c="slate.4">Final maturity</Text>
+    <Text fz={12} fw={700} c="slate.9">{fmtDate(figures.sim.final)}</Text>
   </Box>
-</Group>
-<Group justify="space-between" mb={10}>
-  <Text fz={12.5} fw={700} c="slate.9">{fmtDate(figures.sim.first)}</Text>
-  <Text fz={12.5} fw={700} c="slate.9">{fmtDate(figures.sim.final)}</Text>
 </Group>
 
             <UnstyledButton
   onClick={() => setTab("schedule")}
-  mt={4}
-  mb={12}
-  p={10}
+  mt={2}
+  mb={0}
+  p={7}
   w="100%"
   style={{ background: "var(--mantine-color-brand-0)", borderRadius: "var(--mantine-radius-md)" }}
 >
   <Group justify="space-between">
-    <Text fz={12} fw={600} c="brand.7">Preview {tenure}-Month Amortization Schedule</Text>
-    <IconChevronDown size={13} color="var(--mantine-color-brand-7)" />
+    <Text fz={12} fw={600} c="brand.7">View full schedule — {figures.sim.nPeriods} instalments</Text>
+    <IconArrowRight size={13} color="var(--mantine-color-brand-7)" />
   </Group>
 </UnstyledButton>
 
             </>
           ) : (
-            <Text fz={12.5} c="rgba(255,255,255,0.7)">Fix the highlighted fields to see the simulation.</Text>
+            <Text fz={12.5} c="slate.5">Fix the highlighted fields to see the summary.</Text>
           )}
-        </Box>
-      </SimpleGrid>
+        </Paper>
+      </div>
     </Box>
   );
 }
@@ -839,12 +1087,14 @@ export function EnrichmentModal({
   embedded,
   readOnly,
 }: EnrichmentModalProps) {
-  const [section, setSection] = useState<Section>("enrichment");
+  const [section, setSection] = useState<Section>("appraisal");
 
   const policy = POLICY[DUMMY_PRESCREENING_CONTEXT.loanTypeId];
+  const income = DUMMY_PRESCREENING_DATA.income.value;
+  const obligations = DUMMY_PRESCREENING_DATA.liabilities.obligations;
   const calc = calcEligibility({
-    income: DUMMY_PRESCREENING_DATA.income.value,
-    obligations: DUMMY_PRESCREENING_DATA.liabilities.obligations,
+    income,
+    obligations,
     maxDTI: policy.maxDTI,
     annualRate: DUMMY_PRESCREENING_CONTEXT.loanRate,
     tenureMonths: Number(applicationValues.tenureMonths) || 0,
@@ -871,6 +1121,10 @@ export function EnrichmentModal({
       <EnrichmentWorkspace
         values={applicationValues}
         approvedAmount={approvedAmount}
+        eligibleAmount={approvedAmount}
+        income={income}
+        obligations={obligations}
+        maxDTI={policy.maxDTI}
         onSubmitReady={handleSubmitReady}
       />
     );
@@ -880,19 +1134,14 @@ export function EnrichmentModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      // size={1400}
-       size="90vw"
+      size="90vw"
       padding={0}
+      closeOnClickOutside={false}
+      closeOnEscape={false}
       lockScroll
-      // styles={{
-      //   content: {
-      //     display: "flex",
-      //     flexDirection: "column",
-      //     overflow: "hidden",
-      //   },
-       styles={{
+      styles={{
         content: {
-          height: "92vh",
+          height: "96vh",
           maxHeight: "99vh",
           width: "90vw",
           maxWidth: "1600px",
@@ -929,7 +1178,7 @@ export function EnrichmentModal({
                 Loan application
               </Text>
               <Text size="xs" fw={500} c="brand.1">
-                Stage 3 — Loan enrichment
+                Stage 3 — Loan Appraisal
               </Text>
             </Box>
           </Group>
@@ -953,7 +1202,6 @@ export function EnrichmentModal({
         <ContextHeader
           values={applicationValues}
           applicationId={DUMMY_PRESCREENING_CONTEXT.applicationId}
-          approvedAmount={approvedAmount}
         />
 
         <Box style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", overflow: "hidden" }}>
@@ -1000,10 +1248,14 @@ export function EnrichmentModal({
               </Box>
             )}
 
-                       {section === "enrichment" && (
+                       {section === "appraisal" && (
               <EnrichmentWorkspace
                 values={applicationValues}
                 approvedAmount={approvedAmount}
+                eligibleAmount={approvedAmount}
+                income={income}
+                obligations={obligations}
+                maxDTI={policy.maxDTI}
                 onSubmitReady={handleSubmitReady}
               />
             )}
