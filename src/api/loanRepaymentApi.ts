@@ -1,7 +1,10 @@
-import apiClient from "../config/axios"; 
+import apiClient from "../config/axios";
 import { API } from "../config/api";
-import type { LoanRepaymentPayload, LoanRepaymentResponse, LoanRepaymentAccountSearchResponse, LoanDuesPayload, LoanDuesResponse, ModeOfPaymentResponse} from "../types/loanRepaymentForm";
+import type { LoanRepaymentPayload, LoanRepaymentResponse, LoanRepaymentAccountSearchResponse, LoanDuesPayload, LoanDuesResponse, ModeOfPaymentResponse } from "../types/loanRepaymentForm";
 
+// Shared across Loan Repayment, Loan Waiver, and Loan Capitalization modules —
+// only accounts that are Partially Disbursed or Disbursed should be selectable.
+const LOAN_ACCOUNT_STATUSES = ["Partially Disbursed", "Disbursed"] as const;
 
 export async function createLoanRepayment(payload: LoanRepaymentPayload) {
   const { data } = await apiClient.post<LoanRepaymentResponse>(API.loanRepayment.createLoanRepay, payload);
@@ -11,7 +14,12 @@ export async function createLoanRepayment(payload: LoanRepaymentPayload) {
 export async function getLoanRepaymentAccount(searchTerm: string) {
   const { data } = await apiClient.get<LoanRepaymentAccountSearchResponse>(
     API.loanRepayment.getLoanReapyAcc,
-    { params: { search_term: searchTerm } }
+    {
+      params: {
+        search_term: searchTerm,
+        status: JSON.stringify(LOAN_ACCOUNT_STATUSES),
+      },
+    }
   );
   return data;
 }
@@ -25,12 +33,12 @@ export async function getLoanDues(payload: LoanDuesPayload) {
 }
 
 export async function getLoanRepaymentById(id: string) {
-  const { data } = await apiClient.get(API.loanRepayment.getLoanRepayById, { params: { id } });  
+  const { data } = await apiClient.get(API.loanRepayment.getLoanRepayById, { params: { id } });
   return data;
 }
 
 export async function deleteLoanRepayment(id: string) {
-  const { data } = await apiClient.delete(API.loanRepayment.deleteLoanRepay, { params: { id } });  
+  const { data } = await apiClient.delete(API.loanRepayment.deleteLoanRepay, { params: { id } });
   return data;
 }
 
@@ -62,11 +70,11 @@ export async function getAllLoanRepayment(params: GetAllLoanRepaymentParams = {}
   return data;
 }
 
-
 export async function updateLoanRepayment({ id, payload }: { id: string; payload: Partial<LoanRepaymentPayload> }) {
   const { data } = await apiClient.put(API.loanRepayment.updateLoanRepay, { ...payload, id });
   return data;
 }
+
 export async function getModeOfPayment() {
   const { data } = await apiClient.get<ModeOfPaymentResponse>(
     API.loanRepayment.modeOfPayment
