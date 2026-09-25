@@ -517,6 +517,7 @@ function StatusBadge({ status }: { status: string }) {
             color={color}
             tt="none"
             fw={700}
+            px="sm"
         >
             {status}
         </Badge>
@@ -524,11 +525,18 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function StageBadge({ stage }: { stage: string }) {
-    return stage === "—" ? (
-        <Text fz="xs" c="slate.5">
-            —
-        </Text>
-    ) : (
+    if (stage === "—") {
+        return (
+            <Text
+                fz="xs"
+                c="slate.5"
+            >
+                —
+            </Text>
+        );
+    }
+
+    return (
         <Badge
             size="sm"
             radius="xl"
@@ -536,6 +544,7 @@ function StageBadge({ stage }: { stage: string }) {
             color={STAGE_COLOR[stage] || "brand"}
             tt="none"
             fw={700}
+            px="sm"
         >
             {stage}
         </Badge>
@@ -1148,6 +1157,14 @@ export function LoanOriginationReport() {
     /* ------------------------------------------------------------------------ */
     /* Render                                                                   */
     /* ------------------------------------------------------------------------ */
+    const FILTER_INPUT_STYLES = {
+        label: {
+            fontSize: 11,
+            fontWeight: 700,
+            color: "var(--mantine-color-slate-6)",
+            marginBottom: 5,
+        },
+    };
 
     return (
         <Box mih="100%" px={{ base: "sm", sm: "md", lg: "xl" }} py="lg" bg="slate.0">
@@ -1275,6 +1292,7 @@ export function LoanOriginationReport() {
                             label="Date Range"
                             placeholder="Select date range"
                             value={draft.date}
+                            styles={FILTER_INPUT_STYLES}
                             onChange={(date) =>
                                 setDraft((current) => ({ ...current, date }))
                             }
@@ -1296,6 +1314,7 @@ export function LoanOriginationReport() {
                             clearable
                             size="sm"
                             radius="md"
+                            styles={FILTER_INPUT_STYLES}
                         />
 
                         <Select
@@ -1310,6 +1329,7 @@ export function LoanOriginationReport() {
                             clearable
                             size="sm"
                             radius="md"
+                            styles={FILTER_INPUT_STYLES}
                         />
 
                         <Select
@@ -1324,6 +1344,7 @@ export function LoanOriginationReport() {
                             clearable
                             size="sm"
                             radius="md"
+                            styles={FILTER_INPUT_STYLES}
                         />
 
                         <Select
@@ -1338,6 +1359,7 @@ export function LoanOriginationReport() {
                             clearable
                             size="sm"
                             radius="md"
+                            styles={FILTER_INPUT_STYLES}
                         />
 
                         <Button
