@@ -7,7 +7,7 @@ import {
 } from "@mantine/core";
 import {
   IconBell, IconChevronDown, IconChevronLeft, IconChevronRight, IconFileText, IconGauge, IconBuildingBank, IconScale,
-  IconShieldCheck, IconCar, IconIdBadge2, IconClipboardCheck, IconCheck, IconX, IconPlus, IconInfoCircle,
+  IconShieldCheck, IconCar, IconIdBadge2, IconCheck, IconX, IconPlus, IconInfoCircle,
   IconAlertTriangle, IconCircleCheck, IconCircleX, IconArrowRight, IconMinus, IconTrash, IconUpload, IconLock,
 } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
@@ -79,17 +79,16 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Types & the single merged flow: Asset -> Valuation -> Legal -> Security outcome
+// Types & the single merged flow: Asset -> Valuation -> Legal
 // ---------------------------------------------------------------------------
 
 type Section = "application" | "prescreening" | "appraisal" | "underwriting";
-export type PanelId = "assetDetails" | "documents" | "valuation" | "assetDocs" | "legal" | "legalDocs" | "notes" | "assetConclusion" | "conclusion";
+export type PanelId = "assetDetails" | "documents" | "valuation" | "assetDocs" | "legal" | "legalDocs" | "notes" | "assetConclusion";
 
 export const PANEL_ITEMS: { id: PanelId; label: string; icon: React.FC<any> }[] = [
   { id: "assetDetails", label: "Asset", icon: IconIdBadge2 },
   { id: "valuation", label: "Valuation", icon: IconCar },
   { id: "legal", label: "Legal", icon: IconShieldCheck },
-  { id: "conclusion", label: "Security outcome", icon: IconClipboardCheck },
 ];
 const STEPS = PANEL_ITEMS.map((p) => p.id);
 
@@ -106,6 +105,7 @@ export const TAB_ITEMS: { id: TabId; label: string; icon: React.FC<any>; entrySt
 export interface AssetDoc {
   name: string; tier: "required" | "optional"; status: string; uploadedDate: string; uploadedBy: string;
   validUntil: string; fileMeta: string; comment: string;
+  fileUrl?: string; fileType?: string;
 }
 export interface TitleChecklistItem { id: string; label: string; status: string; comment: string }
 export interface LegalCheck { id: string; name: string; status: string; finding: string; why: string; action: string; comment: string }
@@ -116,7 +116,6 @@ export interface Asset {
   id: string;
   source: "application" | "manual";
   base: DummyAssetBase;
-  kycVerified: boolean;
   valuation: { amount: string; valuationAmount: string; currency: string; method: string; marketValue: string; forcedSaleValue: string; notes: string };
   valuer: { name: string; company: string; license: string; contact: string; verified: boolean };
   valuationDate: string;
@@ -129,25 +128,28 @@ export interface Asset {
   titleChecklist: TitleChecklistItem[];
   titleDocs: AssetDoc[];
   legalChecks: LegalCheck[];
+  legalRemarks: string;
   assetOverallAssessment: string;
   assetRemarks: string;
   assetAssignee: string;
   assetDecisionStatus: string;
-  assetDecision: Decision;
-  assetConditions: Condition[];
-  assetReasonCategory: string;
-  assetReasonDetail: string;
 }
 
 const emptyDoc = (name: string, tier: "required" | "optional"): AssetDoc => ({ name, tier, status: "Missing", uploadedDate: "", uploadedBy: "", validUntil: "", fileMeta: "", comment: "" });
 
+// Local YYYY-MM-DD (toISOString would shift the day across the UTC boundary).
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 let assetSeq = 1;
 function makeAsset(source: "application" | "manual", base: DummyAssetBase): Asset {
   return {
-    id: "asset-" + assetSeq++, source, base, kycVerified: false,
+    id: "asset-" + assetSeq++, source, base,
     valuation: { amount: "", valuationAmount: "", currency: "ZMW", method: "Market comparison", marketValue: "", forcedSaleValue: "", notes: "" },
     valuer: { name: "", company: "", license: "", contact: "", verified: false },
-    valuationDate: "", expiryDays: 180, status: "Pending", reason: "",
+    valuationDate: todayISO(), expiryDays: 180, status: "Pending", reason: "",
     docs: [emptyDoc("Valuation report", "required"), emptyDoc("Asset photos", "required"), emptyDoc("Ownership document", "required")],
     title: { titleNumber: "", propertyRef: base?.assetId || "", propertyType: base?.type || "", location: base?.location || "", registrationInfo: "", registeredOwner: base?.owner || "" },
     legalVerifier: { name: "", company: "", role: "", license: "", contact: "" },
@@ -163,14 +165,13 @@ function makeAsset(source: "application" | "manual", base: DummyAssetBase): Asse
       id: c?.id ?? Math.random().toString(36).slice(2), name: c?.name ?? "Legal check", status: c?.defaultStatus ?? "Pending",
       finding: c?.finding ?? "", why: c?.why || "", action: c?.action || "", comment: "",
     })),
+    legalRemarks: "",
     assetOverallAssessment: "Review Required", assetRemarks: "", assetAssignee: "Internal team", assetDecisionStatus: "Review Required",
-    assetDecision: null, assetConditions: [], assetReasonCategory: "", assetReasonDetail: "",
   };
 }
 
 function makeSeedAsset(): Asset {
   const a = makeAsset("application", DUMMY_SEED_ASSET_BASE);
-  a.kycVerified = true;
   const done = (name: string, tier: "required" | "optional", by: string, date: string, meta: string, until = ""): AssetDoc =>
     ({ name, tier, status: "Verified", uploadedDate: date, uploadedBy: by, validUntil: until, fileMeta: meta, comment: "" });
   a.docs = [
@@ -179,7 +180,7 @@ function makeSeedAsset(): Asset {
     emptyDoc("Ownership document", "required"),
   ];
   a.valuation = { ...a.valuation, marketValue: "", forcedSaleValue: "", amount: "" };
-  a.valuationDate = "";
+  a.valuationDate = todayISO();
   a.valuer = { name: "", company: "", license: "", contact: "", verified: false };
   a.status = "Pending";
   a.titleChecklist = a.titleChecklist.map((i) => ({ ...i, status: i.id === "encumbrances" ? "Exception" : "Passed" }));
@@ -202,16 +203,16 @@ function assetIssues(a: Asset) {
   const docsMissing = [...missingRequiredDocs(a.docs), ...missingRequiredDocs(a.titleDocs)];
   const valuationOk = a.status === "Passed" || (["Failed", "Exception"].includes(a.status) && !!a.reason.trim());
   const titleOpen = a.titleChecklist.filter((i) => ["Pending", "In Progress"].includes(i.status) || (["Failed", "Exception"].includes(i.status) && !i.comment.trim()));
-  const legalOpen = a.legalChecks.filter((c) => ["Failed", "Exception"].includes(c.status) && !c.comment.trim());
+  const legalOpen = a.legalRemarks.trim() ? [] : a.legalChecks.filter((c) => ["Failed", "Exception"].includes(c.status));
   return { docsMissing, valuationOk, titleOpen, legalOpen };
 }
 
 function stepDone(a: Asset, id: PanelId): boolean {
   const i = assetIssues(a);
-  if (id === "assetDetails") return !!a.base.description?.trim() && a.kycVerified;
+  if (id === "assetDetails") return !!a.base.description?.trim();
   if (id === "valuation") return i.valuationOk;
   if (id === "legal") return i.titleOpen.length === 0 && i.legalOpen.length === 0;
-  return a.assetDecision !== null;
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -373,8 +374,7 @@ function UnderwritingWorkspace({
       if (s.docsMissing.length) blockers.push(`${l}: required documents not verified — ${s.docsMissing.map((d) => d.name).join(", ")}.`);
       if (!s.valuationOk) blockers.push(`${l}: valuation not confirmed.`);
       if (s.titleOpen.length) blockers.push(`${l}: unresolved title items — ${s.titleOpen.map((t) => t.label).join(", ")}.`);
-      if (s.legalOpen.length) blockers.push(`${l}: legal exceptions need a comment — ${s.legalOpen.map((c) => c.name).join(", ")}.`);
-      if (!a.assetDecision) blockers.push(`${l}: no security outcome recorded.`);
+      if (s.legalOpen.length) blockers.push(`${l}: legal exceptions need a legal remark — ${s.legalOpen.map((c) => c.name).join(", ")}.`);
     });
     return { ready: blockers.length === 0, blockers };
   }, [assets]);
@@ -392,13 +392,11 @@ function UnderwritingWorkspace({
         { id: "assetDetails" as PanelId, label: "Asset", icon: IconIdBadge2 },
         { id: "valuation" as PanelId, label: "Valuation", icon: IconCar },
         { id: "notes" as PanelId, label: "Underwriter Notes", icon: IconFileText },
-        { id: "conclusion" as PanelId, label: "Security outcome", icon: IconClipboardCheck },
       ];
     }
     return [
       { id: "legal" as PanelId, label: "Legal", icon: IconShieldCheck },
       { id: "notes" as PanelId, label: "Underwriter Notes", icon: IconFileText },
-      { id: "conclusion" as PanelId, label: "Security outcome", icon: IconClipboardCheck },
     ];
   }, [tab]);
   const steps = useMemo(() => panelItems.map((p) => p.id), [panelItems]);
@@ -456,7 +454,7 @@ function UnderwritingWorkspace({
           {(panel === "assetDetails" || panel === "valuation" || panel === "documents") && (
             <AssetValuation asset={selected} finalAmount={finalAmount} panel={panel} notes={notes} setNotes={setNotes} onUpdate={onUpdate} />
           )}
-          {(panel === "legal" || panel === "conclusion") && (
+          {panel === "legal" && (
             <LegalVerification
               asset={selected} panel={panel} notes={notes} setNotes={setNotes} onUpdate={onUpdate} finalAmount={finalAmount}
               onUpdateChecklist={(itemId: string, patch: Partial<TitleChecklistItem>) => updateChecklist(selected.id, itemId, patch)}
@@ -545,7 +543,7 @@ function UnderwritingWorkspace({
                     </Box>
                   </Group>
                   <Group gap={10} wrap="nowrap">
-                    <StatusBadge status={a.assetDecision ? (a.assetDecision === "reject" ? "Rejected" : "Verified") : a.status} />
+                    <StatusBadge status={a.status} />
                     <ActionIcon variant="subtle" color="red" size="sm" title="Remove" onClick={(e) => { e.stopPropagation(); removeAsset(a.id); }}><IconTrash size={15} /></ActionIcon>
                     <IconChevronRight size={16} color="var(--mantine-color-gray-4)" />
                   </Group>

@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 import {
   Box, Group, Text, SimpleGrid, Paper, TextInput, NumberInput, Select, Checkbox, Textarea, Badge, Button,
-  ActionIcon, ThemeIcon, UnstyledButton, Tooltip, Stack
+  ActionIcon, ThemeIcon, UnstyledButton, Tooltip, Stack, Modal, Image
 } from "@mantine/core";
 import {
-  IconInfoCircle, IconAlertTriangle, IconUpload, IconFileText, IconCircleCheck, IconCircleX, IconLock, IconX, IconPlus, IconTrash,
+  IconAlertTriangle, IconUpload, IconFileText, IconCircleCheck, IconCircleX, IconLock, IconX, IconPlus, IconTrash,
 } from "@tabler/icons-react";
 import { DUMMY_ASSET_TYPES } from "../PreScreeningModal/Dummyloanapplicationdata";
 // Types only — erased at build time, so this file has no *runtime* dependency
@@ -173,6 +173,43 @@ export function DecisionButton({ label, caption, color, icon: Icon, disabled, on
   );
 }
 
+export function DocumentPreviewModal({ opened, onClose, doc }: { opened: boolean; onClose: () => void; doc?: AssetDoc }) {
+  const url = doc?.fileUrl;
+  const isImage = !!doc?.fileType?.startsWith("image/");
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      size="80%"
+      radius="md"
+      centered
+      zIndex={400}
+      title={
+        <Group gap={8} wrap="nowrap">
+          <IconFileText size={18} color="var(--mantine-color-indigo-6)" />
+          <Box>
+            <Text fz={14} fw={700} c="dark.9">{doc?.name || "Document"}</Text>
+            {doc?.fileMeta && <Text fz={11.5} c="dimmed">{doc.fileMeta} · uploaded by {doc.uploadedBy || "You"}{doc.uploadedDate ? `, ${doc.uploadedDate}` : ""}</Text>}
+          </Box>
+        </Group>
+      }
+    >
+      <Box h="75vh" style={{ border: "1px solid var(--mantine-color-gray-3)", borderRadius: "var(--mantine-radius-md)", overflow: "hidden", background: "var(--mantine-color-gray-0)" }}>
+        {!url ? (
+          <Stack h="100%" align="center" justify="center" gap={6}>
+            <ThemeIcon variant="light" color="gray" size={40} radius="xl"><IconFileText size={20} /></ThemeIcon>
+            <Text fz={13} c="dimmed">No preview available for this document.</Text>
+          </Stack>
+        ) : isImage ? (
+          <Image src={url} alt={doc?.name} h="100%" fit="contain" />
+        ) : (
+          <iframe src={url} title={doc?.name || "Document preview"} style={{ width: "100%", height: "100%", border: 0 }} />
+        )}
+      </Box>
+    </Modal>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Asset step + Valuation step
 // ---------------------------------------------------------------------------
@@ -181,7 +218,6 @@ const REPORT = "Valuation report";
 
 export function AssetValuation({
   asset,
-  finalAmount,
   panel,
   notes,
   setNotes,
@@ -195,6 +231,7 @@ export function AssetValuation({
   onUpdate: (patch: Partial<Asset>) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const reportDoc = asset.docs[0];
   const hasReport = !!reportDoc?.fileMeta;
   
@@ -204,7 +241,8 @@ export function AssetValuation({
     const meta = `${(f.size / 1048576).toFixed(1)} MB`;
     const date = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
     
-    onUpdate({ docs: [{ name: f.name.split('.')[0], tier: "optional", status: "Uploaded", fileMeta: meta, uploadedDate: date, uploadedBy: "You", validUntil: "", comment: "" }] });
+    if (reportDoc?.fileUrl) URL.revokeObjectURL(reportDoc.fileUrl);
+    onUpdate({ docs: [{ name: f.name.split('.')[0], tier: "optional", status: "Uploaded", fileMeta: meta, uploadedDate: date, uploadedBy: "You", validUntil: "", comment: "", fileUrl: URL.createObjectURL(f), fileType: f.type }] });
     
     if (e.target) e.target.value = "";
   };
@@ -212,8 +250,6 @@ export function AssetValuation({
   const locked = confirmed;
 
   const v = asset.valuation;
-  const effectiveAmount = v.amount ? Number(v.amount) : (v.forcedSaleValue ? Number(v.forcedSaleValue) : 0);
-  const coverage = effectiveAmount ? Math.round((effectiveAmount / finalAmount) * 100) : null;
 
   const setV = (patch: Partial<Asset["valuation"]>) => onUpdate({ valuation: { ...v, ...patch } });
 
@@ -287,11 +323,6 @@ export function AssetValuation({
           )}
         </SimpleGrid>
 
-        <Group gap={12} p={10} mb={8} bg="gray.0" wrap="nowrap" style={{ border: "1px solid var(--mantine-color-gray-2)", borderRadius: "var(--mantine-radius-md)" }}>
-          <IconInfoCircle size={16} color="var(--mantine-color-brand-6)" style={{ flexShrink: 0 }} />
-          <Text fz={13} c="dark.6" style={{ flex: 1 }}>The owner's KYC has been completed and verified for this asset.</Text>
-          <Checkbox size="sm" label="KYC verified" checked={asset.kycVerified} onChange={(e) => onUpdate({ kycVerified: e.currentTarget.checked })} />
-        </Group>
 
       </Box>
     );
@@ -308,13 +339,14 @@ export function AssetValuation({
             <Text fz={11.5} fw={700} c="indigo.9" tt="uppercase">Valuation Report</Text>
             {hasReport && (
               <Group gap={8}>
-                <Button variant="default" size="compact-xs" radius="xl">Open full</Button>
+                <Button variant="default" size="compact-xs" radius="xl" onClick={() => setPreviewOpen(true)}>Open full</Button>
                 <Button variant="default" size="compact-xs" radius="xl" onClick={() => fileRef.current?.click()}>Replace</Button>
               </Group>
             )}
           </Group>
           
           <input type="file" ref={fileRef} accept=".pdf,.jpg,.png" style={{ display: "none" }} onChange={onDropzoneUpload} />
+          <DocumentPreviewModal opened={previewOpen} onClose={() => setPreviewOpen(false)} doc={reportDoc} />
 
           {!hasReport ? (
             <Box mb={14}>
@@ -399,36 +431,8 @@ export function AssetValuation({
                 </Box>
               </Box>
               
-              <Group gap={8} mt={10}>
-                <Badge variant="light" color="green" size="md" leftSection={<IconCircleCheck size={12} />} tt="none" fw={600}>
-                  Valid until 3 Mar 2027 · 160 days left
-                </Badge>
-              </Group>
             </Box>
           )}
-          <Paper withBorder radius="md" p="10px 14px" bg="indigo.0" mt={10} style={{ borderColor: "var(--mantine-color-indigo-2)" }}>
-            <Group justify="space-between" align="center" wrap="nowrap">
-              <Box style={{ flex: 1 }}>
-                <Text fz={11.5} c="indigo.9" mb={2}>Security value</Text>
-                <NumberInput 
-                  variant="unstyled"
-                  prefix="ZMW "
-                  thousandSeparator=","
-                  hideControls
-                  disabled={locked}
-                  value={effectiveAmount || ""}
-                  onChange={(x) => setV({ amount: String(x ?? "") })}
-                  styles={{ input: { border: "none", background: "transparent", fontSize: 20, fontWeight: 700, color: "var(--mantine-color-indigo-9)", padding: 0, height: 26, minHeight: 26 } }}
-                />
-                <Text fz={10.5} c="indigo.7" mt={2}>Defaults to forced sale value · editable</Text>
-              </Box>
-              <Box style={{ borderLeft: "1px solid var(--mantine-color-indigo-2)", paddingLeft: 20, paddingRight: 8, textAlign: "center" }}>
-                <Text fz={11.5} c="indigo.9">Coverage</Text>
-                <Text fz={20} fw={700} c="teal.8" lh={1.2}>{coverage != null ? coverage : 0}%</Text>
-                <Text fz={10.5} c="indigo.7">of ZMW {finalAmount.toLocaleString()}</Text>
-              </Box>
-            </Group>
-          </Paper>
         </Box>
 
         {/* RIGHT COLUMN: Inputs */}
@@ -456,22 +460,6 @@ export function AssetValuation({
             <TextInput size="xs" type="date" label="Valuation date" disabled={locked} value={asset.valuationDate} onChange={(e) => onUpdate({ valuationDate: e.currentTarget.value })} radius="md" />
           </SimpleGrid>
 
-          <Paper withBorder radius="md" p={8} px={12} mt="auto">
-            <Group justify="space-between" wrap="nowrap">
-              <Group gap={8} wrap="nowrap">
-                <IconInfoCircle size={16} color="var(--mantine-color-indigo-6)" />
-                <Text fz={12} c="dark.8">Confirm the valuer meets the configured panel requirement.</Text>
-              </Group>
-              <Checkbox 
-                size="xs" 
-                label="Confirmed" 
-                disabled={locked} 
-                checked={asset.valuer.verified} 
-                onChange={(e) => onUpdate({ valuer: { ...asset.valuer, verified: e.currentTarget.checked } })} 
-                styles={{ label: { paddingLeft: 8, fontWeight: 500 } }}
-              />
-            </Group>
-          </Paper>
         </Box>
       </Group>
     </Box>
