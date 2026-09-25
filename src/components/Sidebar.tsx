@@ -265,6 +265,20 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
   },
   {
     path: "/reports",
+    label: "Reports",
+    icon: IconReportAnalytics,
+    matchPrefix: true,
+    subItems: [
+      {
+        path: "/reports/loan-origination",
+        label: "Loan Origination Report",
+        icon: IconReportAnalytics,
+        modules: ["Loan"],
+      },
+    ],
+  },
+  {
+    path: "/reports",
     label: "Lending Reports",
     icon: IconReportAnalytics,
     matchPrefix: true,
@@ -272,6 +286,14 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/reports/statement", label: "Loan Statement", icon: IconFileText, modules: ["Loan"] },
       { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics, modules: ["Loan"] },
       { path: "/reports/schedule", label: "Repayment Schedule", icon: IconFileText, modules: ["Loan"] },
+
+      // NEW — Loan Origination Report
+      {
+        path: "/reports/loan-origination",
+        label: "Loan Origination Report",
+        icon: IconReportAnalytics,
+        modules: ["Loan"],
+      },
     ],
   },
   {
