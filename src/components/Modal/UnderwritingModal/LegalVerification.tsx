@@ -1,21 +1,11 @@
-import { useRef } from "react";
-import { Box, Group, Text, SimpleGrid, Paper, TextInput, Textarea, Select, Button, ActionIcon, Tooltip, Badge, Checkbox, UnstyledButton } from "@mantine/core";
-import { IconX, IconLock, IconPlus, IconFileText, IconUpload, IconInfoCircle, IconCircleCheck, IconAlertTriangle } from "@tabler/icons-react";
-import type { Asset, PanelId, TitleChecklistItem, LegalCheck, Decision } from "./UnderwritingModal";
+import { useRef, useState } from "react";
+import { Box, Group, Text, SimpleGrid, Paper, TextInput, Textarea, Select, Button, ActionIcon, Tooltip, Badge, Checkbox } from "@mantine/core";
+import { IconX, IconLock, IconPlus, IconFileText, IconUpload, IconCircleCheck, IconAlertTriangle, IconEye, IconRefresh, IconPencil } from "@tabler/icons-react";
+import type { Asset, AssetDoc, PanelId, TitleChecklistItem, LegalCheck } from "./UnderwritingModal";
 import {
-  REJECT_REASONS, zmw, missingRequiredDocs, requiredDocsVerified,
-  SectionLabel, CompactCheckRow, DocumentsTable,
+  requiredDocsVerified,
+  SectionLabel, CompactCheckRow, DocumentsTable, DocumentPreviewModal,
 } from "./AssetValuation"
-
-function StatCard({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
-  return (
-    <Paper withBorder radius="md" p="sm" style={{ borderLeft: `3px solid var(--mantine-color-${color}-6)` }}>
-      <Text fz={11} fw={600} c="dimmed">{label}</Text>
-      <Text fz={15} fw={700} c={`${color}.8`}>{value}</Text>
-      <Text fz={11} c="dimmed">{sub}</Text>
-    </Paper>
-  );
-}
 
 export function LegalVerification({
   asset,
@@ -25,7 +15,6 @@ export function LegalVerification({
   onUpdate,
   onUpdateChecklist,
   onUpdateLegalCheck,
-  finalAmount,
 }: {
   asset: Asset;
   panel: PanelId;
@@ -36,26 +25,46 @@ export function LegalVerification({
   onUpdateLegalCheck: (checkId: string, patch: Partial<LegalCheck>) => void;
   finalAmount?: number;
 }) {
+  const docFileRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const addDocRef = useRef<HTMLInputElement>(null);
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+
   // -------------------------------------------------------------- Legal
   if (panel === "legal") {
     const passedChecks = asset.legalChecks.filter(c => c.status === "Passed").length;
     const totalChecks = asset.legalChecks.length;
-
-    const docFileRefs = useRef<Record<number, HTMLInputElement | null>>({});
-    const addDocRef = useRef<HTMLInputElement>(null);
 
     const stampFile = (f: File) => ({
       status: "Uploaded",
       fileMeta: `${f.name} (${(f.size / 1048576).toFixed(1)} MB)`,
       uploadedBy: "You",
       uploadedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+      fileUrl: URL.createObjectURL(f),
+      fileType: f.type,
     });
+
+    const setDoc = (i: number, patch: Partial<AssetDoc>) =>
+      onUpdate({ titleDocs: asset.titleDocs.map((d, idx) => (idx === i ? { ...d, ...patch } : d)) });
 
     const onDocFile = (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
       const f = e.target.files?.[0];
       if (!f) return;
-      onUpdate({ titleDocs: asset.titleDocs.map((d, idx) => (idx === i ? { ...d, ...stampFile(f), name: d.name } : d)) });
+      const old = asset.titleDocs[i]?.fileUrl;
+      if (old) URL.revokeObjectURL(old);
+      setDoc(i, stampFile(f));
       e.target.value = "";
+    };
+
+    // Required slots keep their place and go back to "missing"; optional ones are dropped.
+    const onRemoveDoc = (i: number) => {
+      const d = asset.titleDocs[i];
+      if (d.fileUrl) URL.revokeObjectURL(d.fileUrl);
+      if (d.tier === "required") {
+        setDoc(i, { status: "Missing", fileMeta: "", uploadedBy: "", uploadedDate: "", fileUrl: undefined, fileType: undefined });
+      } else {
+        onUpdate({ titleDocs: asset.titleDocs.filter((_, idx) => idx !== i) });
+      }
     };
 
     const onAddDocFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,23 +83,69 @@ export function LegalVerification({
           <Button size="compact-xs" variant="outline" radius="xl" color="indigo" leftSection={<IconPlus size={12} />} onClick={() => addDocRef.current?.click()}>Add document</Button>
         </Group>
 
+        <DocumentPreviewModal
+          opened={previewIdx != null}
+          onClose={() => setPreviewIdx(null)}
+          doc={previewIdx != null ? asset.titleDocs[previewIdx] : undefined}
+        />
+
         <SimpleGrid cols={3} spacing={8} mb={10}>
           {asset.titleDocs.map((d, i) => {
             const isOpt = d.tier === "optional";
             const ok = d.status === "Verified" || d.status === "Uploaded";
             return (
               <Paper key={i} withBorder radius="md" p={6} bg={ok ? "green.0" : "transparent"}
-                component={ok ? "div" : UnstyledButton}
-                onClick={ok ? undefined : () => docFileRefs.current[i]?.click()}
-                style={{ borderColor: ok ? "var(--mantine-color-green-3)" : isOpt ? "var(--mantine-color-gray-3)" : "var(--mantine-color-brand-3)", 
-                        borderStyle: isOpt && !ok ? "dashed" : "solid", width: "100%", textAlign: "left", cursor: ok ? "default" : "pointer" }}>
+                style={{ borderColor: ok ? "var(--mantine-color-green-3)" : isOpt ? "var(--mantine-color-gray-3)" : "var(--mantine-color-brand-3)",
+                        borderStyle: isOpt && !ok ? "dashed" : "solid" }}>
                 <input type="file" ref={(el) => { docFileRefs.current[i] = el; }} style={{ display: "none" }} onChange={(e) => onDocFile(i, e)} />
-                <Group wrap="nowrap" gap={10} align="flex-start">
-                  {ok ? <IconFileText size={16} color="var(--mantine-color-green-7)" /> : <IconUpload size={16} color="var(--mantine-color-gray-5)" />}
-                  <Box style={{ minWidth: 0 }}>
-                    <Text fz={12} fw={600} c={ok ? "green.9" : "dark.8"} truncate>{d.name}</Text>
-                    <Text fz={10.5} c={ok ? "green.7" : "dimmed"}>{ok ? `Verified · ${d.uploadedDate || "today"}` : (isOpt ? "Optional - click to attach" : "Required - click to attach")}</Text>
+                <Group wrap="nowrap" gap={8} align="center">
+                  {ok ? <IconFileText size={16} color="var(--mantine-color-green-7)" style={{ flexShrink: 0 }} /> : <IconUpload size={16} color="var(--mantine-color-gray-5)" style={{ flexShrink: 0 }} />}
+                  <Box style={{ flex: 1, minWidth: 0 }}>
+                    {editingIdx === i ? (
+                      <TextInput
+                        size="xs"
+                        radius="sm"
+                        autoFocus
+                        value={d.name}
+                        placeholder="Document name"
+                        onChange={(e) => setDoc(i, { name: e.currentTarget.value })}
+                        onBlur={() => setEditingIdx(null)}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") setEditingIdx(null); }}
+                        styles={{ input: { fontSize: 12, fontWeight: 600, height: 22, minHeight: 22 } }}
+                      />
+                    ) : (
+                      <Group gap={4} wrap="nowrap">
+                        <Text fz={12} fw={600} c={ok ? "green.9" : "dark.8"} truncate>{d.name || "Untitled document"}</Text>
+                        <Tooltip label="Rename" withArrow>
+                          <ActionIcon variant="subtle" color="gray" size="xs" onClick={() => setEditingIdx(i)} aria-label="Rename document">
+                            <IconPencil size={12} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </Group>
+                    )}
+                    <Text fz={10.5} c={ok ? "green.7" : "dimmed"} truncate>
+                      {ok ? (d.fileMeta || "Verified") : isOpt ? "Optional" : "Required"}
+                    </Text>
                   </Box>
+                  <Group gap={2} wrap="nowrap">
+                    {ok ? (
+                      <>
+                        <Tooltip label="Preview" withArrow>
+                          <ActionIcon variant="subtle" color="indigo" size="sm" onClick={() => setPreviewIdx(i)}><IconEye size={14} /></ActionIcon>
+                        </Tooltip>
+                        <Tooltip label="Replace" withArrow>
+                          <ActionIcon variant="subtle" color="gray" size="sm" onClick={() => docFileRefs.current[i]?.click()}><IconRefresh size={14} /></ActionIcon>
+                        </Tooltip>
+                      </>
+                    ) : (
+                      <Button variant="light" color="indigo" size="compact-xs" radius="xl" onClick={() => docFileRefs.current[i]?.click()}>Attach</Button>
+                    )}
+                    {(ok || isOpt) && (
+                      <Tooltip label={ok ? "Remove file" : "Remove"} withArrow>
+                        <ActionIcon variant="subtle" color="red" size="sm" onClick={() => onRemoveDoc(i)}><IconX size={14} /></ActionIcon>
+                      </Tooltip>
+                    )}
+                  </Group>
                 </Group>
               </Paper>
             )
@@ -106,14 +161,8 @@ export function LegalVerification({
               <TextInput size="xs" radius="md" label="Registered owner" value={asset.title.registeredOwner} onChange={(e) => onUpdate({ title: { ...asset.title, registeredOwner: e.currentTarget.value } })} />
             </SimpleGrid>
             
-            <TextInput size="xs" radius="md" label="Registration details" value="RTSA · first registered 14 Mar 2019" mb={6} readOnly />
+            <TextInput size="xs" radius="md" label="Registration details" value="RTSA · first registered 14 Mar 2019" mb={10} readOnly />
             
-            <Paper p={5} px={10} radius="md" bg="indigo.0" mb={10}>
-              <Group wrap="nowrap" gap={8} align="center">
-                <IconInfoCircle size={14} color="var(--mantine-color-indigo-6)" style={{ flexShrink: 0 }} />
-                <Text fz={11} c="indigo.9">Read from the title deed above — correct it only where the document differs.</Text>
-              </Group>
-            </Paper>
 
             <Text fz={11.5} fw={700} c="indigo.9" tt="uppercase" mb={6}>Verified By</Text>
             <SimpleGrid cols={2} spacing={10}>
@@ -165,114 +214,27 @@ export function LegalVerification({
                       </Group>
                     </Group>
                     
-                    {isExc && (
-                      <Textarea 
-                        mt={6}
-                        size="xs" 
-                        radius="md" 
-                        minRows={2}
-                        placeholder="What was found, and what's required to resolve it..." 
-                        styles={{ 
-                          input: { 
-                            borderColor: "var(--mantine-color-gray-4)",
-                            color: "var(--mantine-color-red-5)"
-                          } 
-                        }} 
-                        value={c.comment} 
-                        onChange={(e) => onUpdateLegalCheck(c.id, { comment: e.currentTarget.value })}
-                      />
-                    )}
                   </Box>
                 )
               })}
             </Box>
+
+            <Text fz={11.5} fw={700} c="indigo.9" tt="uppercase" mt={10} mb={6}>Legal Remark</Text>
+            <Textarea
+              size="xs"
+              radius="md"
+              minRows={3}
+              autosize
+              placeholder="Overall legal opinion on this asset…"
+              value={asset.legalRemarks}
+              onChange={(e) => onUpdate({ legalRemarks: e.currentTarget.value })}
+              error={!asset.legalRemarks.trim() && asset.legalChecks.some((c) => ["Failed", "Exception"].includes(c.status)) ? "Explain the flagged checks and what's required to resolve them" : undefined}
+            />
           </Box>
         </Group>
       </Box>
     );
   }
 
-  // ---------------------------------------------------------- Conclusion
-  const amount = Number(asset.valuation.amount) || 0;
-  const coverage = finalAmount ? Math.round((amount / finalAmount) * 100) : null;
-
-  const valuationOk = asset.status === "Passed";
-  const legalFlagged = asset.legalChecks.filter((c) => ["Failed", "Exception"].includes(c.status)).length;
-  const titleOpen = asset.titleChecklist.filter((t) => ["Pending", "In Progress"].includes(t.status) || (["Failed", "Exception"].includes(t.status) && !t.comment.trim()));
-  const allDocs = [...asset.docs, ...asset.titleDocs];
-  const required = allDocs.filter((d) => d.tier === "required");
-  const missing = [...missingRequiredDocs(asset.docs), ...missingRequiredDocs(asset.titleDocs)];
-  const canAccept = valuationOk && missing.length === 0;
-
-  const d = asset.assetDecision;
-  const conds = asset.assetConditions;
-  const options: { id: Decision; label: string; color: string; disabled?: boolean }[] = [
-    { id: "approve", label: "Accept as security", color: "green", disabled: !canAccept },
-    { id: "conditions", label: "Accept with conditions", color: "orange" },
-    { id: "reject", label: "Do not accept", color: "red" },
-  ];
-
-  return (
-    <Box px={14} pt={10} pb={8}>
-      <SimpleGrid cols={3} spacing={10} mb={12}>
-        <StatCard
-          label="Valuation"
-          color={valuationOk ? "green" : "orange"}
-          value={valuationOk ? `Recorded — ${zmw(amount)}` : asset.status === "Exception" ? "Exception raised" : "Not confirmed"}
-          sub={coverage != null ? `${coverage}% coverage` : asset.valuationDate ? `dated ${asset.valuationDate}` : "No valuation date"}
-        />
-        <StatCard
-          label="Legal"
-          color={legalFlagged || titleOpen.length ? "orange" : "green"}
-          value={legalFlagged ? `${legalFlagged} exception/failed` : titleOpen.length ? `${titleOpen.length} title item(s) open` : "Clear"}
-          sub={`${asset.legalChecks.filter((c) => c.status === "Passed").length}/${asset.legalChecks.length} checks passed`}
-        />
-        <StatCard
-          label="Documents"
-          color={missing.length ? "red" : "green"}
-          value={`${required.length - missing.length} of ${required.length} required`}
-          sub={missing.length ? `Missing: ${missing.map((m) => m.name).join(", ")}` : "All verified"}
-        />
-      </SimpleGrid>
-
-      <Paper withBorder radius="md" p="md" bg="gray.0" mb={12}>
-        <Text ta="center" fz={16} fw={600} c="dark.9">Accept this asset as security?</Text>
-        <Text ta="center" fz={12.5} c="dimmed" mb={10}>This records the outcome for this asset only. The credit decision is taken once on the assets list.</Text>
-        <Group justify="center" gap={10}>
-          {options.map((o) => (
-            <Tooltip key={String(o.id)} label="Confirm the valuation and verify all required documents first" disabled={!o.disabled} withArrow>
-              <Button color={o.color} radius="md" variant={d === o.id ? "filled" : "default"} disabled={o.disabled} onClick={() => onUpdate({ assetDecision: o.id })}>
-                {o.label}
-              </Button>
-            </Tooltip>
-          ))}
-        </Group>
-      </Paper>
-
-      <Group align="flex-start" wrap="nowrap" gap={16}>
-        <Box style={{ flex: 1 }}>
-          <TextInput size="xs" radius="md" label="Agreed security value" value={zmw(amount)} readOnly description="Carried from Valuation." mb={8} />
-          {d === "conditions" && (
-            <Box>
-              <Text fz={12} fw={500} mb={6}>Conditions</Text>
-              {conds.map((c, i) => (
-                <Group key={i} gap={8} mb={6} wrap="nowrap" align="flex-end">
-                  <TextInput size="xs" radius="md" style={{ flex: 2 }} placeholder="e.g. Produce discharge of existing charge" value={c.condition} onChange={(e) => onUpdate({ assetConditions: conds.map((x, j) => (j === i ? { ...x, condition: e.currentTarget.value } : x)) })} />
-                  <Select size="xs" radius="md" style={{ flex: 1 }} data={["Customer", "Internal", "Legal"]} value={c.responsible} allowDeselect={false} onChange={(v) => onUpdate({ assetConditions: conds.map((x, j) => (j === i ? { ...x, responsible: v || x.responsible } : x)) })} />
-                  <ActionIcon variant="default" onClick={() => onUpdate({ assetConditions: conds.filter((_, j) => j !== i) })}><IconX size={14} /></ActionIcon>
-                </Group>
-              ))}
-              <Button size="compact-xs" variant="light" radius="md" onClick={() => onUpdate({ assetConditions: [...conds, { condition: "", responsible: "Customer", dueBefore: "Disbursement" }] })}>+ Add condition</Button>
-            </Box>
-          )}
-          {d === "reject" && (
-            <Select size="xs" radius="md" label="Reason" data={REJECT_REASONS} value={asset.assetReasonCategory || null} onChange={(v) => onUpdate({ assetReasonCategory: v || "" })} error={asset.assetReasonCategory ? undefined : "Select a reason"} />
-          )}
-        </Box>
-        <Box style={{ flex: 1 }}>
-          <Textarea size="xs" radius="md" minRows={2} label="Remarks on this asset" placeholder="Why this asset is being accepted on these terms…" value={asset.assetRemarks} onChange={(e) => onUpdate({ assetRemarks: e.currentTarget.value })} />
-        </Box>
-      </Group>
-    </Box>
-  );
+  return null;
 }
