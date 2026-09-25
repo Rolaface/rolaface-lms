@@ -14,7 +14,6 @@ import {
   TextInput,
   Button,
   ActionIcon,
-  Grid,
 } from "@mantine/core";
 import {
   IconFileText,
@@ -27,12 +26,12 @@ import {
   IconCircleX,
   IconHelp,
   IconRefresh,
-  IconPercentage,
   IconArrowRight,
   IconMinus,
   IconCircleDot,
-  IconCalculator,
   IconTargetArrow,
+  IconClipboardList,
+  IconGauge as IconGaugeTab,
 } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
@@ -43,15 +42,8 @@ import {
 
 import type {
   PreScreeningModalProps,
-  SourceKind,
-  LiabilityRecord,
-  ScenarioDef,
   EligibilityCalc,
   Section,
-  FieldState,
-  CreditState,
-  LiabilitiesState,
-  IncomeState,
   PrescreeningState
 } from './PreScreeningShared';
 import {
@@ -65,22 +57,14 @@ import {
   type RiskScoreResult,
   SOURCE_MAP,
   SourceBadge,
-  MiniStat,
-  CalcRow,
-  CheckLine,
-  RuleRow,
   ContextHeader,
   LeftNav,
   buildInitialState,
-  creditScoreBand,
   CreditGaugeVisual,
   CompactRow,
   StatMini
 } from './PreScreeningShared';
-// ---------------------------------------------------------------------------
-// Requested vs. eligible amount — donut utilization gauge with a headroom
-// readout, instead of a linear track-and-tick bar.
-// ---------------------------------------------------------------------------
+import { LimitAssessment } from './Limitassessment';
 
 function AmountUtilizationGauge({
   requested,
@@ -155,6 +139,162 @@ function AmountUtilizationGauge({
   );
 }
 
+const RISK_LEVELS = [
+  {
+    key: "low",
+    label: "Low",
+    color: "green",
+    icon: IconCircleCheck,
+    title: "Low risk",
+    desc: "The customer shows a healthy credit profile with low risk of default.",
+  },
+  {
+    key: "medium",
+    label: "Medium",
+    color: "orange",
+    icon: IconAlertTriangle,
+    title: "Medium risk",
+    desc: "The customer shows an acceptable credit profile with moderate risk of default.",
+  },
+  {
+    key: "high",
+    label: "High",
+    color: "red",
+    icon: IconCircleX,
+    title: "High risk",
+    desc: "The customer shows a concerning credit profile with high risk of default.",
+  },
+] as const;
+
+function RiskMeter({
+  riskScore,
+  loading,
+  readOnly,
+  onRefresh,
+}: {
+  riskScore: RiskScoreResult | null;
+  loading?: boolean;
+  readOnly?: boolean;
+  onRefresh?: () => void;
+}) {
+  const activeIndex = riskScore
+    ? RISK_LEVELS.findIndex((l) => l.key === riskScore.band.toLowerCase())
+    : -1;
+  const active = activeIndex >= 0 ? RISK_LEVELS[activeIndex] : null;
+  const color = active?.color ?? "gray";
+  const title = loading
+    ? "Checking risk profile…"
+    : active?.title ?? "Not yet assessed";
+  const desc = loading
+    ? "Recalculating from the customer's repayment history, defaults and recent enquiries."
+    : active?.desc ?? "Refresh to calculate from the customer's repayment history, defaults and recent enquiries.";
+  const ICON_SIZE = 22;
+
+  return (
+    <Paper
+      withBorder
+      radius="md"
+      p={7}
+      bg="white"
+      style={{ border: "1px solid var(--mantine-color-slate-2)" }}
+    >
+      <Group justify="space-between" mb={6}>
+        <Group gap={6}>
+          <ThemeIcon size={18} radius="xl" variant="light" color="indigo">
+            <IconGauge size={10} stroke={2.5} />
+          </ThemeIcon>
+          <Text fz={13} fw={700} c="slate.9">
+            Risk Meter
+          </Text>
+        </Group>
+        {!readOnly && (
+          <UnstyledButton onClick={onRefresh} disabled={loading}>
+            <Group gap={4}>
+              <IconRefresh size={11} stroke={2.5} color="var(--mantine-color-brand-6)" />
+              <Text fz={11} fw={600} c="brand.6">
+                Refresh
+              </Text>
+            </Group>
+          </UnstyledButton>
+        )}
+      </Group>
+
+      <Group justify="space-between" align="flex-end" mb={6}>
+        <Box>
+          <Group gap={4} align="flex-end">
+            <Text fz={22} fw={800} c={active ? `${color}.7` : "slate.4"} style={{ lineHeight: 1 }}>
+              {riskScore ? riskScore.score : "—"}
+            </Text>
+            <Text fz={11} fw={600} c="slate.4" mb={1}>
+              /100
+            </Text>
+          </Group>
+          <Text fz={10} c="slate.5">
+            Internal risk score
+          </Text>
+        </Box>
+        {active && (
+          <Badge color={color} variant="light" radius="sm" size="sm">
+            {title}
+          </Badge>
+        )}
+      </Group>
+
+      {/* Step tracker: Low → Medium → High, with the customer's band highlighted */}
+      <Group gap={0} align="flex-start" wrap="nowrap" mb={6}>
+        {RISK_LEVELS.map((level, i) => {
+          const isActive = i === activeIndex;
+          const isPast = activeIndex >= 0 && i < activeIndex;
+          const Icon = level.icon;
+          return (
+            <Box key={level.key} style={{ display: "contents" }}>
+              <Stack align="center" gap={3} style={{ flex: "0 0 auto" }}>
+                <ThemeIcon
+                  radius="xl"
+                  size={ICON_SIZE}
+                  variant={isActive ? "filled" : "light"}
+                  color={isActive || isPast ? level.color : "slate"}
+                  style={isActive ? { boxShadow: `0 0 0 4px var(--mantine-color-${level.color}-1)` } : undefined}
+                >
+                  <Icon size={13} />
+                </ThemeIcon>
+                <Text fz={10} fw={isActive ? 700 : 500} c={isActive ? `${level.color}.7` : "slate.5"}>
+                  {level.label}
+                </Text>
+              </Stack>
+              {i < RISK_LEVELS.length - 1 && (
+                <Box
+                  style={{
+                    flex: 1,
+                    height: 2,
+                    marginTop: ICON_SIZE / 2 - 1,
+                    background: isPast
+                      ? `var(--mantine-color-${level.color}-3)`
+                      : "var(--mantine-color-slate-2)",
+                  }}
+                />
+              )}
+            </Box>
+          );
+        })}
+      </Group>
+
+      <Box
+        p={6}
+        bg={`${color}.0`}
+        style={{ border: `1px solid var(--mantine-color-${color}-2)`, borderRadius: "var(--mantine-radius-sm)" }}
+      >
+        <Text fz={11.5} fw={700} c={`${color}.9`} mb={1}>
+          {title}
+        </Text>
+        <Text fz={11} c="slate.6">
+          {desc}
+        </Text>
+      </Box>
+    </Paper>
+  );
+}
+
 function PrescreeningOverview({
   state,
   dispatch,
@@ -162,8 +302,8 @@ function PrescreeningOverview({
   calc,
   requested,
   maxDTI,
-  leftSlot,
-  rightSlot,
+  riskScore,
+  creditLoading,
 }: {
   state: PrescreeningState;
   dispatch: (a: any) => void;
@@ -172,8 +312,8 @@ function PrescreeningOverview({
   requested: number;
   maxDTI: number;
   productMax: number;
-  leftSlot?: React.ReactNode;
-  rightSlot?: React.ReactNode;
+  riskScore: RiskScoreResult | null;
+  creditLoading: boolean;
 }) {
   const credit = state.credit;
   const liab = state.liabilities;
@@ -185,7 +325,7 @@ function PrescreeningOverview({
 
   return (
     <Box mb={4}>
-      {/* Left: Monthly Income + DTI | Right: Credit Score + Liabilities in ONE card */}
+      {/* Left: Monthly Income + DTI + Requested/Eligible + Risk Meter | Right: Credit Score + Liabilities in ONE card */}
       <SimpleGrid
         cols={{ base: 1, sm: 2 }}
         spacing={14}
@@ -394,7 +534,13 @@ function PrescreeningOverview({
               </Box>
             )}
 
-            {leftSlot}
+            {/* Risk Meter — placed directly under the Requested loan box */}
+            <RiskMeter
+              riskScore={riskScore}
+              loading={creditLoading}
+              readOnly={readOnly}
+              onRefresh={() => dispatch({ type: "fetchCredit" })}
+            />
           </Stack>
         </Paper>
 
@@ -493,7 +639,6 @@ function PrescreeningOverview({
                 Existing liabilities
               </Text>
             </Group>
-            {/* The action buttons used to be inside CompactRow action, let's put them here */}
             {!readOnly && liab.status !== "loading" && (
               <Group gap={12} wrap="nowrap">
                 {!liab.manual && (
@@ -607,7 +752,6 @@ function PrescreeningOverview({
             )}
           </Box>
         </Paper>
-        {rightSlot && <Box mt={4}>{rightSlot}</Box>}
         </Stack>
       </SimpleGrid>
     </Box>
@@ -615,502 +759,11 @@ function PrescreeningOverview({
 }
 
 // ---------------------------------------------------------------------------
-// Clickable action row (used for "How was eligibility calculated?" /
-// "View calculation") — bordered, hoverable, with a trailing info icon (these
-// open a modal, not an inline expansion, so a chevron would be misleading).
+// Decision card
 // ---------------------------------------------------------------------------
-
-function ActionRow({
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  icon: React.FC<any>;
-  label: string;
-  onClick: () => void;
-}) {
-  const [hover, setHover] = useState(false);
-  return (
-    <UnstyledButton
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      px={10}
-      py={7}
-      style={{
-        border: "1px solid var(--mantine-color-slate-2)",
-        borderRadius: "var(--mantine-radius-md)",
-        background: hover ? "var(--mantine-color-slate-0)" : "white",
-        transition: "background 0.15s ease, border-color 0.15s ease",
-      }}
-    >
-      <Group justify="space-between" align="center" wrap="nowrap">
-        <Group gap={8} wrap="nowrap">
-          <ThemeIcon radius="md" size={20} variant="light" color="brand">
-            <Icon size={11} />
-          </ThemeIcon>
-          <Text fz={12} fw={600} c="slate.9">
-            {label}
-          </Text>
-        </Group>
-        <IconInfoCircle size={14} color="var(--mantine-color-slate-4)" />
-      </Group>
-    </UnstyledButton>
-  );
-}
-
-const RISK_LEVELS = [
-  {
-    key: "low",
-    label: "Low",
-    color: "green",
-    icon: IconCircleCheck,
-    title: "Low risk",
-    desc: "The customer shows a healthy credit profile with low risk of default.",
-  },
-  {
-    key: "medium",
-    label: "Medium",
-    color: "orange",
-    icon: IconAlertTriangle,
-    title: "Medium risk",
-    desc: "The customer shows an acceptable credit profile with moderate risk of default.",
-  },
-  {
-    key: "high",
-    label: "High",
-    color: "red",
-    icon: IconCircleX,
-    title: "High risk",
-    desc: "The customer shows a concerning credit profile with high risk of default.",
-  },
-] as const;
-
-function RiskMeter({
-  riskScore,
-  loading,
-  readOnly,
-  onRefresh,
-}: {
-  riskScore: RiskScoreResult | null;
-  loading?: boolean;
-  readOnly?: boolean;
-  onRefresh?: () => void;
-}) {
-  const activeIndex = riskScore
-    ? RISK_LEVELS.findIndex((l) => l.key === riskScore.band.toLowerCase())
-    : -1;
-  const active = activeIndex >= 0 ? RISK_LEVELS[activeIndex] : null;
-  const color = active?.color ?? "gray";
-  const title = loading
-    ? "Checking risk profile…"
-    : active?.title ?? "Not yet assessed";
-  const desc = loading
-    ? "Recalculating from the customer's repayment history, defaults and recent enquiries."
-    : active?.desc ?? "Refresh to calculate from the customer's repayment history, defaults and recent enquiries.";
-  const ICON_SIZE = 22;
-
-  return (
-    <Paper
-          withBorder
-          radius="md"
-          p={7}
-      bg="white"
-      style={{ border: "1px solid var(--mantine-color-slate-2)" }}
-    >
-      <Group justify="space-between" mb={6}>
-        <Group gap={6}>
-          <ThemeIcon size={18} radius="xl" variant="light" color="indigo">
-            <IconGauge size={10} stroke={2.5} />
-          </ThemeIcon>
-          <Text fz={13} fw={700} c="slate.9">
-            Risk Meter
-          </Text>
-        </Group>
-        {!readOnly && (
-          <UnstyledButton onClick={onRefresh} disabled={loading}>
-            <Group gap={4}>
-              <IconRefresh size={11} stroke={2.5} color="var(--mantine-color-brand-6)" />
-              <Text fz={11} fw={600} c="brand.6">
-                Refresh
-              </Text>
-            </Group>
-          </UnstyledButton>
-        )}
-      </Group>
-
-      <Group justify="space-between" align="flex-end" mb={6}>
-        <Box>
-          <Group gap={4} align="flex-end">
-            <Text fz={22} fw={800} c={active ? `${color}.7` : "slate.4"} style={{ lineHeight: 1 }}>
-              {riskScore ? riskScore.score : "—"}
-            </Text>
-            <Text fz={11} fw={600} c="slate.4" mb={1}>
-              /100
-            </Text>
-          </Group>
-          <Text fz={10} c="slate.5">
-            Internal risk score
-          </Text>
-        </Box>
-        {active && (
-          <Badge color={color} variant="light" radius="sm" size="sm">
-            {title}
-          </Badge>
-        )}
-      </Group>
-
-      {/* Step tracker: Low → Medium → High, with the customer's band highlighted */}
-      <Group gap={0} align="flex-start" wrap="nowrap" mb={6}>
-        {RISK_LEVELS.map((level, i) => {
-          const isActive = i === activeIndex;
-          const isPast = activeIndex >= 0 && i < activeIndex;
-          const Icon = level.icon;
-          return (
-            <Box key={level.key} style={{ display: "contents" }}>
-              <Stack align="center" gap={3} style={{ flex: "0 0 auto" }}>
-                <ThemeIcon
-                  radius="xl"
-                  size={ICON_SIZE}
-                  variant={isActive ? "filled" : "light"}
-                  color={isActive || isPast ? level.color : "slate"}
-                  style={isActive ? { boxShadow: `0 0 0 4px var(--mantine-color-${level.color}-1)` } : undefined}
-                >
-                  <Icon size={13} />
-                </ThemeIcon>
-                <Text fz={10} fw={isActive ? 700 : 500} c={isActive ? `${level.color}.7` : "slate.5"}>
-                  {level.label}
-                </Text>
-              </Stack>
-              {i < RISK_LEVELS.length - 1 && (
-                <Box
-                  style={{
-                    flex: 1,
-                    height: 2,
-                    marginTop: ICON_SIZE / 2 - 1,
-                    background: isPast
-                      ? `var(--mantine-color-${level.color}-3)`
-                      : "var(--mantine-color-slate-2)",
-                  }}
-                />
-              )}
-            </Box>
-          );
-        })}
-      </Group>
-
-      <Box
-        p={6}
-        bg={`${color}.0`}
-        style={{ border: `1px solid var(--mantine-color-${color}-2)`, borderRadius: "var(--mantine-radius-sm)" }}
-      >
-        <Text fz={11.5} fw={700} c={`${color}.9`} mb={1}>
-          {title}
-        </Text>
-        <Text fz={11} c="slate.6">
-          {desc}
-        </Text>
-      </Box>
-    </Paper>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Eligibility calculation section
-// ---------------------------------------------------------------------------
-
-function useEligibilityUI({
-  calc,
-  requested,
-  tenure,
-  rate,
-  maxDTI,
-  minCreditScore,
-  productMax,
-  income,
-  obligations,
-  creditScore,
-  riskScore,
-  creditLoading,
-  dispatch,
-  readOnly,
-  rulesOpen,
-  setRulesOpen,
-  calcOpen,
-  setCalcOpen,
-  recalcFlash,
-  decisionSlot,
-}: {
-  calc: EligibilityCalc | null;
-  requested: number;
-  tenure: number;
-  rate: number;
-  maxDTI: number;
-  minCreditScore: number;
-  productMax: number;
-  income: number | null;
-  obligations: number | null;
-  creditScore: number | null;
-  riskScore: RiskScoreResult | null;
-  creditLoading: boolean;
-  dispatch: (a: any) => void;
-  readOnly?: boolean;
-  rulesOpen: boolean;
-  setRulesOpen: (v: boolean) => void;
-  calcOpen: boolean;
-  setCalcOpen: (v: boolean) => void;
-  recalcFlash: boolean;
-  decisionSlot?: React.ReactNode;
-}) {
-  if (!calc) {
-    const missing: string[] = [];
-    if (creditScore == null) missing.push("Credit score");
-    if (obligations == null) missing.push("Liability information");
-    if (income == null) missing.push("Income");
-    return {
-      leftNode: (
-        <Box>
-          <Paper
-            withBorder
-            radius="md"
-            p="xl"
-            ta="center"
-            style={{ borderStyle: "dashed" }}
-          >
-            <IconHelp size={22} color="var(--mantine-color-slate-4)" />
-            <Text fz={13.5} fw={600} c="slate.9" mt={6}>
-              Prescreening incomplete
-            </Text>
-            <Text fz={12.5} c="slate.5" mt={4}>
-              Missing: {missing.join(", ")}. Fetch or enter these above to run
-              the calculation.
-            </Text>
-          </Paper>
-        </Box>
-      ),
-      rightNode: null,
-      decisionNode: decisionSlot ?? null,
-      modals: null,
-    };
-  }
-
-  const {
-    eligibleAmount,
-    mandatoryPassed,
-    creditPassed,
-    dtiPassed,
-    customerDTI,
-    maxAffordableMonthly,
-    capacity,
-    affordabilityAmount,
-  } = calc;
-  const isFailed = !mandatoryPassed;
-
-  const leftNode = (
-    <Stack gap={6}>
-      {isFailed && (
-        <Box
-          p={8}
-          bg="red.0"
-          style={{ border: "1px solid var(--mantine-color-red-2)", borderRadius: "var(--mantine-radius-md)" }}
-        >
-          <Group gap={6} mb={5}>
-            <ThemeIcon radius="xl" size={16} color="red" variant="filled">
-              <IconX size={10} />
-            </ThemeIcon>
-            <Text fz={12} fw={700} c="red.9">
-              Why this fails?
-            </Text>
-          </Group>
-          <Stack gap={3}>
-            <CheckLine ok={creditPassed}>
-              Credit score {creditPassed ? "meets" : "is below"} the minimum
-              requirement ({minCreditScore})
-            </CheckLine>
-            <CheckLine ok={dtiPassed}>
-              Debt-to-income ratio {dtiPassed ? "is within" : "exceeds"} the
-              allowed limit ({maxDTI}%)
-            </CheckLine>
-          </Stack>
-        </Box>
-      )}
-
-      <Stack gap={5}>
-        <ActionRow
-          icon={IconCalculator}
-          label="View calculation"
-          onClick={() => setCalcOpen(true)}
-        />
-        <ActionRow
-          icon={IconInfoCircle}
-          label="How was eligibility calculated?"
-          onClick={() => setRulesOpen(true)}
-        />
-      </Stack>
-    </Stack>
-  );
-
-  const rightNode = (
-    <Stack gap={10}>
-      <RiskMeter
-        riskScore={riskScore}
-        loading={creditLoading}
-        readOnly={readOnly}
-        onRefresh={() => dispatch({ type: "fetchCredit" })}
-      />
-    </Stack>
-  );
-
-  const modals = (
-    <>
-      {recalcFlash && (
-        <Badge
-          size="xs"
-          radius="xl"
-          color="brand"
-          variant="light"
-          mb={8}
-          leftSection={<IconRefresh size={11} />}
-        >
-          Recalculated
-        </Badge>
-      )}
-
-      {isFailed && (
-        <Text fz={11.5} c="slate.5" mb={4}>
-          Requested loan{" "}
-          <Text span fw={700} c="slate.9">
-            {zmw(requested)}
-          </Text>
-          {" · "}Maximum eligible amount{" "}
-          <Text span fw={700} c="slate.4">
-            —
-          </Text>
-        </Text>
-      )}
-
-      <Modal
-        opened={rulesOpen}
-        onClose={() => setRulesOpen(false)}
-        title={
-          <Text fz={14.5} fw={700} c="slate.9">
-            How eligibility was calculated
-          </Text>
-        }
-        radius="md"
-        size="lg"
-        centered
-        withCloseButton
-        closeButtonProps={{ icon: <IconX size={16} /> }}
-      >
-        <Box
-          style={{
-            border: "1px solid var(--mantine-color-slate-2)",
-            borderRadius: "var(--mantine-radius-md)",
-            overflow: "hidden",
-          }}
-        >
-          <Table fz={12.5}>
-            <Table.Thead bg="slate.0">
-              <Table.Tr>
-                <Table.Th>Rule</Table.Th>
-                <Table.Th>Requirement</Table.Th>
-                <Table.Th>Customer</Table.Th>
-                <Table.Th>Result</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              <RuleRow
-                rule="Minimum credit score"
-                req={`≥ ${minCreditScore}`}
-                customer={String(creditScore)}
-                pass={creditPassed}
-              />
-              <RuleRow
-                rule="Maximum debt-to-income"
-                req={`≤ ${maxDTI}%`}
-                customer={`${customerDTI.toFixed(0)}%`}
-                pass={dtiPassed}
-              />
-              <RuleRow
-                rule="Maximum loan amount"
-                req="Based on affordability"
-                customer={mandatoryPassed ? zmw(eligibleAmount) : "—"}
-                pass={mandatoryPassed}
-                calculated
-              />
-              <RuleRow
-                rule="Product maximum"
-                req={`≤ ${zmw(productMax)}`}
-                customer={mandatoryPassed ? zmw(eligibleAmount) : "—"}
-                pass={mandatoryPassed}
-              />
-            </Table.Tbody>
-          </Table>
-        </Box>
-      </Modal>
-
-      <Modal
-        opened={calcOpen}
-        onClose={() => setCalcOpen(false)}
-        title={
-          <Text fz={14.5} fw={700} c="slate.9">
-            Eligibility calculation
-          </Text>
-        }
-        radius="md"
-        size="md"
-        centered
-        withCloseButton
-        closeButtonProps={{ icon: <IconX size={16} /> }}
-      >
-        <Box
-          px="md"
-          bg="slate.0"
-          style={{
-            border: "1px solid var(--mantine-color-slate-2)",
-            borderRadius: "var(--mantine-radius-md)",
-          }}
-        >
-          <CalcRow label="Monthly income" value={zmw(income)} />
-          <CalcRow label="Existing monthly obligations" value={zmw(obligations)} />
-          <CalcRow label="Maximum allowed debt ratio" value={`${maxDTI}%`} />
-          <CalcRow
-            label="Maximum affordable monthly payment"
-            value={zmw(maxAffordableMonthly)}
-          />
-          <CalcRow label="Available repayment capacity" value={zmw(capacity)} />
-          <CalcRow
-            label={`Maximum loan amount at ${rate}% over ${tenure} months`}
-            value={zmw(affordabilityAmount)}
-          />
-          <CalcRow label="Product maximum" value={zmw(productMax)} />
-          <CalcRow
-            label="Final eligible amount"
-            value={
-              mandatoryPassed
-                ? zmw(eligibleAmount)
-                : "Not calculated — mandatory rule failed"
-            }
-            last
-            strong
-          />
-        </Box>
-      </Modal>
-    </>
-  );
-
-  return { leftNode, rightNode, decisionNode: decisionSlot ?? null, modals };
-}
 
 function DecisionCard({
   calc,
-  requested,
-  onContinue,
-  onUseEligible,
-  onReview,
-  confirm,
-  readOnly,
 }: {
   calc: EligibilityCalc | null;
   requested: number;
@@ -1137,151 +790,7 @@ function DecisionCard({
       </Paper>
     );
   }
-
-  const { eligibleAmount, mandatoryPassed } = calc;
-  const isEligible = mandatoryPassed && eligibleAmount >= requested;
-  const isPartial = mandatoryPassed && eligibleAmount < requested;
-  const isFailed = !mandatoryPassed;
-
-  const tone = isEligible
-    ? {
-        accent: "green",
-        icon: IconCircleCheck,
-        title: "Prescreening passed",
-        gradient: "linear-gradient(120deg, #ECFDF5 0%, #F0FDF4 100%)",
-      }
-    : isPartial
-      ? {
-          accent: "orange",
-          icon: IconAlertTriangle,
-          title: "Amount adjustment required",
-          gradient: "linear-gradient(120deg, #FFF7ED 0%, #FFFBEB 100%)",
-        }
-      : {
-          accent: "red",
-          icon: IconCircleX,
-          title: "Prescreening failed",
-          gradient: "linear-gradient(120deg, #FEF2F2 0%, #FEF2F2 100%)",
-        };
-  const Icon = tone.icon;
-
-  // Full-width decision banner
-  return (
-    <Paper
-      radius="lg"
-      style={{
-        overflow: "hidden",
-        border: `1px solid var(--mantine-color-${tone.accent}-2)`,
-        boxShadow: "0 1px 3px rgba(16,24,40,0.04)",
-      }}
-    >
-      <Box style={{ height: 3, background: `var(--mantine-color-${tone.accent}-5)` }} />
-      <Box p={10} style={{ background: tone.gradient }}>
-        <Group justify="space-between" align="flex-start" wrap="nowrap" gap={16}>
-          <Group gap={10} align="flex-start" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-            <ThemeIcon radius="xl" size={30} variant="light" color={tone.accent} style={{ flexShrink: 0 }}>
-              <Icon size={16} />
-            </ThemeIcon>
-            <Box style={{ flex: 1, minWidth: 0 }}>
-              <Text fz={14} fw={700} c="slate.9">
-                {tone.title}
-              </Text>
-
-              {isEligible && (
-                <Text fz={12} c="slate.6" mt={2}>
-                  The requested amount of <Text span fw={700} c="slate.9">{zmw(requested)}</Text> is within the customer's eligibility.
-                </Text>
-              )}
-
-              {isPartial && (
-                <>
-                  <Text fz={12} c="slate.6" mt={2} mb={8}>
-                    The requested amount exceeds what this customer is eligible for.
-                  </Text>
-                  <Group gap={18}>
-                    <MiniStat label="Requested" value={zmw(requested)} />
-                    <MiniStat label="Eligible" value={zmw(eligibleAmount)} accent />
-                  </Group>
-                </>
-              )}
-
-              {isFailed && (
-                <Text fz={12} c="slate.6" mt={2}>
-                  This application does not meet the mandatory credit or debt-to-income requirements.
-                </Text>
-              )}
-
-              {confirm && !readOnly && (
-                <Group
-                  gap={10}
-                  p="xs"
-                  mt={12}
-                  bg="white"
-                  style={{
-                    border: "1px solid var(--mantine-color-slate-2)",
-                    borderRadius: "var(--mantine-radius-sm)",
-                  }}
-                >
-                  <Text fz={11.5} style={{ flex: 1 }}>
-                    Set requested amount to {zmw(calc.eligibleAmount)}?
-                  </Text>
-                  <Button size="xs" color="dark" radius="sm" onClick={() => onUseEligible(true)}>
-                    Confirm
-                  </Button>
-                  <Button size="xs" variant="default" radius="sm" onClick={() => onUseEligible(false)}>
-                    Cancel
-                  </Button>
-                </Group>
-              )}
-            </Box>
-          </Group>
-
-          {!readOnly && (
-            <Box style={{ flexShrink: 0 }}>
-              {isEligible && (
-                <Button
-                  size="sm"
-                  color={tone.accent}
-                  radius="md"
-                  onClick={onContinue}
-                  rightSection={<IconArrowRight size={15} />}
-                >
-                  Continue to loan appraisal
-                </Button>
-              )}
-              {isPartial && !confirm && (
-                <Button
-                  size="sm"
-                  color={tone.accent}
-                  radius="md"
-                  onClick={() => onReview("useEligible")}
-                >
-                  Use eligible amount
-                </Button>
-              )}
-              {isFailed && (
-                <Button
-                  size="sm"
-                  variant="white"
-                  color={tone.accent}
-                  radius="md"
-                  onClick={() => onReview("review")}
-                  style={{ border: `1px solid var(--mantine-color-${tone.accent}-3)` }}
-                >
-                  Review overrides
-                </Button>
-              )}
-            </Box>
-          )}
-        </Group>
-      </Box>
-    </Paper>
-  );
 }
-
-// ---------------------------------------------------------------------------
-// Reducer for prescreening inputs
-// ---------------------------------------------------------------------------
 
 function reducer(state: PrescreeningState, action: any): PrescreeningState {
   switch (action.type) {
@@ -1428,6 +937,53 @@ function reducer(state: PrescreeningState, action: any): PrescreeningState {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Top-level tabs: Details | Limit Assessment
+// ---------------------------------------------------------------------------
+
+type TopTab = "details" | "limitAssessment";
+
+function TopTabs({ tab, setTab }: { tab: TopTab; setTab: (t: TopTab) => void }) {
+  const tabs: { key: TopTab; label: string; icon: React.FC<any> }[] = [
+    { key: "details", label: "Details", icon: IconClipboardList },
+    { key: "limitAssessment", label: "Limit Assessment", icon: IconGaugeTab },
+  ];
+  return (
+    <Group
+      gap={4}
+      px={20}
+      pt={10}
+      style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", flexShrink: 0 }}
+    >
+      {tabs.map((t) => {
+        const active = t.key === tab;
+        const Icon = t.icon;
+        return (
+          <UnstyledButton
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            px={14}
+            py={8}
+            style={{
+              borderBottom: active
+                ? "2px solid var(--mantine-color-brand-6)"
+                : "2px solid transparent",
+              marginBottom: -1,
+            }}
+          >
+            <Group gap={6}>
+              <Icon size={14} color={active ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-5)"} />
+              <Text fz={13} fw={active ? 700 : 600} c={active ? "brand.6" : "slate.6"}>
+                {t.label}
+              </Text>
+            </Group>
+          </UnstyledButton>
+        );
+      })}
+    </Group>
+  );
+}
+
 function PrescreeningWorkspace({
   values,
   readOnly = false,
@@ -1446,12 +1002,11 @@ function PrescreeningWorkspace({
     buildInitialState(DEFAULT_SCENARIO),
   );
   const [requested, setRequested] = useState(values.loanAmount);
-  const [rulesOpen, setRulesOpen] = useState(false);
-  const [calcOpen, setCalcOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [continued, setContinued] = useState(false);
   const [liabOpen, setLiabOpen] = useState(false);
   const [incomeOpen, setIncomeOpen] = useState(false);
+  const [topTab, setTopTab] = useState<TopTab>("details");
 
   function dispatch(action: any) {
     if (action.type === "openLiabilitiesModal") {
@@ -1605,58 +1160,97 @@ function PrescreeningWorkspace({
     );
   }
 
-  const { leftNode, rightNode, decisionNode, modals } = useEligibilityUI({
-    calc,
-    requested,
-    tenure,
-    rate,
-    maxDTI: policy.maxDTI,
-    minCreditScore: policy.minCreditScore,
-    productMax: policy.productMax,
-    income: totalIncome,
-    obligations: totalObligations,
-    creditScore: state.credit.value,
-    riskScore,
-    creditLoading: state.credit.status === "loading",
-    dispatch,
-    readOnly,
-    rulesOpen,
-    setRulesOpen,
-    calcOpen,
-    setCalcOpen,
-    recalcFlash: flash,
-    decisionSlot: (
-      <DecisionCard
-        calc={calc}
-        requested={requested}
-        onContinue={() => setContinued(true)}
-        onUseEligible={handleUseEligible}
-        onReview={(a) => a === "useEligible" && setConfirm(true)}
-        confirm={confirm}
-        readOnly={readOnly}
-      />
-    ),
-  });
+  const decisionNode = (
+    <DecisionCard
+      calc={calc}
+      requested={requested}
+      onContinue={() => setContinued(true)}
+      onUseEligible={handleUseEligible}
+      onReview={(a) => a === "useEligible" && setConfirm(true)}
+      confirm={confirm}
+      readOnly={readOnly}
+    />
+  );
+
+  const missing: string[] = [];
+  if (state.credit.value == null) missing.push("Credit score");
+  if (totalObligations == null) missing.push("Liability information");
+  if (totalIncome == null) missing.push("Income");
 
   return (
-    <Box px={20} pt={6} pb={8}>
-      <PrescreeningOverview
-        state={state}
-        dispatch={dispatch}
-        readOnly={readOnly}
-        calc={calc}
-        requested={requested}
-        maxDTI={policy.maxDTI}
-        productMax={policy.productMax}
-        leftSlot={leftNode}
-        rightSlot={rightNode}
-      />
+    <Box style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+      <TopTabs tab={topTab} setTab={setTopTab} />
 
-      {modals}
+      <Box style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        {topTab === "details" ? (
+          <Box px={20} pt={14} pb={8}>
+            <PrescreeningOverview
+              state={state}
+              dispatch={dispatch}
+              readOnly={readOnly}
+              calc={calc}
+              requested={requested}
+              maxDTI={policy.maxDTI}
+              productMax={policy.productMax}
+              riskScore={riskScore}
+              creditLoading={state.credit.status === "loading"}
+            />
 
-      {/* Decision — full width so it never gets cramped or cut off, and
-          balances the two columns above it */}
-      {decisionNode && <Box mt={6}>{decisionNode}</Box>}
+            {flash && (
+              <Badge
+                size="xs"
+                radius="xl"
+                color="brand"
+                variant="light"
+                mb={8}
+                leftSection={<IconRefresh size={11} />}
+              >
+                Recalculated
+              </Badge>
+            )}
+
+            {!calc && (
+              <Paper
+                withBorder
+                radius="md"
+                p="xl"
+                ta="center"
+                style={{ borderStyle: "dashed" }}
+              >
+                <IconHelp size={22} color="var(--mantine-color-slate-4)" />
+                <Text fz={13.5} fw={600} c="slate.9" mt={6}>
+                  Prescreening incomplete
+                </Text>
+                <Text fz={12.5} c="slate.5" mt={4}>
+                  Missing: {missing.join(", ")}. Fetch or enter these above to run
+                  the calculation.
+                </Text>
+              </Paper>
+            )}
+
+            {/* Decision — full width */}
+            <Box mt={6}>{decisionNode}</Box>
+          </Box>
+        ) : (
+          <LimitAssessment
+            state={state}
+            calc={calc}
+            requested={requested}
+            income={totalIncome}
+            obligations={totalObligations}
+            maxDTI={policy.maxDTI}
+            minCreditScore={policy.minCreditScore}
+            productMax={policy.productMax}
+            rate={rate}
+            tenure={tenure}
+            onRefreshAll={() => {
+              dispatch({ type: "fetchCredit" });
+              dispatch({ type: "fetchLiabilities" });
+              dispatch({ type: "fetchIncome" });
+            }}
+          />
+        )}
+      </Box>
 
       <Modal
         opened={liabOpen}

@@ -345,7 +345,7 @@ function RuleRow({
             </ActionIcon>
           </Tooltip>
           <Box style={{ flex: 1, cursor: "pointer", minWidth: 0 }} onClick={handleStartEdit}>
-            <Tooltip label={`If met -> ${rule.action || SEVERITIES[rule.severity].defaultAction}`} withArrow position="top-start" transitionProps={{ transition: "fade", duration: 150 }}>
+            <Tooltip label={`If not met -> ${rule.action || SEVERITIES[rule.severity].defaultAction}`} withArrow position="top-start" transitionProps={{ transition: "fade", duration: 150 }}>
               <Text fz={12.5} fw={600} c="slate.8" lineClamp={1}>{ruleSentence(rule)}</Text>
             </Tooltip>
           </Box>
@@ -446,7 +446,7 @@ function RuleRow({
 
           <Paper withBorder radius="md" p={8} style={{ background: "var(--mantine-color-brand-0)", borderColor: "#d9dbfa" }}>
             <Text fz={11} c="slate.8" style={{ lineHeight: 1.45, fontFamily: "var(--font-mono, monospace)", fontWeight: 500 }}>
-              If <Text span inherit fw={700} c="brand.8">{ruleSentence(draft)}</Text> is true → <Text span inherit fw={700} c="brand.8">{draft.action || SEVERITIES[draft.severity].defaultAction}</Text>
+              If <Text span inherit fw={700} c="brand.8">{ruleSentence(draft)}</Text> is not met → <Text span inherit fw={700} c="brand.8">{draft.action || SEVERITIES[draft.severity].defaultAction}</Text>
             </Text>
           </Paper>
         </Stack>
