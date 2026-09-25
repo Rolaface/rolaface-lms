@@ -79,6 +79,8 @@ import LOSEligibilityCheck from "../view/LosConfiguration/EligibilityCheck/LOSEl
 import LoanProductAutoAssignment from "../view/LosConfiguration/ProductAssignment/LoanProductAssignment";
 import ProductAssignments from "../view/LosConfiguration/ProductAssignment/ProductAssignments";
 import { OfferIssuanceStage } from "../view/Origination/OfferIssuanceStage/OfferIssuanceStage";
+import { LoanOriginationReport } from "../view/Reports/LoanOrigination/LoanOriginationReport"
+
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -334,6 +336,8 @@ const reportsRoute = createRoute({
   component: Outlet,
 });
 
+
+
 /* ---------- Accounting (layout + children) ---------- */
 type GLTabConfig = RouteTabItem & {
   moduleChecks: Array<{ module: LmsModule; action: PermissionAction }>;
@@ -460,6 +464,11 @@ const reportsArrearsRoute = createRoute({
   path: "/arrears",
   component: ArrearReports,
 });
+const reportsLoanOriginationRoute = createRoute({
+  getParentRoute: () => reportsRoute,
+  path: "/loan-origination",
+  component: LoanOriginationReport,
+});
 const reportsScheduleRoute = createRoute({
   getParentRoute: () => reportsRoute,
   path: "/schedule",
@@ -550,7 +559,11 @@ const routeTree = rootRoute.addChildren([
   ]),
   // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
   originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute]),
-  reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
+  reportsRoute.addChildren([
+    reportsLoanOriginationRoute, 
+    reportsStatementRoute, 
+    reportsArrearsRoute, 
+    reportsScheduleRoute]),
   settingsRoute.addChildren([
     emailTemplateRoute,
     schedulerRoute,
