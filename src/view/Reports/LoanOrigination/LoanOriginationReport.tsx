@@ -107,11 +107,11 @@ const STATUS_META = [
 ];
 
 const STATUS_COLOR: Record<string, string> = {
-    Approved: "#4C3BC9",
+    Approved: "teal",
     Pending: "yellow",
     Rejected: "red",
-    Created: "teal",
-    "Under Review": "grape",
+    Created: "brand",
+    "Under Review": "violet",
     "Ready for Approval": "blue",
     "Additional Information Required": "orange",
     Rejection: "red",
@@ -558,27 +558,54 @@ function KpiCard({
     children?: ReactNode;
 }) {
     return (
-        <Card withBorder radius="lg" p="md" h="100%" bd="1px solid slate.2">
+        <Card
+            withBorder
+            radius="lg"
+            p="lg"
+            h="100%"
+            bg="white"
+            bd="1px solid slate.2"
+            style={{
+                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
+            }}
+        >
             <Group justify="space-between" align="flex-start" wrap="nowrap">
-                <Stack gap={5}>
-                    <Text fz={10.5} fw={800} c="slate.5" tt="uppercase" lts={0.4}>
+                <Stack gap={8}>
+                    <Text
+                        fz={11}
+                        fw={800}
+                        c="slate.5"
+                        tt="uppercase"
+                        lts={0.6}
+                    >
                         {label}
                     </Text>
 
-                    <Text fz={25} fw={800} c="slate.8" lh={1}>
+                    <Text
+                        fz={{ base: 27, sm: 30 }}
+                        fw={800}
+                        c="slate.8"
+                        lh={1}
+                        style={{ letterSpacing: "-0.6px" }}
+                    >
                         {value}
                     </Text>
 
                     {children}
 
                     {hint && (
-                        <Text fz={10.5} c="slate.5">
+                        <Text fz="xs" c="slate.5" lh={1.4}>
                             {hint}
                         </Text>
                     )}
                 </Stack>
 
-                <ThemeIcon size={36} radius="md" variant="light" color={color}>
+                <ThemeIcon
+                    size={42}
+                    radius="md"
+                    variant="light"
+                    color={color}
+                >
                     {icon}
                 </ThemeIcon>
             </Group>
@@ -598,15 +625,36 @@ function Panel({
     children: ReactNode;
 }) {
     return (
-        <Paper withBorder radius="lg" p="md" h="100%" bd="1px solid slate.2">
-            <Group justify="space-between" align="flex-start">
+        <Paper
+            withBorder
+            radius="lg"
+            p="lg"
+            h="100%"
+            bg="white"
+            bd="1px solid slate.2"
+        >
+            <Group
+                justify="space-between"
+                align="flex-start"
+                gap="md"
+            >
                 <Box>
-                    <Text fz="sm" fw={800} c="slate.8">
+                    <Text
+                        fz="md"
+                        fw={800}
+                        c="slate.8"
+                        lh={1.3}
+                    >
                         {title}
                     </Text>
 
                     {subtitle && (
-                        <Text fz={11} c="slate.5" mt={2}>
+                        <Text
+                            fz="xs"
+                            c="slate.5"
+                            mt={3}
+                            lh={1.4}
+                        >
                             {subtitle}
                         </Text>
                     )}
@@ -615,7 +663,10 @@ function Panel({
                 {right}
             </Group>
 
-            <Divider my="sm" color="slate.1" />
+            <Divider
+                my="md"
+                color="slate.1"
+            />
 
             {children}
         </Paper>
@@ -793,17 +844,24 @@ export function LoanOriginationReport() {
                 id: "application",
                 header: "Application ID",
                 cell: ({ row }) => (
-                    <Group gap="xs" wrap="nowrap">
-                        <ThemeIcon size={28} radius="sm" variant="light" color="brand">
-                            <IconFileText size={14} />
+                    <Group gap="sm" wrap="nowrap">
+                        <ThemeIcon
+                            size={30}
+                            radius="sm"
+                            variant="light"
+                            color="brand"
+                        >
+                            <IconFileText size={15} />
                         </ThemeIcon>
 
                         <Text
-                            fz={11}
+                            fz={12}
                             fw={700}
                             c="brand.7"
                             ff="monospace"
-                            style={{ whiteSpace: "nowrap" }}
+                            style={{
+                                whiteSpace: "nowrap",
+                            }}
                         >
                             {row.original.name}
                         </Text>
@@ -815,7 +873,13 @@ export function LoanOriginationReport() {
                 id: "applicationDate",
                 header: "Application Date",
                 cell: ({ row }) => (
-                    <Text fz={11} c="slate.6" style={{ whiteSpace: "nowrap" }}>
+                    <Text
+                        fz={12}
+                        c="slate.6"
+                        style={{
+                            whiteSpace: "nowrap",
+                        }}
+                    >
                         {formatDate(row.original.application_date)}
                     </Text>
                 ),
@@ -824,26 +888,48 @@ export function LoanOriginationReport() {
             columnHelper.display({
                 id: "customer",
                 header: "Customer",
-                cell: ({ row }) => (
-                    <Stack gap={0}>
-                        <Text fz={11.5} fw={700} c="slate.8">
-                            {applicantOf(row.original)}
-                        </Text>
+                cell: ({ row }) => {
+                    const customerId = customerIdOf(row.original);
 
-                        {customerIdOf(row.original) && (
-                            <Text fz={9.5} c="slate.5" ff="monospace">
-                                {customerIdOf(row.original)}
+                    return (
+                        <Stack gap={2}>
+                            <Text
+                                fz={12}
+                                fw={700}
+                                c="slate.8"
+                                style={{
+                                    whiteSpace: "nowrap",
+                                }}
+                            >
+                                {applicantOf(row.original)}
                             </Text>
-                        )}
-                    </Stack>
-                ),
+
+                            {customerId && (
+                                <Text
+                                    fz={10}
+                                    c="slate.5"
+                                    ff="monospace"
+                                >
+                                    {customerId}
+                                </Text>
+                            )}
+                        </Stack>
+                    );
+                },
             }),
 
             columnHelper.display({
                 id: "loanProduct",
                 header: "Loan Product",
                 cell: ({ row }) => (
-                    <Text fz={11} c="slate.7">
+                    <Text
+                        fz={12}
+                        fw={500}
+                        c="slate.7"
+                        style={{
+                            whiteSpace: "nowrap",
+                        }}
+                    >
                         {productOf(row.original)}
                     </Text>
                 ),
@@ -853,7 +939,13 @@ export function LoanOriginationReport() {
                 id: "branch",
                 header: "Branch",
                 cell: ({ row }) => (
-                    <Text fz={11} c="slate.7">
+                    <Text
+                        fz={12}
+                        c="slate.7"
+                        style={{
+                            whiteSpace: "nowrap",
+                        }}
+                    >
                         {branchOf(row.original)}
                     </Text>
                 ),
@@ -863,8 +955,19 @@ export function LoanOriginationReport() {
                 id: "requestedAmount",
                 header: "Requested Amount",
                 cell: ({ row }) => (
-                    <Text fz={11} fw={700} c="slate.8" ta="right">
-                        {formatCurrency(Number(row.original.amount) || 0)}
+                    <Text
+                        fz={12}
+                        fw={700}
+                        c="slate.8"
+                        ta="right"
+                        style={{
+                            whiteSpace: "nowrap",
+                            fontVariantNumeric: "tabular-nums",
+                        }}
+                    >
+                        {formatCurrency(
+                            Number(row.original.amount) || 0,
+                        )}
                     </Text>
                 ),
             }),
@@ -878,12 +981,18 @@ export function LoanOriginationReport() {
 
                     return (
                         <Text
-                            fz={11}
+                            fz={12}
                             fw={700}
                             c={amount === null ? "slate.4" : "slate.8"}
                             ta="right"
+                            style={{
+                                whiteSpace: "nowrap",
+                                fontVariantNumeric: "tabular-nums",
+                            }}
                         >
-                            {amount === null ? "—" : formatCurrency(amount)}
+                            {amount === null
+                                ? "—"
+                                : formatCurrency(amount)}
                         </Text>
                     );
                 },
@@ -909,7 +1018,13 @@ export function LoanOriginationReport() {
                 id: "officer",
                 header: "Assigned Officer",
                 cell: ({ row }) => (
-                    <Text fz={11} c="slate.7" style={{ whiteSpace: "nowrap" }}>
+                    <Text
+                        fz={12}
+                        c="slate.7"
+                        style={{
+                            whiteSpace: "nowrap",
+                        }}
+                    >
                         {officerOf(row.original)}
                     </Text>
                 ),
@@ -920,8 +1035,16 @@ export function LoanOriginationReport() {
                 header: "Last Updated",
                 accessorFn: updatedOf,
                 cell: ({ row }) => (
-                    <Text fz={10.5} c="slate.6" style={{ whiteSpace: "nowrap" }}>
-                        {formatDateTime(updatedOf(row.original))}
+                    <Text
+                        fz={11.5}
+                        c="slate.6"
+                        style={{
+                            whiteSpace: "nowrap",
+                        }}
+                    >
+                        {formatDateTime(
+                            updatedOf(row.original),
+                        )}
                     </Text>
                 ),
             }),
@@ -933,16 +1056,18 @@ export function LoanOriginationReport() {
                 cell: ({ row }) => (
                     <Tooltip label="View application">
                         <ActionIcon
-                            size="sm"
-                            variant="subtle"
+                            size="md"
+                            radius="md"
+                            variant="light"
                             color="brand"
                             onClick={() =>
                                 loanApplicationModal.open({
-                                    loanApplicationId: row.original.name,
+                                    loanApplicationId:
+                                        row.original.name,
                                 })
                             }
                         >
-                            <IconEye size={15} />
+                            <IconEye size={16} />
                         </ActionIcon>
                     </Tooltip>
                 ),
@@ -1025,36 +1150,70 @@ export function LoanOriginationReport() {
     /* ------------------------------------------------------------------------ */
 
     return (
-        <Box mih="100%" p="lg" bg="slate.0">
-            <Stack gap="lg">
+        <Box mih="100%" px={{ base: "sm", sm: "md", lg: "xl" }} py="lg" bg="slate.0">
+            <Stack gap="xl">
                 {/* Header */}
-                <Group justify="space-between" align="flex-end" wrap="wrap">
-                    <Stack gap={2}>
-                        <Title order={3} c="slate.8" fw={800}>
-                            LOS Report
+                <Group
+                    justify="space-between"
+                    align="center"
+                    wrap="wrap"
+                    gap="md"
+                >
+                    <Stack gap={5}>
+                        <Group gap="xs">
+                            <Text
+                                fz={10}
+                                fw={800}
+                                c="brand.6"
+                                tt="uppercase"
+                                lts={0.8}
+                            >
+                                Origination
+                            </Text>
+
+                            <Badge
+                                size="xs"
+                                radius="xl"
+                                variant="light"
+                                color="brand"
+                            >
+                                Report
+                            </Badge>
+                        </Group>
+
+                        <Title
+                            order={2}
+                            c="slate.8"
+                            fw={800}
+                            lh={1.15}
+                            fz={{ base: 22, sm: 26 }}
+                        >
+                            Loan Origination Report
                         </Title>
 
-                        <Text fz="sm" c="slate.5">
-                            Loan Origination Performance & Application Pipeline
+                        <Text fz="sm" c="slate.5" lh={1.5}>
+                            Loan origination performance, application pipeline and processing activity
                         </Text>
                     </Stack>
 
                     <Group gap="xs">
                         <Tooltip label="Refresh report">
                             <ActionIcon
-                                variant="default"
+                                variant="subtle"
                                 color="slate"
-                                size="md"
+                                size="lg"
                                 loading={applicationsQuery.isFetching}
                                 onClick={() => applicationsQuery.refetch()}
                             >
-                                <IconRefresh size={15} />
+                                <IconRefresh size={17} />
                             </ActionIcon>
                         </Tooltip>
 
                         <Button
                             size="sm"
-                            variant="default"
+                            radius="md"
+                            variant="light"
+                            color="brand"
                             leftSection={<IconDownload size={15} />}
                             disabled={!tableRows.length}
                             onClick={() => downloadCsv(tableRows)}
@@ -1065,29 +1224,52 @@ export function LoanOriginationReport() {
                 </Group>
 
                 {/* Global Filters */}
-                <Paper withBorder radius="lg" p="sm" bd="1px solid slate.2">
-                    <Group gap={6} mb="xs">
-                        <IconFilter size={13} color="var(--mantine-color-brand-6)" />
+                {/* Global Filters */}
+                <Paper
+                    withBorder
+                    radius="lg"
+                    p="md"
+                    bd="1px solid slate.2"
+                >
+                    <Group justify="space-between" align="center" mb="sm">
+                        <Group gap="xs">
+                            <ThemeIcon
+                                size={26}
+                                radius="md"
+                                variant="light"
+                                color="brand"
+                            >
+                                <IconFilter size={14} />
+                            </ThemeIcon>
 
-                        <Text fz={10} fw={800} c="brand.6" tt="uppercase">
-                            Filters
-                        </Text>
+                            <Box>
+                                <Text fz="sm" fw={800} c="slate.8">
+                                    Report Filters
+                                </Text>
+
+                                <Text fz={11} c="slate.5">
+                                    Refine the data shown across the report
+                                </Text>
+                            </Box>
+                        </Group>
 
                         {hasGlobalFilters && (
                             <Button
                                 variant="subtle"
-                                size="compact-xs"
+                                size="compact-sm"
                                 color="slate"
-                                leftSection={<IconX size={11} />}
-                                ml="auto"
+                                leftSection={<IconX size={12} />}
                                 onClick={clearAll}
                             >
-                                Clear
+                                Clear all
                             </Button>
                         )}
                     </Group>
 
-                    <SimpleGrid cols={{ base: 1, sm: 2, md: 3, xl: 6 }} spacing="xs">
+                    <SimpleGrid
+                        cols={{ base: 1, sm: 2, md: 3, xl: 6 }}
+                        spacing="sm"
+                    >
                         <DatePickerInput
                             type="range"
                             label="Date Range"
@@ -1158,19 +1340,177 @@ export function LoanOriginationReport() {
                             radius="md"
                         />
 
-                        <Button size="sm" radius="md" color="brand" onClick={applyFilters}>
-                            Apply
+                        <Button
+                            size="sm"
+                            radius="md"
+                            color="brand"
+                            fw={700}
+                            onClick={applyFilters}
+                        >
+                            Apply filters
                         </Button>
                     </SimpleGrid>
+                    {hasGlobalFilters && (
+                        <Group gap="xs" mt="sm">
+                            <Text fz={11} fw={700} c="slate.5">
+                                Active:
+                            </Text>
+
+                            {filters.from || filters.to ? (
+                                <Button
+                                    size="compact-xs"
+                                    variant="light"
+                                    color="brand"
+                                    radius="xl"
+                                    rightSection={<IconX size={11} />}
+                                    onClick={() => {
+                                        setFilters((current) => ({
+                                            ...current,
+                                            from: "",
+                                            to: "",
+                                        }));
+
+                                        setDraft((current) => ({
+                                            ...current,
+                                            date: [null, null],
+                                        }));
+
+                                        setPagination((page) => ({
+                                            ...page,
+                                            pageIndex: 0,
+                                        }));
+                                    }}
+                                >
+                                    Date: {filters.from ? formatDate(filters.from) : "—"}{" "}
+                                    → {filters.to ? formatDate(filters.to) : "—"}
+                                </Button>
+                            ) : null}
+
+                            {filters.product && (
+                                <Button
+                                    size="compact-xs"
+                                    variant="light"
+                                    color="brand"
+                                    radius="xl"
+                                    rightSection={<IconX size={11} />}
+                                    onClick={() => {
+                                        setFilters((current) => ({
+                                            ...current,
+                                            product: null,
+                                        }));
+
+                                        setDraft((current) => ({
+                                            ...current,
+                                            product: null,
+                                        }));
+
+                                        setPagination((page) => ({
+                                            ...page,
+                                            pageIndex: 0,
+                                        }));
+                                    }}
+                                >
+                                    Product: {filters.product}
+                                </Button>
+                            )}
+
+                            {filters.branch && (
+                                <Button
+                                    size="compact-xs"
+                                    variant="light"
+                                    color="brand"
+                                    radius="xl"
+                                    rightSection={<IconX size={11} />}
+                                    onClick={() => {
+                                        setFilters((current) => ({
+                                            ...current,
+                                            branch: null,
+                                        }));
+
+                                        setDraft((current) => ({
+                                            ...current,
+                                            branch: null,
+                                        }));
+
+                                        setPagination((page) => ({
+                                            ...page,
+                                            pageIndex: 0,
+                                        }));
+                                    }}
+                                >
+                                    Branch: {filters.branch}
+                                </Button>
+                            )}
+
+                            {filters.stage && (
+                                <Button
+                                    size="compact-xs"
+                                    variant="light"
+                                    color="brand"
+                                    radius="xl"
+                                    rightSection={<IconX size={11} />}
+                                    onClick={() => {
+                                        setFilters((current) => ({
+                                            ...current,
+                                            stage: null,
+                                        }));
+
+                                        setDraft((current) => ({
+                                            ...current,
+                                            stage: null,
+                                        }));
+
+                                        setPagination((page) => ({
+                                            ...page,
+                                            pageIndex: 0,
+                                        }));
+                                    }}
+                                >
+                                    Stage: {filters.stage}
+                                </Button>
+                            )}
+
+                            {filters.status && (
+                                <Button
+                                    size="compact-xs"
+                                    variant="light"
+                                    color="brand"
+                                    radius="xl"
+                                    rightSection={<IconX size={11} />}
+                                    onClick={() => {
+                                        setFilters((current) => ({
+                                            ...current,
+                                            status: null,
+                                        }));
+
+                                        setDraft((current) => ({
+                                            ...current,
+                                            status: null,
+                                        }));
+
+                                        setPagination((page) => ({
+                                            ...page,
+                                            pageIndex: 0,
+                                        }));
+                                    }}
+                                >
+                                    Status: {filters.status}
+                                </Button>
+                            )}
+                        </Group>
+                    )}
                 </Paper>
 
                 {/* KPIs */}
-                <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
+                <SimpleGrid
+                    cols={{ base: 1, sm: 2, lg: 4 }}
+                    spacing="md"
+                >
                     <KpiCard
                         label="Total Applications"
                         value={formatNumber(summary.total)}
                         hint="Matching current report filters"
-                        icon={<IconFileText size={17} />}
+                        icon={<IconFileText size={18} />}
                         color="brand"
                     />
 
@@ -1178,20 +1518,17 @@ export function LoanOriginationReport() {
                         label="In Review"
                         value={formatNumber(summary.review)}
                         hint="Currently in workflow review"
-                        icon={<IconClock size={17} />}
+                        icon={<IconClock size={18} />}
                         color="yellow"
                     />
 
                     <KpiCard
-                        label="Approved"
-                        value={formatNumber(summary.approved)}
-                        icon={<IconCheck size={17} />}
-                        color="teal"
-                    >
-                        <Text fz={10.5} fw={700} c="slate.6">
-                            {summary.rate.toFixed(1)}% approval rate
-                        </Text>
-                    </KpiCard>
+                        label="In Review"
+                        value={formatNumber(summary.review)}
+                        hint="Currently in workflow review"
+                        icon={<IconClock size={18} />}
+                        color="yellow"
+                    />
 
                     <KpiCard
                         label="Disbursed Amount"
@@ -1211,160 +1548,228 @@ export function LoanOriginationReport() {
                 </SimpleGrid>
 
                 {/* Analytics */}
-                <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="sm">
-                    {/* Pipeline */}
-                    <Panel
-                        title="Application Pipeline"
-                        subtitle={`Total Applications: ${formatNumber(
-                            filteredRows.length,
-                        )}`}
+                {/* Analytics */}
+                <Stack gap="md">
+                    <SimpleGrid
+                        cols={{ base: 1, lg: 2 }}
+                        spacing="md"
                     >
-                        <Stack gap="sm">
-                            {PIPELINE.map((stage, index) => {
-                                const count =
-                                    stage === "Application Intake"
-                                        ? filteredRows.length
-                                        : filteredRows.filter(
-                                            (row) => stageOf(row) === stage,
-                                        ).length;
-
-                                const width = filteredRows.length
-                                    ? Math.max((count / filteredRows.length) * 100, 28)
-                                    : 28;
-
-                                return (
-                                    <Box key={stage}>
-                                        <Group justify="space-between" mb={4}>
-                                            <Text fz={11} fw={600} c="slate.7">
-                                                {stage}
-                                            </Text>
-
-                                            <Text fz={10.5} c="slate.6">
-                                                <Text span fw={800} c="slate.8">
-                                                    {formatNumber(count)}
-                                                </Text>{" "}
-                                                (
-                                                {filteredRows.length
-                                                    ? ((count / filteredRows.length) * 100).toFixed(1)
-                                                    : "0.0"}
-                                                %)
-                                            </Text>
-                                        </Group>
-
-                                        <Center>
-                                            <Box
-                                                w={`${width}%`}
-                                                h={28}
-                                                bg={
-                                                    [
-                                                        "brand.6",
-                                                        "violet.6",
-                                                        "teal.6",
-                                                        "yellow.6",
-                                                        "grape.6",
-                                                    ][index]
-                                                }
-                                                c="white"
-                                                py={6}
-                                                ta="center"
-                                                radius="sm"
-                                                style={{
-                                                    minWidth: count ? 70 : 0,
-                                                    clipPath:
-                                                        "polygon(5% 0,95% 0,88% 100%,12% 100%)",
-                                                }}
-                                            >
-                                                <Text fz={11} fw={800}>
-                                                    {formatNumber(count)}
-                                                </Text>
-                                            </Box>
-                                        </Center>
-                                    </Box>
-                                );
-                            })}
-                        </Stack>
-
-                        <Text fz={9.5} c="slate.4" ta="right" mt="xs">
-                            Percentages represent share of total applications.
-                        </Text>
-                    </Panel>
-
-                    {/* Status */}
-                    <Panel title="Application Status Distribution">
-                        <Stack align="center" gap="xl" p="md">
-                            <RingProgress
-                                size={220}
-                                thickness={22}
-                                roundCaps // Applies pill-shaped rounded ends to chart sectors
-                                sections={STATUS_META.map((item) => ({
-                                    value: filteredRows.length
-                                        ? (filteredRows.filter((row) => statusOf(row) === item.label).length /
-                                            filteredRows.length) *
-                                        100
-                                        : 0,
-                                    // Pulls dynamic visual tokens from your updated mapping object
-                                    color: STATUS_COLOR[item.label] || item.color,
-                                }))}
-                                label={
-                                    <Stack gap={2} align="center">
-                                        <Text fz={32} fw={800} c="slate.9" style={{ lineHeight: 1, letterSpacing: '-0.5px' }}>
-                                            {formatNumber(filteredRows.length)}
-                                        </Text>
-                                        <Text fz={13} fw={600} c="slate.4">
-                                            Total Apps
-                                        </Text>
-                                    </Stack>
-                                }
-                            />
-
-                            <Stack w="100%" gap="xs" mt="md">
-                                {STATUS_META.map((item) => {
-                                    const count = filteredRows.filter(
-                                        (row) => statusOf(row) === item.label
-                                    ).length;
+                        {/* Pipeline */}
+                        <Panel
+                            title="Application Pipeline"
+                            subtitle={`Application progression across the origination workflow`}
+                            right={
+                                <Badge
+                                    size="sm"
+                                    variant="light"
+                                    color="brand"
+                                    radius="xl"
+                                >
+                                    {formatNumber(filteredRows.length)} applications
+                                </Badge>
+                            }
+                        >
+                            <Stack gap="md">
+                                {PIPELINE.map((stage, index) => {
+                                    const count =
+                                        stage === "Application Intake"
+                                            ? filteredRows.length
+                                            : filteredRows.filter(
+                                                (row) => stageOf(row) === stage,
+                                            ).length;
 
                                     const percentage = filteredRows.length
-                                        ? Math.round((count / filteredRows.length) * 100)
+                                        ? (count / filteredRows.length) * 100
                                         : 0;
 
-                                    // Pulls matching tracking hex codes for the bullet dot markers
-                                    const displayColor = STATUS_COLOR[item.label] || item.color;
+                                    const stageColors = [
+                                        "brand",
+                                        "violet",
+                                        "teal",
+                                        "yellow",
+                                        "grape",
+                                    ];
 
                                     return (
-                                        <Group
-                                            key={item.label}
-                                            justify="space-between"
-                                            py="xs"
-                                            style={{ borderBottom: '1px solid var(--mantine-color-slate-1)' }}
-                                        >
-                                            <Group gap="sm">
-                                                <Box
-                                                    w={10}
-                                                    h={10}
-                                                    bg={displayColor}
-                                                    style={{ borderRadius: "50%" }}
-                                                />
-                                                <Text fz={14} fw={500} c="slate.7">
-                                                    {item.label}
+                                        <Box key={stage}>
+                                            <Group justify="space-between" mb={6}>
+                                                <Text
+                                                    fz="sm"
+                                                    fw={600}
+                                                    c="slate.7"
+                                                >
+                                                    {stage}
                                                 </Text>
+
+                                                <Group gap={6}>
+                                                    <Text
+                                                        fz="sm"
+                                                        fw={800}
+                                                        c="slate.8"
+                                                    >
+                                                        {formatNumber(count)}
+                                                    </Text>
+
+                                                    <Text
+                                                        fz="xs"
+                                                        c="slate.5"
+                                                    >
+                                                        {percentage.toFixed(0)}%
+                                                    </Text>
+                                                </Group>
                                             </Group>
 
-                                            <Group gap="xs">
-                                                <Text fz={15} fw={800} c="slate.8">
-                                                    {formatNumber(count)}
-                                                </Text>
-                                                <Text fz={13} c="slate.4" w={35} ta="right">
-                                                    {percentage}%
-                                                </Text>
-                                            </Group>
-                                        </Group>
+                                            <Box
+                                                h={8}
+                                                bg="slate.1"
+                                                radius="xl"
+                                                style={{ overflow: "hidden" }}
+                                            >
+                                                <Box
+                                                    h="100%"
+                                                    w={`${percentage}%`}
+                                                    bg={`${stageColors[index]}.6`}
+                                                    radius="xl"
+                                                />
+                                            </Box>
+                                        </Box>
                                     );
                                 })}
                             </Stack>
-                        </Stack>
-                    </Panel>
 
+                            <Text
+                                fz={11}
+                                c="slate.4"
+                                mt="md"
+                            >
+                                Percentages represent the share of filtered applications.
+                            </Text>
+                        </Panel>
 
+                        {/* Status */}
+                        <Panel
+                            title="Application Status"
+                            subtitle="Current distribution of filtered applications"
+                        >
+                            <Group
+                                align="center"
+                                justify="center"
+                                gap="xl"
+                                wrap="wrap"
+                                py="sm"
+                            >
+                                <RingProgress
+                                    size={170}
+                                    thickness={16}
+                                    roundCaps
+                                    sections={STATUS_META.map((item) => ({
+                                        value: filteredRows.length
+                                            ? (filteredRows.filter(
+                                                (row) => statusOf(row) === item.label,
+                                            ).length /
+                                                filteredRows.length) *
+                                            100
+                                            : 0,
+                                        color: STATUS_COLOR[item.label] || item.color,
+                                    }))}
+                                    label={
+                                        <Stack
+                                            gap={2}
+                                            align="center"
+                                        >
+                                            <Text
+                                                fz={27}
+                                                fw={800}
+                                                c="slate.9"
+                                                lh={1}
+                                            >
+                                                {formatNumber(filteredRows.length)}
+                                            </Text>
+
+                                            <Text
+                                                fz={11}
+                                                fw={600}
+                                                c="slate.5"
+                                            >
+                                                Total
+                                            </Text>
+                                        </Stack>
+                                    }
+                                />
+
+                                <Stack
+                                    gap={8}
+                                    miw={190}
+                                    flex={1}
+                                >
+                                    {STATUS_META.map((item) => {
+                                        const count = filteredRows.filter(
+                                            (row) => statusOf(row) === item.label,
+                                        ).length;
+
+                                        const percentage = filteredRows.length
+                                            ? Math.round(
+                                                (count / filteredRows.length) * 100,
+                                            )
+                                            : 0;
+
+                                        const displayColor =
+                                            STATUS_COLOR[item.label] || item.color;
+
+                                        return (
+                                            <Group
+                                                key={item.label}
+                                                justify="space-between"
+                                                py={6}
+                                                style={{
+                                                    borderBottom:
+                                                        "1px solid var(--mantine-color-slate-1)",
+                                                }}
+                                            >
+                                                <Group gap="sm">
+                                                    <Box
+                                                        w={9}
+                                                        h={9}
+                                                        bg={displayColor}
+                                                        style={{
+                                                            borderRadius: "50%",
+                                                        }}
+                                                    />
+
+                                                    <Text
+                                                        fz="sm"
+                                                        fw={600}
+                                                        c="slate.7"
+                                                    >
+                                                        {item.label}
+                                                    </Text>
+                                                </Group>
+
+                                                <Group gap={8}>
+                                                    <Text
+                                                        fz="sm"
+                                                        fw={800}
+                                                        c="slate.8"
+                                                    >
+                                                        {formatNumber(count)}
+                                                    </Text>
+
+                                                    <Text
+                                                        fz="xs"
+                                                        c="slate.5"
+                                                        w={32}
+                                                        ta="right"
+                                                    >
+                                                        {percentage}%
+                                                    </Text>
+                                                </Group>
+                                            </Group>
+                                        );
+                                    })}
+                                </Stack>
+                            </Group>
+                        </Panel>
+                    </SimpleGrid>
 
                     {/* Originations */}
                     <Panel
@@ -1373,6 +1778,7 @@ export function LoanOriginationReport() {
                         right={
                             <SegmentedControl
                                 size="xs"
+                                radius="md"
                                 value={originBy}
                                 onChange={(value) =>
                                     setOriginBy(value as "product" | "branch")
@@ -1394,7 +1800,10 @@ export function LoanOriginationReport() {
                                         : branchOf(row);
 
                                 if (key !== "—") {
-                                    counts.set(key, (counts.get(key) || 0) + 1);
+                                    counts.set(
+                                        key,
+                                        (counts.get(key) || 0) + 1,
+                                    );
                                 }
                             });
 
@@ -1408,180 +1817,415 @@ export function LoanOriginationReport() {
                             );
 
                             return data.length ? (
-                                <Group align="flex-end" gap="md" h={220}>
-                                    {data.map(([label, value], index) => (
-                                        <Stack
-                                            key={label}
-                                            gap={4}
-                                            align="center"
-                                            justify="flex-end"
-                                            h="100%"
-                                            style={{ flex: 1, minWidth: 0 }}
-                                        >
-                                            <Text fz={10} fw={800} c="slate.7">
-                                                {formatNumber(value)}
-                                            </Text>
+                                <Stack gap="md">
+                                    {data.map(([label, value], index) => {
+                                        const percentage =
+                                            filteredRows.length
+                                                ? (value / filteredRows.length) *
+                                                100
+                                                : 0;
 
-                                            <Box
-                                                w="70%"
-                                                maw={42}
-                                                h={Math.max(20, (value / max) * 130)}
-                                                bg={
-                                                    [
-                                                        "brand.6",
-                                                        "violet.6",
-                                                        "teal.6",
-                                                        "yellow.6",
-                                                        "slate.5",
-                                                    ][index % 5]
-                                                }
-                                                radius="sm"
-                                            />
+                                        return (
+                                            <Box key={label}>
+                                                <Group
+                                                    justify="space-between"
+                                                    mb={6}
+                                                >
+                                                    <Text
+                                                        fz="sm"
+                                                        fw={600}
+                                                        c="slate.7"
+                                                        lineClamp={1}
+                                                    >
+                                                        {label}
+                                                    </Text>
 
-                                            <Text fz={9.5} c="slate.5" ta="center" lineClamp={1}>
-                                                {label}
-                                            </Text>
-                                        </Stack>
-                                    ))}
-                                </Group>
+                                                    <Group gap="xs">
+                                                        <Text
+                                                            fz="sm"
+                                                            fw={800}
+                                                            c="slate.8"
+                                                        >
+                                                            {formatNumber(value)}
+                                                        </Text>
+
+                                                        <Text
+                                                            fz="xs"
+                                                            c="slate.5"
+                                                        >
+                                                            {percentage.toFixed(0)}%
+                                                        </Text>
+                                                    </Group>
+                                                </Group>
+
+                                                <Box
+                                                    h={10}
+                                                    bg="slate.1"
+                                                    radius="xl"
+                                                    style={{
+                                                        overflow: "hidden",
+                                                    }}
+                                                >
+                                                    <Box
+                                                        h="100%"
+                                                        w={`${(value / max) * 100}%`}
+                                                        bg={
+                                                            [
+                                                                "brand.6",
+                                                                "violet.6",
+                                                                "teal.6",
+                                                                "yellow.6",
+                                                                "slate.5",
+                                                            ][index % 5]
+                                                        }
+                                                        radius="xl"
+                                                    />
+                                                </Box>
+                                            </Box>
+                                        );
+                                    })}
+                                </Stack>
                             ) : (
-                                <Center h={220}>
-                                    <Text fz={11} c="slate.5">
-                                        No originations data available.
-                                    </Text>
+                                <Center h={180}>
+                                    <Stack
+                                        align="center"
+                                        gap={4}
+                                    >
+                                        <Text
+                                            fz="sm"
+                                            fw={700}
+                                            c="slate.6"
+                                        >
+                                            No originations data
+                                        </Text>
+
+                                        <Text
+                                            fz={11}
+                                            c="slate.5"
+                                        >
+                                            No matching data is available for
+                                            the current filters.
+                                        </Text>
+                                    </Stack>
                                 </Center>
                             );
                         })()}
                     </Panel>
-                </SimpleGrid>
+                </Stack>
 
                 {/* TAT */}
+                {/* TAT */}
                 <Panel
-                    title="Turnaround Time (TAT) & SLA Bottlenecks"
-                    subtitle="Operational processing benchmarks"
+                    title="Turnaround Time (TAT) & SLA"
+                    subtitle="Operational processing benchmarks across the origination workflow"
                     right={
-                        <Text fz={10} c="slate.5">
-                            Live data when available
-                        </Text>
+                        <Badge
+                            size="sm"
+                            radius="xl"
+                            variant="light"
+                            color="teal"
+                        >
+                            Live data
+                        </Badge>
                     }
                 >
-                    <SimpleGrid cols={{ base: 1, sm: 2, lg: 5 }} spacing="sm">
+                    <SimpleGrid
+                        cols={{ base: 1, sm: 2, lg: 4 }}
+                        spacing="md"
+                    >
                         {tat.metrics.map((metric, index) => {
                             const bottleneck = index === bottleneckIndex;
+
+                            const hasComparison =
+                                metric.value !== null &&
+                                metric.target !== null;
+
+                            const overTarget =
+                                hasComparison &&
+                                metric.value! > metric.target!;
+
+                            const difference =
+                                hasComparison
+                                    ? Math.abs(
+                                        metric.value! - metric.target!,
+                                    )
+                                    : null;
 
                             return (
                                 <Card
                                     key={metric.label}
                                     withBorder
-                                    radius="md"
-                                    p="sm"
-                                    bg={bottleneck ? "yellow.0" : "slate.0"}
-                                    bd={bottleneck ? "1px solid yellow.3" : "1px solid slate.2"}
+                                    radius="lg"
+                                    p="lg"
+                                    bg={bottleneck ? "yellow.0" : "white"}
+                                    bd={
+                                        bottleneck
+                                            ? "1px solid yellow.3"
+                                            : "1px solid slate.2"
+                                    }
                                 >
-                                    <Group justify="space-between" gap="xs">
+                                    <Group
+                                        justify="space-between"
+                                        align="flex-start"
+                                        gap="xs"
+                                    >
                                         <Text
-                                            fz={10}
-                                            fw={600}
-                                            c={bottleneck ? "yellow.9" : "slate.6"}
+                                            fz="sm"
+                                            fw={700}
+                                            c={bottleneck ? "yellow.9" : "slate.7"}
+                                            lh={1.35}
                                         >
                                             {metric.label}
                                         </Text>
 
                                         {bottleneck && (
-                                            <Badge size="xs" color="yellow" variant="light">
+                                            <Badge
+                                                size="xs"
+                                                color="yellow"
+                                                variant="light"
+                                                radius="xl"
+                                            >
                                                 Bottleneck
                                             </Badge>
                                         )}
                                     </Group>
 
-                                    <Text
-                                        fz={20}
-                                        fw={800}
-                                        c={bottleneck ? "yellow.9" : "slate.8"}
-                                        mt="sm"
-                                    >
-                                        {metric.value === null
-                                            ? "—"
-                                            : `${metric.value.toFixed(1)} hrs`}
-                                    </Text>
-
-                                    {metric.target !== null && (
-                                        <Text fz={9.5} c="slate.5">
-                                            Target &lt; {metric.target.toFixed(1)} hrs
+                                    <Stack gap={6} mt="lg">
+                                        <Text
+                                            fz={{ base: 25, sm: 28 }}
+                                            fw={800}
+                                            c={bottleneck ? "yellow.9" : "slate.8"}
+                                            lh={1}
+                                        >
+                                            {metric.value === null
+                                                ? "—"
+                                                : `${metric.value.toFixed(1)} hrs`}
                                         </Text>
-                                    )}
+
+                                        {metric.target !== null ? (
+                                            <Text
+                                                fz="xs"
+                                                c="slate.5"
+                                            >
+                                                Target{" "}
+                                                <Text
+                                                    span
+                                                    fw={700}
+                                                    c="slate.7"
+                                                >
+                                                    &lt; {metric.target.toFixed(1)} hrs
+                                                </Text>
+                                            </Text>
+                                        ) : (
+                                            <Text fz="xs" c="slate.4">
+                                                No SLA target available
+                                            </Text>
+                                        )}
+
+                                        {difference !== null && (
+                                            <Text
+                                                fz="xs"
+                                                fw={700}
+                                                c={
+                                                    overTarget
+                                                        ? "orange.7"
+                                                        : "teal.7"
+                                                }
+                                            >
+                                                {overTarget
+                                                    ? `${difference.toFixed(1)} hrs above target`
+                                                    : `${difference.toFixed(1)} hrs within target`}
+                                            </Text>
+                                        )}
+                                    </Stack>
                                 </Card>
                             );
                         })}
-
-                        <Card
-                            withBorder
-                            radius="md"
-                            p="sm"
-                            bg="blue.0"
-                            bd="1px solid blue.2"
-                        >
-                            <Text fz={10} fw={700} c="blue.8">
-                                End-to-End TAT
-                            </Text>
-
-                            <Text fz={20} fw={800} c="blue.8" mt="sm">
-                                {tat.endToEnd === null
-                                    ? "—"
-                                    : `${tat.endToEnd.toFixed(1)} hrs`}
-                            </Text>
-
-                            <Text fz={9.5} c="slate.5">
-                                Over SLA:{" "}
-                                <Text span fw={800} c="red.6">
-                                    {tat.overSla === null ? "—" : formatNumber(tat.overSla)}
-                                </Text>
-                            </Text>
-                        </Card>
                     </SimpleGrid>
+
+                    <Card
+                        withBorder
+                        radius="lg"
+                        p="lg"
+                        mt="md"
+                        bg="brand.0"
+                        bd="1px solid brand.2"
+                    >
+                        <Group
+                            justify="space-between"
+                            align="center"
+                            wrap="wrap"
+                            gap="lg"
+                        >
+                            <Group
+                                gap="md"
+                                wrap="nowrap"
+                            >
+                                <ThemeIcon
+                                    size={42}
+                                    radius="md"
+                                    variant="light"
+                                    color="brand"
+                                >
+                                    <IconClock size={19} />
+                                </ThemeIcon>
+
+                                <Box>
+                                    <Text
+                                        fz={11}
+                                        fw={800}
+                                        c="brand.7"
+                                        tt="uppercase"
+                                        lts={0.5}
+                                    >
+                                        End-to-End TAT
+                                    </Text>
+
+                                    <Text
+                                        fz={{ base: 27, sm: 30 }}
+                                        fw={800}
+                                        c="slate.8"
+                                        lh={1.1}
+                                        mt={4}
+                                    >
+                                        {tat.endToEnd === null
+                                            ? "—"
+                                            : `${tat.endToEnd.toFixed(1)} hrs`}
+                                    </Text>
+                                </Box>
+                            </Group>
+
+                            <Group
+                                gap="xl"
+                                wrap="wrap"
+                            >
+                                <Box>
+                                    <Text fz={11} c="slate.5">
+                                        Applications over SLA
+                                    </Text>
+
+                                    <Text
+                                        fz="lg"
+                                        fw={800}
+                                        c={
+                                            tat.overSla
+                                                ? "red.6"
+                                                : "slate.7"
+                                        }
+                                        mt={2}
+                                    >
+                                        {tat.overSla === null
+                                            ? "—"
+                                            : formatNumber(tat.overSla)}
+                                    </Text>
+                                </Box>
+
+                                <Box>
+                                    <Text fz={11} c="slate.5">
+                                        Longest processing stage
+                                    </Text>
+
+                                    <Text
+                                        fz="sm"
+                                        fw={800}
+                                        c="slate.7"
+                                        mt={2}
+                                    >
+                                        {bottleneckIndex >= 0
+                                            ? tat.metrics[bottleneckIndex]?.label
+                                            : "—"}
+                                    </Text>
+                                </Box>
+                            </Group>
+                        </Group>
+                    </Card>
                 </Panel>
 
                 {/* Applications */}
-                <Paper withBorder radius="lg" bd="1px solid slate.2">
-                    <Box p="md">
+                {/* Applications */}
+                <Paper
+                    withBorder
+                    radius="lg"
+                    bd="1px solid slate.2"
+                    style={{
+                        overflow: "hidden",
+                    }}
+                >
+                    <Box p="lg">
                         <Group
                             justify="space-between"
-                            align="flex-end"
-                            gap="sm"
+                            align="center"
+                            gap="md"
                             wrap="wrap"
                         >
-                            <Box>
-                                <Title order={5} c="slate.8" fw={800}>
-                                    Loan Applications
-                                </Title>
+                            <Group
+                                gap="sm"
+                                align="center"
+                                wrap="nowrap"
+                            >
+                                <Box>
+                                    <Title
+                                        order={5}
+                                        c="slate.8"
+                                        fw={800}
+                                        lh={1.25}
+                                    >
+                                        Loan Applications
+                                    </Title>
 
-                                <Text fz={10.5} c="slate.5" mt={2}>
-                                    Detailed overview of loan origination submissions ·{" "}
+                                    <Text
+                                        fz="xs"
+                                        c="slate.5"
+                                        mt={4}
+                                    >
+                                        Detailed overview of loan origination
+                                        submissions
+                                    </Text>
+                                </Box>
+
+                                <Badge
+                                    size="sm"
+                                    radius="xl"
+                                    variant="light"
+                                    color="brand"
+                                >
                                     {formatNumber(tableRows.length)} results
-                                </Text>
-                            </Box>
+                                </Badge>
+                            </Group>
 
-                            <Group gap="xs">
+                            <Group
+                                gap="xs"
+                                align="center"
+                                wrap="wrap"
+                                style={{
+                                    flex: "1 1 420px",
+                                    justifyContent: "flex-end",
+                                }}
+                            >
                                 <TextInput
                                     size="sm"
                                     radius="md"
-                                    w={280}
-                                    placeholder="Search application ID, customer or officer..."
+                                    placeholder="Search application, customer or officer..."
                                     leftSection={<IconSearch size={14} />}
                                     value={search}
                                     onChange={(event) => {
                                         setSearch(event.currentTarget.value);
+
                                         setPagination((page) => ({
                                             ...page,
                                             pageIndex: 0,
                                         }));
+                                    }}
+                                    style={{
+                                        flex: "1 1 260px",
+                                        maxWidth: 340,
                                     }}
                                 />
 
                                 <Select
                                     size="sm"
                                     radius="md"
-                                    w={115}
+                                    w={110}
                                     placeholder="Stage"
                                     data={options.stages}
                                     value={tableStage}
@@ -1592,7 +2236,7 @@ export function LoanOriginationReport() {
                                 <Select
                                     size="sm"
                                     radius="md"
-                                    w={115}
+                                    w={110}
                                     placeholder="Status"
                                     data={options.statuses}
                                     value={tableStatus}
@@ -1603,7 +2247,7 @@ export function LoanOriginationReport() {
                                 <Select
                                     size="sm"
                                     radius="md"
-                                    w={120}
+                                    w={125}
                                     placeholder="Product"
                                     data={options.products}
                                     value={tableProduct}
@@ -1617,6 +2261,7 @@ export function LoanOriginationReport() {
                                         variant="subtle"
                                         size="compact-sm"
                                         color="brand"
+                                        leftSection={<IconX size={12} />}
                                         onClick={clearTable}
                                     >
                                         Clear
@@ -1629,24 +2274,45 @@ export function LoanOriginationReport() {
                     <Divider color="slate.1" />
 
                     {applicationsQuery.isLoading ? (
-                        <Center py={70}>
+                        <Center py={80}>
                             <Stack align="center" gap="xs">
                                 <Loader size="sm" />
-                                <Text fz={11} c="slate.5">
+
+                                <Text fz="sm" c="slate.5">
                                     Loading loan applications...
                                 </Text>
                             </Stack>
                         </Center>
                     ) : applicationsQuery.isError ? (
-                        <Center py={70}>
-                            <Stack align="center" gap="xs" maw={420}>
-                                <IconAlertCircle size={22} color="var(--mantine-color-red-6)" />
+                        <Center py={80}>
+                            <Stack
+                                align="center"
+                                gap="xs"
+                                maw={420}
+                            >
+                                <ThemeIcon
+                                    size={40}
+                                    radius="xl"
+                                    variant="light"
+                                    color="red"
+                                >
+                                    <IconAlertCircle size={20} />
+                                </ThemeIcon>
 
-                                <Text fz="sm" fw={700} ta="center">
+                                <Text
+                                    fz="sm"
+                                    fw={700}
+                                    ta="center"
+                                    c="slate.8"
+                                >
                                     Could not load the loan origination report.
                                 </Text>
 
-                                <Text fz={11} c="slate.5" ta="center">
+                                <Text
+                                    fz={11}
+                                    c="slate.5"
+                                    ta="center"
+                                >
                                     {applicationsQuery.error instanceof Error
                                         ? applicationsQuery.error.message
                                         : "Please try refreshing the report."}
@@ -1656,31 +2322,45 @@ export function LoanOriginationReport() {
                                     size="xs"
                                     variant="default"
                                     leftSection={<IconRefresh size={13} />}
-                                    onClick={() => applicationsQuery.refetch()}
+                                    onClick={() =>
+                                        applicationsQuery.refetch()
+                                    }
                                 >
                                     Retry
                                 </Button>
                             </Stack>
                         </Center>
                     ) : !tableRows.length ? (
-                        <Center py={70}>
+                        <Center py={80}>
                             <Stack align="center" gap="xs">
-                                <IconSearch size={22} color="var(--mantine-color-slate-4)" />
+                                <ThemeIcon
+                                    size={40}
+                                    radius="xl"
+                                    variant="light"
+                                    color="slate"
+                                >
+                                    <IconSearch size={18} />
+                                </ThemeIcon>
 
-                                <Text fz="sm" fw={700} c="slate.6">
+                                <Text
+                                    fz="sm"
+                                    fw={700}
+                                    c="slate.6"
+                                >
                                     No applications match your filters.
                                 </Text>
 
-                                {(hasGlobalFilters || hasTableFilters) && (
-                                    <Button
-                                        size="xs"
-                                        variant="subtle"
-                                        color="brand"
-                                        onClick={clearAll}
-                                    >
-                                        Clear all filters
-                                    </Button>
-                                )}
+                                {(hasGlobalFilters ||
+                                    hasTableFilters) && (
+                                        <Button
+                                            size="xs"
+                                            variant="subtle"
+                                            color="brand"
+                                            onClick={clearAll}
+                                        >
+                                            Clear all filters
+                                        </Button>
+                                    )}
                             </Stack>
                         </Center>
                     ) : (
@@ -1688,103 +2368,189 @@ export function LoanOriginationReport() {
                             <ScrollArea>
                                 <Table
                                     miw={1280}
-                                    verticalSpacing={8}
-                                    horizontalSpacing="sm"
-                                    fz={11}
+                                    verticalSpacing={10}
+                                    horizontalSpacing="md"
+                                    fz={12}
                                     highlightOnHover
                                 >
                                     <Table.Thead>
-                                        {table.getHeaderGroups().map((group) => (
-                                            <Table.Tr key={group.id} bg="slate.0">
-                                                {group.headers.map((header) => {
-                                                    const canSort = header.column.getCanSort();
-                                                    const sorted = header.column.getIsSorted();
+                                        {table
+                                            .getHeaderGroups()
+                                            .map((group) => (
+                                                <Table.Tr
+                                                    key={group.id}
+                                                    bg="slate.0"
+                                                >
+                                                    {group.headers.map(
+                                                        (header) => {
+                                                            const canSort =
+                                                                header.column.getCanSort();
 
-                                                    return (
-                                                        <Table.Th
-                                                            key={header.id}
-                                                            onClick={
-                                                                canSort
-                                                                    ? header.column.getToggleSortingHandler()
-                                                                    : undefined
-                                                            }
-                                                            c="slate.5"
-                                                            fz={10}
-                                                            fw={800}
-                                                            py="sm"
-                                                            style={{
-                                                                cursor: canSort ? "pointer" : "default",
-                                                                whiteSpace: "nowrap",
-                                                            }}
-                                                        >
-                                                            <Group gap={4} wrap="nowrap">
-                                                                {flexRender(
-                                                                    header.column.columnDef.header,
-                                                                    header.getContext(),
-                                                                )}
+                                                            const sorted =
+                                                                header.column.getIsSorted();
 
-                                                                {canSort &&
-                                                                    (sorted === "asc" ? (
-                                                                        <IconChevronUp size={12} />
-                                                                    ) : sorted === "desc" ? (
-                                                                        <IconChevronDown size={12} />
-                                                                    ) : (
-                                                                        <IconSelector
-                                                                            size={12}
-                                                                            color="var(--mantine-color-slate-4)"
-                                                                        />
-                                                                    ))}
-                                                            </Group>
-                                                        </Table.Th>
-                                                    );
-                                                })}
-                                            </Table.Tr>
-                                        ))}
+                                                            return (
+                                                                <Table.Th
+                                                                    key={header.id}
+                                                                    onClick={
+                                                                        canSort
+                                                                            ? header.column.getToggleSortingHandler()
+                                                                            : undefined
+                                                                    }
+                                                                    c="slate.5"
+                                                                    fz={10}
+                                                                    fw={800}
+                                                                    py="sm"
+                                                                    style={{
+                                                                        cursor:
+                                                                            canSort
+                                                                                ? "pointer"
+                                                                                : "default",
+                                                                        whiteSpace:
+                                                                            "nowrap",
+                                                                        borderBottom:
+                                                                            "1px solid var(--mantine-color-slate-2)",
+                                                                    }}
+                                                                >
+                                                                    <Group
+                                                                        gap={5}
+                                                                        wrap="nowrap"
+                                                                    >
+                                                                        {flexRender(
+                                                                            header
+                                                                                .column
+                                                                                .columnDef
+                                                                                .header,
+                                                                            header.getContext(),
+                                                                        )}
+
+                                                                        {canSort &&
+                                                                            (sorted ===
+                                                                                "asc" ? (
+                                                                                <IconChevronUp
+                                                                                    size={
+                                                                                        12
+                                                                                    }
+                                                                                />
+                                                                            ) : sorted ===
+                                                                                "desc" ? (
+                                                                                <IconChevronDown
+                                                                                    size={
+                                                                                        12
+                                                                                    }
+                                                                                />
+                                                                            ) : (
+                                                                                <IconSelector
+                                                                                    size={
+                                                                                        12
+                                                                                    }
+                                                                                    color="var(--mantine-color-slate-4)"
+                                                                                />
+                                                                            ))}
+                                                                    </Group>
+                                                                </Table.Th>
+                                                            );
+                                                        },
+                                                    )}
+                                                </Table.Tr>
+                                            ))}
                                     </Table.Thead>
 
                                     <Table.Tbody>
-                                        {table.getRowModel().rows.map((row) => (
-                                            <Table.Tr key={row.id}>
-                                                {row.getVisibleCells().map((cell) => (
-                                                    <Table.Td key={cell.id} valign="middle">
-                                                        {flexRender(
-                                                            cell.column.columnDef.cell,
-                                                            cell.getContext(),
-                                                        )}
-                                                    </Table.Td>
-                                                ))}
-                                            </Table.Tr>
-                                        ))}
+                                        {table
+                                            .getRowModel()
+                                            .rows.map((row) => (
+                                                <Table.Tr
+                                                    key={row.id}
+                                                >
+                                                    {row
+                                                        .getVisibleCells()
+                                                        .map((cell) => (
+                                                            <Table.Td
+                                                                key={cell.id}
+                                                                valign="middle"
+                                                                py={12}
+                                                            >
+                                                                {flexRender(
+                                                                    cell.column
+                                                                        .columnDef
+                                                                        .cell,
+                                                                    cell.getContext(),
+                                                                )}
+                                                            </Table.Td>
+                                                        ))}
+                                                </Table.Tr>
+                                            ))}
                                     </Table.Tbody>
                                 </Table>
                             </ScrollArea>
 
                             <Divider color="slate.1" />
 
-                            <Group justify="space-between" p="sm" wrap="wrap">
-                                <Group gap="xs">
-                                    <Text fz={10.5} c="slate.6">
+                            <Group
+                                justify="space-between"
+                                align="center"
+                                p="md"
+                                wrap="wrap"
+                                gap="md"
+                            >
+                                <Group gap="sm">
+                                    <Text
+                                        fz="xs"
+                                        c="slate.6"
+                                    >
                                         Showing{" "}
-                                        {pagination.pageIndex * pagination.pageSize + 1} –{" "}
-                                        {Math.min(
-                                            (pagination.pageIndex + 1) * pagination.pageSize,
-                                            tableRows.length,
-                                        )}{" "}
-                                        of {formatNumber(tableRows.length)} applications
+                                        <Text
+                                            span
+                                            fw={700}
+                                            c="slate.8"
+                                        >
+                                            {pagination.pageIndex *
+                                                pagination.pageSize +
+                                                1}{" "}
+                                            –{" "}
+                                            {Math.min(
+                                                (pagination.pageIndex + 1) *
+                                                pagination.pageSize,
+                                                tableRows.length,
+                                            )}
+                                        </Text>{" "}
+                                        of{" "}
+                                        <Text
+                                            span
+                                            fw={700}
+                                            c="slate.8"
+                                        >
+                                            {formatNumber(tableRows.length)}
+                                        </Text>{" "}
+                                        applications
                                     </Text>
 
-                                    <Select
-                                        size="xs"
-                                        w={65}
-                                        data={PAGE_SIZES}
-                                        value={String(pagination.pageSize)}
-                                        onChange={(value) =>
-                                            setPagination({
-                                                pageIndex: 0,
-                                                pageSize: Number(value || 10),
-                                            })
-                                        }
-                                    />
+                                    <Group gap={6}>
+                                        <Text
+                                            fz={11}
+                                            c="slate.5"
+                                        >
+                                            Rows
+                                        </Text>
+
+                                        <Select
+                                            size="xs"
+                                            w={65}
+                                            data={PAGE_SIZES}
+                                            value={String(
+                                                pagination.pageSize,
+                                            )}
+                                            onChange={(value) =>
+                                                setPagination({
+                                                    pageIndex: 0,
+                                                    pageSize: Number(
+                                                        value || 10,
+                                                    ),
+                                                })
+                                            }
+                                        />
+                                    </Group>
                                 </Group>
 
                                 <Pagination
@@ -1796,7 +2562,7 @@ export function LoanOriginationReport() {
                                             pageIndex: page - 1,
                                         }))
                                     }
-                                    color="blue"
+                                    color="brand"
                                     size="sm"
                                     radius="md"
                                     disabled={pageCount <= 1}
