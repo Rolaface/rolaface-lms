@@ -3,6 +3,7 @@ import {
   Box, Group, Text, SimpleGrid, Paper, TextInput, NumberInput, Select, Checkbox, Textarea, Badge, Button,
   ActionIcon, ThemeIcon, UnstyledButton, Tooltip, Stack, Modal, Image
 } from "@mantine/core";
+import { DateInput } from "@mantine/dates";
 import {
   IconAlertTriangle, IconUpload, IconFileText, IconCircleCheck, IconCircleX, IconLock, IconX, IconPlus, IconTrash,
 } from "@tabler/icons-react";
@@ -37,6 +38,14 @@ export const DECISION_LABEL: Record<string, string> = {
   approve: "Approve / Proceed", conditions: "Approve with Conditions", refer: "Refer / Further Revision", reject: "Reject",
 };
 export const REJECT_REASONS = ["Insufficient collateral", "Ownership issue", "Legal risk", "Invalid documentation", "Unresolved exception", "Valuation issue", "Other"];
+
+// Converts a stored date string (e.g. "YYYY-MM-DD") into a Date object for
+// DateInput's `value` prop. Returns null for empty/invalid values.
+function toDateObj(v: string | null | undefined): Date | null {
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 export function SectionLabel({ children, color = "dark.6", icon: Icon }: { children: React.ReactNode; color?: string; icon?: React.FC<any> }) {
   return (
@@ -265,29 +274,47 @@ export function AssetValuation({
           </Badge>
         </Group>
         <SimpleGrid cols={3} spacing={12} mb={12}>
-          <Select size="xs" label="Asset type" data={DUMMY_ASSET_TYPES} value={asset.base.type} onChange={(x) => setBase({ type: x || asset.base.type })} allowDeselect={false} radius="md" />
+          <Select
+            size="xs"
+            label="Asset type"
+            data={DUMMY_ASSET_TYPES}
+            value={asset.base.type}
+            onChange={(x) => {
+              if (!x) return;
+              // Different asset types share the same underlying fields
+              // (description / acquisition / location / titleNumber), so
+              // switching type must clear them — otherwise the previous
+              // type's data leaks into the new type's labels.
+              onUpdate({
+                base: { ...asset.base, type: x, description: "", acquisition: "", location: "" },
+                title: { ...asset.title, titleNumber: "" },
+              });
+            }}
+            allowDeselect={false}
+            radius="md"
+          />
           <TextInput size="xs" label="Asset ID" value={asset.base.assetId || ""} onChange={(e) => setBase({ assetId: e.currentTarget.value })} placeholder="e.g. AST-33022" radius="md" />
           
           {asset.base.type === "Motor vehicle" && (
             <>
               <TextInput size="xs" label="Registered owner" value={asset.title.registeredOwner} onChange={(e) => onUpdate({ title: { ...asset.title, registeredOwner: e.currentTarget.value } })} radius="md" />
-              <Box style={{ gridColumn: "1 / -1" }}>
-                <TextInput size="xs" label="Registration details" value={asset.base.description || ""} onChange={(e) => setBase({ description: e.currentTarget.value })} placeholder="e.g. 2019 Toyota Hilux D/Cab" radius="md" error={asset.base.description?.trim() ? undefined : "Required"} />
-              </Box>
-              <Box style={{ gridColumn: "1 / span 2" }}>
-                <TextInput size="xs" label="Acquisition" value={asset.base.acquisition || ""} onChange={(e) => setBase({ acquisition: e.currentTarget.value })} placeholder="Purchased 2019 · dealer invoice on file" radius="md" />
-              </Box>
+              <TextInput size="xs" label="Registration details" value={asset.base.description || ""} onChange={(e) => setBase({ description: e.currentTarget.value })} placeholder="e.g. 2019 Toyota Hilux D/Cab" radius="md" error={asset.base.description?.trim() ? undefined : "Required"} />
+              <TextInput size="xs" label="Acquisition" value={asset.base.acquisition || ""} onChange={(e) => setBase({ acquisition: e.currentTarget.value })} placeholder="Purchased 2019 · dealer invoice on file" radius="md" />
             </>
           )}
 
           {asset.base.type === "Landed property" && (
             <>
               <TextInput size="xs" label="Registered owner" value={asset.title.registeredOwner} onChange={(e) => onUpdate({ title: { ...asset.title, registeredOwner: e.currentTarget.value } })} radius="md" />
-              <Box style={{ gridColumn: "1 / -1" }}>
+              <Box style={{ gridColumn: "1 / span 2" }}>
                 <TextInput size="xs" label="Location / Address" value={asset.base.location || ""} onChange={(e) => setBase({ location: e.currentTarget.value })} placeholder="e.g. Plot 1234, Lusaka" radius="md" error={asset.base.location?.trim() ? undefined : "Required"} />
               </Box>
-              <TextInput size="xs" label="Title number" value={asset.title.titleNumber || ""} onChange={(e) => onUpdate({ title: { ...asset.title, titleNumber: e.currentTarget.value } })} radius="md" />
-              <TextInput size="xs" label="Acquisition" value={asset.base.acquisition || ""} onChange={(e) => setBase({ acquisition: e.currentTarget.value })} radius="md" />
+              <Box style={{ gridColumn: "1 / -1" }}>
+                <SimpleGrid cols={2} spacing={12}>
+                  <TextInput size="xs" label="Title number" value={asset.title.titleNumber || ""} onChange={(e) => onUpdate({ title: { ...asset.title, titleNumber: e.currentTarget.value } })} radius="md" />
+                  <TextInput size="xs" label="Acquisition" value={asset.base.acquisition || ""} onChange={(e) => setBase({ acquisition: e.currentTarget.value })} radius="md" />
+                </SimpleGrid>
+              </Box>
             </>
           )}
 
@@ -295,9 +322,11 @@ export function AssetValuation({
             <>
               <TextInput size="xs" label="Manufacturer / Brand" value={asset.title.registeredOwner} onChange={(e) => onUpdate({ title: { ...asset.title, registeredOwner: e.currentTarget.value } })} radius="md" />
               <Box style={{ gridColumn: "1 / -1" }}>
-                <TextInput size="xs" label="Equipment details" value={asset.base.description || ""} onChange={(e) => setBase({ description: e.currentTarget.value })} placeholder="Model, Serial number, etc." radius="md" error={asset.base.description?.trim() ? undefined : "Required"} />
+                <SimpleGrid cols={2} spacing={12}>
+                  <TextInput size="xs" label="Equipment details" value={asset.base.description || ""} onChange={(e) => setBase({ description: e.currentTarget.value })} placeholder="Model, Serial number, etc." radius="md" error={asset.base.description?.trim() ? undefined : "Required"} />
+                  <TextInput size="xs" label="Location" value={asset.base.location || ""} onChange={(e) => setBase({ location: e.currentTarget.value })} radius="md" />
+                </SimpleGrid>
               </Box>
-              <TextInput size="xs" label="Location" value={asset.base.location || ""} onChange={(e) => setBase({ location: e.currentTarget.value })} radius="md" />
               <TextInput size="xs" label="Acquisition" value={asset.base.acquisition || ""} onChange={(e) => setBase({ acquisition: e.currentTarget.value })} radius="md" />
             </>
           )}
@@ -306,9 +335,21 @@ export function AssetValuation({
             <>
               <TextInput size="xs" label="Account name" value={asset.title.registeredOwner} onChange={(e) => onUpdate({ title: { ...asset.title, registeredOwner: e.currentTarget.value } })} radius="md" />
               <Box style={{ gridColumn: "1 / -1" }}>
-                <TextInput size="xs" label="Bank & Account details" value={asset.base.description || ""} onChange={(e) => setBase({ description: e.currentTarget.value })} placeholder="Bank name, Account number" radius="md" error={asset.base.description?.trim() ? undefined : "Required"} />
+                <SimpleGrid cols={3} spacing={12}>
+                  <Box style={{ gridColumn: "1 / span 2" }}>
+                    <TextInput size="xs" label="Bank & Account details" value={asset.base.description || ""} onChange={(e) => setBase({ description: e.currentTarget.value })} placeholder="Bank name, Account number" radius="md" error={asset.base.description?.trim() ? undefined : "Required"} />
+                  </Box>
+                  <DateInput
+                    size="xs"
+                    label="Maturity date"
+                    valueFormat="DD-MMM-YYYY"
+                    placeholder="DD-MMM-YYYY"
+                    value={toDateObj(asset.base.acquisition)}
+                    onChange={(d) => setBase({ acquisition: d ? d.toISOString().slice(0, 10) : "" })}
+                    radius="md"
+                  />
+                </SimpleGrid>
               </Box>
-              <TextInput size="xs" label="Maturity date" value={asset.base.acquisition || ""} onChange={(e) => setBase({ acquisition: e.currentTarget.value })} radius="md" />
             </>
           )}
 
@@ -316,9 +357,11 @@ export function AssetValuation({
             <>
               <TextInput size="xs" label="Registered owner" value={asset.title.registeredOwner} onChange={(e) => onUpdate({ title: { ...asset.title, registeredOwner: e.currentTarget.value } })} radius="md" />
               <Box style={{ gridColumn: "1 / -1" }}>
-                <TextInput size="xs" label="Description" value={asset.base.description || ""} onChange={(e) => setBase({ description: e.currentTarget.value })} radius="md" error={asset.base.description?.trim() ? undefined : "Required"} />
+                <SimpleGrid cols={2} spacing={12}>
+                  <TextInput size="xs" label="Description" value={asset.base.description || ""} onChange={(e) => setBase({ description: e.currentTarget.value })} radius="md" error={asset.base.description?.trim() ? undefined : "Required"} />
+                  <TextInput size="xs" label="Location" value={asset.base.location || ""} onChange={(e) => setBase({ location: e.currentTarget.value })} radius="md" />
+                </SimpleGrid>
               </Box>
-              <TextInput size="xs" label="Location" value={asset.base.location || ""} onChange={(e) => setBase({ location: e.currentTarget.value })} radius="md" />
             </>
           )}
         </SimpleGrid>
@@ -438,7 +481,7 @@ export function AssetValuation({
         {/* RIGHT COLUMN: Inputs */}
         <Box style={{ flex: 1.4, minWidth: 0, display: "flex", flexDirection: "column" }}>
           <Group justify="space-between" mb={8}>
-            <Text fz={11.5} fw={700} c="indigo.9" tt="uppercase">Confirm from the report</Text>
+            <Text fz={11.5} fw={700} c="indigo.9" tt="uppercase">Asset Valuation</Text>
             {confirmed && <Badge variant="light" color="green" size="sm" leftSection={<IconCircleCheck size={10} />}>Confirmed</Badge>}
           </Group>
 
@@ -450,7 +493,7 @@ export function AssetValuation({
           </SimpleGrid>
 
           <Text fz={11.5} fw={700} c="indigo.9" tt="uppercase" mb={6}>
-            Report prepared by
+            Valuer details
           </Text>
           <SimpleGrid cols={2} spacing={10} mb={10}>
             <TextInput size="xs" label="Valuer name" disabled={locked} value={asset.valuer.name} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, name: e.currentTarget.value } })} radius="md" placeholder="e.g. K. Zulu" />
