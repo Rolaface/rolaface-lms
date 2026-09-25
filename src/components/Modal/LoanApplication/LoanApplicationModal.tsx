@@ -217,8 +217,8 @@ const STEP_LABELS: Record<LoanType, string[]> = {
     "Employment Details",
     "Collateral Details",
     "Documents",
-    "Review",
     "Simulation",
+    "Review",
   ],
   Business: [
     "Customer & Loan",
@@ -227,8 +227,8 @@ const STEP_LABELS: Record<LoanType, string[]> = {
     "Applicant Details",
     "Collateral Details",
     "Documents",
-    "Review",
     "Simulation",
+    "Review",
   ],
 };
 
@@ -1167,10 +1167,10 @@ export function LoanApplicationModal({
             readOnly={readOnly}
           />
         );
-      case 6:
-        return <Review form={form} loanType={loanType} />;
-      case 7:
+        case 6:
         return <EligibilitySimulationStep form={form} readOnly={readOnly} />;
+      case 7:
+        return <Review form={form} loanType={loanType} />;
       default:
         return null;
     }
