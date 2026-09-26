@@ -12,19 +12,36 @@ interface StepProps {
 const zmw = (n: number) => "ZMW " + Math.round(n).toLocaleString();
 
 const Field = ({ label, value, span = 6 }: { label: string; value: string | number | undefined | null; span?: number }) => (
-  <Grid.Col span={{ base: 12, sm: span }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
-    <Text fz={9} fw={700} tt="uppercase" c="gray.7" style={{ letterSpacing: '0.2px' }}>
+  <Grid.Col
+    span={{ base: 12, sm: span }}
+    style={{
+      border: '1px solid var(--mantine-color-slate-2)',
+      padding: '4px 8px',
+      margin: '-0.5px',
+      background: 'var(--mantine-color-white)',
+    }}
+  >
+    <Text fz={9} fw={700} tt="uppercase" c="slate.5" style={{ letterSpacing: '0.2px' }}>
       {label}
     </Text>
-    <Text fz={11} fw={600} c="black" style={{ minHeight: '14px', marginTop: '2px' }}>
+    <Text fz={11} fw={600} c="slate.8" style={{ minHeight: '14px', marginTop: '2px' }}>
       {value || '—'}
     </Text>
   </Grid.Col>
 );
 
 const SectionHeading = ({ title }: { title: string }) => (
-  <Box bg="gray.2" p="4px 8px" style={{ border: '1px solid #000', margin: '-0.5px', marginTop: '16px' }} className="page-break-inside-avoid">
-    <Text fz={11} fw={800} tt="uppercase" c="black" style={{ letterSpacing: '0.5px' }}>
+  <Box
+    p="4px 8px"
+    style={{
+      background: 'var(--mantine-color-brand-0)',
+      border: '1px solid var(--mantine-color-brand-2)',
+      margin: '-0.5px',
+      marginTop: '16px',
+    }}
+    className="page-break-inside-avoid"
+  >
+    <Text fz={11} fw={800} tt="uppercase" c="brand.7" style={{ letterSpacing: '0.5px' }}>
       {title}
     </Text>
   </Box>
@@ -49,8 +66,8 @@ export function Review({ form, loanType }: StepProps) {
         p={24}
         className="form-print-container"
         style={{
-          border: '2px solid #000',
-          backgroundColor: '#fff',
+          border: '2px solid var(--mantine-color-slate-8)',
+          backgroundColor: 'var(--mantine-color-white)',
           maxWidth: '850px',
           margin: '0 auto',
           width: '100%',
@@ -58,11 +75,11 @@ export function Review({ form, loanType }: StepProps) {
         }}
       >
         <Box mb={20} className="text-center" style={{ position: 'relative' }}>
-          <Text fz={22} fw={900} c="black" tt="uppercase" style={{ letterSpacing: '1px', textDecoration: 'underline' }}>
+          <Text fz={22} fw={900} c="brand.7" tt="uppercase" style={{ letterSpacing: '1px', textDecoration: 'underline' }}>
             Official Loan Application Form
           </Text>
-          <Text fz={10} c="black" mt={4}>
-            Reference Number: <strong>[ OFFICE USE ]</strong> &nbsp;|&nbsp; Date: <strong>[ DD / MM / YYYY ]</strong>
+          <Text fz={10} c="slate.6" mt={4}>
+            Reference Number: <Text component="span" fw={700} c="slate.8">[ OFFICE USE ]</Text> &nbsp;|&nbsp; Date: <Text component="span" fw={700} c="slate.8">[ DD / MM / YYYY ]</Text>
           </Text>
         </Box>
 
@@ -154,19 +171,26 @@ export function Review({ form, loanType }: StepProps) {
 
         <Box mt={24} className="page-break-inside-avoid">
           <SectionHeading title="Declaration & Signatures" />
-          <Box style={{ border: '1px solid #000', margin: '-0.5px', padding: '12px' }}>
-            <Text fz={9} c="black" style={{ textAlign: 'justify', lineHeight: 1.4 }}>
+          <Box
+            style={{
+              border: '1px solid var(--mantine-color-slate-2)',
+              margin: '-0.5px',
+              padding: '12px',
+              background: 'var(--mantine-color-slate-0)',
+            }}
+          >
+            <Text fz={9} c="slate.7" style={{ textAlign: 'justify', lineHeight: 1.4 }}>
               I/We hereby irrevocably declare that all information, statements, and particulars contained in this application and any supplementary documents are true, complete, and accurate to the best of my/our knowledge and belief. I/We understand that providing false or misleading information constitutes a material breach and may result in immediate cancellation of the loan application and/or legal action. I/We authorize the Lender, its agents, and its representatives to conduct any inquiries, credit checks, or verifications from any source as deemed necessary for the assessment of this application, and to disclose information relating to this account to credit reference agencies or regulatory bodies in accordance with applicable data protection laws.
             </Text>
-            
+
             <Grid mt={30}>
               <Grid.Col span={6}>
-                <Box style={{ borderBottom: '1px solid #000', height: 20, width: '90%' }} mb="4px"></Box>
-                <Text fz={9} fw={700} c="black">Applicant(s) Authorized Signature</Text>
+                <Box style={{ borderBottom: '1px solid var(--mantine-color-slate-6)', height: 20, width: '90%' }} mb="4px"></Box>
+                <Text fz={9} fw={700} c="slate.7">Applicant(s) Authorized Signature</Text>
               </Grid.Col>
               <Grid.Col span={6}>
-                <Box style={{ borderBottom: '1px solid #000', height: 20, width: '90%' }} mb="4px"></Box>
-                <Text fz={9} fw={700} c="black">Date (DD/MM/YYYY)</Text>
+                <Box style={{ borderBottom: '1px solid var(--mantine-color-slate-6)', height: 20, width: '90%' }} mb="4px"></Box>
+                <Text fz={9} fw={700} c="slate.7">Date (DD/MM/YYYY)</Text>
               </Grid.Col>
             </Grid>
           </Box>
@@ -179,15 +203,23 @@ export function Review({ form, loanType }: StepProps) {
             <Field label="Receiving Officer" value="" span={6} />
             <Field label="Initial Remarks" value="" span={12} />
           </Grid>
-          <Box style={{ border: '1px solid #000', borderTop: 'none', margin: '-0.5px', padding: '24px 12px 12px' }}>
+          <Box
+            style={{
+              border: '1px solid var(--mantine-color-slate-2)',
+              borderTop: 'none',
+              margin: '-0.5px',
+              padding: '24px 12px 12px',
+              background: 'var(--mantine-color-slate-0)',
+            }}
+          >
             <Grid>
               <Grid.Col span={6}>
-                <Box style={{ borderBottom: '1px solid #000', height: 20, width: '90%' }} mb="4px"></Box>
-                <Text fz={9} fw={700} c="black">Approving Officer Signature</Text>
+                <Box style={{ borderBottom: '1px solid var(--mantine-color-slate-6)', height: 20, width: '90%' }} mb="4px"></Box>
+                <Text fz={9} fw={700} c="slate.7">Approving Officer Signature</Text>
               </Grid.Col>
               <Grid.Col span={6}>
-                <Box style={{ borderBottom: '1px solid #000', height: 20, width: '90%' }} mb="4px"></Box>
-                <Text fz={9} fw={700} c="black">Date (DD/MM/YYYY)</Text>
+                <Box style={{ borderBottom: '1px solid var(--mantine-color-slate-6)', height: 20, width: '90%' }} mb="4px"></Box>
+                <Text fz={9} fw={700} c="slate.7">Date (DD/MM/YYYY)</Text>
               </Grid.Col>
             </Grid>
           </Box>

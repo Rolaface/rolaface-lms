@@ -8,6 +8,8 @@ import {
   Text,
   Button,
   Group,
+  Box,
+  SimpleGrid,
 } from "@mantine/core";
 import {
   IconPencil,
@@ -18,6 +20,7 @@ import {
   IconChevronRight,
 } from "@tabler/icons-react";
 import type { UseFormReturnType } from "@mantine/form";
+import { DateInput } from "@mantine/dates";
 
 // Define the shape of your collateral entry. Merge this into your global form values type.
 export interface CollateralEntry {
@@ -34,8 +37,8 @@ interface CollateralStepProps {
   readOnly?: boolean;
 }
 
-const COLLATERAL_TYPES = ["Property", "Vehicle", "Gold", "Deposit"];
-const OWNERSHIP_TYPES = ["Applicant", "Co-Applicant", "Third Party"];
+const COLLATERAL_TYPES = ["Property", "Vehicle", "Gold", "Deposit", "Other"];
+const OWNERSHIP_TYPES = ["Applicant", "Co-Applicant"];
 
 const nextId = () => Math.random().toString(36).slice(2, 10);
 
@@ -76,97 +79,116 @@ export function Collateral({ form, collateralsError, readOnly = false }: Collate
 
   return (
     <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
-      <Table.ScrollContainer minWidth={780}>
-        <Table verticalSpacing="sm" horizontalSpacing="md" className="w-full">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th className="w-16">No.</Table.Th>
-              <Table.Th>Collateral Type</Table.Th>
-              <Table.Th>Description</Table.Th>
-              <Table.Th>Collateral Value</Table.Th>
-              <Table.Th>Ownership</Table.Th>
-              {!readOnly && <Table.Th className="w-24" />}
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {collaterals.length === 0 ? (
-              <Table.Tr>
-                <Table.Td colSpan={readOnly ? 5 : 6} className="text-center py-10">
-                  <div className="flex flex-col items-center gap-2">
-                    <IconBriefcase size={22} style={{ color: "var(--mantine-color-slate-3)" }} />
-                    <Text size="xs" c="slate.4">
-                      No collateral added yet. Click &ldquo;+ Add Collateral&rdquo; to create one.
-                    </Text>
+    <Box style={{ overflowX: "auto" }}>
+        <Box miw={780}>
+          {/* Header Row */}
+          <div
+            className="flex items-center px-4 py-2.5"
+            style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
+          >
+            <div className="flex-1">
+              <Text size="sm" fw={700}>Add Collaterals</Text>
+            </div>
+            {!readOnly && <div className="w-24 shrink-0" />}
+          </div>
+
+          {/* Body */}
+          {collaterals.length === 0 ? (
+            <div className="text-center py-10">
+              <div className="flex flex-col items-center gap-2">
+                <IconBriefcase size={22} style={{ color: "var(--mantine-color-slate-3)" }} />
+                <Text size="xs" c="slate.4">
+                  No collateral added yet. Click &ldquo;+ Add Collateral&rdquo; to create one.
+                </Text>
+              </div>
+            </div>
+          ) : (
+            paginatedCollaterals.map(({ collateral, idx }, rowIndex) => (
+              <div
+                key={collateral.id}
+                className="flex items-start px-4 py-3"
+                style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
+              >
+                {/* Row Number */}
+                <div className="w-16 shrink-0 pt-7">
+                  <Text size="sm" fw={500} c="slate.6">
+                    {(page - 1) * ROWS_PER_PAGE + rowIndex + 1}
+                  </Text>
+                </div>
+
+                <SimpleGrid cols={4} spacing="md" verticalSpacing="xs" className="flex-1">
+                  <Select
+                    size="sm"
+                    label="Collateral Type"
+                    placeholder="Select type"
+                    data={COLLATERAL_TYPES}
+                    disabled={readOnly}
+                    {...form.getInputProps(`collaterals.${idx}.type`)}
+                    onBlur={() => form.validateField(`collaterals.${idx}.type`)}
+                  />
+                  <TextInput
+                    size="sm"
+                    label="Estimated Collateral Value"
+                    placeholder="e.g. 150000"
+                    readOnly={readOnly}
+                    {...form.getInputProps(`collaterals.${idx}.value`)}
+                    onBlur={() => form.validateField(`collaterals.${idx}.value`)}
+                  />
+                  <Select
+                    size="sm"
+                    label="Ownership"
+                    placeholder="Select ownership"
+                    data={OWNERSHIP_TYPES}
+                    disabled={readOnly}
+                    {...form.getInputProps(`collaterals.${idx}.ownership`)}
+                    onBlur={() => form.validateField(`collaterals.${idx}.ownership`)}
+                  />
+                  <DateInput
+                    size="sm"
+                    radius="md"
+                    label="Ownership Date if Applicable"
+                    valueFormat="DD-MMM-YYYY"
+                    placeholder="DD-MMM-YYYY"
+                    value={form.values.ownershipDate ? new Date(form.values.ownershipDate) : null}
+                    onChange={(date) =>
+                      form.setFieldValue(
+                        "ownershipDate",
+                        date ? new Date(date).toISOString().slice(0, 10) : "",
+                      )
+                    }
+                    error={form.errors.ownershipDate}
+                    readOnly={readOnly}
+                  />
+                  <TextInput
+                    size="sm"
+                    label="Description"
+                    placeholder="e.g. 2018 Toyota Hilux"
+                    readOnly={readOnly}
+                    style={{ gridColumn: "1 / -1" }}
+                    {...form.getInputProps(`collaterals.${idx}.description`)}
+                    onBlur={() => form.validateField(`collaterals.${idx}.description`)}
+                  />
+                </SimpleGrid>
+
+                {/* Delete Action */}
+                {!readOnly && (
+                  <div className="w-24 shrink-0 flex items-center gap-1 justify-end pt-7">
+                    <ActionIcon
+                      variant="subtle"
+                      color="danger"
+                      size="sm"
+                      onClick={() => handleDeleteCollateral(idx)}
+                      aria-label="Delete collateral"
+                    >
+                      <IconTrash size={16} stroke={1.5} />
+                    </ActionIcon>
                   </div>
-                </Table.Td>
-              </Table.Tr>
-            ) : (
-              paginatedCollaterals.map(({ collateral, idx }, rowIndex) => (
-                <Table.Tr key={collateral.id}>
-                  <Table.Td>
-                    <Text size="sm" fw={500} c="slate.6">
-                      {(page - 1) * ROWS_PER_PAGE + rowIndex + 1}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Select
-                      size="sm"
-                      placeholder="Select type"
-                      data={COLLATERAL_TYPES}
-                      disabled={readOnly}
-                      {...form.getInputProps(`collaterals.${idx}.type`)}
-                      onBlur={() => form.validateField(`collaterals.${idx}.type`)}
-                    />
-                  </Table.Td>
-                  <Table.Td>
-                    <TextInput
-                      size="sm"
-                      placeholder="e.g. 2018 Toyota Hilux"
-                      readOnly={readOnly}
-                      {...form.getInputProps(`collaterals.${idx}.description`)}
-                      onBlur={() => form.validateField(`collaterals.${idx}.description`)}
-                    />
-                  </Table.Td>
-                  <Table.Td>
-                    <TextInput
-                      size="sm"
-                      placeholder="e.g. 150000"
-                      readOnly={readOnly}
-                      {...form.getInputProps(`collaterals.${idx}.value`)}
-                      onBlur={() => form.validateField(`collaterals.${idx}.value`)}
-                    />
-                  </Table.Td>
-                  <Table.Td>
-                    <Select
-                      size="sm"
-                      placeholder="Select ownership"
-                      data={OWNERSHIP_TYPES}
-                      disabled={readOnly}
-                      {...form.getInputProps(`collaterals.${idx}.ownership`)}
-                      onBlur={() => form.validateField(`collaterals.${idx}.ownership`)}
-                    />
-                  </Table.Td>
-                  {!readOnly && (
-                    <Table.Td>
-                      <div className="flex items-center gap-1 justify-end">
-                        <ActionIcon
-                          variant="subtle"
-                          color="danger"
-                          size="sm"
-                          onClick={() => handleDeleteCollateral(idx)}
-                          aria-label="Delete collateral"
-                        >
-                          <IconTrash size={16} stroke={1.5} />
-                        </ActionIcon>
-                      </div>
-                    </Table.Td>
-                  )}
-                </Table.Tr>
-              ))
-            )}
-          </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
+                )}
+              </div>
+            ))
+          )}
+        </Box>
+      </Box>
 
       {collateralsError && (
         <Text fz="xs" c="red.6" px="md" pt="xs">
