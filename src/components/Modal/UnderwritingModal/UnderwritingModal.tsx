@@ -520,17 +520,17 @@ function UnderwritingWorkspace({
       )}
 
       {assets.length === 0 ? (
-        <Paper withBorder className="ps-surface" radius="lg" py={50} ta="center" bg="gray.0">
+        <Paper withBorder radius="lg" py={50} ta="center" bg="gray.0">
           <Text fz="md" fw={600}>No assets added</Text>
           <Text fz="sm" c="dimmed">Add an asset to begin the security review.</Text>
         </Paper>
       ) : (
-        <Paper withBorder className="ps-surface" radius="lg" p="md" bg="gray.0" mb={20}>
+        <Paper withBorder radius="lg" p="md" bg="gray.0" mb={20}>
           {assets.map((a, i) => {
             const AssetIcon = (a.base.type || "").toLowerCase().includes("vehicle") ? IconCar : IconBuildingBank;
             const doneCount = STEPS.filter((s) => stepDone(a, s)).length;
             return (
-              <Paper key={a.id} withBorder className="ps-surface" radius="md" mb={8} onClick={() => open(a.id)} style={{ borderLeft: "4px solid var(--mantine-color-brand-6)", cursor: "pointer" }}>
+              <Paper key={a.id} withBorder radius="md" mb={8} onClick={() => open(a.id)} style={{ borderLeft: "4px solid var(--mantine-color-brand-6)", cursor: "pointer" }}>
                 <Group justify="space-between" wrap="nowrap" px={14} py={8}>
                   <Group gap={12} wrap="nowrap" style={{ minWidth: 0 }}>
                     <ThemeIcon radius="md" size={30} variant="light" color="brand"><AssetIcon size={16} /></ThemeIcon>
