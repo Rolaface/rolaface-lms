@@ -104,7 +104,7 @@ if (loanType === "Personal") {
         </SimpleGrid>
       </Box>
     </SimpleGrid>
-      <Group gap="xs" mt={2} mb={0} wrap="nowrap">
+      {/* <Group gap="xs" mt={2} mb={0} wrap="nowrap">
         <Text fz="sm" fw={700} c="slate.8" style={{ whiteSpace: "nowrap" }}>
           Next of Kin Details
         </Text>
@@ -169,7 +169,7 @@ if (loanType === "Personal") {
           // style={{ gridColumn: "1 / -1" }}
           disabled={readOnly}
         />
-      </SimpleGrid>
+      </SimpleGrid> */}
     </Stack>
   );
 }

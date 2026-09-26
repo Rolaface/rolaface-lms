@@ -1,4 +1,4 @@
-import { SimpleGrid, TextInput, Select, NumberInput, Group, Text, Box } from "@mantine/core";
+import { SimpleGrid, TextInput, Select, NumberInput, Group, Text, Box, Stack } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import type { LoanApplicationValues, LoanType } from "./LoanApplicationModal";
 import { DateInput } from "@mantine/dates";
@@ -8,7 +8,7 @@ interface StepProps {
   loanType: LoanType;
   readOnly?: boolean;
 }
-
+const RELATIONSHIPS = [ "Spouse", "Parent", "Child", "Sibling", "Other",];
 const GENDERS = ["Male", "Female", "Other"];
 const MARITAL_STATUSES = [
   "Single",
@@ -54,6 +54,7 @@ function Label({
 export function PersonalBusinessInfoStep({ form, loanType, readOnly=false, }: StepProps) {
   if (loanType === "Personal") {
     return (
+      <Stack gap="sm">
       <SimpleGrid
         cols={{ base: 1, xs: 2, sm: 3, md: 4, lg: 5 }}
         spacing="lg"
@@ -108,22 +109,22 @@ export function PersonalBusinessInfoStep({ form, loanType, readOnly=false, }: St
           error={form.errors.phone}
           readOnly={readOnly}
         />
-        <TextInput
+         <DateInput
           radius="md"
           styles={LABEL_STYLES}
-          type="email"
-          label={<Label text="Email" required />}
-          placeholder="e.g. john.doe@example.com"
-          className="lg:col-span-2"
-          value={form.values.email}
-          onChange={(e) => {
-            form.setFieldValue("email", e.currentTarget.value);
-            form.validateField("email");
-          }}
-          error={form.errors.email}
+          label={<Label text="Birth date" required />}
+          valueFormat="DD-MMM-YYYY"
+          placeholder="DD-MMM-YYYY"
+          value={form.values.birthDate ? new Date(form.values.birthDate) : null}
+          onChange={(date) =>
+            form.setFieldValue(
+              "birthDate",
+              date ? new Date(date).toISOString().slice(0, 10) : "",
+            )
+          }
+          error={form.errors.birthDate}
           readOnly={readOnly}
         />
-
         <Select
           radius="md"
           styles={LABEL_STYLES}
@@ -142,23 +143,89 @@ export function PersonalBusinessInfoStep({ form, loanType, readOnly=false, }: St
           {...form.getInputProps("maritalStatus")}
           disabled={readOnly}
         />
-        <DateInput
+         <TextInput
           radius="md"
           styles={LABEL_STYLES}
-          label={<Label text="Birth date" required />}
-          valueFormat="DD-MMM-YYYY"
-          placeholder="DD-MMM-YYYY"
-          value={form.values.birthDate ? new Date(form.values.birthDate) : null}
-          onChange={(date) =>
-            form.setFieldValue(
-              "birthDate",
-              date ? new Date(date).toISOString().slice(0, 10) : "",
-            )
-          }
-          error={form.errors.birthDate}
+          type="email"
+          label={<Label text="Email" required />}
+          placeholder="e.g. john.doe@example.com"
+          className="lg:col-span-2"
+          value={form.values.email}
+          onChange={(e) => {
+            form.setFieldValue("email", e.currentTarget.value);
+            form.validateField("email");
+          }}
+          error={form.errors.email}
           readOnly={readOnly}
         />
       </SimpleGrid>
+       <Group gap="md" mt={4} mb={0} wrap="nowrap">
+              <Text fz="sm" fw={700} c="slate.8" style={{ whiteSpace: "nowrap" }}>
+                Next of Kin Details
+              </Text>
+              <Box
+                style={{
+                  height: 1,
+                  flex: 1,
+                  backgroundColor: "var(--mantine-color-slate-2)",
+                }}
+              />
+            </Group>
+      
+            <SimpleGrid
+              cols={{ base: 1, sm: 3 }}
+              spacing="md"
+              verticalSpacing="sm"
+            >
+                      <TextInput
+                radius="md"
+                label={<Label text="Next of kin name" required />}
+                placeholder="e.g. John Doe"
+                {...form.getInputProps("kinName")}
+                readOnly={readOnly}
+              />
+      
+              <TextInput
+                radius="md"
+                type="tel"
+                label={<Label text="Next of kin phone" required />}
+                placeholder="e.g. 0971234567"
+                value={form.values.kinPhone}
+                onChange={(e) =>
+                  form.setFieldValue(
+                    "kinPhone",
+                    e.currentTarget.value.replace(/\D/g, "")
+                  )
+                }
+                error={form.errors.kinPhone}
+                readOnly={readOnly}
+              />
+      
+              <TextInput
+                radius="md"
+                type="email"
+                label={<Label text="Next of kin email" required />}
+                placeholder="e.g. john.doe@example.com"
+                value={form.values.kinEmail}
+                onChange={(e) => {
+                  form.setFieldValue("kinEmail", e.currentTarget.value);
+                  form.validateField("kinEmail");
+                }}
+                error={form.errors.kinEmail}
+                readOnly={readOnly}
+              />
+      
+              <Select
+                radius="md"
+                label={<Label text="Relationship" required />}
+                placeholder="Select relationship"
+                data={RELATIONSHIPS}
+                {...form.getInputProps("kinRelationship")}
+                // style={{ gridColumn: "1 / -1" }}
+                disabled={readOnly}
+              />
+            </SimpleGrid>
+      </Stack>
     );
   }
 

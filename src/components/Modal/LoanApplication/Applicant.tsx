@@ -48,21 +48,21 @@ export function Applicant({ form, readOnly = false }: ApplicantProps) {
       <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" verticalSpacing="md">
         <TextInput
           radius="md"
-          label={<Label text="Applicant first name" required />}
+          label={<Label text="First name" required />}
           placeholder="e.g. John"
           {...form.getInputProps("applicantFirstName")}
           readOnly={readOnly}
         />
         <TextInput
           radius="md"
-          label={<Label text="Applicant middle name" optional />}
+          label={<Label text="Middle name" optional />}
           placeholder="e.g. K."
           {...form.getInputProps("applicantMiddleName")}
           readOnly={readOnly}
         />
         <TextInput
           radius="md"
-          label={<Label text="Applicant last name" required />}
+          label={<Label text="Last name" required />}
           placeholder="e.g. Doe"
           {...form.getInputProps("applicantLastName")}
           readOnly={readOnly}
@@ -71,7 +71,7 @@ export function Applicant({ form, readOnly = false }: ApplicantProps) {
         <TextInput
           radius="md"
           type="tel"
-          label={<Label text="Applicant phone" required />}
+          label={<Label text="Phone" required />}
           placeholder="e.g. 0971234567"
           value={form.values.applicantPhone}
           onChange={(e) =>
@@ -83,7 +83,7 @@ export function Applicant({ form, readOnly = false }: ApplicantProps) {
         <TextInput
           radius="md"
           type="email"
-          label={<Label text="Applicant email" required />}
+          label={<Label text="Email" required />}
           placeholder="e.g. john.doe@example.com"
           value={form.values.applicantEmail}
           onChange={(e) => {
@@ -95,7 +95,7 @@ export function Applicant({ form, readOnly = false }: ApplicantProps) {
         />
         <TextInput
           radius="md"
-          label={<Label text="Applicant NRC" required />}
+          label={<Label text="NRC" required />}
           placeholder="e.g. 123456/78/1"
           {...form.getInputProps("applicantNrc")}
           readOnly={readOnly}
@@ -103,7 +103,7 @@ export function Applicant({ form, readOnly = false }: ApplicantProps) {
 
         <Select
           radius="md"
-          label={<Label text="Applicant gender" required />}
+          label={<Label text="Gender" required />}
           placeholder="Select"
           data={GENDERS}
           {...form.getInputProps("applicantGender")}

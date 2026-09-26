@@ -864,7 +864,7 @@ export function CustomerLoanStep({ form, readOnly = false }: StepProps) {
                   radius="md"
                   onClick={() => setExistingView("configure")}
                 >
-                  Choose Another Product
+                  Choose Another Loan
                 </Button>
               ) : undefined
             }
@@ -969,7 +969,7 @@ export function CustomerLoanStep({ form, readOnly = false }: StepProps) {
                 leftSection={<IconArrowLeft size={13} />}
                 onClick={() => setExistingView("offers")}
               >
-                Back to Pre-approved Loans
+                Back to Pre-approved Offers
               </Button>
             }
           >
