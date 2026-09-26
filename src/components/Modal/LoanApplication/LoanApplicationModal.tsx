@@ -212,20 +212,20 @@ const STEP_LABELS: Record<LoanType, string[]> = {
   Personal: [
     "Customer & Loan",
    
-    "Applicant information",
-    "Residence Details",
-    "Employment Details",
-    "Collateral Details",
+    "Applicant",
+    "Residence",
+    "Employment",
+    "Collateral",
     "Documents",
     "Simulation",
     "Review",
   ],
   Business: [
     "Customer & Loan",
-    "Business information",
-    "Directors Details",
-    "Applicant Details",
-    "Collateral Details",
+    "Business",
+    "Directors",
+    "Applicant",
+    "Collateral",
     "Documents",
     "Simulation",
     "Review",
@@ -1255,9 +1255,9 @@ export function LoanApplicationModal({
                     ? "Update Loan Application"
                     : "New Loan Application"}
                 </Text>
-                <Text size="xs" fw={500} c="brand.1">
+                {/* <Text size="xs" fw={500} c="brand.1">
                   Applicant, loan and repayment details
-                </Text>
+                </Text> */}
               </Box>
             </Group>
                         {!embedded && (

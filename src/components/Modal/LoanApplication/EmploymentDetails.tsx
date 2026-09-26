@@ -22,7 +22,7 @@ const INCOME_TYPES = ["Net Salary", "Business Income", "Rental Income", "Other I
 const EMPLOYMENT_TYPES = ["Government", "Private", "Self-Employed", "Other"];
 // const INCOME_TYPES = ["Salary", "Business", "Interest Income", "Rentals", "Others"];
 const EXPENSE_TYPES = [ "Medical", "Education", "Travel", "Rentals", "Others"];
-const OBLIGATION_TYPES = ["Monthly EMIs","Rental Obligation", "Other Monthly Debt(Excluding EMIs)"];
+const OBLIGATION_TYPES = ["Monthly Obligation","Rental Obligation", "Other Monthly Debt"];
 
 const LABEL_STYLES = {
   label: { display: "flex", alignItems: "center", marginBottom: 4 },
@@ -140,7 +140,7 @@ return (
       <TextInput
         radius="md"
         styles={LABEL_STYLES}
-        label={<Label text="Company Name" required />}
+        label={<Label text="Employer Name" required />}
         placeholder="e.g. ABC Enterprises Ltd"
         {...form.getInputProps("companyName")}
         readOnly={readOnly}
@@ -230,7 +230,17 @@ return (
 
         {/* Monthly Obligation - Right Side */}
       <Box>
-        <Box p="sm" bd="1px solid var(--mantine-color-gray-2)" style={{ borderRadius: "var(--mantine-radius-xl)" }}>
+        {/* <Box p="sm" bd="1px solid var(--mantine-color-gray-2)" style={{ borderRadius: "var(--mantine-radius-xl)" }}> */}
+        <Box
+  p="sm"
+  h="100%"
+  bd="1px solid var(--mantine-color-gray-2)"
+  style={{
+    borderRadius: "var(--mantine-radius-xl)",
+    display: "flex",
+    flexDirection: "column",
+  }}
+>
           <Group justify="space-between" mb="md">
             <Group gap="xs">
               <Box w={8} h={8} style={{ borderRadius: "50%", backgroundColor: "var(--mantine-color-red-5)" }} />
@@ -241,7 +251,8 @@ return (
             </Box>
           </Group>
 
-         <SimpleGrid cols={1} spacing="md">
+         {/* <SimpleGrid cols={1} spacing="md"> */}
+         <SimpleGrid cols={1} spacing="md" mb="xl">
             {obligations.map((item, index) => (
               <Group key={item.type} wrap="nowrap" gap="xs">
                 <Select
@@ -277,7 +288,14 @@ return (
             ))}
           </SimpleGrid>
 
-          <Group justify="space-between" mt="xl" pt="sm" align="flex-end" style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}>
+          {/* <Group justify="space-between" mt="xl" pt="sm" align="flex-end" style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}> */}
+          <Group
+  justify="space-between"
+  mt="auto"
+  pt="sm"
+  align="flex-end"
+  style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}
+>
             <Text size="10px" fw={700} c="dimmed" style={{ letterSpacing: "0.5px" }}>TOTAL MONTHLY OUTFLOW</Text>
             <Text size="sm" fw={800} c="dark.9">
               ZMW {obligations.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
