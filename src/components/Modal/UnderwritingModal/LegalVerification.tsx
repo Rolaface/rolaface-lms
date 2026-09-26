@@ -94,7 +94,7 @@ export function LegalVerification({
             const isOpt = d.tier === "optional";
             const ok = d.status === "Verified" || d.status === "Uploaded";
             return (
-              <Paper key={i} withBorder radius="md" p={6} bg={ok ? "green.0" : "transparent"}
+              <Paper key={i} withBorder className="ps-surface" radius="md" p={6} bg={ok ? "green.0" : "transparent"}
                 style={{ borderColor: ok ? "var(--mantine-color-green-3)" : isOpt ? "var(--mantine-color-gray-3)" : "var(--mantine-color-brand-3)",
                         borderStyle: isOpt && !ok ? "dashed" : "solid" }}>
                 <input type="file" ref={(el) => { docFileRefs.current[i] = el; }} style={{ display: "none" }} onChange={(e) => onDocFile(i, e)} />

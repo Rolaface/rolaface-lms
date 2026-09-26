@@ -405,7 +405,7 @@ function UnderwritingWorkspace({
   if (completed) {
     return (
       <Box p="xl">
-        <Paper withBorder radius="lg" p="xl" ta="center">
+        <Paper withBorder className="ps-surface" radius="lg" p="xl" ta="center">
           <ThemeIcon size={48} radius="xl" color="green" variant="light" mb={12}><IconCircleCheck size={26} /></ThemeIcon>
           <Text fz={18} fw={700}>Underwriting complete</Text>
           <Text fz={13} c="dimmed" mb={16}>{decision ? DECISION_LABEL[decision] : ""} · {assets.length} asset(s) reviewed. Use Submit below to send it on.</Text>
@@ -431,7 +431,7 @@ function UnderwritingWorkspace({
           <Badge variant="light" color="brand" radius="xl">Asset {assets.findIndex((a) => a.id === selected.id) + 1} of {assets.length}</Badge>
         </Group>
 
-        <Paper withBorder radius="lg" mb={4} style={{ overflow: "hidden" }}>
+        <Paper withBorder className="ps-surface" radius="lg" mb={4} style={{ overflow: "hidden" }}>
           <Group gap={0} px={8} pt={6} wrap="wrap">
             {panelItems.map((s, n) => {
               const active = panel === s.id;
@@ -450,7 +450,7 @@ function UnderwritingWorkspace({
           </Group>
         </Paper>
 
-        <Paper withBorder radius="lg" bg="white" style={{ overflow: "hidden" }}>
+        <Paper withBorder className="ps-surface" radius="lg" bg="white" style={{ overflow: "hidden" }}>
           {(panel === "assetDetails" || panel === "valuation" || panel === "documents") && (
             <AssetValuation asset={selected} finalAmount={finalAmount} panel={panel} notes={notes} setNotes={setNotes} onUpdate={onUpdate} />
           )}

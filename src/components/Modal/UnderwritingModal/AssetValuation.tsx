@@ -123,7 +123,7 @@ export function DocumentsTable({ title, docs, setDocs }: { title?: string; docs:
           if (!d.fileMeta) return null; // Only show already uploaded documents
           
           return (
-            <Paper key={i} withBorder radius="md" p="sm" bg="white">
+            <Paper key={i} withBorder className="ps-surface" radius="md" p="sm" bg="white">
               <Group justify="space-between" wrap="nowrap">
                 <Group wrap="nowrap" gap={12} style={{ flex: 1 }}>
                   <ThemeIcon radius="md" size={38} variant="light" color="indigo">
@@ -420,7 +420,7 @@ export function AssetValuation({
             </Box>
           ) : (
             <Box mb={14}>
-              <Paper withBorder radius="md" p={8} bg="indigo.0" style={{ borderColor: 'var(--mantine-color-indigo-2)', minWidth: 0 }} mb={10}>
+              <Paper withBorder className="ps-surface" radius="md" p={8} bg="indigo.0" style={{ borderColor: 'var(--mantine-color-indigo-2)', minWidth: 0 }} mb={10}>
                 <Group wrap="nowrap" gap={8} style={{ minWidth: 0 }}>
                   <IconFileText size={16} color="var(--mantine-color-indigo-6)" style={{ flexShrink: 0 }} />
                   <Text fz={12.5} fw={600} c="indigo.9" truncate style={{ flexShrink: 0, maxWidth: "55%" }}>{reportDoc?.name || "Report"}.pdf</Text>
