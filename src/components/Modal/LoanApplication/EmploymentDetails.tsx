@@ -22,7 +22,7 @@ const INCOME_TYPES = ["Net Salary", "Business Income", "Rental Income", "Other I
 const EMPLOYMENT_TYPES = ["Government", "Private", "Self-Employed", "Other"];
 // const INCOME_TYPES = ["Salary", "Business", "Interest Income", "Rentals", "Others"];
 const EXPENSE_TYPES = [ "Medical", "Education", "Travel", "Rentals", "Others"];
-const OBLIGATION_TYPES = ["Rental Obligation", "Other Monthly Debt(Excluding EMIs)"];
+const OBLIGATION_TYPES = ["Monthly EMIs","Rental Obligation", "Other Monthly Debt(Excluding EMIs)"];
 
 const LABEL_STYLES = {
   label: { display: "flex", alignItems: "center", marginBottom: 4 },
