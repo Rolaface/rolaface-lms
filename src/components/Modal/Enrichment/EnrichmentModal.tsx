@@ -22,7 +22,7 @@ import {
 } from "@mantine/core";
 import {
   IconBuildingBank,
-  IconFileText,
+  IconFileText, IconCalendarEvent,
   IconGauge,
   IconCheck,
   IconX,
@@ -225,38 +225,70 @@ function SimRow({ label, value, last, strong }: { label: string; value: string; 
       py={9}
       style={{ borderBottom: last ? "none" : "1px solid var(--mantine-color-slate-1)" }}
     >
-      <Text fz={12.5} c="slate.5">
+      <Text fz={11.5} c="slate.5">
         {label}
       </Text>
-      <Text fz={12.5} fw={strong ? 700 : 600} c="slate.9">
+      <Text fz={11.5} fw={strong ? 700 : 600} c="slate.9">
         {value}
       </Text>
     </Group>
   );
 }
 function EnrichmentTabs({ tab, setTab }: { tab: "terms" | "schedule"; setTab: (t: "terms" | "schedule") => void }) {
-  return (
-    <Group gap={4} mb={8}>
-      {(["terms", "schedule"] as const).map((t) => (
-        <UnstyledButton
-          key={t}
-          onClick={() => setTab(t)}
-          px={14}
-          py={7}
-          style={{
-            borderRadius: "var(--mantine-radius-md)",
-            background: tab === t ? "var(--mantine-color-brand-6)" : "transparent",
-          }}
-        >
-          <Text fz={12.5} fw={600} c={tab === t ? "white" : "slate.6"}>
-            {t === "terms" ? "Loan Terms" : "Repayment Schedule"}
-          </Text>
-        </UnstyledButton>
-      ))}
-    </Group>
-  );
-}
-
+    const tabs: { key: "terms" | "schedule"; label: string; icon: any } = [
+      { key: "terms", label: "Loan Terms", icon: IconFileText },
+      { key: "schedule", label: "Repayment Schedule", icon: IconCalendarEvent },
+    ];
+    return (
+      <Group
+        gap={4}
+        mb={4} pt={2}
+        wrap="nowrap"
+        style={{
+          borderBottom: "1px solid var(--mantine-color-slate-2)",
+          flexShrink: 0,
+        }}
+      >
+        {tabs.map((t) => {
+          const active = t.key === tab;
+          const Icon = t.icon;
+          return (
+            <UnstyledButton
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              px={14}
+              py={4} style={{ position: "relative", marginBottom: -1 }}
+            >
+              <Group gap={7} wrap="nowrap">
+                <Icon
+                  size={15}
+                  stroke={2}
+                  color={active ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-5)"}
+                />
+                <Text fz={13} fw={active ? 700 : 600} c={active ? "brand.6" : "slate.6"}>
+                  {t.label}
+                </Text>
+              </Group>
+              <Box
+                style={{
+                  position: "absolute",
+                  left: 8,
+                  right: 8,
+                  bottom: 0,
+                  height: 2,
+                  borderRadius: "2px 2px 0 0",
+                  background: active
+                    ? "linear-gradient(90deg, var(--mantine-color-brand-4), var(--mantine-color-brand-6))"
+                    : "transparent",
+                  transition: "background 160ms ease",
+                }}
+              />
+            </UnstyledButton>
+          );
+        })}
+      </Group>
+    );
+  }
 function MilestoneCard({ label, value, sub, highlight }: { label: string; value: string; sub?: string; highlight?: boolean }) {
   return (
     <Box
@@ -489,7 +521,7 @@ function EnrichmentWorkspace({
         <Text fz="md" fw={700} c="slate.9">
           Moving to Stage 4 — Underwriting
         </Text>
-        <Text fz={12.5} c="slate.5" mt={6}>
+        <Text fz={11.5} c="slate.5" mt={6}>
           Final terms locked at {zmw(approvedAmount)} · {rate}% · {tenure} months.
         </Text>
       </Box>
@@ -497,16 +529,16 @@ function EnrichmentWorkspace({
   }
 
    return (
-    <Box p={8}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)', gap: 14, alignItems: 'start' }}>
+    <Box pl={20} pr={16} py={8}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(280px, 1fr)", gap: 10, alignItems: "start" }}>
         <Box>
           <EnrichmentTabs tab={tab} setTab={setTab} />
 
           {tab === "terms" && (
             <>
-              <Paper withBorder radius="lg" shadow="xs" p="sm" mb={6}>
+              <Paper withBorder radius="md" p={8} mb={4}>
                 <SectionLabel>Final loan terms</SectionLabel>
-                <SimpleGrid cols={{ base: 2, md: 4 }} spacing={10} verticalSpacing={6}>
+                <SimpleGrid cols={{ base: 2, md: 4 }} spacing={8} verticalSpacing={4}>
                   <Box>
                     <TextInput
                       label="Requested"
@@ -597,9 +629,9 @@ function EnrichmentWorkspace({
                 )}
               </Paper>
 
-              <Paper withBorder radius="lg" shadow="xs" p="sm" mb={6}>
+              <Paper withBorder radius="md" p={8} mb={4}>
                 <SectionLabel>Interest rate & calculation method</SectionLabel>
-                <SimpleGrid cols={{ base: 2, md: 4 }} spacing={10} verticalSpacing={6}>
+                <SimpleGrid cols={{ base: 2, md: 4 }} spacing={8} verticalSpacing={4}>
                   <NumberInput
                     label="Interest Rate"
                     value={rate}
@@ -646,7 +678,7 @@ function EnrichmentWorkspace({
                 </SimpleGrid>
               </Paper>
 
-              <Paper withBorder radius="lg" shadow="xs" p="sm">
+              <Paper withBorder radius="md" p={8}>
                 <Group justify="space-between" mb={6}>
                   <SectionLabel>Fees &amp; charges</SectionLabel>
                   {charges.length > 0 && (
@@ -770,8 +802,8 @@ function EnrichmentWorkspace({
           )}
 
           {tab === "schedule" && (
-            <Paper withBorder radius="lg" shadow="xs" p="sm">
-              <Group justify="space-between" align="center" mb={10}>
+            <Paper withBorder radius="md" p={8}>
+              <Group justify="space-between" align="center" mb={6}>
                 <Box>
                   <SectionLabel>Repayment schedule</SectionLabel>
                   {figures && (
@@ -799,7 +831,7 @@ function EnrichmentWorkspace({
                 <>
                   <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
                     <Table.ScrollContainer minWidth={620}>
-                      <Table fz={12} verticalSpacing="sm" highlightOnHover>
+                      <Table fz={11} verticalSpacing={3} highlightOnHover>
                         <Table.Thead bg="slate.0">
                           <Table.Tr>
                             <Table.Th style={th}>#</Table.Th>
@@ -870,7 +902,7 @@ function EnrichmentWorkspace({
                   </Group>
                 </>
               ) : (
-                <Text fz={12.5} c="slate.5">Fix the highlighted fields in Loan Terms to view the schedule.</Text>
+                <Text fz={11.5} c="slate.5">Fix the highlighted fields in Loan Terms to view the schedule.</Text>
               )}
             </Paper>
           )}
@@ -935,8 +967,8 @@ function EnrichmentWorkspace({
     <Text fz={12} fw={600} c="slate.9">{zmw(figures.financedCharges)}</Text>
   </Group>
   <Group justify="space-between" py={6} bg="slate.0" px={8} mt={4} style={{ borderRadius: "var(--mantine-radius-sm)" }}>
-    <Text fz={12.5} fw={700} c="slate.9">Total Customer Repayment</Text>
-    <Text fz={12.5} fw={700} c="brand.7">{zmw(figures.totalRepayment)}</Text>
+    <Text fz={11.5} fw={700} c="slate.9">Total Customer Repayment</Text>
+    <Text fz={11.5} fw={700} c="brand.7">{zmw(figures.totalRepayment)}</Text>
   </Group>
   {figures.billedSeparatelyTotal > 0 && (
     <Group justify="space-between" py={3} mt={2}>
@@ -1018,7 +1050,7 @@ function EnrichmentWorkspace({
 
             </>
           ) : (
-            <Text fz={12.5} c="slate.5">Fix the highlighted fields to see the summary.</Text>
+            <Text fz={11.5} c="slate.5">Fix the highlighted fields to see the summary.</Text>
           )}
         </Paper>
       </div>
@@ -1157,7 +1189,7 @@ export function EnrichmentModal({
   setSection={setSection} 
   stageIndex={3}
   items={[
-    { id: "application", label: "Loan application", icon: IconFileText, done: true },
+    { id: "application", label: "Loan application", icon: IconFileText, IconCalendarEvent, done: true },
     { id: "prescreening", label: "Prescreening", icon: IconGauge, done: true },
     { id: "appraisal", label: "Loan Appraisal", icon: IconBuildingBank, done: false },
   ]}
@@ -1175,7 +1207,7 @@ export function EnrichmentModal({
                   style={{ border: "1px solid var(--mantine-color-brand-2)", borderRadius: "var(--mantine-radius-md)" }}
                 >
                   <IconInfoCircle size={14} color="var(--mantine-color-brand-6)" style={{ marginTop: 2, flexShrink: 0 }} />
-                  <Text fz={12.5} c="brand.9">
+                  <Text fz={11.5} c="brand.9">
                     Submitted application data — read-only at this stage.
                   </Text>
                 </Group>
@@ -1242,3 +1274,11 @@ export function EnrichmentModal({
     </Modal>
   );
 }
+
+
+
+
+
+
+
+
