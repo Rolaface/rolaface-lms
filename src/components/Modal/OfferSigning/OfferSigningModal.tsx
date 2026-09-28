@@ -49,6 +49,7 @@ import '../PreScreeningModal/prescreening.css';
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
 import { PreScreeningModal } from "../PreScreeningModal/PreScreeningModal";
+import { LeftNav } from "../PreScreeningModal/PreScreeningShared";
 import { EnrichmentModal } from "../Enrichment/EnrichmentModal";
 import { UnderwritingModal } from "../UnderwritingModal/UnderwritingModal";
 import {
@@ -201,49 +202,7 @@ function SimRow({ label, value, last, strong }: { label: string; value: string; 
 
 type Section = "application" | "prescreening" | "appraisal" | "underwriting" | "offer";
 
-function LeftNav({ section, setSection }: { section: Section; setSection: (s: Section) => void }) {
-  const items: { id: Section; label: string; icon: React.FC<any> }[] = [
-    { id: "application", label: "Loan application", icon: IconFileText },
-    { id: "prescreening", label: "Prescreening", icon: IconGauge },
-    { id: "appraisal", label: "Loan Appraisal", icon: IconBuildingBank },
-    { id: "underwriting", label: "Underwriting", icon: IconScale },
-    { id: "offer", label: "Offer & signing", icon: IconSignature },
-  ];
-  return (
-    <Box w={216} style={{ flexShrink: 0, background: "white", borderRight: "1px solid var(--mantine-color-slate-2)" }} p={12}>
-      <Text fz={10.5} fw={600} c="slate.4" tt="uppercase" px={10} mb={10} style={{ letterSpacing: 0.4 }}>
-        Stage 5 of 5
-      </Text>
-      <Stack gap={4}>
-        {items.map((it) => {
-          const active = section === it.id;
-          const Icon = it.icon;
-          const isDone = it.id !== "offer";
-          return (
-            <UnstyledButton
-              key={it.id}
-              onClick={() => setSection(it.id)}
-              px={12}
-              py={10}
-              style={{
-                borderRadius: "var(--mantine-radius-md)",
-                background: active ? "var(--mantine-color-brand-0)" : "transparent",
-              }}
-            >
-              <Group gap={10} justify="space-between" wrap="nowrap">
-                <Group gap={10}>
-                  <Icon size={16} color={active ? "var(--mantine-color-brand-7)" : "var(--mantine-color-slate-6)"} />
-                  <Text fz="sm" fw={active ? 600 : 500} c={active ? "brand.7" : "slate.7"}>{it.label}</Text>
-                </Group>
-                {isDone && <IconCheck size={13} color={active ? "var(--mantine-color-brand-7)" : "var(--mantine-color-green-6)"} />}
-              </Group>
-            </UnstyledButton>
-          );
-        })}
-      </Stack>
-    </Box>
-  );
-}
+
 
 function ContextHeader({ values, applicationId }: { values: LoanApplicationValues; applicationId: string; }) {
   const isBusiness = values.loanType === "Business";
@@ -1246,7 +1205,18 @@ export function OfferModal({
         <ContextHeader values={applicationValues} applicationId={DUMMY_PRESCREENING_CONTEXT.applicationId} />
 
         <Box style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", overflow: "hidden" }}>
-          <LeftNav section={section} setSection={setSection} />
+          <LeftNav 
+  section={section} 
+  setSection={setSection} 
+  stageIndex={5}
+  items={[
+    { id: "application", label: "Loan application", hint: "Submitted", icon: IconFileText, done: true },
+    { id: "prescreening", label: "Prescreening", hint: "Passed", icon: IconGauge, done: true },
+    { id: "appraisal", label: "Loan Appraisal", hint: "Passed", icon: IconBuildingBank, done: true },
+    { id: "underwriting", label: "Underwriting", hint: "Passed", icon: IconScale, done: true },
+    { id: "offer", label: "Offer & signing", hint: "In progress", icon: IconSignature, done: false },
+  ]}
+/>
 
           <Box style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
             {section === "application" && (
@@ -1289,3 +1259,6 @@ export function OfferModal({
     </Modal>
   );
 }
+
+
+
