@@ -85,7 +85,7 @@ function AmountUtilizationGauge({
   const headroom = eligible - requested;
   const tone = exceeds ? "orange" : "success";
 
-  const R = 16;
+  const R = 19;
   const C = 2 * Math.PI * R;
 
   return (
@@ -93,20 +93,20 @@ function AmountUtilizationGauge({
       <Box style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
         <svg width="44" height="44" viewBox="0 0 44 44" style={{ transform: "rotate(-90deg)" }}>
           <circle
-            cx="30"
-            cy="30"
+            cx="22"
+            cy="22"
             r={R}
             fill="none"
             stroke="var(--mantine-color-slate-1)"
-            strokeWidth="7"
+            strokeWidth="3.5"
           />
           <circle
-            cx="30"
-            cy="30"
+            cx="22"
+            cy="22"
             r={R}
             fill="none"
             stroke={`var(--mantine-color-${tone}-5)`}
-            strokeWidth="7"
+            strokeWidth="3.5"
             strokeLinecap="round"
             strokeDasharray={`${(pctClamped / 100) * C} ${C}`}
             style={{ transition: "stroke-dasharray 500ms cubic-bezier(0.22, 1, 0.36, 1)" }}
@@ -1705,6 +1705,11 @@ export function PrescreeningWorkspace({
     </Box>
   );
 }
+
+
+
+
+
 
 
 
