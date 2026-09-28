@@ -13,6 +13,7 @@ import {
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
 import { PreScreeningModal } from "../PreScreeningModal/PreScreeningModal";
+import { LeftNav } from "../PreScreeningModal/PreScreeningShared";
 import { EnrichmentModal } from "../Enrichment/EnrichmentModal";
 import {
   DUMMY_PERSONAL_LOAN_APPLICATION, DUMMY_PRESCREENING_CONTEXT, DUMMY_PRESCREENING_DATA, DUMMY_ENRICHMENT_TERMS,
@@ -23,7 +24,7 @@ interface UnderwritingModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize: () => void;
-  embedded?: boolean;
+  embedded?: boolean; tab?: any; onTabChange?: (t: any) => void;
   readOnly?: boolean;
   applicationValues?: LoanApplicationValues;
 }
@@ -242,77 +243,7 @@ function TopBar({ onMinimize, onClose }: { onMinimize: () => void; onClose: () =
   );
 }
 
-function LeftNav({
-  section, setSection, values, tab, setTab,
-}: {
-  section: Section; setSection: (s: Section) => void; values: LoanApplicationValues; tab: TabId; setTab: (t: TabId) => void;
-}) {
-  const isBusiness = values.loanType === "Business";
-  const name = isBusiness ? values.companyName : [values.firstName, values.surname].filter(Boolean).join(" ");
-  const initials = (name || "").split(" ").filter(Boolean).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
-  const items: { id: Section; label: string; icon: React.FC<any>; done: boolean }[] = [
-    { id: "application", label: "Loan application", icon: IconFileText, done: true },
-    { id: "prescreening", label: "Pre-screening", icon: IconGauge, done: true },
-    { id: "appraisal", label: "Loan Appraisal", icon: IconBuildingBank, done: true },
-    { id: "underwriting", label: "Underwriting", icon: IconScale, done: false },
-  ];
-  return (
-    <Box w={240} style={{ flexShrink: 0, background: "white", borderRight: "1px solid var(--mantine-color-gray-2)" }}>
-      <Group gap={10} p="md" style={{ borderBottom: "1px solid var(--mantine-color-gray-1)" }}>
-        <Avatar radius="xl" size={34} color="brand" variant="light">{initials || "—"}</Avatar>
-        <Box>
-          <Text fz={13} fw={700} c="dark.8">{name || "—"}</Text>
-          <Text fz={11.5} c="dimmed">{isBusiness ? "Business Loan" : "Personal Loan"}</Text>
-        </Box>
-      </Group>
-      <Stack gap={2} p={10}>
-        {items.map((it) => {
-          const active = section === it.id;
-          const Icon = it.icon;
-          return (
-            <Box key={it.id}>
-              <UnstyledButton onClick={() => setSection(it.id)} px={10} py={9} style={{ borderRadius: 8, width: "100%", background: active ? "var(--mantine-color-brand-0)" : "transparent" }}>
-                <Group gap={9} justify="space-between" wrap="nowrap">
-                  <Group gap={9} wrap="nowrap">
-                    {active ? <Box w={8} h={8} style={{ borderRadius: "50%", background: "var(--mantine-color-brand-6)" }} /> : <Icon size={15} color="var(--mantine-color-gray-6)" />}
-                    <Text fz={13} fw={active ? 700 : 500} c={active ? "brand.7" : "dark.6"}>{it.label}</Text>
-                  </Group>
-                  {it.done && <ThemeIcon radius="xl" size={16} color="brand" variant="light"><IconCheck size={11} /></ThemeIcon>}
-                </Group>
-              </UnstyledButton>
 
-              {it.id === "underwriting" && active && (
-                <Stack gap={1} pl={27} pr={4} py={2}>
-                  {TAB_ITEMS.map((t) => {
-                    const tActive = tab === t.id;
-                    const TIcon = t.icon;
-                    return (
-                      <UnstyledButton
-                        key={t.id}
-                        onClick={() => setTab(t.id)}
-                        px={9} py={7}
-                        style={{
-                          borderRadius: 7,
-                          borderLeft: `2px solid ${tActive ? "var(--mantine-color-brand-6)" : "transparent"}`,
-                          background: tActive ? "var(--mantine-color-brand-0)" : "transparent",
-                        }}
-                      >
-                        <Group gap={7} wrap="nowrap">
-                          <TIcon size={13} color={tActive ? "var(--mantine-color-brand-7)" : "var(--mantine-color-gray-5)"} />
-                          <Text fz={12} fw={tActive ? 700 : 500} c={tActive ? "brand.8" : "dark.5"}>{t.label}</Text>
-                        </Group>
-                      </UnstyledButton>
-                    );
-                  })}
-                </Stack>
-              )}
-            </Box>
-          );
-        })}
-      </Stack>
-    </Box>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Workspace: asset list -> one 4-step flow per asset -> overall decision
@@ -563,9 +494,9 @@ function UnderwritingWorkspace({
 // Main modal
 // ---------------------------------------------------------------------------
 
-export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_PERSONAL_LOAN_APPLICATION, onMinimize, embedded }: UnderwritingModalProps) {
+export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_PERSONAL_LOAN_APPLICATION, onMinimize, embedded, tab: externalTab, onTabChange: setExternalTab }: UnderwritingModalProps) {
   const [section, setSection] = useState<Section>("underwriting");
-  const [tab, setTab] = useState<TabId>("asset");
+  const [internalTab, setInternalTab] = useState<TabId>("asset"); const tab = externalTab || internalTab; const setTab = setExternalTab || setInternalTab;
   const policy = POLICY[DUMMY_PRESCREENING_CONTEXT.loanTypeId];
   const calc = calcEligibility({
     income: DUMMY_PRESCREENING_DATA.income.value,
@@ -583,7 +514,7 @@ export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_P
   const submitRef = useRef<() => void>(() => {});
   const handleSubmitReady = (ready: boolean, submit: () => void) => { setCanSubmit(ready); submitRef.current = submit; };
 
-  if (embedded) return <UnderwritingWorkspace finalAmount={finalAmount} onSubmitReady={handleSubmitReady} />;
+  if (embedded) return <UnderwritingWorkspace finalAmount={finalAmount} onSubmitReady={handleSubmitReady} tab={tab} onTabChange={setTab} />;
 
   const noop = () => {};
   return (
@@ -598,7 +529,19 @@ export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_P
       <Box style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
         <TopBar onMinimize={onMinimize} onClose={onClose} />
         <Box style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
-          <LeftNav section={section} setSection={setSection} values={applicationValues} tab={tab} setTab={setTab} />
+          <LeftNav activeSubItem={tab} onSubItemClick={(sub) => { setTab(sub as TabId); setSection("underwriting"); }} section={section} 
+  setSection={setSection} 
+  stageIndex={4}
+  items={[
+    { id: "application", label: "Loan application", hint: "Submitted", icon: IconFileText, done: true },
+    { id: "prescreening", label: "Prescreening", hint: "Passed", icon: IconGauge, done: true },
+    { id: "appraisal", label: "Loan Appraisal", hint: "Passed", icon: IconBuildingBank, done: true },
+    { id: "underwriting", label: "Underwriting", hint: "In progress", icon: IconScale, done: false, subItems: [
+        { id: "asset", label: "Asset Valuation", icon: IconCircleCheck },
+        { id: "legal", label: "Legal Verification", icon: IconShieldCheck }
+      ] },
+  ]}
+/>
           <Box style={{ flex: 1, minWidth: 0, overflowY: "auto", background: "linear-gradient(180deg, #F5F4FF 0%, var(--mantine-color-gray-0) 320px)" }}>
             {section === "application" && (
               <Box style={{ height: "100%" }}>
@@ -624,3 +567,9 @@ export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_P
     </Modal>
   );
 }
+
+
+
+
+
+

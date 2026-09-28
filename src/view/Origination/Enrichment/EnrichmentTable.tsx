@@ -167,7 +167,7 @@ function ApplicationIdCell({ name }: { name: string }) {
 export function EnrichmentTable() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("All");
+  const [status, setStatus] = useState<string[]>(["All"]);
   const [applicationTypes, setApplicationTypes] = useState<string[]>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -175,7 +175,7 @@ export function EnrichmentTable() {
   // Filter data
   const filteredData = useMemo(() => {
     return MOCK_DATA.filter((item) => {
-      if (status !== "All" && item.status !== status) return false;
+      if (!status.includes("All") && !status.includes(item.status)) return false;
       if (applicationTypes.length > 0) {
         // Mock data doesn't have application_type in Enrichment anymore. Skip for dummy logic.
       }
@@ -382,22 +382,24 @@ export function EnrichmentTable() {
               width={180}
             />
 
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-            data={[
-              { label: "All", value: "All" },
-              { label: "Pending Appraisal", value: "Pending Appraisal" },
-              { label: "Appraised", value: "Appraised" },
-              { label: "Failed", value: "Failed" },
-            ]}
-          />
+          <FilterMultiSelect
+              placeholder="All Statuses"
+              data={[
+                { label: "Pending Appraisal", value: "Pending Appraisal" },
+                { label: "Appraised", value: "Appraised" },
+                { label: "Failed", value: "Failed" },
+              ]}
+              value={status.filter(s => s !== "All")}
+              onChange={(v) => {
+                if (v.length === 0) {
+                  setStatus(["All"]);
+                } else {
+                  setStatus(v);
+                }
+                setPagination((p) => ({ ...p, pageIndex: 0 }));
+              }}
+              width={180}
+            />
 
           <Group gap="xs" ml="auto">
             <Button
@@ -408,7 +410,7 @@ export function EnrichmentTable() {
               onClick={() => {
                 setSearch("");
                 setApplicationTypes([]);
-                setStatus("All");
+                setStatus(["All"]);
                 setPagination((p) => ({ ...p, pageIndex: 0 }));
               }}
             >
@@ -583,3 +585,6 @@ export function EnrichmentTable() {
     </Box>
   );
 }
+
+
+

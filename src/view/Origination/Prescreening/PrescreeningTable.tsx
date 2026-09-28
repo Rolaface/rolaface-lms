@@ -176,7 +176,7 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function PrescreeningTable() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("All");
+  const [status, setStatus] = useState<string[]>(["All"]);
   const [applicationTypes, setApplicationTypes] = useState<string[]>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -190,7 +190,7 @@ export function PrescreeningTable() {
         item.name.toLowerCase().includes(q) ||
         item.applicant.toLowerCase().includes(q);
       // Mock data doesn't carry application_type for Prescreening; kept for future wiring.
-      const matchesStatus = status === "All" || item.status === status;
+      const matchesStatus = status.includes("All") || status.includes(item.status);
       return matchesSearch && matchesStatus;
     });
   }, [search, status, applicationTypes]);
@@ -336,7 +336,7 @@ export function PrescreeningTable() {
   const resetFilters = () => {
     setSearch("");
     setApplicationTypes([]);
-    setStatus("All");
+    setStatus(["All"]);
     setPagination((p) => ({ ...p, pageIndex: 0 }));
   };
 
@@ -424,22 +424,24 @@ export function PrescreeningTable() {
             width={180}
           />
 
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-            data={[
-              { label: "All", value: "All" },
-              { label: "Pending", value: "Pending" },
-              { label: "Passed", value: "Passed" },
-              { label: "Failed", value: "Failed" },
-            ]}
-          />
+          <FilterMultiSelect
+              placeholder="All Statuses"
+              data={[
+                { label: "Pending", value: "Pending" },
+                { label: "Passed", value: "Passed" },
+                { label: "Failed", value: "Failed" },
+              ]}
+              value={status.filter(s => s !== "All")}
+              onChange={(v) => {
+                if (v.length === 0) {
+                  setStatus(["All"]);
+                } else {
+                  setStatus(v);
+                }
+                setPagination((p) => ({ ...p, pageIndex: 0 }));
+              }}
+              width={180}
+            />
 
           <Group gap="xs" ml="auto">
             <Button
@@ -622,3 +624,7 @@ export function PrescreeningTable() {
     </Stack>
   );
 }
+
+
+
+

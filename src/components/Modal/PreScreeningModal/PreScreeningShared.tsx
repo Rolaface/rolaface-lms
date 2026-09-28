@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import {
   Box,
   Group,
@@ -423,8 +424,8 @@ export function InlineAction({
 }) {
   const soft = variant === "soft";
   return (
-    <UnstyledButton
-      className="ps-chip"
+<UnstyledButton
+        className="ps-chip"
       onClick={onClick}
       disabled={disabled}
       px={8}
@@ -437,7 +438,7 @@ export function InlineAction({
     >
       <Group gap={4} wrap="nowrap">
         {Icon && <Icon size={11} stroke={2.2} color={`var(--mantine-color-${color}-6)`} />}
-        <Text fz={11} fw={600} c={`${color}.6`} style={{ whiteSpace: "nowrap" }}>
+        <Text fz={10} fw={600} c={`${color}.6`} style={{ whiteSpace: "nowrap" }}>
           {label}
         </Text>
       </Group>
@@ -453,7 +454,7 @@ export function SectionCard({
   subtitle,
   actions,
   children,
-  bodyPad = 12,
+  bodyPad = 8,
   style,
 }: {
   icon?: React.FC<any>;
@@ -482,7 +483,7 @@ export function SectionCard({
         align="center"
         wrap="nowrap"
         px={12}
-        py={9}
+        py={5}
         style={{
           borderBottom: "1px solid var(--mantine-color-slate-1)",
           background:
@@ -524,7 +525,7 @@ export function MiniStat({
 }) {
   return (
     <Box>
-      <Text fz={11} c="slate.5">
+      <Text fz={10} c="slate.5">
         {label}
       </Text>
       <Text fz={16} fw={700} c={accent ? "orange.7" : "slate.9"}>
@@ -548,7 +549,7 @@ export function CalcRow({
   return (
     <Group
       justify="space-between"
-      py={9}
+      py={5}
       style={{
         borderBottom: last
           ? "none"
@@ -659,7 +660,7 @@ export function ContextHeader({
       justify="space-between"
       align="center"
       px="xl"
-      py={12}
+      py={8}
       wrap="nowrap"
       style={{
         borderBottom: "1px solid var(--mantine-color-slate-2)",
@@ -670,8 +671,8 @@ export function ContextHeader({
       <Group gap={12} wrap="nowrap" style={{ minWidth: 0 }}>
         <Box
           style={{
-            width: 40,
-            height: 40,
+            width: 32,
+            height: 32,
             flexShrink: 0,
             borderRadius: "50%",
             display: "grid",
@@ -695,10 +696,10 @@ export function ContextHeader({
             <Badge size="xs" radius="xl" color="brand" variant="light">
               {isBusiness ? "Business Loan" : "Personal Loan"}
             </Badge>
-            <Text fz={11} c="slate.4">
+            <Text fz={10} c="slate.4">
               ·
             </Text>
-            <Text fz={11} c="slate.5" style={NUMERIC}>
+            <Text fz={10} c="slate.5" style={NUMERIC}>
               {applicationId}
             </Text>
           </Group>
@@ -773,32 +774,27 @@ export type Section = "application" | "prescreening";
 export function LeftNav({
   section,
   setSection,
+  items,
+  stageIndex,
+  activeSubItem,
+  onSubItemClick,
 }: {
-  section: Section;
-  setSection: (s: Section) => void;
-}) {
-  const items: {
-    id: Section;
+  section: string;
+  setSection: (s: any) => void;
+  items: {
+    id: string;
     label: string;
-    hint: string;
+    hint?: string;
     icon: React.FC<any>;
     done: boolean;
-  }[] = [
-    {
-      id: "application",
-      label: "Loan application",
-      hint: "Submitted",
-      icon: IconFileText,
-      done: true,
-    },
-    {
-      id: "prescreening",
-      label: "Prescreening",
-      hint: "In progress",
-      icon: IconGauge,
-      done: false,
-    },
-  ];
+    subItems?: { id: string; label: string; icon?: React.FC<any> }[];
+  }[];
+  stageIndex: number;
+  activeSubItem?: string;
+  onSubItemClick?: (id: string) => void;
+}) {
+  const TOTAL_STAGES = 5;
+  const progressPercent = (stageIndex / TOTAL_STAGES) * 100;
 
   return (
     <Box
@@ -812,7 +808,7 @@ export function LeftNav({
       }}
     >
       <Group gap={6} px={4} mb={4} wrap="nowrap">
-        <MicroLabel c="slate.4">Stage 2 of 5</MicroLabel>
+        <MicroLabel c="slate.4">Stage {stageIndex} of {TOTAL_STAGES}</MicroLabel>
       </Group>
       <Box
         mx={4}
@@ -826,7 +822,7 @@ export function LeftNav({
       >
         <Box
           style={{
-            width: "40%",
+            width: `${progressPercent}%`,
             height: "100%",
             borderRadius: 99,
             background:
@@ -839,18 +835,17 @@ export function LeftNav({
         {items.map((it) => {
           const active = section === it.id;
           const Icon = it.icon;
-          return (
-            <UnstyledButton
+          return (<Fragment key={it.id}><UnstyledButton
               key={it.id}
               className="ps-nav-item"
               onClick={() => setSection(it.id)}
               px={10}
-              py={9}
+              py={5}
               style={{
                 position: "relative",
                 borderRadius: "var(--mantine-radius-md)",
                 background: active ? "var(--mantine-color-white)" : "transparent",
-                border: `1px solid ${active ? "var(--mantine-color-brand-1)" : "transparent"}`,
+                border: `1px solid ${active ? "var(--mantine-color-brand-1)" : "transparent"}`, 
                 boxShadow: active
                   ? "0 6px 16px -12px rgba(15, 23, 42, 0.5)"
                   : "none",
@@ -901,20 +896,44 @@ export function LeftNav({
                 </Box>
                 <Box style={{ minWidth: 0 }}>
                   <Text
-                    fz={12.5}
+                    fz={13}
                     fw={active ? 700 : 600}
-                    c={active ? "brand.7" : "slate.7"}
-                    lh={1.25}
+                    c={active ? "brand.9" : "slate.7"}
+                    lh={1.2}
                     truncate
                   >
                     {it.label}
                   </Text>
-                  <Text fz={10} c={active ? "brand.5" : "slate.4"} lh={1.3}>
-                    {it.hint}
-                  </Text>
+                  
                 </Box>
               </Group>
-            </UnstyledButton>
+                          </UnstyledButton>
+              {active && it.subItems && (
+                <Stack gap={2} ml={24} mt={4}>
+                  {it.subItems.map(sub => {
+                    const subActive = activeSubItem === sub.id;
+                    const SubIcon = sub.icon;
+                    return (
+                      <UnstyledButton
+                        key={sub.id}
+                        onClick={() => onSubItemClick?.(sub.id)}
+                        px={10}
+                        py={6}
+                        style={{
+                          borderRadius: "var(--mantine-radius-md)",
+                          background: subActive ? "var(--mantine-color-brand-0)" : "transparent",
+                        }}
+                      >
+                        <Group gap={6} wrap="nowrap">
+                          {SubIcon && <SubIcon size={14} color={subActive ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-4)"} />}
+                          <Text fz={12} fw={subActive ? 600 : 500} c={subActive ? "brand.7" : "slate.6"}>{sub.label}</Text>
+                        </Group>
+                      </UnstyledButton>
+                    );
+                  })}
+                </Stack>
+              )}
+            </Fragment>
           );
         })}
       </Stack>
@@ -1045,13 +1064,13 @@ export function ComparisonBar({
         />
       </Box>
       <Group justify="space-between" mt={6}>
-        <Text fz={11} c="slate.5">
+        <Text fz={10} c="slate.5">
           ZMW 0
         </Text>
-        <Text fz={11} c="slate.5">
+        <Text fz={10} c="slate.5">
           Eligible: {zmw(eligible)}
         </Text>
-        <Text fz={11} c="slate.5">
+        <Text fz={10} c="slate.5">
           Requested amount: {zmw(requested)}
         </Text>
       </Group>
@@ -1298,3 +1317,18 @@ export function StatMini({
     </Box>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
