@@ -373,12 +373,11 @@ export function AssetValuation({
 
   // -------------------------------------------------------------- Valuation
   return (
-    <Box px={14} pt={10} pb={8}>
-      <Group align="stretch" wrap="nowrap" gap={20}>
+    <Box px={14} pt={4} pb={0}><Group align="stretch" wrap="nowrap" gap={12}>
         
         {/* LEFT COLUMN: Document & Summary */}
         <Box style={{ flex: 0.9, minWidth: 0 }}>
-          <Group justify="space-between" mb={8}>
+          <Group justify="space-between" mb={4}>
             <Text fz={11.5} fw={700} c="indigo.9" tt="uppercase">Valuation Report</Text>
             {hasReport && (
               <Group gap={8}>
@@ -392,7 +391,7 @@ export function AssetValuation({
           <DocumentPreviewModal opened={previewOpen} onClose={() => setPreviewOpen(false)} doc={reportDoc} />
 
           {!hasReport ? (
-            <Box mb={14}>
+            <Box mb={8}>
               <UnstyledButton
                 w="100%"
                 onClick={() => fileRef.current?.click()}
@@ -419,7 +418,7 @@ export function AssetValuation({
               </UnstyledButton>
             </Box>
           ) : (
-            <Box mb={14}>
+            <Box mb={8}>
               <Paper withBorder className="ps-surface" radius="md" p={8} bg="indigo.0" style={{ borderColor: 'var(--mantine-color-indigo-2)', minWidth: 0 }} mb={10}>
                 <Group wrap="nowrap" gap={8} style={{ minWidth: 0 }}>
                   <IconFileText size={16} color="var(--mantine-color-indigo-6)" style={{ flexShrink: 0 }} />
@@ -467,7 +466,7 @@ export function AssetValuation({
                     <Text fz={12} c="slate.5">Valuer details</Text>
                     <Text fz={12} fw={600} c="slate.9" ta="right" maw={200} truncate>{asset.valuer?.name ? `${asset.valuer.name} ${asset.valuer.company ? `(${asset.valuer.company})` : ""}` : "—"}</Text>
                   </Group>
-                  <Group justify="space-between" py={5} bg="slate.0" px={8} mt={8} style={{ borderRadius: "var(--mantine-radius-sm)" }}>
+                  <Group justify="space-between" py={3} bg="slate.0" px={8} mt={4} style={{ borderRadius: "var(--mantine-radius-sm)" }}>
                     <Text fz={12.5} fw={700} c="slate.9">Valuation Amount</Text>
                     <Text fz={12.5} fw={700} c="brand.7">{v.valuationAmount ? `ZMW ${Number(v.valuationAmount).toLocaleString()}` : "—"}</Text>
                   </Group>
@@ -480,22 +479,22 @@ export function AssetValuation({
 
         {/* RIGHT COLUMN: Inputs */}
         <Box style={{ flex: 1.4, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          <Group justify="space-between" mb={8}>
+          <Group justify="space-between" mb={4}>
             <Text fz={11.5} fw={700} c="indigo.9" tt="uppercase">Asset Valuation</Text>
             {confirmed && <Badge variant="light" color="green" size="sm" leftSection={<IconCircleCheck size={10} />}>Confirmed</Badge>}
           </Group>
 
-          <SimpleGrid cols={2} spacing={10} mb={10}>
+          <SimpleGrid cols={2} spacing={6} mb={6}>
             <NumberInput size="xs" label="Valuation amount" prefix="ZMW " thousandSeparator="," hideControls disabled={locked} value={v.valuationAmount === "" ? "" : Number(v.valuationAmount)} onChange={(x) => setV({ valuationAmount: String(x ?? "") })} radius="md" placeholder="e.g. 95000" />
             <Select size="xs" label="Valuation method" disabled={locked} value={v.method} onChange={(x) => setV({ method: x || v.method })} data={["Market comparison", "Cost approach", "Income approach"]} allowDeselect={false} radius="md" />
             <NumberInput size="xs" label="Market value" prefix="ZMW " thousandSeparator="," hideControls disabled={locked} value={v.marketValue === "" ? "" : Number(v.marketValue)} onChange={(x) => setV({ marketValue: String(x ?? "") })} radius="md" placeholder="e.g. 98000" />
             <NumberInput size="xs" label="Forced sale value" prefix="ZMW " thousandSeparator="," hideControls disabled={locked} value={v.forcedSaleValue === "" ? "" : Number(v.forcedSaleValue)} onChange={(x) => setV({ forcedSaleValue: String(x ?? "") })} radius="md" placeholder="e.g. 76000" />
           </SimpleGrid>
 
-          <Text fz={11.5} fw={700} c="indigo.9" tt="uppercase" mb={6}>
+          <Text fz={11.5} fw={700} c="indigo.9" tt="uppercase" mb={4}>
             Valuer details
           </Text>
-          <SimpleGrid cols={2} spacing={10} mb={10}>
+          <SimpleGrid cols={2} spacing={6} mb={6}>
             <TextInput size="xs" label="Valuer name" disabled={locked} value={asset.valuer.name} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, name: e.currentTarget.value } })} radius="md" placeholder="e.g. K. Zulu" />
             <TextInput size="xs" label="Valuer / company" disabled={locked} value={asset.valuer.company} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, company: e.currentTarget.value } })} radius="md" placeholder="e.g. Apex Valuers Ltd" />
             <TextInput size="xs" label="License number" disabled={locked} value={asset.valuer.license} onChange={(e) => onUpdate({ valuer: { ...asset.valuer, license: e.currentTarget.value } })} radius="md" placeholder="e.g. VAL-2321" />
@@ -508,3 +507,6 @@ export function AssetValuation({
     </Box>
   );
 }
+
+
+

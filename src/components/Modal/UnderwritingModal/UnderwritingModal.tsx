@@ -514,7 +514,7 @@ export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_P
   const submitRef = useRef<() => void>(() => {});
   const handleSubmitReady = (ready: boolean, submit: () => void) => { setCanSubmit(ready); submitRef.current = submit; };
 
-  if (embedded) return <UnderwritingWorkspace finalAmount={finalAmount} onSubmitReady={handleSubmitReady} />;
+  if (embedded) return <UnderwritingWorkspace finalAmount={finalAmount} onSubmitReady={handleSubmitReady} tab={tab} onTabChange={setTab} />;
 
   const noop = () => {};
   return (
@@ -529,15 +529,17 @@ export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_P
       <Box style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
         <TopBar onMinimize={onMinimize} onClose={onClose} />
         <Box style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
-          <LeftNav 
-  section={section} 
+          <LeftNav activeSubItem={tab} onSubItemClick={(sub) => { setTab(sub as TabId); setSection("underwriting"); }} section={section} 
   setSection={setSection} 
   stageIndex={4}
   items={[
     { id: "application", label: "Loan application", hint: "Submitted", icon: IconFileText, done: true },
     { id: "prescreening", label: "Prescreening", hint: "Passed", icon: IconGauge, done: true },
     { id: "appraisal", label: "Loan Appraisal", hint: "Passed", icon: IconBuildingBank, done: true },
-    { id: "underwriting", label: "Underwriting", hint: "In progress", icon: IconScale, done: false },
+    { id: "underwriting", label: "Underwriting", hint: "In progress", icon: IconScale, done: false, subItems: [
+        { id: "asset", label: "Asset Valuation", icon: IconCircleCheck },
+        { id: "legal", label: "Legal Verification", icon: IconShieldCheck }
+      ] },
   ]}
 />
           <Box style={{ flex: 1, minWidth: 0, overflowY: "auto", background: "linear-gradient(180deg, #F5F4FF 0%, var(--mantine-color-gray-0) 320px)" }}>
@@ -565,4 +567,8 @@ export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_P
     </Modal>
   );
 }
+
+
+
+
 
