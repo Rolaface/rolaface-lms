@@ -437,7 +437,7 @@ export function InlineAction({
     >
       <Group gap={4} wrap="nowrap">
         {Icon && <Icon size={11} stroke={2.2} color={`var(--mantine-color-${color}-6)`} />}
-        <Text fz={11} fw={600} c={`${color}.6`} style={{ whiteSpace: "nowrap" }}>
+        <Text fz={10} fw={600} c={`${color}.6`} style={{ whiteSpace: "nowrap" }}>
           {label}
         </Text>
       </Group>
@@ -453,7 +453,7 @@ export function SectionCard({
   subtitle,
   actions,
   children,
-  bodyPad = 10,
+  bodyPad = 8,
   style,
 }: {
   icon?: React.FC<any>;
@@ -482,7 +482,7 @@ export function SectionCard({
         align="center"
         wrap="nowrap"
         px={12}
-        py={7}
+        py={5}
         style={{
           borderBottom: "1px solid var(--mantine-color-slate-1)",
           background:
@@ -524,7 +524,7 @@ export function MiniStat({
 }) {
   return (
     <Box>
-      <Text fz={11} c="slate.5">
+      <Text fz={10} c="slate.5">
         {label}
       </Text>
       <Text fz={16} fw={700} c={accent ? "orange.7" : "slate.9"}>
@@ -548,7 +548,7 @@ export function CalcRow({
   return (
     <Group
       justify="space-between"
-      py={7}
+      py={5}
       style={{
         borderBottom: last
           ? "none"
@@ -695,10 +695,10 @@ export function ContextHeader({
             <Badge size="xs" radius="xl" color="brand" variant="light">
               {isBusiness ? "Business Loan" : "Personal Loan"}
             </Badge>
-            <Text fz={11} c="slate.4">
+            <Text fz={10} c="slate.4">
               ·
             </Text>
-            <Text fz={11} c="slate.5" style={NUMERIC}>
+            <Text fz={10} c="slate.5" style={NUMERIC}>
               {applicationId}
             </Text>
           </Group>
@@ -835,7 +835,7 @@ export function LeftNav({
               className="ps-nav-item"
               onClick={() => setSection(it.id)}
               px={10}
-              py={7}
+              py={5}
               style={{
                 position: "relative",
                 borderRadius: "var(--mantine-radius-md)",
@@ -1033,13 +1033,13 @@ export function ComparisonBar({
         />
       </Box>
       <Group justify="space-between" mt={6}>
-        <Text fz={11} c="slate.5">
+        <Text fz={10} c="slate.5">
           ZMW 0
         </Text>
-        <Text fz={11} c="slate.5">
+        <Text fz={10} c="slate.5">
           Eligible: {zmw(eligible)}
         </Text>
-        <Text fz={11} c="slate.5">
+        <Text fz={10} c="slate.5">
           Requested amount: {zmw(requested)}
         </Text>
       </Group>
@@ -1286,6 +1286,7 @@ export function StatMini({
     </Box>
   );
 }
+
 
 
 
