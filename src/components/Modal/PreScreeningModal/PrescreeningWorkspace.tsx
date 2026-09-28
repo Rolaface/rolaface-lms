@@ -85,13 +85,13 @@ function AmountUtilizationGauge({
   const headroom = eligible - requested;
   const tone = exceeds ? "orange" : "success";
 
-  const R = 18;
+  const R = 16;
   const C = 2 * Math.PI * R;
 
   return (
     <Group gap={14} wrap="nowrap" align="center" mt={6}>
-      <Box style={{ position: "relative", width: 50, height: 50, flexShrink: 0 }}>
-        <svg width="50" height="50" viewBox="0 0 50 50" style={{ transform: "rotate(-90deg)" }}>
+      <Box style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
+        <svg width="44" height="44" viewBox="0 0 44 44" style={{ transform: "rotate(-90deg)" }}>
           <circle
             cx="30"
             cy="30"
@@ -193,7 +193,7 @@ function DtiBar({
         border: `1px solid var(--mantine-color-${tone}-1)`,
       }}
     >
-      <Group justify="space-between" align="center" mb={8} wrap="nowrap">
+      <Group justify="space-between" align="center" mb={4} wrap="nowrap">
         <Group gap={7} wrap="nowrap">
           <IconInfoCircle size={13} color={`var(--mantine-color-${tone}-6)`} />
           <Text fz={12} fw={700} c="slate.9">
@@ -329,7 +329,7 @@ function RiskMeter({
         ) : undefined
       }
     >
-      <Group justify="space-between" align="flex-end" mb={8} wrap="nowrap">
+      <Group justify="space-between" align="flex-end" mb={4} wrap="nowrap">
         <Group gap={6} align="flex-end" wrap="nowrap">
           <Text
             fz={30}
@@ -474,8 +474,8 @@ function PrescreeningOverview({
   return (
     <SimpleGrid
       cols={{ base: 1, md: 2 }}
-      spacing={10}
-      verticalSpacing={10}
+      spacing={8}
+      verticalspacing={8}
       style={{ alignItems: "start" }}
     >
       {/* ---------------- Left: affordability ---------------- */}
@@ -816,7 +816,7 @@ function DecisionCard({
         className="ps-surface"
         withBorder
         radius="lg"
-        p="sm"
+        p={10}
         bg="white"
         style={{ borderColor: "var(--mantine-color-slate-2)" }}
       >
@@ -1010,7 +1010,7 @@ function TopTabs({ tab, setTab }: { tab: TopTab; setTab: (t: TopTab) => void }) 
     <Group
       gap={2}
       px={20}
-      pt={4}
+      pt={2}
       wrap="nowrap"
       style={{
         borderBottom: "1px solid var(--mantine-color-slate-2)",
@@ -1027,7 +1027,7 @@ function TopTabs({ tab, setTab }: { tab: TopTab; setTab: (t: TopTab) => void }) 
             className="ps-tab"
             onClick={() => setTab(t.key)}
             px={14}
-            py={6}
+            py={4}
             style={{ marginBottom: -1 }}
           >
             <Group gap={7} wrap="nowrap">
@@ -1251,7 +1251,7 @@ export function PrescreeningWorkspace({
         >
           <IconCircleCheck size={30} color="var(--mantine-color-white)" />
         </Box>
-        <Text fz={17} fw={800} c="slate.9">
+        <Text fz={15} fw={800} c="slate.9">
           Moving to Stage 3 — Loan Appraisal
         </Text>
         <Text fz={13} c="slate.5" mt={6} style={NUMERIC}>
@@ -1294,7 +1294,7 @@ export function PrescreeningWorkspace({
         }}
       >
         {topTab === "details" ? (
-          <Box px={18} pt={10} pb={10}>
+          <Box px={14} pt={8} pb={8}>
             <PrescreeningOverview
               state={state}
               dispatch={dispatch}
@@ -1404,7 +1404,7 @@ export function PrescreeningWorkspace({
         withCloseButton
         closeButtonProps={{ icon: <IconX size={16} /> }}
       >
-        <Group gap={8} mb={8}>
+        <Group gap={8} mb={4}>
           <MicroLabel c="slate.5">From credit bureau</MicroLabel>
           <Badge size="xs" radius="xl" color="slate" variant="light">
             View only
@@ -1496,7 +1496,7 @@ export function PrescreeningWorkspace({
           </Box>
         )}
 
-        <Group justify="space-between" align="center" mt="lg" mb={8} wrap="nowrap">
+        <Group justify="space-between" align="center" mt="lg" mb={4} wrap="nowrap">
           <Box style={{ minWidth: 0 }}>
             <MicroLabel c="slate.5">Additional liabilities</MicroLabel>
             <Text fz={11} c="slate.5" mt={2}>
@@ -1621,7 +1621,7 @@ export function PrescreeningWorkspace({
         withCloseButton
         closeButtonProps={{ icon: <IconX size={16} /> }}
       >
-        <Group justify="space-between" align="center" mb={8} wrap="nowrap">
+        <Group justify="space-between" align="center" mb={4} wrap="nowrap">
           <Box style={{ minWidth: 0 }}>
             <MicroLabel c="slate.5">Income sources</MicroLabel>
             <Text fz={11} c="slate.5" mt={2}>
@@ -1705,6 +1705,8 @@ export function PrescreeningWorkspace({
     </Box>
   );
 }
+
+
 
 
 
