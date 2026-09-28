@@ -218,7 +218,7 @@ const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 export function OfferIssuanceStage() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState("");
-  const [offerStatus, setOfferStatus] = useState("all");
+  const [offerStatus, setOfferStatus] = useState<string[]>(["all"]);
   const [applicationTypes, setApplicationTypes] = useState<string[]>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -232,7 +232,7 @@ export function OfferIssuanceStage() {
         item.name.toLowerCase().includes(q) ||
         item.applicant.toLowerCase().includes(q);
       // Mock data doesn't carry application_type for Offers; kept for future wiring.
-      const matchesStatus = offerStatus === "all" || item.offerStatus === offerStatus;
+      const matchesStatus = offerStatus.includes("all") || offerStatus.includes(item.offerStatus);
       return matchesSearch && matchesStatus;
     });
   }, [search, offerStatus, applicationTypes]);
@@ -356,7 +356,7 @@ export function OfferIssuanceStage() {
   const resetFilters = () => {
     setSearch("");
     setApplicationTypes([]);
-    setOfferStatus("all");
+    setOfferStatus(["all"]);
     setPagination((p) => ({ ...p, pageIndex: 0 }));
   };
 
@@ -444,23 +444,25 @@ export function OfferIssuanceStage() {
             width={180}
           />
 
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={offerStatus}
-            onChange={(v) => {
-              setOfferStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-            data={[
-              { label: "All", value: "all" },
-              { label: "Awaiting", value: "Awaiting decision" },
-              { label: "Accepted", value: "Accepted" },
-              { label: "Rejected", value: "Rejected" },
-              { label: "Amendment", value: "Amendment requested" },
-            ]}
-          />
+          <FilterMultiSelect
+              placeholder="All Statuses"
+              data={[
+                { label: "Awaiting", value: "Awaiting decision" },
+                { label: "Accepted", value: "Accepted" },
+                { label: "Rejected", value: "Rejected" },
+                { label: "Amendment", value: "Amendment requested" },
+              ]}
+              value={offerStatus.filter(s => s !== "all")}
+              onChange={(v) => {
+                if (v.length === 0) {
+                  setOfferStatus(["all"]);
+                } else {
+                  setOfferStatus(v);
+                }
+                setPagination((p) => ({ ...p, pageIndex: 0 }));
+              }}
+              width={180}
+            />
 
           <Group gap="xs" ml="auto">
             <Button
@@ -643,3 +645,6 @@ export function OfferIssuanceStage() {
     </Stack>
   );
 }
+
+
+
