@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import {
   Box,
   Group,
@@ -423,8 +424,8 @@ export function InlineAction({
 }) {
   const soft = variant === "soft";
   return (
-    <UnstyledButton
-      className="ps-chip"
+<UnstyledButton
+        className="ps-chip"
       onClick={onClick}
       disabled={disabled}
       px={8}
@@ -775,6 +776,8 @@ export function LeftNav({
   setSection,
   items,
   stageIndex,
+  activeSubItem,
+  onSubItemClick,
 }: {
   section: string;
   setSection: (s: any) => void;
@@ -784,8 +787,11 @@ export function LeftNav({
     hint?: string;
     icon: React.FC<any>;
     done: boolean;
+    subItems?: { id: string; label: string; icon?: React.FC<any> }[];
   }[];
   stageIndex: number;
+  activeSubItem?: string;
+  onSubItemClick?: (id: string) => void;
 }) {
   const TOTAL_STAGES = 5;
   const progressPercent = (stageIndex / TOTAL_STAGES) * 100;
@@ -829,8 +835,7 @@ export function LeftNav({
         {items.map((it) => {
           const active = section === it.id;
           const Icon = it.icon;
-          return (
-            <UnstyledButton
+          return (<Fragment key={it.id}><UnstyledButton
               key={it.id}
               className="ps-nav-item"
               onClick={() => setSection(it.id)}
@@ -902,7 +907,33 @@ export function LeftNav({
                   
                 </Box>
               </Group>
-            </UnstyledButton>
+                          </UnstyledButton>
+              {active && it.subItems && (
+                <Stack gap={2} ml={24} mt={4}>
+                  {it.subItems.map(sub => {
+                    const subActive = activeSubItem === sub.id;
+                    const SubIcon = sub.icon;
+                    return (
+                      <UnstyledButton
+                        key={sub.id}
+                        onClick={() => onSubItemClick?.(sub.id)}
+                        px={10}
+                        py={6}
+                        style={{
+                          borderRadius: "var(--mantine-radius-md)",
+                          background: subActive ? "var(--mantine-color-brand-0)" : "transparent",
+                        }}
+                      >
+                        <Group gap={6} wrap="nowrap">
+                          {SubIcon && <SubIcon size={14} color={subActive ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-4)"} />}
+                          <Text fz={12} fw={subActive ? 600 : 500} c={subActive ? "brand.7" : "slate.6"}>{sub.label}</Text>
+                        </Group>
+                      </UnstyledButton>
+                    );
+                  })}
+                </Stack>
+              )}
+            </Fragment>
           );
         })}
       </Stack>
@@ -1286,6 +1317,14 @@ export function StatMini({
     </Box>
   );
 }
+
+
+
+
+
+
+
+
 
 
 
