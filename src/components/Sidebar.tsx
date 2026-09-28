@@ -8,6 +8,7 @@ import {
   IconUserCog,
   IconLayersLinked,
   IconSignature,
+  IconClipboardText,
 } from "@tabler/icons-react";
 import {
   Box,
@@ -118,6 +119,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         path: "/origination-setup/loanType",
         label: "Loan Type Setup",
         icon: IconSettings,
+      },
+        {
+        path: "/origination-setup/document-setup",
+        label: "Document Setup",
+        icon: IconClipboardText,
       },
       {
         path: "/origination-setup/workflow",
