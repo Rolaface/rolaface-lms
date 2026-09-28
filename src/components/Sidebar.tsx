@@ -114,6 +114,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     label: "Origination Setup",
     icon: IconSettings,
     subItems: [
+       {
+        path: "/origination-setup/loanType",
+        label: "Loan Type Setup",
+        icon: IconSettings,
+      },
       {
         path: "/origination-setup/workflow",
         label: "Workflow Configuration",
