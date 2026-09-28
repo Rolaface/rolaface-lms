@@ -16,7 +16,7 @@ import {
   Title,
   Stack,
   useMantineTheme,
-  SegmentedControl,
+  SegmentedControl, UnstyledButton,
   Menu,
 } from "@mantine/core";
 import {
@@ -183,7 +183,7 @@ function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
 export function UnderwritingTable() {
   const theme = useMantineTheme();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("All");
+  const [status, setStatus] = useState<string[]>(["All"]);
   const [applicationTypes, setApplicationTypes] = useState<string[]>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -191,7 +191,7 @@ export function UnderwritingTable() {
   // Filter data
   const filteredData = useMemo(() => {
     return MOCK_DATA.filter((item) => {
-      if (status !== "All" && item.status !== status) return false;
+      if (!status.includes("All") && !status.includes(item.status)) return false;
       if (applicationTypes.length > 0) {
         // Mock data doesn't have application_type in Underwriting anymore. Skip for dummy logic.
       }
@@ -405,23 +405,25 @@ export function UnderwritingTable() {
               width={180}
             />
 
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-            data={[
-              { label: "All", value: "All" },
-              { label: "Not Started", value: "Not Started" },
-              { label: "In Progress", value: "In Progress" },
-              { label: "Ready", value: "Ready for Decision" },
-              { label: "Completed", value: "Completed" },
-            ]}
-          />
+                    <FilterMultiSelect
+              placeholder="All Statuses"
+              data={[
+                { label: "Not Started", value: "Not Started" },
+                { label: "In Progress", value: "In Progress" },
+                { label: "Ready", value: "Ready for Decision" },
+                { label: "Completed", value: "Completed" },
+              ]}
+              value={status.filter(s => s !== "All")}
+              onChange={(v) => {
+                if (v.length === 0) {
+                  setStatus(["All"]);
+                } else {
+                  setStatus(v);
+                }
+                setPagination((p) => ({ ...p, pageIndex: 0 }));
+              }}
+              width={180}
+            />
 
           <Group gap="xs" ml="auto">
             <Button
@@ -432,7 +434,7 @@ export function UnderwritingTable() {
               onClick={() => {
                 setSearch("");
                 setApplicationTypes([]);
-                setStatus("All");
+                setStatus(["All"]);
                 setPagination((p) => ({ ...p, pageIndex: 0 }));
               }}
             >
@@ -607,3 +609,8 @@ export function UnderwritingTable() {
     </Box>
   );
 }
+
+
+
+
+

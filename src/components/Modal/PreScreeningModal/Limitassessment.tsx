@@ -303,7 +303,7 @@ export function LimitAssessment({
             <Text fz={10.5} c="slate.5">Policy limit</Text>
           </Group>
           <Group gap={6}>
-            <Box style={{ width: 2, height: 11, borderRadius: 99, background: "var(--mantine-color-danger-5)" }} />
+            <Box style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--mantine-color-white)", border: "2px solid var(--mantine-color-danger-5)" }} />
             <Text fz={10.5} c="slate.5" style={NUMERIC}>Requested ({zmw(requested)})</Text>
           </Group>
         </Group>
@@ -311,3 +311,4 @@ export function LimitAssessment({
     </Box>
   );
 }
+
