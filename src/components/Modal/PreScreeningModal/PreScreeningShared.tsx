@@ -453,7 +453,7 @@ export function SectionCard({
   subtitle,
   actions,
   children,
-  bodyPad = 12,
+  bodyPad = 10,
   style,
 }: {
   icon?: React.FC<any>;
@@ -482,7 +482,7 @@ export function SectionCard({
         align="center"
         wrap="nowrap"
         px={12}
-        py={9}
+        py={7}
         style={{
           borderBottom: "1px solid var(--mantine-color-slate-1)",
           background:
@@ -548,7 +548,7 @@ export function CalcRow({
   return (
     <Group
       justify="space-between"
-      py={9}
+      py={7}
       style={{
         borderBottom: last
           ? "none"
@@ -659,7 +659,7 @@ export function ContextHeader({
       justify="space-between"
       align="center"
       px="xl"
-      py={12}
+      py={8}
       wrap="nowrap"
       style={{
         borderBottom: "1px solid var(--mantine-color-slate-2)",
@@ -670,8 +670,8 @@ export function ContextHeader({
       <Group gap={12} wrap="nowrap" style={{ minWidth: 0 }}>
         <Box
           style={{
-            width: 40,
-            height: 40,
+            width: 32,
+            height: 32,
             flexShrink: 0,
             borderRadius: "50%",
             display: "grid",
@@ -773,32 +773,22 @@ export type Section = "application" | "prescreening";
 export function LeftNav({
   section,
   setSection,
+  items,
+  stageIndex,
 }: {
-  section: Section;
-  setSection: (s: Section) => void;
-}) {
-  const items: {
-    id: Section;
+  section: string;
+  setSection: (s: any) => void;
+  items: {
+    id: string;
     label: string;
-    hint: string;
+    hint?: string;
     icon: React.FC<any>;
     done: boolean;
-  }[] = [
-    {
-      id: "application",
-      label: "Loan application",
-      hint: "Submitted",
-      icon: IconFileText,
-      done: true,
-    },
-    {
-      id: "prescreening",
-      label: "Prescreening",
-      hint: "In progress",
-      icon: IconGauge,
-      done: false,
-    },
-  ];
+  }[];
+  stageIndex: number;
+}) {
+  const TOTAL_STAGES = 5;
+  const progressPercent = (stageIndex / TOTAL_STAGES) * 100;
 
   return (
     <Box
@@ -812,7 +802,7 @@ export function LeftNav({
       }}
     >
       <Group gap={6} px={4} mb={4} wrap="nowrap">
-        <MicroLabel c="slate.4">Stage 2 of 5</MicroLabel>
+        <MicroLabel c="slate.4">Stage {stageIndex} of {TOTAL_STAGES}</MicroLabel>
       </Group>
       <Box
         mx={4}
@@ -826,7 +816,7 @@ export function LeftNav({
       >
         <Box
           style={{
-            width: "40%",
+            width: `${progressPercent}%`,
             height: "100%",
             borderRadius: 99,
             background:
@@ -845,12 +835,12 @@ export function LeftNav({
               className="ps-nav-item"
               onClick={() => setSection(it.id)}
               px={10}
-              py={9}
+              py={7}
               style={{
                 position: "relative",
                 borderRadius: "var(--mantine-radius-md)",
                 background: active ? "var(--mantine-color-white)" : "transparent",
-                border: `1px solid ${active ? "var(--mantine-color-brand-1)" : "transparent"}`,
+                border: `1px solid ${active ? "var(--mantine-color-brand-1)" : "transparent"}`, 
                 boxShadow: active
                   ? "0 6px 16px -12px rgba(15, 23, 42, 0.5)"
                   : "none",
@@ -901,17 +891,15 @@ export function LeftNav({
                 </Box>
                 <Box style={{ minWidth: 0 }}>
                   <Text
-                    fz={12.5}
+                    fz={13}
                     fw={active ? 700 : 600}
-                    c={active ? "brand.7" : "slate.7"}
-                    lh={1.25}
+                    c={active ? "brand.9" : "slate.7"}
+                    lh={1.2}
                     truncate
                   >
                     {it.label}
                   </Text>
-                  <Text fz={10} c={active ? "brand.5" : "slate.4"} lh={1.3}>
-                    {it.hint}
-                  </Text>
+                  
                 </Box>
               </Group>
             </UnstyledButton>
@@ -1298,3 +1286,9 @@ export function StatMini({
     </Box>
   );
 }
+
+
+
+
+
+
