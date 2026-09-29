@@ -77,7 +77,6 @@ import type { LmsModule } from "../types/User/userRole";
 import LOSPreScreening from "../view/LosConfiguration/PreScreening/Losprescreening";
 import LOSEligibilityCheck from "../view/LosConfiguration/EligibilityCheck/LOSEligibilityCheck";
 import LoanProductAutoAssignment from "../view/LosConfiguration/ProductAssignment/LoanProductAssignment";
-import ProductAssignments from "../view/LosConfiguration/ProductAssignment/ProductAssignments";
 import { OfferIssuanceStage } from "../view/Origination/OfferIssuanceStage/OfferIssuanceStage";
 import { LoanTypeSetup } from "../view/LosConfiguration/LoanTpeSetup/Loantypesetup";
 import { DocumentSetup } from "../view/LosConfiguration/Documents/Documentsetup";

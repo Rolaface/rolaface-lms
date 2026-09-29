@@ -262,6 +262,11 @@ export const API = {
     createLoanType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.save_loan_type_setup`,
   },
 
+  productAssignmentSetup: {
+    createProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.create_rule`,
+    getProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_product_assignment`,
+  },
+
 
   // =========================
   // WORKFLOW (dynamic, multi-tenant)

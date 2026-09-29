@@ -3,7 +3,7 @@ import { API } from "../../config/api";
 import type { CreateLoanTypePayload, CreateLoantypeResponse } from "../../types/OriginationSetup/loanTypeForm";
 
 
-export async function createLoan(payload: CreateLoanTypePayload) {
+export async function createLoanTypes(payload: CreateLoanTypePayload) {
   const { data } = await apiClient.post<CreateLoantypeResponse>(API.loanTypeSetup.createLoanType, payload);
   return data;
 }
