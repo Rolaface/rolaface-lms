@@ -67,7 +67,7 @@ export async function getRoles() {
 export interface SaveWorkflowPayload {
   doctype: string;
   workflow_name: string;
-  states: { state: string; doc_status: string; allow_edit: string; message?: string }[];
+  states: { state: string; doc_status: string; allow_edit: string; message?: string; is_active?: number }[];
   transitions: { from_state: string; action: string; to_state: string; allowed: string }[];
   is_active?: number;
 }
