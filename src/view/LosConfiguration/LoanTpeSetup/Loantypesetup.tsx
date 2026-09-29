@@ -781,7 +781,7 @@ export function LoanTypeSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly =
         </SimpleGrid>
 
         {/* Preview of what the applicant will see */}
-        <Paper
+        {/* <Paper
           withBorder
           radius="lg"
           p={14}
@@ -862,7 +862,7 @@ export function LoanTypeSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly =
               disabled={!activeSubType}
             />
           </SimpleGrid>
-        </Paper>
+        </Paper> */}
       </Box>
 
       {/* Footer */}
