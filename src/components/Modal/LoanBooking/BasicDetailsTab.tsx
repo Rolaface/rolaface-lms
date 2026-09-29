@@ -65,18 +65,11 @@ const emiTooHigh =
   const [customerSearchInput, setCustomerSearchInput] = useState("");
   const [debouncedCustomerSearch] = useDebouncedValue(customerSearchInput, 400);
 
-  const { data: customerResponse, isLoading: isCustomersLoading } = useQuery({
-    queryKey: ["customers", debouncedCustomerSearch],
-    queryFn: () => getAllCustomers({ search: debouncedCustomerSearch || undefined }),
-  });
-
-  // const customerOptions = useMemo(() => {
-  //   const customers = customerResponse?.data || [];
-  //   return customers.map((c: any) => ({
-  //     value: c.value,
-  //     label: `${c.value} - ${c.label}`,
-  //   }));
-  // }, [customerResponse]);
+ const { data: customerResponse, isLoading: isCustomersLoading } = useQuery({
+  queryKey: ["customers", debouncedCustomerSearch],
+  queryFn: () => getAllCustomers({ search: debouncedCustomerSearch || undefined }),
+  placeholderData: (previousData) => previousData,
+});
 
  const { data: selectedCustomerResponse } = useQuery({
   queryKey: ["customers", "selected", form.values.customerNumber],
@@ -128,18 +121,26 @@ const customerOptions = useMemo(() => {
     ? customerLabelMap[form.values.customerNumber] || ""
     : "";
 
-  const { data: productResponse, isLoading: isProductsLoading, refetch: refetchProducts } = useQuery({
+ const { data: productResponse, isLoading: isProductsLoading, refetch: refetchProducts } = useQuery({
     queryKey: ["loanProducts"],
-    queryFn: getAllLoanProducts,
+    queryFn: () => getAllLoanProducts(),
   });
 
   const productOptions = useMemo(() => {
     const products = productResponse?.data || [];
-    return products.map((p: any) => ({
-      value: p.name,
-      label: p.name,
-    }));
+    return products
+      .filter((p: any) => p.disabled !== 1)
+      .map((p: any) => ({
+        value: p.name,
+        label: p.name,
+      }));
   }, [productResponse]);
+
+  useEffect(() => {
+    if (!form.values.valueDate) {
+      form.setFieldValue("valueDate", toDateString(new Date()));
+    }
+  }, []);
 
   const selectedProductName = useMemo(() => {
     const products = productResponse?.data || [];
@@ -152,18 +153,18 @@ const customerOptions = useMemo(() => {
       <Paper withBorder radius="lg" shadow="md" p="sm">
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm" verticalSpacing="xs">
           <Select
-            label="Customer Number"
-            placeholder={isCustomersLoading ? "Loading..." : "Search customer number..."}
-            data={customerOptions}
-            disabled={isCustomersLoading || hasLoanAppNumber}
-            searchable
-            clearable
-            rightSection={chevronDown}
-            searchValue={customerSearchInput}
-            onSearchChange={setCustomerSearchInput}
-            filter={({ options }) => options}
-            {...form.getInputProps("customerNumber")}
-          />
+  label="Customer Number"
+  placeholder={isCustomersLoading ? "Loading..." : "Search customer number..."}
+  data={customerOptions}
+  disabled={hasLoanAppNumber}
+  searchable
+  clearable
+  rightSection={chevronDown}
+  searchValue={customerSearchInput}
+  onSearchChange={setCustomerSearchInput}
+  filter={({ options }) => options}
+  {...form.getInputProps("customerNumber")}
+/>
           <TextInput
             label="Customer Name"
             disabled
@@ -260,6 +261,15 @@ const customerOptions = useMemo(() => {
               placeholder="DD-MMM-YYYY"
               value={toDateObj(form.values.valueDate)}
               onChange={(date) => form.setFieldValue("valueDate", toDateString(date))}
+            /> */}
+            {/* <DateInput
+              label="Value Date"
+              withAsterisk
+              valueFormat="DD-MMM-YYYY"
+              placeholder="DD-MMM-YYYY"
+              value={toDateObj(form.values.valueDate)}
+              onChange={(date) => form.setFieldValue("valueDate", toDateString(date))}
+              error={form.errors.valueDate}
             /> */}
             <DateInput
               label="Value Date"

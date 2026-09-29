@@ -59,20 +59,22 @@ export function CollateralTab({
 
   const totalPages = Math.max(1, Math.ceil(collateral.items.length / ROWS_PER_PAGE));
 
-  const { data: collateralsResponse, isLoading: isCollateralsLoading } = useQuery({
-    queryKey: ["all-collaterals"],
-    queryFn: getAllCollaterals,
+ const { data: collateralsResponse, isLoading: isCollateralsLoading } = useQuery({
+    queryKey: ["all-collaterals", { disabled: 0 }],
+    queryFn: () => getAllCollaterals({ disabled: 0 }),
   });
 
   const securityOptions = useMemo(() => {
     const items = collateralsResponse?.data || [];
     if (!Array.isArray(items)) return [];
 
-    return items.map((sec: any) => ({
-      value: String(sec.loan_security_code),
-      label: `${sec.loan_security_code} - ${sec.loan_security_name}`,
-      price: Number(sec.original_security_value) || 0,
-    }));
+    return items
+      .filter((sec: any) => sec.disabled !== 1)
+      .map((sec: any) => ({
+        value: String(sec.loan_security_code),
+        label: `${sec.loan_security_code} - ${sec.loan_security_name}`,
+        price: Number(sec.original_security_value) || 0,
+      }));
   }, [collateralsResponse]);
 
   useEffect(() => {
@@ -194,6 +196,7 @@ export function CollateralTab({
                       min={0}
                       onChange={(val) => onUpdateItem(item.id, "loan_security_price", val as number)}
                       placeholder="0.00"
+                      disabled
                     />
                   </Table.Td>
                   {/* <Table.Td>
