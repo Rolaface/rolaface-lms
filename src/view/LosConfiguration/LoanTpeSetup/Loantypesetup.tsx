@@ -1,4 +1,4 @@
-import { useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import {
   Box,
   Group,
@@ -14,6 +14,8 @@ import {
   TextInput,
   Select,
   Modal,
+  Loader,
+  Alert,
 } from "@mantine/core";
 import {
   IconIdBadge2,
@@ -30,11 +32,10 @@ import {
   IconRefresh,
   IconListDetails,
   IconTargetArrow,
+  IconAlertCircle,
 } from "@tabler/icons-react";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import { createLoan, getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
+import type { CreateLoanTypePayload, CreateLoantypeResponse } from "../../../types/OriginationSetup/loanTypeForm";
 
 export type ApplicantType = "Individual" | "Business";
 
@@ -58,9 +59,7 @@ export interface LoanTypeConfig {
 export type LoanSetupConfig = Record<ApplicantType, LoanTypeConfig[]>;
 
 interface LoanTypeSetupProps {
-  /** Configuration to start from. Defaults to an empty setup for both applicant types. */
   initialConfig?: LoanSetupConfig;
-  /** Called with the complete configuration when the user clicks Save. */
   onSave?: (config: LoanSetupConfig) => void | Promise<void>;
   readOnly?: boolean;
 }
@@ -80,6 +79,47 @@ const APPLICANT_TYPES: {
 const EMPTY_CONFIG: LoanSetupConfig = { Individual: [], Business: [] };
 
 const nextId = () => Math.random().toString(36).slice(2, 10);
+
+// ---------------------------------------------------------------------------
+// Mapping between the API's setup shape and this screen's LoanSetupConfig
+// ---------------------------------------------------------------------------
+
+/** The "setup" shape shared by getAllLoanTypes and createLoan's response */
+type ApiSetup = CreateLoantypeResponse["message"]["data"]["setup"];
+
+function fromApiSetup(setup: ApiSetup | undefined | null): LoanSetupConfig {
+  const mapList = (list: ApiSetup["Individual"] | undefined): LoanTypeConfig[] =>
+    (list ?? []).map((lt) => ({
+      id: lt.id,
+      name: lt.name,
+      subTypes: (lt.subTypes ?? []).map((st) => ({
+        id: st.id,
+        name: st.name,
+        purposes: (st.purposes ?? []).map((p) => ({ id: p.id, name: p.name })),
+      })),
+    }));
+
+  return {
+    Individual: mapList(setup?.Individual),
+    Business: mapList(setup?.Business),
+  };
+}
+
+function toCreatePayload(config: LoanSetupConfig): CreateLoanTypePayload {
+  const mapList = (list: LoanTypeConfig[]) =>
+    list.map((lt) => ({
+      name: lt.name,
+      subTypes: lt.subTypes.map((st) => ({
+        name: st.name,
+        purposes: st.purposes.map((p) => ({ name: p.name })),
+      })),
+    }));
+
+  return {
+    Individual: mapList(config.Individual),
+    Business: mapList(config.Business),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Reducer
@@ -500,19 +540,31 @@ function SetupColumn({
 // Main screen
 // ---------------------------------------------------------------------------
 
-export function LoanTypeSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly = false }: LoanTypeSetupProps) {
-  const [config, dispatch] = useReducer(reducer, initialConfig);
-  const [savedConfig, setSavedConfig] = useState<LoanSetupConfig>(initialConfig);
+export function LoanTypeSetup({ initialConfig, onSave, readOnly = false }: LoanTypeSetupProps) {
+  const [config, dispatch] = useReducer(reducer, initialConfig ?? EMPTY_CONFIG);
+  const [savedConfig, setSavedConfig] = useState<LoanSetupConfig>(initialConfig ?? EMPTY_CONFIG);
+
+  const [loading, setLoading] = useState(!initialConfig);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [applicant, setApplicant] = useState<ApplicantType>("Individual");
+  // const [selectedLoanType, setSelectedLoanType] = useState<Record<ApplicantType, string | null>>({
+  //   Individual: null,
+  //   Business: null,
+  // });
+  // const [selectedSubType, setSelectedSubType] = useState<Record<ApplicantType, string | null>>({
+  //   Individual: null,
+  //   Business: null,
+  // });
   const [selectedLoanType, setSelectedLoanType] = useState<Record<ApplicantType, string | null>>({
-    Individual: null,
-    Business: null,
+    Individual: initialConfig?.Individual[0]?.id ?? null,
+    Business: initialConfig?.Business[0]?.id ?? null,
   });
   const [selectedSubType, setSelectedSubType] = useState<Record<ApplicantType, string | null>>({
-    Individual: null,
-    Business: null,
+    Individual: initialConfig?.Individual[0]?.subTypes[0]?.id ?? null,
+    Business: initialConfig?.Business[0]?.subTypes[0]?.id ?? null,
   });
   const [pendingDelete, setPendingDelete] = useState<{
     level: Level;
@@ -520,6 +572,46 @@ export function LoanTypeSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly =
     name: string;
     childCount: number;
   } | null>(null);
+
+  // ---- fetch existing setup on mount --------------------------------------
+
+  useEffect(() => {
+    if (initialConfig) return; // caller already supplied data — don't fetch over it
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const res = await getAllLoanTypes();
+        if (cancelled) return;
+        // const mapped = fromApiSetup(res?.message?.data?.setup);
+        // dispatch({ type: "reset", config: mapped });
+        // setSavedConfig(mapped);
+        const mapped = fromApiSetup(res?.message?.data?.setup);
+        dispatch({ type: "reset", config: mapped });
+        setSavedConfig(mapped);
+        setSelectedLoanType({
+          Individual: mapped.Individual[0]?.id ?? null,
+          Business: mapped.Business[0]?.id ?? null,
+        });
+        setSelectedSubType({
+          Individual: mapped.Individual[0]?.subTypes[0]?.id ?? null,
+          Business: mapped.Business[0]?.subTypes[0]?.id ?? null,
+        });
+      } catch (err: any) {
+        if (cancelled) return;
+        setLoadError(err?.message ?? "Failed to load loan type setup.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const dirty = useMemo(
     () => JSON.stringify(config) !== JSON.stringify(savedConfig),
@@ -594,15 +686,42 @@ export function LoanTypeSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly =
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
-      await onSave?.(config);
-      setSavedConfig(config);
+      const payload = toCreatePayload(config);
+      const res = await createLoan(payload);
+      const mapped = fromApiSetup(res?.message?.data?.setup);
+      dispatch({ type: "reset", config: mapped });
+      setSavedConfig(mapped);
+      await onSave?.(mapped);
+    } catch (err: any) {
+      setSaveError(err?.message ?? "Failed to save loan type setup.");
     } finally {
       setSaving(false);
     }
   };
 
   const totalFor = (a: ApplicantType) => config[a].length;
+
+  if (loading) {
+    return (
+      <Box
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          minHeight: 300,
+        }}
+      >
+        <Loader color="brand" size="sm" />
+        <Text fz={12.5} c="slate.5" mt={10}>
+          Loading loan type setup…
+        </Text>
+      </Box>
+    );
+  }
 
   return (
     <Box style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
@@ -623,6 +742,32 @@ export function LoanTypeSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly =
             </Badge>
           )}
         </Group>
+
+        {loadError && (
+          <Alert
+            color="red"
+            variant="light"
+            radius="md"
+            mb={14}
+            icon={<IconAlertCircle size={16} />}
+            title="Couldn't load setup"
+          >
+            {loadError}
+          </Alert>
+        )}
+
+        {saveError && (
+          <Alert
+            color="red"
+            variant="light"
+            radius="md"
+            mb={14}
+            icon={<IconAlertCircle size={16} />}
+            title="Couldn't save setup"
+          >
+            {saveError}
+          </Alert>
+        )}
 
         {/* Applicant type */}
         <Paper

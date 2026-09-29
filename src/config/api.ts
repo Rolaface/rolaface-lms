@@ -255,6 +255,15 @@ export const API = {
   },
 
   // =========================
+  // LOAN ORIGINATION SETUP
+  // =========================
+  loanTypeSetup: {
+    getLoanType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.get_loan_type_setup`,
+    createLoanType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.save_loan_type_setup`,
+  },
+
+
+  // =========================
   // WORKFLOW (dynamic, multi-tenant)
   // =========================
   workflow: {
