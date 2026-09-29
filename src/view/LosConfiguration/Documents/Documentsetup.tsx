@@ -15,6 +15,7 @@ import {
   Modal,
   SegmentedControl,
   Switch,
+  Select,
 } from "@mantine/core";
 import {
   IconUser,
@@ -39,16 +40,13 @@ import {
   IconFileDescription,
   IconSignature,
   IconFiles,
+  IconPackage,
 } from "@tabler/icons-react";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export type ApplicantType = "Individual" | "Business";
 
-/** "Director" holds the per-director documents that belong to Business applications */
-export type DocSection = ApplicantType | "Director";
+ export type DocSection = ApplicantType | "Director";
 
 export type DocIconKey =
   | "file"
@@ -66,18 +64,35 @@ export interface DocumentConfig {
   required: boolean;
   icon: DocIconKey;
 }
+export interface ProductOption {
+  id: string;
+  name: string;
+  code?: string;
+}
 
-export type DocumentSetupConfig = Record<DocSection, DocumentConfig[]>;
+/** The default documents of ONE product */
+export type ProductDocumentConfig = Record<DocSection, DocumentConfig[]>;
+
+/** Default documents for every product, keyed by product id */
+export type DocumentSetupConfig = Record<string, ProductDocumentConfig>;
 
 interface DocumentSetupProps {
-  /** Configuration to start from. Defaults to an empty setup. */
-  initialConfig?: DocumentSetupConfig;
-  /** Called with the complete configuration when the user clicks Save. */
+  products?: ProductOption[];
+initialConfig?: DocumentSetupConfig;
   onSave?: (config: DocumentSetupConfig) => void | Promise<void>;
   readOnly?: boolean;
 }
 
-const EMPTY_CONFIG: DocumentSetupConfig = { Individual: [], Business: [], Director: [] };
+const EMPTY_PRODUCT: ProductDocumentConfig = { Individual: [], Business: [], Director: [] };
+const EMPTY_CONFIG: DocumentSetupConfig = {};
+
+const DUMMY_PRODUCTS: ProductOption[] = [
+  { id: "EDU-01", name: "Study Loan", code: "EDU-01" },
+  { id: "HL-PUR", name: "Home Purchase Loan", code: "HL-PUR" },
+  { id: "AL-NEW", name: "New Vehicle Loan", code: "AL-NEW" },
+  { id: "AL-USED", name: "Used Vehicle Loan", code: "AL-USED" },
+  { id: "PL-STF", name: "Staff Loan", code: "PL-STF" },
+];
 
 const DOC_ICONS: Record<DocIconKey, { label: string; icon: React.FC<any> }> = {
   file: { label: "Document", icon: IconFileText },
@@ -97,40 +112,78 @@ const MAX_PREVIEW = 8;
 
 const nextId = () => Math.random().toString(36).slice(2, 10);
 
+const productLabel = (p: ProductOption) => (p.code ? `${p.name} (${p.code})` : p.name);
+
+/**
+ * Drops products that have no documents and fixes key order, so that
+ * "add then delete" is not reported as an unsaved change.
+ */
+function normalize(config: DocumentSetupConfig): DocumentSetupConfig {
+  const out: DocumentSetupConfig = {};
+  Object.keys(config)
+    .sort()
+    .forEach((id) => {
+      const p = config[id];
+      const Individual = p?.Individual ?? [];
+      const Business = p?.Business ?? [];
+      const Director = p?.Director ?? [];
+      if (Individual.length || Business.length || Director.length) {
+        out[id] = { Individual, Business, Director };
+      }
+    });
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Reducer
 // ---------------------------------------------------------------------------
 
 type Action =
   | { type: "reset"; config: DocumentSetupConfig }
-  | { type: "add"; section: DocSection; doc: DocumentConfig }
-  | { type: "update"; section: DocSection; id: string; changes: Partial<Omit<DocumentConfig, "id">> }
-  | { type: "remove"; section: DocSection; id: string }
-  | { type: "move"; section: DocSection; id: string; dir: -1 | 1 };
+  | { type: "add"; productId: string; section: DocSection; doc: DocumentConfig }
+  | {
+      type: "update";
+      productId: string;
+      section: DocSection;
+      id: string;
+      changes: Partial<Omit<DocumentConfig, "id">>;
+    }
+  | { type: "remove"; productId: string; section: DocSection; id: string }
+  | { type: "move"; productId: string; section: DocSection; id: string; dir: -1 | 1 };
+
+function withSection(
+  state: DocumentSetupConfig,
+  productId: string,
+  section: DocSection,
+  fn: (list: DocumentConfig[]) => DocumentConfig[],
+): DocumentSetupConfig {
+  const product: ProductDocumentConfig = { ...EMPTY_PRODUCT, ...state[productId] };
+  return { ...state, [productId]: { ...product, [section]: fn(product[section]) } };
+}
 
 function reducer(state: DocumentSetupConfig, action: Action): DocumentSetupConfig {
   switch (action.type) {
     case "reset":
       return action.config;
     case "add":
-      return { ...state, [action.section]: [...state[action.section], action.doc] };
+      return withSection(state, action.productId, action.section, (list) => [...list, action.doc]);
     case "update":
-      return {
-        ...state,
-        [action.section]: state[action.section].map((d) =>
-          d.id === action.id ? { ...d, ...action.changes } : d,
-        ),
-      };
+      return withSection(state, action.productId, action.section, (list) =>
+        list.map((d) => (d.id === action.id ? { ...d, ...action.changes } : d)),
+      );
     case "remove":
-      return { ...state, [action.section]: state[action.section].filter((d) => d.id !== action.id) };
-    case "move": {
-      const list = [...state[action.section]];
-      const from = list.findIndex((d) => d.id === action.id);
-      const to = from + action.dir;
-      if (from < 0 || to < 0 || to >= list.length) return state;
-      [list[from], list[to]] = [list[to], list[from]];
-      return { ...state, [action.section]: list };
-    }
+      return withSection(state, action.productId, action.section, (list) =>
+        list.filter((d) => d.id !== action.id),
+      );
+    case "move":
+      return withSection(state, action.productId, action.section, (list) => {
+        const next = [...list];
+        const from = next.findIndex((d) => d.id === action.id);
+        const to = from + action.dir;
+        if (from < 0 || to < 0 || to >= next.length) return list;
+        [next[from], next[to]] = [next[to], next[from]];
+        return next;
+      });
     default:
       return state;
   }
@@ -375,10 +428,12 @@ function DocTable({
 
 function DocPreview({
   applicant,
+  productName,
   docs,
   directorDocs,
 }: {
   applicant: ApplicantType;
+  productName: string;
   docs: DocumentConfig[];
   directorDocs: DocumentConfig[];
 }) {
@@ -397,7 +452,7 @@ function DocPreview({
         Applicant view
       </Text>
       <Text fz={11.5} c="slate.5" mb={12}>
-        How the {applicant.toLowerCase()} application lists its documents
+        {applicant} application · {productName}
       </Text>
 
       <Box
@@ -476,15 +531,17 @@ function DocPreview({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main screen
-// ---------------------------------------------------------------------------
-
-export function DocumentSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly = false }: DocumentSetupProps) {
+export function DocumentSetup({
+ products = DUMMY_PRODUCTS,
+  initialConfig = EMPTY_CONFIG,
+  onSave,
+  readOnly = false,
+}: DocumentSetupProps) {
   const [config, dispatch] = useReducer(reducer, initialConfig);
   const [savedConfig, setSavedConfig] = useState<DocumentSetupConfig>(initialConfig);
   const [saving, setSaving] = useState(false);
 
+  const [productId, setProductId] = useState<string | null>(null);
   const [applicant, setApplicant] = useState<ApplicantType>("Individual");
   const [businessTab, setBusinessTab] = useState<"applicant" | "director">("applicant");
 
@@ -498,10 +555,18 @@ export function DocumentSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly =
     null,
   );
 
-  const section: DocSection = applicant === "Business" && businessTab === "director" ? "Director" : applicant;
-  const docs = config[section];
+  const product = products.find((p) => p.id === productId) ?? null;
+  const productConfig: ProductDocumentConfig = product
+    ? { ...EMPTY_PRODUCT, ...config[product.id] }
+    : EMPTY_PRODUCT;
 
-  const dirty = useMemo(() => JSON.stringify(config) !== JSON.stringify(savedConfig), [config, savedConfig]);
+  const section: DocSection = applicant === "Business" && businessTab === "director" ? "Director" : applicant;
+  const docs = productConfig[section];
+
+  const dirty = useMemo(
+    () => JSON.stringify(normalize(config)) !== JSON.stringify(normalize(savedConfig)),
+    [config, savedConfig],
+  );
 
   const changeApplicant = (value: string) => {
     setApplicant(value as ApplicantType);
@@ -519,13 +584,13 @@ export function DocumentSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly =
   };
 
   const commitEdit = () => {
-    if (!editing) return;
+    if (!editing || !product) return;
     const name = editName.trim();
     if (!name) {
       setEditError("Document name is required");
       return;
     }
-    const duplicate = config[editing.section].some(
+    const duplicate = productConfig[editing.section].some(
       (d) => d.id !== editing.id && d.name.trim().toLowerCase() === name.toLowerCase(),
     );
     if (duplicate) {
@@ -534,6 +599,7 @@ export function DocumentSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly =
     }
     dispatch({
       type: "update",
+      productId: product.id,
       section: editing.section,
       id: editing.id,
       changes: { name, required: editRequired, icon: editIcon },
@@ -542,8 +608,8 @@ export function DocumentSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly =
   };
 
   const confirmDelete = () => {
-    if (!pendingDelete) return;
-    dispatch({ type: "remove", section: pendingDelete.section, id: pendingDelete.id });
+    if (!pendingDelete || !product) return;
+    dispatch({ type: "remove", productId: product.id, section: pendingDelete.section, id: pendingDelete.id });
     setPendingDelete(null);
   };
 
@@ -556,24 +622,22 @@ export function DocumentSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly =
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave?.(config);
-      setSavedConfig(config);
+      const toSave = normalize(config);
+      await onSave?.(toSave);
+      setSavedConfig(toSave);
     } finally {
       setSaving(false);
     }
   };
 
-  const sectionTitle =
-    section === "Director"
-      ? "Director documents"
-      : `${applicant} applicant documents`;
+  const sectionTitle = section === "Director" ? "Director documents" : `${applicant} applicant documents`;
 
   return (
     <Box style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
       <Box style={{ flex: 1, minHeight: 0, overflow: "hidden" }} p={20}>
         {/* Header */}
-        <Group justify="space-between" align="center" mb={14} wrap="nowrap">
-          <Box>
+        <Group justify="space-between" align="center" mb={14} wrap="nowrap" gap="md">
+          <Box style={{ minWidth: 0 }}>
             <Group gap={10}>
               <Text fz={19} fw={800} c="slate.9" style={{ letterSpacing: "-0.01em" }}>
                 Document Setup
@@ -585,107 +649,161 @@ export function DocumentSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly =
               )}
             </Group>
             <Text fz={12} c="slate.5" mt={2}>
-              Define the default document names each applicant type has to provide.
+              Select a product, then define the default documents each applicant type has to provide for it.
             </Text>
           </Box>
 
-          <SegmentedControl
-            radius="md"
-            value={applicant}
-            onChange={changeApplicant}
-            data={[
-              {
-                value: "Individual",
-                label: (
-                  <Group gap={6} justify="center" wrap="nowrap">
-                    <IconUser size={14} />
-                    <span>Individual</span>
-                  </Group>
-                ),
-              },
-              {
-                value: "Business",
-                label: (
-                  <Group gap={6} justify="center" wrap="nowrap">
-                    <IconBuilding size={14} />
-                    <span>Business</span>
-                  </Group>
-                ),
-              },
-            ]}
-          />
+          <Group gap={10} wrap="nowrap" style={{ flexShrink: 0 }}>
+            <Select
+              radius="md"
+              searchable
+              allowDeselect={false}
+              w={270}
+              placeholder={products.length === 0 ? "No products available" : "Select product"}
+              leftSection={<IconPackage size={15} />}
+              data={products.map((p) => ({ value: p.id, label: productLabel(p) }))}
+              value={product?.id ?? null}
+              onChange={(v) => setProductId(v)}
+              disabled={products.length === 0}
+              nothingFoundMessage="No products found"
+              aria-label="Product"
+            />
+
+            <SegmentedControl
+              radius="md"
+              value={applicant}
+              onChange={changeApplicant}
+              disabled={!product}
+              data={[
+                {
+                  value: "Individual",
+                  label: (
+                    <Group gap={6} justify="center" wrap="nowrap">
+                      <IconUser size={14} />
+                      <span>Individual</span>
+                    </Group>
+                  ),
+                },
+                {
+                  value: "Business",
+                  label: (
+                    <Group gap={6} justify="center" wrap="nowrap">
+                      <IconBuilding size={14} />
+                      <span>Business</span>
+                    </Group>
+                  ),
+                },
+              ]}
+            />
+          </Group>
         </Group>
 
-        <Box
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) 300px",
-            gap: 14,
-            alignItems: "start",
-          }}
-        >
-          {/* Left: section header + table */}
-          <Stack gap={10} style={{ minWidth: 0 }}>
-            <Group justify="space-between" align="center" wrap="nowrap" style={{ height: 32 }}>
-              <Group gap={8} wrap="nowrap">
-                <ThemeIcon radius="md" size={26} variant="light" color="brand">
-                  <IconFiles size={14} />
-                </ThemeIcon>
-                <Text fz={13.5} fw={700} c="slate.9">
-                  {sectionTitle}
-                </Text>
-                <Badge size="sm" radius="xl" variant="light" color="slate">
-                  {docs.length}
-                </Badge>
+        {!product ? (
+          /* Nothing to configure until a product is chosen */
+          <Paper
+            radius="lg"
+            bg="slate.0"
+            style={{
+              border: "1px dashed var(--mantine-color-slate-3)",
+              height: 420,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Stack align="center" gap={6}>
+              <ThemeIcon radius="xl" size={44} variant="light" color="brand">
+                <IconPackage size={22} />
+              </ThemeIcon>
+              <Text fz={14} fw={700} c="slate.9">
+                Select a product to begin
+              </Text>
+              <Text fz={12} c="slate.5" ta="center" style={{ maxWidth: 360 }}>
+                Default documents are set per product. Choose a product above to manage its Individual, Business and
+                Director documents.
+              </Text>
+            </Stack>
+          </Paper>
+        ) : (
+          <Box
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1fr) 300px",
+              gap: 14,
+              alignItems: "start",
+            }}
+          >
+            {/* Left: section header + table */}
+            <Stack gap={10} style={{ minWidth: 0 }}>
+              <Group justify="space-between" align="center" wrap="nowrap" style={{ height: 32 }}>
+                <Group gap={8} wrap="nowrap">
+                  <ThemeIcon radius="md" size={26} variant="light" color="brand">
+                    <IconFiles size={14} />
+                  </ThemeIcon>
+                  <Text fz={13.5} fw={700} c="slate.9">
+                    {sectionTitle}
+                  </Text>
+                  <Badge size="sm" radius="xl" variant="light" color="slate">
+                    {docs.length}
+                  </Badge>
+                </Group>
+
+                {applicant === "Business" && (
+                  <SegmentedControl
+                    size="xs"
+                    radius="md"
+                    value={businessTab}
+                    onChange={(v) => setBusinessTab(v as "applicant" | "director")}
+                    data={[
+                      { value: "applicant", label: "Applicant documents" },
+                      { value: "director", label: "Director documents" },
+                    ]}
+                  />
+                )}
               </Group>
 
-              {applicant === "Business" && (
-                <SegmentedControl
-                  size="xs"
-                  radius="md"
-                  value={businessTab}
-                  onChange={(v) => setBusinessTab(v as "applicant" | "director")}
-                  data={[
-                    { value: "applicant", label: "Applicant documents" },
-                    { value: "director", label: "Director documents" },
-                  ]}
-                />
+              {section === "Director" && (
+                <Text fz={11.5} c="slate.5" style={{ marginTop: -4 }}>
+                  Each director is asked for these documents (for example, “Director 1 NRC”).
+                </Text>
               )}
-            </Group>
 
-            {section === "Director" && (
-              <Text fz={11.5} c="slate.5" style={{ marginTop: -4 }}>
-                Each director is asked for these documents (for example, “Director 1 NRC”).
-              </Text>
-            )}
+              <DocTable
+                key={`${product.id}-${section}`}
+                items={docs}
+                onAdd={(name) =>
+                  dispatch({
+                    type: "add",
+                    productId: product.id,
+                    section,
+                    doc: { id: nextId(), name, required: true, icon: "file" },
+                  })
+                }
+                onUpdate={(id, changes) =>
+                  dispatch({ type: "update", productId: product.id, section, id, changes })
+                }
+                onMove={(id, dir) => dispatch({ type: "move", productId: product.id, section, id, dir })}
+                onEdit={openEdit}
+                onRemove={(doc) => setPendingDelete({ section, id: doc.id, name: doc.name })}
+                addPlaceholder={
+                  section === "Director" ? "New director document, e.g. NRC" : "New document, e.g. NRC copy"
+                }
+                emptyText={`No documents configured for ${
+                  section === "Director" ? "directors" : `${applicant.toLowerCase()} applicants`
+                } under ${product.name} yet.`}
+                readOnly={readOnly}
+              />
+            </Stack>
 
-            <DocTable
-              key={section}
-              items={docs}
-              onAdd={(name) =>
-                dispatch({
-                  type: "add",
-                  section,
-                  doc: { id: nextId(), name, required: true, icon: "file" },
-                })
-              }
-              onUpdate={(id, changes) => dispatch({ type: "update", section, id, changes })}
-              onMove={(id, dir) => dispatch({ type: "move", section, id, dir })}
-              onEdit={openEdit}
-              onRemove={(doc) => setPendingDelete({ section, id: doc.id, name: doc.name })}
-              addPlaceholder={
-                section === "Director" ? "New director document, e.g. NRC" : "New document, e.g. NRC copy"
-              }
-              emptyText={`No documents configured for ${
-                section === "Director" ? "directors" : `${applicant.toLowerCase()} applicants`
-              } yet.`}
-              readOnly={readOnly}
+            {/* Right: preview */}
+            <DocPreview
+              applicant={applicant}
+              productName={product.name}
+              docs={productConfig[applicant]}
+              directorDocs={productConfig.Director}
             />
-          </Stack>
-
-          {/* Right: preview */}
-          <DocPreview applicant={applicant} docs={config[applicant]} directorDocs={config.Director} />
-        </Box>
+          </Box>
+        )}
       </Box>
 
       {/* Footer */}
@@ -824,7 +942,7 @@ export function DocumentSetup({ initialConfig = EMPTY_CONFIG, onSave, readOnly =
           <Text span fw={700} c="slate.9">
             {pendingDelete?.name}
           </Text>
-          ? The change is applied when you click Save setup.
+          {product ? ` from ${product.name}` : ""}? The change is applied when you click Save setup.
         </Text>
         <Group justify="flex-end" mt="lg" gap={8}>
           <Button variant="default" radius="md" size="xs" onClick={() => setPendingDelete(null)}>
