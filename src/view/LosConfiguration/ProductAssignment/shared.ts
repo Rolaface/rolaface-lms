@@ -1,6 +1,6 @@
 export const SOURCES = ["Branch", "Mobile Banking", "Online Portal", "USSD", "Third Party"];
 
-export const LOAN_TYPES = ["Business", "Personal", "Auto", "Mortgage", "Education"];
+export const LOAN_TYPES = ["Business", "Individual", "Auto", "Mortgage", "Education"];
 
 export interface LoanProduct {
   code: string;
@@ -9,9 +9,9 @@ export interface LoanProduct {
 }
 
 export const PRODUCTS: LoanProduct[] = [
-  { code: "PL-SAL", name: "Salaried Personal Loan", loanType: "Personal" },
-  { code: "PL-SE", name: "Self-Employed Personal Loan", loanType: "Personal" },
-  { code: "PL-STF", name: "Staff Loan", loanType: "Personal" },
+  { code: "PL-SAL", name: "Salaried Personal Loan", loanType: "Individual" },
+  { code: "PL-SE", name: "Self-Employed Personal Loan", loanType: "Individual" },
+  { code: "B03", name: "Staff Loan", loanType: "Personal Loan" },
   { code: "SME-WC", name: "SME Working Capital", loanType: "Business" },
   { code: "SME-TL", name: "SME Term Loan", loanType: "Business" },
   { code: "AL-NEW", name: "New Vehicle Loan", loanType: "Auto" },

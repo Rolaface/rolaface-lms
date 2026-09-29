@@ -34,7 +34,7 @@ import {
   IconTargetArrow,
   IconAlertCircle,
 } from "@tabler/icons-react";
-import { createLoan, getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
+import { createLoanTypes, getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
 import type { CreateLoanTypePayload, CreateLoantypeResponse } from "../../../types/OriginationSetup/loanTypeForm";
 
 export type ApplicantType = "Individual" | "Business";
@@ -689,7 +689,7 @@ export function LoanTypeSetup({ initialConfig, onSave, readOnly = false }: LoanT
     setSaveError(null);
     try {
       const payload = toCreatePayload(config);
-      const res = await createLoan(payload);
+      const res = await createLoanTypes(payload);
       const mapped = fromApiSetup(res?.message?.data?.setup);
       dispatch({ type: "reset", config: mapped });
       setSavedConfig(mapped);
