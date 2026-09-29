@@ -5,10 +5,15 @@ import { actionTone, isRejectionState, TONE_STYLES, type WfRule, type WfState } 
 
 const NODE_W = 150;
 const NODE_H = 56;
-const COL_GAP = 210;
+const MIN_GAP = 90;
 const PAD_X = 40;
-const MAIN_Y = 50;
-const REJECT_Y = 220;
+const TOP_PAD = 24;
+const ARC_BASE = 40; // apex height of an arc spanning one column
+const ARC_STEP = 22; // extra height per additional column spanned
+const REJECT_DROP = 130;
+
+// Rough width of an 11px medium action pill; avoids measuring the DOM before layout.
+const labelWidth = (text: string) => Math.ceil(text.length * 6.4) + 22;
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 2;
 const ZOOM_STEP = 0.15;
@@ -38,48 +43,64 @@ export function WorkflowTreeView({ states, rules, stateById, stateIndex, onEditS
 
   const mainNodes = states.filter((s) => !isRejectionState(s));
   const rejectNodes = states.filter((s) => isRejectionState(s));
+  const mainCol = Object.fromEntries(mainNodes.map((s, i) => [s.id, i]));
+  const drawable = rules.filter((r) => stateById[r.from] && stateById[r.to]);
+
+  // Adjacent forward actions sit on the straight line between two cards, so the gap is sized to fit the longest one.
+  const straightRules = drawable.filter((r) => mainCol[r.from] !== undefined && mainCol[r.to] === mainCol[r.from] + 1);
+  const gap = Math.max(MIN_GAP, ...straightRules.map((r) => labelWidth(r.action || "Unnamed action") + 40));
+  const colGap = NODE_W + gap;
+
+  // Arcs above the row (returns, skips) grow with the number of columns they span; leave room for the tallest one.
+  const arcRise = (span: number) => ARC_BASE + (span - 1) * ARC_STEP;
+  const maxSpan = Math.max(0, ...drawable.filter((r) => mainCol[r.from] !== undefined && mainCol[r.to] !== undefined && !straightRules.includes(r)).map((r) => Math.abs(mainCol[r.to] - mainCol[r.from])));
+  const mainY = (maxSpan > 0 ? arcRise(maxSpan) : 0) + TOP_PAD;
+  const rejectY = mainY + NODE_H + REJECT_DROP;
+
+  const mainWidth = Math.max(1, mainNodes.length) * colGap - gap;
+  const rejectWidth = rejectNodes.length * colGap - gap;
+  const rejectStartX = PAD_X + Math.max(0, (mainWidth - rejectWidth) / 2); // centre the rejection row under the pipeline
 
   const pos: Record<string, { x: number; y: number }> = {};
-  mainNodes.forEach((s, i) => (pos[s.id] = { x: PAD_X + i * COL_GAP, y: MAIN_Y }));
-  rejectNodes.forEach((s, i) => (pos[s.id] = { x: PAD_X + i * COL_GAP, y: REJECT_Y }));
+  mainNodes.forEach((s, i) => (pos[s.id] = { x: PAD_X + i * colGap, y: mainY }));
+  rejectNodes.forEach((s, i) => (pos[s.id] = { x: rejectStartX + i * colGap, y: rejectY }));
 
-  const colCount = Math.max(mainNodes.length, rejectNodes.length, 1);
-  const width = PAD_X * 2 + (colCount - 1) * COL_GAP + NODE_W;
-  const height = (rejectNodes.length > 0 ? REJECT_Y : MAIN_Y) + NODE_H + 40;
+  const width = PAD_X * 2 + Math.max(mainWidth, rejectWidth);
+  const height = (rejectNodes.length > 0 ? rejectY : mainY) + NODE_H + 40;
 
   const fitZoom = containerWidth > 0 ? Math.min(1, Math.max(ZOOM_MIN, (containerWidth - 8) / width)) : 1;
   const zoom = manualZoom ?? fitZoom;
 
-  const edges = rules
-    .filter((r) => pos[r.from] && pos[r.to])
-    .map((r) => {
-      const tone = actionTone(r, stateById, stateIndex);
-      const from = pos[r.from];
-      const to = pos[r.to];
-      let d: string, labelX: number, labelY: number;
-      if (tone === "reject") {
-        const x1 = from.x + NODE_W / 2, y1 = from.y + NODE_H;
-        const x2 = to.x + NODE_W / 2, y2 = to.y;
-        const midY = (y1 + y2) / 2;
-        d = `M ${x1} ${y1} C ${x1} ${midY + 20}, ${x2} ${midY - 20}, ${x2} ${y2}`;
-        labelX = (x1 + x2) / 2;
-        labelY = midY;
-      } else if (to.x >= from.x) {
-        const x1 = from.x + NODE_W, y1 = from.y + NODE_H / 2;
-        const x2 = to.x, y2 = to.y + NODE_H / 2;
-        d = `M ${x1} ${y1} L ${x2} ${y2}`;
-        labelX = (x1 + x2) / 2;
-        labelY = y1 - 12;
-      } else {
-        const x1 = from.x + NODE_W / 2, y1 = from.y;
-        const x2 = to.x + NODE_W / 2, y2 = to.y;
-        const arcY = Math.min(y1, y2) - 55;
-        d = `M ${x1} ${y1} Q ${(x1 + x2) / 2} ${arcY}, ${x2} ${y2}`;
-        labelX = (x1 + x2) / 2;
-        labelY = arcY + 8;
-      }
-      return { rule: r, tone, d, labelX, labelY };
-    });
+  const edges = drawable.map((r) => {
+    const tone = actionTone(r, stateById, stateIndex);
+    const from = pos[r.from];
+    const to = pos[r.to];
+    let d: string, labelX: number, labelY: number;
+    if (straightRules.includes(r)) {
+      const x1 = from.x + NODE_W, y1 = from.y + NODE_H / 2;
+      const x2 = to.x, y2 = to.y + NODE_H / 2;
+      d = `M ${x1} ${y1} L ${x2} ${y2}`;
+      labelX = (x1 + x2) / 2;
+      labelY = y1;
+    } else if (from.y === to.y) {
+      // Same row but not adjacent (returns, skips): arc over the cards, label at the apex.
+      const x1 = from.x + NODE_W / 2, x2 = to.x + NODE_W / 2, y = from.y;
+      const rise = arcRise(Math.abs(mainCol[r.to] - mainCol[r.from]) || 1);
+      d = `M ${x1} ${y} Q ${(x1 + x2) / 2} ${y - rise * 2}, ${x2} ${y}`;
+      labelX = (x1 + x2) / 2;
+      labelY = y - rise;
+    } else {
+      // Between rows (e.g. into a rejection state): the label sits just under the source card so each one stays readable.
+      const down = to.y > from.y;
+      const x1 = from.x + NODE_W / 2, y1 = down ? from.y + NODE_H : from.y;
+      const x2 = to.x + NODE_W / 2, y2 = down ? to.y : to.y + NODE_H;
+      const midY = (y1 + y2) / 2;
+      d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+      labelX = x1;
+      labelY = y1 + (down ? 22 : -22);
+    }
+    return { rule: r, tone, d, labelX, labelY };
+  });
 
   const zoomBtnCls = "rounded border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30";
 
