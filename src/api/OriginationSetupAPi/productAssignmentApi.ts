@@ -12,3 +12,13 @@ export async function getAllProductAssignments(){
   const {data} = await apiClient.get(API.productAssignmentSetup.getProductAssignment);
   return data;
 }
+
+export async function getProductionAssignmentById(id: string){
+  const {data} = await apiClient.get(API.productAssignmentSetup.getProductAssignmentById, {params:{id}});
+  return data;
+}
+
+export async function deleteProductAssignments(id: string){
+  const {data} = await apiClient.delete(API.productAssignmentSetup.deleteProductAssignment, {params: {id}});
+  return data;
+}
