@@ -274,6 +274,11 @@ export const API = {
     deleteProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.delete_rule`,
   },
 
+  createEligibilityRule: {
+    createProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.create_eligibility_rule`,
+     getProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.get_eligibility_rules`,
+     getProductAssignmentById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.get_eligibility_rule`,
+    },
 
   // =========================
   // WORKFLOW (dynamic, multi-tenant)
