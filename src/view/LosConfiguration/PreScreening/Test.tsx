@@ -1,4 +1,5 @@
 import { useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import { test } from "../../../api/LosConfiguration/PreScreeningApi";
 import { Badge, Button, Paper, Box, Group, Stack, Text, Title, Select, SegmentedControl, Grid, Input, ThemeIcon } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { IconAlertTriangle, IconCheck, IconClipboardCheck, IconFlask, IconPlayerPlay, IconX } from "@tabler/icons-react";
@@ -65,31 +66,38 @@ export default function TestTab({ ruleSet }: TestTabProps) {
   const [sample, setSample] = useState<Record<string, RuleValue | undefined>>({});
   const [preset, setPreset] = useState<string>("Custom");
 
-  const results = useMemo(() => {
-    const groupResults = ruleSet.groups.map((g) => {
-      const ruleResults = g.rules.filter((r) => !r.disabled).map((r) => ({ rule: r, pass: evalRule(r, sample[r.fieldId as string]) }));
-      const evaluated = ruleResults.filter((rr) => rr.pass !== null);
-      const groupPass = g.logic === "ALL" ? evaluated.every((rr) => rr.pass) : evaluated.some((rr) => rr.pass);
-      const failing = ruleResults.filter((rr) => rr.pass === false);
-      return { group: g, groupPass: evaluated.length ? groupPass : null, failing };
-    });
-    const allFailing = groupResults.filter((gr) => gr.groupPass === false).flatMap((gr) => gr.failing);
-    const blocking = allFailing.filter((f) => f.rule.severity === "Blocking");
-    const review = allFailing.filter((f) => f.rule.severity === "Review");
-    const warning = allFailing.filter((f) => f.rule.severity === "Warning");
-    let verdict: "Eligible" | "Eligible with Warnings" | "Manual Review" | "Not Eligible" = "Eligible";
-    if (blocking.length) verdict = "Not Eligible";
-    else if (review.length) verdict = "Manual Review";
-    else if (warning.length) verdict = "Eligible with Warnings";
-    return { groupResults, blocking, review, warning, verdict };
-  }, [sample, ruleSet]);
+  const [results, setResults] = useState<any>(null);
+  const [testing, setTesting] = useState(false);
+  
+  const runTest = async () => {
+    setTesting(true);
+    try {
+      const payload = { facts: sample };
+      const response = await test(ruleSet.name || ruleSet.id, payload);
+      if (response?.data) {
+        setResults(response.data);
+      }
+    } catch(err: any) {
+      console.error(err);
+      openCommonModal({
+        heading: "Test Failed",
+        subtitle: "We couldn	 complete your request.",
+        body: typeof parseFrappeError === "function" ? parseFrappeError(err) : String(err),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }]
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
 
-  const verdictStyle = {
+  const VERDICT_STYLES: Record<string, { tone: string; label: string; icon: ReactNode; note: string }> = {
     Eligible: { tone: "green", label: "Eligible", icon: <IconCheck size={15} />, note: "All blocking criteria passed." },
     "Eligible with Warnings": { tone: "orange", label: "Eligible with Warnings", icon: <IconAlertTriangle size={15} />, note: "All blocking criteria passed; some non-blocking checks flagged." },
     "Manual Review": { tone: "blue", label: "Sent for Manual Review", icon: <IconClipboardCheck size={15} />, note: "Basic criteria met, but file needs manual review." },
     "Not Eligible": { tone: "red", label: "Not Eligible", icon: <IconX size={15} />, note: "One or more blocking criteria failed." },
-  }[results.verdict];
+  };
+  const verdictStyle = VERDICT_STYLES[results?.verdict || "Eligible"];
 
   const setField = (fid: string, val: RuleValue) => {
     setSample((s) => ({ ...s, [fid]: val }));
@@ -183,7 +191,7 @@ export default function TestTab({ ruleSet }: TestTabProps) {
                 })}
               </Grid>
 
-              <Button size="xs" radius="md" fullWidth mt={12} color="brand" leftSection={<IconPlayerPlay size={12} stroke={2.4} />}>
+              <Button size="xs" radius="md" fullWidth mt={12} color="brand" leftSection={<IconPlayerPlay size={12} stroke={2.4} />} onClick={runTest} loading={testing}>
                 Run Simulation
               </Button>
             </>
@@ -192,22 +200,22 @@ export default function TestTab({ ruleSet }: TestTabProps) {
       </Grid.Col>
 
       <Grid.Col span={{ base: 12, md: 6 }}>
-        <Paper withBorder radius="md" p={12} mb={8} style={{ background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderLeft: `3px solid var(--mantine-color-${verdictStyle.tone}-4)` }}>
-          <Group justify="space-between" align="center" wrap="nowrap" gap={10}>
-            <Group gap={8} align="center" wrap="nowrap">
-              <ThemeIcon variant="light" color={verdictStyle.tone} radius="xl" size={28}>
-                {verdictStyle.icon}
-              </ThemeIcon>
-              <Box>
-                <Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: ".04em" }}>Pre-Screening Result</Text>
-                <Text fz={13} fw={700} c={`${verdictStyle.tone}.7`}>{verdictStyle.label}</Text>
-              </Box>
+        {results && (<Paper withBorder radius="md" p={12} mb={8} style={{ background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderLeft: `3px solid var(--mantine-color-${verdictStyle.tone}-4)` }}>
+            <Group justify="space-between" align="center" wrap="nowrap" gap={10}>
+              <Group gap={8} align="center" wrap="nowrap">
+                <ThemeIcon variant="light" color={verdictStyle.tone} radius="xl" size={28}>
+                  {verdictStyle.icon}
+                </ThemeIcon>
+                <Box>
+                  <Text fz={10} fw={700} c="slate.5" tt="uppercase" style={{ letterSpacing: ".04em" }}>Pre-Screening Result</Text>
+                  <Text fz={13} fw={700} c={`${verdictStyle.tone}.7`}>{verdictStyle.label}</Text>
+                </Box>
+              </Group>
+              <Text fz={11} c="slate.5" ta="right" maw={220}>{verdictStyle.note}</Text>
             </Group>
-            <Text fz={11} c="slate.5" ta="right" maw={220}>{verdictStyle.note}</Text>
-          </Group>
-        </Paper>
+          </Paper>)}
 
-        {results.groupResults.map(({ group, groupPass }, index) => {
+        {results?.groupResults?.map(({ group, groupPass }, index) => {
           const tone = groupPass === null ? "slate" : groupPass ? "green" : "red";
           return (
             <Paper withBorder radius="md" p={0} mb={8} key={group.id} style={{ overflow: "hidden", background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderLeft: `3px solid var(--mantine-color-${tone}-4)` }}>
@@ -255,3 +263,10 @@ export default function TestTab({ ruleSet }: TestTabProps) {
     </Grid>
   );
 }
+
+
+
+
+
+
+

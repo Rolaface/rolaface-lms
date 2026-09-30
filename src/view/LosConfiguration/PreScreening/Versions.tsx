@@ -2,6 +2,8 @@ import { Paper, Box, Group, Stack, Text, Title } from "@mantine/core";
 import { IconArchive, IconCheck, IconClock, IconHistory } from "@tabler/icons-react";
 import type { RuleSet } from "./types";
 import { StatusBadge } from "./shared";
+import { getVersions } from "../../../api/LosConfiguration/PreScreeningApi";
+import { useState, useEffect } from "react";
 
 export interface VersionsTabProps {
   ruleSet: RuleSet;
@@ -11,7 +13,27 @@ const toneFor = (status: string) =>
   status === "Active" ? "green" : status === "Scheduled" ? "blue" : "slate";
 
 export default function VersionsTab({ ruleSet }: VersionsTabProps) {
-  const versions = ruleSet.versions.slice().reverse();
+  const [versions, setVersions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchVersions = async () => {
+      setLoading(true);
+      try {
+        const res = await getVersions(ruleSet.product);
+        if (res?.data) {
+          setVersions(res.data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (ruleSet.product) {
+      fetchVersions();
+    }
+  }, [ruleSet.product]);
 
   return (
     <Box maw={760}>
@@ -77,3 +99,4 @@ export default function VersionsTab({ ruleSet }: VersionsTabProps) {
     </Box>
   );
 }
+
