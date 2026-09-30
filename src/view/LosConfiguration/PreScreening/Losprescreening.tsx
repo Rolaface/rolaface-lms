@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getLoanProducts } from "../../../api/LoanProduct/LoanProductAPi";
 import {
   Box,
   Button,
@@ -198,6 +199,31 @@ function CreateRuleSetModal({
   const [product, setProduct] = useState<string | null>("Personal Loan");
   const [desc, setDesc] = useState("");
   const [effectiveDate, setEffectiveDate] = useState<string | null>(null);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [productOptions, setProductOptions] = useState<{ value: string; label: string }[]>([]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoadingProducts(true);
+      try {
+        const response = await getLoanProducts({ disabled: 0 });
+        console.log("getLoanProducts response:", response);
+        const dataArray = Array.isArray(response?.data) ? response.data : [];
+        if (dataArray && dataArray.length > 0) {
+          const options = dataArray.map((p: any) => ({
+              value: p.name || p.product_name || "Unknown",
+              label: p.product_name || p.name || "Unknown",
+          }));
+          setProductOptions(options);
+        }
+      } catch (err) {
+        console.error("Failed to fetch loan products", err);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+    fetchProducts();
+  }, []);
 
   return (
     <Modal
@@ -285,13 +311,7 @@ function CreateRuleSetModal({
             label="Loan Product"
             value={product ?? null}
             onChange={setProduct}
-            data={[
-              "Personal Loan",
-              "Business Loan",
-              "Salary Advance",
-              "Education Loan",
-              "Home Improvement Loan",
-            ]}
+            data={productOptions} disabled={loadingProducts} placeholder={loadingProducts ? "Loading..." : "Select product"}
           />
 
           <Textarea
@@ -559,3 +579,9 @@ const handleCreate = ({ name, product, desc, effectiveDate }: { name: string; pr
     </div>
   );
 }
+
+
+
+
+
+
