@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ActionIcon,
   Badge,
@@ -56,6 +56,8 @@ import {
 } from "../../../view/LosConfiguration/ProductAssignment/shared";
 import { getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
 import {type CreateLoantypeResponse } from "../../../types/OriginationSetup/loanTypeForm";
+import { getAllLoanProducts } from "../../../api/productApi";
+import { useQuery } from "@tanstack/react-query";
 
 export const FIELD = { input: { height: 30, minHeight: 30, fontSize: 12.5, paddingLeft: 10 } };
 
@@ -88,14 +90,6 @@ export interface PickerOption {
 }
 
 export const SOURCE_OPTIONS: PickerOption[] = SOURCES.map((s) => ({ value: s, label: s }));
-const HARDCODED_PRODUCTS = [
-  { code: "SME01", name: "SME01" },
-  { code: "RFHL", name: "RFHL" },
-  { code: "TEST", name: "TEST" },
-  { code: "HGOV", name: "HGOV" },
-];
-
-const getProductByCode = (code: string) => HARDCODED_PRODUCTS.find((p) => p.code === code);
 
 const PICKER = {
   source: { label: "Sources", allLabel: "All sources" },
@@ -492,8 +486,6 @@ function SectionTitle({ title, hint, action }: { title: string; hint?: string; a
 const joinWords = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}`);
 
 function RuleSummary({ row, loanTypeOptions }: { row: AssignmentRow; loanTypeOptions: PickerOption[] }) {
-//   const product = productByCode(row.productCode);
-const product = getProductByCode(row.productCode);
   const strong = (text: ReactNode) => (
     <Text span inherit fw={600} c="slate.9">
       {text}
@@ -516,8 +508,7 @@ const product = getProductByCode(row.productCode);
       ) : (
         ", with no further condition,"
       )}{" "}
-      get {product ? strong(`${product.name} (${product.code})`) : strong("…")}.
-    </Text>
+     </Text>
   );
 }
 
@@ -532,14 +523,13 @@ interface LoanProductAssignmentModalProps {
   editing: EditingState | null;
   saving: boolean;
   saveError: string | null;
-  productOptions: PickerOption[];
   onClose: () => void;
   onEditRow: (patch: Partial<AssignmentRow>) => void;
   onChangeLoanTypes: (loanTypes: string[]) => void;
   onSave: () => void;
 }
 
-export function LoanProductAssignmentModal({ editing, saving, saveError, productOptions, onClose, onEditRow, onChangeLoanTypes, onSave }: LoanProductAssignmentModalProps) {
+export function LoanProductAssignmentModal({ editing, saving, saveError, onClose, onEditRow, onChangeLoanTypes, onSave }: LoanProductAssignmentModalProps) {
   const theme = useMantineTheme();
   const [loanTypeOptions, setLoanTypeOptions] = useState<PickerOption[]>([]);
   const [loanTypesLoading, setLoanTypesLoading] = useState(false);
@@ -571,14 +561,20 @@ export function LoanProductAssignmentModal({ editing, saving, saveError, product
   const editingError = editing ? rowError(editing.row) : null;
   const editingChanged = editing ? JSON.stringify(editing.row) !== editing.original : false;
 
-  const modalProducts = editing ? productsFor(editing.row.loanTypes) : [];
-  const modalProductData =
-    editing && editing.row.loanTypes.length > 1
-      ? editing.row.loanTypes
-          .map((lt) => ({ group: lt, items: modalProducts.filter((p) => p.loanType === lt).map((p) => ({ value: p.code, label: p.name })) }))
-          .filter((g) => g.items.length > 0)
-      : modalProducts.map((p) => ({ value: p.code, label: p.name }));
-   const modalProduct = editing ? productOptions.find((o) => o.value === editing.row.productCode) : undefined;
+    const { data: productResponse, isLoading: isProductsLoading, refetch: refetchProducts } = useQuery({
+    queryKey: ["loanProducts"],
+    queryFn: () => getAllLoanProducts(),
+  });
+
+  const availableProduct = useMemo(() => {
+    const products = productResponse?.data || [];
+    return products
+      .filter((p: any) => p.disabled !== 1)
+      .map((p: any) => ({
+        value: p.name,
+        label: p.name,
+      }));
+  }, [productResponse]);
 
   return (
     <Modal
@@ -664,7 +660,7 @@ export function LoanProductAssignmentModal({ editing, saving, saveError, product
   <Select
     aria-label="Product"
     placeholder={editing.row.loanTypes.length ? "Select product" : "Pick a loan type first"}
-    data={["SME01", "RFHL", "TEST", "HGOV"]}
+    data={availableProduct}
     value={editing.row.productCode || null}
     onChange={(v) => onEditRow({ productCode: v ?? "" })}
     allowDeselect={false}

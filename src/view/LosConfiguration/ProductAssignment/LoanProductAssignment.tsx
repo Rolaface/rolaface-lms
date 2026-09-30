@@ -33,7 +33,7 @@ import {
 
 import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
 import { showSuccess } from "../../../utils/alert";
- import { createProductAssignments, getAllProductAssignments, deleteProductAssignments } from "../../../api/OriginationSetupAPi/productAssignmentApi";
+ import { createProductAssignments, getAllProductAssignments, deleteProductAssignments, updateProductAssignments } from "../../../api/OriginationSetupAPi/productAssignmentApi";
   import { getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
 import type { CreateProductAssignmentPayload, CreateProductAssignmentResponse } from "../../../types/OriginationSetup/productAssignemntForm";
 import {
@@ -432,8 +432,6 @@ export function LoanProductAssignment() {
     },
   });
 
-  const creating = createMutation.isPending;
-
   const deleteMutation = useMutation({
     mutationFn: deleteProductAssignments,
     onSuccess: (_, variables) => {
@@ -486,6 +484,37 @@ export function LoanProductAssignment() {
     });
   };
 
+const updateMutation = useMutation({
+    mutationFn: updateProductAssignments,
+    onSuccess: (res: CreateProductAssignmentResponse, variables) => {
+      const updated = toRow(res.message.data);
+      setProductNames((p) => ({ ...p, [res.message.data.product]: res.message.data.product_name }));
+      setSaved((s) => ({ ...s, rows: s.rows.map((r) => (r.id === variables.id ? updated : r)) }));
+      setDraft((d) => ({ ...d, rows: d.rows.map((r) => (r.id === variables.id ? updated : r)) }));
+      setEditing(null);
+      queryClient.invalidateQueries({ queryKey: ["product-assignments"] });
+      showSuccess(
+        "Rule Updated",
+        `Product Assignment Rule ${variables.id} updated successfully.`,
+      );
+    },
+    onError: (error: any) => {
+      setCreateError(error instanceof Error ? error.message : "Could not update the rule.");
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
+  });
+const creating = createMutation.isPending || updateMutation.isPending;
   const { rows } = draft;
   const visible = useMemo(
     () =>
@@ -547,7 +576,7 @@ export function LoanProductAssignment() {
   const changeLoanTypes = (loanTypes: string[]) =>
     setEditing((e) => e && { ...e, row: { ...e.row, loanTypes, productCode: fitsProduct(loanTypes, e.row.productCode) } });
 
-  const saveRule = () => {
+ const saveRule = () => {
     if (!editing) return;
     if (rowError(editing.row)) {
       setEditing({ ...editing, attempted: true });
@@ -555,13 +584,17 @@ export function LoanProductAssignment() {
     }
     const { mode, row } = editing;
 
+    setCreateError(null);
+
     if (mode === "add") {
-      setCreateError(null);
       createMutation.mutate(toPayload(row));
       return;
     }
-    setDraft((d) => ({ ...d, rows: d.rows.map((r) => (r.id === row.id ? row : r)) }));
-    setEditing(null);
+
+    updateMutation.mutate({
+      id: row.id,
+      payload: toPayload(row),
+    });
   };
 
   const moveRow = (fromId: string, toId: string) => {
@@ -971,7 +1004,6 @@ export function LoanProductAssignment() {
         editing={editing}
         saving={creating}
         saveError={createError}
-        productOptions={productOptions}
         onClose={closeModal}
         onEditRow={editRow}
         onChangeLoanTypes={changeLoanTypes}
