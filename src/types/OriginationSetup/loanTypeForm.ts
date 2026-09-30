@@ -29,24 +29,30 @@ export interface CreateLoantypeResponse {
         Individual: {
           id: string;
           name: string;
+          isActive?: number;
           subTypes: {
             id: string;
             name: string;
+            isActive?: number;
             purposes: {
               id: string;
               name: string;
+              isActive?: number;
             }[];
           }[];
         }[];
         Business: {
           id: string;
           name: string;
+          isActive?: number;
           subTypes: {
             id: string;
             name: string;
+            isActive?: number;
             purposes: {
               id: string;
               name: string;
+              isActive?: number;
             }[];
           }[];
         }[];

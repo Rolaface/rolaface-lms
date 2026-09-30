@@ -35,7 +35,7 @@ import {
   IconTargetArrow,
   IconAlertCircle,
 } from "@tabler/icons-react";
-import { createLoanTypes, getAllLoanTypes, deleteLoanType, enableLoanType, disableLoanType } from "../../../api/OriginationSetupAPi/loanSetupApi";
+import { createLoanTypes, getAllLoanTypes, deleteLoanType, enableLoanType, disableLoanType, updateLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
 import type { CreateLoanTypePayload, CreateLoantypeResponse } from "../../../types/OriginationSetup/loanTypeForm";
 import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
@@ -105,18 +105,18 @@ type ApiSetup = CreateLoantypeResponse["message"]["data"]["setup"];
 
 function fromApiSetup(setup: ApiSetup | undefined | null): LoanSetupConfig {
   const mapList = (list: ApiSetup["Individual"] | undefined): LoanTypeConfig[] =>
-    (list ?? []).map((lt: any) => ({
+    (list ?? []).map((lt) => ({
       id: lt.id,
       name: lt.name,
-      isActive: lt.is_active !== undefined ? Boolean(lt.is_active) : true,
-      subTypes: (lt.subTypes ?? []).map((st: any) => ({
+      isActive: lt.isActive !== undefined ? Boolean(lt.isActive) : true,
+      subTypes: (lt.subTypes ?? []).map((st) => ({
         id: st.id,
         name: st.name,
-        isActive: st.is_active !== undefined ? Boolean(st.is_active) : true,
-        purposes: (st.purposes ?? []).map((p: any) => ({
+        isActive: st.isActive !== undefined ? Boolean(st.isActive) : true,
+        purposes: (st.purposes ?? []).map((p) => ({
           id: p.id,
           name: p.name,
-          isActive: p.is_active !== undefined ? Boolean(p.is_active) : true,
+          isActive: p.isActive !== undefined ? Boolean(p.isActive) : true,
         })),
       })),
     }));
@@ -126,7 +126,6 @@ function fromApiSetup(setup: ApiSetup | undefined | null): LoanSetupConfig {
     Business: mapList(setup?.Business),
   };
 }
-
 function toCreatePayload(config: LoanSetupConfig): CreateLoanTypePayload {
   const mapList = (list: LoanTypeConfig[]) =>
     list.map((lt) => ({
@@ -605,12 +604,6 @@ export function LoanTypeSetup({ initialConfig, onSave, readOnly = false }: LoanT
     Individual: initialConfig?.Individual[0]?.subTypes[0]?.id ?? null,
     Business: initialConfig?.Business[0]?.subTypes[0]?.id ?? null,
   });
-  const [pendingDelete, setPendingDelete] = useState<{
-    level: Level;
-    id: string;
-    name: string;
-    childCount: number;
-  } | null>(null);
 
   const showSuccess = (heading: string, body: string) => {
     openCommonModal({
@@ -622,14 +615,14 @@ export function LoanTypeSetup({ initialConfig, onSave, readOnly = false }: LoanT
     });
   };
 
-  const {
+ const {
     data: loanTypesRes,
     isLoading,
     error: queryError,
   } = useQuery({
-    queryKey: ["loan-types"],
-    queryFn: () => getAllLoanTypes() as Promise<CreateLoantypeResponse>,
-    enabled: !initialConfig,
+    queryKey: ["loan-types", { include_inactive: 1 }],
+    queryFn: () => getAllLoanTypes(1) as Promise<CreateLoantypeResponse>,
+    // enabled: !initialConfig,
   });
 
   const loading = !initialConfig && isLoading;
@@ -792,6 +785,32 @@ export function LoanTypeSetup({ initialConfig, onSave, readOnly = false }: LoanT
       disableMutation.mutate(item.id);
     }
   };
+
+  const updateMutation = useMutation({
+    mutationFn: updateLoanTypes,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["loan-types"] });
+      showSuccess(
+        "Loan Type Updated",
+        `Loan Type ${variables.id} updated successfully.`,
+      );
+    },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
+  });
+
   const dirty = useMemo(
     () => JSON.stringify(config) !== JSON.stringify(savedConfig),
     [config, savedConfig],
@@ -1000,7 +1019,10 @@ const handleSave = () => {
             selectedId={activeLoanType?.id}
             onSelect={setLoanTypeSel}
             onAdd={handleAddLoanType}
-            onRename={(id, name) => dispatch({ type: "renameLoanType", applicant, id, name })}
+            onRename={(id, name) => {
+  dispatch({ type: "renameLoanType", applicant, id, name });
+  updateMutation.mutate({ id, name });
+}}
             onRemove={(item) => confirmDelete(item.id)}
             onToggle={handleToggle}
             addPlaceholder="e.g. Personal Loan"
@@ -1025,10 +1047,11 @@ const handleSave = () => {
             selectedId={activeSubType?.id}
             onSelect={setSubTypeSel}
             onAdd={handleAddSubType}
-            onRename={(id, name) =>
-              activeLoanType &&
-              dispatch({ type: "renameSubType", applicant, loanTypeId: activeLoanType.id, id, name })
-            }
+           onRename={(id, name) => {
+  if (!activeLoanType) return;
+  dispatch({ type: "renameSubType", applicant, loanTypeId: activeLoanType.id, id, name });
+  updateMutation.mutate({ id, name });
+}}
             onRemove={(item) => confirmDelete(item.id)}
             onToggle={handleToggle}
             addPlaceholder="e.g. Wedding"
@@ -1050,18 +1073,18 @@ const handleSave = () => {
               isActive: p.isActive,
             }))}
             onAdd={handleAddPurpose}
-            onRename={(id, name) =>
-              activeLoanType &&
-              activeSubType &&
-              dispatch({
-                type: "renamePurpose",
-                applicant,
-                loanTypeId: activeLoanType.id,
-                subTypeId: activeSubType.id,
-                id,
-                name,
-              })
-            }
+            onRename={(id, name) => {
+  if (!activeLoanType || !activeSubType) return;
+  dispatch({
+    type: "renamePurpose",
+    applicant,
+    loanTypeId: activeLoanType.id,
+    subTypeId: activeSubType.id,
+    id,
+    name,
+  });
+  updateMutation.mutate({ id, name });
+}}
             onRemove={(item) => confirmDelete(item.id)}
             onToggle={handleToggle}
             addPlaceholder="e.g. Daughter Wedding"

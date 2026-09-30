@@ -8,8 +8,10 @@ export async function createLoanTypes(payload: CreateLoanTypePayload) {
   return data;
 }
 
-export async function getAllLoanTypes(){
-  const {data} = await apiClient.get(API.loanTypeSetup.getLoanType);
+export async function getAllLoanTypes(include_inactive?: number) {
+  const { data } = await apiClient.get(API.loanTypeSetup.getLoanType, {
+    params: include_inactive !== undefined ? { include_inactive } : undefined,
+  });
   return data;
 }
 
@@ -19,11 +21,20 @@ export async function deleteLoanType(id: string){
 }
 
 export async function disableLoanType(id: string){
-  const {data} = await apiClient.patch(API.loanTypeSetup.disableLoantType,{params: {id}});
+  const {data} = await apiClient.patch(API.loanTypeSetup.disableLoantType, {},{params: {id}});
   return data;
 }
 
 export async function enableLoanType(id: string){
-  const {data} = await apiClient.patch(API.loanTypeSetup.enableLoantType,{params: {id}});
+  const {data} = await apiClient.patch(API.loanTypeSetup.enableLoantType, {},{params: {id}});
+  return data;
+}
+
+export async function updateLoanTypes({ id, name }: { id: string; name: string }) {
+  const { data } = await apiClient.patch(
+    API.loanTypeSetup.updateLoanType,
+    { node_name: name },
+    { params: { id } }
+  );
   return data;
 }
