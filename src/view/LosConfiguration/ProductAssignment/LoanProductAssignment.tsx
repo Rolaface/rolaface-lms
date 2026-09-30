@@ -33,7 +33,7 @@ import {
 
 import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
 import { showSuccess } from "../../../utils/alert";
- import { createProductAssignments, getAllProductAssignments } from "../../../api/OriginationSetupAPi/productAssignmentApi";
+ import { createProductAssignments, getAllProductAssignments, deleteProductAssignments } from "../../../api/OriginationSetupAPi/productAssignmentApi";
   import { getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
 import type { CreateProductAssignmentPayload, CreateProductAssignmentResponse } from "../../../types/OriginationSetup/productAssignemntForm";
 import {
@@ -67,10 +67,9 @@ import {
   type EditingState,
   type PickerOption,
 } from "../../../components/Modal/OriginationSetup/LoanProductAssignmentModal";
-
-/* ------------------------------------------------------------------ */
-/* API types + mapping                                                 */
-/* ------------------------------------------------------------------ */
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { openCommonModal } from "../../../components/Modal/AlertModal";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
 
 interface ApiCondition {
   join: "AND" | "OR";
@@ -163,10 +162,6 @@ const toPayload = (row: AssignmentRow): CreateProductAssignmentPayload => ({
       }
     : null,
 });
-
-/* ------------------------------------------------------------------ */
-/* Local UI config                                                     */
-/* ------------------------------------------------------------------ */
 
 interface Config {
   rows: AssignmentRow[];
@@ -339,62 +334,157 @@ function LoanTypeDefault({ loanType, value, onChange, first }: { loanType: strin
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Page                                                                */
-/* ------------------------------------------------------------------ */
-
 export function LoanProductAssignment() {
   const theme = useMantineTheme();
+  const queryClient = useQueryClient();
   const [saved, setSaved] = useState<Config>(EMPTY);
   const [draft, setDraft] = useState<Config>(EMPTY);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<string[]>([]);
   const [loanTypeFilter, setLoanTypeFilter] = useState<string[]>([]);
   const [kind, setKind] = useState<RowKind>("all");
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   const [editing, setEditing] = useState<EditingState | null>(null);
-  const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [dragArmed, setDragArmed] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
-    const [productNames, setProductNames] = useState<Record<string, string>>({});
-  const [loanTypeOptions, setLoanTypeOptions] = useState<PickerOption[]>([]);
+  const [productNames, setProductNames] = useState<Record<string, string>>({});
 
-  const loadRules = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
-        try {
-      const res = (await getAllProductAssignments()) as GetProductAssignmentsResponse;
-      const rules = [...(res.message.data.rules ?? [])].sort((a, b) => a.priority - b.priority);
-      setSaved((s) => ({ ...s, rows: rules.map(toRow) }));
-      setDraft((d) => ({ ...d, rows: rules.map(toRow) }));
-      setProductNames(Object.fromEntries(rules.map((r) => [r.product, r.product_name])));
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : "Could not load product assignment rules.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
+
+  const {
+    data: productAssignmentsRes,
+    isLoading: loading,
+    error: queryError,
+    refetch: loadRules,
+  } = useQuery({
+    queryKey: ["product-assignments"],
+    queryFn: () => getAllProductAssignments() as Promise<GetProductAssignmentsResponse>,
+  });
+
+  const loadError = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Could not load product assignment rules."
+    : null;
 
   useEffect(() => {
-    loadRules();
-  }, [loadRules]);
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = (await getAllLoanTypes()) as { message: { data: { setup: Record<string, { id: string; name: string }[]> } } };
-        setLoanTypeOptions(
-          Object.values(res.message.data.setup)
+    if (!productAssignmentsRes) return;
+    const rules = [...(productAssignmentsRes.message.data.rules ?? [])].sort((a, b) => a.priority - b.priority);
+    setSaved((s) => ({ ...s, rows: rules.map(toRow) }));
+    setDraft((d) => ({ ...d, rows: rules.map(toRow) }));
+    setProductNames(Object.fromEntries(rules.map((r) => [r.product, r.product_name])));
+  }, [productAssignmentsRes]);
+
+  const { data: loanTypesRes } = useQuery({
+    queryKey: ["loan-types"],
+    queryFn: () =>
+      getAllLoanTypes() as Promise<{
+        message: { data: { setup: Record<string, { id: string; name: string }[]> } };
+      }>,
+  });
+
+  const loanTypeOptions = useMemo<PickerOption[]>(
+    () =>
+      loanTypesRes
+        ? Object.values(loanTypesRes.message.data.setup)
             .flat()
             .map((lt) => ({ value: lt.id, label: lt.name }))
-        );
-      } catch {
-        setLoanTypeOptions([]);
-      }
-    })();
-  }, []);
+        : [],
+    [loanTypesRes],
+  );
+
+  const createMutation = useMutation({
+    mutationFn: createProductAssignments,
+    onSuccess: (res: CreateProductAssignmentResponse) => {
+      const created = toRow(res.message.data);
+      setProductNames((p) => ({ ...p, [res.message.data.product]: res.message.data.product_name }));
+      setSaved((s) => ({ ...s, rows: [created, ...s.rows] }));
+      setDraft((d) => ({ ...d, rows: [created, ...d.rows] }));
+      setKind("all");
+      resetPage();
+      setEditing(null);
+      queryClient.invalidateQueries({ queryKey: ["product-assignments"] });
+      showSuccess("Rule Added", res.message.message);
+    },
+    onError: (error: any) => {
+      setCreateError(error instanceof Error ? error.message : "Could not add the rule.");
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
+  });
+
+  const creating = createMutation.isPending;
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteProductAssignments,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["product-assignments"] });
+      setSaved((s) => ({ ...s, rows: s.rows.filter((r) => r.id !== variables) }));
+      setDraft((d) => ({ ...d, rows: d.rows.filter((r) => r.id !== variables) }));
+      showSuccess(
+        "Rule Deleted",
+        `Product Assignment Rule ${variables} deleted successfully.`,
+      );
+    },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [
+          {
+            label: "Close",
+            color: "red",
+          },
+        ],
+      });
+    },
+  });
+
+  const confirmDelete = (id: string) => {
+    openCommonModal({
+      heading: "Delete Product Assignment Rule",
+      subtitle: "This action cannot be undone.",
+      body: (
+        <>
+          Are you sure you want to delete{" "}
+          <Text span fw={600}>
+            {id}
+          </Text>
+          ?
+        </>
+      ),
+      color: "red",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        {
+          label: "Delete",
+          color: "red",
+          onClick: () => deleteMutation.mutate(id),
+        },
+      ],
+    });
+  };
 
   const { rows } = draft;
   const visible = useMemo(
@@ -457,7 +547,7 @@ export function LoanProductAssignment() {
   const changeLoanTypes = (loanTypes: string[]) =>
     setEditing((e) => e && { ...e, row: { ...e.row, loanTypes, productCode: fitsProduct(loanTypes, e.row.productCode) } });
 
-  const saveRule = async () => {
+  const saveRule = () => {
     if (!editing) return;
     if (rowError(editing.row)) {
       setEditing({ ...editing, attempted: true });
@@ -466,27 +556,10 @@ export function LoanProductAssignment() {
     const { mode, row } = editing;
 
     if (mode === "add") {
-      setCreating(true);
       setCreateError(null);
-      try {
-        const res: CreateProductAssignmentResponse = await createProductAssignments(toPayload(row));
-        const created = toRow(res.message.data);
-        setProductNames((p) => ({ ...p, [res.message.data.product]: res.message.data.product_name }));
-        setSaved((s) => ({ ...s, rows: [created, ...s.rows] }));
-        setDraft((d) => ({ ...d, rows: [created, ...d.rows] }));
-        setKind("all");
-        resetPage();
-        setEditing(null);
-        showSuccess(res.message.message, "Rule added");
-      } catch (err) {
-        setCreateError(err instanceof Error ? err.message : "Could not add the rule.");
-      } finally {
-        setCreating(false);
-      }
+      createMutation.mutate(toPayload(row));
       return;
     }
-
-    // Edit: no update endpoint was provided, so this only changes the local draft.
     setDraft((d) => ({ ...d, rows: d.rows.map((r) => (r.id === row.id ? row : r)) }));
     setEditing(null);
   };
@@ -510,8 +583,6 @@ export function LoanProductAssignment() {
     setDragArmed(null);
   };
 
-  // No endpoint was provided for saving edits / deletes / reordering / matching settings,
-  // so this only commits the local draft. Replace with the real API call when available.
   const save = () => {
     setSaved(draft);
     showSuccess(`${rows.length} ${rows.length === 1 ? "rule" : "rules"} in effect for new applications.`, "Product rules saved");
@@ -677,9 +748,9 @@ export function LoanProductAssignment() {
         <Alert color="danger" radius="md" title="Could not load rules">
           <Group justify="space-between" wrap="nowrap">
             <Text fz="sm">{loadError}</Text>
-            <Button size="compact-sm" variant="light" color="danger" onClick={loadRules}>
-              Retry
-            </Button>
+           <Button size="compact-sm" variant="light" color="danger" onClick={() => loadRules()}>
+  Retry
+</Button>
           </Group>
         </Alert>
       )}
@@ -854,16 +925,17 @@ export function LoanProductAssignment() {
                           <ActionIcon variant="subtle" color="slate" size="sm" radius="xl" onClick={open} aria-label="Edit rule">
                             <IconPencil size={14} />
                           </ActionIcon>
-                          <ActionIcon
-                            variant="subtle"
-                            color="danger"
-                            size="sm"
-                            radius="xl"
-                            onClick={() => setDraft((d) => ({ ...d, rows: d.rows.filter((r) => r.id !== row.id) }))}
-                            aria-label="Delete rule"
-                          >
-                            <IconTrash size={14} />
-                          </ActionIcon>
+                        <ActionIcon
+  variant="subtle"
+  color="danger"
+  size="sm"
+  radius="xl"
+  loading={deleteMutation.isPending && deleteMutation.variables === row.id}
+  onClick={() => confirmDelete(row.id)}
+  aria-label="Delete rule"
+>
+  <IconTrash size={14} />
+</ActionIcon>
                         </Group>
                       </Table.Td>
                     </Table.Tr>
