@@ -467,11 +467,35 @@ export const API = {
     getIndustries: `${ERP_BASE}/api/resource/Industry Type`,
     
   },
+  losChannel: {
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.get_channels`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.get_channel_by_id`,
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.create_channel`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.update_channel`,
+    enable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.enable_channel`,
+    disable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.disable_channel`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.delete_channel`,
+  },
   frappeUtilsAPI: {
     getCompanyCurrentFiscalYear: `${ERP_BASE}/api/method/custom_api.utils.frappe_utils.get_current_fiscal_year`,
     getaccounts: `${ERP_BASE}/api/resource/Account`,
     getallusers: `${ERP_BASE}/api/resource/User`,
   },
+  losPreScreening: {
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.create_ruleset`,
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.get_rulesets`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.delete_ruleset`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.update_ruleset`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.get_ruleset`,
+    getFields: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.get_prescreening_fields`,
+    getVersions: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.get_ruleset_versions`,
+    setStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.set_ruleset_status`,
+    test: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.test_ruleset`,
+  },
 } as const;
 
 export default API;
+
+
+
+

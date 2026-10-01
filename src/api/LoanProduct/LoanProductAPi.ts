@@ -136,7 +136,6 @@ export interface CommonApiResponse {
 
 export interface GetLoanProductsParams {
   search?: string;
-  // 0 = active, 1 = disabled. Omit karo to fetch all.
   disabled?: 0 | 1;
   loan_category?: string[];
   page?: number;
