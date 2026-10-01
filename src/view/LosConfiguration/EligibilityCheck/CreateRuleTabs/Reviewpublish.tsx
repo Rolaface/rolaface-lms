@@ -228,30 +228,6 @@ export function ReviewPublish({
               </Paper>
             ))}
           </SimpleGrid>
-          <Group gap="sm" mt="md">
-            <Button
-              size="xs"
-              color="brand"
-              radius="xl"
-              onClick={() => persistRule("Active")}
-              disabled={!readyToPublish}
-              style={{
-                background: readyToPublish
-                  ? "linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-5) 100%)"
-                  : undefined,
-              }}
-            >
-              Publish as v1.0
-            </Button>
-            <Button
-              size="xs"
-              variant="default"
-              radius="xl"
-              onClick={() => persistRule("Draft")}
-            >
-              Save as Draft
-            </Button>
-          </Group>
           {!readyToPublish && (
             <Text fz={11} c="orange.7" mt={6}>
               Resolve the items above to enable publishing.

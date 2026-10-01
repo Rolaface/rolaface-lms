@@ -4,7 +4,7 @@ import { type CreateEligibilityRulePayload, type GetEligibilityRuleByIdResponse 
 
 export async function createEligibilityRule(payload: CreateEligibilityRulePayload) {
   const { data } = await apiClient.post(
-    API.createEligibilityRule.createProductAssignment,
+    API.createEligibilityRule.createEligibilityRule,
     payload,
   );
   return data;
@@ -12,21 +12,29 @@ export async function createEligibilityRule(payload: CreateEligibilityRulePayloa
 
 export async function getEligibilityRuleById(id: string) {
   const { data } = await apiClient.get<GetEligibilityRuleByIdResponse>(
-    API.createEligibilityRule.getProductAssignmentById,
+    API.createEligibilityRule.getEligibilityRuleById,
     { params: { id } },
   );
   return data;
 }
 
 export async function getEligibilityRules(){
-    const {data} = await apiClient.get(API.createEligibilityRule.getProductAssignment);
+    const {data} = await apiClient.get(API.createEligibilityRule.getEligibilityRule);
     return data;
 }
 
 export async function updateEligibilityRule(id: string, payload: Partial<CreateEligibilityRulePayload>) {
   const { data } = await apiClient.put<CreateEligibilityRulePayload>(
-    API.createEligibilityRule.updateProductAssignment,
+    API.createEligibilityRule.updateEligibilityRule,
     payload,
+    { params: { id } },
+  );
+  return data;
+}
+
+export async function deleteEligibilityRule(id: string) {
+  const { data } = await apiClient.delete(
+    API.createEligibilityRule.deleteEligibilityRule,
     { params: { id } },
   );
   return data;

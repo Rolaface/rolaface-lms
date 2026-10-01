@@ -275,10 +275,11 @@ export const API = {
   },
 
   createEligibilityRule: {
-    createProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.create_eligibility_rule`,
-     getProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.get_eligibility_rules`,
-     getProductAssignmentById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.get_eligibility_rule`,
-     updateProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.update_eligibility_rule`,
+    createEligibilityRule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.create_eligibility_rule`,
+     getEligibilityRule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.get_eligibility_rules`,
+     getEligibilityRuleById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.get_eligibility_rule`,
+     updateEligibilityRule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.update_eligibility_rule`,
+     deleteEligibilityRule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.delete_eligibility_rule`,
     },
 
   // =========================

@@ -11,10 +11,19 @@ import { Simulator } from "./Simulator";
 export function LosEligibilityCheck() {
   const [activeTab, setActiveTab] = useState<TabValue>("rules");
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const theme = useMantineTheme();
 
   return (
-    <Tabs value={activeTab} onChange={(value) => setActiveTab(value as TabValue)} variant="default">
+//     <Tabs value={activeTab} onChange={(value) => {
+//   if (value === "create") {
+//     setSelectedRuleId(null);
+//     setCreateOpen(true);
+//     return;
+//   }
+//   setActiveTab(value as TabValue);
+// }}>
+<Tabs value={activeTab} onChange={(value) => setActiveTab(value as TabValue)} variant="default">
       <Box style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
         <Box
           component="main"
@@ -70,7 +79,7 @@ export function LosEligibilityCheck() {
                   borderBottom: "1px solid var(--mantine-color-slate-2)",
                 }}
               >
-                {TAB_ITEMS.map(({ value, label, icon: Icon }) => {
+                {TAB_ITEMS.filter(({ value }) => value !== "create").map(({ value, label, icon: Icon }) => {
                   const isActive = activeTab === value;
 
                   return (
@@ -98,33 +107,19 @@ export function LosEligibilityCheck() {
 
           <Box style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
             <Tabs.Panel value="rules">
-              <EligibilityRules
-  onCreateRule={() => {
-    setSelectedRuleId(null);
-    setActiveTab("create");
-  }}
-  onSimulate={() => setActiveTab("simulate")}
-  onViewRule={(id) => {
-    setSelectedRuleId(id);
-    setActiveTab("create");
-  }}
-  onEditRule={(id) => {
-    setSelectedRuleId(id);
-    setActiveTab("create");
-  }}
-/>
+             <EligibilityRules onSimulate={() => setActiveTab("simulate")} />
             </Tabs.Panel>
 
-            <Tabs.Panel value="create">
-              <CreateRule
-  key={selectedRuleId ?? "new"}
-  ruleId={selectedRuleId ?? undefined}
-  onExit={() => {
-    setSelectedRuleId(null);
-    setActiveTab("rules");
-  }}
-/>
-            </Tabs.Panel>
+            {/* {createOpen && (
+  <CreateRule
+    opened={createOpen}
+    ruleId={selectedRuleId ?? undefined}
+    onExit={() => {
+      setCreateOpen(false);
+      setSelectedRuleId(null);
+    }}
+  />
+)} */}
 
             <Tabs.Panel value="simulate">
               <Simulator />
