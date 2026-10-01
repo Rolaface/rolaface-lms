@@ -196,7 +196,7 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
         });
         return;
       }
-      documentSetupModal.open({ mode: "add", products, onSuccess: async (productId, docs) => { await onSave?.(productId, docs); showSuccess("Documents Saved", "Documents have been saved successfully."); await loadList(); } });
+      documentSetupModal.open({ mode: "add", products, onSuccess: async (productId, docs) => { await onSave?.(productId, docs); const productName = products.find(x => x.id === productId)?.name || "the product"; showSuccess("Documents Saved", `Documents for ${productName} have been saved successfully.`); await loadList(); } });
     } catch (e) {
       console.error(e);
       showError("Something went wrong", e);
@@ -211,7 +211,7 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
     try {
       const res = await DocumentSetupApi.getById(p.id);
       const detail = DocumentSetupApi.unwrap(res);
-      documentSetupModal.open({ mode: "edit", product: p, docs: mapDocs(detail), onSuccess: async (productId, docs) => { await onSave?.(productId, docs); showSuccess("Documents Saved", "Documents have been saved successfully."); await loadList(); } });
+      documentSetupModal.open({ mode: "edit", product: p, docs: mapDocs(detail), onSuccess: async (productId, docs) => { await onSave?.(productId, docs); showSuccess("Documents Saved", `Documents for ${p.name} have been saved successfully.`); await loadList(); } });
     } catch (e) {
       console.error(e);
       showError("Something went wrong", e);
@@ -238,7 +238,7 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
             try {
               await DocumentSetupApi.remove(p.id);
               await onSave?.(p.id, null);
-              showSuccess("Documents Removed", "Documents have been removed successfully.");
+              showSuccess("Documents Removed", `Documents for ${p.name} have been removed successfully.`);
               await loadList();
             } catch (e) {
               console.error(e);
@@ -517,6 +517,7 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
     </Stack>
   );
 }
+
 
 
 
