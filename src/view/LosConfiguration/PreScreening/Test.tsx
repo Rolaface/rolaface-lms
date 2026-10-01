@@ -1,11 +1,11 @@
 import { useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { test } from "../../../api/LosConfiguration/PreScreeningApi";
-import { Badge, Button, Paper, Box, Group, Stack, Text, Title, Select, SegmentedControl, Grid, Input, ThemeIcon } from "@mantine/core";
+import { openCommonModal } from "../../../components/Modal/AlertModal";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+import { Badge, Button, Paper, Box, Group, Stack, Text, Title, Select, SegmentedControl, Grid, Input, ThemeIcon, Alert } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { IconAlertTriangle, IconCheck, IconClipboardCheck, IconFlask, IconPlayerPlay, IconX } from "@tabler/icons-react";
 import {
-  SAMPLE_APPLICANTS,
-  evalRule,
   fieldById,
   fmtVal,
   ruleSentence,
@@ -16,6 +16,22 @@ import {
 export interface TestTabProps {
   ruleSet: RuleSet;
 }
+
+const findResult = (res: any) => {
+  let x = res;
+  for (let i = 0; i < 5; i++) {
+    if (x && typeof x === "object" && x.verdict !== undefined) return x;
+    x = x?.data ?? x?.message;
+  }
+  return null;
+};
+
+const VERDICT_STYLES: Record<string, { tone: string; label: string; icon: ReactNode; note: string }> = {
+  Eligible: { tone: "green", label: "Eligible", icon: <IconCheck size={15} />, note: "All blocking criteria passed." },
+  "Eligible with Warnings": { tone: "orange", label: "Eligible with Warnings", icon: <IconAlertTriangle size={15} />, note: "All blocking criteria passed; some non-blocking checks flagged." },
+  "Manual Review": { tone: "blue", label: "Sent for Manual Review", icon: <IconClipboardCheck size={15} />, note: "Basic criteria met, but file needs manual review." },
+  "Not Eligible": { tone: "red", label: "Not Eligible", icon: <IconX size={15} />, note: "One or more blocking criteria failed." },
+};
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
@@ -52,56 +68,61 @@ export default function TestTab({ ruleSet }: TestTabProps) {
     return ids;
   }, [ruleSet]);
 
-  const presets = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(SAMPLE_APPLICANTS).map(([name, values]) => [
-          name,
-          Object.fromEntries(usedFieldIds.map((fid) => [fid, values[fid]])),
-        ])
-      ),
-    [usedFieldIds]
-  );
+  const localRuleById = useMemo(() => {
+    const m: Record<string, any> = {};
+    ruleSet.groups.forEach((g) => g.rules.forEach((r) => { m[r.id] = r; }));
+    return m;
+  }, [ruleSet]);
 
   const [sample, setSample] = useState<Record<string, RuleValue | undefined>>({});
-  const [preset, setPreset] = useState<string>("Custom");
 
   const [results, setResults] = useState<any>(null);
   const [testing, setTesting] = useState(false);
-  
+
   const runTest = async () => {
     setTesting(true);
     try {
-      const payload = { facts: sample };
-      const response = await test(ruleSet.name || ruleSet.id, payload);
-      if (response?.data) {
-        setResults(response.data);
+      const facts = Object.fromEntries(
+        Object.entries(sample).filter(([, v]) => v !== undefined && v !== null && v !== "")
+      );
+      const response = await test(ruleSet.id, { facts });
+      console.log("test_ruleset response:", response);
+      const found = findResult(response);
+      if (!found) {
+        console.warn("verdict not found in response");
       }
-    } catch(err: any) {
+      setResults(found);
+    } catch (err: any) {
       console.error(err);
+      let body = "";
+      try {
+        const m = parseFrappeError(err);
+        body = typeof m === "string" ? m : JSON.stringify(m);
+      } catch {
+        body = String(err);
+      }
       openCommonModal({
         heading: "Test Failed",
-        subtitle: "We couldn	 complete your request.",
-        body: typeof parseFrappeError === "function" ? parseFrappeError(err) : String(err),
+        subtitle: "We couldn't complete your request.",
+        body,
         color: "red",
-        buttons: [{ label: "Close", color: "red" }]
+        buttons: [{ label: "Close", color: "red" }],
       });
     } finally {
       setTesting(false);
     }
   };
 
-  const VERDICT_STYLES: Record<string, { tone: string; label: string; icon: ReactNode; note: string }> = {
-    Eligible: { tone: "green", label: "Eligible", icon: <IconCheck size={15} />, note: "All blocking criteria passed." },
-    "Eligible with Warnings": { tone: "orange", label: "Eligible with Warnings", icon: <IconAlertTriangle size={15} />, note: "All blocking criteria passed; some non-blocking checks flagged." },
-    "Manual Review": { tone: "blue", label: "Sent for Manual Review", icon: <IconClipboardCheck size={15} />, note: "Basic criteria met, but file needs manual review." },
-    "Not Eligible": { tone: "red", label: "Not Eligible", icon: <IconX size={15} />, note: "One or more blocking criteria failed." },
-  };
-  const verdictStyle = VERDICT_STYLES[results?.verdict || "Eligible"];
+  const verdictStyle = VERDICT_STYLES[results?.verdict] ?? VERDICT_STYLES["Eligible"];
+
+  const allNull =
+    !!results &&
+    Array.isArray(results.groups) &&
+    results.groups.length > 0 &&
+    results.groups.every((g: any) => (g.rules ?? []).every((r: any) => r.passed === null));
 
   const setField = (fid: string, val: RuleValue) => {
     setSample((s) => ({ ...s, [fid]: val }));
-    setPreset("Custom");
   };
 
   return (
@@ -117,23 +138,10 @@ export default function TestTab({ ruleSet }: TestTabProps) {
             </Paper>
           ) : (
             <>
-              <Box mb={10}>
-                <FieldLabel>Preset</FieldLabel>
-                <Select
-                  size="xs"
-                  value={preset}
-                  onChange={(val) => {
-                    if (!val) return;
-                    setPreset(val);
-                    if (val !== "Custom") setSample({ ...presets[val] });
-                  }}
-                  data={[...Object.keys(SAMPLE_APPLICANTS), "Custom"]}
-                />
-              </Box>
-
               <Grid gutter={10}>
                 {usedFieldIds.map((fid) => {
-                  const f = fieldById(fid)!;
+                  const f = fieldById(fid);
+                  if (!f) return null;
                   const value = sample[fid];
                   return (
                     <Grid.Col span={6} key={fid}>
@@ -154,7 +162,7 @@ export default function TestTab({ ruleSet }: TestTabProps) {
                           placeholder="Select a value…"
                           value={(value as string) ?? null}
                           onChange={(val) => setField(fid, val)}
-                          data={f.options!}
+                          data={f.options ?? []}
                         />
                       ) : f.type === "date" ? (
                         <DateInput
@@ -194,13 +202,17 @@ export default function TestTab({ ruleSet }: TestTabProps) {
               <Button size="xs" radius="md" fullWidth mt={12} color="brand" leftSection={<IconPlayerPlay size={12} stroke={2.4} />} onClick={runTest} loading={testing}>
                 Run Simulation
               </Button>
+              <Text fz={10.5} c="slate.5" mt={6}>
+                Note: test runs on the saved draft. Click Save Draft after changing rules.
+              </Text>
             </>
           )}
         </Paper>
       </Grid.Col>
 
       <Grid.Col span={{ base: 12, md: 6 }}>
-        {results && (<Paper withBorder radius="md" p={12} mb={8} style={{ background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderLeft: `3px solid var(--mantine-color-${verdictStyle.tone}-4)` }}>
+        {results && (
+          <Paper withBorder radius="md" p={12} mb={8} style={{ background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderLeft: `3px solid var(--mantine-color-${verdictStyle.tone}-4)` }}>
             <Group justify="space-between" align="center" wrap="nowrap" gap={10}>
               <Group gap={8} align="center" wrap="nowrap">
                 <ThemeIcon variant="light" color={verdictStyle.tone} radius="xl" size={28}>
@@ -213,19 +225,27 @@ export default function TestTab({ ruleSet }: TestTabProps) {
               </Group>
               <Text fz={11} c="slate.5" ta="right" maw={220}>{verdictStyle.note}</Text>
             </Group>
-          </Paper>)}
+          </Paper>
+        )}
 
-        {results?.groupResults?.map(({ group, groupPass }, index) => {
-          const tone = groupPass === null ? "slate" : groupPass ? "green" : "red";
+        {allNull && (
+          <Alert color="yellow" mb={8} fz={12}>
+            No rule could be evaluated. Make sure the rules have values, the draft is saved, and the applicant values above are filled in.
+          </Alert>
+        )}
+
+        {(results?.groups ?? []).map((g: any, index: number) => {
+          const groupPass = g.passed;
+          const tone = groupPass === null || groupPass === undefined ? "slate" : groupPass ? "green" : "red";
           return (
-            <Paper withBorder radius="md" p={0} mb={8} key={group.id} style={{ overflow: "hidden", background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderLeft: `3px solid var(--mantine-color-${tone}-4)` }}>
+            <Paper withBorder radius="md" p={0} mb={8} key={g.id ?? index} style={{ overflow: "hidden", background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderLeft: `3px solid var(--mantine-color-${tone}-4)` }}>
               <Group justify="space-between" px={12} py={8} wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
                 <Group gap={8} wrap="nowrap">
                   <Box style={{ width: 18, height: 18, minWidth: 18, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--mantine-color-slate-1)", color: "var(--mantine-color-slate-6)", fontSize: 10.5, fontWeight: 700 }}>{index + 1}</Box>
-                  <Text fw={600} fz={12.5} c="slate.8">{group.name}</Text>
-                  <Text fz={10.5} c="slate.5">Match {group.logic}</Text>
+                  <Text fw={600} fz={12.5} c="slate.8">{g.name}</Text>
+                  <Text fz={10.5} c="slate.5">Match {g.logic}</Text>
                 </Group>
-                {groupPass === null ? (
+                {groupPass === null || groupPass === undefined ? (
                   <Text fz={11} c="dimmed">Not evaluated</Text>
                 ) : (
                   <Badge size="xs" radius="xl" variant="light" color={groupPass ? "green" : "red"} fw={700}>
@@ -234,20 +254,24 @@ export default function TestTab({ ruleSet }: TestTabProps) {
                 )}
               </Group>
               <Stack gap={0} p={6}>
-                {group.rules.filter((r) => !r.disabled).map((r) => {
-                  const f = fieldById(r.fieldId)!;
-                  const pass = evalRule(r, sample[r.fieldId as string]);
+                {(g.rules ?? []).map((r: any) => {
+                  const f = fieldById(r.field);
+                  const label = r.label ?? f?.label ?? r.field;
+                  const local = localRuleById[r.id];
+                  const required = local ? ruleSentence(local).replace(label + " ", "") : r.operator;
+                  const actualRaw = r.actual ?? sample[r.field];
+                  const applicant = f ? fmtVal(f, actualRaw as RuleValue) : actualRaw ?? "…";
                   return (
                     <Group key={r.id} justify="space-between" align="center" py={5} px={8} wrap="nowrap" gap={8} style={{ borderRadius: 6 }}>
                       <Stack gap={0} style={{ minWidth: 0 }}>
-                        <Text fz={11.5} fw={600} c="slate.8" truncate>{f.label}</Text>
+                        <Text fz={11.5} fw={600} c="slate.8" truncate>{label}</Text>
                         <Text fz={10.5} c="slate.5" truncate>
-                          Required: {ruleSentence(r).replace(f.label + " ", "")} · Applicant: {fmtVal(f, sample[r.fieldId as string])}
+                          Required: {required} · Applicant: {String(applicant)}
                         </Text>
                       </Stack>
-                      {pass === null ? (
+                      {r.passed === null || r.passed === undefined ? (
                         <Text c="dimmed" fz={11} style={{ flexShrink: 0 }}>—</Text>
-                      ) : pass ? (
+                      ) : r.passed ? (
                         <IconCheck size={14} color="var(--mantine-color-green-6)" style={{ flexShrink: 0 }} />
                       ) : (
                         <IconX size={14} color="var(--mantine-color-red-6)" style={{ flexShrink: 0 }} />
@@ -263,10 +287,3 @@ export default function TestTab({ ruleSet }: TestTabProps) {
     </Grid>
   );
 }
-
-
-
-
-
-
-

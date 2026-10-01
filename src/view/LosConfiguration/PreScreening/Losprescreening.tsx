@@ -2,38 +2,7 @@ import { useState, useEffect } from "react";
 import { getLoanProducts } from "../../../api/LoanProduct/LoanProductAPi";
 import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
-
-const showError = (heading: string, error: any) => {
-  openCommonModal({
-    heading,
-    subtitle: "We couldn't complete your request.",
-    body: getSafeErrorMessage(error),
-    color: 'red',
-    buttons: [{ label: 'Close', color: 'red' }],
-  });
-};
-
-const showSuccess = (heading: string, body: string) => {
-  openCommonModal({
-    heading,
-    subtitle: '',
-    body,
-    color: 'green',
-    buttons: [{ label: 'Close', color: 'green' }],
-  });
-};
-
-const getSafeErrorMessage = (err: any): string => {
-  try {
-    const msg = parseFrappeError(err);
-    if (typeof msg === "string") return msg;
-    if (typeof msg === "object") return JSON.stringify(msg);
-    return String(msg);
-  } catch (e) {
-    return "An unknown error occurred.";
-  }
-};
-import { create, getAll, remove, update, getById, setStatus } from "../../../api/LosConfiguration/PreScreeningApi";
+import { create, getAll, remove, update, getById, setStatus, getFields } from "../../../api/LosConfiguration/PreScreeningApi";
 import {
   Box,
   Button,
@@ -64,8 +33,11 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import {
-  seedRuleSet,
   computeValidation,
+  setPrescreeningConfig,
+  isListOp,
+  isBetweenOp,
+  isRelativeOp,
   type Rule,
   type RuleSet,
   type RuleSetSummary,
@@ -77,10 +49,42 @@ import VersionsTab from "./Versions";
 import AuditTab from "./Audit";
 import { DateInput } from "@mantine/dates";
 
-// CHANGED: NEW - response ka shape (data / message.data / message) kuch bhi ho, sahi object nikalta hai
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const getSafeErrorMessage = (err: any): string => {
+  try {
+    const msg = parseFrappeError(err);
+    if (typeof msg === "string") return msg;
+    if (typeof msg === "object") return JSON.stringify(msg);
+    return String(msg);
+  } catch (e) {
+    return "An unknown error occurred.";
+  }
+};
+
+const showError = (heading: string, error: any) => {
+  openCommonModal({
+    heading,
+    subtitle: "We couldn't complete your request.",
+    body: getSafeErrorMessage(error),
+    color: "red",
+    buttons: [{ label: "Close", color: "red" }],
+  });
+};
+
+const showSuccess = (heading: string, body: string) => {
+  openCommonModal({
+    heading,
+    subtitle: "",
+    body,
+    color: "green",
+    buttons: [{ label: "Close", color: "green" }],
+  });
+};
+
 const unwrap = (res: any) => res?.data ?? res?.message?.data ?? res?.message ?? null;
 
-// CHANGED: NEW - "2026-09-30 12:10:21.782902" ko readable banata hai
 const formatDate = (d?: string) => {
   if (!d) return "";
   const dt = new Date(String(d).replace(" ", "T").slice(0, 19));
@@ -89,6 +93,55 @@ const formatDate = (d?: string) => {
     : dt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
 };
 
+/* ============================================================
+   PAYLOAD BUILDERS
+   ============================================================ */
+const buildRulePayload = (r: any) => {
+  const base: any = {
+    field: r.fieldId,
+    operator: r.operator,
+    severity: r.severity,
+    action: r.action,
+  };
+  if (isListOp(r.operator)) {
+    base.value = r.values ?? [];
+  } else if (isBetweenOp(r.operator)) {
+    base.value = r.value;
+    base.value2 = r.value2;
+  } else if (isRelativeOp(r.operator)) {
+    base.value = r.value;
+    base.date_unit = r.dateUnit;
+  } else {
+    base.value = r.value;
+  }
+  return base;
+};
+
+const buildGroupsPayload = (rs: RuleSet) => ({
+  ruleset_name: rs.name,
+  description: rs.description,
+  effective_from: rs.effectiveFrom || undefined,
+  groups: rs.groups.map((g: any) => ({
+    name: g.name,
+    logic: g.logic,
+    rules: g.rules.map(buildRulePayload),
+  })),
+});
+
+const mapRuleFromApi = (r: any) => {
+  const list = isListOp(r.operator);
+  return {
+    ...r,
+    fieldId: r.field || r.fieldId || r.field_id,
+    values: list ? (Array.isArray(r.value) ? r.value : r.values ?? []) : r.values,
+    value: list ? undefined : r.value,
+    dateUnit: r.date_unit ?? r.dateUnit,
+  };
+};
+
+/* ============================================================
+   TABLE STYLES
+   ============================================================ */
 const headStyle = {
   fontSize: 10,
   fontWeight: 700,
@@ -109,6 +162,9 @@ const cellStyle = {
   verticalAlign: "middle" as const,
 };
 
+/* ============================================================
+   RULE SET LIST
+   ============================================================ */
 function RuleSetList({
   onOpen,
   onCreate,
@@ -120,7 +176,7 @@ function RuleSetList({
   onCreate: () => void;
   showEmpty: boolean;
   setShowEmpty: (v: boolean) => void;
-  refreshKey: number; // CHANGED: NEW - list dobara fetch karne ke liye
+  refreshKey: number;
 }) {
   const theme = useMantineTheme();
   const [rows, setRows] = useState<RuleSetSummary[]>([]);
@@ -130,7 +186,7 @@ function RuleSetList({
     setLoading(true);
     try {
       const response = await getAll({ page: 1, page_size: 50 });
-      const list = unwrap(response); // CHANGED
+      const list = unwrap(response);
       if (Array.isArray(list)) {
         const apiRows = list.map((item: any) => ({
           id: item.name,
@@ -158,7 +214,7 @@ function RuleSetList({
       setRows([]);
       setLoading(false);
     }
-  }, [showEmpty, refreshKey]); // CHANGED: refreshKey add kiya
+  }, [showEmpty, refreshKey]);
 
   const handleDelete = (e: React.MouseEvent, r: any) => {
     e.stopPropagation();
@@ -175,7 +231,7 @@ function RuleSetList({
           onClick: async () => {
             try {
               await remove(r.id);
-                showSuccess("Rule Set Deleted", "Rule set deleted successfully.");
+              showSuccess("Rule Set Deleted", "Rule set deleted successfully.");
               fetchRuleSets();
             } catch (err: any) {
               showError("Delete Failed", err);
@@ -223,7 +279,11 @@ function RuleSetList({
         </Group>
       </Group>
 
-      {loading ? <Paper radius="lg" p="xl" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)", textAlign: "center", padding: "72px 40px" }}><Text c="slate.5">Loading rule sets...</Text></Paper> : rows.length === 0 ? (
+      {loading ? (
+        <Paper radius="lg" p="xl" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)", textAlign: "center", padding: "72px 40px" }}>
+          <Text c="slate.5">Loading rule sets...</Text>
+        </Paper>
+      ) : rows.length === 0 ? (
         <Paper radius="lg" p="xl" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)", textAlign: "center", padding: "72px 40px" }}>
           <Box
             style={{
@@ -303,7 +363,7 @@ function CreateRuleSetModal({
 }) {
   const theme = useMantineTheme();
   const [name, setName] = useState("");
-  const [product, setProduct] = useState<string | null>(null); // CHANGED: "Personal Loan" default hata diya
+  const [product, setProduct] = useState<string | null>(null);
   const [desc, setDesc] = useState("");
   const [effectiveDate, setEffectiveDate] = useState<string | null>(null);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -449,7 +509,7 @@ function CreateRuleSetModal({
             <Button
               color="brand"
               radius="xl"
-              disabled={!name.trim() || !product} // CHANGED: product bhi zaroori
+              disabled={!name.trim() || !product}
               onClick={() => onCreate({ name, product: product as string, desc, effectiveDate })}
             >
               Create Rule Set
@@ -481,7 +541,7 @@ function RuleSetDetail({
   ruleSet: RuleSet;
   setRuleSet: (rs: RuleSet) => void;
   onBack: () => void;
-  onReload: (id: string) => Promise<void>; // CHANGED: NEW - save/activate ke baad server se fresh data
+  onReload: (id: string) => Promise<void>;
   toast: (m: string) => void;
 }) {
   const theme = useMantineTheme();
@@ -500,12 +560,7 @@ function RuleSetDetail({
     }
     setSaving(true);
     try {
-      const payload = {
-        ruleset_name: ruleSet.name,
-        description: ruleSet.description,
-        effective_from: ruleSet.effectiveFrom || undefined,
-        groups: ruleSet.groups,
-      };
+      const payload = buildGroupsPayload(ruleSet);
       console.log("update ->", ruleSet.id, payload);
       const res = await update(ruleSet.id, payload);
       console.log("update response:", res);
@@ -561,12 +616,7 @@ function RuleSetDetail({
   const doActivate = async () => {
     setActivating(true);
     try {
-      const saveRes = await update(ruleSet.id, {
-        ruleset_name: ruleSet.name,
-        description: ruleSet.description,
-        effective_from: ruleSet.effectiveFrom || undefined,
-        groups: ruleSet.groups,
-      });
+      const saveRes = await update(ruleSet.id, buildGroupsPayload(ruleSet));
       const saved = unwrap(saveRes);
       const idToActivate = typeof saved?.name === "string" ? saved.name : ruleSet.id;
 
@@ -698,12 +748,33 @@ function RuleSetDetail({
    APP ROOT
    ============================================================ */
 export default function LOSPreScreening() {
+  const [fieldsLoaded, setFieldsLoaded] = useState(false);
+  const [configError, setConfigError] = useState<any>(null);
+
+  useEffect(() => {
+    getFields()
+      .then((res) => {
+        const payload = unwrap(res);
+        console.log("prescreening_fields payload:", payload);
+        const cfg = Array.isArray(payload) ? { fields: payload } : payload;
+        if (!cfg || !Array.isArray(cfg.fields) || cfg.fields.length === 0) {
+          throw new Error("get_prescreening_fields returned no fields.");
+        }
+        setPrescreeningConfig(cfg);
+      })
+      .catch((e) => {
+        console.error("Error loading pre-screening config", e);
+        setConfigError(e);
+      })
+      .finally(() => setFieldsLoaded(true));
+  }, []);
+
   const [screen, setScreen] = useState<"list" | "detail">("list");
-  const [ruleSet, setRuleSet] = useState<RuleSet>(seedRuleSet());
+  const [ruleSet, setRuleSet] = useState<RuleSet | null>(null);
   const [showEmpty, setShowEmpty] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
-  const [refreshKey, setRefreshKey] = useState(0); // CHANGED: NEW
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const toast = (m: string) => {
     setToastMsg(m);
@@ -731,7 +802,12 @@ export default function LOSPreScreening() {
         effectiveFrom: item.effective_from,
         modifiedDate: item.modified,
         modifiedBy: item.modified_by,
-        groups: Array.isArray(item.groups) ? item.groups : [],
+        groups: Array.isArray(item.groups)
+          ? item.groups.map((g: any) => ({
+              ...g,
+              rules: Array.isArray(g.rules) ? g.rules.map(mapRuleFromApi) : [],
+            }))
+          : [],
         versions: Array.isArray(item.versions) ? item.versions : [],
         audit: Array.isArray(item.audit) ? item.audit : [],
       } as RuleSet);
@@ -744,7 +820,6 @@ export default function LOSPreScreening() {
 
   const handleCreate = async ({ name, product, desc, effectiveDate }: { name: string; product: string; desc: string; effectiveDate: string | null }) => {
     try {
-      
       const payload = {
         ruleset_name: name || "Untitled Rule Set",
         loan_product: product,
@@ -773,24 +848,34 @@ export default function LOSPreScreening() {
     }
   };
 
+  if (!fieldsLoaded) return null;
+  if (configError) {
+    return (
+      <Stack align="center" p="xl" gap="sm">
+        <Text fw={700}>Pre-screening configuration could not be loaded.</Text>
+        <Text fz="sm" c="dimmed">{getSafeErrorMessage(configError)}</Text>
+        <Button radius="xl" onClick={() => window.location.reload()}>Retry</Button>
+      </Stack>
+    );
+  }
   return (
     <div>
       {screen === "list" && (
         <RuleSetList
-          onOpen={openRuleSet} 
+          onOpen={openRuleSet}
           onCreate={() => setShowCreate(true)}
           showEmpty={showEmpty}
           setShowEmpty={setShowEmpty}
           refreshKey={refreshKey}
         />
       )}
-      {screen === "detail" && (
+      {screen === "detail" && ruleSet && (
         <RuleSetDetail
           ruleSet={ruleSet}
           setRuleSet={setRuleSet}
           onBack={() => {
             setScreen("list");
-            setRefreshKey((k) => k + 1); 
+            setRefreshKey((k) => k + 1);
           }}
           onReload={openRuleSet}
           toast={toast}
@@ -801,10 +886,3 @@ export default function LOSPreScreening() {
     </div>
   );
 }
-
-
-
-
-
-
-
