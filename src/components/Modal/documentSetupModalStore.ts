@@ -18,6 +18,7 @@ export interface SetupRow extends ProductOption {
   documentCount: number;
   requiredCount: number;
   updatedAt: string;
+  rawModified?: string;
 }
 
 export interface DocumentSetupModalParams {
@@ -48,3 +49,4 @@ export const documentSetupModal = createModal(
     }),
   }
 );
+

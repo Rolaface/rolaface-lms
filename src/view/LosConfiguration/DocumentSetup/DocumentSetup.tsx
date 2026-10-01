@@ -84,7 +84,8 @@ const mapSetupRow = (r: any): SetupRow => ({
   code: r.product_code ?? r.code ?? r.loan_product ?? r.name,
   documentCount: Number(r.document_count ?? r.documents_count ?? r.total_documents ?? 0),
   requiredCount: Number(r.required_count ?? r.required_documents ?? r.required_document_count ?? 0),
-  updatedAt: r.modified ? dayjs(r.modified).format("DD MMM YYYY") : "-",
+  updatedAt: r.modified ? dayjs(r.modified).format('DD MMM YYYY') : '-',
+  rawModified: r.modified || r.creation || '',
 });
 
 const mapProductOption = (r: any): ProductOption => ({
@@ -171,7 +172,8 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
   // ---- filter + client-side pagination ----
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter((p) => `${p.name} ${p.code ?? ""}`.toLowerCase().includes(q));
+    const result = rows.filter((p) => `${p.name} ${p.code ?? ""}`.toLowerCase().includes(q));
+      return result.sort((a, b) => new Date(b.rawModified || 0).getTime() - new Date(a.rawModified || 0).getTime());
   }, [rows, search]);
 
   const totalRows = filtered.length;
@@ -517,6 +519,8 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
     </Stack>
   );
 }
+
+
 
 
 
