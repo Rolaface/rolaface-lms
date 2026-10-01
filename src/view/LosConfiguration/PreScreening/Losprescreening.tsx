@@ -477,21 +477,32 @@ function CreateRuleSetModal({
             label="Loan Product"
             value={product ?? null}
             onChange={setProduct}
-            data={productOptions}
+            data={[{ value: "HEADER", label: "HEADER", disabled: true }, ...productOptions]}
             disabled={loadingProducts}
             placeholder={loadingProducts ? "Loading..." : "Select product"}
-            leftSection={product ? <span style={{ fontSize: 10, fontWeight: 700, color: "var(--mantine-color-brand-8)", backgroundColor: "var(--mantine-color-brand-0)", padding: "2px 6px", borderRadius: 4, fontFamily: "var(--mantine-font-family-monospace)", display: "inline-block", marginLeft: 4 }}>{product}</span> : undefined}
+            leftSection={product ? <span style={{ fontSize: 11, fontWeight: 700, color: "var(--mantine-color-brand-7)", fontFamily: "var(--mantine-font-family-monospace)", display: "inline-block", marginLeft: 8 }}>{product}</span> : undefined}
             leftSectionWidth={product ? 70 : 30}
-            renderOption={({ option, checked }) => (
-              <Group gap={8} wrap="nowrap" style={{ flex: 1 }}>
-                <Text fz={10} fw={700} c="brand.8" w={64} style={{ fontFamily: "var(--mantine-font-family-monospace)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {option.value}
-                </Text>
-                <Text fz={12.5} fw={checked ? 600 : 400} c="slate.8">
-                  {option.label}
-                </Text>
-              </Group>
-            )}
+            renderOption={({ option, checked }) => {
+              if (option.value === "HEADER") {
+                return (
+                  <Group wrap="nowrap" gap="xl" py={4} style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
+                    <Text fz={10} fw={700} c="slate.5" miw={60}>CODE</Text>
+                    <Text fz={10} fw={700} c="slate.5">PRODUCT NAME</Text>
+                  </Group>
+                );
+              }
+
+              return (
+                <Group wrap="nowrap" gap="xl" py={2} style={{ flex: 1 }}>
+                  <Text fz={12} fw={600} c="brand.7" miw={60} style={{ fontFamily: "var(--mantine-font-family-monospace)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {option.value}
+                  </Text>
+                  <Text size="sm" fw={500} c="slate.8">
+                    {option.label}
+                  </Text>
+                </Group>
+              );
+            }}
           />
 
           <Textarea

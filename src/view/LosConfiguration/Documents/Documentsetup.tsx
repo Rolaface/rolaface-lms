@@ -244,30 +244,47 @@ function DocumentsModal({
                 searchable
                 allowDeselect={false}
                 disabled={!!editingId}
-                data={productOptions.map((p) => ({ value: p.id, label: p.name }))}
+                data={[{ value: "HEADER", label: "HEADER", disabled: true }, ...productOptions.map((p) => ({ value: p.id, label: p.name }))]}
                 value={productId}
                 onChange={setProductId}
                 nothingFoundMessage="No products found"
                 leftSection={
-                  selectedProd?.code ? (
-                    <Badge size="xs" variant="light" color="brand" radius="sm">
-                      {selectedProd.code}
-                    </Badge>
-                  ) : undefined
+                  (() => {
+                    const selectedProd = productOptions.find(p => p.id === productId);
+                    return selectedProd?.code ? (
+                      <Text fz={12} fw={600} c="brand.7" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
+                        {selectedProd.code}
+                      </Text>
+                    ) : undefined;
+                  })()
                 }
-                leftSectionWidth={selectedProd?.code ? 65 : 36}
+                leftSectionWidth={
+                  (() => {
+                    const selectedProd = productOptions.find(p => p.id === productId);
+                    return selectedProd?.code ? 65 : 36;
+                  })()
+                }
                 renderOption={({ option }) => {
+                  if (option.value === "HEADER") {
+                    return (
+                      <Group wrap="nowrap" gap="xl" py={4} style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
+                        <Text fz={10} fw={700} c="slate.5" miw={60}>CODE</Text>
+                        <Text fz={10} fw={700} c="slate.5">PRODUCT NAME</Text>
+                      </Group>
+                    );
+                  }
+                  
                   const p = productOptions.find((x) => x.id === option.value);
                   return (
-                    <Group wrap="nowrap" gap="sm">
+                    <Group wrap="nowrap" gap="xl" py={2}>
                       {p?.code ? (
-                        <Badge size="sm" variant="light" color="brand" radius="sm" style={{ width: 55 }}>
+                        <Text fz={12} fw={600} c="brand.7" miw={60} style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
                           {p.code}
-                        </Badge>
+                        </Text>
                       ) : (
-                        <Box w={55} />
+                        <Box miw={60} />
                       )}
-                      <Text size="sm">{p?.name || option.label}</Text>
+                      <Text size="sm" fw={500} c="slate.8">{p?.name || option.label}</Text>
                     </Group>
                   );
                 }}
