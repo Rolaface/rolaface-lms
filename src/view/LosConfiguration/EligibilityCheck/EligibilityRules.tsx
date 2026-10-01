@@ -70,7 +70,18 @@ export interface GetEligibilityRulesResponse {
 const formatVersion = (v?: string | null) =>
   v ? (/^v/i.test(v) ? v : `v${v}`) : "—";
 
-export function EligibilityRules({ onCreateRule, onSimulate }: { onCreateRule: () => void; onSimulate: () => void }) {
+// export function EligibilityRules({ onCreateRule, onSimulate }: { onCreateRule: () => void; onSimulate: () => void }) {
+export function EligibilityRules({
+  onCreateRule,
+  onSimulate,
+  onViewRule,
+  onEditRule,
+}: {
+  onCreateRule: () => void;
+  onSimulate: () => void;
+  onViewRule: (ruleId: string) => void;
+  onEditRule: (ruleId: string) => void;
+}) {
   const [query, setQuery] = useState("");
 
   const { data: response, isLoading, isError } = useQuery<GetEligibilityRulesResponse>({
@@ -179,8 +190,8 @@ export function EligibilityRules({ onCreateRule, onSimulate }: { onCreateRule: (
                   <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.modified_by}</Table.Td>
                   <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", borderTopRightRadius: "var(--mantine-radius-md)", borderBottomRightRadius: "var(--mantine-radius-md)", padding: "8px 12px" }}>
                     <Group gap={2} wrap="nowrap" justify="flex-end">
-                      <Tooltip label="View" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconEye size={14} /></ActionIcon></Tooltip>
-                      <Tooltip label="Edit" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconFileText size={14} /></ActionIcon></Tooltip>
+                      <Tooltip label="View" withArrow><ActionIcon size="sm" variant="subtle" color="slate" onClick={() => onViewRule(r.name)}><IconEye size={14} /></ActionIcon></Tooltip>
+                      <Tooltip label="Edit" withArrow><ActionIcon size="sm" variant="subtle" color="slate" onClick={() => onEditRule(r.name)}><IconFileText size={14} /></ActionIcon></Tooltip>
                       <Tooltip label="Duplicate" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconCopy size={14} /></ActionIcon></Tooltip>
                       <Tooltip label="Version history" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconHistory size={14} /></ActionIcon></Tooltip>
                       <Tooltip label="Disable" withArrow><ActionIcon size="sm" variant="subtle" color="orange"><IconPlayerPause size={14} /></ActionIcon></Tooltip>

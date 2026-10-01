@@ -10,6 +10,7 @@ import { Simulator } from "./Simulator";
 
 export function LosEligibilityCheck() {
   const [activeTab, setActiveTab] = useState<TabValue>("rules");
+  const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
   const theme = useMantineTheme();
 
   return (
@@ -97,11 +98,32 @@ export function LosEligibilityCheck() {
 
           <Box style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
             <Tabs.Panel value="rules">
-              <EligibilityRules onCreateRule={() => setActiveTab("create")} onSimulate={() => setActiveTab("simulate")} />
+              <EligibilityRules
+  onCreateRule={() => {
+    setSelectedRuleId(null);
+    setActiveTab("create");
+  }}
+  onSimulate={() => setActiveTab("simulate")}
+  onViewRule={(id) => {
+    setSelectedRuleId(id);
+    setActiveTab("create");
+  }}
+  onEditRule={(id) => {
+    setSelectedRuleId(id);
+    setActiveTab("create");
+  }}
+/>
             </Tabs.Panel>
 
             <Tabs.Panel value="create">
-              <CreateRule onExit={() => setActiveTab("rules")} />
+              <CreateRule
+  key={selectedRuleId ?? "new"}
+  ruleId={selectedRuleId ?? undefined}
+  onExit={() => {
+    setSelectedRuleId(null);
+    setActiveTab("rules");
+  }}
+/>
             </Tabs.Panel>
 
             <Tabs.Panel value="simulate">

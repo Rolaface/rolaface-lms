@@ -55,7 +55,7 @@ import type { CreateEligibilityRulePayload, ScoreBand } from "../../../../types/
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { openCommonModal } from "../../../../components/Modal/AlertModal";
 import { parseFrappeError } from "../../../../utils/parseFrappeError";
-import { createEligibilityRule, getEligibilityRuleById } from "../../../../api/OriginationSetupAPi/createRuleApi";
+import { createEligibilityRule, getEligibilityRuleById, updateEligibilityRule } from "../../../../api/OriginationSetupAPi/createRuleApi";
 import { InternalScoringLimit } from "./Internalscoringlimit";
 import { EligibilityFormula } from "./Eligibilityformula";
 import { PreApprovalLimits } from "./Preapprovallimits";
@@ -170,10 +170,13 @@ const [effectiveUntil, setEffectiveUntil] = useState("");
 };
 
 const saveMutation = useMutation({
-  mutationFn: (vars: { payload: CreateEligibilityRulePayload; status: "Draft" | "Active" }) =>
-    createEligibilityRule(vars.payload),
+ mutationFn: (vars: { payload: CreateEligibilityRulePayload; status: "Draft" | "Active" }) =>
+  ruleId
+    ? updateEligibilityRule(ruleId, vars.payload)
+    : createEligibilityRule(vars.payload),
   onSuccess: (_, vars) => {
-    queryClient.invalidateQueries({ queryKey: ["eligibility-rules"] }); // CONFIRM: your list query key
+    if (ruleId) queryClient.invalidateQueries({ queryKey: ["eligibility-rule", ruleId] });
+    queryClient.invalidateQueries({ queryKey: ["eligibility-rules"] }); 
     setRuleStatus(vars.status);
     showSuccess(
       vars.status === "Active" ? "Rule Published" : "Draft Saved",
