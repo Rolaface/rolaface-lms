@@ -22,3 +22,12 @@ export async function getEligibilityRules(){
     const {data} = await apiClient.get(API.createEligibilityRule.getProductAssignment);
     return data;
 }
+
+export async function updateEligibilityRule(id: string, payload: Partial<CreateEligibilityRulePayload>) {
+  const { data } = await apiClient.put<CreateEligibilityRulePayload>(
+    API.createEligibilityRule.updateProductAssignment,
+    payload,
+    { params: { id } },
+  );
+  return data;
+}
