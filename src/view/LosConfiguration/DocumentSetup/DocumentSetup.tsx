@@ -207,7 +207,21 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
     }
   };
 
-  // ---- Edit: GET get_document_setup_by_id ----
+    const openView = async (p: SetupRow) => {
+    setBusy(true);
+    try {
+      const res = await DocumentSetupApi.getById(p.id);
+      const detail = DocumentSetupApi.unwrap(res);
+      documentSetupModal.open({ mode: "view", product: p, docs: mapDocs(detail) });
+    } catch (e) {
+      console.error(e);
+      showError("Something went wrong", e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+    // ---- Edit: GET get_document_setup_by_id ----
   const openEdit = async (p: SetupRow) => {
     setBusy(true);
     try {
@@ -416,7 +430,7 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
                   <Table.Tr
                     key={p.id}
                     className="lms-row"
-                    onDoubleClick={readOnly ? undefined : () => openEdit(p)}
+                    onDoubleClick={() => openView(p)}
                     style={{ cursor: readOnly ? "default" : "pointer" }}
                   >
                     <Table.Td style={cell(true)}>
