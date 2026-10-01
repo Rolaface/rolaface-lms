@@ -101,9 +101,8 @@ const showSuccess = (heading: string, body: string = "") => {
     heading,
     subtitle: "",
     body,
-    icon: "success",
     color: "green",
-    buttons: [{ label: "Close", variant: "default" }],
+    buttons: [{ label: "Close", color: "green" }],
   });
 };
 
