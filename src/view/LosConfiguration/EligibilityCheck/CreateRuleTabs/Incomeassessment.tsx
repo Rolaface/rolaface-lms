@@ -7,6 +7,7 @@ import {
   Switch,
   ActionIcon,
   TextInput,
+  NumberInput,
 } from "@mantine/core";
 import {
   IconBriefcase,
@@ -232,34 +233,37 @@ export function IncomeAssessment({
               percentage
             </Text>
             <Group gap={4} wrap="nowrap" align="center" mt={8}>
-              <Text fz={12} c="brand.7" fw={500}>
-                Income limit = eligible monthly income ×
-              </Text>
-              <TextInput
-                type="number"
-                value={formulaParams.salaryMultiple}
-                onChange={(e) =>
-                  setFormulaParam("salaryMultiple")(Number(e.target.value) || 0)
-                }
-                size="xs"
-                w={40}
-                styles={{
-                  input: {
-                    minHeight: 24,
-                    height: 24,
-                    padding: "0 4px",
-                    textAlign: "center",
-                    fontSize: 12,
-                    borderColor: "var(--mantine-color-brand-3)",
-                    backgroundColor: "rgba(255,255,255,0.8)",
-                    fontWeight: 600,
-                  },
-                }}
-              />
-              <Text fz={12} c="brand.7" fw={500}>
-                multiple
-              </Text>
-            </Group>
+  <Text fz={12} c="brand.7" fw={500}>
+    Income limit = eligible monthly income ×
+  </Text>
+  <NumberInput
+    hideControls
+    min={0}
+    placeholder="0"
+    thousandSeparator=","
+    value={formulaParams.salaryMultiple === null ? "" : formulaParams.salaryMultiple}
+    onChange={(val) =>
+      setFormulaParam("salaryMultiple")(val === "" ? 0 : Number(val))
+    }
+    size="xs"
+    w={40}
+    styles={{
+      input: {
+        minHeight: 24,
+        height: 24,
+        padding: "0 4px",
+        textAlign: "center",
+        fontSize: 12,
+        borderColor: "var(--mantine-color-brand-3)",
+        backgroundColor: "rgba(255,255,255,0.8)",
+        fontWeight: 600,
+      },
+    }}
+  />
+  <Text fz={12} c="brand.7" fw={500}>
+    multiple
+  </Text>
+</Group>
           </Box>
         </Group>
       </InfoCard>
