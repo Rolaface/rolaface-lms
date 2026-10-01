@@ -8,6 +8,8 @@ import {
   Text,
   Title,
   ThemeIcon,
+  Modal,
+  ActionIcon,
 } from "@mantine/core";
 import {
   IconCheck,
@@ -143,8 +145,18 @@ const BLANK_FORMULA_PARAMS: FormulaParams = {
   productMax: 0,
 };
 
-export function CreateRule({ onExit, ruleId }: { onExit: () => void; ruleId?: string }) {
-  const queryClient = useQueryClient();
+export function CreateRule({
+  onExit,
+  ruleId,
+  opened,
+  viewOnly = false,
+}: {
+  onExit: () => void;
+  ruleId?: string;
+  opened: boolean;
+  viewOnly?: boolean;
+}) {  const queryClient = useQueryClient();
+  const handleModalClose = onExit;
   const [step, setStep] = useState(0);
   const [ruleName, setRuleName] = useState("");
   const [loanProduct, setLoanProduct] = useState<string | null>("");
@@ -455,16 +467,44 @@ useEffect(() => {
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
-  return (
+ return (
+ <Modal
+  opened={opened}
+  onClose={handleModalClose}
+  size="95%"
+  centered
+  withCloseButton={false}
+  padding={0}
+  radius="lg"
+  closeOnClickOutside={false}
+  closeOnEscape={false}
+  styles={{
+    content: {
+      height: "90vh",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+    },
+    body: {
+      padding: 0,
+      display: "flex",
+      flexDirection: "column",
+      minHeight: 0,
+      flex: 1,
+      overflow: "hidden",
+    },
+  }}
+>
     <Box
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100%",
+        flex: 1,
+        minHeight: 0,
+        padding: 16,
         gap: 0,
       }}
     >
-      {/* top header bar */}
       <Box
         px="lg"
         py="sm"
@@ -501,34 +541,9 @@ useEffect(() => {
             </Text>
           </Box>
           <Group gap="xs">
-            <Button
-              size="xs"
-              variant="white"
-              color="brand"
-              radius="xl"
-              fw={600}
-              loading={saveMutation.isPending}
-              onClick={() => persistRule("Draft")}
-            >
-              Save Draft
-            </Button>
-            <Button
-              size="xs"
-              radius="xl"
-              disabled={!readyToPublish}
-              loading={saveMutation.isPending}  
-              onClick={() => persistRule("Active")}
-              style={{
-                background: readyToPublish ? "white" : "rgba(255,255,255,0.3)",
-                color: readyToPublish
-                  ? "var(--mantine-color-brand-7)"
-                  : "rgba(255,255,255,0.6)",
-                fontWeight: 700,
-                border: "none",
-              }}
-            >
-              Publish v1.0
-            </Button>
+            <ActionIcon variant="white" color="brand" radius="xl" size="md" onClick={handleModalClose}>
+  <IconX size={14} />
+</ActionIcon>
           </Group>
         </Group>
         {/* progress segments */}
@@ -648,6 +663,11 @@ useEffect(() => {
               overflowY: "auto",
             }}
           >
+            <Box
+    ref={(el) => {
+      el?.toggleAttribute("inert", viewOnly);
+    }}
+  >
             {step === 0 && (
               <BasicInformation
                 ruleName={ruleName}
@@ -762,6 +782,7 @@ useEffect(() => {
                 persistRule={persistRule}
               />
             )}
+            </Box>
           </Paper>
 
           {/* nav */}
@@ -776,24 +797,54 @@ useEffect(() => {
             >
               Back
             </Button>
-            {step < STEPS.length - 1 && (
-              <Button
-                color="brand"
-                size="sm"
-                radius="xl"
-                rightSection={<IconChevronRight size={14} />}
-                onClick={next}
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-5) 100%)",
-                }}
-              >
-                Continue
-              </Button>
-            )}
+            {step < STEPS.length - 1 ? (
+  <Button
+    color="brand"
+    size="sm"
+    radius="xl"
+    rightSection={<IconChevronRight size={14} />}
+    onClick={next}
+    style={{
+      background:
+        "linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-5) 100%)",
+    }}
+  >
+    Continue
+  </Button>
+) : !viewOnly ? (
+  <Group gap="xs">
+    <Button
+      size="sm"
+      variant="default"
+      radius="xl"
+      fw={600}
+      loading={saveMutation.isPending}
+      onClick={() => persistRule("Draft")}
+    >
+      Save Draft
+    </Button>
+    <Button
+      color="brand"
+      size="sm"
+      radius="xl"
+      fw={700}
+      disabled={!readyToPublish}
+      loading={saveMutation.isPending}
+      onClick={() => persistRule("Active")}
+      style={{
+        background: readyToPublish
+          ? "linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-5) 100%)"
+          : undefined,
+      }}
+    >
+      Submit
+    </Button>
+  </Group>
+) : null}
           </Group>
         </Box>
       </Box>
-    </Box>
-  );
+      </Box>
+  </Modal>
+);
 }

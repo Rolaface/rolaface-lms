@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Box,
   Button,
@@ -23,9 +23,14 @@ import {
   IconCopy,
   IconHistory,
   IconPlayerPause,
+  IconPencil,
+  IconTrash,
 } from "@tabler/icons-react";
 import { Pill } from "./shared";
-import { getEligibilityRules } from "../../../api/OriginationSetupAPi/createRuleApi"; 
+import { getEligibilityRules, deleteEligibilityRule } from "../../../api/OriginationSetupAPi/createRuleApi"; 
+import { CreateRule } from "../EligibilityCheck/CreateRuleTabs/CreateRule";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+import { openCommonModal } from "../../../components/Modal/AlertModal";
  export interface EligibilityRuleListItem {
   name: string;
   modified_by: string;
@@ -66,30 +71,92 @@ export interface GetEligibilityRulesResponse {
   });
 };
 
-// "1.0" -> "v1.0"
 const formatVersion = (v?: string | null) =>
   v ? (/^v/i.test(v) ? v : `v${v}`) : "—";
 
-// export function EligibilityRules({ onCreateRule, onSimulate }: { onCreateRule: () => void; onSimulate: () => void }) {
-export function EligibilityRules({
-  onCreateRule,
-  onSimulate,
-  onViewRule,
-  onEditRule,
-}: {
-  onCreateRule: () => void;
-  onSimulate: () => void;
-  onViewRule: (ruleId: string) => void;
-  onEditRule: (ruleId: string) => void;
-}) {
+export function EligibilityRules({ onSimulate }: { onSimulate: () => void }) {
   const [query, setQuery] = useState("");
 
+  const [createOpen, setCreateOpen] = useState(false);
+  const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
+
+ const [viewOnly, setViewOnly] = useState(false);
+
+const openCreate = () => {
+  setSelectedRuleId(null);
+  setViewOnly(false);
+  setCreateOpen(true);
+};
+const openRule = (id: string, readOnly: boolean) => {
+  setSelectedRuleId(id);
+  setViewOnly(readOnly);
+  setCreateOpen(true);
+};
+const closeModal = () => {
+  setCreateOpen(false);
+  setSelectedRuleId(null);
+  setViewOnly(false);
+};
   const { data: response, isLoading, isError } = useQuery<GetEligibilityRulesResponse>({
     queryKey: ["eligibility-rules"],
     queryFn: getEligibilityRules,
   });
 
   const rules = response?.data ?? [];
+  const queryClient = useQueryClient();
+   const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
+  const deleteMutation = useMutation({
+  mutationFn: deleteEligibilityRule,
+  onSuccess: (_, variables) => {
+    queryClient.invalidateQueries({ queryKey: ["eligibility-rules"] });
+    showSuccess(
+      "Rule Deleted",
+      `Eligibility rule ${variables} deleted successfully.`,
+    );
+  },
+  onError: (error: any) => {
+    openCommonModal({
+      heading: "Action Failed",
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  },
+});
+
+const confirmDelete = (id: string) => {
+  openCommonModal({
+    heading: "Delete Eligibility Rule",
+    subtitle: "This action cannot be undone.",
+    body: (
+      <>
+        Are you sure you want to delete{" "}
+        <Text span fw={600}>
+          {id}
+        </Text>
+        ?
+      </>
+    ),
+    color: "red",
+    buttons: [
+      { label: "Cancel", variant: "default" },
+      {
+        label: "Delete",
+        color: "red",
+        onClick: () => deleteMutation.mutate(id),
+      },
+    ],
+  });
+};
 
   const filtered = rules.filter((r) =>
     (r.rule_name || "").toLowerCase().includes(query.toLowerCase()),
@@ -121,6 +188,16 @@ export function EligibilityRules({
           <Button size="xs" radius="sm" variant="default" leftSection={<IconUpload size={14} />} style={{ height: 26 }}>Import Rules</Button>
           <Button size="xs" radius="sm" variant="default" leftSection={<IconDownload size={14} />} style={{ height: 26 }}>Export Rules</Button>
         </Group>
+       <Button
+  size="xs"
+  radius="sm"
+  color="brand"
+  leftSection={<IconPlus size={14} />}
+  style={{ height: 26 }}
+  onClick={openCreate}
+>
+  Create Rule
+</Button>
       </Group>
 
       <SimpleGrid cols={{ base: 2, md: 5 }} spacing="sm" mt="md">
@@ -190,8 +267,9 @@ export function EligibilityRules({
                   <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.modified_by}</Table.Td>
                   <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", borderTopRightRadius: "var(--mantine-radius-md)", borderBottomRightRadius: "var(--mantine-radius-md)", padding: "8px 12px" }}>
                     <Group gap={2} wrap="nowrap" justify="flex-end">
-                      <Tooltip label="View" withArrow><ActionIcon size="sm" variant="subtle" color="slate" onClick={() => onViewRule(r.name)}><IconEye size={14} /></ActionIcon></Tooltip>
-                      <Tooltip label="Edit" withArrow><ActionIcon size="sm" variant="subtle" color="slate" onClick={() => onEditRule(r.name)}><IconFileText size={14} /></ActionIcon></Tooltip>
+                      <Tooltip label="View" withArrow><ActionIcon size="sm" variant="subtle" color="slate" onClick={() => openRule(r.name, true)}><IconEye size={14} /></ActionIcon></Tooltip>
+                      <Tooltip label="Edit" withArrow><ActionIcon size="sm" variant="subtle" color="slate" onClick={() => openRule(r.name, false)}><IconPencil size={14} /></ActionIcon></Tooltip>
+                      <Tooltip label="Delete" withArrow><ActionIcon size="sm" variant="subtle" color="danger" onClick={() => confirmDelete(r.name)}><IconTrash size={14} /></ActionIcon></Tooltip>
                       <Tooltip label="Duplicate" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconCopy size={14} /></ActionIcon></Tooltip>
                       <Tooltip label="Version history" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconHistory size={14} /></ActionIcon></Tooltip>
                       <Tooltip label="Disable" withArrow><ActionIcon size="sm" variant="subtle" color="orange"><IconPlayerPause size={14} /></ActionIcon></Tooltip>
@@ -203,6 +281,14 @@ export function EligibilityRules({
           </Table.Tbody>
         </Table>
       </Paper>
+      {createOpen && (
+  <CreateRule
+  opened={createOpen}
+  ruleId={selectedRuleId ?? undefined}
+  viewOnly={viewOnly}
+  onExit={closeModal}
+/>
+)}
     </Box>
   );
 }
