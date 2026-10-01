@@ -52,6 +52,7 @@ export interface CreateEligibilityRulePayload {
   rule_name: string;
   loan_product: string;
   effective_from: string;
+  effective_to: string | null;
   income_sources: IncomeSource[];
   obligation_sources: ObligationSource[];
   credit_bands: ScoreBand[];

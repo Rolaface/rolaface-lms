@@ -15,6 +15,10 @@ interface BasicInformationProps {
   setRuleStatus: (v: string | null) => void;
   formulaParams: FormulaParams;
   setFormulaParam: SetFormulaParam;
+  effectiveFrom: string;
+  setEffectiveFrom: (v: string) => void;
+  effectiveUntil: string;
+  setEffectiveUntil: (v: string) => void;
 }
 export function BasicInformation({
   ruleName,
@@ -27,6 +31,10 @@ export function BasicInformation({
   setRuleStatus,
   formulaParams,
   setFormulaParam,
+  effectiveFrom,
+  setEffectiveFrom,
+  effectiveUntil,
+  setEffectiveUntil,
 }: BasicInformationProps) {
   const { data: productResponse, isLoading: isProductsLoading, refetch: refetchProducts } = useQuery({
     queryKey: ["loanProducts"],
@@ -260,32 +268,35 @@ export function BasicInformation({
                 />
               </Grid.Col>
               <Grid.Col span={4}>
-                <Box mb={1}>
-                  <Text fz={10} fw={500} c="slate.7">
-                    Effective from
-                  </Text>
-                </Box>
-                <TextInput
-                  radius="md"
-                  size="xs"
-                  type="date"
-                  defaultValue={new Date().toISOString().split("T")[0]}
-                  styles={{ input: { minHeight: 26, height: 26 } }}
-                />
-              </Grid.Col>
-              <Grid.Col span={4}>
-                <Box mb={1}>
-                  <Text fz={10} fw={500} c="slate.7">
-                    Effective until
-                  </Text>
-                </Box>
-                <TextInput
-                  radius="md"
-                  size="xs"
-                  type="date"
-                  styles={{ input: { minHeight: 26, height: 26 } }}
-                />
-              </Grid.Col>
+  <Box mb={1}>
+    <Text fz={10} fw={500} c="slate.7">
+      Effective from
+    </Text>
+  </Box>
+  <TextInput
+    radius="md"
+    size="xs"
+    type="date"
+    value={effectiveFrom}
+    onChange={(e) => setEffectiveFrom(e.target.value)}
+    styles={{ input: { minHeight: 26, height: 26 } }}
+  />
+</Grid.Col>
+<Grid.Col span={4}>
+  <Box mb={1}>
+    <Text fz={10} fw={500} c="slate.7">
+      Effective until
+    </Text>
+  </Box>
+  <TextInput
+    radius="md"
+    size="xs"
+    type="date"
+    value={effectiveUntil}
+    onChange={(e) => setEffectiveUntil(e.target.value)}
+    styles={{ input: { minHeight: 26, height: 26 } }}
+  />
+</Grid.Col>
             </Grid>
           </Grid.Col>
         </Grid>
