@@ -36,9 +36,8 @@ import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { IconText } from "../../Customer/CustomerTableCells";
 import { DocumentSetupApi } from "../../../api/LosConfiguration/DocumentSetupApi";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
-
 import { documentSetupModal } from "../../../components/Modal/documentSetupModalStore";
-import { DocumentSetupModal } from "../../../components/Modal/DocumentSetupModal";
+
 
 export interface DocumentConfig {
   id: string;
@@ -197,7 +196,7 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
         });
         return;
       }
-      setModal({ mode: "add", products });
+      documentSetupModal.open({ mode: "add", products, onSuccess: async (productId, docs) => { await onSave?.(productId, docs); showSuccess("Documents Saved", "Documents have been saved successfully."); await loadList(); } });
     } catch (e) {
       console.error(e);
       showError("Something went wrong", e);
@@ -514,8 +513,10 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
         </Group>
       </Paper>
 
-      <DocumentSetupModal />
+      
     </Stack>
   );
 }
+
+
 

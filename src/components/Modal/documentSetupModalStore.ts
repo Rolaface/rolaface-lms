@@ -1,13 +1,6 @@
-import { createStore } from "zustand";
-
-export interface SetupRow {
-  id: string;
-  name: string;
-  code?: string;
-  documentCount: number;
-  requiredCount: number;
-  updatedAt: string;
-}
+import { IconFiles } from "@tabler/icons-react";
+import { createModal } from "../../store/modal store/createModal";
+import { DocumentSetupModal } from "./DocumentSetupModal";
 
 export interface DocumentConfig {
   id: string;
@@ -21,8 +14,13 @@ export interface ProductOption {
   code?: string;
 }
 
-export interface DocumentSetupModalState {
-  opened: boolean;
+export interface SetupRow extends ProductOption {
+  documentCount: number;
+  requiredCount: number;
+  updatedAt: string;
+}
+
+export interface DocumentSetupModalParams {
   mode: "add" | "edit" | null;
   products?: ProductOption[];
   product?: SetupRow;
@@ -30,13 +28,23 @@ export interface DocumentSetupModalState {
   onSuccess?: (productId: string, docs: DocumentConfig[]) => void;
 }
 
-export const documentSetupModalStore = createStore<DocumentSetupModalState>(() => ({
-  opened: false,
-  mode: null,
-}));
+function getTitle(params: DocumentSetupModalParams) {
+  if (params.mode === "edit") return "Edit product documents";
+  return "Add product documents";
+}
 
-export const documentSetupModal = {
-  open: (state: Omit<DocumentSetupModalState, "opened">) =>
-    documentSetupModalStore.setState({ opened: true, ...state }),
-  close: () => documentSetupModalStore.setState({ opened: false, mode: null, products: undefined, product: undefined, docs: undefined, onSuccess: undefined }),
-};
+export const documentSetupModal = createModal(
+  "documentSetup",
+  DocumentSetupModal,
+  {
+    icon: IconFiles,
+    getTitle,
+    buildProps: (params) => ({
+      mode: params.mode ?? null,
+      products: params.products,
+      product: params.product,
+      docs: params.docs,
+      onSuccess: params.onSuccess,
+    }),
+  }
+);
