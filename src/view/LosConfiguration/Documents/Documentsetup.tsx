@@ -220,17 +220,45 @@ function DocumentsModal({
       <Stack gap="md">
         {/* Prevent Select from autofocusing and opening */}
         <div tabIndex={-1} data-autofocus style={{ outline: "none", position: "absolute", opacity: 0 }} />
-        <Select
-          label="Loan product"
-          radius="md"
-          searchable
-          allowDeselect={false}
-          disabled={!!editingId}
-          data={productOptions.map((p) => ({ value: p.id, label: productLabel(p) }))}
-          value={productId}
-          onChange={setProductId}
-          nothingFoundMessage="No products found"
-        />
+        {(() => {
+            const selectedProd = productOptions.find(p => p.id === productId);
+            return (
+              <Select
+                label="Loan product"
+                radius="md"
+                searchable
+                allowDeselect={false}
+                disabled={!!editingId}
+                data={productOptions.map((p) => ({ value: p.id, label: p.name }))}
+                value={productId}
+                onChange={setProductId}
+                nothingFoundMessage="No products found"
+                leftSection={
+                  selectedProd?.code ? (
+                    <Badge size="xs" variant="light" color="brand" radius="sm">
+                      {selectedProd.code}
+                    </Badge>
+                  ) : undefined
+                }
+                leftSectionWidth={selectedProd?.code ? 65 : 36}
+                renderOption={({ option }) => {
+                  const p = productOptions.find((x) => x.id === option.value);
+                  return (
+                    <Group wrap="nowrap" gap="sm">
+                      {p?.code ? (
+                        <Badge size="sm" variant="light" color="brand" radius="sm" style={{ width: 55 }}>
+                          {p.code}
+                        </Badge>
+                      ) : (
+                        <Box w={55} />
+                      )}
+                      <Text size="sm">{p?.name || option.label}</Text>
+                    </Group>
+                  );
+                }}
+              />
+            );
+          })()}
 
         <Box>
           <Group gap={6} mb={8}>

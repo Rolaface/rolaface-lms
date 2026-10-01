@@ -83,17 +83,17 @@ export const updateSource = async (
   name: string,
   payload: Partial<Source>
 ): Promise<Source> => {
-  const { data } = await apiClient.patch(API.losChannel.update, payload, { params: { id: name } });
+  const { data } = await apiClient.put(API.losChannel.update, payload, { params: { id: name } });
   return data;
 };
 
 export const disableSource = async (name: string): Promise<any> => {
-  const { data } = await apiClient.patch(API.losChannel.disable, {}, { params: { id: name } });
+  const { data } = await apiClient.put(API.losChannel.disable, {}, { params: { id: name } });
   return data;
 };
 
 export const enableSource = async (name: string): Promise<any> => {
-  const { data } = await apiClient.patch(API.losChannel.enable, {}, { params: { id: name } });
+  const { data } = await apiClient.put(API.losChannel.enable, {}, { params: { id: name } });
   return data;
 };
 
