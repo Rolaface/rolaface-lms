@@ -481,6 +481,15 @@ export const API = {
     getaccounts: `${ERP_BASE}/api/resource/Account`,
     getallusers: `${ERP_BASE}/api/resource/User`,
   },
+losDocumentSetup: {
+  create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.document_setup.api.create_document_setup`,
+  getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.document_setup.api.get_document_setups`,
+  getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.document_setup.api.get_document_setup_by_id`,
+  getProductsWithoutDocuments: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.document_setup.api.get_products_without_documents`,
+  update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.document_setup.api.update_document_setup`,
+  delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.document_setup.api.delete_document_setup`,
+},
+  
   losPreScreening: {
     create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.create_ruleset`,
     getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.get_rulesets`,
