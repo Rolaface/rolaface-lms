@@ -25,15 +25,11 @@ import {
   IconX,
   IconClipboardCheck,
 } from "@tabler/icons-react";
-// import { STEPS, DEFAULT_WEIGHTS, riskTier, type WeightItem } from "./shared";
 import {
   INCOME_SOURCES,
   OBLIGATION_SOURCES,
   DEFAULT_CREDIT_BANDS,
-  DEFAULT_COLLATERAL_ITEMS,
   DEFAULT_FORMULA_PARAMS,
-  DEFAULT_HARD_STOPS,
-  DEFAULT_MANUAL_REVIEWS,
   COLLATERAL_TYPES,
   RULE_FACTORS,
   RULE_OPERATORS,
@@ -60,13 +56,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { openCommonModal } from "../../../../components/Modal/AlertModal";
 import { parseFrappeError } from "../../../../utils/parseFrappeError";
 import { createEligibilityRule, getEligibilityRuleById } from "../../../../api/OriginationSetupAPi/createRuleApi";
-// import { InternalScoringLimit } from "./InternalScoringLimit";
-// import { EligibilityFormula } from "./EligibilityFormula";
-// import { PreApprovalLimits } from "./PreApprovalLimits";
-// import { DecisionRules } from "./DecisionRules";
-// import { ReviewPublish } from "./ReviewPublish";
+import { InternalScoringLimit } from "./Internalscoringlimit";
+import { EligibilityFormula } from "./Eligibilityformula";
+import { PreApprovalLimits } from "./Preapprovallimits";
+import { DecisionRules } from "./Decisionrules";
+import { ReviewPublish } from "./Reviewpublish";
 
-// export type { ObligationDef } from "./RuleShared";
 export type WeightItem = { w: number; label: string };
 
 export const STEPS = [
@@ -118,24 +113,46 @@ const STEP_ICONS = [
   IconClipboardCheck,
 ];
 
+const BLANK_INCOME_SOURCES: IncomeSourceTuple[] = INCOME_SOURCES.map(
+  ([name]) => [name, 0, false, false] as IncomeSourceTuple,
+);
+const BLANK_OBLIGATION_SOURCES: ObligationDef[] = OBLIGATION_SOURCES.map(
+  (o) => ({ ...o, pct: 0, ver: false, inc: false }),
+);
+const BLANK_CREDIT_BANDS: CreditBand[] = DEFAULT_CREDIT_BANDS.map((b) => ({
+  ...b,
+  min: "",
+  multiple: "",
+  basis: "",
+  decision: "",
+}));
+const BLANK_INTERNAL_BANDS: CreditBand[] = [
+  { id: "ib1", grade: "A", min: "", multiple: "", basis: "", decision: "" },
+  { id: "ib2", grade: "B", min: "", multiple: "", basis: "", decision: "" },
+  { id: "ib3", grade: "C", min: "", multiple: "", basis: "", decision: "" },
+  { id: "ib4", grade: "D", min: "", multiple: "", basis: "", decision: "" },
+  { id: "ib5", grade: "E", min: "", multiple: "", basis: "", decision: "" },
+];
+
+const BLANK_FORMULA_PARAMS: FormulaParams = {
+  ...DEFAULT_FORMULA_PARAMS,
+  salaryMultiple: 0,
+  maxEmiRatio: 0,
+  maxDtiRatio: 0,
+  affordabilityBuffer: 0,
+  productMax: 0,
+};
+
 export function CreateRule({ onExit, ruleId }: { onExit: () => void; ruleId?: string }) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
-  const [ruleName, setRuleName] = useState(
-    "Standard Personal Loan Eligibility",
-  );
-  const [loanProduct, setLoanProduct] = useState<string | null>(
-    "Personal Loan",
-  );
-  const [riskCategory, setRiskCategory] = useState<string | null>(
-    "Medium Risk",
-  );
-  const [ruleStatus, setRuleStatus] = useState<string | null>("Draft");
-  // const [weights, setWeights] = useState<WeightItem[]>(DEFAULT_WEIGHTS);
-  // const totalWeight = weights.reduce((s, x) => s + Number(x.w || 0), 0);
-  const totalWeight = 100;
+  const [ruleName, setRuleName] = useState("");
+  const [loanProduct, setLoanProduct] = useState<string | null>("");
+  const [riskCategory, setRiskCategory] = useState<string | null>("");
+  const [ruleStatus, setRuleStatus] = useState<string | null>("");
+   const totalWeight = 100;
   const [formulaParams, setFormulaParams] = useState<FormulaParams>(
-    DEFAULT_FORMULA_PARAMS,
+    BLANK_FORMULA_PARAMS,
   );
   const setFormulaParam = (k: keyof FormulaParams) => (v: number) =>
     setFormulaParams((p) => ({ ...p, [k]: v }));
@@ -208,7 +225,7 @@ const persistRule = (status: "Draft" | "Active") => {
   saveMutation.mutate({ payload, status });
 };
   const [incomeSources, setIncomeSources] =
-    useState<IncomeSourceTuple[]>(INCOME_SOURCES);
+    useState<IncomeSourceTuple[]>(BLANK_INCOME_SOURCES);
   const updateIncomeSource = (
     index: number,
     patch: Partial<{ pct: number; ver: boolean; inc: boolean }>,
@@ -229,7 +246,7 @@ const persistRule = (status: "Draft" | "Active") => {
   };
 
   const [obligationSources, setObligationSources] =
-    useState<ObligationDef[]>(OBLIGATION_SOURCES);
+    useState<ObligationDef[]>(BLANK_OBLIGATION_SOURCES);
   const updateObligationSource = (
     index: number,
     patch: Partial<ObligationDef>,
@@ -246,7 +263,7 @@ const persistRule = (status: "Draft" | "Active") => {
     );
   };
   const [creditBands, setCreditBands] =
-    useState<CreditBand[]>(DEFAULT_CREDIT_BANDS);
+    useState<CreditBand[]>(BLANK_CREDIT_BANDS);
   const sampleCreditBand = useMemo(
     () => creditBandFor(FORMULA_SAMPLE.creditScore, creditBands),
     [creditBands],
@@ -274,48 +291,8 @@ const persistRule = (status: "Draft" | "Active") => {
       bands.length > 1 ? bands.filter((b) => b.id !== id) : bands,
     );
 
-  const [internalBands, setInternalBands] = useState<CreditBand[]>([
-    {
-      id: "ib1",
-      grade: "A",
-      min: 80,
-      multiple: 5,
-      basis: "Basic Salary",
-      decision: "Eligible",
-    },
-    {
-      id: "ib2",
-      grade: "B",
-      min: 60,
-      multiple: 3,
-      basis: "Basic Salary",
-      decision: "Eligible",
-    },
-    {
-      id: "ib3",
-      grade: "C",
-      min: 40,
-      multiple: 1.5,
-      basis: "Basic Salary",
-      decision: "Conditional",
-    },
-    {
-      id: "ib4",
-      grade: "D",
-      min: 20,
-      multiple: 0.5,
-      basis: "Basic Salary",
-      decision: "Manual Review",
-    },
-    {
-      id: "ib5",
-      grade: "E",
-      min: 0,
-      multiple: 0,
-      basis: "Basic Salary",
-      decision: "Decline",
-    },
-  ]);
+  const [internalBands, setInternalBands] =
+    useState<CreditBand[]>(BLANK_INTERNAL_BANDS);
   const updateInternalBand = (id: string, patch: Partial<CreditBand>) =>
     setInternalBands((bands) =>
       bands.map((b) => (b.id === id ? { ...b, ...patch } : b)),
@@ -338,9 +315,7 @@ const persistRule = (status: "Draft" | "Active") => {
     setInternalBands((bands) =>
       bands.length > 1 ? bands.filter((b) => b.id !== id) : bands,
     );
-  const [collateralItems, setCollateralItems] = useState<CollateralItem[]>(
-    DEFAULT_COLLATERAL_ITEMS,
-  );
+  const [collateralItems, setCollateralItems] = useState<CollateralItem[]>([]);
   const updateCollateralItem = (id: string, patch: Partial<CollateralItem>) =>
     setCollateralItems((items) =>
       items.map((it) => (it.id === id ? { ...it, ...patch } : it)),
@@ -386,7 +361,7 @@ const persistRule = (status: "Draft" | "Active") => {
     sampleTier && sampleTier.pct > 0
       ? Math.min(formulaPreview.final * (sampleTier.pct / 100), sampleTier.max)
       : 0;
-  const [hardStops, setHardStops] = useState<HardStop[]>(DEFAULT_HARD_STOPS);
+  const [hardStops, setHardStops] = useState<HardStop[]>([]);
   const addHardStop = () =>
     setHardStops((hs) => [
       ...hs,
@@ -402,9 +377,7 @@ const persistRule = (status: "Draft" | "Active") => {
   const removeHardStop = (id: string) =>
     setHardStops((hs) => hs.filter((x) => x.id !== id));
 
-  const [manualReviews, setManualReviews] = useState<ManualReviewRule[]>(
-    DEFAULT_MANUAL_REVIEWS,
-  );
+  const [manualReviews, setManualReviews] = useState<ManualReviewRule[]>([]);
   const { data: ruleResponse } = useQuery({
   queryKey: ["eligibility-rule", ruleId],
   queryFn: () => getEligibilityRuleById(ruleId as string),
@@ -720,7 +693,7 @@ useEffect(() => {
               />
             )}
 
-            {/* {step === 5 && (
+            {step === 5 && (
               <InternalScoringLimit
                 internalBands={internalBands}
                 updateInternalBand={updateInternalBand}
@@ -778,7 +751,7 @@ useEffect(() => {
                 preApprovedPreview={preApprovedPreview}
                 persistRule={persistRule}
               />
-            )} */}
+            )}
           </Paper>
 
           {/* nav */}
@@ -814,5 +787,3 @@ useEffect(() => {
     </Box>
   );
 }
-
- 

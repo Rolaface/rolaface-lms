@@ -1,4 +1,4 @@
-import { Box, Paper, Title, Text, Grid, TextInput, Select } from "@mantine/core";
+import { Box, Paper, Title, Text, Grid, TextInput, Select, NumberInput } from "@mantine/core";
 import type { FormulaParams, SetFormulaParam } from "./Ruleshared";
 import { useQuery } from "@tanstack/react-query";
 import { getAllLoanProducts } from "../../../../api/productApi";
@@ -165,30 +165,25 @@ export function BasicInformation({
                 />
               </Grid.Col>
               <Grid.Col span={3}>
-                <Box mb={1}>
-                  <Text fz={10} fw={500} c="slate.7">
-                    Maximum amount
-                  </Text>
-                </Box>
-                <TextInput
-                  radius="md"
-                  size="xs"
-                  type="number"
-                  value={formulaParams.productMax}
-                  onChange={(e) =>
-                    setFormulaParam("productMax")(
-                      e.target.value === "" ? 0 : Number(e.target.value),
-                    )
-                  }
-                  rightSection={
-                    <Text fz={9} c="dimmed" mr={8}>
-                      ZMW
-                    </Text>
-                  }
-                  rightSectionWidth={36}
-                  styles={{ input: { minHeight: 26, height: 26 } }}
-                />
-              </Grid.Col>
+  <NumberInput
+    label="Maximum amount"
+    hideControls
+    min={0}
+    placeholder="0"
+    thousandSeparator=","
+    value={formulaParams.productMax}
+    onChange={(val) => setFormulaParam("productMax")(val === "" ? 0 : Number(val))}
+    rightSection={
+      <Text fz={9} c="dimmed" mr={8}>
+        ZMW
+      </Text>
+    }
+    rightSectionWidth={36}
+    radius="md"
+    size="xs"
+    styles={{ input: { minHeight: 26, height: 26 } }}
+  />
+</Grid.Col>
               <Grid.Col span={3}>
                 <Box mb={1}>
                   <Text fz={10} fw={500} c="slate.7">
@@ -215,7 +210,6 @@ export function BasicInformation({
                 <Select
                   radius="md"
                   size="xs"
-                  defaultValue="Individual"
                   data={["Individual", "Employee", "SME", "Corporate"]}
                   styles={{ input: { minHeight: 26, height: 26 } }}
                 />
@@ -229,7 +223,6 @@ export function BasicInformation({
                 <Select
                   radius="md"
                   size="xs"
-                  defaultValue="New Customer"
                   data={[
                     "New Customer",
                     "Existing Customer",
