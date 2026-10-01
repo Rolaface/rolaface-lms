@@ -22,7 +22,7 @@ export interface SetupRow extends ProductOption {
 }
 
 export interface DocumentSetupModalParams {
-  mode: "add" | "edit" | null;
+  mode: "view" | "add" | "edit" | null;
   products?: ProductOption[];
   product?: SetupRow;
   docs?: DocumentConfig[];
@@ -30,7 +30,8 @@ export interface DocumentSetupModalParams {
 }
 
 function getTitle(params: DocumentSetupModalParams) {
-  if (params.mode === "edit") return "Edit product documents";
+  if (params.mode === 'view') return 'View product documents';
+  if (params.mode === 'edit') return 'Edit product documents';
   return "Add product documents";
 }
 
@@ -49,4 +50,6 @@ export const documentSetupModal = createModal(
     }),
   }
 );
+
+
 
