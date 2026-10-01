@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
   Badge,
@@ -33,9 +33,8 @@ import {
 import dayjs from "dayjs";
 
 import { openCommonModal } from "../../../components/Modal/AlertModal";
-import { showSuccess } from "../../../utils/alert";
 import { IconText } from "../../Customer/CustomerTableCells";
-
+import { DocumentSetupApi } from "../../../api/LosConfiguration/DocumentSetupApi";
 export interface DocumentConfig {
   id: string;
   name: string;
@@ -48,52 +47,76 @@ export interface ProductOption {
   code?: string;
 }
 
-export interface ProductDocumentEntry {
-  docs: DocumentConfig[];
+/** One row of the table (a product that already has documents) */
+interface SetupRow extends ProductOption {
+  documentCount: number;
+  requiredCount: number;
   updatedAt: string;
 }
 
-/** Default documents for every configured product, keyed by product id */
-export type DocumentSetupConfig = Record<string, ProductDocumentEntry>;
+type ModalState =
+  | { mode: "add"; products: ProductOption[] }
+  | { mode: "edit"; product: ProductOption; docs: DocumentConfig[] }
+  | null;
 
 interface DocumentSetupProps {
-  products?: ProductOption[];
-  initialConfig?: DocumentSetupConfig;
   /** Called with `null` docs when a product's documents are removed */
   onSave?: (productId: string, docs: DocumentConfig[] | null) => void | Promise<void>;
   readOnly?: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 const nextId = () => Math.random().toString(36).slice(2, 10);
 const doc = (name: string, required = true): DocumentConfig => ({ id: nextId(), name, required });
-const today = () => dayjs().format("DD MMM YYYY");
+const productLabel = (p: ProductOption) => (p.code ? `${p.name} (${p.code})` : p.name);
 
-const DUMMY_PRODUCTS: ProductOption[] = [
-  { id: "EDU-01", name: "Study Loan", code: "EDU-01" },
-  { id: "HL-PUR", name: "Home Purchase Loan", code: "HL-PUR" },
-  { id: "AL-NEW", name: "New Vehicle Loan", code: "AL-NEW" },
-  { id: "AL-USED", name: "Used Vehicle Loan", code: "AL-USED" },
-  { id: "PL-STF", name: "Staff Loan", code: "PL-STF" },
-];
+/**
+ * ⚠️ Field names neeche fallback ke saath guess kiye hain.
+ * Swagger/Network tab mein actual response dekh ke yahin adjust kar lena.
+ */
+const mapSetupRow = (r: any): SetupRow => ({
+  id: r.loan_product ?? r.name ?? r.id,
+  name: r.loan_product_name ?? r.product_name ?? r.loan_product ?? r.name,
+  code: r.product_code ?? r.code ?? r.loan_product ?? r.name,
+  documentCount: Number(r.document_count ?? r.documents_count ?? r.total_documents ?? 0),
+  requiredCount: Number(r.required_count ?? r.required_documents ?? r.required_document_count ?? 0),
+  updatedAt: r.modified ? dayjs(r.modified).format("DD MMM YYYY") : "-",
+});
 
-const DUMMY_CONFIG: DocumentSetupConfig = {
-  "HL-PUR": {
-    updatedAt: "12 Sep 2026",
-    docs: [
-      doc("NRC copy"),
-      doc("Last 3 payslips"),
-      doc("Offer letter / title deed"),
-      doc("Bank statement (6 months)"),
-      doc("Proof of residence", false),
-    ],
-  },
-  "PL-STF": {
-    updatedAt: "28 Aug 2026",
-    docs: [doc("NRC copy"), doc("Last 3 payslips"), doc("Bank statement (3 months)", false)],
-  },
+const mapProductOption = (r: any): ProductOption => ({
+  id: r.name ?? r.id ?? r.loan_product,
+  name: r.product_name ?? r.loan_product_name ?? r.name,
+  code: r.product_code ?? r.code ?? r.name,
+});
+
+const mapDocs = (detail: any): DocumentConfig[] =>
+  (detail?.documents ?? []).map((d: any) => doc(d.document_name, Number(d.is_required) === 1));
+
+const errorMessage = (e: any) =>
+  e?.response?.data?.exception ?? e?.response?.data?.message ?? e?.message ?? "Something went wrong.";
+
+
+const showSuccess = (heading: string, body: string = "") => {
+  openCommonModal({
+    heading,
+    subtitle: "",
+    body,
+    icon: "success",
+    color: "green",
+    buttons: [{ label: "Close", variant: "default" }],
+  });
 };
 
-const productLabel = (p: ProductOption) => (p.code ? `${p.name} (${p.code})` : p.name);
+const showFail = (body: string) =>
+  openCommonModal({
+    heading: "Something went wrong",
+    body,
+    color: "red",
+    buttons: [{ label: "Close" }],
+  });
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
@@ -199,6 +222,8 @@ function DocumentsModal({
       }
     >
       <Stack gap="md">
+        {/* Prevent Select from autofocusing and opening */}
+        <div tabIndex={-1} data-autofocus style={{ outline: "none", position: "absolute", opacity: 0 }} />
         <Select
           label="Loan product"
           radius="md"
@@ -344,56 +369,112 @@ function DocumentsModal({
 // Page
 // ---------------------------------------------------------------------------
 
-export function DocumentSetup({
-  products = DUMMY_PRODUCTS,
-  initialConfig = DUMMY_CONFIG,
-  onSave,
-  readOnly = false,
-}: DocumentSetupProps) {
+export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) {
   const theme = useMantineTheme();
-  const [config, setConfig] = useState<DocumentSetupConfig>(initialConfig);
+
+  const [rows, setRows] = useState<SetupRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false); // add/edit pre-fetch in progress
+
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  // undefined = closed, null = adding, string = editing that product
-  const [editing, setEditing] = useState<string | null | undefined>(undefined);
+  const [modal, setModal] = useState<ModalState>(null);
 
-  const configured = useMemo(() => products.filter((p) => config[p.id]), [products, config]);
-  const unconfigured = useMemo(() => products.filter((p) => !config[p.id]), [products, config]);
+  // ---- load list (GET get_document_setups) ----
+  const loadList = async () => {
+    setLoading(true);
+    try {
+      const res = await DocumentSetupApi.getAll(1, 1000);
+      setRows(DocumentSetupApi.unwrapList(res).map(mapSetupRow));
+    } catch (e) {
+      console.error(e);
+      showFail(errorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    loadList();
+  }, []);
+
+  // ---- filter + client-side pagination ----
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return configured.filter((p) => `${p.name} ${p.code ?? ""}`.toLowerCase().includes(q));
-  }, [configured, search]);
+    return rows.filter((p) => `${p.name} ${p.code ?? ""}`.toLowerCase().includes(q));
+  }, [rows, search]);
 
   const totalRows = filtered.length;
   const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
   const safePage = Math.min(page, totalPages);
-  const rows = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const pageRows = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
   const firstRow = totalRows === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const lastRow = Math.min(totalRows, safePage * pageSize);
 
-  const openAdd = () => {
-    if (unconfigured.length === 0) {
-      openCommonModal({
-        heading: "All products are set up",
-        body: "Every product already has documents. Edit one from the table.",
-        color: "blue",
-        buttons: [{ label: "Close" }],
-      });
-      return;
+  // ---- Add: GET get_products_without_documents ----
+  const openAdd = async () => {
+    setBusy(true);
+    try {
+      const res = await DocumentSetupApi.getProductsWithoutDocuments();
+      const products = DocumentSetupApi.unwrapList(res).map(mapProductOption);
+      if (products.length === 0) {
+        openCommonModal({
+          heading: "All products are set up",
+          body: "Every product already has documents. Edit one from the table.",
+          color: "blue",
+          buttons: [{ label: "Close" }],
+        });
+        return;
+      }
+      setModal({ mode: "add", products });
+    } catch (e) {
+      console.error(e);
+      showFail(errorMessage(e));
+    } finally {
+      setBusy(false);
     }
-    setEditing(null);
   };
 
+  // ---- Edit: GET get_document_setup_by_id ----
+  const openEdit = async (p: SetupRow) => {
+    setBusy(true);
+    try {
+      const res = await DocumentSetupApi.getById(p.id);
+      const detail = DocumentSetupApi.unwrap(res);
+      setModal({ mode: "edit", product: p, docs: mapDocs(detail) });
+    } catch (e) {
+      console.error(e);
+      showFail(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ---- Save: POST create_document_setup / PUT update_document_setup ----
   const save = async (productId: string, docs: DocumentConfig[]) => {
-    await onSave?.(productId, docs);
-    setConfig((prev) => ({ ...prev, [productId]: { docs, updatedAt: today() } }));
-    setEditing(undefined);
-    showSuccess("Documents saved");
+    const payload = {
+      loan_product: productId,
+      documents: docs.map((d) => ({ document_name: d.name, is_required: d.required ? 1 : 0 })),
+    };
+    try {
+      if (modal?.mode === "edit") {
+        await DocumentSetupApi.update(productId, payload);
+      } else {
+        await DocumentSetupApi.create(payload);
+      }
+      await onSave?.(productId, docs);
+      setModal(null);
+      showSuccess("Documents Saved", "Documents have been saved successfully.");
+      await loadList();
+    } catch (e) {
+      console.error(e);
+      showFail(errorMessage(e));
+    }
   };
 
-  const remove = (p: ProductOption) =>
+  // ---- Delete: DELETE delete_document_setup ----
+  const confirmRemove = (p: SetupRow) =>
     openCommonModal({
       heading: "Remove documents",
       body: `Remove all documents for ${p.name}? Applicants for this product will no longer be asked for any documents.`,
@@ -404,13 +485,15 @@ export function DocumentSetup({
           label: "Remove",
           color: "red",
           onClick: async () => {
-            await onSave?.(p.id, null);
-            setConfig((prev) => {
-              const next = { ...prev };
-              delete next[p.id];
-              return next;
-            });
-            showSuccess("Documents removed");
+            try {
+              await DocumentSetupApi.remove(p.id);
+              await onSave?.(p.id, null);
+              showSuccess("Documents Removed", "Documents have been removed successfully.");
+              await loadList();
+            } catch (e) {
+              console.error(e);
+              showFail(errorMessage(e));
+            }
           },
         },
       ],
@@ -496,6 +579,7 @@ export function DocumentSetup({
                 size="sm"
                 radius="xl"
                 color="brand"
+                loading={busy}
                 onClick={openAdd}
                 leftSection={<IconPlus size={14} />}
                 style={{
@@ -540,7 +624,7 @@ export function DocumentSetup({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {rows.length === 0 ? (
+            {pageRows.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={columnCount} style={{ border: "none" }}>
                   <Stack align="center" gap="xs" py="xl">
@@ -559,17 +643,17 @@ export function DocumentSetup({
                       <IconFiles size={26} color="var(--mantine-color-slate-4)" />
                     </Box>
                     <Text ta="center" c="slate.5" fz="xs">
-                      {configured.length === 0
-                        ? "No products have documents yet. Add documents for a product to get started."
-                        : "No products match your search."}
+                      {loading
+                        ? "Loading..."
+                        : rows.length === 0
+                          ? "No products have documents yet. Add documents for a product to get started."
+                          : "No products match your search."}
                     </Text>
                   </Stack>
                 </Table.Td>
               </Table.Tr>
             ) : (
-              rows.map((p) => {
-                const entry = config[p.id];
-                const required = entry.docs.filter((d) => d.required).length;
+              pageRows.map((p) => {
                 const cell = (first = false) => ({
                   padding: "10px 10px",
                   border: "none",
@@ -580,7 +664,7 @@ export function DocumentSetup({
                   <Table.Tr
                     key={p.id}
                     className="lms-row"
-                    onDoubleClick={readOnly ? undefined : () => setEditing(p.id)}
+                    onDoubleClick={readOnly ? undefined : () => openEdit(p)}
                     style={{ cursor: readOnly ? "default" : "pointer" }}
                   >
                     <Table.Td style={cell(true)}>
@@ -595,16 +679,16 @@ export function DocumentSetup({
                     </Table.Td>
                     <Table.Td style={cell()}>
                       <Badge radius="xl" variant="light" color="brand" tt="none" fw={600}>
-                        {entry.docs.length} document{entry.docs.length === 1 ? "" : "s"}
+                        {p.documentCount} document{p.documentCount === 1 ? "" : "s"}
                       </Badge>
                     </Table.Td>
                     <Table.Td style={cell()}>
                       <Text fz="xs" c="slate.6">
-                        {required} of {entry.docs.length}
+                        {p.requiredCount} of {p.documentCount}
                       </Text>
                     </Table.Td>
                     <Table.Td style={cell()}>
-                      <IconText icon={<IconCalendar size={13} />}>{entry.updatedAt}</IconText>
+                      <IconText icon={<IconCalendar size={13} />}>{p.updatedAt}</IconText>
                     </Table.Td>
                     {!readOnly && (
                       <Table.Td style={cell()}>
@@ -617,7 +701,7 @@ export function DocumentSetup({
                               radius="md"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setEditing(p.id);
+                                openEdit(p);
                               }}
                             >
                               <IconPencil size={14} />
@@ -631,7 +715,7 @@ export function DocumentSetup({
                               radius="md"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                remove(p);
+                                confirmRemove(p);
                               }}
                             >
                               <IconTrash size={14} />
@@ -679,14 +763,14 @@ export function DocumentSetup({
         </Group>
       </Paper>
 
-      {editing !== undefined && (
+      {modal && (
         <DocumentsModal
-          key={editing ?? "new"}
+          key={modal.mode === "edit" ? modal.product.id : "new"}
           opened
-          editingId={editing}
-          productOptions={editing ? products.filter((p) => p.id === editing) : unconfigured}
-          initialDocs={editing ? config[editing].docs.map((d) => ({ ...d })) : []}
-          onClose={() => setEditing(undefined)}
+          editingId={modal.mode === "edit" ? modal.product.id : null}
+          productOptions={modal.mode === "edit" ? [modal.product] : modal.products}
+          initialDocs={modal.mode === "edit" ? modal.docs : []}
+          onClose={() => setModal(null)}
           onSubmit={save}
         />
       )}
