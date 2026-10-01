@@ -125,6 +125,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         label: "Document Setup",
         icon: IconClipboardText,
       },
+        {
+          path: "/origination-setup/source-maintenance",
+          label: "Source Maintenance",
+          icon: IconSettings,
+        },
       {
         path: "/origination-setup/workflow",
         label: "Workflow Configuration",

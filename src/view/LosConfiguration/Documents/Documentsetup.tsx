@@ -71,12 +71,9 @@ interface DocumentSetupProps {
 
 const nextId = () => Math.random().toString(36).slice(2, 10);
 const doc = (name: string, required = true): DocumentConfig => ({ id: nextId(), name, required });
-const productLabel = (p: ProductOption) => (p.code ? `${p.name} (${p.code})` : p.name);
+const productLabel = (p: ProductOption) => p.name;
 
-/**
- * ⚠️ Field names neeche fallback ke saath guess kiye hain.
- * Swagger/Network tab mein actual response dekh ke yahin adjust kar lena.
- */
+
 const mapSetupRow = (r: any): SetupRow => ({
   id: r.loan_product ?? r.name ?? r.id,
   name: r.loan_product_name ?? r.product_name ?? r.loan_product ?? r.name,
@@ -777,3 +774,4 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
     </Stack>
   );
 }
+

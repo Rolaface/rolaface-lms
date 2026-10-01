@@ -80,6 +80,8 @@ import LoanProductAutoAssignment from "../view/LosConfiguration/ProductAssignmen
 import { OfferIssuanceStage } from "../view/Origination/OfferIssuanceStage/OfferIssuanceStage";
 import { LoanTypeSetup } from "../view/LosConfiguration/LoanTpeSetup/Loantypesetup";
 import { DocumentSetup } from "../view/LosConfiguration/Documents/Documentsetup";
+import { SourceMaintenance } from "../view/LosConfiguration/SourceMaintenance/SourceMaintenance";
+
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -234,6 +236,13 @@ const originationLoanTypeSetupRoute = createRoute({
   path: "/loanType",
   component: LoanTypeSetup,
 });
+
+const originationSourceMaintenanceRoute = createRoute({
+  getParentRoute: () => originationSetupRoute,
+  path: "/source-maintenance",
+  component: SourceMaintenance,
+});
+
 const originationDocumentSetupRoute = createRoute({
   getParentRoute: () => originationSetupRoute,
   path: "/document-setup",
@@ -560,7 +569,7 @@ const routeTree = rootRoute.addChildren([
     cashflowRoute,
   ]),
   // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
-  originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute, originationLoanTypeSetupRoute, originationDocumentSetupRoute]),
+  originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute, originationLoanTypeSetupRoute, originationDocumentSetupRoute, originationSourceMaintenanceRoute]),
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
   settingsRoute.addChildren([
     emailTemplateRoute,
