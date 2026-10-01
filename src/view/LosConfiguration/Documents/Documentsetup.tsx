@@ -207,15 +207,30 @@ function DocumentsModal({
       radius="lg"
       centered
       title={
-        <Stack gap={2}>
-          <Text fz={17} fw={700} c="slate.9">
-            {editingId ? "Edit product documents" : "Add product documents"}
-          </Text>
-          <Text fz={12.5} c="slate.5">
-            Choose a product, then list the documents applicants must provide.
-          </Text>
-        </Stack>
-      }
+          <Group wrap="nowrap" gap="sm">
+            <Box
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: '50%',
+                background: 'var(--mantine-color-brand-0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <IconFiles size={22} color="var(--mantine-color-brand-6)" />
+            </Box>
+            <Stack gap={2}>
+              <Text fz={17} fw={700} c="slate.9">
+                {editingId ? "Edit product documents" : "Add product documents"}
+              </Text>
+              <Text fz={12.5} c="slate.5">
+                Choose a product, then list the documents applicants must provide.
+              </Text>
+            </Stack>
+          </Group>
+        }
     >
       <Stack gap="md">
         {/* Prevent Select from autofocusing and opening */}
@@ -291,11 +306,17 @@ function DocumentsModal({
               <Table.Tbody>
                 {docs.length === 0 ? (
                   <Table.Tr>
-                    <Table.Td colSpan={4}>
-                      <Text fz={12.5} c="slate.4" ta="center" py="md">
-                        No documents yet. Add the first one below.
-                      </Text>
-                    </Table.Td>
+                    <Table.Td colSpan={4} p={0} style={{ borderBottom: "1px dashed var(--mantine-color-slate-3)" }}>
+                        <Stack align="center" gap={6} py={40} bg="slate.0">
+                          <IconFiles size={40} stroke={1} color="var(--mantine-color-slate-4)" />
+                          <Text fz={14} c="slate.6" fw={600}>
+                            No documents added yet
+                          </Text>
+                          <Text fz={12.5} c="slate.5">
+                            Add the first document below to get started.
+                          </Text>
+                        </Stack>
+                      </Table.Td>
                   </Table.Tr>
                 ) : (
                   docs.map((d, i) => (
@@ -352,23 +373,23 @@ function DocumentsModal({
               </Table.Tbody>
             </Table>
 
-            <Group gap={8} wrap="nowrap" p={10} bg="slate.0" style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
-              <TextInput
-                size="xs"
-                radius="md"
-                style={{ flex: 1 }}
-                placeholder="New document, e.g. NRC copy"
-                aria-label="New document name"
-                value={newName}
-                onChange={(e) => setNewName(e.currentTarget.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") addDoc();
-                }}
-              />
-              <Button size="xs" radius="md" variant="default" leftSection={<IconPlus size={14} />} onClick={addDoc}>
-                Add
-              </Button>
-            </Group>
+            <Group gap={10} wrap="nowrap" p={14} bg="slate.0" style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
+                <TextInput
+                  size="sm"
+                  radius="md"
+                  style={{ flex: 1 }}
+                  placeholder="Enter a new document name (e.g. NRC copy)"
+                  aria-label="New document name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") addDoc();
+                  }}
+                />
+                <Button size="sm" radius="md" color="brand" leftSection={<IconPlus size={16} />} onClick={addDoc}>
+                  Add Document
+                </Button>
+              </Group>
           </Paper>
 
           <Text fz={12} c="danger.6" mt={6} style={{ minHeight: 18 }}>
