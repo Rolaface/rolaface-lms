@@ -11,7 +11,7 @@ export interface DocumentSetupModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize?: () => void;
-  mode?: "add" | "edit" | null;
+  mode?: "view" | "add" | "edit" | null;
   products?: ProductOption[];
   product?: SetupRow;
   docs?: DocumentConfig[];
@@ -39,6 +39,7 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, mode, products
   const productOptions = mode === "add" ? products! : (product ? [product] : []);
   
   const [productId, setProductId] = useState<string | null>(null);
+  const isView = mode === "view";
   const [docs, setDocs] = useState<DocumentConfig[]>([]);
   const [newName, setNewName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -61,10 +62,7 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, mode, products
   const addDoc = () => {
     const name = newName.trim();
     if (!name) return;
-    if (docs.some((d) => d.name.trim().toLowerCase() === name.toLowerCase())) {
-      setError(`"${name}" is already in the list.`);
-      return;
-    }
+    
     update((l) => [...l, doc(name)]);
     setNewName("");
   };
@@ -85,23 +83,9 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, mode, products
   };
 
   const save = async () => {
-    if (!productId) {
-      setError("Choose a loan product.");
-      return;
-    }
-    if (docs.length === 0) {
-      setError("Add at least one document before saving.");
-      return;
-    }
-    const names = docs.map((d) => d.name.trim().toLowerCase());
-    if (names.some((n) => !n)) {
-      setError("Every document needs a name.");
-      return;
-    }
-    if (new Set(names).size !== names.length) {
-      setError("The list has a duplicate document.");
-      return;
-    }
+    if (!productId) return;
+    
+    
     
     setSaving(true);
     const finalDocs = docs.map((d) => ({ ...d, name: d.name.trim() }));
@@ -210,7 +194,7 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, mode, products
                     radius="md"
                     searchable
                     allowDeselect={false}
-                    disabled={!!editingId}
+                    disabled={!!editingId || isView}
                     data={[{ value: "HEADER", label: "HEADER", disabled: true }, ...productOptions.map((p) => ({ value: p.id, label: p.name }))]}
                     value={productId}
                     onChange={setProductId}
@@ -307,6 +291,7 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, mode, products
                               size="xs"
                               radius="md"
                               value={d.name}
+                              disabled={isView}
                               aria-label={`Document ${i + 1} name`}
                               onChange={(e) => {
                                 const name = e.currentTarget.value;
@@ -319,6 +304,7 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, mode, products
                               <Switch
                                 size="sm"
                                 checked={d.required}
+                              disabled={isView}
                                 aria-label={`${d.name} required`}
                                 onChange={(e) => {
                                   const required = e.currentTarget.checked;
@@ -332,10 +318,10 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, mode, products
                           </Table.Td>
                           <Table.Td>
                             <Group gap={2} justify="flex-end" wrap="nowrap">
-                              <ActionIcon variant="subtle" color="slate" size="sm" radius="md" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">
+                              <ActionIcon variant="subtle" color="slate" size="sm" radius="md" disabled={i === 0 || isView} onClick={() => move(i, -1)} aria-label="Move up">
                                 <IconArrowUp size={14} />
                               </ActionIcon>
-                              <ActionIcon variant="subtle" color="slate" size="sm" radius="md" disabled={i === docs.length - 1} onClick={() => move(i, 1)} aria-label="Move down">
+                              <ActionIcon variant="subtle" color="slate" size="sm" radius="md" disabled={i === docs.length - 1 || isView} onClick={() => move(i, 1)} aria-label="Move down">
                                 <IconArrowDown size={14} />
                               </ActionIcon>
                               <ActionIcon variant="subtle" color="danger" size="sm" radius="md" onClick={() => update((l) => l.filter((x) => x.id !== d.id))} aria-label={`Delete ${d.name}`}>
@@ -388,6 +374,8 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, mode, products
     </Modal>
   );
 }
+
+
 
 
 

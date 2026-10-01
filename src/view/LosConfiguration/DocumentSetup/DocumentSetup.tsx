@@ -84,7 +84,8 @@ const mapSetupRow = (r: any): SetupRow => ({
   code: r.product_code ?? r.code ?? r.loan_product ?? r.name,
   documentCount: Number(r.document_count ?? r.documents_count ?? r.total_documents ?? 0),
   requiredCount: Number(r.required_count ?? r.required_documents ?? r.required_document_count ?? 0),
-  updatedAt: r.modified ? dayjs(r.modified).format("DD MMM YYYY") : "-",
+  updatedAt: r.modified ? dayjs(r.modified).format('DD MMM YYYY') : '-',
+  rawModified: r.modified || r.creation || '',
 });
 
 const mapProductOption = (r: any): ProductOption => ({
@@ -171,7 +172,8 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
   // ---- filter + client-side pagination ----
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter((p) => `${p.name} ${p.code ?? ""}`.toLowerCase().includes(q));
+    const result = rows.filter((p) => `${p.name} ${p.code ?? ""}`.toLowerCase().includes(q));
+      return result.sort((a, b) => new Date(b.rawModified || 0).getTime() - new Date(a.rawModified || 0).getTime());
   }, [rows, search]);
 
   const totalRows = filtered.length;
@@ -196,7 +198,7 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
         });
         return;
       }
-      documentSetupModal.open({ mode: "add", products, onSuccess: async (productId, docs) => { await onSave?.(productId, docs); showSuccess("Documents Saved", "Documents have been saved successfully."); await loadList(); } });
+      documentSetupModal.open({ mode: "add", products, onSuccess: async (productId, docs) => { await onSave?.(productId, docs); const productName = products.find(x => x.id === productId)?.name || "the product"; showSuccess("Documents Saved", `Documents for ${productName} have been saved successfully.`); await loadList(); } });
     } catch (e) {
       console.error(e);
       showError("Something went wrong", e);
@@ -205,13 +207,27 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
     }
   };
 
-  // ---- Edit: GET get_document_setup_by_id ----
+    const openView = async (p: SetupRow) => {
+    setBusy(true);
+    try {
+      const res = await DocumentSetupApi.getById(p.id);
+      const detail = DocumentSetupApi.unwrap(res);
+      documentSetupModal.open({ mode: "view", product: p, docs: mapDocs(detail) });
+    } catch (e) {
+      console.error(e);
+      showError("Something went wrong", e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+    // ---- Edit: GET get_document_setup_by_id ----
   const openEdit = async (p: SetupRow) => {
     setBusy(true);
     try {
       const res = await DocumentSetupApi.getById(p.id);
       const detail = DocumentSetupApi.unwrap(res);
-      documentSetupModal.open({ mode: "edit", product: p, docs: mapDocs(detail), onSuccess: async (productId, docs) => { await onSave?.(productId, docs); showSuccess("Documents Saved", "Documents have been saved successfully."); await loadList(); } });
+      documentSetupModal.open({ mode: "edit", product: p, docs: mapDocs(detail), onSuccess: async (productId, docs) => { await onSave?.(productId, docs); showSuccess("Documents Saved", `Documents for ${p.name} have been saved successfully.`); await loadList(); } });
     } catch (e) {
       console.error(e);
       showError("Something went wrong", e);
@@ -238,7 +254,7 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
             try {
               await DocumentSetupApi.remove(p.id);
               await onSave?.(p.id, null);
-              showSuccess("Documents Removed", "Documents have been removed successfully.");
+              showSuccess("Documents Removed", `Documents for ${p.name} have been removed successfully.`);
               await loadList();
             } catch (e) {
               console.error(e);
@@ -414,7 +430,7 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
                   <Table.Tr
                     key={p.id}
                     className="lms-row"
-                    onDoubleClick={readOnly ? undefined : () => openEdit(p)}
+                    onDoubleClick={() => openView(p)}
                     style={{ cursor: readOnly ? "default" : "pointer" }}
                   >
                     <Table.Td style={cell(true)}>
@@ -517,6 +533,9 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
     </Stack>
   );
 }
+
+
+
 
 
 
