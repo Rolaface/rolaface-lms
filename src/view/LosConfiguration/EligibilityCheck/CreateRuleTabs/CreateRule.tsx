@@ -150,6 +150,8 @@ export function CreateRule({ onExit, ruleId }: { onExit: () => void; ruleId?: st
   const [loanProduct, setLoanProduct] = useState<string | null>("");
   const [riskCategory, setRiskCategory] = useState<string | null>("");
   const [ruleStatus, setRuleStatus] = useState<string | null>("");
+  const [effectiveFrom, setEffectiveFrom] = useState(new Date().toISOString().split("T")[0]);
+const [effectiveUntil, setEffectiveUntil] = useState("");
    const totalWeight = 100;
   const [formulaParams, setFormulaParams] = useState<FormulaParams>(
     BLANK_FORMULA_PARAMS,
@@ -193,7 +195,8 @@ const persistRule = (status: "Draft" | "Active") => {
   const payload: CreateEligibilityRulePayload = {
     rule_name: ruleName.trim(),
     loan_product: loanProduct || "",
-    effective_from: "", // CONFIRM: see note 1
+    effective_from: effectiveFrom,
+  effective_to: effectiveUntil,
     income_sources: incomeSources.map(([name, pct, ver, inc]) => ({
       name,
       recognition_pct: pct,
@@ -201,8 +204,8 @@ const persistRule = (status: "Draft" | "Active") => {
       included: inc,
     })),
     obligation_sources: obligationSources.map((o) => ({
-      name: o.name, // CONFIRM: see note 2
-      pct: o.pct,   // CONFIRM: see note 2
+      name: o.name,  
+      pct: o.pct,  
       verification_required: o.ver,
       included: o.inc,
     })),
@@ -654,6 +657,10 @@ useEffect(() => {
                 setRuleStatus={setRuleStatus}
                 formulaParams={formulaParams}
                 setFormulaParam={setFormulaParam}
+                effectiveFrom={effectiveFrom}
+  setEffectiveFrom={setEffectiveFrom}
+  effectiveUntil={effectiveUntil}
+  setEffectiveUntil={setEffectiveUntil}
               />
             )}
 
