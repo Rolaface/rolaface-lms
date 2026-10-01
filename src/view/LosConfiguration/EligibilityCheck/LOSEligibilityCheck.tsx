@@ -4,7 +4,8 @@ import { IconSettingsCheck } from "@tabler/icons-react";
 
 import { TAB_ITEMS, type TabValue } from "./shared";
 import { EligibilityRules } from "./EligibilityRules";
-import { CreateRule } from "./CreateRule";
+// import { CreateRule } from "./CreateRule";
+import { CreateRule } from "../EligibilityCheck/CreateRuleTabs/CreateRule";
 import { Simulator } from "./Simulator";
 
 export function LosEligibilityCheck() {

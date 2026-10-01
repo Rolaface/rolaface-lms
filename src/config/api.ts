@@ -260,13 +260,25 @@ export const API = {
   loanTypeSetup: {
     getLoanType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.get_loan_type_setup`,
     createLoanType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.save_loan_type_setup`,
+    updateLoanType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.update_node`,
+    deleteLoanType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.delete_node`,
+    disableLoantType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.disable_node`,
+    enableLoantType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.enable_node`
   },
 
   productAssignmentSetup: {
     createProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.create_rule`,
+    updateProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.update_rule`,
     getProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_product_assignment`,
+    getProductAssignmentById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_rule_by_id`,
+    deleteProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.delete_rule`,
   },
 
+  createEligibilityRule: {
+    createProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.create_eligibility_rule`,
+     getProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.get_eligibility_rules`,
+     getProductAssignmentById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.get_eligibility_rule`,
+    },
 
   // =========================
   // WORKFLOW (dynamic, multi-tenant)
