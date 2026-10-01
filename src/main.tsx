@@ -2,7 +2,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "@mantine/dates/styles.css";
 import "@mantine/core/styles.css";
-import "@mantine/notifications/styles.css";   
+import "@mantine/notifications/styles.css";  
+import "@mantine/core/styles.css";
+import "@mantine/charts/styles.css"
 
 import { Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";  

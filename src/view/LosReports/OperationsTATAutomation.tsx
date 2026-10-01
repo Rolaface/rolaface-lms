@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useCallback, useDeferredValue, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import {
   ActionIcon,
@@ -38,6 +38,10 @@ import {
   IconSearch,
 } from "@tabler/icons-react";
 
+/* -------------------------------------------------------------------------- */
+/* TOKENS                                                                      */
+/* -------------------------------------------------------------------------- */
+
 const PRIMARY = "#3B34CD";
 const SUCCESS = "#0C9F6E";
 const WARNING = "#D97706";
@@ -47,6 +51,56 @@ const MUTED = "#7A8496";
 const BORDER = "#E6EAF0";
 const BG = "#F7F8FB";
 const TRACK = "#EEF1F5";
+
+/* Hoisted style objects: created once instead of on every render. */
+const BORDER_BOTTOM: CSSProperties = { borderBottom: `1px solid ${BORDER}` };
+const BORDER_TOP: CSSProperties = { borderTop: `1px solid ${BORDER}` };
+const CARD_BASE: CSSProperties = {
+  borderColor: BORDER,
+  background: "#FFF",
+  boxShadow: "0 1px 3px rgba(23,35,59,0.025)",
+};
+const FULL_HEIGHT_COLUMN: CSSProperties = {
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
+};
+const INSET_PANEL: CSSProperties = {
+  background: "#F8FAFC",
+  border: `1px solid ${BORDER}`,
+  borderRadius: 8,
+};
+const CAPS_LABEL: CSSProperties = { letterSpacing: 0.6 };
+const PILL: CSSProperties = { borderRadius: 999 };
+
+const tint = (color: string, alpha = "10"): CSSProperties => ({
+  color,
+  background: `${color}${alpha}`,
+});
+
+/* -------------------------------------------------------------------------- */
+/* DATA & TYPES                                                                */
+/* -------------------------------------------------------------------------- */
+
+type SlaStatus = "Breached" | "At risk" | "Within SLA";
+type StageName = "Intake" | "KYC" | "Underwriting" | "Approval";
+
+interface Application {
+  id: string;
+  customerName: string;
+  product: string;
+  source: string;
+  branch: string;
+  submitted: string;
+  stage: StageName;
+  timeInStage: string;
+  totalTat: string;
+  timeInStageMinutes: number;
+  tatMinutes: number;
+  sla: SlaStatus;
+  automation: number;
+  owner: string;
+}
 
 const reportSummary = {
   averageTat: "2h 48m",
@@ -58,52 +112,35 @@ const reportSummary = {
   processed: 128,
   agingOver24h: 11,
   automation: 68,
-};
+} as const;
 
-const stages = [
-  {
-    name: "Application Intake",
-    short: "Intake",
-    apps: 128,
-    tat: 31,
-    target: 45,
-    sla: 97,
-  },
-  {
-    name: "Know Your Customer",
-    short: "KYC",
-    apps: 121,
-    tat: 58,
-    target: 90,
-    sla: 94,
-  },
-  {
-    name: "Underwriting",
-    short: "Underwriting",
-    apps: 116,
-    tat: 202,
-    target: 180,
-    sla: 82,
-  },
-  {
-    name: "Approval",
-    short: "Approval",
-    apps: 104,
-    tat: 74,
-    target: 120,
-    sla: 91,
-  },
+const STAGE_OPTIONS = [
+  { value: "all", label: "All stages" },
+  { value: "Intake", label: "Intake" },
+  { value: "KYC", label: "KYC" },
+  { value: "Underwriting", label: "Underwriting" },
+  { value: "Approval", label: "Approval" },
 ];
 
-const aging = [
-  { label: "0–2h", value: 41, share: 32, color: PRIMARY },
-  { label: "2–4h", value: 33, share: 26, color: "#6366F1" },
-  { label: "4–8h", value: 27, share: 21, color: "#818CF8" },
-  { label: "8–24h", value: 16, share: 13, color: WARNING },
-  { label: ">24h", value: 11, share: 9, color: DANGER },
+const BRANCH_OPTIONS = [
+  { value: "all", label: "All Branches" },
+  "Lusaka",
+  "Ndola",
+  "Kitwe",
+  "Livingstone",
 ];
 
-const applications = [
+const PRODUCT_OPTIONS = [
+  { value: "all", label: "All Products" },
+  "Personal Loan",
+  "Home Loan",
+  "Business Loan",
+  "Consumer Loan",
+];
+
+const DEFAULT_DATE_RANGE: [string, string] = ["2026-09-01", "2026-09-30"];
+
+const applications: Application[] = [
   {
     id: "APP-2048",
     customerName: "Amit Sharma",
@@ -186,19 +223,71 @@ const applications = [
   },
 ];
 
-function SurfaceCard({
-  children,
-  p = "md",
-  mb,
-  mt,
-  style,
-}: {
+const SLA_RANK: Record<SlaStatus, number> = {
+  Breached: 0,
+  "At risk": 1,
+  "Within SLA": 2,
+};
+
+const SLA_COLOR: Record<SlaStatus, string> = {
+  Breached: DANGER,
+  "At risk": WARNING,
+  "Within SLA": SUCCESS,
+};
+
+const SLA_LABEL: Record<SlaStatus, string> = {
+  Breached: "Breached",
+  "At risk": "At Risk",
+  "Within SLA": "On Track",
+};
+
+const STAGE_ORDER: Record<StageName, number> = {
+  Intake: 0,
+  KYC: 1,
+  Underwriting: 2,
+  Approval: 3,
+};
+
+const QUEUE_HEADINGS = [
+  "App ID",
+  "Customer Name",
+  "Loan Product",
+  "Current Stage",
+  "Time in Stage",
+  "Total TAT",
+  "SLA Status",
+  "Assigned Owner",
+  "Action",
+] as const;
+
+const HEADING_STYLE: CSSProperties = {
+  color: MUTED,
+  fontSize: 9,
+  fontWeight: 800,
+  textTransform: "uppercase",
+  letterSpacing: 0.25,
+  whiteSpace: "nowrap",
+};
+
+/* -------------------------------------------------------------------------- */
+/* SHARED PRIMITIVES                                                           */
+/* -------------------------------------------------------------------------- */
+
+interface SurfaceCardProps {
   children: ReactNode;
   p?: string | number;
   mb?: string | number;
   mt?: string | number;
   style?: CSSProperties;
-}) {
+}
+
+const SurfaceCard = memo(function SurfaceCard({
+  children,
+  p = "md",
+  mb,
+  mt,
+  style,
+}: SurfaceCardProps) {
   return (
     <Card
       withBorder
@@ -206,118 +295,59 @@ function SurfaceCard({
       p={p}
       mb={mb}
       mt={mt}
-      style={{
-        borderColor: BORDER,
-        background: "#FFF",
-        boxShadow: "0 1px 3px rgba(23,35,59,0.025)",
-        ...style,
-      }}
+      style={style ? { ...CARD_BASE, ...style } : CARD_BASE}
     >
       {children}
     </Card>
   );
-}
+});
 
-function SectionHeader({
-  title,
-  hint,
-  action,
-}: {
-  title: string;
-  hint?: string;
-  action?: ReactNode;
-}) {
-  return (
-    <Group
-      justify="space-between"
-      align="flex-start"
-      gap="sm"
-      pb="sm"
-      mb="sm"
-      style={{
-        borderBottom: `1px solid ${BORDER}`,
-      }}
-    >
-      <Box>
-        <Text fw={700} size="sm" c={TEXT}>
-          {title}
-        </Text>
+const KPI_CARD_STYLE: CSSProperties = {
+  minHeight: 88,
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "space-between",
+};
 
-        {hint && (
-          <Text size="10px" c={MUTED} mt={2}>
-            {hint}
-          </Text>
-        )}
-      </Box>
-
-      {action}
-    </Group>
-  );
-}
-
-function KpiCard({
-  icon,
-  label,
-  value,
-  meta,
-  tone = PRIMARY,
-  delta,
-}: {
+interface KpiCardProps {
   icon: ReactNode;
   label: string;
   value: string;
   meta: string;
   tone?: string;
   delta?: string;
-}) {
+}
+
+const KpiCard = memo(function KpiCard({
+  icon,
+  label,
+  value,
+  meta,
+  tone = PRIMARY,
+  delta,
+}: KpiCardProps) {
+  const toneStyle = tint(tone);
+
   return (
-    <SurfaceCard
-      p="sm"
-      style={{
-        minHeight: 88,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-      }}
-    >
+    <SurfaceCard p="sm" style={KPI_CARD_STYLE}>
       <Group justify="space-between" align="center" wrap="nowrap">
         <Text size="10px" fw={600} c={MUTED}>
           {label}
         </Text>
 
-        <ThemeIcon
-          size={28}
-          radius="xl"
-          variant="light"
-          style={{
-            color: tone,
-            background: `${tone}10`,
-          }}
-        >
+        <ThemeIcon size={28} radius="xl" variant="light" style={toneStyle}>
           {icon}
         </ThemeIcon>
       </Group>
 
       <Box mt={7}>
         <Group gap={7} align="baseline" wrap="nowrap">
-          <Text
-            size="24px"
-            fw={850}
-            c={TEXT}
-            lh={1}
-          >
+          <Text size="24px" fw={850} c={TEXT} lh={1}>
             {value}
           </Text>
 
           {delta && (
-            <Badge
-              size="xs"
-              variant="light"
-              style={{
-                color: tone,
-                background: `${tone}10`,
-              }}
-            >
+            <Badge size="xs" variant="light" style={toneStyle}>
               {delta}
             </Badge>
           )}
@@ -329,17 +359,7 @@ function KpiCard({
       </Box>
     </SurfaceCard>
   );
-}
-
-function statusColor(status: string) {
-  if (status === "Breached") return DANGER;
-  if (status === "At risk") return WARNING;
-  return SUCCESS;
-}
-
-function formatMinutes(minutes: number) {
-  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
-}
+});
 
 /* -------------------------------------------------------------------------- */
 /* PIPELINE BY STAGE                                                           */
@@ -350,62 +370,125 @@ const pipelineStages = [
   { stage: "KYC", files: 20 },
   { stage: "Underwriting", files: 120 },
   { stage: "Approval", files: 10 },
-];
+] as const;
 
-function PipelineStageChart() {
-  const totalActiveFiles = pipelineStages.reduce(
-    (sum, item) => sum + item.files,
-    0
+/* Static data, so derive once at module level instead of on every render. */
+const TOTAL_ACTIVE_FILES = pipelineStages.reduce(
+  (sum, item) => sum + item.files,
+  0
+);
+
+const PIPELINE_BOTTLENECK = pipelineStages.reduce((largest, item) =>
+  item.files > largest.files ? item : largest
+);
+
+const PIPELINE_ROWS = pipelineStages.map((item) => ({
+  ...item,
+  share: (item.files / TOTAL_ACTIVE_FILES) * 100,
+  isBottleneck: item.stage === PIPELINE_BOTTLENECK.stage,
+}));
+
+const PROGRESS_STYLES = {
+  root: { background: TRACK },
+  section: { background: PRIMARY },
+};
+
+const PipelineRow = memo(function PipelineRow({
+  stage,
+  files,
+  share,
+  isBottleneck,
+}: {
+  stage: string;
+  files: number;
+  share: number;
+  isBottleneck: boolean;
+}) {
+  const rounded = Math.round(share);
+
+  return (
+    <Box
+      px={isBottleneck ? "sm" : 0}
+      py={isBottleneck ? 8 : 0}
+      mx={isBottleneck ? -4 : 0}
+      style={{
+        borderRadius: 8,
+        background: isBottleneck ? "#F8FAFC" : "transparent",
+        border: isBottleneck
+          ? `1px solid ${BORDER}`
+          : "1px solid transparent",
+      }}
+    >
+      <Group justify="space-between" align="center" mb={5} wrap="nowrap">
+        <Group gap={7} wrap="nowrap">
+          <Box
+            w={isBottleneck ? 8 : 6}
+            h={isBottleneck ? 8 : 6}
+            style={{
+              ...PILL,
+              background: isBottleneck ? PRIMARY : MUTED,
+            }}
+          />
+
+          <Text size="xs" fw={isBottleneck ? 700 : 600} c={TEXT}>
+            {stage}
+          </Text>
+
+          <Badge
+            size="xs"
+            variant="light"
+            style={{
+              color: isBottleneck ? PRIMARY : MUTED,
+              background: isBottleneck ? `${PRIMARY}10` : "#F1F3F9",
+              border: isBottleneck ? `1px solid ${PRIMARY}18` : undefined,
+            }}
+          >
+            {isBottleneck ? `Peak: ${rounded}%` : `${rounded}%`}
+          </Badge>
+        </Group>
+
+        <Group gap={4} align="baseline" wrap="nowrap">
+          <Text size="xs" fw={isBottleneck ? 800 : 700} c={TEXT}>
+            {files}
+          </Text>
+
+          <Text size="9px" c={MUTED}>
+            files
+          </Text>
+        </Group>
+      </Group>
+
+      <Progress value={share} size={8} radius="xl" styles={PROGRESS_STYLES} />
+    </Box>
   );
+});
 
-  const bottleneck = pipelineStages.reduce(
-    (largest, item) =>
-      item.files > largest.files ? item : largest,
-    pipelineStages[0]
+const ACTIVE_QUEUE_BOX: CSSProperties = {
+  ...INSET_PANEL,
+  flexShrink: 0,
+};
+
+const PipelineStageChart = memo(function PipelineStageChart() {
+  const bottleneckShare = Math.round(
+    (PIPELINE_BOTTLENECK.files / TOTAL_ACTIVE_FILES) * 100
   );
 
   return (
-    <SurfaceCard
-      p="md"
-      style={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Box
-        pb="md"
-        style={{
-          borderBottom: `1px solid ${BORDER}`,
-        }}
-      >
-        <Group
-          justify="space-between"
-          align="flex-start"
-          gap="sm"
-          wrap="nowrap"
-        >
+    <SurfaceCard p="md" style={FULL_HEIGHT_COLUMN}>
+      <Box pb="md" style={BORDER_BOTTOM}>
+        <Group justify="space-between" align="flex-start" gap="sm" wrap="nowrap">
           <Box>
             <Group gap={7} wrap="wrap">
               <Text
                 size="sm"
                 fw={750}
                 c={TEXT}
-                style={{
-                  letterSpacing: -0.2,
-                }}
+                style={{ letterSpacing: -0.2 }}
               >
                 Pipeline by Stage
               </Text>
 
-              <Badge
-                size="xs"
-                variant="light"
-                style={{
-                  color: PRIMARY,
-                  background: `${PRIMARY}10`,
-                }}
-              >
+              <Badge size="xs" variant="light" style={tint(PRIMARY)}>
                 Live
               </Badge>
             </Group>
@@ -415,43 +498,20 @@ function PipelineStageChart() {
             </Text>
           </Box>
 
-          <Box
-            ta="right"
-            px="sm"
-            py={6}
-            style={{
-              background: "#F8FAFC",
-              border: `1px solid ${BORDER}`,
-              borderRadius: 8,
-              flexShrink: 0,
-            }}
-          >
+          <Box ta="right" px="sm" py={6} style={ACTIVE_QUEUE_BOX}>
             <Text
               size="8px"
               fw={800}
               c={MUTED}
               tt="uppercase"
-              style={{
-                letterSpacing: 0.6,
-              }}
+              style={CAPS_LABEL}
             >
               Active Queue
             </Text>
 
-            <Group
-              justify="flex-end"
-              align="baseline"
-              gap={4}
-              mt={1}
-              wrap="nowrap"
-            >
-              <Text
-                size="md"
-                fw={850}
-                c={TEXT}
-                lh={1}
-              >
-                {totalActiveFiles}
+            <Group justify="flex-end" align="baseline" gap={4} mt={1} wrap="nowrap">
+              <Text size="md" fw={850} c={TEXT} lh={1}>
+                {TOTAL_ACTIVE_FILES}
               </Text>
 
               <Text size="9px" c={MUTED}>
@@ -463,134 +523,21 @@ function PipelineStageChart() {
       </Box>
 
       <Stack gap="sm" pt="md">
-        {pipelineStages.map((item) => {
-          const share =
-            (item.files / totalActiveFiles) * 100;
-
-          const isBottleneck =
-            item.stage === bottleneck.stage;
-
-          return (
-            <Box
-              key={item.stage}
-              px={isBottleneck ? "sm" : 0}
-              py={isBottleneck ? 8 : 0}
-              mx={isBottleneck ? -4 : 0}
-              style={{
-                borderRadius: 8,
-                background: isBottleneck
-                  ? "#F8FAFC"
-                  : "transparent",
-                border: isBottleneck
-                  ? `1px solid ${BORDER}`
-                  : "1px solid transparent",
-              }}
-            >
-              <Group
-                justify="space-between"
-                align="center"
-                mb={5}
-                wrap="nowrap"
-              >
-                <Group gap={7} wrap="nowrap">
-                  <Box
-                    w={isBottleneck ? 8 : 6}
-                    h={isBottleneck ? 8 : 6}
-                    style={{
-                      borderRadius: 999,
-                      background: isBottleneck
-                        ? PRIMARY
-                        : MUTED,
-                    }}
-                  />
-
-                  <Text
-                    size="xs"
-                    fw={isBottleneck ? 700 : 600}
-                    c={TEXT}
-                  >
-                    {item.stage}
-                  </Text>
-
-                  <Badge
-                    size="xs"
-                    variant="light"
-                    style={{
-                      color: isBottleneck
-                        ? PRIMARY
-                        : MUTED,
-                      background: isBottleneck
-                        ? `${PRIMARY}10`
-                        : "#F1F3F9",
-                      border: isBottleneck
-                        ? `1px solid ${PRIMARY}18`
-                        : undefined,
-                    }}
-                  >
-                    {isBottleneck
-                      ? `Peak: ${Math.round(
-                        share
-                      )}%`
-                      : `${Math.round(share)}%`}
-                  </Badge>
-                </Group>
-
-                <Group
-                  gap={4}
-                  align="baseline"
-                  wrap="nowrap"
-                >
-                  <Text
-                    size="xs"
-                    fw={isBottleneck ? 800 : 700}
-                    c={TEXT}
-                  >
-                    {item.files}
-                  </Text>
-
-                  <Text size="9px" c={MUTED}>
-                    files
-                  </Text>
-                </Group>
-              </Group>
-
-              <Progress
-                value={share}
-                size={8}
-                radius="xl"
-                styles={{
-                  root: {
-                    background: TRACK,
-                  },
-                  section: {
-                    background: PRIMARY,
-                  },
-                }}
-              />
-            </Box>
-          );
-        })}
+        {PIPELINE_ROWS.map((row) => (
+          <PipelineRow
+            key={row.stage}
+            stage={row.stage}
+            files={row.files}
+            share={row.share}
+            isBottleneck={row.isBottleneck}
+          />
+        ))}
       </Stack>
 
-      <Box
-        mt="auto"
-        pt="sm"
-        style={{
-          borderTop: `1px solid ${BORDER}`,
-        }}
-      >
-        <Group
-          justify="space-between"
-          align="center"
-          gap="sm"
-          wrap="wrap"
-        >
+      <Box mt="auto" pt="sm" style={BORDER_TOP}>
+        <Group justify="space-between" align="center" gap="sm" wrap="wrap">
           <Group gap={6} wrap="nowrap">
-            <Text
-              size="9px"
-              fw={700}
-              c={TEXT}
-            >
+            <Text size="9px" fw={700} c={TEXT}>
               <Box
                 component="span"
                 w={6}
@@ -598,7 +545,7 @@ function PipelineStageChart() {
                 mr={5}
                 style={{
                   display: "inline-block",
-                  borderRadius: 999,
+                  ...PILL,
                   background: WARNING,
                 }}
               />
@@ -606,87 +553,109 @@ function PipelineStageChart() {
             </Text>
 
             <Text size="9px" c={MUTED}>
-              {bottleneck.stage} (
-              {Math.round(
-                (bottleneck.files /
-                  totalActiveFiles) *
-                100
-              )}
-              %)
+              {PIPELINE_BOTTLENECK.stage} ({bottleneckShare}%)
             </Text>
           </Group>
 
-          <Text
-            size="9px"
-            c={MUTED}
-            ta="right"
-          >
+          <Text size="9px" c={MUTED} ta="right">
             Total Active Pipeline:{" "}
-            <Text
-              component="span"
-              fw={750}
-              c={TEXT}
-            >
-              {totalActiveFiles} files
+            <Text component="span" fw={750} c={TEXT}>
+              {TOTAL_ACTIVE_FILES} files
             </Text>
           </Text>
         </Group>
       </Box>
     </SurfaceCard>
   );
-}
+});
 
 /* -------------------------------------------------------------------------- */
 /* SLA COMPLIANCE                                                              */
 /* -------------------------------------------------------------------------- */
 
-function SLAComplianceCard() {
-  const total = reportSummary.processed;
-  const breached = reportSummary.breached;
-  const withinSla = Math.max(total - breached, 0);
+const SLA_TOTAL = reportSummary.processed;
+const SLA_BREACHED = reportSummary.breached;
+const SLA_WITHIN = Math.max(SLA_TOTAL - SLA_BREACHED, 0);
+const SLA_WITHIN_EXACT = SLA_TOTAL ? (SLA_WITHIN / SLA_TOTAL) * 100 : 0;
+const SLA_BREACHED_EXACT = SLA_TOTAL ? (SLA_BREACHED / SLA_TOTAL) * 100 : 0;
+const SLA_WITHIN_PCT = Math.round(SLA_WITHIN_EXACT);
 
-  const withinSlaExact = total
-    ? (withinSla / total) * 100
-    : 0;
+const RING_SECTIONS = [
+  { value: SLA_WITHIN_EXACT, color: SUCCESS },
+  { value: SLA_BREACHED_EXACT, color: DANGER },
+];
 
-  const breachedExact = total
-    ? (breached / total) * 100
-    : 0;
+const RING_WRAPPER: CSSProperties = {
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+};
 
-  const withinSlaPercentage = Math.round(
-    withinSlaExact
-  );
-
+const SlaStat = memo(function SlaStat({
+  label,
+  value,
+  dotColor,
+  glow,
+  valueColor,
+  percent,
+  percentColor,
+  percentWeight,
+}: {
+  label: string;
+  value: number;
+  dotColor: string;
+  glow: string;
+  valueColor: string;
+  percent: string;
+  percentColor: string;
+  percentWeight: number;
+}) {
   return (
-    <SurfaceCard
-      p="md"
-      style={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Box
-        pb="md"
-        style={{
-          borderBottom: `1px solid ${BORDER}`,
-        }}
-      >
-        <Group
-          justify="space-between"
-          align="flex-start"
-          gap="sm"
-          wrap="nowrap"
-        >
+    <Box p="sm" style={{ ...INSET_PANEL, height: "100%" }}>
+      <Group justify="space-between" align="center" gap={5} wrap="nowrap">
+        <Group gap={7} wrap="nowrap">
+          <Box
+            w={8}
+            h={8}
+            style={{
+              ...PILL,
+              background: dotColor,
+              boxShadow: `0 0 0 4px ${glow}`,
+              flexShrink: 0,
+            }}
+          />
+
+          <Box>
+            <Text size="9px" fw={600} c={MUTED}>
+              {label}
+            </Text>
+
+            <Text size="md" fw={850} c={valueColor} mt={3} lh={1}>
+              {value}
+            </Text>
+          </Box>
+        </Group>
+
+        <Text size="9px" fw={percentWeight} c={percentColor}>
+          {percent}
+        </Text>
+      </Group>
+    </Box>
+  );
+});
+
+const SLAComplianceCard = memo(function SLAComplianceCard() {
+  return (
+    <SurfaceCard p="md" style={FULL_HEIGHT_COLUMN}>
+      <Box pb="md" style={BORDER_BOTTOM}>
+        <Group justify="space-between" align="flex-start" gap="sm" wrap="nowrap">
           <Box>
             <Group gap={7} wrap="wrap">
               <Text
                 size="sm"
                 fw={750}
                 c={TEXT}
-                style={{
-                  letterSpacing: -0.2,
-                }}
+                style={{ letterSpacing: -0.2 }}
               >
                 SLA Compliance
               </Text>
@@ -694,13 +663,8 @@ function SLAComplianceCard() {
               <Badge
                 size="xs"
                 variant="light"
-                leftSection={
-                  <IconCircleCheck size={11} />
-                }
-                style={{
-                  color: SUCCESS,
-                  background: `${SUCCESS}10`,
-                }}
+                leftSection={<IconCircleCheck size={11} />}
+                style={tint(SUCCESS)}
               >
                 Target Met
               </Badge>
@@ -717,27 +681,14 @@ function SLAComplianceCard() {
               fw={800}
               c={MUTED}
               tt="uppercase"
-              style={{
-                letterSpacing: 0.6,
-              }}
+              style={CAPS_LABEL}
             >
               Processed
             </Text>
 
-            <Text
-              size="sm"
-              fw={850}
-              c={TEXT}
-              lh={1}
-              mt={2}
-            >
-              {total}{" "}
-              <Text
-                component="span"
-                size="9px"
-                fw={500}
-                c={MUTED}
-              >
+            <Text size="sm" fw={850} c={TEXT} lh={1} mt={2}>
+              {SLA_TOTAL}{" "}
+              <Text component="span" size="9px" fw={500} c={MUTED}>
                 total
               </Text>
             </Text>
@@ -745,42 +696,16 @@ function SLAComplianceCard() {
         </Group>
       </Box>
 
-      <Box
-        py="md"
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
+      <Box py="md" style={RING_WRAPPER}>
         <RingProgress
           size={138}
           thickness={14}
           roundCaps
-          sections={[
-            {
-              value: withinSlaExact,
-              color: SUCCESS,
-            },
-            {
-              value: breachedExact,
-              color: DANGER,
-            },
-          ]}
+          sections={RING_SECTIONS}
           label={
-            <Box
-              ta="center"
-              style={{
-                userSelect: "none",
-              }}
-            >
-              <Text
-                size="28px"
-                fw={850}
-                c={TEXT}
-                lh={1}
-              >
-                {withinSlaPercentage}%
+            <Box ta="center" style={{ userSelect: "none" }}>
+              <Text size="28px" fw={850} c={TEXT} lh={1}>
+                {SLA_WITHIN_PCT}%
               </Text>
 
               <Text
@@ -789,9 +714,7 @@ function SLAComplianceCard() {
                 c={SUCCESS}
                 mt={5}
                 tt="uppercase"
-                style={{
-                  letterSpacing: 0.6,
-                }}
+                style={CAPS_LABEL}
               >
                 Within SLA
               </Text>
@@ -802,296 +725,150 @@ function SLAComplianceCard() {
 
       <Grid gutter="xs" mt={2}>
         <Grid.Col span={6}>
-          <Box
-            p="sm"
-            style={{
-              background: "#F8FAFC",
-              border: `1px solid ${BORDER}`,
-              borderRadius: 8,
-              height: "100%",
-            }}
-          >
-            <Group
-              justify="space-between"
-              align="center"
-              gap={5}
-              wrap="nowrap"
-            >
-              <Group
-                gap={7}
-                wrap="nowrap"
-              >
-                <Box
-                  w={8}
-                  h={8}
-                  style={{
-                    borderRadius: 999,
-                    background: SUCCESS,
-                    boxShadow: `0 0 0 4px ${SUCCESS}12`,
-                    flexShrink: 0,
-                  }}
-                />
-
-                <Box>
-                  <Text
-                    size="9px"
-                    fw={600}
-                    c={MUTED}
-                  >
-                    Within SLA
-                  </Text>
-
-                  <Text
-                    size="md"
-                    fw={850}
-                    c={TEXT}
-                    mt={3}
-                    lh={1}
-                  >
-                    {withinSla}
-                  </Text>
-                </Box>
-              </Group>
-
-              <Text
-                size="9px"
-                fw={800}
-                c={SUCCESS}
-              >
-                {withinSlaExact.toFixed(1)}%
-              </Text>
-            </Group>
-          </Box>
+          <SlaStat
+            label="Within SLA"
+            value={SLA_WITHIN}
+            dotColor={SUCCESS}
+            glow={`${SUCCESS}12`}
+            valueColor={TEXT}
+            percent={`${SLA_WITHIN_EXACT.toFixed(1)}%`}
+            percentColor={SUCCESS}
+            percentWeight={800}
+          />
         </Grid.Col>
 
         <Grid.Col span={6}>
-          <Box
-            p="sm"
-            style={{
-              background: "#F8FAFC",
-              border: `1px solid ${BORDER}`,
-              borderRadius: 8,
-              height: "100%",
-            }}
-          >
-            <Group
-              justify="space-between"
-              align="center"
-              gap={5}
-              wrap="nowrap"
-            >
-              <Group
-                gap={7}
-                wrap="nowrap"
-              >
-                <Box
-                  w={8}
-                  h={8}
-                  style={{
-                    borderRadius: 999,
-                    background: DANGER,
-                    boxShadow: `0 0 0 4px ${DANGER}10`,
-                    flexShrink: 0,
-                  }}
-                />
-
-                <Box>
-                  <Text
-                    size="9px"
-                    fw={600}
-                    c={MUTED}
-                  >
-                    Breached SLA
-                  </Text>
-
-                  <Text
-                    size="md"
-                    fw={850}
-                    c={DANGER}
-                    mt={3}
-                    lh={1}
-                  >
-                    {breached}
-                  </Text>
-                </Box>
-              </Group>
-
-              <Text
-                size="9px"
-                fw={700}
-                c={MUTED}
-              >
-                {breachedExact.toFixed(1)}%
-              </Text>
-            </Group>
-          </Box>
+          <SlaStat
+            label="Breached SLA"
+            value={SLA_BREACHED}
+            dotColor={DANGER}
+            glow={`${DANGER}10`}
+            valueColor={DANGER}
+            percent={`${SLA_BREACHED_EXACT.toFixed(1)}%`}
+            percentColor={MUTED}
+            percentWeight={700}
+          />
         </Grid.Col>
       </Grid>
 
-      <Box
-        mt="auto"
-        pt="sm"
-        style={{
-          borderTop: `1px solid ${BORDER}`,
-        }}
-      >
-        <Group
-          justify="space-between"
-          align="center"
-          gap="sm"
-          wrap="wrap"
-        >
+      <Box mt="auto" pt="sm" style={BORDER_TOP}>
+        <Group justify="space-between" align="center" gap="sm" wrap="wrap">
           <Group gap={5} wrap="nowrap">
-            <IconCircleCheck
-              size={13}
-              color={SUCCESS}
-            />
+            <IconCircleCheck size={13} color={SUCCESS} />
 
-            <Text
-              size="9px"
-              fw={650}
-              c={TEXT}
-            >
-              {breachedExact.toFixed(1)}%
-              breach rate
+            <Text size="9px" fw={650} c={TEXT}>
+              {SLA_BREACHED_EXACT.toFixed(1)}% breach rate
             </Text>
 
-            <Text
-              size="9px"
-              c={MUTED}
-            >
+            <Text size="9px" c={MUTED}>
               (within &lt;10% tolerance)
             </Text>
           </Group>
 
-          <Text
-            size="9px"
-            fw={600}
-            c={MUTED}
-          >
-            {total} evaluated applications
+          <Text size="9px" fw={600} c={MUTED}>
+            {SLA_TOTAL} evaluated applications
           </Text>
         </Group>
       </Box>
     </SurfaceCard>
   );
-}
+});
 
 /* -------------------------------------------------------------------------- */
 /* TIMELINE MODAL                                                              */
 /* -------------------------------------------------------------------------- */
 
-function TimelineModal({
-  application,
-  onClose,
-}: {
-  application:
-  | (typeof applications)[number]
-  | null;
-  onClose: () => void;
-}) {
-  if (!application) return null;
+interface TimelineEvent {
+  title: string;
+  description: string;
+  date: string;
+  actor: string;
+  current: boolean;
+}
 
-  const timeline = [
+/** Highest stage index at which each event becomes visible. */
+function buildTimeline(application: Application): TimelineEvent[] {
+  const stageIndex = STAGE_ORDER[application.stage];
+  const isUnderwriting = application.stage === "Underwriting";
+  const isApproval = application.stage === "Approval";
+
+  const events: Array<TimelineEvent & { order: number }> = [
     {
+      order: 0,
       title: "Application Submitted",
-      description:
-        "Application entered the lending workflow.",
+      description: "Application entered the lending workflow.",
       date: application.submitted,
       actor: "System",
       current: false,
     },
     {
+      order: 1,
       title: "Intake Completed",
-      description:
-        "Initial application information was validated.",
+      description: "Initial application information was validated.",
       date: "2026-09-20",
       actor: "Operations",
       current: false,
     },
     {
+      order: 1,
       title: "KYC Completed",
-      description:
-        "Customer identity verification was completed.",
+      description: "Customer identity verification was completed.",
       date: "2026-09-21",
       actor: "Credit Operations",
       current: false,
     },
     {
+      order: 2,
       title: "Underwriting",
-      description:
-        application.stage === "Underwriting"
-          ? `File has remained in Underwriting for ${application.timeInStage}.`
-          : "Underwriting review completed before the file moved forward.",
+      description: isUnderwriting
+        ? `File has remained in Underwriting for ${application.timeInStage}.`
+        : "Underwriting review completed before the file moved forward.",
       date: "2026-09-22",
       actor: application.owner,
-      current:
-        application.stage === "Underwriting",
+      current: isUnderwriting,
     },
     {
+      order: 3,
       title: "Approval",
-      description:
-        application.stage === "Approval"
-          ? `File is currently awaiting approval. Total TAT is ${application.totalTat}.`
-          : "Approval stage is pending or completed later in the workflow.",
+      description: isApproval
+        ? `File is currently awaiting approval. Total TAT is ${application.totalTat}.`
+        : "Approval stage is pending or completed later in the workflow.",
       date: "2026-09-23",
-      actor:
-        application.stage === "Approval"
-          ? application.owner
-          : "Credit Team",
-      current:
-        application.stage === "Approval",
+      actor: isApproval ? application.owner : "Credit Team",
+      current: isApproval,
     },
-  ].filter((event) => {
-    const stageOrder = {
-      Intake: 0,
-      KYC: 1,
-      Underwriting: 2,
-      Approval: 3,
-    };
+  ];
 
-    const eventOrder = {
-      "Application Submitted": 0,
-      "Intake Completed": 1,
-      "KYC Completed": 1,
-      Underwriting: 2,
-      Approval: 3,
-    };
+  return events.filter((event) => event.order <= stageIndex);
+}
 
-    return (
-      eventOrder[
-      event.title as keyof typeof eventOrder
-      ] <=
-      stageOrder[
-      application.stage as keyof typeof stageOrder
-      ]
-    );
-  });
+const TimelineModal = memo(function TimelineModal({
+  application,
+  onClose,
+}: {
+  application: Application | null;
+  onClose: () => void;
+}) {
+  if (!application) return null;
+
+  const timeline = buildTimeline(application);
+  const slaTone = SLA_COLOR[application.sla];
 
   return (
     <Modal
-      opened={!!application}
+      opened
       onClose={onClose}
       centered
       size="lg"
       radius="md"
       title={
         <Box>
-          <Text
-            fw={800}
-            size="sm"
-            c={TEXT}
-          >
+          <Text fw={800} size="sm" c={TEXT}>
             Timeline History
           </Text>
 
-          <Text
-            size="10px"
-            c={MUTED}
-            mt={2}
-          >
-            {application.id} ·{" "}
-            {application.customerName}
+          <Text size="10px" c={MUTED} mt={2}>
+            {application.id} · {application.customerName}
           </Text>
         </Box>
       }
@@ -1101,371 +878,296 @@ function TimelineModal({
           withBorder
           radius="md"
           p="sm"
-          style={{
-            borderColor: BORDER,
-            background: BG,
-          }}
+          style={{ borderColor: BORDER, background: BG }}
         >
-          <Group
-            justify="space-between"
-            align="center"
-          >
+          <Group justify="space-between" align="center">
             <Box>
-              <Text
-                size="10px"
-                fw={800}
-                c={MUTED}
-              >
+              <Text size="10px" fw={800} c={MUTED}>
                 LOAN PRODUCT
               </Text>
 
-              <Text
-                size="xs"
-                fw={700}
-                c={TEXT}
-                mt={3}
-              >
+              <Text size="xs" fw={700} c={TEXT} mt={3}>
                 {application.product}
               </Text>
             </Box>
 
-            <Badge
-              size="xs"
-              variant="light"
-              style={{
-                color: statusColor(
-                  application.sla
-                ),
-                background: `${statusColor(
-                  application.sla
-                )}10`,
-              }}
-            >
-              {application.sla === "At risk"
-                ? "At Risk"
-                : application.sla === "Within SLA"
-                  ? "On Track"
-                  : "Breached"}
+            <Badge size="xs" variant="light" style={tint(slaTone)}>
+              {SLA_LABEL[application.sla]}
             </Badge>
           </Group>
 
           <Group gap="lg" mt="sm">
-            <Box>
-              <Text
-                size="9px"
-                c={MUTED}
-                fw={700}
-              >
-                CURRENT STAGE
-              </Text>
+            {[
+              ["CURRENT STAGE", application.stage],
+              ["TIME IN STAGE", application.timeInStage],
+              ["TOTAL TAT", application.totalTat],
+            ].map(([label, value]) => (
+              <Box key={label}>
+                <Text size="9px" c={MUTED} fw={700}>
+                  {label}
+                </Text>
 
-              <Text
-                size="xs"
-                fw={700}
-                c={TEXT}
-                mt={2}
-              >
-                {application.stage}
-              </Text>
-            </Box>
-
-            <Box>
-              <Text
-                size="9px"
-                c={MUTED}
-                fw={700}
-              >
-                TIME IN STAGE
-              </Text>
-
-              <Text
-                size="xs"
-                fw={700}
-                c={TEXT}
-                mt={2}
-              >
-                {application.timeInStage}
-              </Text>
-            </Box>
-
-            <Box>
-              <Text
-                size="9px"
-                c={MUTED}
-                fw={700}
-              >
-                TOTAL TAT
-              </Text>
-
-              <Text
-                size="xs"
-                fw={700}
-                c={TEXT}
-                mt={2}
-              >
-                {application.totalTat}
-              </Text>
-            </Box>
+                <Text size="xs" fw={700} c={TEXT} mt={2}>
+                  {value}
+                </Text>
+              </Box>
+            ))}
           </Group>
         </Card>
 
         <Box>
-          <Text
-            size="xs"
-            fw={750}
-            c={TEXT}
-            mb="sm"
-          >
+          <Text size="xs" fw={750} c={TEXT} mb="sm">
             Processing Timeline
           </Text>
 
           <Stack gap={0}>
-            {timeline.map(
-              (event, index) => {
-                const tone =
-                  event.current
-                    ? WARNING
-                    : PRIMARY;
+            {timeline.map((event, index) => {
+              const tone = event.current ? WARNING : PRIMARY;
+              const isLast = index === timeline.length - 1;
 
-                return (
-                  <Group
-                    key={`${event.title}-${index}`}
-                    align="flex-start"
-                    gap="sm"
-                    wrap="nowrap"
+              return (
+                <Group
+                  key={event.title}
+                  align="flex-start"
+                  gap="sm"
+                  wrap="nowrap"
+                >
+                  <Box
+                    style={{
+                      width: 18,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                    }}
                   >
                     <Box
+                      w={10}
+                      h={10}
                       style={{
-                        width: 18,
-                        display: "flex",
-                        flexDirection:
-                          "column",
-                        alignItems:
-                          "center",
+                        ...PILL,
+                        background: `${tone}18`,
+                        border: `3px solid ${tone}`,
+                        boxSizing: "border-box",
                       }}
-                    >
-                      <Box
-                        w={10}
-                        h={10}
-                        style={{
-                          borderRadius: 999,
-                          background:
-                            `${tone}18`,
-                          border: `3px solid ${tone}`,
-                          boxSizing:
-                            "border-box",
-                        }}
-                      />
+                    />
 
-                      {index <
-                        timeline.length -
-                        1 && (
-                          <Box
-                            w={1}
-                            h={55}
-                            style={{
-                              background:
-                                BORDER,
-                            }}
-                          />
-                        )}
-                    </Box>
+                    {!isLast && (
+                      <Box w={1} h={55} style={{ background: BORDER }} />
+                    )}
+                  </Box>
 
-                    <Box
-                      pb="md"
-                      style={{
-                        flex: 1,
-                      }}
-                    >
-                      <Group
-                        justify="space-between"
-                        align="flex-start"
-                        wrap="nowrap"
-                      >
-                        <Text
-                          size="xs"
-                          fw={750}
-                          c={TEXT}
-                        >
-                          {event.title}
-                        </Text>
-
-                        <Text
-                          size="9px"
-                          c={MUTED}
-                        >
-                          {event.date}
-                        </Text>
-                      </Group>
-
-                      <Text
-                        size="10px"
-                        c={MUTED}
-                        mt={3}
-                      >
-                        {event.description}
+                  <Box pb="md" style={{ flex: 1 }}>
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                      <Text size="xs" fw={750} c={TEXT}>
+                        {event.title}
                       </Text>
 
-                      <Text
-                        size="9px"
-                        fw={700}
-                        c={PRIMARY}
-                        mt={4}
-                      >
-                        {event.actor}
+                      <Text size="9px" c={MUTED}>
+                        {event.date}
                       </Text>
-                    </Box>
-                  </Group>
-                );
-              }
-            )}
+                    </Group>
+
+                    <Text size="10px" c={MUTED} mt={3}>
+                      {event.description}
+                    </Text>
+
+                    <Text size="9px" fw={700} c={PRIMARY} mt={4}>
+                      {event.actor}
+                    </Text>
+                  </Box>
+                </Group>
+              );
+            })}
           </Stack>
         </Box>
       </Stack>
     </Modal>
   );
+});
+
+/* -------------------------------------------------------------------------- */
+/* PRIORITY QUEUE ROW                                                          */
+/* -------------------------------------------------------------------------- */
+
+const QueueRow = memo(function QueueRow({
+  row,
+  onView,
+}: {
+  row: Application;
+  onView: (row: Application) => void;
+}) {
+  const tone = SLA_COLOR[row.sla];
+
+  return (
+    <Table.Tr style={{ boxShadow: `inset 3px 0 0 ${tone}` }}>
+      <Table.Td>
+        <Text size="xs" fw={750} style={{ color: PRIMARY }}>
+          {row.id}
+        </Text>
+      </Table.Td>
+
+      <Table.Td>
+        <Text size="xs" fw={650} c={TEXT}>
+          {row.customerName}
+        </Text>
+      </Table.Td>
+
+      <Table.Td>
+        <Text size="xs" c={TEXT}>
+          {row.product}
+        </Text>
+      </Table.Td>
+
+      <Table.Td>
+        <Badge size="xs" variant="light" style={tint(PRIMARY)}>
+          {row.stage}
+        </Badge>
+      </Table.Td>
+
+      <Table.Td>
+        <Text size="xs" fw={800} c={tone}>
+          {row.timeInStage}
+        </Text>
+      </Table.Td>
+
+      <Table.Td>
+        <Text size="xs" fw={800} c={TEXT}>
+          {row.totalTat}
+        </Text>
+      </Table.Td>
+
+      <Table.Td>
+        <Badge size="xs" variant="light" style={tint(tone)}>
+          {SLA_LABEL[row.sla]}
+        </Badge>
+      </Table.Td>
+
+      <Table.Td>
+        <Text size="xs" fw={600} c={TEXT}>
+          {row.owner}
+        </Text>
+      </Table.Td>
+
+      <Table.Td ta="right">
+        <Tooltip label="View timeline">
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="sm"
+            aria-label={`View timeline for ${row.id}`}
+            onClick={() => onView(row)}
+          >
+            <IconEye size={15} />
+          </ActionIcon>
+        </Tooltip>
+      </Table.Td>
+    </Table.Tr>
+  );
+});
+
+/* -------------------------------------------------------------------------- */
+/* PAGE                                                                        */
+/* -------------------------------------------------------------------------- */
+
+const PAGE_STYLE: CSSProperties = {
+  background: BG,
+  minHeight: "100%",
+  color: TEXT,
+};
+
+const FILTER_BAR_STYLE: CSSProperties = {
+  borderColor: BORDER,
+  background: "#FFF",
+};
+
+const ALERT_CARD_STYLE: CSSProperties = {
+  borderColor: `${WARNING}30`,
+  background: "linear-gradient(90deg, #FFFDF5 0%, #FFFFFF 82%)",
+};
+
+const TABLE_STYLE: CSSProperties = { minWidth: 980 };
+const TABLE_HEAD_STYLE: CSSProperties = { background: "#F8FAFC" };
+
+export interface OperationsTATAutomationProps {
+  onExport?: () => void;
+  onGenerate?: () => void;
 }
 
 export function OperationsTATAutomation({
   onExport,
   onGenerate,
-}: {
-  onExport?: () => void;
-  onGenerate?: () => void;
-} = {}) {
-  const [product, setProduct] =
-    useState("all");
-
-  const [branch, setBranch] =
-    useState("all");
-
-  const [dateRange, setDateRange] =
-    useState<[string | null, string | null]>([
-      "2026-09-01",
-      "2026-09-30",
-    ]);
-
-  const [stageFilter, setStageFilter] =
-    useState("all");
-
-  const [search, setSearch] =
-    useState("");
-
-  const [selectedApplication, setSelectedApplication] =
-    useState<
-      (typeof applications)[number] | null
-    >(null);
-
-  const activeFilterCount = [
-    product !== "all",
-    branch !== "all",
-    dateRange[0] !== null ||
-    dateRange[1] !== null,
-  ].filter(Boolean).length;
-
-  const visibleApplications =
-    useMemo(() => {
-      const rank = {
-        Breached: 0,
-        "At risk": 1,
-        "Within SLA": 2,
-      } as const;
-
-      const query =
-        search.trim().toLowerCase();
-
-      return applications
-        .filter((row) => {
-          const [from, to] = dateRange;
-
-          const matchesGlobalFilters =
-            (product === "all" ||
-              row.product === product) &&
-            (branch === "all" ||
-              row.branch === branch) &&
-            (!from || row.submitted >= from) &&
-            (!to || row.submitted <= to);
-
-          const matchesSearch =
-            !query ||
-            row.id
-              .toLowerCase()
-              .includes(query) ||
-            row.customerName
-              .toLowerCase()
-              .includes(query);
-
-          const matchesStage =
-            stageFilter === "all" ||
-            row.stage === stageFilter;
-
-          return (
-            matchesGlobalFilters &&
-            matchesSearch &&
-            matchesStage
-          );
-        })
-        .sort(
-          (a, b) =>
-            rank[
-            a.sla as keyof typeof rank
-            ] -
-            rank[
-            b.sla as keyof typeof rank
-            ] ||
-            b.tatMinutes -
-            a.tatMinutes
-        );
-    }, [
-      product,
-      branch,
-      dateRange,
-      search,
-      stageFilter,
-    ]);
-
-  const queueStats = useMemo(
-    () => ({
-      breached:
-        visibleApplications.filter(
-          (row) =>
-            row.sla === "Breached"
-        ).length,
-
-      atRisk:
-        visibleApplications.filter(
-          (row) =>
-            row.sla === "At risk"
-        ).length,
-    }),
-    [visibleApplications]
+}: OperationsTATAutomationProps = {}) {
+  const [product, setProduct] = useState("all");
+  const [branch, setBranch] = useState("all");
+  const [dateRange, setDateRange] = useState<[string | null, string | null]>(
+    DEFAULT_DATE_RANGE
   );
+  const [stageFilter, setStageFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [selectedApplication, setSelectedApplication] =
+    useState<Application | null>(null);
 
-  const reset = () => {
-  setProduct("all");
-  setBranch("all");
-  setDateRange([
-    "2026-09-01",
-    "2026-09-30",
-  ]);
-};
+  // Keeps typing responsive while the (potentially large) list re-filters.
+  const deferredSearch = useDeferredValue(search);
 
-  const resetQueueFilters = () => {
+  const isDefaultRange =
+    dateRange[0] === DEFAULT_DATE_RANGE[0] &&
+    dateRange[1] === DEFAULT_DATE_RANGE[1];
+
+  const activeFilterCount =
+    Number(product !== "all") +
+    Number(branch !== "all") +
+    Number(!isDefaultRange);
+
+  const visibleApplications = useMemo(() => {
+    const [from, to] = dateRange;
+    const query = deferredSearch.trim().toLowerCase();
+
+    return applications
+      .filter(
+        (row) =>
+          (product === "all" || row.product === product) &&
+          (branch === "all" || row.branch === branch) &&
+          (!from || row.submitted >= from) &&
+          (!to || row.submitted <= to) &&
+          (stageFilter === "all" || row.stage === stageFilter) &&
+          (!query ||
+            row.id.toLowerCase().includes(query) ||
+            row.customerName.toLowerCase().includes(query))
+      )
+      .sort(
+        (a, b) =>
+          SLA_RANK[a.sla] - SLA_RANK[b.sla] || b.tatMinutes - a.tatMinutes
+      );
+  }, [product, branch, dateRange, deferredSearch, stageFilter]);
+
+  const queueStats = useMemo(() => {
+    let breached = 0;
+    let atRisk = 0;
+
+    for (const row of visibleApplications) {
+      if (row.sla === "Breached") breached += 1;
+      else if (row.sla === "At risk") atRisk += 1;
+    }
+
+    return { breached, atRisk };
+  }, [visibleApplications]);
+
+  const reset = useCallback(() => {
+    setProduct("all");
+    setBranch("all");
+    setDateRange(DEFAULT_DATE_RANGE);
+  }, []);
+
+  const resetQueueFilters = useCallback(() => {
     setSearch("");
     setStageFilter("all");
-  };
+  }, []);
 
-
-};
+  const closeTimeline = useCallback(() => setSelectedApplication(null), []);
 
   return (
-    <Box
-      style={{
-        background: BG,
-        minHeight: "100%",
-        color: TEXT,
-      }}
-    >
+    <Box style={PAGE_STYLE}>
       <Box
         component="main"
         maw={1520}
@@ -1474,13 +1176,7 @@ export function OperationsTATAutomation({
         py={{ base: "xs", md: "sm" }}
       >
         {/* HEADER */}
-        <Group
-          justify="space-between"
-          align="center"
-          gap="md"
-          mb="sm"
-          wrap="wrap"
-        >
+        <Group justify="space-between" align="center" gap="md" mb="sm" wrap="wrap">
           <Box>
             <Group gap={6}>
               <Text
@@ -1488,17 +1184,12 @@ export function OperationsTATAutomation({
                 fw={800}
                 c={PRIMARY}
                 tt="uppercase"
-                style={{
-                  letterSpacing: 0.75,
-                }}
+                style={{ letterSpacing: 0.75 }}
               >
                 Lending Reports
               </Text>
 
-              <Text
-                size="10px"
-                c={MUTED}
-              >
+              <Text size="10px" c={MUTED}>
                 · Last 30 days · All branches
               </Text>
             </Group>
@@ -1512,8 +1203,7 @@ export function OperationsTATAutomation({
                 letterSpacing: -0.5,
               }}
             >
-              Operations, TAT &amp;
-              Automation
+              Operations, TAT &amp; Automation
             </Title>
           </Box>
 
@@ -1522,10 +1212,8 @@ export function OperationsTATAutomation({
               variant="default"
               radius="md"
               size="xs"
-              leftSection={
-                <IconDownload size={14} />
-              }
-              onClick={handleExport}
+              leftSection={<IconDownload size={14} />}
+              onClick={onExport}
             >
               Export
             </Button>
@@ -1533,12 +1221,8 @@ export function OperationsTATAutomation({
             <Button
               radius="md"
               size="xs"
-              style={{
-                background: PRIMARY,
-              }}
-              leftSection={
-                <IconBolt size={14} />
-              }
+              style={{ background: PRIMARY }}
+              leftSection={<IconBolt size={14} />}
               onClick={onGenerate}
             >
               Generate
@@ -1547,69 +1231,31 @@ export function OperationsTATAutomation({
         </Group>
 
         {/* FILTER BAR */}
-        <Card
-          withBorder
-          radius="md"
-          p={6}
-          mb="sm"
-          style={{
-            borderColor: BORDER,
-            background: "#FFF",
-          }}
-        >
-          <Group
-            align="center"
-            gap={6}
-            wrap="wrap"
-          >
-            <Group
-              gap={6}
-              px={3}
-              wrap="nowrap"
-              style={{
-                color: MUTED,
-              }}
-            >
+        <Card withBorder radius="md" p={6} mb="sm" style={FILTER_BAR_STYLE}>
+          <Group align="center" gap={6} wrap="wrap">
+            <Group gap={6} px={3} wrap="nowrap" style={{ color: MUTED }}>
               <IconFilter size={14} />
 
-              <Text
-                size="10px"
-                fw={650}
-                c={MUTED}
-              >
+              <Text size="10px" fw={650} c={MUTED}>
                 Filters
               </Text>
 
               {activeFilterCount > 0 && (
-                <Badge
-                  size="xs"
-                  variant="light"
-                  style={{
-                    color: PRIMARY,
-                    background: `${PRIMARY}10`,
-                  }}
-                >
+                <Badge size="xs" variant="light" style={tint(PRIMARY)}>
                   {activeFilterCount}
                 </Badge>
               )}
             </Group>
 
             {/* APPLICATION DATE RANGE */}
-            <Box
-              style={{
-                flex: "1 1 250px",
-                minWidth: 210,
-              }}
-            >
+            <Box style={{ flex: "1 1 250px", minWidth: 210 }}>
               <DatePickerInput
                 type="range"
                 value={dateRange}
                 onChange={setDateRange}
                 valueFormat="DD MMM YYYY"
                 placeholder="Application date range"
-                leftSection={
-                  <IconCalendar size={13} />
-                }
+                leftSection={<IconCalendar size={13} />}
                 clearable={false}
                 size="xs"
                 radius="md"
@@ -1617,54 +1263,22 @@ export function OperationsTATAutomation({
             </Box>
 
             {/* BRANCH */}
-            <Box
-              style={{
-                flex: "1 1 145px",
-                minWidth: 120,
-              }}
-            >
+            <Box style={{ flex: "1 1 145px", minWidth: 120 }}>
               <Select
                 value={branch}
-                onChange={(value) =>
-                  setBranch(value || "all")
-                }
-                data={[
-                  {
-                    value: "all",
-                    label: "All Branches",
-                  },
-                  "Lusaka",
-                  "Ndola",
-                  "Kitwe",
-                  "Livingstone",
-                ]}
+                onChange={(value) => setBranch(value || "all")}
+                data={BRANCH_OPTIONS}
                 size="xs"
                 radius="md"
               />
             </Box>
 
             {/* LOAN PRODUCT */}
-            <Box
-              style={{
-                flex: "1 1 150px",
-                minWidth: 130,
-              }}
-            >
+            <Box style={{ flex: "1 1 150px", minWidth: 130 }}>
               <Select
                 value={product}
-                onChange={(value) =>
-                  setProduct(value || "all")
-                }
-                data={[
-                  {
-                    value: "all",
-                    label: "All Products",
-                  },
-                  "Personal Loan",
-                  "Home Loan",
-                  "Business Loan",
-                  "Consumer Loan",
-                ]}
+                onChange={(value) => setProduct(value || "all")}
+                data={PRODUCT_OPTIONS}
                 size="xs"
                 radius="md"
               />
@@ -1674,13 +1288,9 @@ export function OperationsTATAutomation({
               variant="subtle"
               color="gray"
               size="xs"
-              leftSection={
-                <IconRefresh size={13} />
-              }
+              leftSection={<IconRefresh size={13} />}
               onClick={reset}
-              disabled={
-                activeFilterCount === 0
-              }
+              disabled={activeFilterCount === 0}
             >
               Reset
             </Button>
@@ -1689,34 +1299,20 @@ export function OperationsTATAutomation({
 
         {/* KPI SUMMARY */}
         <Grid gutter="sm" mb="sm">
-          <Grid.Col
-            span={{ base: 6, sm: 3 }}
-          >
+          <Grid.Col span={{ base: 6, sm: 3 }}>
             <KpiCard
-              icon={
-                <IconClockHour4
-                  size={15}
-                />
-              }
+              icon={<IconClockHour4 size={15} />}
               label="Overall Average TAT"
-              value={
-                reportSummary.averageTat
-              }
+              value={reportSummary.averageTat}
               meta={`Target ${reportSummary.tatTarget}`}
               tone={PRIMARY}
               delta="27m under"
             />
           </Grid.Col>
 
-          <Grid.Col
-            span={{ base: 6, sm: 3 }}
-          >
+          <Grid.Col span={{ base: 6, sm: 3 }}>
             <KpiCard
-              icon={
-                <IconCircleCheck
-                  size={15}
-                />
-              }
+              icon={<IconCircleCheck size={15} />}
               label="SLA Met"
               value={`${reportSummary.slaMet}%`}
               meta={`${reportSummary.breached} breached · ${reportSummary.atRisk} at risk`}
@@ -1725,15 +1321,9 @@ export function OperationsTATAutomation({
             />
           </Grid.Col>
 
-          <Grid.Col
-            span={{ base: 6, sm: 3 }}
-          >
+          <Grid.Col span={{ base: 6, sm: 3 }}>
             <KpiCard
-              icon={
-                <IconAlertTriangle
-                  size={15}
-                />
-              }
+              icon={<IconAlertTriangle size={15} />}
               label="Aging > 24h"
               value={`${reportSummary.agingOver24h}`}
               meta="8.6% of active queue"
@@ -1742,13 +1332,9 @@ export function OperationsTATAutomation({
             />
           </Grid.Col>
 
-          <Grid.Col
-            span={{ base: 6, sm: 3 }}
-          >
+          <Grid.Col span={{ base: 6, sm: 3 }}>
             <KpiCard
-              icon={
-                <IconRobot size={15} />
-              }
+              icon={<IconRobot size={15} />}
               label="Automation"
               value={`${reportSummary.automation}%`}
               meta={`${reportSummary.processed} processed`}
@@ -1759,66 +1345,28 @@ export function OperationsTATAutomation({
         </Grid>
 
         {/* BOTTLENECK ALERT */}
-        <Card
-          withBorder
-          radius="md"
-          p="xs"
-          mb="sm"
-          style={{
-            borderColor: `${WARNING}30`,
-            background:
-              "linear-gradient(90deg, #FFFDF5 0%, #FFFFFF 82%)",
-          }}
-        >
-          <Group
-            justify="space-between"
-            align="center"
-            gap="sm"
-            wrap="nowrap"
-          >
-            <Group
-              gap={9}
-              wrap="nowrap"
-            >
+        <Card withBorder radius="md" p="xs" mb="sm" style={ALERT_CARD_STYLE}>
+          <Group justify="space-between" align="center" gap="sm" wrap="nowrap">
+            <Group gap={9} wrap="nowrap">
               <ThemeIcon
                 size={30}
                 radius="xl"
-                style={{
-                  background:
-                    "#FEF3C7",
-                  color: WARNING,
-                }}
+                style={{ background: "#FEF3C7", color: WARNING }}
               >
-                <IconAlertTriangle
-                  size={15}
-                />
+                <IconAlertTriangle size={15} />
               </ThemeIcon>
 
               <Box>
-                <Group
-                  gap={6}
-                  wrap="wrap"
-                >
-                  <Text
-                    size="xs"
-                    fw={750}
-                    c={TEXT}
-                  >
+                <Group gap={6} wrap="wrap">
+                  <Text size="xs" fw={750} c={TEXT}>
                     Credit Verification
                   </Text>
 
-                  <Text
-                    size="10px"
-                    fw={750}
-                    c={DANGER}
-                  >
+                  <Text size="10px" fw={750} c={DANGER}>
                     82% SLA · +22m over target
                   </Text>
 
-                  <Text
-                    size="10px"
-                    c={MUTED}
-                  >
+                  <Text size="10px" c={MUTED}>
                     16 applications beyond the preferred window.
                   </Text>
                 </Group>
@@ -1828,15 +1376,8 @@ export function OperationsTATAutomation({
             <Button
               variant="subtle"
               size="xs"
-              style={{
-                color: PRIMARY,
-                flexShrink: 0,
-              }}
-              rightSection={
-                <IconArrowUpRight
-                  size={12}
-                />
-              }
+              style={{ color: PRIMARY, flexShrink: 0 }}
+              rightSection={<IconArrowUpRight size={12} />}
             >
               Review
             </Button>
@@ -1844,116 +1385,54 @@ export function OperationsTATAutomation({
         </Card>
 
         {/* PIPELINE + SLA COMPLIANCE */}
-        <Grid
-          gutter="sm"
-          align="stretch"
-        >
-          <Grid.Col
-            span={{ base: 12, lg: 7 }}
-          >
+        <Grid gutter="sm" align="stretch">
+          <Grid.Col span={{ base: 12, lg: 7 }}>
             <PipelineStageChart />
           </Grid.Col>
 
-          <Grid.Col
-            span={{ base: 12, lg: 5 }}
-          >
+          <Grid.Col span={{ base: 12, lg: 5 }}>
             <SLAComplianceCard />
           </Grid.Col>
         </Grid>
 
         {/* PRIORITY QUEUE */}
-        <SurfaceCard
-          mt="sm"
-          p={0}
-          style={{
-            overflow: "hidden",
-          }}
-        >
+        <SurfaceCard mt="sm" p={0} style={{ overflow: "hidden" }}>
           <Box p="sm">
-            <Group
-              justify="space-between"
-              align="center"
-              gap="sm"
-              wrap="wrap"
-            >
+            <Group justify="space-between" align="center" gap="sm" wrap="wrap">
               <Box>
                 <Group gap={8}>
-                  <Text
-                    fw={750}
-                    size="sm"
-                    c={TEXT}
-                  >
+                  <Text fw={750} size="sm" c={TEXT}>
                     Priority Queue
                   </Text>
 
                   <Badge
                     size="xs"
                     variant="light"
-                    style={{
-                      color: TEXT,
-                      background:
-                        "#F1F3F7",
-                    }}
+                    style={{ color: TEXT, background: "#F1F3F7" }}
                   >
-                    {
-                      visibleApplications.length
-                    }
+                    {visibleApplications.length}
                   </Badge>
 
-                  {(queueStats.breached >
-                    0 ||
-                    queueStats.atRisk >
-                    0) && (
-                      <Badge
-                        size="xs"
-                        variant="light"
-                        style={{
-                          color: DANGER,
-                          background: `${DANGER}08`,
-                        }}
-                      >
-                        {
-                          queueStats.breached
-                        }{" "}
-                        breached ·{" "}
-                        {
-                          queueStats.atRisk
-                        }{" "}
-                        at risk
-                      </Badge>
-                    )}
+                  {(queueStats.breached > 0 || queueStats.atRisk > 0) && (
+                    <Badge size="xs" variant="light" style={tint(DANGER, "08")}>
+                      {queueStats.breached} breached · {queueStats.atRisk} at
+                      risk
+                    </Badge>
+                  )}
                 </Group>
 
-                <Text
-                  size="10px"
-                  c={MUTED}
-                  mt={2}
-                >
+                <Text size="10px" c={MUTED} mt={2}>
                   Files still in process, prioritized by SLA severity and TAT.
                 </Text>
               </Box>
 
               <Group gap={6}>
-                <Box
-                  style={{
-                    width: 225,
-                  }}
-                >
+                <Box style={{ width: 225 }}>
                   <TextInput
                     value={search}
-                    onChange={(event) =>
-                      setSearch(
-                        event
-                          .currentTarget
-                          .value
-                      )
-                    }
+                    onChange={(event) => setSearch(event.currentTarget.value)}
                     placeholder="Search customer or App ID"
-                    leftSection={
-                      <IconSearch
-                        size={13}
-                      />
-                    }
+                    leftSection={<IconSearch size={13} />}
                     size="xs"
                     radius="md"
                   />
@@ -1961,27 +1440,10 @@ export function OperationsTATAutomation({
 
                 <Select
                   value={stageFilter}
-                  onChange={(value) =>
-                    setStageFilter(
-                      value || "all"
-                    )
-                  }
+                  onChange={(value) => setStageFilter(value || "all")}
                   size="xs"
                   w={125}
-                  data={[
-                    {
-                      value: "all",
-                      label: "All stages",
-                    },
-                    ...stages.map(
-                      (stage) => ({
-                        value:
-                          stage.short,
-                        label:
-                          stage.short,
-                      })
-                    ),
-                  ]}
+                  data={STAGE_OPTIONS}
                 />
               </Group>
             </Group>
@@ -1989,55 +1451,17 @@ export function OperationsTATAutomation({
 
           <Divider color={BORDER} />
 
-          <Box
-            style={{
-              overflowX: "auto",
-            }}
-          >
+          <Box style={{ overflowX: "auto" }}>
             <Table
               verticalSpacing={7}
               highlightOnHover
               withTableBorder={false}
-              style={{
-                minWidth: 980,
-              }}
+              style={TABLE_STYLE}
             >
-              <Table.Thead
-                style={{
-                  background:
-                    "#F8FAFC",
-                }}
-              >
-                <Table.Tr
-                  style={{
-                    borderBottom: `1px solid ${BORDER}`,
-                  }}
-                >
-                  {[
-                    "App ID",
-                    "Customer Name",
-                    "Loan Product",
-                    "Current Stage",
-                    "Time in Stage",
-                    "Total TAT",
-                    "SLA Status",
-                    "Assigned Owner",
-                    "Action",
-                  ].map((heading) => (
-                    <Table.Th
-                      key={heading}
-                      style={{
-                        color: MUTED,
-                        fontSize: 9,
-                        fontWeight: 800,
-                        textTransform:
-                          "uppercase",
-                        letterSpacing:
-                          0.25,
-                        whiteSpace:
-                          "nowrap",
-                      }}
-                    >
+              <Table.Thead style={TABLE_HEAD_STYLE}>
+                <Table.Tr style={BORDER_BOTTOM}>
+                  {QUEUE_HEADINGS.map((heading) => (
+                    <Table.Th key={heading} style={HEADING_STYLE}>
                       {heading}
                     </Table.Th>
                   ))}
@@ -2045,167 +1469,23 @@ export function OperationsTATAutomation({
               </Table.Thead>
 
               <Table.Tbody>
-                {visibleApplications.map(
-                  (row) => {
-                    const tone =
-                      statusColor(
-                        row.sla
-                      );
-
-                    const displayStatus =
-                      row.sla ===
-                        "At risk"
-                        ? "At Risk"
-                        : row.sla ===
-                          "Within SLA"
-                          ? "On Track"
-                          : "Breached";
-
-                    return (
-                      <Table.Tr
-                        key={row.id}
-                        style={{
-                          boxShadow: `inset 3px 0 0 ${tone}`,
-                        }}
-                      >
-                        <Table.Td>
-                          <Text
-                            size="xs"
-                            fw={750}
-                            style={{
-                              color:
-                                PRIMARY,
-                            }}
-                          >
-                            {row.id}
-                          </Text>
-                        </Table.Td>
-
-                        <Table.Td>
-                          <Text
-                            size="xs"
-                            fw={650}
-                            c={TEXT}
-                          >
-                            {
-                              row.customerName
-                            }
-                          </Text>
-                        </Table.Td>
-
-                        <Table.Td>
-                          <Text
-                            size="xs"
-                            c={TEXT}
-                          >
-                            {row.product}
-                          </Text>
-                        </Table.Td>
-
-                        <Table.Td>
-                          <Badge
-                            size="xs"
-                            variant="light"
-                            style={{
-                              color:
-                                PRIMARY,
-                              background: `${PRIMARY}10`,
-                            }}
-                          >
-                            {row.stage}
-                          </Badge>
-                        </Table.Td>
-
-                        <Table.Td>
-                          <Text
-                            size="xs"
-                            fw={800}
-                            c={tone}
-                          >
-                            {
-                              row.timeInStage
-                            }
-                          </Text>
-                        </Table.Td>
-
-                        <Table.Td>
-                          <Text
-                            size="xs"
-                            fw={800}
-                            c={TEXT}
-                          >
-                            {row.totalTat}
-                          </Text>
-                        </Table.Td>
-
-                        <Table.Td>
-                          <Badge
-                            size="xs"
-                            variant="light"
-                            style={{
-                              color: tone,
-                              background: `${tone}10`,
-                            }}
-                          >
-                            {
-                              displayStatus
-                            }
-                          </Badge>
-                        </Table.Td>
-
-                        <Table.Td>
-                          <Text
-                            size="xs"
-                            fw={600}
-                            c={TEXT}
-                          >
-                            {row.owner}
-                          </Text>
-                        </Table.Td>
-
-                        <Table.Td ta="right">
-                          <Tooltip label="View timeline">
-                            <ActionIcon
-                              variant="subtle"
-                              color="gray"
-                              size="sm"
-                              onClick={() =>
-                                setSelectedApplication(
-                                  row
-                                )
-                              }
-                            >
-                              <IconEye
-                                size={15}
-                              />
-                            </ActionIcon>
-                          </Tooltip>
-                        </Table.Td>
-                      </Table.Tr>
-                    );
-                  }
-                )}
+                {visibleApplications.map((row) => (
+                  <QueueRow
+                    key={row.id}
+                    row={row}
+                    onView={setSelectedApplication}
+                  />
+                ))}
 
                 {!visibleApplications.length && (
                   <Table.Tr>
-                    <Table.Td colSpan={9}>
-                      <Stack
-                        align="center"
-                        gap={4}
-                        py="md"
-                      >
-                        <Text
-                          size="sm"
-                          fw={700}
-                          c={TEXT}
-                        >
+                    <Table.Td colSpan={QUEUE_HEADINGS.length}>
+                      <Stack align="center" gap={4} py="md">
+                        <Text size="sm" fw={700} c={TEXT}>
                           No applications found
                         </Text>
 
-                        <Text
-                          size="10px"
-                          c={MUTED}
-                        >
+                        <Text size="10px" c={MUTED}>
                           Try a different customer, App ID, or stage.
                         </Text>
 
@@ -2213,13 +1493,8 @@ export function OperationsTATAutomation({
                           variant="subtle"
                           size="xs"
                           mt={2}
-                          onClick={
-                            resetQueueFilters
-                          }
-                          style={{
-                            color:
-                              PRIMARY,
-                          }}
+                          onClick={resetQueueFilters}
+                          style={{ color: PRIMARY }}
                         >
                           Clear queue filters
                         </Button>
@@ -2233,29 +1508,16 @@ export function OperationsTATAutomation({
 
           <Divider color={BORDER} />
 
-          <Group
-            justify="space-between"
-            px="sm"
-            py={7}
-          >
-            <Text
-              size="9px"
-              c={MUTED}
-            >
+          <Group justify="space-between" px="sm" py={7}>
+            <Text size="9px" c={MUTED}>
               SLA severity · longest TAT
             </Text>
 
             <Button
               variant="subtle"
               size="xs"
-              style={{
-                color: PRIMARY,
-              }}
-              rightSection={
-                <IconChevronRight
-                  size={12}
-                />
-              }
+              style={{ color: PRIMARY }}
+              rightSection={<IconChevronRight size={12} />}
             >
               View all
             </Button>
@@ -2264,18 +1526,12 @@ export function OperationsTATAutomation({
 
         {/* TIMELINE MODAL */}
         <TimelineModal
-          application={
-            selectedApplication
-          }
-          onClose={() =>
-            setSelectedApplication(
-              null
-            )
-          }
+          application={selectedApplication}
+          onClose={closeTimeline}
         />
       </Box>
     </Box>
   );
-
+}
 
 export default OperationsTATAutomation;

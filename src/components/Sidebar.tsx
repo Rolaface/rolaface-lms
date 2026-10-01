@@ -275,6 +275,29 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     ],
   },
   {
+    path: "/los-reports",
+    label: "LOS Reports",
+    icon: IconReportAnalytics,
+    matchPrefix: true,
+    subItems: [
+      {
+        path: "/los-reports/application-pipeline",
+        label: "Application Pipeline Report",
+        icon: IconChartBar,
+      },
+      {
+        path: "/los-reports/credit-risk-verification",
+        label: "Risk Verification",
+        icon: IconShieldCheck,
+      },
+      {
+        path: "/los-reports/operations-tat-automation",
+        label: "TAT Operations Report",
+        icon: IconTimelineEvent,
+      },
+    ],
+  },
+  {
     path: "/reports",
     label: "Lending Reports",
     icon: IconReportAnalytics,
@@ -526,6 +549,7 @@ function getInitialOpenMenus(pathname: string): Record<string, boolean> {
     "0-Lending Operations": pathname.startsWith("/operations"),
     "0-Accounting": pathname.startsWith("/accounting"),
     "1-General Ledger": pathname.startsWith("/accounting/general-ledger"),
+    "0-LOS Reports": pathname.startsWith("/los-reports"),
     "0-Lending Reports": pathname.startsWith("/reports"),
     "0-Settings": pathname.startsWith("/settings"),
     "1-User": pathname.startsWith("/settings/user"),
@@ -555,7 +579,7 @@ export function Sidebar({
       : "lending";
 
 
-  const HIDDEN_IN_LENDING_MODE = ["/origination", "/origination-setup"];
+  const HIDDEN_IN_LENDING_MODE = ["/origination", "/origination-setup", "/los-reports"];
   const HIDDEN_IN_LOS_MODE = ["/setup", "/operations", "/reports"];
 
   const navItemsForSubscription = React.useMemo(
@@ -922,6 +946,8 @@ export function Sidebar({
     </Box>
   );
 }
+
+
 
 
 

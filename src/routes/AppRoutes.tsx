@@ -1,4 +1,3 @@
-
 import { ContractTemplateManagement } from "../view/Setup/ContractTemplates/ContractTemplateManagement";
 import { CreateTemplateWizard } from "../view/Setup/ContractTemplates/CreateTemplate/CreateTemplateWizard";
 import {
@@ -7,7 +6,6 @@ import {
   createRootRoute,
   Outlet,
   redirect,
-  Link,
 } from "@tanstack/react-router";
 import { AppLayout } from "../layout/AppLayout";
 import { PermissionGuard } from "../view/Permissionguard";
@@ -81,6 +79,9 @@ import ProductAssignments from "../view/LosConfiguration/ProductAssignment/Produ
 import { OfferIssuanceStage } from "../view/Origination/OfferIssuanceStage/OfferIssuanceStage";
 import { LoanTypeSetup } from "../view/LosConfiguration/LoanTpeSetup/Loantypesetup";
 import { DocumentSetup } from "../view/LosConfiguration/Documents/Documentsetup";
+import ApplicationPipelineAnalytics from "../view/LosReports/ApplicationPipelineAnalytics";
+import CreditRiskVerification from "../view/LosReports/CreditRiskVerification";
+import OperationsTATAutomation from "../view/LosReports/OperationsTATAutomation";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -346,6 +347,39 @@ const reportsRoute = createRoute({
   component: Outlet,
 });
 
+/* ---------- LOS Reports (layout + children) ---------- */
+const losReportsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/los-reports",
+  component: Outlet,
+});
+
+const losReportsIndexRoute = createRoute({
+  getParentRoute: () => losReportsRoute,
+  path: "/",
+  beforeLoad: () => {
+    throw redirect({ to: "/los-reports/application-pipeline" });
+  },
+});
+
+const applicationPipelineAnalyticsRoute = createRoute({
+  getParentRoute: () => losReportsRoute,
+  path: "/application-pipeline",
+  component: ApplicationPipelineAnalytics,
+});
+
+const creditRiskVerificationRoute = createRoute({
+  getParentRoute: () => losReportsRoute,
+  path: "/credit-risk-verification",
+  component: CreditRiskVerification,
+});
+
+const operationsTatautomationRoute = createRoute({
+  getParentRoute: () => losReportsRoute,
+  path: "/operations-tat-automation",
+  component: OperationsTATAutomation,
+});
+
 /* ---------- Accounting (layout + children) ---------- */
 type GLTabConfig = RouteTabItem & {
   moduleChecks: Array<{ module: LmsModule; action: PermissionAction }>;
@@ -560,6 +594,12 @@ const routeTree = rootRoute.addChildren([
     balancesheetRoute,
     cashflowRoute,
   ]),
+  losReportsRoute.addChildren([
+    losReportsIndexRoute,
+    applicationPipelineAnalyticsRoute,
+    creditRiskVerificationRoute,
+    operationsTatautomationRoute,
+  ]),
   // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
   originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute, originationLoanTypeSetupRoute, originationDocumentSetupRoute]),
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
@@ -577,5 +617,4 @@ declare module "@tanstack/react-router" {
     router: typeof router;
   }
 }
-
 

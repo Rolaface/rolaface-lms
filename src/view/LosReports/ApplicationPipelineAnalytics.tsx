@@ -4,9 +4,9 @@ import {
   Box,
   Button,
   Card,
-  Divider,
   Group,
   Progress,
+  ScrollArea,
   Select,
   SimpleGrid,
   Stack,
@@ -16,28 +16,23 @@ import {
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import {
+  IconArrowRight,
   IconBuilding,
   IconCalendar,
   IconCheck,
   IconClipboardData,
   IconCoin,
   IconDownload,
-  IconFilter,
   IconFileAnalytics,
+  IconFilter,
   IconRefresh,
   IconTrendingUp,
   IconUser,
   IconX,
 } from "@tabler/icons-react";
-
 import {
-  Donut,
-  EmptyState,
-  MetricBar,
-  REPORT_COLORS,
   ReportShell,
   SectionCard,
-  TinyPill,
 } from "../LosReports/shared/LosReportShared";
 
 /* -------------------------------------------------------------------------- */
@@ -89,305 +84,60 @@ type Filters = {
   dateRange: DateRange;
 };
 
-/* -------------------------------------------------------------------------- */
-/* DUMMY DATA                                                                 */
-/* -------------------------------------------------------------------------- */
-
-const APPLICATIONS: ApplicationRow[] = [
-  {
-    id: "APP-1001",
-    product: "Personal Loan",
-    branch: "Delhi",
-    stage: "Disbursement",
-    status: "Approved",
-    source: "Branch",
-    officer: "Rahul Sharma",
-    requested: 450000,
-    approved: 420000,
-    age: 2,
-    submittedOn: "2026-09-20",
-  },
-  {
-    id: "APP-1002",
-    product: "Home Loan",
-    branch: "Noida",
-    stage: "Underwriting",
-    status: "On Hold",
-    source: "DSA",
-    officer: "Priya Singh",
-    requested: 3500000,
-    approved: 0,
-    age: 5,
-    submittedOn: "2026-09-18",
-  },
-  {
-    id: "APP-1003",
-    product: "Personal Loan",
-    branch: "Lucknow",
-    stage: "Approved",
-    status: "Approved",
-    source: "Digital",
-    officer: "Amit Verma",
-    requested: 300000,
-    approved: 285000,
-    age: 1,
-    submittedOn: "2026-09-21",
-  },
-  {
-    id: "APP-1004",
-    product: "Business Loan",
-    branch: "Delhi",
-    stage: "Credit Assessment",
-    status: "Rejected",
-    source: "Partner",
-    officer: "Rahul Sharma",
-    requested: 1200000,
-    approved: 0,
-    age: 7,
-    submittedOn: "2026-09-15",
-  },
-  {
-    id: "APP-1005",
-    product: "Personal Loan",
-    branch: "Jaipur",
-    stage: "Document Verification",
-    status: "On Hold",
-    source: "Branch",
-    officer: "Neha Gupta",
-    requested: 500000,
-    approved: 0,
-    age: 4,
-    submittedOn: "2026-09-19",
-  },
-  {
-    id: "APP-1006",
-    product: "Home Loan",
-    branch: "Delhi",
-    stage: "Disbursement",
-    status: "Approved",
-    source: "Digital",
-    officer: "Vikas Kumar",
-    requested: 4200000,
-    approved: 4000000,
-    age: 3,
-    submittedOn: "2026-09-19",
-  },
-  {
-    id: "APP-1007",
-    product: "Personal Loan",
-    branch: "Noida",
-    stage: "Credit Assessment",
-    status: "Rejected",
-    source: "DSA",
-    officer: "Priya Singh",
-    requested: 250000,
-    approved: 0,
-    age: 8,
-    submittedOn: "2026-09-14",
-  },
-  {
-    id: "APP-1008",
-    product: "Business Loan",
-    branch: "Lucknow",
-    stage: "Underwriting",
-    status: "On Hold",
-    source: "Partner",
-    officer: "Amit Verma",
-    requested: 1800000,
-    approved: 0,
-    age: 6,
-    submittedOn: "2026-09-16",
-  },
-  {
-    id: "APP-1009",
-    product: "Personal Loan",
-    branch: "Jaipur",
-    stage: "Approved",
-    status: "Approved",
-    source: "Digital",
-    officer: "Neha Gupta",
-    requested: 350000,
-    approved: 330000,
-    age: 2,
-    submittedOn: "2026-09-20",
-  },
-  {
-    id: "APP-1010",
-    product: "Home Loan",
-    branch: "Delhi",
-    stage: "Application",
-    status: "Withdrawn",
-    source: "Branch",
-    officer: "Vikas Kumar",
-    requested: 2800000,
-    approved: 0,
-    age: 10,
-    submittedOn: "2026-09-12",
-  },
-  {
-    id: "APP-1011",
-    product: "Personal Loan",
-    branch: "Noida",
-    stage: "Underwriting",
-    status: "Approved",
-    source: "Partner",
-    officer: "Rahul Sharma",
-    requested: 600000,
-    approved: 575000,
-    age: 3,
-    submittedOn: "2026-09-19",
-  },
-  {
-    id: "APP-1012",
-    product: "Business Loan",
-    branch: "Lucknow",
-    stage: "Document Verification",
-    status: "On Hold",
-    source: "DSA",
-    officer: "Amit Verma",
-    requested: 1500000,
-    approved: 0,
-    age: 5,
-    submittedOn: "2026-09-18",
-  },
-];
-
-const STAGES: StageRow[] = [
-  {
-    stage: "Application",
-    entered: 120,
-    completed: 108,
-    pending: 8,
-    drop: 4,
-    reason: "Incomplete application",
-  },
-  {
-    stage: "Document Verification",
-    entered: 108,
-    completed: 94,
-    pending: 9,
-    drop: 5,
-    reason: "Document mismatch",
-  },
-  {
-    stage: "Credit Assessment",
-    entered: 94,
-    completed: 78,
-    pending: 10,
-    drop: 6,
-    reason: "Credit policy",
-  },
-  {
-    stage: "Underwriting",
-    entered: 78,
-    completed: 68,
-    pending: 7,
-    drop: 3,
-    reason: "Additional review",
-  },
-  {
-    stage: "Approved",
-    entered: 68,
-    completed: 61,
-    pending: 4,
-    drop: 3,
-    reason: "Customer decline",
-  },
-  {
-    stage: "Disbursement",
-    entered: 61,
-    completed: 56,
-    pending: 3,
-    drop: 2,
-    reason: "Disbursement pending",
-  },
-];
-
-const SOURCES: SourceRow[] = [
-  {
-    source: "Branch",
-    applications: 38,
-    approved: 22,
-    rejected: 8,
-  },
-  {
-    source: "Digital",
-    applications: 31,
-    approved: 21,
-    rejected: 5,
-  },
-  {
-    source: "DSA",
-    applications: 24,
-    approved: 12,
-    rejected: 7,
-  },
-  {
-    source: "Partner",
-    applications: 19,
-    approved: 11,
-    rejected: 5,
-  },
-];
-
-const CONVERSION_STEPS = [
-  {
-    label: "Application → Documents",
-    value: 90,
-  },
-  {
-    label: "Documents → Credit",
-    value: 87,
-  },
-  {
-    label: "Credit → Underwriting",
-    value: 83,
-  },
-  {
-    label: "Underwriting → Approval",
-    value: 87,
-  },
-  {
-    label: "Approval → Disbursement",
-    value: 92,
-  },
-];
+type Tone =
+  | "primary"
+  | "info"
+  | "success"
+  | "warning"
+  | "danger"
+  | "muted";
 
 /* -------------------------------------------------------------------------- */
-/* APPLICATION STATUS                                                         */
+/* COLORS                                                                      */
 /* -------------------------------------------------------------------------- */
 
-const APPLICATION_STATUS_DATA = [
-  {
-    label: "Approved",
-    value: 42,
-    color: REPORT_COLORS.success,
-  },
-  {
-    label: "On Hold",
-    value: 24,
-    color: REPORT_COLORS.warning,
-  },
-  {
-    label: "Rejected",
-    value: 18,
-    color: REPORT_COLORS.danger,
-  },
-  {
-    label: "Withdrawn",
-    value: 16,
-    color: REPORT_COLORS.muted,
-  },
-];
+const COLORS = {
+  primary: "#3B34CD",
+  accent: "#8B5CF6",
+  neutral: "#64748B",
+  success: "#3B34CD",
+  warning: "#8B5CF6",
+  danger: "#8B5CF6",
+  muted: "#64748B",
+  text: "#3B34CD",
+  border: "rgba(100, 116, 139, 0.22)",
+  surface: "var(--mantine-color-body)",
+  track: "rgba(100, 116, 139, 0.14)",
+};
 
-const APPLICATION_STATUS_TOTAL =
-  APPLICATION_STATUS_DATA.reduce(
-    (sum, item) => sum + item.value,
-    0,
-  );
+const TONE_COLOR: Record<Tone, string> = {
+  primary: COLORS.primary,
+  info: COLORS.primary,
+  success: COLORS.primary,
+  warning: COLORS.accent,
+  danger: COLORS.accent,
+  muted: COLORS.neutral,
+};
+
+const filterStyles = {
+  input: {
+    minHeight: 30,
+    height: 30,
+    fontSize: 10,
+    fontWeight: 650,
+    backgroundColor: "var(--mantine-color-gray-0)",
+  },
+};
+
+const tableHead = {
+  fontSize: 8.5,
+  fontWeight: 800,
+  color: "var(--mantine-color-dimmed)",
+  whiteSpace: "nowrap" as const,
+};
 
 /* -------------------------------------------------------------------------- */
-/* OPTIONS                                                                    */
+/* OPTIONS                                                                     */
 /* -------------------------------------------------------------------------- */
 
 const PRODUCT_OPTIONS = [
@@ -430,9 +180,124 @@ const OFFICER_OPTIONS = [
   "Vikas Kumar",
 ];
 
+const DEFAULT_FILTERS: Filters = {
+  product: "All Products",
+  status: "All Statuses",
+  source: "All Sources",
+  dateRange: [null, null],
+};
+
 /* -------------------------------------------------------------------------- */
-/* HELPERS                                                                    */
+/* DATA                                                                        */
 /* -------------------------------------------------------------------------- */
+
+const APPLICATIONS: ApplicationRow[] = [
+  ["APP-1001", "Personal Loan", "Delhi", "Disbursement", "Approved", "Branch", "Rahul Sharma", 450000, 420000, 2, "2026-09-20"],
+  ["APP-1002", "Home Loan", "Noida", "Underwriting", "On Hold", "DSA", "Priya Singh", 3500000, 0, 5, "2026-09-18"],
+  ["APP-1003", "Personal Loan", "Lucknow", "Approved", "Approved", "Digital", "Amit Verma", 300000, 285000, 1, "2026-09-21"],
+  ["APP-1004", "Business Loan", "Delhi", "Credit Assessment", "Rejected", "Partner", "Rahul Sharma", 1200000, 0, 7, "2026-09-15"],
+  ["APP-1005", "Personal Loan", "Jaipur", "Document Verification", "On Hold", "Branch", "Neha Gupta", 500000, 0, 4, "2026-09-19"],
+  ["APP-1006", "Home Loan", "Delhi", "Disbursement", "Approved", "Digital", "Vikas Kumar", 4200000, 4000000, 3, "2026-09-19"],
+  ["APP-1007", "Personal Loan", "Noida", "Credit Assessment", "Rejected", "DSA", "Priya Singh", 250000, 0, 8, "2026-09-14"],
+  ["APP-1008", "Business Loan", "Lucknow", "Underwriting", "On Hold", "Partner", "Amit Verma", 1800000, 0, 6, "2026-09-16"],
+  ["APP-1009", "Personal Loan", "Jaipur", "Approved", "Approved", "Digital", "Neha Gupta", 350000, 330000, 2, "2026-09-20"],
+  ["APP-1010", "Home Loan", "Delhi", "Application", "Withdrawn", "Branch", "Vikas Kumar", 2800000, 0, 10, "2026-09-12"],
+  ["APP-1011", "Personal Loan", "Noida", "Underwriting", "Approved", "Partner", "Rahul Sharma", 600000, 575000, 3, "2026-09-19"],
+  ["APP-1012", "Business Loan", "Lucknow", "Document Verification", "On Hold", "DSA", "Amit Verma", 1500000, 0, 5, "2026-09-18"],
+].map(
+  ([
+    id,
+    product,
+    branch,
+    stage,
+    status,
+    source,
+    officer,
+    requested,
+    approved,
+    age,
+    submittedOn,
+  ]) => ({
+    id,
+    product,
+    branch,
+    stage,
+    status,
+    source,
+    officer,
+    requested,
+    approved,
+    age,
+    submittedOn,
+  }),
+);
+
+const STAGES: StageRow[] = [
+  ["Application", 120, 108, 8, 4, "Incomplete application"],
+  ["Document Verification", 108, 94, 9, 5, "Document mismatch"],
+  ["Credit Assessment", 94, 78, 10, 6, "Credit policy"],
+  ["Underwriting", 78, 68, 7, 3, "Additional review"],
+  ["Approved", 68, 61, 4, 3, "Customer decline"],
+  ["Disbursement", 61, 56, 3, 2, "Disbursement pending"],
+].map(
+  ([stage, entered, completed, pending, drop, reason]) => ({
+    stage,
+    entered,
+    completed,
+    pending,
+    drop,
+    reason,
+  }),
+);
+
+const SOURCES: SourceRow[] = [
+  ["Branch", 38, 22, 8],
+  ["Digital", 31, 21, 5],
+  ["DSA", 24, 12, 7],
+  ["Partner", 19, 11, 5],
+].map(([source, applications, approved, rejected]) => ({
+  source,
+  applications,
+  approved,
+  rejected,
+}));
+
+const CONVERSION_STEPS = [
+  ["Application → Documents", 90],
+  ["Documents → Credit", 87],
+  ["Credit → Underwriting", 83],
+  ["Underwriting → Approval", 87],
+  ["Approval → Disbursement", 92],
+].map(([label, value]) => ({ label, value }));
+
+const APPLICATION_STATUS_DATA = [
+  ["Approved", 42, COLORS.success],
+  ["On Hold", 24, COLORS.warning],
+  ["Rejected", 18, COLORS.danger],
+  ["Withdrawn", 16, COLORS.muted],
+].map(([label, value, color]) => ({
+  label,
+  value,
+  color,
+}));
+
+const APPLICATION_STATUS_TOTAL =
+  APPLICATION_STATUS_DATA.reduce(
+    (sum, item) => sum + item.value,
+    0,
+  );
+
+/* -------------------------------------------------------------------------- */
+/* HELPERS                                                                     */
+/* -------------------------------------------------------------------------- */
+
+const badgeStyles = (color: string) => ({
+  root: {
+    color,
+    backgroundColor: `${color}14`,
+    border: `1px solid ${color}22`,
+  },
+});
 
 const formatCurrency = (value: number) => {
   if (value >= 10_000_000) {
@@ -453,131 +318,133 @@ const formatCurrency = (value: number) => {
 const formatFullCurrency = (value: number) =>
   `₹${value.toLocaleString("en-IN")}`;
 
-const formatDate = (value: string) => {
-  const date = new Date(`${value}T00:00:00`);
-
-  return date.toLocaleDateString("en-GB", {
+const formatDate = (value: string) =>
+  new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
-};
 
-const statusColor = (status: ApplicationStatus) => {
-  switch (status) {
-    case "Approved":
-      return "green";
-    case "Rejected":
-      return "red";
-    case "On Hold":
-      return "yellow";
-    case "Withdrawn":
-      return "gray";
-    default:
-      return "gray";
-  }
-};
+const statusColor = (status: ApplicationStatus) =>
+  status === "Approved"
+    ? COLORS.success
+    : status === "Rejected"
+      ? COLORS.warning
+      : status === "On Hold"
+        ? COLORS.primary
+        : COLORS.muted;
 
-const filterInputStyles = {
-  input: {
-    minHeight: 30,
-    height: 30,
-    fontSize: 10,
-    fontWeight: 650,
-    backgroundColor:
-      "var(--mantine-color-gray-0)",
-  },
-};
+const exportApplications = (rows: ApplicationRow[]) => {
+  if (!rows.length) return;
 
-const tableHeaderStyles = {
-  fontSize: 9,
-  fontWeight: 800,
-  color: "var(--mantine-color-dimmed)",
-  whiteSpace: "nowrap" as const,
-};
+  const headers = [
+    "Application ID",
+    "Product",
+    "Branch",
+    "Stage",
+    "Status",
+    "Source",
+    "Officer",
+    "Requested Amount",
+    "Approved Amount",
+    "Age",
+    "Submitted On",
+  ];
 
-const tableCellStyles = {
-  fontSize: 10,
+  const csv = [headers, ...rows.map((app) => [
+    app.id,
+    app.product,
+    app.branch,
+    app.stage,
+    app.status,
+    app.source,
+    app.officer,
+    app.requested,
+    app.approved,
+    app.age,
+    app.submittedOn,
+  ])]
+    .map((row) =>
+      row.map((cell) => JSON.stringify(cell ?? "")).join(","),
+    )
+    .join("\n");
+
+  const url = URL.createObjectURL(
+    new Blob([csv], { type: "text/csv;charset=utf-8;" }),
+  );
+
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "application-pipeline-report.csv";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+
+  URL.revokeObjectURL(url);
 };
 
 /* -------------------------------------------------------------------------- */
-/* COMPACT KPI                                                                */
+/* SMALL UI COMPONENTS                                                        */
 /* -------------------------------------------------------------------------- */
 
-function CompactKpi({
+function KpiCard({
   label,
   value,
   helper,
   icon,
-  tone = "blue",
+  tone = "primary",
 }: {
   label: string;
   value: string;
   helper?: string;
   icon: ReactNode;
-  tone?: string;
+  tone?: Tone;
 }) {
+  const color = TONE_COLOR[tone];
+
   return (
     <Card
       withBorder
       radius="md"
       p={8}
+      h="100%"
       style={{
-        height: 66,
-        overflow: "hidden",
+        borderColor: COLORS.border,
+        background: COLORS.surface,
       }}
     >
-      <Group
-        gap={7}
-        wrap="nowrap"
-        align="flex-start"
-      >
+      <Group gap={7} wrap="nowrap" align="flex-start">
         <ThemeIcon
-          size={25}
+          size={23}
           radius="sm"
           variant="light"
-          color={tone}
           style={{
             flexShrink: 0,
+            color,
+            backgroundColor: `${color}14`,
           }}
         >
           {icon}
         </ThemeIcon>
 
-        <Box
-          style={{
-            minWidth: 0,
-            flex: 1,
-          }}
-        >
+        <Box style={{ minWidth: 0, flex: 1 }}>
           <Text
-            size="8px"
+            fz={8}
             fw={800}
             c="dimmed"
             tt="uppercase"
-            lh={1.05}
             truncate
+            lh={1}
           >
             {label}
           </Text>
 
-          <Text
-            fw={800}
-            fz={15}
-            lh={1.15}
-            mt={2}
-            truncate
-          >
+          <Text fz={15} fw={900} mt={3} truncate lh={1.05}>
             {value}
           </Text>
 
           {helper && (
-            <Text
-              size="7px"
-              c="dimmed"
-              mt={2}
-              truncate
-            >
+            <Text fz={7.5} c="dimmed" mt={3} truncate>
               {helper}
             </Text>
           )}
@@ -586,10 +453,6 @@ function CompactKpi({
     </Card>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/* FILTER COMPONENT                                                           */
-/* -------------------------------------------------------------------------- */
 
 function ReportFilter({
   value,
@@ -610,14 +473,216 @@ function ReportFilter({
       radius="md"
       w={width}
       value={value}
-      onChange={(nextValue) =>
-        onChange(nextValue ?? data[0])
-      }
+      onChange={(value) => onChange(value ?? data[0])}
       data={data}
       leftSection={icon}
       checkIconPosition="right"
-      styles={filterInputStyles}
+      styles={filterStyles}
     />
+  );
+}
+
+function TinyPill({
+  children,
+  tone = "muted",
+}: {
+  children: ReactNode;
+  tone?: Tone;
+}) {
+  return (
+    <Badge
+      size="xs"
+      radius="sm"
+      variant="light"
+      styles={badgeStyles(TONE_COLOR[tone])}
+    >
+      {children}
+    </Badge>
+  );
+}
+
+function MetricBar({
+  value,
+  label,
+  color = COLORS.primary,
+}: {
+  value: number;
+  label: string;
+  color?: string;
+}) {
+  const safeValue = Math.max(0, Math.min(100, value));
+
+  return (
+    <Group gap={6} wrap="nowrap">
+      <Box style={{ flex: 1, minWidth: 20 }}>
+        <Progress
+          value={safeValue}
+          size={5}
+          radius="xl"
+          styles={{
+            section: { backgroundColor: color },
+          }}
+        />
+      </Box>
+
+      <Text fz={8.5} fw={800} w={30} ta="right">
+        {label}
+      </Text>
+    </Group>
+  );
+}
+
+function Donut({
+  segments,
+  centerValue,
+  centerLabel,
+}: {
+  segments: Array<{ value: number; color: string }>;
+  centerValue: string;
+  centerLabel: string;
+}) {
+  const size = 96;
+  const strokeWidth = 13;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const total = segments.reduce(
+    (sum, segment) => sum + Math.max(0, segment.value),
+    0,
+  );
+
+  let offset = 0;
+
+  return (
+    <Box
+      style={{
+        position: "relative",
+        width: size,
+        height: size,
+        flexShrink: 0,
+      }}
+      aria-label={`${centerLabel}: ${centerValue}`}
+    >
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="var(--mantine-color-gray-2)"
+          strokeWidth={strokeWidth}
+        />
+
+        {segments.map((segment, index) => {
+          const dash = total
+            ? (segment.value / total) * circumference
+            : 0;
+
+          const currentOffset = offset;
+          offset += dash;
+
+          return (
+            <circle
+              key={`${segment.color}-${index}`}
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke={segment.color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${dash} ${circumference - dash}`}
+              strokeDashoffset={-currentOffset}
+              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            />
+          );
+        })}
+      </svg>
+
+      <Stack
+        gap={0}
+        align="center"
+        justify="center"
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+        }}
+      >
+        <Text fz={17} fw={900} lh={1}>
+          {centerValue}
+        </Text>
+        <Text fz={7} fw={800} c="dimmed" mt={2}>
+          {centerLabel}
+        </Text>
+      </Stack>
+    </Box>
+  );
+}
+
+function StageFlow({ stage }: { stage: StageRow }) {
+  const total = Math.max(stage.entered, 1);
+  const completed = (stage.completed / total) * 100;
+  const pending = (stage.pending / total) * 100;
+  const drop = (stage.drop / total) * 100;
+
+  return (
+    <Box py={4}>
+      <Group justify="space-between" gap={8} mb={4} wrap="nowrap">
+        <Text fz={9.5} fw={750} truncate style={{ flex: 1 }}>
+          {stage.stage}
+        </Text>
+
+        <Group gap={6} wrap="nowrap">
+          <Text fz={8.5} c="dimmed">
+            <b>{stage.entered}</b> entered
+          </Text>
+
+          <Text fz={8.5} c={COLORS.success}>
+            <b>{stage.completed}</b> done
+          </Text>
+
+          <Text fz={8.5} c={COLORS.warning}>
+            <b>{stage.pending}</b> pending
+          </Text>
+
+          <Text fz={8.5} c={COLORS.danger}>
+            <b>{stage.drop}</b> drop
+          </Text>
+        </Group>
+      </Group>
+
+      <Box
+        style={{
+          display: "flex",
+          height: 6,
+          borderRadius: 99,
+          overflow: "hidden",
+          background: COLORS.track,
+        }}
+      >
+        <Box
+          style={{
+            width: `${completed}%`,
+            background: COLORS.success,
+          }}
+        />
+        <Box
+          style={{
+            width: `${pending}%`,
+            background: COLORS.warning,
+          }}
+        />
+        <Box
+          style={{
+            width: `${drop}%`,
+            background: COLORS.danger,
+          }}
+        />
+      </Box>
+
+      <Text fz={7.5} c="dimmed" mt={3} truncate>
+        Primary drop reason: {stage.reason}
+      </Text>
+    </Box>
   );
 }
 
@@ -626,42 +691,21 @@ function ReportFilter({
 /* -------------------------------------------------------------------------- */
 
 export default function ApplicationPipelineAnalytics() {
-  const [filters, setFilters] = useState<Filters>({
-    product: "All Products",
-    status: "All Statuses",
-    source: "All Sources",
-    dateRange: [null, null],
-  });
-
-  /* Table-only filters */
-  const [tableBranch, setTableBranch] =
-    useState("All Branches");
-
-  const [tableOfficer, setTableOfficer] =
-    useState("All Officers");
-
-  /* ------------------------------------------------------------------------ */
-  /* FILTER HELPERS                                                           */
-  /* ------------------------------------------------------------------------ */
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [tableBranch, setTableBranch] = useState("All Branches");
+  const [tableOfficer, setTableOfficer] = useState("All Officers");
 
   const setFilter = <K extends keyof Filters>(
     key: K,
     value: Filters[K],
-  ) => {
+  ) =>
     setFilters((current) => ({
       ...current,
       [key]: value,
     }));
-  };
 
   const resetFilters = () => {
-    setFilters({
-      product: "All Products",
-      status: "All Statuses",
-      source: "All Sources",
-      dateRange: [null, null],
-    });
-
+    setFilters(DEFAULT_FILTERS);
     setTableBranch("All Branches");
     setTableOfficer("All Officers");
   };
@@ -670,36 +714,31 @@ export default function ApplicationPipelineAnalytics() {
     filters.product !== "All Products" ||
     filters.status !== "All Statuses" ||
     filters.source !== "All Sources" ||
-    filters.dateRange[0] !== null ||
-    filters.dateRange[1] !== null ||
+    filters.dateRange.some(Boolean) ||
     tableBranch !== "All Branches" ||
     tableOfficer !== "All Officers";
-
-  /* ------------------------------------------------------------------------ */
-  /* FILTERED APPLICATIONS                                                    */
-  /* ------------------------------------------------------------------------ */
 
   const filteredApps = useMemo(() => {
     const [from, to] = filters.dateRange;
 
-    const fromDate = from
+    const fromTime = from
       ? new Date(
-        from.getFullYear(),
-        from.getMonth(),
-        from.getDate(),
-      ).getTime()
+          from.getFullYear(),
+          from.getMonth(),
+          from.getDate(),
+        ).getTime()
       : null;
 
-    const toDate = to
+    const toTime = to
       ? new Date(
-        to.getFullYear(),
-        to.getMonth(),
-        to.getDate(),
-        23,
-        59,
-        59,
-        999,
-      ).getTime()
+          to.getFullYear(),
+          to.getMonth(),
+          to.getDate(),
+          23,
+          59,
+          59,
+          999,
+        ).getTime()
       : null;
 
     return APPLICATIONS.filter((app) => {
@@ -724,67 +763,31 @@ export default function ApplicationPipelineAnalytics() {
         return false;
       }
 
-      const submittedTime = new Date(
+      const submitted = new Date(
         `${app.submittedOn}T00:00:00`,
       ).getTime();
 
-      if (
-        fromDate !== null &&
-        submittedTime < fromDate
-      ) {
-        return false;
-      }
-
-      if (
-        toDate !== null &&
-        submittedTime > toDate
-      ) {
-        return false;
-      }
-
-      return true;
+      return (
+        (fromTime === null || submitted >= fromTime) &&
+        (toTime === null || submitted <= toTime)
+      );
     });
   }, [filters]);
 
-  /* ------------------------------------------------------------------------ */
-  /* TABLE FILTER                                                             */
-  /* ------------------------------------------------------------------------ */
-
-  const tableApps = useMemo(() => {
-    return filteredApps.filter((app) => {
-      const branchMatch =
-        tableBranch === "All Branches" ||
-        app.branch === tableBranch;
-
-      const officerMatch =
-        tableOfficer === "All Officers" ||
-        app.officer === tableOfficer;
-
-      return branchMatch && officerMatch;
-    });
-  }, [
-    filteredApps,
-    tableBranch,
-    tableOfficer,
-  ]);
-
-  /* ------------------------------------------------------------------------ */
-  /* METRICS                                                                  */
-  /* ------------------------------------------------------------------------ */
+  const tableApps = useMemo(
+    () =>
+      filteredApps.filter(
+        (app) =>
+          (tableBranch === "All Branches" ||
+            app.branch === tableBranch) &&
+          (tableOfficer === "All Officers" ||
+            app.officer === tableOfficer),
+      ),
+    [filteredApps, tableBranch, tableOfficer],
+  );
 
   const metrics = useMemo(() => {
     const total = filteredApps.length;
-
-    const requested = filteredApps.reduce(
-      (sum, app) => sum + app.requested,
-      0,
-    );
-
-    const approvedAmount = filteredApps.reduce(
-      (sum, app) => sum + app.approved,
-      0,
-    );
-
     const approved = filteredApps.filter(
       (app) => app.status === "Approved",
     ).length;
@@ -801,131 +804,114 @@ export default function ApplicationPipelineAnalytics() {
       (app) => app.status === "On Hold",
     ).length;
 
-    const conversion =
-      total > 0
-        ? Math.round((approved / total) * 100)
-        : 0;
-
-    const dropOff =
-      total > 0
-        ? Math.round(
-          ((rejected + withdrawn) / total) *
-          100,
-        )
-        : 0;
-
     return {
       total,
-      requested,
-      approvedAmount,
       approved,
       rejected,
       withdrawn,
       active,
-      conversion,
-      dropOff,
+      requested: filteredApps.reduce(
+        (sum, app) => sum + app.requested,
+        0,
+      ),
+      approvedAmount: filteredApps.reduce(
+        (sum, app) => sum + app.approved,
+        0,
+      ),
+      conversion: total
+        ? Math.round((approved / total) * 100)
+        : 0,
+      dropOff: total
+        ? Math.round(
+            ((rejected + withdrawn) / total) * 100,
+          )
+        : 0,
     };
   }, [filteredApps]);
 
-  /* ------------------------------------------------------------------------ */
-  /* CSV EXPORT                                                               */
-  /* ------------------------------------------------------------------------ */
-
-  const exportApplications = (
-    rows: ApplicationRow[],
-  ) => {
-    const header = [
-      "Application ID",
-      "Product",
-      "Branch",
-      "Stage",
-      "Status",
-      "Source",
-      "Officer",
+  const kpis = [
+    [
+      "Total Applications",
+      `${metrics.total}`,
+      "Filtered",
+      "primary",
+      <IconClipboardData size={14} />,
+    ],
+    [
+      "Active Applications",
+      `${metrics.active}`,
+      "Currently on hold",
+      "warning",
+      <IconTrendingUp size={14} />,
+    ],
+    [
+      "Approved",
+      `${metrics.approved}`,
+      `${metrics.conversion}% of total`,
+      "success",
+      <IconCheck size={14} />,
+    ],
+    [
+      "Rejected",
+      `${metrics.rejected}`,
+      "Decisioned",
+      "danger",
+      <IconX size={14} />,
+    ],
+    [
+      "Inactive",
+      `${metrics.withdrawn}`,
+      "Withdrawn",
+      "muted",
+      <IconUser size={14} />,
+    ],
+    [
+      "Conversion Rate",
+      `${metrics.conversion}%`,
+      "Approved / total",
+      "success",
+      <IconTrendingUp size={14} />,
+    ],
+    [
+      "Drop-off Rate",
+      `${metrics.dropOff}%`,
+      "Rejected + inactive",
+      "danger",
+      <IconX size={14} />,
+    ],
+    [
       "Requested Amount",
+      formatCurrency(metrics.requested),
+      "Total requested",
+      "primary",
+      <IconCoin size={14} />,
+    ],
+    [
       "Approved Amount",
-      "Age",
-      "Submitted On",
-    ];
-
-    const rowsForExport = rows.map((app) => [
-      app.id,
-      app.product,
-      app.branch,
-      app.stage,
-      app.status,
-      app.source,
-      app.officer,
-      app.requested,
-      app.approved,
-      app.age,
-      app.submittedOn,
-    ]);
-
-    const csv = [header, ...rowsForExport]
-      .map((row) =>
-        row
-          .map(
-            (cell) =>
-              `"${String(cell).replace(
-                /"/g,
-                '""',
-              )}"`,
-          )
-          .join(","),
-      )
-      .join("\n");
-
-    const blob = new Blob([csv], {
-      type: "text/csv;charset=utf-8;",
-    });
-
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-
-    anchor.href = url;
-    anchor.download =
-      "application-pipeline-report.csv";
-
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-
-    URL.revokeObjectURL(url);
-  };
-
-  /* ------------------------------------------------------------------------ */
-  /* RENDER                                                                   */
-  /* ------------------------------------------------------------------------ */
+      formatCurrency(metrics.approvedAmount),
+      "Total approved",
+      "success",
+      <IconCoin size={14} />,
+    ],
+  ] as const;
 
   return (
     <ReportShell
       title="Application & Pipeline Analytics"
-      description="Monitor application volume, pipeline movement, conversion and application-level activity."
-      icon={<IconFileAnalytics size={18} />}
+      subtitle="Monitor application volume, pipeline movement, conversion and application-level activity."
       filters={
-        <Group
-          gap={6}
-          wrap="wrap"
-          align="center"
-        >
+        <Group gap={6} wrap="wrap" align="center">
           <ReportFilter
             value={filters.product}
-            onChange={(value) =>
-              setFilter("product", value)
-            }
+            onChange={(value) => setFilter("product", value)}
             data={PRODUCT_OPTIONS}
             width={150}
-            icon={
-              <IconClipboardData size={13} />
-            }
+            icon={<IconClipboardData size={13} />}
           />
 
           <ReportFilter
             value={filters.status}
-            onChange={(value) =>
-              setFilter("status", value)
-            }
+            onChange={(value) => setFilter("status", value)}
             data={STATUS_OPTIONS}
             width={135}
             icon={<IconFilter size={13} />}
@@ -933,14 +919,10 @@ export default function ApplicationPipelineAnalytics() {
 
           <ReportFilter
             value={filters.source}
-            onChange={(value) =>
-              setFilter("source", value)
-            }
+            onChange={(value) => setFilter("source", value)}
             data={SOURCE_OPTIONS}
             width={125}
-            icon={
-              <IconTrendingUp size={13} />
-            }
+            icon={<IconTrendingUp size={13} />}
           />
 
           <DateInput
@@ -956,10 +938,8 @@ export default function ApplicationPipelineAnalytics() {
             }
             valueFormat="DD-MMM-YYYY"
             placeholder="From date"
-            leftSection={
-              <IconCalendar size={13} />
-            }
-            styles={filterInputStyles}
+            leftSection={<IconCalendar size={13} />}
+            styles={filterStyles}
           />
 
           <DateInput
@@ -975,37 +955,24 @@ export default function ApplicationPipelineAnalytics() {
             }
             valueFormat="DD-MMM-YYYY"
             placeholder="To date"
-            leftSection={
-              <IconCalendar size={13} />
-            }
-            styles={filterInputStyles}
+            leftSection={<IconCalendar size={13} />}
+            styles={filterStyles}
           />
 
           <Button
             size="xs"
             radius="md"
-            variant={
-              hasActiveFilters
-                ? "light"
-                : "subtle"
-            }
-            color={
-              hasActiveFilters
-                ? "blue"
-                : "gray"
-            }
-            leftSection={
-              <IconRefresh size={13} />
-            }
+            variant="subtle"
+            h={30}
+            leftSection={<IconRefresh size={13} />}
             onClick={resetFilters}
-            styles={{
-              root: {
-                height: 30,
-              },
-              label: {
-                fontSize: 10,
-                fontWeight: 700,
-              },
+            style={{
+              color: hasActiveFilters
+                ? COLORS.primary
+                : COLORS.muted,
+              backgroundColor: hasActiveFilters
+                ? `${COLORS.primary}0D`
+                : "transparent",
             }}
           >
             Reset
@@ -1013,841 +980,640 @@ export default function ApplicationPipelineAnalytics() {
         </Group>
       }
     >
-      {/* ------------------------------------------------------------------ */}
-      {/* KPI ROW                                                            */}
-      {/* ------------------------------------------------------------------ */}
-
-      <SimpleGrid
-        cols={{
-          base: 2,
-          xs: 3,
-          sm: 4,
-          md: 5,
-          lg: 9,
-        }}
-        spacing={6}
-        mb="md"
-      >
-        <CompactKpi
-          label="Total Applications"
-          value={String(metrics.total)}
-          helper="Filtered"
-          icon={
-            <IconClipboardData size={14} />
-          }
-        />
-
-        <CompactKpi
-          label="Active Applications"
-          value={String(metrics.active)}
-          helper="Currently on hold"
-          icon={
-            <IconTrendingUp size={14} />
-          }
-          tone="yellow"
-        />
-
-        <CompactKpi
-          label="Approved"
-          value={String(metrics.approved)}
-          helper={`${metrics.conversion}% of total`}
-          icon={<IconCheck size={14} />}
-          tone="green"
-        />
-
-        <CompactKpi
-          label="Rejected"
-          value={String(metrics.rejected)}
-          helper="Decisioned"
-          icon={<IconX size={14} />}
-          tone="red"
-        />
-
-        <CompactKpi
-          label="Inactive"
-          value={String(metrics.withdrawn)}
-          helper="Withdrawn"
-          icon={<IconUser size={14} />}
-          tone="gray"
-        />
-
-        <CompactKpi
-          label="Conversion Rate"
-          value={`${metrics.conversion}%`}
-          helper="Approved / total"
-          icon={
-            <IconTrendingUp size={14} />
-          }
-          tone="green"
-        />
-
-        <CompactKpi
-          label="Drop-off Rate"
-          value={`${metrics.dropOff}%`}
-          helper="Rejected + inactive"
-          icon={<IconX size={14} />}
-          tone="red"
-        />
-
-        <CompactKpi
-          label="Requested Amount"
-          value={formatCurrency(
-            metrics.requested,
+      {/* KPI SNAPSHOT */}
+      <Stack gap={7}>
+        <SimpleGrid
+          cols={{
+            base: 2,
+            xs: 3,
+            sm: 4,
+            md: 5,
+          }}
+          spacing={7}
+        >
+          {kpis.slice(0, 5).map(
+            ([label, value, helper, tone, icon]) => (
+              <KpiCard
+                key={label}
+                label={label}
+                value={value}
+                helper={helper}
+                tone={tone}
+                icon={icon}
+              />
+            ),
           )}
-          helper="Total requested"
-          icon={<IconCoin size={14} />}
-        />
+        </SimpleGrid>
 
-        <CompactKpi
-          label="Approved Amount"
-          value={formatCurrency(
-            metrics.approvedAmount,
+        <SimpleGrid
+          cols={{
+            base: 2,
+            xs: 3,
+            sm: 4,
+          }}
+          spacing={7}
+        >
+          {kpis.slice(5).map(
+            ([label, value, helper, tone, icon]) => (
+              <KpiCard
+                key={label}
+                label={label}
+                value={value}
+                helper={helper}
+                tone={tone}
+                icon={icon}
+              />
+            ),
           )}
-          helper="Total approved"
-          icon={<IconCoin size={14} />}
-          tone="green"
-        />
-      </SimpleGrid>
+        </SimpleGrid>
+      </Stack>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* STAGE + APPLICATION STATUS                                         */}
-      {/* ------------------------------------------------------------------ */}
-
+      {/* PIPELINE + STATUS */}
       <SimpleGrid
         cols={{
           base: 1,
           lg: 2,
         }}
-        spacing="md"
-        mb="md"
+        spacing={10}
+        mt={10}
       >
-        {/* STAGE BREAKDOWN */}
         <SectionCard
           title="Stage-wise Breakdown"
           subtitle="Movement through the application pipeline"
         >
-          <Table
-            striped
-            highlightOnHover
-            verticalSpacing={7}
-            fz={11}
+          <Stack
+            gap={0}
+            divider={
+              <Box h={1} bg={COLORS.track} />
+            }
           >
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th
-                  style={tableHeaderStyles}
-                >
-                  Stage
-                </Table.Th>
-
-                <Table.Th
-                  style={tableHeaderStyles}
-                >
-                  Entered
-                </Table.Th>
-
-                <Table.Th
-                  style={tableHeaderStyles}
-                >
-                  Completed
-                </Table.Th>
-
-                <Table.Th
-                  style={tableHeaderStyles}
-                >
-                  Pending
-                </Table.Th>
-
-                <Table.Th
-                  style={tableHeaderStyles}
-                >
-                  Drop
-                </Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-
-            <Table.Tbody>
-              {STAGES.map((stage) => (
-                <Table.Tr key={stage.stage}>
-                  <Table.Td
-                    fw={600}
-                    style={tableCellStyles}
-                  >
-                    {stage.stage}
-                  </Table.Td>
-
-                  <Table.Td
-                    style={tableCellStyles}
-                  >
-                    {stage.entered}
-                  </Table.Td>
-
-                  <Table.Td
-                    style={tableCellStyles}
-                  >
-                    {stage.completed}
-                  </Table.Td>
-
-                  <Table.Td
-                    style={{
-                      ...tableCellStyles,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    <Badge
-                      size="sm"
-                      variant="light"
-                      color={
-                        stage.pending >= 8
-                          ? "yellow"
-                          : "gray"
-                      }
-                    >
-                      {stage.pending}
-                    </Badge>
-                  </Table.Td>
-
-                  <Table.Td
-                    style={{
-                      ...tableCellStyles,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    <Badge
-                      size="sm"
-                      variant="light"
-                      color={
-                        stage.drop >= 5
-                          ? "red"
-                          : "gray"
-                      }
-                    >
-                      {stage.drop}
-                    </Badge>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+            {STAGES.map((stage) => (
+              <StageFlow
+                key={stage.stage}
+                stage={stage}
+              />
+            ))}
+          </Stack>
         </SectionCard>
 
-        {/* APPLICATION STATUS */}
         <SectionCard
           title="Application Status"
           subtitle="Distribution across application outcomes"
         >
           <Group
             align="center"
-            gap="xl"
+            gap={15}
             wrap="nowrap"
           >
-            <Box
-              style={{
-                flexShrink: 0,
-              }}
-            >
-              <Donut
-                centerValue={String(
-                  APPLICATION_STATUS_TOTAL,
-                )}
-                centerLabel="TOTAL"
-                segments={APPLICATION_STATUS_DATA.map(
-                  (item) => ({
-                    value: Math.max(
-                      (item.value /
-                        APPLICATION_STATUS_TOTAL) *
-                      100,
-                      0.01,
-                    ),
-                    color: item.color,
-                  }),
-                )}
-              />
-            </Box>
+            <Donut
+              centerValue={String(
+                APPLICATION_STATUS_TOTAL,
+              )}
+              centerLabel="TOTAL"
+              segments={APPLICATION_STATUS_DATA.map(
+                (item) => ({
+                  value: item.value,
+                  color: item.color,
+                }),
+              )}
+            />
 
-            <Stack
-              gap={9}
-              style={{
-                flex: 1,
-                minWidth: 0,
-              }}
-            >
-              {APPLICATION_STATUS_DATA.map(
-                (item) => {
-                  const percentage =
-                    Math.round(
-                      (item.value /
-                        APPLICATION_STATUS_TOTAL) *
-                      100,
-                    );
+            <Stack gap={7} style={{ flex: 1, minWidth: 0 }}>
+              {APPLICATION_STATUS_DATA.map((item) => {
+                const pct = Math.round(
+                  (item.value /
+                    APPLICATION_STATUS_TOTAL) *
+                    100,
+                );
 
-                  return (
-                    <Box key={item.label}>
-                      <Group
-                        justify="space-between"
-                        gap={8}
-                        mb={4}
-                      >
-                        <Group gap={6}>
-                          <Box
-                            w={7}
-                            h={7}
-                            bg={item.color}
-                            style={{
-                              borderRadius:
-                                "50%",
-                              flexShrink: 0,
-                            }}
-                          />
+                return (
+                  <Box key={item.label}>
+                    <Group
+                      justify="space-between"
+                      gap={8}
+                      mb={3}
+                    >
+                      <Group gap={7} wrap="nowrap">
+                        <Box
+                          w={8}
+                          h={8}
+                          style={{
+                            borderRadius: 99,
+                            background: item.color,
+                          }}
+                        />
 
-                          <Text
-                            size="xs"
-                            fw={600}
-                          >
-                            {item.label}
-                          </Text>
-                        </Group>
-
-                        <Group gap={5}>
-                          <Text
-                            size="xs"
-                            fw={800}
-                          >
-                            {item.value}
-                          </Text>
-
-                          <Text
-                            size="9px"
-                            c="dimmed"
-                          >
-                            ({percentage}%)
-                          </Text>
-                        </Group>
+                        <Text fz={9.5} fw={700}>
+                          {item.label}
+                        </Text>
                       </Group>
 
-                      <Progress
-                        value={percentage}
-                        size={5}
-                        radius="xl"
-                        color={item.color}
-                      />
-                    </Box>
-                  );
-                },
-              )}
+                      <Text fz={9.5} fw={850}>
+                        {item.value}{" "}
+                        <Text
+                          span
+                          fz={8}
+                          c="dimmed"
+                        >
+                          ({pct}%)
+                        </Text>
+                      </Text>
+                    </Group>
+
+                    <Progress
+                      value={pct}
+                      size={5}
+                      radius="xl"
+                      styles={{
+                        section: {
+                          backgroundColor: item.color,
+                        },
+                      }}
+                    />
+                  </Box>
+                );
+              })}
             </Stack>
           </Group>
+
+          <Box
+            mt={10}
+            p={7}
+            style={{
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 8,
+              background: COLORS.surface,
+            }}
+          >
+            <Group justify="space-between">
+              <Text
+                fz={8}
+                fw={800}
+                c="dimmed"
+                tt="uppercase"
+              >
+                Decision mix
+              </Text>
+
+              <Text fz={10} fw={850}>
+                {APPLICATION_STATUS_TOTAL} applications
+              </Text>
+            </Group>
+          </Box>
         </SectionCard>
       </SimpleGrid>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* CONVERSION ANALYSIS                                                */}
-      {/* ------------------------------------------------------------------ */}
-
-      <SectionCard
-        title="Conversion Analysis"
-        subtitle="Application movement between major pipeline stages"
-        mb="md"
-      >
-        <SimpleGrid
-          cols={{
-            base: 1,
-            sm: 2,
-            md: 5,
-          }}
-          spacing="lg"
+      {/* CONVERSION */}
+      <Box mt={10}>
+        <SectionCard
+          title="Conversion Analysis"
+          subtitle="Application movement between major pipeline stages"
         >
-          {CONVERSION_STEPS.map((step) => (
-            <Box key={step.label}>
-              <Group
-                justify="space-between"
-                gap={8}
-                mb={6}
-              >
-                <Text
-                  size="xs"
-                  fw={600}
-                  lh={1.2}
-                >
-                  {step.label}
-                </Text>
-
-                <Text
-                  size="xs"
-                  fw={800}
-                >
-                  {step.value}%
-                </Text>
-              </Group>
-
-              <Progress
-                value={step.value}
-                size={7}
-                radius="xl"
-              />
-            </Box>
-          ))}
-        </SimpleGrid>
-      </SectionCard>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* SOURCE + APPLICATIONS                                             */}
-      {/* ------------------------------------------------------------------ */}
-
-      <SectionCard>
-        <SimpleGrid
-          cols={{
-            base: 1,
-            xl: 2,
-          }}
-          spacing="xl"
-        >
-          {/* SOURCE ANALYSIS */}
-          <Box>
+          <ScrollArea type="auto">
             <Group
-              justify="space-between"
-              mb="sm"
+              gap={0}
+              wrap="nowrap"
+              align="stretch"
+              style={{ minWidth: 650 }}
             >
-              <Box>
-                <Text fw={800} fz="sm">
-                  Source Analysis
-                </Text>
-
-                <Text
-                  size="xs"
-                  c="dimmed"
+              {CONVERSION_STEPS.map((step, index) => (
+                <Box
+                  key={step.label}
+                  style={{
+                    flex: 1,
+                    minWidth: 130,
+                    position: "relative",
+                    padding: "3px 10px",
+                  }}
                 >
-                  Application volume and outcomes
-                </Text>
-              </Box>
-            </Group>
+                  {index > 0 && (
+                    <IconArrowRight
+                      size={14}
+                      style={{
+                        position: "absolute",
+                        left: -7,
+                        top: 27,
+                        color: COLORS.muted,
+                      }}
+                    />
+                  )}
 
-            <Table
-              striped
-              highlightOnHover
-              verticalSpacing={8}
-              fz={10}
-            >
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th
-                    style={tableHeaderStyles}
+                  <Text
+                    fz={8}
+                    c="dimmed"
+                    fw={800}
                   >
-                    Source
-                  </Table.Th>
-
-                  <Table.Th
-                    style={tableHeaderStyles}
-                  >
-                    Applications
-                  </Table.Th>
-
-                  <Table.Th
-                    style={tableHeaderStyles}
-                  >
-                    Approved
-                  </Table.Th>
-
-                  <Table.Th
-                    style={tableHeaderStyles}
-                  >
-                    Rejected
-                  </Table.Th>
-
-                  <Table.Th
-                    style={tableHeaderStyles}
-                  >
-                    Approval Rate
-                  </Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-
-              <Table.Tbody>
-                {SOURCES.map((source) => {
-                  const approvalRate =
-                    source.applications > 0
-                      ? Math.round(
-                        (source.approved /
-                          source.applications) *
-                        100,
-                      )
-                      : 0;
-
-                  return (
-                    <Table.Tr key={source.source}>
-                      <Table.Td fw={700}>
-                        {source.source}
-                      </Table.Td>
-
-                      <Table.Td>
-                        {source.applications}
-                      </Table.Td>
-
-                      {/* APPROVED - FIXED */}
-                      <Table.Td>
-                        <Badge
-                          size="sm"
-                          variant="light"
-                          color="green"
-                        >
-                          {source.approved}
-                        </Badge>
-                      </Table.Td>
-
-                      {/* REJECTED - FIXED */}
-                      <Table.Td>
-                        <Badge
-                          size="sm"
-                          variant="light"
-                          color="red"
-                        >
-                          {source.rejected}
-                        </Badge>
-                      </Table.Td>
-
-                      <Table.Td miw={105}>
-                        <MetricBar
-                          value={approvalRate}
-                          label={`${approvalRate}%`}
-                        />
-                      </Table.Td>
-                    </Table.Tr>
-                  );
-                })}
-              </Table.Tbody>
-            </Table>
-          </Box>
-
-          {/* APPLICATIONS */}
-          <Box>
-            <Group
-              justify="space-between"
-              align="center"
-              mb="sm"
-              gap="sm"
-              wrap="wrap"
-            >
-              <Box>
-                <Group
-                  gap={7}
-                  align="center"
-                >
-                  <Text fw={800} fz="sm">
-                    Applications
+                    {String(index + 1).padStart(2, "0")}
                   </Text>
 
-                  <Badge
-                    size="xs"
-                    variant="light"
-                    color="blue"
+                  <Text
+                    fz={9.5}
+                    fw={750}
+                    mt={3}
+                    lh={1.2}
                   >
-                    {tableApps.length}
-                  </Badge>
-                </Group>
+                    {step.label}
+                  </Text>
 
-                <Text
-                  size="xs"
-                  c="dimmed"
-                  mt={1}
-                >
-                  Showing up to 5 application records
-                </Text>
-              </Box>
+                  <Group
+                    justify="space-between"
+                    mt={6}
+                    mb={3}
+                  >
+                    <Text fz={8} c="dimmed">
+                      Conversion
+                    </Text>
 
-              <Group
-                gap={5}
-                align="center"
-              >
-                {/* TABLE-LEVEL BRANCH FILTER */}
-                <Select
-                  size="xs"
-                  radius="md"
-                  w={135}
-                  value={tableBranch}
-                  onChange={(value) =>
-                    setTableBranch(
-                      value ?? "All Branches",
-                    )
-                  }
-                  data={BRANCH_OPTIONS}
-                  leftSection={
-                    <IconBuilding size={13} />
-                  }
-                  checkIconPosition="right"
-                  styles={filterInputStyles}
-                />
+                    <Text fz={10} fw={900}>
+                      {step.value}%
+                    </Text>
+                  </Group>
 
-                {/* TABLE-LEVEL OFFICER FILTER */}
-                <Select
-                  size="xs"
-                  radius="md"
-                  w={145}
-                  value={tableOfficer}
-                  onChange={(value) =>
-                    setTableOfficer(
-                      value ?? "All Officers",
-                    )
-                  }
-                  data={OFFICER_OPTIONS}
-                  leftSection={
-                    <IconUser size={13} />
-                  }
-                  checkIconPosition="right"
-                  styles={filterInputStyles}
-                />
-
-                <Button
-                  size="xs"
-                  radius="md"
-                  variant="light"
-                  leftSection={
-                    <IconDownload size={13} />
-                  }
-                  onClick={() =>
-                    exportApplications(
-                      tableApps,
-                    )
-                  }
-                  styles={{
-                    root: {
-                      height: 30,
-                    },
-                    label: {
-                      fontSize: 10,
-                      fontWeight: 700,
-                    },
-                  }}
-                >
-                  CSV
-                </Button>
-              </Group>
+                  <Progress
+                    value={step.value}
+                    size={6}
+                    radius="xl"
+                    styles={{
+                      section: {
+                        background: `linear-gradient(90deg, ${COLORS.primary}, ${COLORS.accent})`,
+                      },
+                    }}
+                  />
+                </Box>
+              ))}
             </Group>
+          </ScrollArea>
+        </SectionCard>
+      </Box>
 
-            <Divider mb="sm" />
+      {/* SOURCE + APPLICATIONS */}
+      <Box mt={10}>
+        <SectionCard>
+          <Box
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "minmax(270px, 0.72fr) minmax(0, 1.55fr)",
+              gap: 16,
+            }}
+          >
+            {/* SOURCE ANALYSIS */}
+            <Box style={{ minWidth: 0 }}>
+              <Text fw={850} fz="sm">
+                Source Analysis
+              </Text>
 
-            {tableApps.length > 0 ? (
-              <Box
-                style={{
-                  overflowX: "auto",
-                  overflowY: "hidden",
-                }}
+              <Text fz={8.5} c="dimmed" mb="sm">
+                Application volume and outcomes
+              </Text>
+
+              <Table
+                verticalSpacing={5}
+                fz={9}
               >
-                <Table
-                  striped
-                  highlightOnHover
-                  withTableBorder
-                  withColumnBorders={false}
-                  verticalSpacing={7}
-                  fz={10}
+                <Table.Thead>
+                  <Table.Tr>
+                    {[
+                      "Source",
+                      "Applications",
+                      "Approved",
+                      "Rejected",
+                      "Approval Rate",
+                    ].map((head) => (
+                      <Table.Th
+                        key={head}
+                        style={tableHead}
+                      >
+                        {head}
+                      </Table.Th>
+                    ))}
+                  </Table.Tr>
+                </Table.Thead>
+
+                <Table.Tbody>
+                  {SOURCES.map((source) => {
+                    const rate = source.applications
+                      ? Math.round(
+                          (source.approved /
+                            source.applications) *
+                            100,
+                        )
+                      : 0;
+
+                    return (
+                      <Table.Tr key={source.source}>
+                        <Table.Td fw={750}>
+                          {source.source}
+                        </Table.Td>
+
+                        <Table.Td>
+                          {source.applications}
+                        </Table.Td>
+
+                        <Table.Td>
+                          <Badge
+                            size="sm"
+                            variant="light"
+                            styles={badgeStyles(
+                              COLORS.success,
+                            )}
+                          >
+                            {source.approved}
+                          </Badge>
+                        </Table.Td>
+
+                        <Table.Td>
+                          <Badge
+                            size="sm"
+                            variant="light"
+                            styles={badgeStyles(
+                              COLORS.warning,
+                            )}
+                          >
+                            {source.rejected}
+                          </Badge>
+                        </Table.Td>
+
+                        <Table.Td miw={95}>
+                          <MetricBar
+                            value={rate}
+                            label={`${rate}%`}
+                          />
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  })}
+                </Table.Tbody>
+              </Table>
+            </Box>
+
+            {/* APPLICATIONS */}
+            <Box style={{ minWidth: 0 }}>
+              <Group
+                justify="space-between"
+                align="center"
+                mb="sm"
+                gap="sm"
+                wrap="wrap"
+              >
+                <Box>
+                  <Group gap={7}>
+                    <Text fw={850} fz="sm">
+                      Applications
+                    </Text>
+
+                    <Badge
+                      size="xs"
+                      variant="light"
+                      styles={badgeStyles(
+                        COLORS.primary,
+                      )}
+                    >
+                      {tableApps.length}
+                    </Badge>
+                  </Group>
+
+                  <Text fz={8.5} c="dimmed" mt={1}>
+                    Showing up to 5 application records
+                  </Text>
+                </Box>
+
+                <Group gap={5} wrap="wrap">
+                  <Select
+                    size="xs"
+                    radius="md"
+                    w={125}
+                    value={tableBranch}
+                    onChange={(value) =>
+                      setTableBranch(
+                        value ?? "All Branches",
+                      )
+                    }
+                    data={BRANCH_OPTIONS}
+                    leftSection={
+                      <IconBuilding size={13} />
+                    }
+                    styles={filterStyles}
+                  />
+
+                  <Select
+                    size="xs"
+                    radius="md"
+                    w={135}
+                    value={tableOfficer}
+                    onChange={(value) =>
+                      setTableOfficer(
+                        value ?? "All Officers",
+                      )
+                    }
+                    data={OFFICER_OPTIONS}
+                    leftSection={
+                      <IconUser size={13} />
+                    }
+                    styles={filterStyles}
+                  />
+
+                  <Button
+                    size="xs"
+                    radius="md"
+                    variant="light"
+                    h={30}
+                    leftSection={
+                      <IconDownload size={13} />
+                    }
+                    onClick={() =>
+                      exportApplications(tableApps)
+                    }
+                    disabled={!tableApps.length}
+                  >
+                    CSV
+                  </Button>
+                </Group>
+              </Group>
+
+              {tableApps.length ? (
+                <ScrollArea type="auto">
+                  <Table
+                    highlightOnHover
+                    verticalSpacing={5}
+                    horizontalSpacing={6}
+                    fz={8.5}
+                    style={{
+                      minWidth: 720,
+                      tableLayout: "fixed",
+                    }}
+                  >
+                    <Table.Thead>
+                      <Table.Tr>
+                        {[
+                          "ID",
+                          "Product",
+                          "Stage",
+                          "Status",
+                          "Source",
+                          "Requested",
+                          "Approved",
+                          "Age",
+                          "Submitted",
+                        ].map((head) => (
+                          <Table.Th
+                            key={head}
+                            style={tableHead}
+                          >
+                            {head}
+                          </Table.Th>
+                        ))}
+                      </Table.Tr>
+                    </Table.Thead>
+
+                    <Table.Tbody>
+                      {tableApps
+                        .slice(0, 5)
+                        .map((app) => (
+                          <Table.Tr key={app.id}>
+                            <Table.Td>
+                              <Text
+                                fw={850}
+                                fz={8.5}
+                                c={COLORS.primary}
+                                truncate
+                              >
+                                {app.id}
+                              </Text>
+                            </Table.Td>
+
+                            <Table.Td>
+                              <Text
+                                fz={8.5}
+                                fw={650}
+                                truncate
+                              >
+                                {app.product}
+                              </Text>
+                            </Table.Td>
+
+                            <Table.Td>
+                              <Text
+                                fz={8.5}
+                                truncate
+                              >
+                                {app.stage}
+                              </Text>
+                            </Table.Td>
+
+                            <Table.Td>
+                              <Badge
+                                size="xs"
+                                variant="light"
+                                styles={badgeStyles(
+                                  statusColor(
+                                    app.status,
+                                  ),
+                                )}
+                              >
+                                {app.status}
+                              </Badge>
+                            </Table.Td>
+
+                            <Table.Td>
+                              <Badge
+                                size="xs"
+                                variant="light"
+                                styles={badgeStyles(
+                                  COLORS.muted,
+                                )}
+                              >
+                                {app.source}
+                              </Badge>
+                            </Table.Td>
+
+                            <Table.Td ta="right">
+                              <Text
+                                fz={8.5}
+                                fw={700}
+                                truncate
+                              >
+                                {formatFullCurrency(
+                                  app.requested,
+                                )}
+                              </Text>
+                            </Table.Td>
+
+                            <Table.Td ta="right">
+                              <Text
+                                fz={8.5}
+                                fw={750}
+                                c={
+                                  app.approved
+                                    ? COLORS.success
+                                    : "dimmed"
+                                }
+                                truncate
+                              >
+                                {app.approved
+                                  ? formatFullCurrency(
+                                      app.approved,
+                                    )
+                                  : "—"}
+                              </Text>
+                            </Table.Td>
+
+                            <Table.Td>
+                              <Badge
+                                size="xs"
+                                variant="light"
+                                styles={badgeStyles(
+                                  app.age >= 7
+                                    ? COLORS.warning
+                                    : app.age >= 5
+                                      ? COLORS.primary
+                                      : COLORS.muted,
+                                )}
+                              >
+                                {app.age}d
+                              </Badge>
+                            </Table.Td>
+
+                            <Table.Td>
+                              <Text
+                                fz={8.5}
+                                c="dimmed"
+                                truncate
+                              >
+                                {formatDate(
+                                  app.submittedOn,
+                                )}
+                              </Text>
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                    </Table.Tbody>
+                  </Table>
+                </ScrollArea>
+              ) : (
+                <Box
+                  py={20}
+                  ta="center"
                   style={{
-                    minWidth: 760,
+                    border: `1px dashed ${COLORS.border}`,
+                    borderRadius: 8,
+                    background: "#FAFAFA",
                   }}
                 >
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th
-                        style={tableHeaderStyles}
-                      >
-                        ID
-                      </Table.Th>
+                  <Text fz={10.5} fw={800}>
+                    No applications found
+                  </Text>
 
-                      <Table.Th
-                        style={tableHeaderStyles}
-                      >
-                        Product
-                      </Table.Th>
-
-                      <Table.Th
-                        style={tableHeaderStyles}
-                      >
-                        Stage
-                      </Table.Th>
-
-                      <Table.Th
-                        style={tableHeaderStyles}
-                      >
-                        Status
-                      </Table.Th>
-
-                      <Table.Th
-                        style={tableHeaderStyles}
-                      >
-                        Source
-                      </Table.Th>
-
-                      <Table.Th
-                        style={tableHeaderStyles}
-                      >
-                        Requested
-                      </Table.Th>
-
-                      <Table.Th
-                        style={tableHeaderStyles}
-                      >
-                        Approved
-                      </Table.Th>
-
-                      <Table.Th
-                        style={tableHeaderStyles}
-                      >
-                        Age
-                      </Table.Th>
-
-                      <Table.Th
-                        style={tableHeaderStyles}
-                      >
-                        Submitted
-                      </Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-
-                  <Table.Tbody>
-                    {tableApps
-                      .slice(0, 5)
-                      .map((app) => (
-                        <Table.Tr key={app.id}>
-                          <Table.Td>
-                            <Text
-                              fw={800}
-                              size="10px"
-                              c="blue"
-                            >
-                              {app.id}
-                            </Text>
-                          </Table.Td>
-
-                          <Table.Td>
-                            <Text
-                              fw={600}
-                              size="10px"
-                              style={{
-                                whiteSpace:
-                                  "nowrap",
-                              }}
-                            >
-                              {app.product}
-                            </Text>
-                          </Table.Td>
-
-                          <Table.Td>
-                            <Text
-                              size="10px"
-                              style={{
-                                whiteSpace:
-                                  "nowrap",
-                              }}
-                            >
-                              {app.stage}
-                            </Text>
-                          </Table.Td>
-
-                          <Table.Td>
-                            <Badge
-                              size="sm"
-                              variant="light"
-                              color={statusColor(
-                                app.status,
-                              )}
-                            >
-                              {app.status}
-                            </Badge>
-                          </Table.Td>
-
-                          {/* SOURCE - FIXED */}
-                          <Table.Td>
-                            <Badge
-                              size="sm"
-                              variant="light"
-                              color="gray"
-                            >
-                              {app.source}
-                            </Badge>
-                          </Table.Td>
-
-                          <Table.Td>
-                            <Text
-                              size="10px"
-                              fw={600}
-                              ta="right"
-                              style={{
-                                whiteSpace:
-                                  "nowrap",
-                              }}
-                            >
-                              {formatFullCurrency(
-                                app.requested,
-                              )}
-                            </Text>
-                          </Table.Td>
-
-                          <Table.Td>
-                            <Text
-                              size="10px"
-                              fw={700}
-                              ta="right"
-                              c={
-                                app.approved > 0
-                                  ? "green"
-                                  : "dimmed"
-                              }
-                              style={{
-                                whiteSpace:
-                                  "nowrap",
-                              }}
-                            >
-                              {app.approved > 0
-                                ? formatFullCurrency(
-                                  app.approved,
-                                )
-                                : "—"}
-                            </Text>
-                          </Table.Td>
-
-                          {/* AGE - FIXED */}
-                          <Table.Td>
-                            <Badge
-                              size="sm"
-                              variant="light"
-                              color={
-                                app.age >= 7
-                                  ? "red"
-                                  : app.age >= 5
-                                    ? "yellow"
-                                    : "gray"
-                              }
-                            >
-                              {app.age}d
-                            </Badge>
-                          </Table.Td>
-
-                          <Table.Td>
-                            <Text
-                              size="10px"
-                              c="dimmed"
-                              style={{
-                                whiteSpace:
-                                  "nowrap",
-                              }}
-                            >
-                              {formatDate(
-                                app.submittedOn,
-                              )}
-                            </Text>
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
-                  </Table.Tbody>
-                </Table>
-              </Box>
-            ) : (
-              <EmptyState
-                title="No applications found"
-                description="Try changing the Branch, Officer, or report filters."
-              />
-            )}
+                  <Text fz={8.5} c="dimmed" mt={3}>
+                    Try changing the Branch, Officer, or
+                    report filters.
+                  </Text>
+                </Box>
+              )}
+            </Box>
           </Box>
-        </SimpleGrid>
-      </SectionCard>
+        </SectionCard>
+      </Box>
     </ReportShell>
   );
 }
