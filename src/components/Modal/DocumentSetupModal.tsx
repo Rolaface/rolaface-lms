@@ -62,10 +62,7 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, mode, products
   const addDoc = () => {
     const name = newName.trim();
     if (!name) return;
-    if (docs.some((d) => d.name.trim().toLowerCase() === name.toLowerCase())) {
-      setError(`"${name}" is already in the list.`);
-      return;
-    }
+    
     update((l) => [...l, doc(name)]);
     setNewName("");
   };
@@ -86,23 +83,9 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, mode, products
   };
 
   const save = async () => {
-    if (!productId) {
-      setError("Choose a loan product.");
-      return;
-    }
-    if (docs.length === 0) {
-      setError("Add at least one document before saving.");
-      return;
-    }
-    const names = docs.map((d) => d.name.trim().toLowerCase());
-    if (names.some((n) => !n)) {
-      setError("Every document needs a name.");
-      return;
-    }
-    if (new Set(names).size !== names.length) {
-      setError("The list has a duplicate document.");
-      return;
-    }
+    if (!productId) return;
+    
+    
     
     setSaving(true);
     const finalDocs = docs.map((d) => ({ ...d, name: d.name.trim() }));
@@ -391,6 +374,7 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, mode, products
     </Modal>
   );
 }
+
 
 
 
