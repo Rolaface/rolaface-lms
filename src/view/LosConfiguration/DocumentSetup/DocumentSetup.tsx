@@ -35,6 +35,10 @@ import dayjs from "dayjs";
 import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { IconText } from "../../Customer/CustomerTableCells";
 import { DocumentSetupApi } from "../../../api/LosConfiguration/DocumentSetupApi";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+import { documentSetupModal } from "../../../components/Modal/documentSetupModalStore";
+
+
 export interface DocumentConfig {
   id: string;
   name: string;
@@ -106,13 +110,15 @@ const showSuccess = (heading: string, body: string = "") => {
   });
 };
 
-const showFail = (body: string) =>
+const showError = (heading: string, error: any) => {
   openCommonModal({
-    heading: "Something went wrong",
-    body,
+    heading,
+    subtitle: "We couldn't complete your request.",
+    body: parseFrappeError(error),
     color: "red",
-    buttons: [{ label: "Close" }],
+    buttons: [{ label: "Close", color: "red" }],
   });
+};
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
@@ -128,267 +134,6 @@ const headStyle = {
 // Add / edit modal
 // ---------------------------------------------------------------------------
 
-function DocumentsModal({
-  opened,
-  productOptions,
-  editingId,
-  initialDocs,
-  onClose,
-  onSubmit,
-}: {
-  opened: boolean;
-  productOptions: ProductOption[];
-  /** Product being edited, or null when adding documents for a new product */
-  editingId: string | null;
-  initialDocs: DocumentConfig[];
-  onClose: () => void;
-  onSubmit: (productId: string, docs: DocumentConfig[]) => Promise<void>;
-}) {
-  const [productId, setProductId] = useState<string | null>(editingId ?? productOptions[0]?.id ?? null);
-  const [docs, setDocs] = useState<DocumentConfig[]>(initialDocs);
-  const [newName, setNewName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const update = (fn: (list: DocumentConfig[]) => DocumentConfig[]) => {
-    setDocs(fn);
-    setError(null);
-  };
-
-  const addDoc = () => {
-    const name = newName.trim();
-    if (!name) return;
-    if (docs.some((d) => d.name.trim().toLowerCase() === name.toLowerCase())) {
-      setError(`"${name}" is already in the list.`);
-      return;
-    }
-    update((l) => [...l, doc(name)]);
-    setNewName("");
-  };
-
-  const move = (index: number, dir: -1 | 1) =>
-    update((l) => {
-      const next = [...l];
-      [next[index], next[index + dir]] = [next[index + dir], next[index]];
-      return next;
-    });
-
-  const submit = async () => {
-    if (!productId) {
-      setError("Choose a loan product.");
-      return;
-    }
-    if (docs.length === 0) {
-      setError("Add at least one document before saving.");
-      return;
-    }
-    const names = docs.map((d) => d.name.trim().toLowerCase());
-    if (names.some((n) => !n)) {
-      setError("Every document needs a name.");
-      return;
-    }
-    if (new Set(names).size !== names.length) {
-      setError("The list has a duplicate document.");
-      return;
-    }
-    setSaving(true);
-    try {
-      await onSubmit(productId, docs.map((d) => ({ ...d, name: d.name.trim() })));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      size={680}
-      radius="lg"
-      centered
-      title={
-        <Stack gap={2}>
-          <Text fz={17} fw={700} c="slate.9">
-            {editingId ? "Edit product documents" : "Add product documents"}
-          </Text>
-          <Text fz={12.5} c="slate.5">
-            Choose a product, then list the documents applicants must provide.
-          </Text>
-        </Stack>
-      }
-    >
-      <Stack gap="md">
-        {/* Prevent Select from autofocusing and opening */}
-        <div tabIndex={-1} data-autofocus style={{ outline: "none", position: "absolute", opacity: 0 }} />
-        {(() => {
-            const selectedProd = productOptions.find(p => p.id === productId);
-            return (
-              <Select
-                label="Loan product"
-                radius="md"
-                searchable
-                allowDeselect={false}
-                disabled={!!editingId}
-                data={productOptions.map((p) => ({ value: p.id, label: p.name }))}
-                value={productId}
-                onChange={setProductId}
-                nothingFoundMessage="No products found"
-                leftSection={
-                  selectedProd?.code ? (
-                    <Badge size="xs" variant="light" color="brand" radius="sm">
-                      {selectedProd.code}
-                    </Badge>
-                  ) : undefined
-                }
-                leftSectionWidth={selectedProd?.code ? 65 : 36}
-                renderOption={({ option }) => {
-                  const p = productOptions.find((x) => x.id === option.value);
-                  return (
-                    <Group wrap="nowrap" gap="sm">
-                      {p?.code ? (
-                        <Badge size="sm" variant="light" color="brand" radius="sm" style={{ width: 55 }}>
-                          {p.code}
-                        </Badge>
-                      ) : (
-                        <Box w={55} />
-                      )}
-                      <Text size="sm">{p?.name || option.label}</Text>
-                    </Group>
-                  );
-                }}
-              />
-            );
-          })()}
-
-        <Box>
-          <Group gap={6} mb={8}>
-            <Text fz={14} fw={600} c="slate.8">
-              Documents
-            </Text>
-            {docs.length > 0 && (
-              <Text fz={13} c="slate.5">
-                ({docs.length})
-              </Text>
-            )}
-          </Group>
-
-          <Paper withBorder radius="md" style={{ overflow: "hidden", borderColor: "var(--mantine-color-slate-2)" }}>
-            <Table verticalSpacing={6} horizontalSpacing="sm" style={{ tableLayout: "fixed" }}>
-              <Table.Thead bg="slate.0">
-                <Table.Tr>
-                  <Table.Th c="slate.5" fw={700} style={{ ...headStyle, padding: "8px 10px", width: 48 }}>
-                    No.
-                  </Table.Th>
-                  <Table.Th c="slate.5" fw={700} style={{ ...headStyle, padding: "8px 10px" }}>
-                    Document name
-                  </Table.Th>
-                  <Table.Th c="slate.5" fw={700} style={{ ...headStyle, padding: "8px 10px", width: 130 }}>
-                    Required
-                  </Table.Th>
-                  <Table.Th style={{ ...headStyle, width: 100 }} />
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {docs.length === 0 ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={4}>
-                      <Text fz={12.5} c="slate.4" ta="center" py="md">
-                        No documents yet. Add the first one below.
-                      </Text>
-                    </Table.Td>
-                  </Table.Tr>
-                ) : (
-                  docs.map((d, i) => (
-                    <Table.Tr key={d.id}>
-                      <Table.Td>
-                        <Text fz={12.5} c="slate.5">
-                          {i + 1}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <TextInput
-                          size="xs"
-                          radius="md"
-                          value={d.name}
-                          aria-label={`Document ${i + 1} name`}
-                          onChange={(e) => {
-                            const name = e.currentTarget.value;
-                            update((l) => l.map((x) => (x.id === d.id ? { ...x, name } : x)));
-                          }}
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <Group gap={8} wrap="nowrap">
-                          <Switch
-                            size="sm"
-                            checked={d.required}
-                            aria-label={`${d.name} required`}
-                            onChange={(e) => {
-                              const required = e.currentTarget.checked;
-                              update((l) => l.map((x) => (x.id === d.id ? { ...x, required } : x)));
-                            }}
-                          />
-                          <Text fz={12} fw={600} c={d.required ? "orange.7" : "slate.5"}>
-                            {d.required ? "Required" : "Optional"}
-                          </Text>
-                        </Group>
-                      </Table.Td>
-                      <Table.Td>
-                        <Group gap={2} justify="flex-end" wrap="nowrap">
-                          <ActionIcon variant="subtle" color="slate" size="sm" radius="md" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">
-                            <IconArrowUp size={14} />
-                          </ActionIcon>
-                          <ActionIcon variant="subtle" color="slate" size="sm" radius="md" disabled={i === docs.length - 1} onClick={() => move(i, 1)} aria-label="Move down">
-                            <IconArrowDown size={14} />
-                          </ActionIcon>
-                          <ActionIcon variant="subtle" color="danger" size="sm" radius="md" onClick={() => update((l) => l.filter((x) => x.id !== d.id))} aria-label={`Delete ${d.name}`}>
-                            <IconTrash size={14} />
-                          </ActionIcon>
-                        </Group>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))
-                )}
-              </Table.Tbody>
-            </Table>
-
-            <Group gap={8} wrap="nowrap" p={10} bg="slate.0" style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
-              <TextInput
-                size="xs"
-                radius="md"
-                style={{ flex: 1 }}
-                placeholder="New document, e.g. NRC copy"
-                aria-label="New document name"
-                value={newName}
-                onChange={(e) => setNewName(e.currentTarget.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") addDoc();
-                }}
-              />
-              <Button size="xs" radius="md" variant="default" leftSection={<IconPlus size={14} />} onClick={addDoc}>
-                Add
-              </Button>
-            </Group>
-          </Paper>
-
-          <Text fz={12} c="danger.6" mt={6} style={{ minHeight: 18 }}>
-            {error ?? ""}
-          </Text>
-        </Box>
-      </Stack>
-
-      <Group justify="space-between" mt="xs" pt="md" style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
-        <Button variant="default" radius="md" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button color="brand" radius="md" loading={saving} onClick={submit}>
-          Save documents
-        </Button>
-      </Group>
-    </Modal>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
@@ -403,7 +148,7 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [modal, setModal] = useState<ModalState>(null);
+  
 
   // ---- load list (GET get_document_setups) ----
   const loadList = async () => {
@@ -413,7 +158,7 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
       setRows(DocumentSetupApi.unwrapList(res).map(mapSetupRow));
     } catch (e) {
       console.error(e);
-      showFail(errorMessage(e));
+      showError("Something went wrong", e);
     } finally {
       setLoading(false);
     }
@@ -451,10 +196,10 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
         });
         return;
       }
-      setModal({ mode: "add", products });
+      documentSetupModal.open({ mode: "add", products, onSuccess: async (productId, docs) => { await onSave?.(productId, docs); showSuccess("Documents Saved", "Documents have been saved successfully."); await loadList(); } });
     } catch (e) {
       console.error(e);
-      showFail(errorMessage(e));
+      showError("Something went wrong", e);
     } finally {
       setBusy(false);
     }
@@ -466,36 +211,17 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
     try {
       const res = await DocumentSetupApi.getById(p.id);
       const detail = DocumentSetupApi.unwrap(res);
-      setModal({ mode: "edit", product: p, docs: mapDocs(detail) });
+      documentSetupModal.open({ mode: "edit", product: p, docs: mapDocs(detail), onSuccess: async (productId, docs) => { await onSave?.(productId, docs); showSuccess("Documents Saved", "Documents have been saved successfully."); await loadList(); } });
     } catch (e) {
       console.error(e);
-      showFail(errorMessage(e));
+      showError("Something went wrong", e);
     } finally {
       setBusy(false);
     }
   };
 
   // ---- Save: POST create_document_setup / PUT update_document_setup ----
-  const save = async (productId: string, docs: DocumentConfig[]) => {
-    const payload = {
-      loan_product: productId,
-      documents: docs.map((d) => ({ document_name: d.name, is_required: d.required ? 1 : 0 })),
-    };
-    try {
-      if (modal?.mode === "edit") {
-        await DocumentSetupApi.update(productId, payload);
-      } else {
-        await DocumentSetupApi.create(payload);
-      }
-      await onSave?.(productId, docs);
-      setModal(null);
-      showSuccess("Documents Saved", "Documents have been saved successfully.");
-      await loadList();
-    } catch (e) {
-      console.error(e);
-      showFail(errorMessage(e));
-    }
-  };
+  
 
   // ---- Delete: DELETE delete_document_setup ----
   const confirmRemove = (p: SetupRow) =>
@@ -516,7 +242,7 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
               await loadList();
             } catch (e) {
               console.error(e);
-              showFail(errorMessage(e));
+              showError("Something went wrong", e);
             }
           },
         },
@@ -787,18 +513,10 @@ export function DocumentSetup({ onSave, readOnly = false }: DocumentSetupProps) 
         </Group>
       </Paper>
 
-      {modal && (
-        <DocumentsModal
-          key={modal.mode === "edit" ? modal.product.id : "new"}
-          opened
-          editingId={modal.mode === "edit" ? modal.product.id : null}
-          productOptions={modal.mode === "edit" ? [modal.product] : modal.products}
-          initialDocs={modal.mode === "edit" ? modal.docs : []}
-          onClose={() => setModal(null)}
-          onSubmit={save}
-        />
-      )}
+      
     </Stack>
   );
 }
+
+
 

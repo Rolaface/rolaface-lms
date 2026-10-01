@@ -19,3 +19,5 @@ import "../../components/Modal/Schedular/schedulerModalStore";
 import "../../components/Modal/EmailTemplate/emailTemplateModalStore";
 import '../../components/Modal/User/Rolemodalstore';
 import '../../components/Modal/createTemplateModalStore';
+import '../../components/Modal/documentSetupModalStore';
+import '../../components/Modal/sourceModalStore';

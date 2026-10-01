@@ -79,7 +79,7 @@ import LOSEligibilityCheck from "../view/LosConfiguration/EligibilityCheck/LOSEl
 import LoanProductAutoAssignment from "../view/LosConfiguration/ProductAssignment/LoanProductAssignment";
 import { OfferIssuanceStage } from "../view/Origination/OfferIssuanceStage/OfferIssuanceStage";
 import { LoanTypeSetup } from "../view/LosConfiguration/LoanTpeSetup/Loantypesetup";
-import { DocumentSetup } from "../view/LosConfiguration/Documents/Documentsetup";
+import { DocumentSetup } from "../view/LosConfiguration/DocumentSetup/DocumentSetup";
 import { SourceMaintenance } from "../view/LosConfiguration/SourceMaintenance/SourceMaintenance";
 
 
