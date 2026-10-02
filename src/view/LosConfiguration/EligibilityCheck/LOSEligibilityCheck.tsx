@@ -109,18 +109,6 @@ export function LosEligibilityCheck() {
             <Tabs.Panel value="rules">
              <EligibilityRules onSimulate={() => setActiveTab("simulate")} />
             </Tabs.Panel>
-
-            {/* {createOpen && (
-  <CreateRule
-    opened={createOpen}
-    ruleId={selectedRuleId ?? undefined}
-    onExit={() => {
-      setCreateOpen(false);
-      setSelectedRuleId(null);
-    }}
-  />
-)} */}
-
             <Tabs.Panel value="simulate">
               <Simulator />
             </Tabs.Panel>

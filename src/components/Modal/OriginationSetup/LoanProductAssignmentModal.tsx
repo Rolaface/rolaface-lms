@@ -57,6 +57,7 @@ import {
 import { getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
 import {type CreateLoantypeResponse } from "../../../types/OriginationSetup/loanTypeForm";
 import { getAllLoanProducts } from "../../../api/productApi";
+import {getSources} from "../../../api/LosConfiguration/sourceApi";
 import { useQuery } from "@tanstack/react-query";
 
 export const FIELD = { input: { height: 30, minHeight: 30, fontSize: 12.5, paddingLeft: 10 } };
@@ -564,6 +565,7 @@ export function LoanProductAssignmentModal({ editing, saving, saveError, onClose
     const { data: productResponse, isLoading: isProductsLoading, refetch: refetchProducts } = useQuery({
     queryKey: ["loanProducts"],
     queryFn: () => getAllLoanProducts(),
+    enabled: isOpen,
   });
 
   const availableProduct = useMemo(() => {
@@ -575,6 +577,23 @@ export function LoanProductAssignmentModal({ editing, saving, saveError, onClose
         label: p.name,
       }));
   }, [productResponse]);
+
+      const { data: sourceResponse, isLoading: isSourcesLoading, refetch: refetchSources } = useQuery({
+    queryKey: ["sources"],
+    queryFn: () => getSources(),
+    enabled: isOpen,
+  });
+
+ const availableSource = useMemo(() => {
+    const sources = (Array.isArray(sourceResponse) ? sourceResponse : sourceResponse?.data) || [];
+    
+    return sources
+      .filter((s: any) => s.is_active === 1) 
+      .map((s: any) => ({
+        value: s.name,
+        label: s.name,
+      }));
+  }, [sourceResponse]);
 
   return (
     <Modal
@@ -636,7 +655,8 @@ export function LoanProductAssignmentModal({ editing, saving, saveError, onClose
               <Box style={{ display: "grid", gridTemplateColumns: "minmax(0, 35fr) minmax(0, 35fr) minmax(0, 30fr)", columnGap: 32, alignItems: "start" }}>
                 <Box style={{ minWidth: 0 }}>
                   <FieldLabel>Source</FieldLabel>
-                  <InlinePicker field kind="source" value={editing.row.sources} onChange={(sources) => onEditRow({ sources })} />
+                  {/* <InlinePicker field kind="source" value={editing.row.sources} onChange={(sources) => onEditRow({ sources })} /> */}
+                  <InlinePicker field kind="source" options={availableSource} value={editing.row.sources} onChange={(sources) => onEditRow({ sources })} />
                 </Box>
                                 <Box style={{ minWidth: 0 }}>
                   <FieldLabel>Loan type</FieldLabel>
