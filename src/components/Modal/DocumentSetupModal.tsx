@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Box, Group, Stack, Text, Select, Paper, Table, TextInput, Switch, ActionIcon, Button, ThemeIcon, LoadingOverlay, Modal, useMantineTheme } from "@mantine/core";
-import { IconArrowUp, IconArrowDown, IconTrash, IconPlus, IconFiles, IconMinus, IconX } from "@tabler/icons-react";
+import { IconTrash, IconPlus, IconFiles, IconMinus, IconX } from "@tabler/icons-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@mantine/form";
 import { DocumentSetupApi, type DocumentSetupPayload } from "../../api/LosConfiguration/DocumentSetupApi";
@@ -169,14 +169,6 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, editId, isView
     form.setFieldValue("newName", "");
   };
 
-  const move = (idx: number, dir: number) => {
-    const list = [...form.values.docs];
-    if (idx + dir < 0 || idx + dir >= list.length) return;
-    const temp = list[idx];
-    list[idx] = list[idx + dir];
-    list[idx + dir] = temp;
-    form.setFieldValue("docs", list);
-  };
 
   const handleClose = () => {
     form.reset();
@@ -225,7 +217,7 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, editId, isView
         body: { flex: 1, display: "flex", flexDirection: "column", padding: 0, minHeight: 0 },
       }}
     >
-      <Box style={{ display: "flex", flexDirection: "column", flex: 1 }} bg="white">
+      <Box style={{ display: "flex", flexDirection: "column", flex: 1 }} bg="white" mih={550}>
         <Box
           className="px-6 py-3 flex justify-between items-center rounded-t-md shrink-0"
           style={{
@@ -381,12 +373,6 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, editId, isView
                             </Table.Td>
                             <Table.Td>
                               <Group gap={2} justify="flex-end" wrap="nowrap">
-                                <ActionIcon variant="subtle" color="slate" size="sm" radius="md" disabled={i === 0 || isView} onClick={() => move(i, -1)} aria-label="Move up">
-                                  <IconArrowUp size={14} />
-                                </ActionIcon>
-                                <ActionIcon variant="subtle" color="slate" size="sm" radius="md" disabled={i === form.values.docs.length - 1 || isView} onClick={() => move(i, 1)} aria-label="Move down">
-                                  <IconArrowDown size={14} />
-                                </ActionIcon>
                                 <ActionIcon variant="subtle" color="danger" size="sm" radius="md" disabled={isView} onClick={() => {
                                   form.setFieldValue("docs", form.values.docs.filter((_, idx) => idx !== i));
                                 }} aria-label={"Delete " + d.name}>
