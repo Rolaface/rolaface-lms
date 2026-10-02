@@ -29,6 +29,8 @@ import { UnderwritingTable } from "../view/Origination/Underwriting/Underwriting
 import { LoanStatement } from "../view/Reports/LoanStatement/LoanStatement";
 import { ArrearReports } from "../view/Reports/Arrear/ArrearReports";
 import { RepaymentSchedule } from "../view/Reports/RepaymentSchedule/RepaymentSchedule";
+import { DisbursementReport } from "../view/Reports/DisbursementReport/DisbursementReport";
+import { LoanPortfolioReport } from "../view/Reports/LoanPortfolioReport/LoanPortfolioReport";
 
 import { LoanAccount } from "../view/LoanAccount/LoanAccount";
 import { LoanDisbursement } from "../view/Operations/LoanDisbursement/LoanDisbursement";
@@ -485,6 +487,16 @@ const reportsScheduleRoute = createRoute({
   path: "/schedule",
   component: RepaymentSchedule,
 });
+const reportsDisbursementRoute = createRoute({
+  getParentRoute: () => reportsRoute,
+  path: "/disbursement",
+  component: DisbursementReport,
+});
+const reportsPortfolioRoute = createRoute({
+  getParentRoute: () => reportsRoute,
+  path: "/portfolio",
+  component: LoanPortfolioReport,
+});
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
@@ -570,7 +582,7 @@ const routeTree = rootRoute.addChildren([
   ]),
   // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
   originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute, originationLoanTypeSetupRoute, originationDocumentSetupRoute, originationSourceMaintenanceRoute]),
-  reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute]),
+  reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute, reportsDisbursementRoute, reportsPortfolioRoute]),
   settingsRoute.addChildren([
     emailTemplateRoute,
     schedulerRoute,
