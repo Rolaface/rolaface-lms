@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   Box,
   Group,
@@ -12,8 +12,6 @@ import {
   UnstyledButton,
   ActionIcon,
   TextInput,
-  Select,
-  Modal,
   Loader,
   Alert,
   Switch,
@@ -42,7 +40,6 @@ import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export type ApplicantType = "Individual" | "Business";
-
 export interface LoanPurposeConfig {
   id: string;
   name: string;
@@ -64,13 +61,11 @@ export interface LoanPurposeConfig {
   id: string;
   name: string;
 }
-
 export interface LoanSubTypeConfig {
   id: string;
   name: string;
   purposes: LoanPurposeConfig[];
 }
-
 export interface LoanTypeConfig {
   id: string;
   name: string;
@@ -84,8 +79,6 @@ interface LoanTypeSetupProps {
   onSave?: (config: LoanSetupConfig) => void | Promise<void>;
   readOnly?: boolean;
 }
-
-type Level = "loanType" | "subType" | "purpose";
 
 const APPLICANT_TYPES: {
   key: ApplicantType;
@@ -604,6 +597,10 @@ export function LoanTypeSetup({ initialConfig, onSave, readOnly = false }: LoanT
     Individual: initialConfig?.Individual[0]?.subTypes[0]?.id ?? null,
     Business: initialConfig?.Business[0]?.subTypes[0]?.id ?? null,
   });
+  const prevState = useRef({ config, selectedLoanType, selectedSubType });
+  useEffect(() => {
+    prevState.current = { config, selectedLoanType, selectedSubType };
+  }, [config, selectedLoanType, selectedSubType]);
 
   const showSuccess = (heading: string, body: string) => {
     openCommonModal({
@@ -633,15 +630,22 @@ export function LoanTypeSetup({ initialConfig, onSave, readOnly = false }: LoanT
   useEffect(() => {
     if (!loanTypesRes) return;
     const mapped = fromApiSetup(loanTypesRes?.message?.data?.setup);
+    const prev = prevState.current;
+
+    const getLtName = (app: ApplicantType) => prev.config[app].find((lt) => lt.id === prev.selectedLoanType[app])?.name;
+    const getStName = (app: ApplicantType) => prev.config[app].flatMap((lt) => lt.subTypes).find((st) => st.id === prev.selectedSubType[app])?.name;
+
     dispatch({ type: "reset", config: mapped });
     setSavedConfig(mapped);
+
     setSelectedLoanType({
-      Individual: mapped.Individual[0]?.id ?? null,
-      Business: mapped.Business[0]?.id ?? null,
+      Individual: mapped.Individual.find((lt) => lt.name === getLtName("Individual") || lt.id === prev.selectedLoanType.Individual)?.id ?? mapped.Individual[0]?.id ?? null,
+      Business: mapped.Business.find((lt) => lt.name === getLtName("Business") || lt.id === prev.selectedLoanType.Business)?.id ?? mapped.Business[0]?.id ?? null,
     });
+
     setSelectedSubType({
-      Individual: mapped.Individual[0]?.subTypes[0]?.id ?? null,
-      Business: mapped.Business[0]?.subTypes[0]?.id ?? null,
+      Individual: mapped.Individual.flatMap((lt) => lt.subTypes).find((st) => st.name === getStName("Individual") || st.id === prev.selectedSubType.Individual)?.id ?? mapped.Individual[0]?.subTypes[0]?.id ?? null,
+      Business: mapped.Business.flatMap((lt) => lt.subTypes).find((st) => st.name === getStName("Business") || st.id === prev.selectedSubType.Business)?.id ?? mapped.Business[0]?.subTypes[0]?.id ?? null,
     });
   }, [loanTypesRes]);
 
@@ -908,35 +912,7 @@ const handleSave = () => {
             </Badge>
           )}
         </Group>
-
-        {loadError && (
-          <Alert
-            color="red"
-            variant="light"
-            radius="md"
-            mb={14}
-            icon={<IconAlertCircle size={16} />}
-            title="Couldn't load setup"
-          >
-            {loadError}
-          </Alert>
-        )}
-
-        {saveError && (
-          <Alert
-            color="red"
-            variant="light"
-            radius="md"
-            mb={14}
-            icon={<IconAlertCircle size={16} />}
-            title="Couldn't save setup"
-          >
-            {saveError}
-          </Alert>
-        )}
-
-        {/* Applicant type */}
-        <Paper
+         <Paper
           withBorder
           radius="lg"
           p={14}
@@ -1003,8 +979,7 @@ const handleSave = () => {
           </SimpleGrid>
         </Paper>
 
-        {/* Three columns: Loan type → Sub-type → Purpose */}
-        <SimpleGrid cols={{ base: 1, md: 3 }} spacing={12} style={{ alignItems: "start" }} mb={14}>
+         <SimpleGrid cols={{ base: 1, md: 3 }} spacing={12} style={{ alignItems: "start" }} mb={14}>
           <SetupColumn
             icon={IconAdjustmentsHorizontal}
             title="Loan types"
