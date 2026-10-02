@@ -288,6 +288,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/reports/statement", label: "Loan Statement", icon: IconFileText, modules: ["Loan"] },
       { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics, modules: ["Loan"] },
       { path: "/reports/schedule", label: "Repayment Schedule", icon: IconFileText, modules: ["Loan"] },
+      { path: "/reports/disbursement", label: "Disbursement Report", icon: IconFileText, modules: ["Loan"] },
+      { path: "/reports/portfolio", label: "Loan Portfolio Report", icon: IconFileText, modules: ["Loan"] },
     ],
   },
   {
@@ -927,6 +929,8 @@ export function Sidebar({
     </Box>
   );
 }
+
+
 
 
 
