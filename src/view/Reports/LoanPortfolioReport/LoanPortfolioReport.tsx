@@ -387,13 +387,13 @@ export function LoanPortfolioReport() {
           {/* Table Header Controls */}
           <Group justify="space-between" p="md" align="center" wrap="wrap">
               <Text size="sm" fw={600} c="slate.8">Loan Portfolio Details</Text>
-              <Group gap="xs" align="center">
-                <Select placeholder="Branch" defaultValue="All Branches" data={["All Branches", "Lusaka", "Kitwe"]} size="xs" radius="md" w={120} />
-                <Select placeholder="Loan Product" defaultValue="All Loan Products" data={["All Loan Products", "Personal Loan", "Business Loan"]} size="xs" radius="md" w={140} />
-                <Select placeholder="Officer" defaultValue="All Officers" data={["All Officers", "Rohit Kumar", "Neha Verma"]} size="xs" radius="md" w={110} />
-                <Select placeholder="Status" defaultValue="All Status" data={["All Status", "Active", "Overdue"]} size="xs" radius="md" w={100} />
-                <Select placeholder="DPD / Aging" defaultValue="All Ranges" data={["All Ranges", "Current", "1-30"]} size="xs" radius="md" w={110} />
-                <TextInput placeholder="Search Customer..." leftSection={<IconSearch size={14} />} size="xs" radius="md" w={160} />
+              <Group gap="xs" align="center" style={{ flex: 1, justifyContent: "flex-end" }}>
+                <Select placeholder="Branch" defaultValue="All Branches" data={["All Branches", "Lusaka", "Kitwe"]} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
+                <Select placeholder="Loan Product" defaultValue="All Loan Products" data={["All Loan Products", "Personal Loan", "Business Loan"]} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
+                <Select placeholder="Officer" defaultValue="All Officers" data={["All Officers", "Rohit Kumar", "Neha Verma"]} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
+                <Select placeholder="Status" defaultValue="All Status" data={["All Status", "Active", "Overdue"]} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
+                <Select placeholder="DPD / Aging" defaultValue="All Ranges" data={["All Ranges", "Current", "1-30"]} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
+                <TextInput placeholder="Search Customer..." leftSection={<IconSearch size={14} />} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 140, maxWidth: 200 }} />
               </Group>
             </Group>
 
