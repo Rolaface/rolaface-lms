@@ -115,6 +115,27 @@ const CustomAgingTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+
+const CustomCompositionTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <Paper shadow="md" p="xs" radius="md" withBorder style={{ backgroundColor: 'rgba(255, 255, 255, 0.95)' }}>
+        <Text size="sm" fw={700} c="slate.8" mb={4}>{data.name}</Text>
+        <Group justify="space-between" gap="xl" mb={2} wrap="nowrap">
+          <Text size="xs" c="slate.6">Share:</Text>
+          <Text size="xs" fw={600} c={data.color}>{data.value}%</Text>
+        </Group>
+        <Group justify="space-between" gap="xl" wrap="nowrap">
+          <Text size="xs" c="slate.6">Amount:</Text>
+          <Text size="xs" fw={600} c="slate.8">{data.amount}</Text>
+        </Group>
+      </Paper>
+    );
+  }
+  return null;
+};
+
 export function LoanPortfolioReport() {
   const [search, setSearch] = useState("");
   const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
@@ -303,7 +324,7 @@ export function LoanPortfolioReport() {
                       <Pie data={compositionData} innerRadius={50} outerRadius={65} paddingAngle={2} dataKey="value" stroke="none">
                         {compositionData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                       </Pie>
-                      <RechartsTooltip />
+                      <RechartsTooltip content={<CustomCompositionTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
                   <Stack gap={0} align="center" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
