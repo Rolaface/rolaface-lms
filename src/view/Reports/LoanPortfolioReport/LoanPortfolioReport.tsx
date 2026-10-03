@@ -281,7 +281,7 @@ export function LoanPortfolioReport() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${val}%`} />
-                  <RechartsTooltip cursor={{ fill: \'#f1f5f9\' }} content={<CustomAgingTooltip />} />
+                  <RechartsTooltip cursor={{ fill: '#f1f5f9' }} content={<CustomAgingTooltip />} />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={24}>
                     {agingData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
