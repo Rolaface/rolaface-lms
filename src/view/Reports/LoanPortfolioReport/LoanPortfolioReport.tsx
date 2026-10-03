@@ -126,7 +126,7 @@ export function LoanPortfolioReport() {
               Loan Portfolio Report
             </Title>
             <Text fz="sm" c="slate.5" mt={4}>
-              Get a complete view of your loan book's financial position, repayment status and overall portfolio health.
+              Get a complete view of your loan book's financial position, outstanding balances and overall portfolio health.
             </Text>
           </Box>
           <Group gap="sm">
