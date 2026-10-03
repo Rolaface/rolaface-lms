@@ -94,6 +94,27 @@ const tableData = [
   { id: 'LN-2025-00130', customer: 'Tina Nyirenda', product: 'Business Loan', branch: 'Kabwe Branch', officer: 'James Banda', disbDate: '08 Sep 2025', disbAmt: 'ZMW 750,000', prinRepaid: 'ZMW 220,000', prinOS: 'ZMW 530,000', accInt: 'ZMW 48,670', intPaid: 'ZMW 20,000', intOS: 'ZMW 28,670', feesOS: 'ZMW 6,500', totalOS: 'ZMW 565,170', nextDue: '05 Nov 2025', dpd: 0, status: 'Active' },
 ];
 
+
+const CustomAgingTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <Paper shadow="md" p="xs" radius="md" withBorder style={{ backgroundColor: 'rgba(255, 255, 255, 0.95)' }}>
+        <Text size="sm" fw={700} c="slate.8" mb={4}>{label === 'Current' ? 'Current (0 DPD)' : `${label} DPD`}</Text>
+        <Group justify="space-between" gap="xl" mb={2} wrap="nowrap">
+          <Text size="xs" c="slate.6">Share of Portfolio:</Text>
+          <Text size="xs" fw={600} c={data.fill}>{data.value}%</Text>
+        </Group>
+        <Group justify="space-between" gap="xl" wrap="nowrap">
+          <Text size="xs" c="slate.6">Outstanding:</Text>
+          <Text size="xs" fw={600} c="slate.8">{data.amount}</Text>
+        </Group>
+      </Paper>
+    );
+  }
+  return null;
+};
+
 export function LoanPortfolioReport() {
   const [search, setSearch] = useState("");
   const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
@@ -260,7 +281,7 @@ export function LoanPortfolioReport() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${val}%`} />
-                  <RechartsTooltip cursor={{ fill: '#f1f5f9' }} />
+                  <RechartsTooltip cursor={{ fill: \'#f1f5f9\' }} content={<CustomAgingTooltip />} />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={24}>
                     {agingData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
