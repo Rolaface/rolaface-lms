@@ -29,6 +29,7 @@ import {
   IconGripVertical,
   IconTrash,
   IconCopy,
+  IconEye,
   IconPencil,
   IconInfoCircle,
   IconSparkles,
@@ -59,7 +60,7 @@ const makeEmptyRule = (): Rule => ({
 /* ============================================================
    FIELD PICKER
    ============================================================ */
-function FieldPicker({ value, onSelect }: { value: string | null; onSelect: (fid: string) => void }) {
+function FieldPicker({ value, onSelect, disabled }: { value: string | null; onSelect: (fid: string) => void; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -76,11 +77,12 @@ function FieldPicker({ value, onSelect }: { value: string | null; onSelect: (fid
   return (
     <Box ref={ref} pos="relative">
       <Button
-        fullWidth
-        size="xs"
-        variant="default"
-        rightSection={<IconChevronDown size={13} color="var(--mantine-color-slate-4)" />}
-        onClick={() => setOpen(!open)}
+          fullWidth
+          size="xs"
+          variant="default"
+          disabled={disabled}
+          rightSection={<IconChevronDown size={13} color="var(--mantine-color-slate-4)" />}
+          onClick={() => !disabled && setOpen(!open)}
         styles={{
           root: { height: 30, minHeight: 30, paddingLeft: 10, paddingRight: 8 },
           inner: { justifyContent: "space-between", width: "100%" },
@@ -165,30 +167,30 @@ function ChipInput({ values, onChange, placeholder }: { values: string[]; onChan
 /* ============================================================
    VALUE EDITOR
    ============================================================ */
-function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldById>; rule: Rule; setRule: (r: Rule) => void }) {
+function ValueEditor({ field, rule, setRule, disabled }: { field: ReturnType<typeof fieldById>; rule: Rule; setRule: (r: Rule) => void; disabled?: boolean }) {
   if (!field) return null;
 
   if (field.type === "numeric") {
     if (rule.operator === "between") {
       return (
         <Group gap="sm" align="center" wrap="nowrap">
-          <Input size="xs" component="input" type="number" placeholder="From" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
+          <Input disabled={disabled} size="xs" component="input" type="number" placeholder="From" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
           <Text c="dimmed" fz={11.5}>and</Text>
-          <Input size="xs" component="input" type="number" placeholder="To" value={rule.value2 ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value2: e.target.value })} style={{ flex: 1 }} />
+          <Input disabled={disabled} size="xs" component="input" type="number" placeholder="To" value={rule.value2 ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value2: e.target.value })} style={{ flex: 1 }} />
           {field.unit && <Text c="dimmed" fz={11.5} style={{ whiteSpace: "nowrap" }}>{field.unit}</Text>}
         </Group>
       );
     }
     return (
       <Group gap="sm" align="center" wrap="nowrap">
-        <Input size="xs" component="input" type="number" placeholder="Value" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
+        <Input disabled={disabled} size="xs" component="input" type="number" placeholder="Value" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
         {field.unit && <Text c="dimmed" fz={11.5} style={{ whiteSpace: "nowrap" }}>{field.unit}</Text>}
       </Group>
     );
   }
   if (field.type === "text") {
     if (rule.operator === "oneOf") return <ChipInput values={rule.values || []} onChange={(vals) => setRule({ ...rule, values: vals })} placeholder="Type a value and press Enter" />;
-    return <Input size="xs" component="input" placeholder="Value" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} />;
+    return <Input disabled={disabled} size="xs" component="input" placeholder="Value" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} />;
   }
   if (field.type === "dropdown") {
     if (rule.operator === "isOneOf" || rule.operator === "isNotOneOf") {
@@ -210,7 +212,7 @@ function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldB
         placeholder="Select a value…"
         data={field.options!}
         value={rule.value ?? null}
-        onChange={(val) => setRule({ ...rule, value: val ?? undefined })}
+        disabled={disabled} onChange={(val) => setRule({ ...rule, value: val ?? undefined })}
       />
     );
   }
@@ -230,7 +232,7 @@ function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldB
     if (rule.operator === "relative") {
       return (
         <Group gap="sm" wrap="nowrap">
-          <Input size="xs" component="input" type="number" placeholder="Number" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
+          <Input disabled={disabled} size="xs" component="input" type="number" placeholder="Number" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
           <Select
             size="xs"
             data={[
@@ -239,7 +241,7 @@ function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldB
               { value: "years", label: "years ago" },
             ]}
             value={rule.dateUnit || "months"}
-            onChange={(val) => setRule({ ...rule, dateUnit: val ?? "months" })}
+            disabled={disabled} onChange={(val) => setRule({ ...rule, dateUnit: val ?? "months" })}
             style={{ flex: 1 }}
           />
         </Group>
@@ -248,13 +250,13 @@ function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldB
     if (rule.operator === "between") {
       return (
         <Group gap="sm" align="center" wrap="nowrap">
-          <Input size="xs" component="input" type="date" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
+          <Input disabled={disabled} size="xs" component="input" type="date" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
           <Text c="dimmed" fz={11.5}>and</Text>
-          <Input size="xs" component="input" type="date" value={rule.value2 ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value2: e.target.value })} style={{ flex: 1 }} />
+          <Input disabled={disabled} size="xs" component="input" type="date" value={rule.value2 ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value2: e.target.value })} style={{ flex: 1 }} />
         </Group>
       );
     }
-    return <Input size="xs" component="input" type="date" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} />;
+    return <Input disabled={disabled} size="xs" component="input" type="date" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} />;
   }
   return null;
 }
@@ -263,10 +265,11 @@ function ValueEditor({ field, rule, setRule }: { field: ReturnType<typeof fieldB
    RULE ROW
    ============================================================ */
 function RuleRow({
-  rule, editing, isNew, displayIndex, onStartEdit, onCancelEdit, onSave, onDelete, onDuplicate,
+  rule, editing, viewing, isNew, displayIndex, onStartEdit, onCancelEdit, onStartView, onCancelView, onSave, onDelete, onDuplicate,
 }: {
-  rule: Rule; editing: boolean; isNew?: boolean; displayIndex?: number;
+  rule: Rule; editing: boolean; viewing?: boolean; isNew?: boolean; displayIndex?: number;
   onStartEdit: () => void; onCancelEdit: () => void;
+  onStartView?: () => void; onCancelView?: () => void;
   onSave: (rule: Rule) => void; onDelete: () => void;
   onDuplicate: () => void;
 }) {
@@ -307,7 +310,7 @@ function RuleRow({
     onCancelEdit();
   };
 
-  if (!editing) {
+  if (!editing && !viewing) {
     return (
       <Paper
         withBorder
@@ -344,18 +347,23 @@ function RuleRow({
               <IconGripVertical size={14} stroke={1.8} />
             </ActionIcon>
           </Tooltip>
-          <Box style={{ flex: 1, cursor: "pointer", minWidth: 0 }} onClick={handleStartEdit}>
+          <Box style={{ flex: 1, minWidth: 0 }}>
             <Tooltip label={`If not met -> ${rule.action || SEVERITIES[rule.severity].defaultAction}`} withArrow position="top-start" transitionProps={{ transition: "fade", duration: 150 }}>
               <Text fz={12.5} fw={600} c="slate.8" lineClamp={1}>{ruleSentence(rule)}</Text>
             </Tooltip>
           </Box>
           <SeverityBadge severity={rule.severity} />
           <Group gap={2} wrap="nowrap">
-            <Tooltip label="Duplicate rule" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
-              <ActionIcon variant="subtle" color="gray" radius="sm" aria-label="Duplicate rule" onClick={onDuplicate} style={{ width: 24, height: 24, minWidth: 24 }}>
-                <IconCopy size={14} stroke={2} />
-              </ActionIcon>
-            </Tooltip>
+            <Tooltip label="View rule" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
+                <ActionIcon variant="subtle" color="blue" radius="sm" aria-label="View rule" onClick={onStartView} style={{ width: 24, height: 24, minWidth: 24 }}>
+                  <IconEye size={14} stroke={2} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Duplicate rule" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
+                <ActionIcon variant="subtle" color="gray" radius="sm" aria-label="Duplicate rule" onClick={onDuplicate} style={{ width: 24, height: 24, minWidth: 24 }}>
+                  <IconCopy size={14} stroke={2} />
+                </ActionIcon>
+              </Tooltip>
             <Tooltip label="Edit rule" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
               <ActionIcon variant="subtle" color="brand" radius="sm" aria-label="Edit rule" onClick={handleStartEdit} style={{ width: 24, height: 24, minWidth: 24 }}>
                 <IconPencil size={14} stroke={2} />
@@ -375,8 +383,8 @@ function RuleRow({
   return (
     <Modal
       opened
-      onClose={handleCancelEdit}
-      title={isNew ? "Add Rule" : "Edit Rule"}
+      onClose={viewing ? (onCancelView || handleCancelEdit) : handleCancelEdit}
+      title={viewing ? "View Rule" : (isNew ? "Add Rule" : "Edit Rule")}
       withCloseButton
       size={768}
       radius="lg"
@@ -396,7 +404,7 @@ function RuleRow({
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing={12} verticalSpacing={12}>
             <Box>
               <Text fz={10} fw={700} c="slate.6" tt="uppercase" mb={5} style={{ letterSpacing: ".03em" }}>Criteria</Text>
-              <FieldPicker value={draft.fieldId} onSelect={chooseField} />
+              <FieldPicker value={draft.fieldId} onSelect={chooseField} disabled={viewing} />
             </Box>
             <Box>
               <Text fz={10} fw={700} c="slate.6" tt="uppercase" mb={5} style={{ letterSpacing: ".03em" }}>Condition</Text>
@@ -404,12 +412,12 @@ function RuleRow({
                 size="xs"
                 data={conditionOptions}
                 value={draft.operator}
-                onChange={(val) => val && changeOperator(val)}
+                disabled={viewing} onChange={(val) => val && changeOperator(val)}
               />
             </Box>
             <Box>
               <Text fz={10} fw={700} c="slate.6" tt="uppercase" mb={5} style={{ letterSpacing: ".03em" }}>Value</Text>
-              {field ? <ValueEditor field={field} rule={draft} setRule={setDraft} /> : <Input size="xs" disabled placeholder="Select a criterion" />}
+              {field ? <ValueEditor field={field} rule={draft} setRule={setDraft} disabled={viewing} /> : <Input size="xs" disabled placeholder="Select a criterion" />}
             </Box>
           </SimpleGrid>
 
@@ -423,7 +431,7 @@ function RuleRow({
                     size="xs"
                     radius={0}
                     variant="subtle"
-                    onClick={() => changeSeverity(sev)}
+                    onClick={() => !viewing && changeSeverity(sev)} style={{ cursor: viewing ? "default" : "pointer", opacity: viewing ? 0.7 : 1 }}
                     styles={{ root: { flex: "1 1 0", minWidth: 0, borderRight: sev !== "Review" ? "1px solid var(--mantine-color-slate-3)" : undefined, background: draft.severity === sev ? SEVERITIES[sev].wash : "var(--mantine-color-white)", color: draft.severity === sev ? SEVERITIES[sev].color : "var(--mantine-color-slate-7)", fontWeight: 700, whiteSpace: "nowrap", height: 30, minHeight: 30, paddingLeft: 5, paddingRight: 5 }, label: { overflow: "visible", fontSize: 11.5 } }}
                   >
                     {SEVERITIES[sev].label}
@@ -438,7 +446,7 @@ function RuleRow({
                 size="xs"
                 data={ACTIONS}
                 value={draft.action || SEVERITIES[draft.severity].defaultAction}
-                onChange={(val) => val && setDraft({ ...draft, action: val, actionTouched: true })}
+                disabled={viewing} onChange={(val) => val && setDraft({ ...draft, action: val, actionTouched: true })}
               />
               <Text fz={11} c="transparent" mt={5} aria-hidden style={{ userSelect: "none" }}>&nbsp;</Text>
             </Box>
@@ -452,8 +460,8 @@ function RuleRow({
         </Stack>
 
         <Group justify="flex-end" gap={8} px={16} py={12} style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
-          <Button size="xs" radius="md" variant="default" onClick={handleCancelEdit}>Cancel</Button>
-          <Button size="xs" radius="md" color="brand" disabled={!complete} onClick={() => onSave(draft)}>Save Rule</Button>
+          <Button size="xs" radius="md" variant="default" onClick={viewing ? (onCancelView || handleCancelEdit) : handleCancelEdit}>{viewing ? "Close" : "Cancel"}</Button>
+          {!viewing && <Button size="xs" radius="md" color="brand" disabled={!complete} onClick={() => onSave(draft)}>Save Rule</Button>}
         </Group>
       </Stack>
     </Modal>
@@ -478,6 +486,7 @@ function GroupCard({
   const [editingName, setEditingName] = useState(group.name === "New Rule Group");
   const [name, setName] = useState(group.name);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [viewingRuleId, setViewingRuleId] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
 
   const [localRules, setLocalRules] = useState(() => group.rules);
@@ -535,7 +544,7 @@ function GroupCard({
               {groupIndex}
             </Box>
             <Group gap={3} align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
-              <Title order={4} fz={13} c="slate.8" style={{ cursor: "pointer" }} onClick={() => setEditingName(true)}>{group.name}</Title>
+              <Title order={4} fz={13} c="slate.8">{group.name}</Title>
               <Tooltip label="Rename group" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
                 <ActionIcon variant="subtle" color="slate" radius="sm" aria-label="Rename group" onClick={() => setEditingName(true)} style={{ width: 18, height: 18, minWidth: 18 }}>
                   <IconPencil size={11} stroke={2} />
@@ -578,9 +587,12 @@ function GroupCard({
             <RuleRow
               rule={r}
               editing={editingRuleId === r.id}
+              viewing={viewingRuleId === r.id}
               displayIndex={i + 1}
               onStartEdit={() => setEditingRuleId(r.id)}
               onCancelEdit={() => setEditingRuleId(null)}
+              onStartView={() => setViewingRuleId(r.id)}
+              onCancelView={() => setViewingRuleId(null)}
               onSave={(updated) => { onSaveRule(group.id, updated, false); setEditingRuleId(null); }}
               onDelete={() => { onDeleteRule(group.id, r.id); setEditingRuleId(null); }}
               onDuplicate={() => onDuplicateRule(group.id, r)}
