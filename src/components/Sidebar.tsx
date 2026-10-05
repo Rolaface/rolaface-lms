@@ -9,6 +9,12 @@ import {
   IconLayersLinked,
   IconSignature,
   IconClipboardText,
+  IconBriefcase,
+  IconBuildingStore,
+  IconHierarchy,
+  IconUserCheck,
+  IconCalculator,
+  IconLink,
 } from "@tabler/icons-react";
 import {
   Box,
@@ -118,37 +124,37 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
        {
         path: "/origination-setup/loanType",
         label: "Loan Type Setup",
-        icon: IconSettings,
+        icon: IconBriefcase,
       },
         {
         path: "/origination-setup/document-setup",
         label: "Document Setup",
-        icon: IconClipboardText,
+        icon: IconFileText,
       },
         {
           path: "/origination-setup/source-maintenance",
           label: "Source Maintenance",
-          icon: IconSettings,
+          icon: IconBuildingStore,
         },
       {
         path: "/origination-setup/workflow",
         label: "Workflow Configuration",
-        icon: IconSettings,
+        icon: IconHierarchy,
       },
       {
         path: "/origination-setup/pre-screening",
         label: "Pre-Screening",
-        icon: IconUsers,
+        icon: IconUserCheck,
       },
       {
         path: "/origination-setup/eligibility-check",
         label: "Eligibility Rules & Formula",
-        icon: IconSettingsCheck,
+        icon: IconCalculator,
       },
       {
         path: "/origination-setup/product-assignment",
         label: "Loan Product Assignment",
-        icon: IconBrandProducthunt,
+        icon: IconLink,
       },
       //  {
       //   path: "/origination-setup/product-temp",

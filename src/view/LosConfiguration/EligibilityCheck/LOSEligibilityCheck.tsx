@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Box, Group, Title, Text, Tabs, Stack, useMantineTheme } from "@mantine/core";
-import { IconSettingsCheck } from "@tabler/icons-react";
+import { IconCalculator } from "@tabler/icons-react";
 
 import { TAB_ITEMS, type TabValue } from "./shared";
 import { EligibilityRules } from "./EligibilityRules";
@@ -58,7 +58,7 @@ export function LosEligibilityCheck() {
                     justifyContent: "center",
                   }}
                 >
-                  <IconSettingsCheck size={20} color="var(--mantine-color-white)" stroke={1.8} />
+                  <IconCalculator size={20} color="var(--mantine-color-white)" stroke={1.8} />
                 </Box>
 
                 <Stack gap={2}>
