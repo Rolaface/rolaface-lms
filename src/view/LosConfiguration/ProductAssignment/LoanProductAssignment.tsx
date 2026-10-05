@@ -532,7 +532,7 @@ const creating = createMutation.isPending || updateMutation.isPending;
   [rows, sourceFilter, loanTypeFilter]
 );
   const productOptions = useMemo<PickerOption[]>(() => Object.entries(productNames).map(([value, label]) => ({ value, label })), [productNames]);
-const totalRows = productAssignmentsRes?.message?.data?.total_rules ?? 0;
+const totalRows = productAssignmentsRes?.pagination?.total ?? 0;
 const { pageSize } = pagination;
 const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
 const pageIndex = Math.min(pagination.pageIndex, pageCount - 1);
