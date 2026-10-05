@@ -269,7 +269,7 @@ export const API = {
   productAssignmentSetup: {
     createProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.create_rule`,
     updateProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.update_rule`,
-    getProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_product_assignment`,
+    getProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_rules`,
     getProductAssignmentById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_rule_by_id`,
     deleteProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.delete_rule`,
   },

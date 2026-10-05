@@ -1,6 +1,6 @@
 import apiClient from "../../config/axios"; 
 import { API } from "../../config/api";
-import type { CreateProductAssignmentPayload, CreateProductAssignmentResponse } from "../../types/OriginationSetup/productAssignemntForm";
+import type { CreateProductAssignmentPayload, CreateProductAssignmentResponse, GetProductAssignmentsParams } from "../../types/OriginationSetup/productAssignemntForm";
  
 
 export async function createProductAssignments(payload: CreateProductAssignmentPayload) {
@@ -8,8 +8,8 @@ export async function createProductAssignments(payload: CreateProductAssignmentP
   return data;
 }
 
-export async function getAllProductAssignments(){
-  const {data} = await apiClient.get(API.productAssignmentSetup.getProductAssignment);
+export async function getAllProductAssignments(params?: GetProductAssignmentsParams) {
+  const { data } = await apiClient.get(API.productAssignmentSetup.getProductAssignment, { params });
   return data;
 }
 

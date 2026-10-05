@@ -60,3 +60,20 @@ export interface CreateProductAssignmentResponse {
     };
   };
 }
+
+
+export interface GetProductAssignmentsParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  product?: string;
+  source?: string;
+  loan_type?: string;
+  is_active?: number;
+  has_condition?: number;
+  ids?: string;
+  from_date?: string;
+  to_date?: string;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+}

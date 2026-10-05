@@ -32,7 +32,6 @@ import {
 } from "@tabler/icons-react";
 
 import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
-import { showSuccess } from "../../../utils/alert";
  import { createProductAssignments, getAllProductAssignments, deleteProductAssignments, updateProductAssignments } from "../../../api/OriginationSetupAPi/productAssignmentApi";
   import { getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
 import type { CreateProductAssignmentPayload, CreateProductAssignmentResponse } from "../../../types/OriginationSetup/productAssignemntForm";
@@ -44,7 +43,6 @@ import {
   conditionText,
   hasCondition,
   isShadowed,
-  newGroup,
   productByCode,
   productsFor,
   rowError,
@@ -67,7 +65,7 @@ import {
   type EditingState,
   type PickerOption,
 } from "../../../components/Modal/OriginationSetup/LoanProductAssignmentModal";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 
@@ -83,36 +81,30 @@ interface ApiCondition {
 
 interface ApiRule {
   name: string;
-  rule_name: string | null;
-  priority: number;
+  rule_name?: string | null;
+  priority?: number;
   product: string;
   sources: string[];
   loan_types: string[];
   condition: ApiCondition | null;
   is_active: number;
-  product_name: string;
+  product_name: string | null;
   source_names: string[];
   loan_type_names: string[];
   has_condition: number;
 }
-
 interface GetProductAssignmentsResponse {
-  message: {
-    status_code: number;
-    status: string;
-    message: string;
-    data: {
-      settings: {
-        several_match: string;
-        no_match: string;
-        default_product: unknown;
-        default_product_list: unknown[];
-      };
-      rules: ApiRule[];
-      warnings: unknown[];
-      total_rules: number;
-      version: string;
-    };
+  status_code: number;
+  status: string;
+  message: string;
+  data: ApiRule[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
   };
 }
 
@@ -342,7 +334,7 @@ export function LoanProductAssignment() {
   const [sourceFilter, setSourceFilter] = useState<string[]>([]);
   const [loanTypeFilter, setLoanTypeFilter] = useState<string[]>([]);
   const [kind, setKind] = useState<RowKind>("all");
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [dragArmed, setDragArmed] = useState<string | null>(null);
@@ -359,16 +351,27 @@ export function LoanProductAssignment() {
       buttons: [{ label: "Close", color: "green" }],
     });
   };
-
-  const {
-    data: productAssignmentsRes,
-    isLoading: loading,
-    error: queryError,
-    refetch: loadRules,
-  } = useQuery({
-    queryKey: ["product-assignments"],
-    queryFn: () => getAllProductAssignments() as Promise<GetProductAssignmentsResponse>,
-  });
+const listParams = useMemo(
+  () => ({
+    page: pagination.pageIndex + 1,
+    page_size: pagination.pageSize,
+    sort_order: "asc" as const,
+    ...(sourceFilter.length === 1 && { source: sourceFilter[0] }),
+    ...(loanTypeFilter.length === 1 && { loan_type: loanTypeFilter[0] }),
+    ...(kind !== "all" && { has_condition: kind === "conditional" ? 1 : 0 }),
+  }),
+  [pagination, sourceFilter, loanTypeFilter, kind],
+);
+ const {
+  data: productAssignmentsRes,
+  isLoading: loading,
+  error: queryError,
+  refetch: loadRules,
+} = useQuery({
+  queryKey: ["product-assignments", listParams],
+  queryFn: () => getAllProductAssignments(listParams) as Promise<GetProductAssignmentsResponse>,
+  placeholderData: keepPreviousData,
+});
 
   const loadError = queryError
     ? queryError instanceof Error
@@ -376,13 +379,16 @@ export function LoanProductAssignment() {
       : "Could not load product assignment rules."
     : null;
 
-  useEffect(() => {
-    if (!productAssignmentsRes) return;
-    const rules = [...(productAssignmentsRes.message.data.rules ?? [])].sort((a, b) => a.priority - b.priority);
-    setSaved((s) => ({ ...s, rows: rules.map(toRow) }));
-    setDraft((d) => ({ ...d, rows: rules.map(toRow) }));
-    setProductNames(Object.fromEntries(rules.map((r) => [r.product, r.product_name])));
-  }, [productAssignmentsRes]);
+useEffect(() => {
+  if (!productAssignmentsRes) return;
+  const rules = productAssignmentsRes.data ?? [];
+  setSaved((s) => ({ ...s, rows: rules.map(toRow) }));
+  setDraft((d) => ({ ...d, rows: rules.map(toRow) }));
+  setProductNames((prev) => ({
+    ...prev,
+    ...Object.fromEntries(rules.map((r) => [r.product, r.product_name ?? r.product])),
+  }));
+}, [productAssignmentsRes]);
 
   const { data: loanTypesRes } = useQuery({
     queryKey: ["loan-types"],
@@ -517,23 +523,22 @@ const updateMutation = useMutation({
 const creating = createMutation.isPending || updateMutation.isPending;
   const { rows } = draft;
   const visible = useMemo(
-    () =>
-      rows.filter(
-        (r) =>
-          (sourceFilter.length === 0 || r.sources.some((v) => sourceFilter.includes(v))) &&
-          (loanTypeFilter.length === 0 || r.loanTypes.some((v) => loanTypeFilter.includes(v))) &&
-          (kind === "all" || (kind === "direct") === !hasCondition(r))
-      ),
-    [rows, sourceFilter, loanTypeFilter, kind]
-  );
+  () =>
+    rows.filter(
+      (r) =>
+        (sourceFilter.length === 0 || r.sources.some((v) => sourceFilter.includes(v))) &&
+        (loanTypeFilter.length === 0 || r.loanTypes.some((v) => loanTypeFilter.includes(v)))
+    ),
+  [rows, sourceFilter, loanTypeFilter]
+);
   const productOptions = useMemo<PickerOption[]>(() => Object.entries(productNames).map(([value, label]) => ({ value, label })), [productNames]);
-  const totalRows = visible.length;
-  const { pageSize } = pagination;
-  const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
-  const pageIndex = Math.min(pagination.pageIndex, pageCount - 1);
-  const pageRows = visible.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
-  const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+const totalRows = productAssignmentsRes?.message?.data?.total_rules ?? 0;
+const { pageSize } = pagination;
+const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
+const pageIndex = Math.min(pagination.pageIndex, pageCount - 1);
+const pageRows = visible; 
+const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
+const lastRow = Math.min(totalRows, pageIndex * pageSize + pageRows.length);
   const resetPage = () => setPagination((p) => ({ ...p, pageIndex: 0 }));
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
@@ -828,7 +833,7 @@ const creating = createMutation.isPending || updateMutation.isPending;
             ]}
           />
           <Text fz={12} c="slate.5" ml="auto" pr="xs">
-            {totalRows} of {rows.length} {rows.length === 1 ? "rule" : "rules"}
+            {totalRows} {totalRows === 1 ? "rule" : "rules"}
           </Text>
         </Group>
       </Paper>
