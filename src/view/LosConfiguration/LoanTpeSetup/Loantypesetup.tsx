@@ -17,7 +17,7 @@ import {
   Switch,
 } from "@mantine/core";
 import {
-  IconIdBadge2,
+  IconBriefcase,
   IconAdjustmentsHorizontal,
   IconUser,
   IconBuilding,
@@ -922,7 +922,7 @@ const handleSave = () => {
         >
           <Group gap={10} mb={12} wrap="nowrap">
             <ThemeIcon radius="md" size={30} variant="light" color="brand">
-              <IconIdBadge2 size={16} />
+              <IconBriefcase size={16} />
             </ThemeIcon>
             <Box>
               <Text fz={13.5} fw={700} c="slate.9">

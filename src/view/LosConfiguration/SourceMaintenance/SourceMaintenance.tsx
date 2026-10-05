@@ -28,7 +28,7 @@ import {
   IconSelector,
   IconTrash,
   IconSearch,
-  IconSourceCode,
+  IconBuildingStore,
 } from '@tabler/icons-react';
 import {
   useReactTable,
@@ -117,7 +117,7 @@ function NameCell({ name, type }: { name: string; type: string }) {
         color="brand"
         style={{ fontSize: 12, fontWeight: 700, flexShrink: 0 }}
       >
-        {initials || <IconSourceCode size={16} />}
+        {initials || <IconBuildingStore size={16} />}
       </Avatar>
       <Box>
         <Text fz="sm" fw={700} c="slate.8">
@@ -424,7 +424,7 @@ export function SourceMaintenance() {
               justifyContent: 'center',
             }}
           >
-            <IconSourceCode size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconBuildingStore size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Text component="h2" m={0} c="slate.8" fw={700} fz="h2">
@@ -574,7 +574,7 @@ export function SourceMaintenance() {
                               border: '1px solid var(--mantine-color-slate-2)',
                             }}
                           >
-                            <IconSourceCode size={26} color="var(--mantine-color-slate-4)" />
+                            <IconBuildingStore size={26} color="var(--mantine-color-slate-4)" />
                           </Box>
                           <Text ta="center" c="slate.5" fz="xs">
                             No sources match your filters.

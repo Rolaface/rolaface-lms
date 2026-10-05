@@ -14,7 +14,7 @@ import {
   Loader,
   Center,
 } from "@mantine/core";
-import { IconSourceCode, IconMinus, IconX } from "@tabler/icons-react";
+import { IconBuildingStore, IconMinus, IconX } from "@tabler/icons-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getSourceById,
@@ -189,7 +189,7 @@ export function SourceModal({ opened, onClose, onMinimize, editId, isView }: Sou
                 color: "var(--mantine-color-white)",
               }}
             >
-              <IconSourceCode size={19} />
+              <IconBuildingStore size={19} />
             </ThemeIcon>
             <div className="min-w-0">
               <Text size="md" fw={700} c="white" className="leading-tight truncate">
