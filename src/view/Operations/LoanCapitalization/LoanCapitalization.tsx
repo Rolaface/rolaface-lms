@@ -29,8 +29,7 @@ import {
   IconSearch,
   IconTrash,
   IconDotsVertical,
-  IconFileOff,
-  IconWallet,
+  IconTrendingUp
 } from '@tabler/icons-react';
 import {
   useReactTable,
@@ -532,7 +531,7 @@ const totalRows = repaymentsResponse?.message?.data?.total ?? 0;
               justifyContent: 'center',
             }}
           >
-            <IconWallet size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconTrendingUp size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
@@ -689,7 +688,7 @@ const totalRows = repaymentsResponse?.message?.data?.total ?? 0;
                         border: '1px solid var(--mantine-color-slate-2)',
                       }}
                     >
-                      <IconFileOff size={26} color="var(--mantine-color-slate-4)" />
+                      <IconTrendingUp size={26} color="var(--mantine-color-slate-4)" />
                     </Box>
                     <Text ta="center" c="slate.5" fz="xs">
                       No capitalizations match your filters.

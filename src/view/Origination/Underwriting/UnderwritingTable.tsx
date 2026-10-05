@@ -26,11 +26,11 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
-  IconFileText,
+  IconCertificate,
   IconEye,
   IconTrash,
   IconDotsVertical,
-  IconGavel,
+  IconFileText,
 } from "@tabler/icons-react";
 import {
   useReactTable,
@@ -351,7 +351,7 @@ export function UnderwritingTable() {
               justifyContent: "center",
             }}
           >
-            <IconGavel size={20} stroke={1.8} />
+            <IconCertificate size={20} stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} fz={22} fw={800} c="slate.9">

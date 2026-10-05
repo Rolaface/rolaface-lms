@@ -35,13 +35,14 @@ import {
   IconDownload,
   IconTrash,
   IconPlus,
+  IconReportMoney,
 } from "@tabler/icons-react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
 import { PreScreeningModal } from "../PreScreeningModal/PreScreeningModal";
-import { LeftNav } from "../PreScreeningModal/PreScreeningShared";
+import { LeftNav, ContextHeader } from "../PreScreeningModal/PreScreeningShared";
 import {
   DUMMY_PERSONAL_LOAN_APPLICATION,
   DUMMY_PRESCREENING_CONTEXT,
@@ -318,57 +319,6 @@ const SCHEDULE_PAGE_SIZE = 10;
 type Section = "application" | "prescreening" | "appraisal";
 
 
-
-function ContextHeader({
-  values,
-  applicationId,
-}: {
-  values: LoanApplicationValues;
-  applicationId: string;
-}) {
-  const isBusiness = values.loanType === "Business";
-  const name = isBusiness
-    ? values.companyName
-    : [values.firstName, values.surname].filter(Boolean).join(" ");
-  const initials = name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
-
-  return (
-    <Group
-      justify="space-between"
-      align="center"
-      px="xl"
-      py={6}
-      bg="white"
-      style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
-    >
-      <Group gap={12}>
-        <ThemeIcon radius="xl" size={30} variant="light" color="brand">
-          <Text fz="sm" fw={700}>
-            {initials || "—"}
-          </Text>
-        </ThemeIcon>
-        <Box>
-          <Text fz="sm" fw={700} c="slate.9">
-            {name || "—"}
-          </Text>
-          <Text fz="xs" c="slate.5">
-            {isBusiness ? "Business Loan" : "Personal Loan"}
-          </Text>
-        </Box>
-      </Group>
-      <Group gap={26}>
-        <Box ta="right">
-          <Text fz={10.5} c="slate.4">
-            Application ID
-          </Text>
-          <Text fz={13.5} fw={700} c="slate.9">
-            {applicationId}
-          </Text>
-        </Box>
-      </Group>
-    </Group>
-  );
-}
 
 function EnrichmentWorkspace({
   values,
@@ -1140,36 +1090,18 @@ export function EnrichmentModal({
       }}
     >
       <Box style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-               <Group
-          justify="space-between"
-          align="center"
-          px="xl"
-          py="sm"
-          bg="brand.6"
-          style={{ borderBottom: "1px solid var(--mantine-color-brand-7)", flexShrink: 0 }}
-        >
+               <Group justify="space-between" align="center" px="xl" py="sm" bg="brand.6" style={{ borderBottom: "1px solid var(--mantine-color-brand-7)", flexShrink: 0 }}>
           <Group gap="sm">
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
-              <IconBuildingBank size={16} />
+              <IconReportMoney size={16} />
             </ThemeIcon>
             <Box>
-              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
-                Loan application
-              </Text>
-              <Text size="xs" fw={500} c="brand.1">
-                Stage 3 — Loan Appraisal
-              </Text>
+              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>Loan Application</Text>
+              <Text size="xs" fw={500} c="brand.1">Stage 3 &mdash; Loan Appraisal</Text>
             </Box>
           </Group>
           <Group gap="xs" wrap="nowrap">
-            <ActionIcon
-              variant="subtle"
-              color="white"
-              radius="xl"
-              size="md"
-              onClick={onMinimize}
-              aria-label="Minimize"
-            >
+            <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={onMinimize} aria-label="Minimize">
               <IconMinus size={16} color="white" />
             </ActionIcon>
             <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={onClose} aria-label="Close">
@@ -1178,10 +1110,7 @@ export function EnrichmentModal({
           </Group>
         </Group>
 
-        <ContextHeader
-          values={applicationValues}
-          applicationId={DUMMY_PRESCREENING_CONTEXT.applicationId}
-        />
+        <ContextHeader values={applicationValues} applicationId={DUMMY_PRESCREENING_CONTEXT.applicationId} />
 
         <Box style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", overflow: "hidden" }}>
           <LeftNav 

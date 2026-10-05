@@ -26,11 +26,11 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
-  IconFileText,
+  IconReportMoney,
   IconEye,
-  IconDatabase,
   IconTrash,
   IconDotsVertical,
+  IconFileText,
 } from "@tabler/icons-react";
 import {
   useReactTable,
@@ -328,7 +328,7 @@ export function EnrichmentTable() {
               boxShadow: theme.other.brandGlowShadow,
             }}
           >
-            <IconDatabase size={20} stroke={1.8} />
+            <IconReportMoney size={20} stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} fz={22} fw={800} c="slate.9">

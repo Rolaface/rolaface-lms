@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { Modal, Box, Group, Text, ActionIcon, Button } from "@mantine/core";
+import { Modal, Box, Group, Text, ActionIcon, Button, ThemeIcon,
+} from "@mantine/core";
 import { IconGauge, IconFileText, IconX, IconMinus, IconCircleCheck, IconInfoCircle, IconArrowRight } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import { DUMMY_PERSONAL_LOAN_APPLICATION, DUMMY_PRESCREENING_CONTEXT } from "./Dummyloanapplicationdata";
@@ -48,65 +49,25 @@ export function PreScreeningModal({
       }}
     >
       {!embedded && (
-        <Group
-          justify="space-between"
-          align="center"
-          px="xl"
-          py={6}
-          style={{
-            background:
-              "linear-gradient(120deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-5) 55%, var(--mantine-color-brand-6) 100%)",
-            borderBottom: "1px solid var(--mantine-color-brand-7)",
-            flexShrink: 0,
-          }}
-        >
-          <Group gap={11}>
-            <Box
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 11,
-                display: "grid",
-                placeItems: "center",
-                background: "rgba(255, 255, 255, 0.16)",
-                border: "1px solid rgba(255, 255, 255, 0.24)",
-              }}
-            >
-              <IconGauge size={17} color="var(--mantine-color-white)" stroke={2} />
-            </Box>
+        <Group justify="space-between" align="center" px="xl" py="sm" bg="brand.6" style={{ borderBottom: "1px solid var(--mantine-color-brand-7)", flexShrink: 0 }}>
+          <Group gap="sm">
+            <ThemeIcon radius="md" size={34} variant="white" color="brand">
+              <IconGauge size={16} />
+            </ThemeIcon>
             <Box>
-              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
-                Loan application
-              </Text>
-              <Text size="xs" fw={500} c="brand.1">
-                Stage 2 — Prescreening
-              </Text>
+              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>Loan Application</Text>
+              <Text size="xs" fw={500} c="brand.1">Stage 2 &mdash; Prescreening</Text>
             </Box>
           </Group>
           <Group gap="xs" wrap="nowrap">
-            <ActionIcon
-              variant="subtle"
-              color="white"
-              radius="xl"
-              size="md"
-              onClick={onMinimize}
-              aria-label="Minimize"
-            >
+            <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={onMinimize} aria-label="Minimize">
               <IconMinus size={16} color="white" />
             </ActionIcon>
-            <ActionIcon
-              variant="subtle"
-              color="white"
-              radius="xl"
-              size="md"
-              onClick={onClose}
-              aria-label="Close"
-            >
+            <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={onClose} aria-label="Close">
               <IconX size={16} color="white" />
             </ActionIcon>
           </Group>
-        </Group>
-      )}
+        </Group>      )}
 
       <ContextHeader
         values={applicationValues}

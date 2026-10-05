@@ -25,11 +25,11 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
-  IconFileText,
+  IconListSearch,
   IconEye,
   IconTrash,
   IconDotsVertical,
-  IconClipboardCheck,
+  IconFileText,
 } from "@tabler/icons-react";
 import {
   useReactTable,
@@ -367,7 +367,7 @@ export function PrescreeningTable() {
               justifyContent: "center",
             }}
           >
-            <IconClipboardCheck
+            <IconListSearch
               size={20}
               color="var(--mantine-color-white)"
               stroke={1.8}
