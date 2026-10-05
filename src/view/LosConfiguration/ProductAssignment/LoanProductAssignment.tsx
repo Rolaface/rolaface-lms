@@ -16,13 +16,12 @@ import {
   Text,
   Title,
   Tooltip,
-  UnstyledButton,
   useMantineTheme,
 } from "@mantine/core";
 import {
   IconAdjustmentsHorizontal,
-  IconCheck,
   IconChevronDown,
+  IconEye,
   IconGripVertical,
   IconPencil,
   IconPlus,
@@ -32,9 +31,8 @@ import {
 } from "@tabler/icons-react";
 
 import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
- import { createProductAssignments, getAllProductAssignments, deleteProductAssignments, updateProductAssignments } from "../../../api/OriginationSetupAPi/productAssignmentApi";
+ import { getAllProductAssignments, deleteProductAssignments } from "../../../api/OriginationSetupAPi/productAssignmentApi";
   import { getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
-import type { CreateProductAssignmentPayload, CreateProductAssignmentResponse } from "../../../types/OriginationSetup/productAssignemntForm";
 import {
   FALLBACKS,
   LOAN_TYPES,
@@ -57,7 +55,6 @@ import {
 import {
   ConditionText,
   FIELD,
-  InlinePicker,
   LOAN_TONE,
   LoanProductAssignmentModal,
   OptionMark,
@@ -78,7 +75,6 @@ interface ApiCondition {
     clauses: { id: string | null; variable: string; operator: string; value: string | number }[];
   }[];
 }
-
 interface ApiRule {
   name: string;
   rule_name?: string | null;
@@ -108,8 +104,6 @@ interface GetProductAssignmentsResponse {
   };
 }
 
-type PayloadClause = NonNullable<CreateProductAssignmentPayload["condition"]>["groups"][number]["clauses"][number];
-
 const toRow = (r: Pick<ApiRule, "name" | "sources" | "loan_types" | "condition" | "product">): AssignmentRow => ({
   id: r.name,
   sources: r.sources,
@@ -130,31 +124,6 @@ const toRow = (r: Pick<ApiRule, "name" | "sources" | "loan_types" | "condition" 
   ),
   productCode: r.product,
 });
-
-const toPayload = (row: AssignmentRow): CreateProductAssignmentPayload => ({
-  sources: row.sources,
-  loan_types: row.loanTypes,
-  product: row.productCode,
-  condition: hasCondition(row)
-    ? {
-        join: row.join,
-        groups: row.groups
-          .filter((gr) => gr.clauses.length > 0)
-          .map((gr) => ({
-            id: gr.id,
-            name: gr.name,
-            join: gr.join,
-            clauses: gr.clauses.map((cl) => ({
-              id: cl.id,
-              variable: cl.variable,
-              operator: cl.operator as PayloadClause["operator"],
-              value: cl.value,
-            })),
-          })),
-      }
-    : null,
-});
-
 interface Config {
   rows: AssignmentRow[];
   matchMode: MatchMode;
@@ -179,68 +148,6 @@ const headStyle = {
   border: "none",
 };
 
-function ProductPicker({ loanTypes, value, options, onChange }: { loanTypes: string[]; value: string; options: PickerOption[]; onChange: (code: string) => void }) {
-  const [opened, setOpened] = useState(false);
-  const product = options.find((o) => o.value === value);
-  const disabled = loanTypes.length === 0;
-
-  return (
-    <Box onClick={(e) => e.stopPropagation()} style={{ minWidth: 0 }}>
-      <Popover opened={opened} onChange={setOpened} position="bottom-start" width={290} shadow="md" radius="md" withinPortal disabled={disabled}>
-        <Popover.Target>
-          <UnstyledButton className="pa-cell" aria-label="Edit product" onClick={() => setOpened((o) => !o)} aria-expanded={opened} disabled={disabled}>
-            <Box style={{ flex: 1, minWidth: 0 }}>
-              {product ? (
-                <Group gap={8} wrap="nowrap">
-                  <span style={codeBadge}>{product.value}</span>
-                  <Text fz={11.5} fw={600} c="slate.8" truncate>
-                    {product.label}
-                  </Text>
-                </Group>
-              ) : (
-                <Text fz={11.5} fw={600} c={disabled ? "slate.4" : "danger.6"}>
-                  {disabled ? "Pick a loan type first" : "Choose product"}
-                </Text>
-              )}
-            </Box>
-            <IconChevronDown className="pa-chev" size={13} />
-          </UnstyledButton>
-        </Popover.Target>
-        <Popover.Dropdown p={6}>
-          <Stack gap={2}>
-            {options.length === 0 ? (
-              <Text fz={12} c="slate.5" px={8} py={6}>
-                No products available
-              </Text>
-            ) : (
-              options.map((p) => {
-                const on = p.value === value;
-                return (
-                  <UnstyledButton
-                    key={p.value}
-                    className="pa-option"
-                    aria-pressed={on}
-                    onClick={() => {
-                      onChange(p.value);
-                      setOpened(false);
-                    }}
-                    style={{ background: on ? "var(--mantine-color-brand-0)" : undefined }}
-                  >
-                    <span style={{ ...codeBadge, minWidth: 58, textAlign: "center" }}>{p.value}</span>
-                    <Text fz={12.5} fw={on ? 600 : 500} c={on ? "slate.8" : "slate.7"} style={{ flex: 1 }}>
-                      {p.label}
-                    </Text>
-                    {on && <IconCheck size={14} color="var(--mantine-color-brand-6)" />}
-                  </UnstyledButton>
-                );
-              })
-            )}
-          </Stack>
-        </Popover.Dropdown>
-      </Popover>
-    </Box>
-  );
-}
 function ConditionSummary({ row }: { row: AssignmentRow }) {
   if (!hasCondition(row)) {
     return (
@@ -336,7 +243,6 @@ export function LoanProductAssignment() {
   const [kind, setKind] = useState<RowKind>("all");
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
   const [editing, setEditing] = useState<EditingState | null>(null);
-  const [createError, setCreateError] = useState<string | null>(null);
   const [dragArmed, setDragArmed] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
@@ -408,36 +314,6 @@ useEffect(() => {
     [loanTypesRes],
   );
 
-  const createMutation = useMutation({
-    mutationFn: createProductAssignments,
-    onSuccess: (res: CreateProductAssignmentResponse) => {
-      const created = toRow(res.message.data);
-      setProductNames((p) => ({ ...p, [res.message.data.product]: res.message.data.product_name }));
-      setSaved((s) => ({ ...s, rows: [created, ...s.rows] }));
-      setDraft((d) => ({ ...d, rows: [created, ...d.rows] }));
-      setKind("all");
-      resetPage();
-      setEditing(null);
-      queryClient.invalidateQueries({ queryKey: ["product-assignments"] });
-      showSuccess("Rule Added", res.message.message);
-    },
-    onError: (error: any) => {
-      setCreateError(error instanceof Error ? error.message : "Could not add the rule.");
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
-      });
-    },
-  });
-
   const deleteMutation = useMutation({
     mutationFn: deleteProductAssignments,
     onSuccess: (_, variables) => {
@@ -489,39 +365,7 @@ useEffect(() => {
       ],
     });
   };
-
-const updateMutation = useMutation({
-    mutationFn: updateProductAssignments,
-    onSuccess: (res: CreateProductAssignmentResponse, variables) => {
-      const updated = toRow(res.message.data);
-      setProductNames((p) => ({ ...p, [res.message.data.product]: res.message.data.product_name }));
-      setSaved((s) => ({ ...s, rows: s.rows.map((r) => (r.id === variables.id ? updated : r)) }));
-      setDraft((d) => ({ ...d, rows: d.rows.map((r) => (r.id === variables.id ? updated : r)) }));
-      setEditing(null);
-      queryClient.invalidateQueries({ queryKey: ["product-assignments"] });
-      showSuccess(
-        "Rule Updated",
-        `Product Assignment Rule ${variables.id} updated successfully.`,
-      );
-    },
-    onError: (error: any) => {
-      setCreateError(error instanceof Error ? error.message : "Could not update the rule.");
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
-      });
-    },
-  });
-const creating = createMutation.isPending || updateMutation.isPending;
-  const { rows } = draft;
+   const { rows } = draft;
   const visible = useMemo(
   () =>
     rows.filter(
@@ -531,8 +375,8 @@ const creating = createMutation.isPending || updateMutation.isPending;
     ),
   [rows, sourceFilter, loanTypeFilter]
 );
-  const productOptions = useMemo<PickerOption[]>(() => Object.entries(productNames).map(([value, label]) => ({ value, label })), [productNames]);
-const totalRows = productAssignmentsRes?.pagination?.total ?? 0;
+
+ const totalRows = productAssignmentsRes?.pagination?.total ?? 0;
 const { pageSize } = pagination;
 const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
 const pageIndex = Math.min(pagination.pageIndex, pageCount - 1);
@@ -551,56 +395,35 @@ const lastRow = Math.min(totalRows, pageIndex * pageSize + pageRows.length);
       else delete next[loanType];
       return { ...d, defaultByLoanType: next };
     });
-  const errorCount = rows.filter((r) => rowError(r)).length + (defaultMissing ? 1 : 0);
-
-  const updateRow = (id: string, patch: Partial<AssignmentRow>) => setDraft((d) => ({ ...d, rows: d.rows.map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
-
-  // const fitsProduct = (loanTypes: string[], code: string) => (productsFor(loanTypes).some((p) => p.code === code) ? code : "");
-    const fitsProduct = (_loanTypes: string[], code: string) => code;
-  const changeRowLoanTypes = (row: AssignmentRow, loanTypes: string[]) => updateRow(row.id, { loanTypes, productCode: fitsProduct(loanTypes, row.productCode) });
-
+  const fitsProduct = (_loanTypes: string[], code: string) => code;
+ 
   const openAdd = () => {
-    const row: AssignmentRow = { id: uid(), sources: [...sourceFilter], loanTypes: [...loanTypeFilter], join: "AND", groups: [], productCode: "" };
-    setCreateError(null);
-    setEditing({ mode: "add", attempted: false, row, original: JSON.stringify(row) });
-  };
+  const row: AssignmentRow = { id: uid(), sources: [...sourceFilter], loanTypes: [...loanTypeFilter], join: "AND", groups: [], productCode: "" };
+  setEditing({ mode: "add", attempted: false, row, original: JSON.stringify(row) });
+};
 
-  const openEdit = (row: AssignmentRow) => {
-    setCreateError(null);
-    setEditing({ mode: "edit", row, attempted: false, original: JSON.stringify(row) });
-  };
+const openEdit = (row: AssignmentRow) => {
+  setEditing({ mode: "edit", row, attempted: false, original: JSON.stringify(row) });
+};
 
-  const closeModal = () => {
-    if (creating) return;
-    setEditing(null);
-    setCreateError(null);
-  };
+const openView = (row: AssignmentRow) => {
+  setEditing({ mode: "view", row, attempted: false, original: JSON.stringify(row) });
+};
+
+const closeModal = () => setEditing(null);
+
+const onSaved = (mode: "add" | "edit") => {
+  if (mode === "add") {
+    setKind("all");
+    resetPage();
+  }
+  setEditing(null);
+};
 
   const editRow = (patch: Partial<AssignmentRow>) => setEditing((e) => e && { ...e, row: { ...e.row, ...patch } });
 
   const changeLoanTypes = (loanTypes: string[]) =>
     setEditing((e) => e && { ...e, row: { ...e.row, loanTypes, productCode: fitsProduct(loanTypes, e.row.productCode) } });
-
- const saveRule = () => {
-    if (!editing) return;
-    if (rowError(editing.row)) {
-      setEditing({ ...editing, attempted: true });
-      return;
-    }
-    const { mode, row } = editing;
-
-    setCreateError(null);
-
-    if (mode === "add") {
-      createMutation.mutate(toPayload(row));
-      return;
-    }
-
-    updateMutation.mutate({
-      id: row.id,
-      payload: toPayload(row),
-    });
-  };
 
   const moveRow = (fromId: string, toId: string) => {
     if (fromId === toId) return;
@@ -619,11 +442,6 @@ const lastRow = Math.min(totalRows, pageIndex * pageSize + pageRows.length);
     setDragging(null);
     setDragOver(null);
     setDragArmed(null);
-  };
-
-  const save = () => {
-    setSaved(draft);
-    showSuccess(`${rows.length} ${rows.length === 1 ? "rule" : "rules"} in effect for new applications.`, "Product rules saved");
   };
 
   return (
@@ -766,19 +584,6 @@ const lastRow = Math.min(totalRows, pageIndex * pageSize + pageRows.length);
               Discard
             </Button>
           )}
-          <Tooltip label={defaultMissing && errorCount === 1 ? "Choose a loan type default first" : `Fix ${errorCount} ${errorCount === 1 ? "issue" : "issues"} first`} disabled={errorCount === 0} withinPortal>
-            <Box>
-              <Button
-                size="sm"
-                radius="xl"
-                disabled={!dirty || errorCount > 0}
-                style={dirty && errorCount === 0 ? { background: theme.other?.brandGradient } : undefined}
-                onClick={save}
-              >
-                Save changes
-              </Button>
-            </Box>
-          </Tooltip>
         </Group>
       </Group>
 
@@ -905,7 +710,7 @@ const lastRow = Math.min(totalRows, pageIndex * pageSize + pageRows.length);
                     boxShadow: isDropTarget ? "inset 0 2px 0 var(--mantine-color-brand-5), var(--mantine-shadow-xs)" : "var(--mantine-shadow-xs)",
                     verticalAlign: "middle" as const,
                   };
-                  const open = () => openEdit(row);
+                  const open = () => openView(row);
                   return (
                     <Table.Tr
                       key={row.id}
@@ -923,24 +728,17 @@ const lastRow = Math.min(totalRows, pageIndex * pageSize + pageRows.length);
                     >
                       <Table.Td style={{ ...cell, borderLeft: `3px solid var(--mantine-color-${stripe}-4)`, paddingLeft: 4 }}>
                         <Group gap={4} wrap="nowrap">
-                          <Tooltip label="Drag to change priority" openDelay={500}>
-                            <Box
-                              className="pa-grip"
-                              onClick={(e) => e.stopPropagation()}
-                              onMouseDown={() => setDragArmed(row.id)}
-                              onMouseUp={() => setDragArmed(null)}
-                              aria-label="Drag to reorder"
-                              style={{ cursor: "grab", display: "flex", padding: "4px 2px", color: "var(--mantine-color-brand-6)", flexShrink: 0 }}
-                            >
-                              <IconGripVertical size={15} />
-                            </Box>
-                          </Tooltip>
-                          <InlinePicker kind="source" value={row.sources} onChange={(sources) => updateRow(row.id, { sources })} />
+                          <Text fz={11.5} fw={600} p={5} c="slate.8" truncate>
+  {row.sources.join(", ") || "—"}
+</Text>
                         </Group>
                       </Table.Td>
                       <Table.Td style={cell}>
-                        {/* <InlinePicker kind="loanType" value={row.loanTypes} onChange={(loanTypes) => changeRowLoanTypes(row, loanTypes)} /> */}
-                        <InlinePicker kind="loanType" options={loanTypeOptions} value={row.loanTypes} onChange={(loanTypes) => changeRowLoanTypes(row, loanTypes)} />
+                       <Text fz={11.5} fw={600} c="slate.8" truncate>
+  {row.loanTypes
+    .map((id) => loanTypeOptions.find((o) => o.value === id)?.label ?? id)
+    .join(", ") || "—"}
+</Text>
                       </Table.Td>
                       <Table.Td style={cell}>
                         <Tooltip label={conditionText(row)} disabled={!hasCondition(row)} multiline w={380} openDelay={250} position="top-start" withinPortal>
@@ -955,14 +753,26 @@ const lastRow = Math.min(totalRows, pageIndex * pageSize + pageRows.length);
                         </Tooltip>
                       </Table.Td>
                       <Table.Td style={cell}>
-                        {/* <ProductPicker loanTypes={row.loanTypes} value={row.productCode} onChange={(productCode) => updateRow(row.id, { productCode })} /> */}
-                        <ProductPicker loanTypes={row.loanTypes} value={row.productCode} options={productOptions} onChange={(productCode) => updateRow(row.id, { productCode })} />
-                      </Table.Td>
+{row.productCode ? (
+  <Group gap={8} wrap="nowrap">
+    <span style={codeBadge}>{row.productCode}</span>
+    <Text fz={11.5} fw={600} c="slate.8" truncate>
+      {productNames[row.productCode] ?? ""}
+    </Text>
+  </Group>
+) : (
+  <Text fz={11.5} fw={600} c="danger.6">
+    No product
+  </Text>
+)}                       </Table.Td>
                       <Table.Td style={cell} onClick={(e) => e.stopPropagation()}>
                         <Group gap={2} justify="flex-end" wrap="nowrap">
-                          <ActionIcon variant="subtle" color="slate" size="sm" radius="xl" onClick={open} aria-label="Edit rule">
-                            <IconPencil size={14} />
-                          </ActionIcon>
+                         <ActionIcon variant="subtle" color="slate" size="sm" radius="xl" onClick={open} aria-label="View rule">
+  <IconEye size={14} />
+</ActionIcon>
+<ActionIcon variant="subtle" color="slate" size="sm" radius="xl" onClick={() => openEdit(row)} aria-label="Edit rule">
+  <IconPencil size={14} />
+</ActionIcon>
                         <ActionIcon
   variant="subtle"
   color="danger"
@@ -1004,16 +814,13 @@ const lastRow = Math.min(totalRows, pageIndex * pageSize + pageRows.length);
           <Pagination total={pageCount} value={pageIndex + 1} onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))} color="brand" size="xs" radius="xl" />
         </Group>
       </Paper>
-
-      <LoanProductAssignmentModal
-        editing={editing}
-        saving={creating}
-        saveError={createError}
-        onClose={closeModal}
-        onEditRow={editRow}
-        onChangeLoanTypes={changeLoanTypes}
-        onSave={saveRule}
-      />
+<LoanProductAssignmentModal
+  editing={editing}
+  onClose={closeModal}
+  onEditRow={editRow}
+  onChangeLoanTypes={changeLoanTypes}
+  onSaved={onSaved}
+/>
     </Stack>
   );
 }
