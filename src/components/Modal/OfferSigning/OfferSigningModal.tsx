@@ -1165,6 +1165,7 @@ export function OfferModal({
   onMinimize,
 }: OfferModalProps) {
   const [section, setSection] = useState<Section>("offer");
+  const [uwTab, setUwTab] = useState<any>("asset");
 
   return (
     <Modal
@@ -1205,15 +1206,14 @@ export function OfferModal({
         <ContextHeader values={applicationValues} applicationId={DUMMY_PRESCREENING_CONTEXT.applicationId} />
 
         <Box style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", overflow: "hidden" }}>
-          <LeftNav 
-  section={section} 
+          <LeftNav activeSubItem={uwTab} onSubItemClick={(sub) => { setUwTab(sub); setSection("underwriting"); }} section={section} 
   setSection={setSection} 
   stageIndex={5}
   items={[
     { id: "application", label: "Loan application", hint: "Submitted", icon: IconFileText, done: true },
     { id: "prescreening", label: "Prescreening", hint: "Passed", icon: IconGauge, done: true },
     { id: "appraisal", label: "Loan Appraisal", hint: "Passed", icon: IconBuildingBank, done: true },
-    { id: "underwriting", label: "Underwriting", hint: "Passed", icon: IconScale, done: true },
+    { id: "underwriting", label: "Underwriting", hint: "Passed", icon: IconScale, done: true, subItems: [{ id: "asset", label: "Asset Valuation", icon: IconCircleCheck }, { id: "legal", label: "Legal Verification", icon: IconShieldCheck }] },
     { id: "offer", label: "Offer & signing", hint: "In progress", icon: IconSignature, done: false },
   ]}
 />
@@ -1239,7 +1239,7 @@ export function OfferModal({
 
             {section === "underwriting" && (
               <Box style={{ height: "100%" }}>
-                <UnderwritingModal embedded readOnly applicationValues={applicationValues} opened={false} onClose={() => {}} onMinimize={() => {}} />
+                <UnderwritingModal embedded readOnly applicationValues={applicationValues} opened={false} onClose={() => {}} onMinimize={() => {}} tab={uwTab} onTabChange={setUwTab} />
               </Box>
             )}
 
@@ -1259,6 +1259,8 @@ export function OfferModal({
     </Modal>
   );
 }
+
+
 
 
 

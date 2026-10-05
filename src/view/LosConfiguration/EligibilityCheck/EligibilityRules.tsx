@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Box,
   Button,
@@ -22,34 +23,157 @@ import {
   IconCopy,
   IconHistory,
   IconPlayerPause,
+  IconPencil,
+  IconTrash,
 } from "@tabler/icons-react";
-import { Pill, RULES } from "./shared";
+import { Pill } from "./shared";
+import { getEligibilityRules, deleteEligibilityRule } from "../../../api/OriginationSetupAPi/createRuleApi"; 
+import { CreateRule } from "../EligibilityCheck/CreateRuleTabs/CreateRule";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+import { openCommonModal } from "../../../components/Modal/AlertModal";
+ export interface EligibilityRuleListItem {
+  name: string;
+  modified_by: string;
+  modified: string;
+  rule_name: string;
+  version: string;
+  status: string;
+  loan_product: string;
+  effective_to: string | null;
+  effective_from: string;
+  draft_id: string | null;
+  product_name: string;
+}
 
-const STAT_CARDS = [
-  { label: "Active Rules", value: "6", color: "var(--mantine-color-green-7)" },
-  { label: "Draft Rules", value: "1", color: "var(--mantine-color-yellow-7)" },
-  { label: "High-Risk Rules", value: "1", color: "var(--mantine-color-red-7)" },
-  { label: "Last Updated", value: "2 Aug 2026", color: "var(--mantine-color-slate-8)" },
-  { label: "Current Rule Version", value: "v2.0", color: "var(--mantine-color-slate-8)" },
-];
+export interface GetEligibilityRulesResponse {
+  status_code: number;
+  status: string;
+  message: string;
+  data: EligibilityRuleListItem[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+}
 
-export function EligibilityRules({ onCreateRule, onSimulate }: { onCreateRule: () => void; onSimulate: () => void }) {
+  const formatDate = (value?: string | null) => {
+  if (!value) return "—";
+  const [y, m, d] = value.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return "—";
+  return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const formatVersion = (v?: string | null) =>
+  v ? (/^v/i.test(v) ? v : `v${v}`) : "—";
+
+export function EligibilityRules({ onSimulate }: { onSimulate: () => void }) {
   const [query, setQuery] = useState("");
-  const [rules, setRules] = useState(RULES);
-  useEffect(() => {
-    const load = () => {
-      try {
-        const saved = JSON.parse(localStorage.getItem("losEligibilityRules") || "[]");
-        if (Array.isArray(saved) && saved.length) setRules([...RULES.filter((r) => !saved.some((s: RuleRow) => s.name === r.name)), ...saved]);
-      } catch {
-        // Ignore malformed local drafts and retain the built-in examples.
-      }
-    };
-    load();
-    window.addEventListener("losEligibilityRulesChanged", load);
-    return () => window.removeEventListener("losEligibilityRulesChanged", load);
-  }, []);
-  const filtered = rules.filter((r) => r.name.toLowerCase().includes(query.toLowerCase()));
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
+
+ const [viewOnly, setViewOnly] = useState(false);
+
+const openCreate = () => {
+  setSelectedRuleId(null);
+  setViewOnly(false);
+  setCreateOpen(true);
+};
+const openRule = (id: string, readOnly: boolean) => {
+  setSelectedRuleId(id);
+  setViewOnly(readOnly);
+  setCreateOpen(true);
+};
+const closeModal = () => {
+  setCreateOpen(false);
+  setSelectedRuleId(null);
+  setViewOnly(false);
+};
+  const { data: response, isLoading, isError } = useQuery<GetEligibilityRulesResponse>({
+    queryKey: ["eligibility-rules"],
+    queryFn: getEligibilityRules,
+  });
+
+  const rules = response?.data ?? [];
+  const queryClient = useQueryClient();
+   const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
+  const deleteMutation = useMutation({
+  mutationFn: deleteEligibilityRule,
+  onSuccess: (_, variables) => {
+    queryClient.invalidateQueries({ queryKey: ["eligibility-rules"] });
+    showSuccess(
+      "Rule Deleted",
+      `Eligibility rule ${variables} deleted successfully.`,
+    );
+  },
+  onError: (error: any) => {
+    openCommonModal({
+      heading: "Action Failed",
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  },
+});
+
+const confirmDelete = (id: string) => {
+  openCommonModal({
+    heading: "Delete Eligibility Rule",
+    subtitle: "This action cannot be undone.",
+    body: (
+      <>
+        Are you sure you want to delete{" "}
+        <Text span fw={600}>
+          {id}
+        </Text>
+        ?
+      </>
+    ),
+    color: "red",
+    buttons: [
+      { label: "Cancel", variant: "default" },
+      {
+        label: "Delete",
+        color: "red",
+        onClick: () => deleteMutation.mutate(id),
+      },
+    ],
+  });
+};
+
+  const filtered = rules.filter((r) =>
+    (r.rule_name || "").toLowerCase().includes(query.toLowerCase()),
+  );
+
+  const statCards = useMemo(() => {
+    const active = rules.filter((r) => r.status?.toLowerCase() === "active").length;
+    const draft = rules.filter((r) => r.status?.toLowerCase() === "draft").length;
+    const latest = [...rules].sort((a, b) => (b.modified || "").localeCompare(a.modified || ""))[0];
+    return [
+      { label: "Active Rules", value: String(active), color: "var(--mantine-color-green-7)" },
+      { label: "Draft Rules", value: String(draft), color: "var(--mantine-color-yellow-7)" },
+      { label: "High-Risk Rules", value: "—", color: "var(--mantine-color-red-7)" },
+      { label: "Last Updated", value: formatDate(latest?.modified), color: "var(--mantine-color-slate-8)" },
+      { label: "Current Rule Version", value: formatVersion(latest?.version), color: "var(--mantine-color-slate-8)" },
+    ];
+  }, [rules]);
 
   return (
     <Box style={{ margin: "0 auto" }}>
@@ -64,10 +188,20 @@ export function EligibilityRules({ onCreateRule, onSimulate }: { onCreateRule: (
           <Button size="xs" radius="sm" variant="default" leftSection={<IconUpload size={14} />} style={{ height: 26 }}>Import Rules</Button>
           <Button size="xs" radius="sm" variant="default" leftSection={<IconDownload size={14} />} style={{ height: 26 }}>Export Rules</Button>
         </Group>
+       <Button
+  size="xs"
+  radius="sm"
+  color="brand"
+  leftSection={<IconPlus size={14} />}
+  style={{ height: 26 }}
+  onClick={openCreate}
+>
+  Create Rule
+</Button>
       </Group>
 
       <SimpleGrid cols={{ base: 2, md: 5 }} spacing="sm" mt="md">
-        {STAT_CARDS.map((c) => (
+        {statCards.map((c) => (
           <Paper key={c.label} radius="sm" p={10} style={{ border: "1px solid var(--mantine-color-slate-2)" }}>
             <Text fz={10} fw={600} c="slate.5" tt="uppercase" style={{ letterSpacing: '0.04em' }}>{c.label}</Text>
             <Text fz="md" fw={700} mt={4} style={{ color: c.color }}>{c.value}</Text>
@@ -77,7 +211,7 @@ export function EligibilityRules({ onCreateRule, onSimulate }: { onCreateRule: (
 
       <Group justify="space-between" mt="lg" mb="sm">
         <Text fz="sm" fw={600} c="slate.8">Configured rules</Text>
-        <TextInput radius="md"
+        <TextInput
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
           placeholder="Search rules"
@@ -103,31 +237,58 @@ export function EligibilityRules({ onCreateRule, onSimulate }: { onCreateRule: (
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {filtered.map((r) => (
-              <Table.Tr key={r.name} className="lms-row">
-                <Table.Td fw={600} c="slate.8" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", borderTopLeftRadius: "var(--mantine-radius-md)", borderBottomLeftRadius: "var(--mantine-radius-md)", padding: "8px 12px", borderLeft: r.status === "active" ? "3px solid var(--mantine-color-green-4)" : r.status === "draft" ? "3px solid var(--mantine-color-yellow-4)" : "3px solid var(--mantine-color-slate-3)" }}>{r.name}</Table.Td>
-                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.product}</Table.Td>
-                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.type}</Table.Td>
-                <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}><Pill tone={r.risk}>{r.risk === "low" ? "Low Risk" : r.risk === "medium" ? "Medium Risk" : "High Risk"}</Pill></Table.Td>
-                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.priority}</Table.Td>
-                <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}><Pill tone={r.status}>{r.status[0].toUpperCase() + r.status.slice(1)}</Pill></Table.Td>
-                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.version}</Table.Td>
-                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", whiteSpace: "nowrap", padding: "8px 12px" }}>{r.updated}</Table.Td>
-                <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.by}</Table.Td>
-                <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", borderTopRightRadius: "var(--mantine-radius-md)", borderBottomRightRadius: "var(--mantine-radius-md)", padding: "8px 12px" }}>
-                  <Group gap={2} wrap="nowrap" justify="flex-end">
-                    <Tooltip label="View" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconEye size={14} /></ActionIcon></Tooltip>
-                    <Tooltip label="Edit" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconFileText size={14} /></ActionIcon></Tooltip>
-                    <Tooltip label="Duplicate" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconCopy size={14} /></ActionIcon></Tooltip>
-                    <Tooltip label="Version history" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconHistory size={14} /></ActionIcon></Tooltip>
-                    <Tooltip label="Disable" withArrow><ActionIcon size="sm" variant="subtle" color="orange"><IconPlayerPause size={14} /></ActionIcon></Tooltip>
-                  </Group>
-                </Table.Td>
+            {isLoading && (
+              <Table.Tr>
+                <Table.Td colSpan={10} c="slate.5" ta="center" style={{ border: "none" }}>Loading rules...</Table.Td>
               </Table.Tr>
-            ))}
+            )}
+            {isError && (
+              <Table.Tr>
+                <Table.Td colSpan={10} c="red.7" ta="center" style={{ border: "none" }}>Failed to load eligibility rules.</Table.Td>
+              </Table.Tr>
+            )}
+            {!isLoading && !isError && filtered.length === 0 && (
+              <Table.Tr>
+                <Table.Td colSpan={10} c="slate.5" ta="center" style={{ border: "none" }}>No eligibility rules found.</Table.Td>
+              </Table.Tr>
+            )}
+            {filtered.map((r) => {
+              const status = (r.status || "").toLowerCase();
+              return (
+                <Table.Tr key={r.name} className="lms-row">
+                  <Table.Td fw={600} c="slate.8" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", borderTopLeftRadius: "var(--mantine-radius-md)", borderBottomLeftRadius: "var(--mantine-radius-md)", padding: "8px 12px", borderLeft: status === "active" ? "3px solid var(--mantine-color-green-4)" : status === "draft" ? "3px solid var(--mantine-color-yellow-4)" : "3px solid var(--mantine-color-slate-3)" }}>{r.rule_name}</Table.Td>
+                  <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.product_name || r.loan_product}</Table.Td>
+                  <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>—</Table.Td>
+                  <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>—</Table.Td>
+                  <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>—</Table.Td>
+                  <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}><Pill tone={status}>{r.status}</Pill></Table.Td>
+                  <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{formatVersion(r.version)}</Table.Td>
+                  <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", whiteSpace: "nowrap", padding: "8px 12px" }}>{formatDate(r.modified)}</Table.Td>
+                  <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.modified_by}</Table.Td>
+                  <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", borderTopRightRadius: "var(--mantine-radius-md)", borderBottomRightRadius: "var(--mantine-radius-md)", padding: "8px 12px" }}>
+                    <Group gap={2} wrap="nowrap" justify="flex-end">
+                      <Tooltip label="View" withArrow><ActionIcon size="sm" variant="subtle" color="slate" onClick={() => openRule(r.name, true)}><IconEye size={14} /></ActionIcon></Tooltip>
+                      <Tooltip label="Edit" withArrow><ActionIcon size="sm" variant="subtle" color="slate" onClick={() => openRule(r.name, false)}><IconPencil size={14} /></ActionIcon></Tooltip>
+                      <Tooltip label="Delete" withArrow><ActionIcon size="sm" variant="subtle" color="danger" onClick={() => confirmDelete(r.name)}><IconTrash size={14} /></ActionIcon></Tooltip>
+                      <Tooltip label="Duplicate" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconCopy size={14} /></ActionIcon></Tooltip>
+                      <Tooltip label="Version history" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconHistory size={14} /></ActionIcon></Tooltip>
+                      <Tooltip label="Disable" withArrow><ActionIcon size="sm" variant="subtle" color="orange"><IconPlayerPause size={14} /></ActionIcon></Tooltip>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
           </Table.Tbody>
         </Table>
       </Paper>
+      {createOpen && (
+  <CreateRule
+  opened={createOpen}
+  ruleId={selectedRuleId ?? undefined}
+  viewOnly={viewOnly}
+  onExit={closeModal}
+/>
+)}
     </Box>
   );
 }

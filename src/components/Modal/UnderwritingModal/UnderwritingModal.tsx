@@ -24,7 +24,7 @@ interface UnderwritingModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize: () => void;
-  embedded?: boolean;
+  embedded?: boolean; tab?: any; onTabChange?: (t: any) => void;
   readOnly?: boolean;
   applicationValues?: LoanApplicationValues;
 }
@@ -494,9 +494,9 @@ function UnderwritingWorkspace({
 // Main modal
 // ---------------------------------------------------------------------------
 
-export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_PERSONAL_LOAN_APPLICATION, onMinimize, embedded }: UnderwritingModalProps) {
+export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_PERSONAL_LOAN_APPLICATION, onMinimize, embedded, tab: externalTab, onTabChange: setExternalTab }: UnderwritingModalProps) {
   const [section, setSection] = useState<Section>("underwriting");
-  const [tab, setTab] = useState<TabId>("asset");
+  const [internalTab, setInternalTab] = useState<TabId>("asset"); const tab = externalTab || internalTab; const setTab = setExternalTab || setInternalTab;
   const policy = POLICY[DUMMY_PRESCREENING_CONTEXT.loanTypeId];
   const calc = calcEligibility({
     income: DUMMY_PRESCREENING_DATA.income.value,
@@ -567,6 +567,7 @@ export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_P
     </Modal>
   );
 }
+
 
 
 

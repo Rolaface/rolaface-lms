@@ -255,6 +255,34 @@ export const API = {
   },
 
   // =========================
+  // LOAN ORIGINATION SETUP
+  // =========================
+  loanTypeSetup: {
+    getLoanType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.get_loan_type_setup`,
+    createLoanType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.save_loan_type_setup`,
+    updateLoanType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.update_node`,
+    deleteLoanType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.delete_node`,
+    disableLoantType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.disable_node`,
+    enableLoantType: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.enable_node`
+  },
+
+  productAssignmentSetup: {
+    createProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.create_rule`,
+    updateProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.update_rule`,
+    getProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_rules`,
+    getProductAssignmentById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_rule_by_id`,
+    deleteProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.delete_rule`,
+  },
+
+  createEligibilityRule: {
+    createEligibilityRule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.create_eligibility_rule`,
+     getEligibilityRule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.get_eligibility_rules`,
+     getEligibilityRuleById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.get_eligibility_rule`,
+     updateEligibilityRule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.update_eligibility_rule`,
+     deleteEligibilityRule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.delete_eligibility_rule`,
+    },
+
+  // =========================
   // WORKFLOW (dynamic, multi-tenant)
   // =========================
   workflow: {
@@ -441,11 +469,44 @@ export const API = {
     getIndustries: `${ERP_BASE}/api/resource/Industry Type`,
     
   },
+  losChannel: {
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.get_channels`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.get_channel_by_id`,
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.create_channel`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.update_channel`,
+    enable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.enable_channel`,
+    disable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.disable_channel`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.channel.api.delete_channel`,
+  },
   frappeUtilsAPI: {
     getCompanyCurrentFiscalYear: `${ERP_BASE}/api/method/custom_api.utils.frappe_utils.get_current_fiscal_year`,
     getaccounts: `${ERP_BASE}/api/resource/Account`,
     getallusers: `${ERP_BASE}/api/resource/User`,
   },
+losDocumentSetup: {
+  create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.document_setup.api.create_document_setup`,
+  getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.document_setup.api.get_document_setups`,
+  getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.document_setup.api.get_document_setup_by_id`,
+  getProductsWithoutDocuments: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.document_setup.api.get_products_without_documents`,
+  update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.document_setup.api.update_document_setup`,
+  delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.document_setup.api.delete_document_setup`,
+},
+  
+  losPreScreening: {
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.create_ruleset`,
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.get_rulesets`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.delete_ruleset`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.update_ruleset`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.get_ruleset`,
+    getFields: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.get_prescreening_fields`,
+    getVersions: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.get_ruleset_versions`,
+    setStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.set_ruleset_status`,
+    test: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.test_ruleset`,
+  },
 } as const;
 
 export default API;
+
+
+
+

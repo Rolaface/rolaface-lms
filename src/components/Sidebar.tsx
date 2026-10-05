@@ -9,6 +9,12 @@ import {
   IconLayersLinked,
   IconSignature,
   IconClipboardText,
+  IconBriefcase,
+  IconBuildingStore,
+  IconHierarchy,
+  IconUserCheck,
+  IconCalculator,
+  IconLink,
 } from "@tabler/icons-react";
 import {
   Box,
@@ -118,32 +124,37 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
        {
         path: "/origination-setup/loanType",
         label: "Loan Type Setup",
-        icon: IconSettings,
+        icon: IconBriefcase,
       },
         {
         path: "/origination-setup/document-setup",
         label: "Document Setup",
-        icon: IconClipboardText,
+        icon: IconFileText,
       },
+        {
+          path: "/origination-setup/source-maintenance",
+          label: "Source Maintenance",
+          icon: IconBuildingStore,
+        },
       {
         path: "/origination-setup/workflow",
         label: "Workflow Configuration",
-        icon: IconSettings,
+        icon: IconHierarchy,
       },
       {
         path: "/origination-setup/pre-screening",
         label: "Pre-Screening",
-        icon: IconUsers,
+        icon: IconUserCheck,
       },
       {
         path: "/origination-setup/eligibility-check",
         label: "Eligibility Rules & Formula",
-        icon: IconSettingsCheck,
+        icon: IconCalculator,
       },
       {
         path: "/origination-setup/product-assignment",
         label: "Loan Product Assignment",
-        icon: IconBrandProducthunt,
+        icon: IconLink,
       },
       //  {
       //   path: "/origination-setup/product-temp",
@@ -283,6 +294,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/reports/statement", label: "Loan Statement", icon: IconFileText, modules: ["Loan"] },
       { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics, modules: ["Loan"] },
       { path: "/reports/schedule", label: "Repayment Schedule", icon: IconFileText, modules: ["Loan"] },
+      { path: "/reports/disbursement", label: "Disbursement Report", icon: IconFileText, modules: ["Loan"] },
+      { path: "/reports/portfolio", label: "Loan Portfolio Report", icon: IconFileText, modules: ["Loan"] },
     ],
   },
   {
@@ -922,6 +935,8 @@ export function Sidebar({
     </Box>
   );
 }
+
+
 
 
 

@@ -181,8 +181,8 @@ export function CollateralModal({ opened, onClose, onMinimize, editId, isView }:
   const isPending = createMutation.isPending || updateMutation.isPending || isEditLoading;
 
   const { data: collateralTypesResponse, isLoading: isTypesLoading } = useQuery({
-    queryKey: ["collateralTypes"],
-    queryFn: getAllCollateralTypes,
+    queryKey: ["collateralTypes", "active"],
+    queryFn: () => getAllCollateralTypes({ disabled: 0 }),
     enabled: opened,
   });
 
@@ -193,7 +193,7 @@ export function CollateralModal({ opened, onClose, onMinimize, editId, isView }:
     return list.map((item: any) => item.loan_security_type);
   }, [collateralTypesResponse]);
 
-  const headerTitle = editId ? (isView ? "View Collateral" : "Edit Collateral") : "New Collateral";
+const headerTitle = editId ? (isView ? "View Collateral" : "Edit Collateral") : "New Collateral";
 
   return (
     <Modal

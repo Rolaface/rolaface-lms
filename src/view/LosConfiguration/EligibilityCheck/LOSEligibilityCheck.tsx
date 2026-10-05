@@ -1,18 +1,29 @@
 import { useState } from "react";
 import { Box, Group, Title, Text, Tabs, Stack, useMantineTheme } from "@mantine/core";
-import { IconSettingsCheck } from "@tabler/icons-react";
+import { IconCalculator } from "@tabler/icons-react";
 
 import { TAB_ITEMS, type TabValue } from "./shared";
 import { EligibilityRules } from "./EligibilityRules";
-import { CreateRule } from "./CreateRule";
+// import { CreateRule } from "./CreateRule";
+import { CreateRule } from "../EligibilityCheck/CreateRuleTabs/CreateRule";
 import { Simulator } from "./Simulator";
 
 export function LosEligibilityCheck() {
   const [activeTab, setActiveTab] = useState<TabValue>("rules");
+  const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const theme = useMantineTheme();
 
   return (
-    <Tabs value={activeTab} onChange={(value) => setActiveTab(value as TabValue)} variant="default">
+//     <Tabs value={activeTab} onChange={(value) => {
+//   if (value === "create") {
+//     setSelectedRuleId(null);
+//     setCreateOpen(true);
+//     return;
+//   }
+//   setActiveTab(value as TabValue);
+// }}>
+<Tabs value={activeTab} onChange={(value) => setActiveTab(value as TabValue)} variant="default">
       <Box style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
         <Box
           component="main"
@@ -47,7 +58,7 @@ export function LosEligibilityCheck() {
                     justifyContent: "center",
                   }}
                 >
-                  <IconSettingsCheck size={20} color="var(--mantine-color-white)" stroke={1.8} />
+                  <IconCalculator size={20} color="var(--mantine-color-white)" stroke={1.8} />
                 </Box>
 
                 <Stack gap={2}>
@@ -68,7 +79,7 @@ export function LosEligibilityCheck() {
                   borderBottom: "1px solid var(--mantine-color-slate-2)",
                 }}
               >
-                {TAB_ITEMS.map(({ value, label, icon: Icon }) => {
+                {TAB_ITEMS.filter(({ value }) => value !== "create").map(({ value, label, icon: Icon }) => {
                   const isActive = activeTab === value;
 
                   return (
@@ -96,13 +107,8 @@ export function LosEligibilityCheck() {
 
           <Box style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
             <Tabs.Panel value="rules">
-              <EligibilityRules onCreateRule={() => setActiveTab("create")} onSimulate={() => setActiveTab("simulate")} />
+             <EligibilityRules onSimulate={() => setActiveTab("simulate")} />
             </Tabs.Panel>
-
-            <Tabs.Panel value="create">
-              <CreateRule onExit={() => setActiveTab("rules")} />
-            </Tabs.Panel>
-
             <Tabs.Panel value="simulate">
               <Simulator />
             </Tabs.Panel>
