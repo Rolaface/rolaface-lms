@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useState } from "react";
+import LosDashboard from "./Origination/LosDashboard";
 import {
   Box,
   Paper,
@@ -211,6 +212,12 @@ const splitCurrency = (val: string) => {
 };
 
 export function Dashboard() {
+  const entryMode = (typeof window !== "undefined" && localStorage.getItem("lms_entry_mode")) === "los" ? "los" : "lending";
+  
+  if (entryMode === "los") {
+    return <LosDashboard />;
+  }
+
   const { data, status, actions, filters, pagination } = useLoanDashboard();
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
 
