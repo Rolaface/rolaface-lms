@@ -312,6 +312,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
      subItems: [
       { path: "/investor/product", label: "Product", icon: IconBuildingBank, modules: ["Loan"] },
       { path: "/investor/investments", label: "Investments", icon: IconReportAnalytics, modules: ["Loan"] },
+      { path: "/investor/earnings", label: "Earnings & Statement", icon: IconReportAnalytics, modules: ["Loan"] },
+      { path: "/investor/maturity", label: "Maturity", icon: IconReportAnalytics, modules: ["Loan"] },
      ],
    },
   {
