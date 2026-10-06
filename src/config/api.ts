@@ -506,6 +506,16 @@ losDocumentSetup: {
     setStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.set_ruleset_status`,
     test: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.test_ruleset`,
   },
+
+  investmentProduct:{
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.get_investment_product`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.get_investment_product_by_id`,
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.create_investment_product`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.update_investment_product`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.delete_investment_product`,
+    enable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.enable_investment_product`,
+    disable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.disable_investment_product`,
+  }
 } as const;
 
 export default API;

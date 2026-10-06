@@ -1,46 +1,49 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import {
-  ActionIcon,
-  Box,
-  Button,
-  Group,
   Modal,
-  Select,
-  SimpleGrid,
+  Box,
   Text,
   TextInput,
+  NumberInput,
+  Select,
+  ThemeIcon,
+  Group,
+  Fieldset,
+  SimpleGrid,
+  Button,
   useMantineTheme,
 } from "@mantine/core";
-import { IconPackage, IconPercentage, IconX } from "@tabler/icons-react";
 import {
-  FREQUENCY_MONTHS,
-  type Frequency,
-  type ProductOption,
-} from "../InvestorModalShared";
+  IconPackage,
+  IconX,
+  IconPercentage,
+  IconChevronDown,
+  IconMinus,
+} from "@tabler/icons-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "@mantine/form";
+import type { CreateInvestmentProductPayload } from "../../../../types/Investor/investmentProductForm";
+import {
+  createInvestmentProduct,
+  updateInvestmentProduct,
+  getInvestmentProductById,
+} from "../../../../api/Investor/productApi";
+import { ModalFooter } from "../../../shared/ModalFooter";
+import { openCommonModal } from "../../AlertModal";
+import { parseFrappeError } from "../../../../utils/parseFrappeError";
 
-interface InvestmentProductModalProps {
+export interface InvestmentProductModalProps {
   opened: boolean;
   onClose: () => void;
-  onSave: (product: ProductOption) => void;
+  onMinimize?: () => void;
+  editId?: string | null;
+  isView?: boolean;
 }
 
-interface FormState {
-  name: string;
-  rate: string;
-  tenure: string;
-  frequency: Frequency;
-  minAmount: string;
-}
+/** Same options as the "Payout Frequency" field of the Custom Investment Product doctype. */
+export const PAYOUT_FREQUENCIES = ["Monthly", "Weekly", "Bi-Weekly", "Quarterly", "Yearly"];
 
-type FormErrors = Partial<Record<"name" | "rate" | "tenure" | "minAmount", string>>;
-
-const EMPTY_FORM: FormState = {
-  name: "",
-  rate: "",
-  tenure: "",
-  frequency: "Monthly",
-  minAmount: "",
-};
+const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
 // Same field look for every input: bold label, white input, slate border.
 const FIELD_STYLES = {
@@ -59,223 +62,321 @@ const FIELD_STYLES = {
 export function InvestmentProductModal({
   opened,
   onClose,
-  onSave,
+  onMinimize,
+  editId,
+  isView,
 }: InvestmentProductModalProps) {
   const theme = useMantineTheme();
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [errors, setErrors] = useState<FormErrors>({});
 
-  const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    if (key !== "frequency") {
-      setErrors((prev) => ({ ...prev, [key]: undefined }));
+  const form = useForm({
+    initialValues: {
+      name: "",
+      rate: "" as number | "",
+      tenure: "" as number | "",
+      frequency: "Monthly",
+      minAmount: "" as number | "",
+      disabled: false,
+    },
+    validate: {
+      name: (v) => (!v.trim() ? "Enter the product name." : null),
+      rate: (v) =>
+        !(Number(v) > 0) || Number(v) > 100 ? "Enter a valid interest rate." : null,
+      tenure: (v) =>
+        !(Number(v) > 0) || !Number.isInteger(Number(v))
+          ? "Enter the tenure in whole months."
+          : null,
+      frequency: (v) => (!v ? "Select the payout frequency." : null),
+      minAmount: (v) => (!(Number(v) > 0) ? "Enter a valid minimum investment." : null),
+    },
+  });
+
+  const queryClient = useQueryClient();
+
+  const { data: editDetailsResponse, isLoading: isEditLoading, refetch } = useQuery({
+    queryKey: ["investmentProduct", editId],
+    queryFn: () => getInvestmentProductById(editId as string),
+    enabled: opened && !!editId,
+  });
+
+  useEffect(() => {
+    if (editId && editDetailsResponse) {
+      const item =
+        editDetailsResponse.data || editDetailsResponse.message?.data || editDetailsResponse;
+
+      // tenure / interest_rate / minimum_investment are stored as text in Frappe.
+      const toNumber = (value: unknown): number | "" =>
+        value === null || value === undefined || value === "" || Number.isNaN(Number(value))
+          ? ""
+          : Number(value);
+
+      form.setValues({
+        name: item.product_name || "",
+        rate: toNumber(item.interest_rate),
+        tenure: toNumber(item.tenure),
+        frequency: item.payout_frequency || "Monthly",
+        minAmount: toNumber(item.minimum_investment),
+        disabled: item.disabled === 1,
+      });
+    } else if (!editId) {
+      handleReset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId, editDetailsResponse]);
+
+  // ---------- ALERT HELPERS (same pattern as CollateralModal) ----------
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
+
+  const createMutation = useMutation({
+    mutationFn: createInvestmentProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["investmentProducts"] });
+      showSuccess("Investment Product Created", "Investment product created successfully.");
+      handleReset();
+      onClose();
+    },
+    onError: (error: any) => showError("Create Failed", error),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: updateInvestmentProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["investmentProducts"] });
+      queryClient.invalidateQueries({ queryKey: ["investmentProduct", editId] });
+      showSuccess("Investment Product Updated", "Investment product updated successfully.");
+      handleReset();
+      onClose();
+    },
+    onError: (error: any) => showError("Update Failed", error),
+  });
+
+  useEffect(() => {
+    if (editId && opened) {
+      refetch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId, opened]);
+
+  const handleReset = () => {
+    form.reset();
+  };
+
+  const handleClose = () => {
+    handleReset();
+    onClose();
+  };
+
+  const handleMinimize = () => {
+    onMinimize?.();
+  };
+
+  const handleSubmit = () => {
+    const validation = form.validate();
+    if (validation.hasErrors) return;
+
+    const payload: CreateInvestmentProductPayload = {
+      product_name: form.values.name.trim(),
+      tenure: String(form.values.tenure),
+      minimum_investment: String(form.values.minAmount),
+      interest_rate: String(form.values.rate),
+      payout_frequency: form.values.frequency,
+      disabled: form.values.disabled ? 1 : 0,
+    };
+
+    if (editId) {
+      updateMutation.mutate({ id: editId, payload });
+    } else {
+      createMutation.mutate(payload);
     }
   };
 
-  const validate = (): FormErrors => {
-    const e: FormErrors = {};
-    if (!form.name.trim()) e.name = "Enter the product name.";
-    if (!(Number(form.rate) > 0)) e.rate = "Enter a valid interest rate.";
-    if (!(Number(form.tenure) > 0) || !Number.isInteger(Number(form.tenure)))
-      e.tenure = "Enter the tenure in whole months.";
-    if (!(Number(form.minAmount) > 0))
-      e.minAmount = "Enter a valid minimum investment.";
-    return e;
-  };
+  const isPending = createMutation.isPending || updateMutation.isPending || isEditLoading;
 
-  const handleClear = () => {
-    setForm(EMPTY_FORM);
-    setErrors({});
-  };
-
-  const handleSave = () => {
-    const e = validate();
-    setErrors(e);
-    if (Object.keys(e).length > 0) return;
-
-    onSave({
-      name: form.name.trim(),
-      rate: Number(form.rate),
-      tenureMonths: Number(form.tenure),
-      frequency: form.frequency,
-      minAmount: Number(form.minAmount),
-    });
-    handleClear();
-    onClose();
-  };
+  const headerTitle = editId
+    ? isView
+      ? "View Investment Product"
+      : "Edit Investment Product"
+    : "New Investment Product";
 
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleClose}
       size={640}
-      centered
-      radius="lg"
       padding={0}
-      withCloseButton={false}
+      radius="lg"
       closeOnClickOutside={false}
-      styles={{ content: { overflow: "hidden" }, body: { padding: 0 } }}
+      closeOnEscape={false}
+      withCloseButton={false}
+      styles={{
+        content: {
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        },
+        body: {
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          padding: 0,
+          minHeight: 0,
+        },
+      }}
     >
-      <style>{`
-        .ip-modal-body input[type=number] { -moz-appearance: textfield; }
-        .ip-modal-body input[type=number]::-webkit-outer-spin-button,
-        .ip-modal-body input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-      `}</style>
-
-      {/* Header */}
-      <Group
-        gap="sm"
-        wrap="nowrap"
-        px="xl"
-        py="md"
-        style={{ background: theme.other.brandGradient }}
-      >
+      <Box style={{ display: "flex", flexDirection: "column" }} bg="white">
+        {/* Header — same banner as CollateralModal */}
         <Box
-          style={{
-            width: 36,
-            height: 36,
-            flexShrink: 0,
-            borderRadius: "var(--mantine-radius-md)",
-            background: "var(--mantine-color-white)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <IconPackage size={18} color="var(--mantine-color-brand-6)" />
-        </Box>
-        <Box>
-          <Text fw={700} fz="md" c="white" lh={1.3}>
-            Create investment product
-          </Text>
-          <Text fz="xs" c="white" style={{ opacity: 0.85 }}>
-            Define the rate, tenure and payout.
-          </Text>
-        </Box>
-        <ActionIcon
-          variant="subtle"
-          color="white"
-          ml="auto"
-          aria-label="Close"
-          onClick={onClose}
-        >
-          <IconX size={18} />
-        </ActionIcon>
-      </Group>
-
-      {/* Body */}
-      <Box
-        className="ip-modal-body"
-        px="xl"
-        py="xl"
-        style={{ background: "var(--mantine-color-slate-0)" }}
-      >
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" verticalSpacing="lg">
-          <TextInput
-            label="Product name"
-            placeholder="e.g. Steady Income NCD"
-            withAsterisk
-            size="sm"
-            radius="md"
-            styles={FIELD_STYLES}
-            style={{ gridColumn: "1 / -1" }}
-            value={form.name}
-            error={errors.name}
-            onChange={(e) => setField("name", e.currentTarget.value)}
-          />
-
-          <TextInput
-            type="number"
-            label="Interest rate (% p.a.)"
-            placeholder="0.00"
-            withAsterisk
-            size="sm"
-            radius="md"
-            step={0.25}
-            styles={FIELD_STYLES}
-            rightSection={
-              <IconPercentage size={14} color="var(--mantine-color-slate-4)" />
-            }
-            value={form.rate}
-            error={errors.rate}
-            onChange={(e) => setField("rate", e.currentTarget.value)}
-          />
-
-          <TextInput
-            type="number"
-            label="Tenure (months)"
-            placeholder="0"
-            withAsterisk
-            size="sm"
-            radius="md"
-            step={1}
-            styles={FIELD_STYLES}
-            rightSectionWidth={40}
-            rightSection={
-              <Text fz="xs" c="slate.4">
-                mo
-              </Text>
-            }
-            value={form.tenure}
-            error={errors.tenure}
-            onChange={(e) => setField("tenure", e.currentTarget.value)}
-          />
-
-          <Select
-            label="Payout frequency"
-            size="sm"
-            radius="md"
-            allowDeselect={false}
-            styles={FIELD_STYLES}
-            data={Object.keys(FREQUENCY_MONTHS)}
-            value={form.frequency}
-            onChange={(v) => v && setField("frequency", v as Frequency)}
-          />
-
-          <TextInput
-            type="number"
-            label="Minimum investment (₹)"
-            placeholder="0"
-            withAsterisk
-            size="sm"
-            radius="md"
-            step={10000}
-            styles={FIELD_STYLES}
-            value={form.minAmount}
-            error={errors.minAmount}
-            onChange={(e) => setField("minAmount", e.currentTarget.value)}
-          />
-        </SimpleGrid>
-      </Box>
-
-      {/* Footer */}
-      <Group
-        justify="space-between"
-        px="xl"
-        py="md"
-        style={{
-          background: "var(--mantine-color-slate-0)",
-          borderTop: "1px solid var(--mantine-color-slate-2)",
-        }}
-      >
-        <Group gap="xs">
-          <Button variant="subtle" color="slate" radius="md" onClick={onClose}>
-            Cancel
-          </Button>
-        </Group>
-        <Button
-          radius="md"
-          color="brand"
-          px="xl"
+          className="px-6 py-3 flex justify-between items-center rounded-t-md shrink-0"
           style={{
             background: theme.other.brandGradient,
-            boxShadow: theme.other.brandGlowShadowSm,
+            borderBottom: "1px solid var(--mantine-color-brand-7)",
           }}
-          onClick={handleSave}
         >
-          Save product
-        </Button>
-      </Group>
+          <Group gap="sm" className="min-w-0" wrap="nowrap">
+            <ThemeIcon
+              size={38}
+              radius="xl"
+              style={{
+                background: theme.other.headerIconOverlayBg,
+                color: "var(--mantine-color-white)",
+              }}
+            >
+              <IconPackage size={19} />
+            </ThemeIcon>
+            <div className="min-w-0">
+              <Text size="md" fw={700} c="white" className="leading-tight truncate">
+                {headerTitle}
+              </Text>
+              <Text size="xs" c="brand.1" className="leading-tight truncate">
+                Define the rate, tenure and payout.
+              </Text>
+            </div>
+          </Group>
+          <Group gap="xs" className="shrink-0" wrap="nowrap">
+            <Button
+              variant="subtle"
+              size="xs"
+              px={8}
+              onClick={handleMinimize}
+              style={{ color: "var(--mantine-color-white)" }}
+              styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+            >
+              <IconMinus size={18} />
+            </Button>
+            <Button
+              variant="subtle"
+              size="xs"
+              px={8}
+              onClick={handleClose}
+              style={{ color: "var(--mantine-color-white)" }}
+              styles={{ root: { "&:hover": { backgroundColor: theme.other.headerButtonHoverBg } } }}
+            >
+              <IconX size={18} />
+            </Button>
+          </Group>
+        </Box>
+
+        {/* Body */}
+        <Box px="xl" py="lg" bg="slate.0" style={{ flex: 1 }}>
+          <Fieldset disabled={isView} variant="unstyled" p={0} m={0}>
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" verticalSpacing="lg">
+              <TextInput
+                label="Product name"
+                placeholder="e.g. Steady Income NCD"
+                withAsterisk
+                size="sm"
+                radius="md"
+                styles={FIELD_STYLES}
+                style={{ gridColumn: "1 / -1" }}
+                {...form.getInputProps("name")}
+              />
+
+              <NumberInput
+                label="Interest rate (% p.a.)"
+                placeholder="0.00"
+                withAsterisk
+                size="sm"
+                radius="md"
+                hideControls
+                min={0}
+                styles={FIELD_STYLES}
+                rightSection={<IconPercentage size={14} color="var(--mantine-color-slate-4)" />}
+                {...form.getInputProps("rate")}
+              />
+
+              <NumberInput
+                label="Tenure (months)"
+                placeholder="0"
+                withAsterisk
+                size="sm"
+                radius="md"
+                hideControls
+                min={0}
+                allowDecimal={false}
+                styles={FIELD_STYLES}
+                rightSectionWidth={40}
+                rightSection={
+                  <Text fz="xs" c="slate.4">
+                    mo
+                  </Text>
+                }
+                {...form.getInputProps("tenure")}
+              />
+
+              <Select
+                label="Payout frequency"
+                withAsterisk
+                size="sm"
+                radius="md"
+                allowDeselect={false}
+                styles={FIELD_STYLES}
+                data={PAYOUT_FREQUENCIES}
+                rightSection={chevronDown}
+                {...form.getInputProps("frequency")}
+              />
+
+              <NumberInput
+                label="Minimum investment (₹)"
+                placeholder="0"
+                withAsterisk
+                size="sm"
+                radius="md"
+                hideControls
+                min={0}
+                thousandSeparator=","
+                styles={FIELD_STYLES}
+                {...form.getInputProps("minAmount")}
+              />
+            </SimpleGrid>
+          </Fieldset>
+        </Box>
+        <ModalFooter
+          variant="theme"
+          isViewMode={isView}
+          onClose={handleClose}
+          onSubmit={handleSubmit}
+          submitLabel={editId ? "Update" : "Save "}
+          submitLoading={isPending}
+          submitDisabled={isPending}
+        />
+      </Box>
     </Modal>
   );
 }
