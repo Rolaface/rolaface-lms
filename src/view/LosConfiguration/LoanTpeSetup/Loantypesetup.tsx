@@ -33,7 +33,7 @@ import {
   IconTargetArrow,
   IconAlertCircle,
 } from "@tabler/icons-react";
-import { createLoanTypes, getAllLoanTypes, deleteLoanType, enableLoanType, disableLoanType, updateLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
+import { createLoanTypes, getAllLoanTypes, enableLoanType, disableLoanType } from "../../../api/OriginationSetupAPi/loanSetupApi";
 import type { CreateLoanTypePayload, CreateLoantypeResponse } from "../../../types/OriginationSetup/loanTypeForm";
 import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
@@ -57,20 +57,6 @@ export interface LoanTypeConfig {
   isActive?: boolean;
   subTypes: LoanSubTypeConfig[];
 }
-export interface LoanPurposeConfig {
-  id: string;
-  name: string;
-}
-export interface LoanSubTypeConfig {
-  id: string;
-  name: string;
-  purposes: LoanPurposeConfig[];
-}
-export interface LoanTypeConfig {
-  id: string;
-  name: string;
-  subTypes: LoanSubTypeConfig[];
-}
 
 export type LoanSetupConfig = Record<ApplicantType, LoanTypeConfig[]>;
 
@@ -92,7 +78,9 @@ const APPLICANT_TYPES: {
 
 const EMPTY_CONFIG: LoanSetupConfig = { Individual: [], Business: [] };
 
-const nextId = () => Math.random().toString(36).slice(2, 10);
+const NEW_ID_PREFIX = "new-";
+const nextId = () => `${NEW_ID_PREFIX}${Math.random().toString(36).slice(2, 10)}`;
+const isNewId = (id: string) => id.startsWith(NEW_ID_PREFIX);
 
 type ApiSetup = CreateLoantypeResponse["message"]["data"]["setup"];
 
@@ -119,19 +107,48 @@ function fromApiSetup(setup: ApiSetup | undefined | null): LoanSetupConfig {
     Business: mapList(setup?.Business),
   };
 }
-function toCreatePayload(config: LoanSetupConfig): CreateLoanTypePayload {
+function toCreatePayload(config: LoanSetupConfig, version?: string): CreateLoanTypePayload {
+  const withId = (item: { id: string; name: string }) =>
+    isNewId(item.id) ? { name: item.name } : { id: item.id, name: item.name };
   const mapList = (list: LoanTypeConfig[]) =>
     list.map((lt) => ({
-      name: lt.name,
+      ...withId(lt),
       subTypes: lt.subTypes.map((st) => ({
-        name: st.name,
-        purposes: st.purposes.map((p) => ({ name: p.name })),
+        ...withId(st),
+        purposes: st.purposes.map(withId),
       })),
     }));
 
   return {
     Individual: mapList(config.Individual),
     Business: mapList(config.Business),
+    ...(version ? { version } : {}),
+  };
+}
+
+function setActive(state: LoanSetupConfig, applicant: ApplicantType, id: string, isActive: boolean): LoanSetupConfig {
+  const cascade = <T extends { isActive?: boolean }>(item: T): T => (isActive ? item : { ...item, isActive: false });
+  return {
+    ...state,
+    [applicant]: state[applicant].map((lt) =>
+      lt.id === id
+        ? {
+            ...lt,
+            isActive,
+            subTypes: lt.subTypes.map((st) => ({ ...cascade(st), purposes: st.purposes.map(cascade) })),
+          }
+        : {
+            ...lt,
+            subTypes: lt.subTypes.map((st) =>
+              st.id === id
+                ? { ...st, isActive, purposes: st.purposes.map(cascade) }
+                : {
+                    ...st,
+                    purposes: st.purposes.map((p) => (p.id === id ? { ...p, isActive } : p)),
+                  },
+            ),
+          },
+    ),
   };
 }
 
@@ -211,26 +228,7 @@ function reducer(state: LoanSetupConfig, action: Action): LoanSetupConfig {
         ],
       };
     case "toggleActive":
-      return {
-        ...state,
-        [action.applicant]: state[action.applicant].map((lt) =>
-          lt.id === action.id
-            ? { ...lt, isActive: action.isActive }
-            : {
-                ...lt,
-                subTypes: lt.subTypes.map((st) =>
-                  st.id === action.id
-                    ? { ...st, isActive: action.isActive }
-                    : {
-                        ...st,
-                        purposes: st.purposes.map((p) =>
-                          p.id === action.id ? { ...p, isActive: action.isActive } : p,
-                        ),
-                      },
-                ),
-              },
-        ),
-      };
+      return setActive(state, action.applicant, action.id, action.isActive);
     case "renameLoanType":
       return updateLoanType(state, action.applicant, action.id, (lt) => ({ ...lt, name: action.name }));
     case "removeLoanType":
@@ -509,6 +507,7 @@ function SetupColumn({
                             size="xs"
                             color="teal"
                             checked={item.isActive ?? true}
+                            disabled={isNewId(item.id)}
                             onChange={(e) => onToggle(item, e.currentTarget.checked)}
                             aria-label={`Toggle ${item.name}`}
                             styles={{ track: { cursor: "pointer" } }}
@@ -585,8 +584,7 @@ export function LoanTypeSetup({ initialConfig, onSave, readOnly = false }: LoanT
   const queryClient = useQueryClient();
   const [config, dispatch] = useReducer(reducer, initialConfig ?? EMPTY_CONFIG);
   const [savedConfig, setSavedConfig] = useState<LoanSetupConfig>(initialConfig ?? EMPTY_CONFIG);
-
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [version, setVersion] = useState<string | undefined>();
 
   const [applicant, setApplicant] = useState<ApplicantType>("Individual");
   const [selectedLoanType, setSelectedLoanType] = useState<Record<ApplicantType, string | null>>({
@@ -612,14 +610,23 @@ export function LoanTypeSetup({ initialConfig, onSave, readOnly = false }: LoanT
     });
   };
 
- const {
+  const showError = (error: any) => {
+    openCommonModal({
+      heading: "Action Failed",
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  const {
     data: loanTypesRes,
     isLoading,
     error: queryError,
   } = useQuery({
     queryKey: ["loan-types", { include_inactive: 1 }],
     queryFn: () => getAllLoanTypes(1) as Promise<CreateLoantypeResponse>,
-    // enabled: !initialConfig,
   });
 
   const loading = !initialConfig && isLoading;
@@ -627,9 +634,8 @@ export function LoanTypeSetup({ initialConfig, onSave, readOnly = false }: LoanT
     ? (queryError as any)?.message ?? "Failed to load loan type setup."
     : null;
 
-  useEffect(() => {
-    if (!loanTypesRes) return;
-    const mapped = fromApiSetup(loanTypesRes?.message?.data?.setup);
+  const applyServerSetup = (data: CreateLoantypeResponse["message"]["data"] | undefined) => {
+    const mapped = fromApiSetup(data?.setup);
     const prev = prevState.current;
 
     const getLtName = (app: ApplicantType) => prev.config[app].find((lt) => lt.id === prev.selectedLoanType[app])?.name;
@@ -637,183 +643,80 @@ export function LoanTypeSetup({ initialConfig, onSave, readOnly = false }: LoanT
 
     dispatch({ type: "reset", config: mapped });
     setSavedConfig(mapped);
+    setVersion(data?.version);
 
-    setSelectedLoanType({
-      Individual: mapped.Individual.find((lt) => lt.name === getLtName("Individual") || lt.id === prev.selectedLoanType.Individual)?.id ?? mapped.Individual[0]?.id ?? null,
-      Business: mapped.Business.find((lt) => lt.name === getLtName("Business") || lt.id === prev.selectedLoanType.Business)?.id ?? mapped.Business[0]?.id ?? null,
-    });
+    const pickLoanType = (app: ApplicantType) =>
+      mapped[app].find((lt) => lt.id === prev.selectedLoanType[app] || lt.name === getLtName(app)) ?? mapped[app][0];
+    const loanTypeSel = { Individual: pickLoanType("Individual"), Business: pickLoanType("Business") };
+    const pickSubType = (app: ApplicantType) => {
+      const subs = loanTypeSel[app]?.subTypes ?? [];
+      return subs.find((st) => st.id === prev.selectedSubType[app] || st.name === getStName(app)) ?? subs[0];
+    };
 
-    setSelectedSubType({
-      Individual: mapped.Individual.flatMap((lt) => lt.subTypes).find((st) => st.name === getStName("Individual") || st.id === prev.selectedSubType.Individual)?.id ?? mapped.Individual[0]?.subTypes[0]?.id ?? null,
-      Business: mapped.Business.flatMap((lt) => lt.subTypes).find((st) => st.name === getStName("Business") || st.id === prev.selectedSubType.Business)?.id ?? mapped.Business[0]?.subTypes[0]?.id ?? null,
-    });
+    setSelectedLoanType({ Individual: loanTypeSel.Individual?.id ?? null, Business: loanTypeSel.Business?.id ?? null });
+    setSelectedSubType({ Individual: pickSubType("Individual")?.id ?? null, Business: pickSubType("Business")?.id ?? null });
+  };
+
+  useEffect(() => {
+    if (!loanTypesRes) return;
+    applyServerSetup(loanTypesRes?.message?.data);
   }, [loanTypesRes]);
 
   const saveMutation = useMutation({
     mutationFn: createLoanTypes,
     onSuccess: async (res: CreateLoantypeResponse) => {
-      const mapped = fromApiSetup(res?.message?.data?.setup);
-      dispatch({ type: "reset", config: mapped });
-      setSavedConfig(mapped);
+      applyServerSetup(res?.message?.data);
       queryClient.invalidateQueries({ queryKey: ["loan-types"] });
+      const deactivated = res?.message?.data?.summary?.deactivated ?? [];
       showSuccess(
         "Setup Saved",
-        res?.message?.message || "Loan type setup saved successfully.",
+        deactivated.length
+          ? `Loan type setup saved. These items are in use, so they were disabled instead of deleted: ${deactivated.map((d) => d.name).join(", ")}.`
+          : res?.message?.message || "Loan type setup saved successfully.",
       );
-      await onSave?.(mapped);
+      await onSave?.(fromApiSetup(res?.message?.data?.setup));
     },
-    onError: (error: any) => {
-      setSaveError(error?.message ?? "Failed to save loan type setup.");
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
-      });
-    },
+    onError: showError,
   });
 
   const saving = saveMutation.isPending;
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteLoanType,
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["loan-types"] });
-      showSuccess(
-        "Loan Type Deleted",
-        `Loan Type ${variables} deleted successfully.`,
-      );
-    },
-    onError: (error: any) => {
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
-      });
-    },
-  });
-
-  const confirmDelete = (id: string) => {
+  const confirmDelete = (item: ColumnItem, remove: () => void) => {
     openCommonModal({
-      heading: "Delete Loan Type",
-      subtitle: "This action cannot be undone.",
+      heading: "Delete",
+      subtitle: "The item is removed when you save the setup.",
       body: (
         <>
           Are you sure you want to delete{" "}
           <Text span fw={600}>
-            {id}
+            {item.name}
           </Text>
-          ?
+          {item.count ? " and everything under it" : ""}?
         </>
       ),
       color: "red",
       buttons: [
         { label: "Cancel", variant: "default" },
-        {
-          label: "Delete",
-          color: "red",
-          onClick: () => deleteMutation.mutate(id),
-        },
+        { label: "Delete", color: "red", onClick: remove },
       ],
     });
   };
 
-  const enableMutation = useMutation({
-    mutationFn: enableLoanType,
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["loan-types"] });
-      showSuccess(
-        "Loan Type Enabled",
-        `Loan Type ${variables} enabled successfully.`,
-      );
+  const toggleMutation = useMutation({
+    mutationFn: ({ item, isActive }: { item: ColumnItem; isActive: boolean; applicant: ApplicantType }) =>
+      isActive ? enableLoanType(item.id) : disableLoanType(item.id),
+    onSuccess: (_, { item, isActive, applicant: app }) => {
+      dispatch({ type: "toggleActive", applicant: app, id: item.id, isActive });
+      setSavedConfig((s) => setActive(s, app, item.id, isActive));
+      queryClient.invalidateQueries({ queryKey: ["loan-types"], refetchType: "none" });
+      showSuccess(isActive ? "Enabled" : "Disabled", `${item.name} ${isActive ? "enabled" : "disabled"} successfully.`);
     },
-    onError: (error: any) => {
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
-      });
-    },
-  });
-
-  const disableMutation = useMutation({
-    mutationFn: disableLoanType,
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["loan-types"] });
-      showSuccess(
-        "Loan Type Disabled",
-        `Loan Type ${variables} disabled successfully.`,
-      );
-    },
-    onError: (error: any) => {
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
-      });
-    },
+    onError: showError,
   });
 
   const handleToggle = (item: ColumnItem, nextActive: boolean) => {
-    dispatch({ type: "toggleActive", applicant, id: item.id, isActive: nextActive });
-    if (nextActive) {
-      enableMutation.mutate(item.id);
-    } else {
-      disableMutation.mutate(item.id);
-    }
+    toggleMutation.mutate({ item, isActive: nextActive, applicant });
   };
-
-  const updateMutation = useMutation({
-    mutationFn: updateLoanTypes,
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["loan-types"] });
-      showSuccess(
-        "Loan Type Updated",
-        `Loan Type ${variables.id} updated successfully.`,
-      );
-    },
-    onError: (error: any) => {
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
-      });
-    },
-  });
 
   const dirty = useMemo(
     () => JSON.stringify(config) !== JSON.stringify(savedConfig),
@@ -861,14 +764,18 @@ export function LoanTypeSetup({ initialConfig, onSave, readOnly = false }: LoanT
 
   const handleReset = () => {
     dispatch({ type: "reset", config: savedConfig });
-    setSelectedLoanType({ Individual: null, Business: null });
-    setSelectedSubType({ Individual: null, Business: null });
+    setSelectedLoanType({
+      Individual: savedConfig.Individual[0]?.id ?? null,
+      Business: savedConfig.Business[0]?.id ?? null,
+    });
+    setSelectedSubType({
+      Individual: savedConfig.Individual[0]?.subTypes[0]?.id ?? null,
+      Business: savedConfig.Business[0]?.subTypes[0]?.id ?? null,
+    });
   };
 
-const handleSave = () => {
-    setSaveError(null);
-    const payload = toCreatePayload(config);
-    saveMutation.mutate(payload);
+  const handleSave = () => {
+    saveMutation.mutate(toCreatePayload(config, version));
   };
 
   const totalFor = (a: ApplicantType) => config[a].length;
@@ -912,6 +819,11 @@ const handleSave = () => {
             </Badge>
           )}
         </Group>
+        {loadError && (
+          <Alert color="red" radius="md" mb={14} icon={<IconAlertCircle size={16} />}>
+            {loadError}
+          </Alert>
+        )}
          <Paper
           withBorder
           radius="lg"
@@ -994,11 +906,10 @@ const handleSave = () => {
             selectedId={activeLoanType?.id}
             onSelect={setLoanTypeSel}
             onAdd={handleAddLoanType}
-            onRename={(id, name) => {
-  dispatch({ type: "renameLoanType", applicant, id, name });
-  updateMutation.mutate({ id, name });
-}}
-            onRemove={(item) => confirmDelete(item.id)}
+            onRename={(id, name) => dispatch({ type: "renameLoanType", applicant, id, name })}
+            onRemove={(item) =>
+              confirmDelete(item, () => dispatch({ type: "removeLoanType", applicant, id: item.id }))
+            }
             onToggle={handleToggle}
             addPlaceholder="e.g. Personal Loan"
             addLabel="Add"
@@ -1022,12 +933,16 @@ const handleSave = () => {
             selectedId={activeSubType?.id}
             onSelect={setSubTypeSel}
             onAdd={handleAddSubType}
-           onRename={(id, name) => {
-  if (!activeLoanType) return;
-  dispatch({ type: "renameSubType", applicant, loanTypeId: activeLoanType.id, id, name });
-  updateMutation.mutate({ id, name });
-}}
-            onRemove={(item) => confirmDelete(item.id)}
+            onRename={(id, name) => {
+              if (!activeLoanType) return;
+              dispatch({ type: "renameSubType", applicant, loanTypeId: activeLoanType.id, id, name });
+            }}
+            onRemove={(item) => {
+              if (!activeLoanType) return;
+              confirmDelete(item, () =>
+                dispatch({ type: "removeSubType", applicant, loanTypeId: activeLoanType.id, id: item.id }),
+              );
+            }}
             onToggle={handleToggle}
             addPlaceholder="e.g. Wedding"
             addLabel="Add"
@@ -1049,18 +964,28 @@ const handleSave = () => {
             }))}
             onAdd={handleAddPurpose}
             onRename={(id, name) => {
-  if (!activeLoanType || !activeSubType) return;
-  dispatch({
-    type: "renamePurpose",
-    applicant,
-    loanTypeId: activeLoanType.id,
-    subTypeId: activeSubType.id,
-    id,
-    name,
-  });
-  updateMutation.mutate({ id, name });
-}}
-            onRemove={(item) => confirmDelete(item.id)}
+              if (!activeLoanType || !activeSubType) return;
+              dispatch({
+                type: "renamePurpose",
+                applicant,
+                loanTypeId: activeLoanType.id,
+                subTypeId: activeSubType.id,
+                id,
+                name,
+              });
+            }}
+            onRemove={(item) => {
+              if (!activeLoanType || !activeSubType) return;
+              confirmDelete(item, () =>
+                dispatch({
+                  type: "removePurpose",
+                  applicant,
+                  loanTypeId: activeLoanType.id,
+                  subTypeId: activeSubType.id,
+                  id: item.id,
+                }),
+              );
+            }}
             onToggle={handleToggle}
             addPlaceholder="e.g. Daughter Wedding"
             addLabel="Add"
