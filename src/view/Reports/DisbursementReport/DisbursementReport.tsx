@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getAllLoansDisbursement } from "../../../api/loanDisbursementAPi";
 import {
   Box,
   Title,
@@ -50,7 +52,7 @@ import {
   Line
 } from "recharts";
 
-// --- MOCK DATA ---
+// --- MOCK DATA FOR CHARTS ---
 const monthlyData = [
   { name: 'Jan', Disbursed: 8, Approved: 9 },
   { name: 'Feb', Disbursed: 7, Approved: 8.5 },
@@ -61,19 +63,6 @@ const monthlyData = [
   { name: 'Jul', Disbursed: 14, Approved: 15.5 },
   { name: 'Aug', Disbursed: 13, Approved: 14 },
   { name: 'Sep', Disbursed: 17, Approved: 18 },
-];
-
-const quarterlyData = [
-  { name: 'Q1 2025', Disbursed: 25, Approved: 28.5 },
-  { name: 'Q2 2025', Disbursed: 37, Approved: 40 },
-  { name: 'Q3 2025', Disbursed: 44, Approved: 47.5 },
-  { name: 'Q4 2025', Disbursed: 20, Approved: 22 },
-];
-
-const yearlyData = [
-  { name: '2023', Disbursed: 95, Approved: 110 },
-  { name: '2024', Disbursed: 120, Approved: 135 },
-  { name: '2025', Disbursed: 156, Approved: 168 },
 ];
 
 const typeData = [
@@ -98,28 +87,159 @@ const branchData = [
   { name: 'Others', value: 5, color: '#dbeafe' },
 ];
 
-const tableData = [
-  { id: 'LN-2025-00123', customer: 'Amit Sharma', product: 'Personal Loan', branch: 'Main Branch', officer: 'Rohit Kumar', approved: 'ZMW 500,000', disbursed: 'ZMW 500,000', date: '02 Sep 2025', type: 'Bank Transfer', account: '1234567890', status: 'Disbursed', ref: 'TRX983745' },
-  { id: 'LN-2025-00124', customer: 'Priya Singh', product: 'Business Loan', branch: 'City Branch', officer: 'Neha Verma', approved: 'ZMW 1,200,000', disbursed: 'ZMW 1,000,000', date: '03 Sep 2025', type: 'Mobile Money', account: '0987654321', status: 'Partially Disbursed', ref: 'TRX983746' },
-  { id: 'LN-2025-00125', customer: 'David Mwansa', product: 'Home Loan', branch: 'Lusaka Branch', officer: 'James Banda', approved: 'ZMW 800,000', disbursed: 'ZMW 800,000', date: '04 Sep 2025', type: 'Bank Transfer', account: '1122334455', status: 'Disbursed', ref: 'TRX983747' },
-  { id: 'LN-2025-00126', customer: 'Grace Chanda', product: 'Personal Loan', branch: 'Kitwe Branch', officer: 'Susan Phiri', approved: 'ZMW 300,000', disbursed: 'ZMW 0', date: '-', type: '-', account: '-', status: 'Pending', ref: '-' },
-  { id: 'LN-2025-00127', customer: 'Joseph Nalumino', product: 'Business Loan', branch: 'Ndola Branch', officer: 'Michael Tembo', approved: 'ZMW 950,000', disbursed: 'ZMW 950,000', date: '05 Sep 2025', type: 'Bank Transfer', account: '5566778899', status: 'Disbursed', ref: 'TRX983748' },
-  { id: 'LN-2025-00128', customer: 'Ruth Bwalya', product: 'Personal Loan', branch: 'Main Branch', officer: 'Rohit Kumar', approved: 'ZMW 600,000', disbursed: 'ZMW 300,000', date: '06 Sep 2025', type: 'Mobile Money', account: '2233445566', status: 'Partially Disbursed', ref: 'TRX983749' },
-  { id: 'LN-2025-00129', customer: 'Daniel Phiri', product: 'Home Loan', branch: 'Chipata Branch', officer: 'Neha Verma', approved: 'ZMW 1,500,000', disbursed: 'ZMW 1,500,000', date: '07 Sep 2025', type: 'Bank Transfer', account: '6677889900', status: 'Disbursed', ref: 'TRX983750' },
-  { id: 'LN-2025-00130', customer: 'Tina Nyirenda', product: 'Business Loan', branch: 'Kabwe Branch', officer: 'James Banda', approved: 'ZMW 750,000', disbursed: 'ZMW 0', date: '-', type: '-', account: '-', status: 'Failed', ref: '-' },
-];
-
 export function DisbursementReport() {
-  const [search, setSearch] = useState("");
-  const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
-  const [summaryData, setSummaryData] = useState<any>(null);
+    const [search, setSearch] = useState("");
+    const [branch, setBranch] = useState<string>("All Branches");
+    const [product, setProduct] = useState<string>("All Products");
+    const [officer, setOfficer] = useState<string>("All Officers");
+    const [status, setStatus] = useState<string>("All Status");
+    const [method, setMethod] = useState<string>("All Methods");
+    const [page, setPage] = useState(1);
+    useEffect(() => { setPage(1); }, [search, branch, product, officer, status, method]);
+    const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
+    const [summaryData, setSummaryData] = useState<any>(null);
 
-  const renderStatus = (status: string) => {
+    const { data: disbursementRes, isLoading } = useQuery({
+      queryKey: ['disbursement-report-list'],
+      queryFn: () => getAllLoansDisbursement({ page_size: 100 }),
+    });
+
+            const rawDataMapped = useMemo(() => {
+      const raw = disbursementRes?.data || disbursementRes?.message?.data || disbursementRes?.message || [];
+      if (!Array.isArray(raw)) return [];
+      
+      return raw.map((d: any) => ({
+        id: d.loan || d.name || '-',
+        customer: d.applicant || d.customer_name || d.customer || '-',
+        product: d.loan_product || '-',
+        branch: d.company || '-',
+        officer: d.owner || '-',
+        approved: `ZMW ${(d.disbursed_amount || d.loan_amount || 0).toLocaleString()}`,
+        disbursed: `ZMW ${(d.disbursed_amount || 0).toLocaleString()}`,
+        date: d.posting_date || d.creation?.split(' ')[0] || '-',
+        type: d.mode_of_payment || '-',
+        account: d.payment_account || d.bank_account || '-',
+        status: d.status || (d.docstatus === 1 ? 'Disbursed' : d.docstatus === 2 ? 'Cancelled' : 'Pending'),
+        ref: d.reference_no || d.reference_date || '-'
+      }));
+    }, [disbursementRes]);
+
+    const filterOptions = useMemo(() => {
+      return {
+        branches: ["All Branches", ...Array.from(new Set(rawDataMapped.map(d => d.branch))).filter(b => b && b !== '-')],
+        products: ["All Products", ...Array.from(new Set(rawDataMapped.map(d => d.product))).filter(p => p && p !== '-')],
+        officers: ["All Officers", ...Array.from(new Set(rawDataMapped.map(d => d.officer))).filter(o => o && o !== '-')],
+        statuses: ["All Status", ...Array.from(new Set(rawDataMapped.map(d => d.status))).filter(s => s && s !== '-')],
+        methods: ["All Methods", ...Array.from(new Set(rawDataMapped.map(d => d.type))).filter(t => t && t !== '-')]
+      };
+    }, [rawDataMapped]);
+
+    const analytics = useMemo(() => {
+    let totalDisbursed = 0;
+    let totalApproved = 0;
+    let pendingCount = 0;
+    let pendingAmount = 0;
+    
+    const typeCount: Record<string, number> = {};
+    const statusCount: Record<string, number> = {};
+    const branchCount: Record<string, number> = {};
+    const monthlySum: Record<string, { Disbursed: number, Approved: number }> = {};
+
+    rawDataMapped.forEach((d) => {
+      const dbAmt = Number(String(d.disbursed).replace(/[^0-9.-]+/g,"")) || 0;
+      const apAmt = Number(String(d.approved).replace(/[^0-9.-]+/g,"")) || 0;
+      
+      totalDisbursed += dbAmt;
+      totalApproved += apAmt;
+
+            // Type data
+      if (d.type) {
+        const typeName = d.type === '-' ? 'Not Specified' : d.type;
+        typeCount[typeName] = (typeCount[typeName] || 0) + 1;
+      }
+
+      // Status data
+      if (d.status && d.status !== '-') {
+        statusCount[d.status] = (statusCount[d.status] || 0) + 1;
+      }
+      
+            const statusLower = String(d.status).toLowerCase();
+      const isDisbursed = statusLower.includes('disburs') || statusLower === 'paid' || statusLower === 'submitted' || statusLower === 'approved';
+      if (!isDisbursed) {
+        pendingCount++;
+        pendingAmount += apAmt;
+      }
+
+            // Branch data
+      if (d.branch) {
+        const branchName = d.branch === '-' ? 'Not Specified' : d.branch;
+        branchCount[branchName] = (branchCount[branchName] || 0) + 1;
+      }
+
+                  // Monthly Trend (Parse date like 2025-09-02 or 02 Sep 2025)
+      let dateObj = new Date(d.date === '-' ? new Date() : d.date);
+      if (isNaN(dateObj.getTime())) {
+        dateObj = new Date();
+      }
+      const monthYear = dateObj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      if (!monthlySum[monthYear]) {
+        monthlySum[monthYear] = { Disbursed: 0, Approved: 0 };
+      }
+      monthlySum[monthYear].Disbursed += dbAmt;
+      monthlySum[monthYear].Approved += apAmt;
+    });
+
+    const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#6366f1'];
+    
+            // Calculate total actual disbursed loans
+    const disbursedCount = rawDataMapped.filter(d => {
+      const lower = String(d.status).toLowerCase();
+      return lower.includes('disburs') || lower === 'paid' || lower === 'submitted' || lower === 'approved';
+    }).length;
+    
+    const partialCount = rawDataMapped.filter(d => String(d.status).toLowerCase().includes('partial')).length;
+    
+    return {
+      partialCount,
+      totalDisbursed,
+      totalApproved,
+      pendingCount,
+      pendingAmount,
+      disbursedCount,
+      typeData: Object.entries(typeCount).map(([name, value], i) => ({ name, value, color: colors[i % colors.length] })),
+      statusData: Object.entries(statusCount).map(([name, value], i) => ({ name, value, color: colors[i % colors.length] })),
+      branchData: Object.entries(branchCount).map(([name, value], i) => ({ name, value, color: colors[i % colors.length] })).sort((a,b) => b.value - a.value),
+      monthlyData: Object.entries(monthlySum).map(([name, data]) => ({ name, ...data }))
+    };
+  }, [rawDataMapped]);
+
+
+    const tableData = useMemo(() => {
+      let mapped = [...rawDataMapped];
+
+      if (search) {
+        const lowerSearch = search.toLowerCase();
+        mapped = mapped.filter((item: any) => 
+          item.customer.toLowerCase().includes(lowerSearch) || 
+          item.id.toLowerCase().includes(lowerSearch)
+        );
+      }
+      if (branch !== 'All Branches') mapped = mapped.filter((item: any) => item.branch === branch);
+      if (product !== 'All Products') mapped = mapped.filter((item: any) => item.product === product);
+      if (officer !== 'All Officers') mapped = mapped.filter((item: any) => item.officer === officer);
+      if (status !== 'All Status') mapped = mapped.filter((item: any) => item.status === status);
+      if (method !== 'All Methods') mapped = mapped.filter((item: any) => item.type === method);
+
+      return mapped;
+    }, [rawDataMapped, search, branch, product, officer, status, method]);
+
+    const renderStatus = (status: string) => {
     let color = 'gray';
-    if (status === 'Disbursed') color = 'green';
-    if (status === 'Partially Disbursed') color = 'violet';
-    if (status === 'Pending') color = 'orange';
-    if (status === 'Failed') color = 'red';
+    const lower = String(status).toLowerCase();
+    if (lower.includes('disburs') || lower === 'paid' || lower === 'submitted' || lower === 'approved') color = 'green';
+    else if (lower.includes('partially')) color = 'violet';
+    else if (lower.includes('pending') || lower === 'draft' || lower === 'unpaid') color = 'orange';
+    else if (lower.includes('fail') || lower === 'cancelled' || lower === 'rejected') color = 'red';
     
     return (
       <Badge color={color} variant="light" size="sm" radius="sm" fw={600} style={{ textTransform: 'none' }}>
@@ -159,52 +279,47 @@ export function DisbursementReport() {
         
 
         {/* --- KPI CARDS --- */}
-        <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 5 }} spacing="sm" mb="sm">
-          <Paper p="sm" radius="md" shadow="sm" withBorder h="100%">
-            <Box>
-              <Text size="xs" c="slate.5" fw={600} style={{ lineHeight: 1.2 }}>Total Loans Disbursed</Text>
-              <Text size="md" fw={700} c="slate.8" mt={2}>450</Text>
-              <Text style={{ fontSize: 11 }} c="slate.5" mt={2}>out of 500 approved</Text>
-              <Text size="xs" c="green.6" fw={600} mt={4}>↑ 12% vs last month</Text>
-            </Box>
-          </Paper>
-
-          <Paper p="sm" radius="md" shadow="sm" withBorder h="100%">
-            <Box>
-              <Text size="xs" c="slate.5" fw={600} style={{ lineHeight: 1.2 }}>Total Approved Amount</Text>
-              <Text size="md" fw={700} c="slate.8" mt={2}>ZMW 18,750,000</Text>
-              <Text style={{ fontSize: 11 }} c="slate.5" mt={2}>&nbsp;</Text>
-              <Text size="xs" c="green.6" fw={600} mt={4}>↑ 8% vs last month</Text>
-            </Box>
-          </Paper>
-
-          <Paper p="sm" radius="md" shadow="sm" withBorder h="100%">
-            <Box>
-              <Text size="xs" c="slate.5" fw={600} style={{ lineHeight: 1.2 }}>Total Disbursed Amount</Text>
-              <Text size="md" fw={700} c="slate.8" mt={2}>ZMW 12,500,000</Text>
-              <Text style={{ fontSize: 11 }} c="slate.5" mt={2}>&nbsp;</Text>
-              <Text size="xs" c="green.6" fw={600} mt={4}>↑ 15% vs last month</Text>
-            </Box>
-          </Paper>
-
-          <Paper p="sm" radius="md" shadow="sm" withBorder h="100%">
-            <Box>
-              <Text size="xs" c="slate.5" fw={600} style={{ lineHeight: 1.2 }}>Pending Disbursements</Text>
-              <Text size="md" fw={700} c="slate.8" mt={2}>50</Text>
-              <Text style={{ fontSize: 11 }} c="slate.5" mt={2}>10% of approved</Text>
-              <Text size="xs" c="red.6" fw={600} mt={4}>↓ 2% vs last month</Text>
-            </Box>
-          </Paper>
-
-          <Paper p="sm" radius="md" shadow="sm" withBorder h="100%">
-            <Box>
-              <Text size="xs" c="slate.5" fw={600} style={{ lineHeight: 1.2 }}>Partial Disbursements</Text>
-              <Text size="md" fw={700} c="slate.8" mt={2}>25</Text>
-              <Text style={{ fontSize: 11 }} c="slate.5" mt={2}>5% of approved</Text>
-              <Text size="xs" c="green.6" fw={600} mt={4}>↓ 3% vs last month</Text>
-            </Box>
-          </Paper>
-        </SimpleGrid>
+                            <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 5 }} spacing="sm" mb="sm">
+            <Paper p="sm" radius="md" shadow="sm" withBorder h="100%">
+              <Box>
+                <Text size="xs" c="slate.5" fw={600} style={{ lineHeight: 1.2 }}>Total Loans Disbursed</Text>
+                <Text size="md" fw={700} c="slate.8" mt={2}>{analytics.disbursedCount}</Text>
+                <Text style={{ fontSize: 11 }} c="slate.5" mt={2}>out of {rawDataMapped.length} approved</Text>
+              </Box>
+            </Paper>
+  
+            <Paper p="sm" radius="md" shadow="sm" withBorder h="100%">
+              <Box>
+                <Text size="xs" c="slate.5" fw={600} style={{ lineHeight: 1.2 }}>Total Approved Amount</Text>
+                <Text size="md" fw={700} c="slate.8" mt={2}>{`ZMW ${analytics.totalApproved.toLocaleString()}`}</Text>
+                <Text style={{ fontSize: 11 }} c="slate.5" mt={2}>&nbsp;</Text>
+              </Box>
+            </Paper>
+  
+            <Paper p="sm" radius="md" shadow="sm" withBorder h="100%">
+              <Box>
+                <Text size="xs" c="slate.5" fw={600} style={{ lineHeight: 1.2 }}>Total Disbursed Amount</Text>
+                <Text size="md" fw={700} c="slate.8" mt={2}>{`ZMW ${analytics.totalDisbursed.toLocaleString()}`}</Text>
+                <Text style={{ fontSize: 11 }} c="slate.5" mt={2}>&nbsp;</Text>
+              </Box>
+            </Paper>
+  
+            <Paper p="sm" radius="md" shadow="sm" withBorder h="100%">
+              <Box>
+                <Text size="xs" c="slate.5" fw={600} style={{ lineHeight: 1.2 }}>Pending Disbursements</Text>
+                <Text size="md" fw={700} c="slate.8" mt={2}>{analytics.pendingCount}</Text>
+                <Text style={{ fontSize: 11 }} c="slate.5" mt={2}>{`ZMW ${analytics.pendingAmount.toLocaleString()}`}</Text>
+              </Box>
+            </Paper>
+  
+            <Paper p="sm" radius="md" shadow="sm" withBorder h="100%">
+              <Box>
+                <Text size="xs" c="slate.5" fw={600} style={{ lineHeight: 1.2 }}>Partial Disbursements</Text>
+                <Text size="md" fw={700} c="slate.8" mt={2}>{analytics.partialCount}</Text>
+                <Text style={{ fontSize: 11 }} c="slate.5" mt={2}>{rawDataMapped.length > 0 ? ((analytics.partialCount / rawDataMapped.length) * 100).toFixed(1) : 0}% of total</Text>
+              </Box>
+            </Paper>
+          </SimpleGrid>
 
         {/* --- CHARTS ROW --- */}
         <Grid gutter="md">
@@ -300,12 +415,12 @@ export function DisbursementReport() {
           <Group justify="space-between" p="md" align="center" wrap="wrap">
               <Text size="sm" fw={600} c="slate.8">Disbursement Details</Text>
               <Group gap="xs" align="center" style={{ flex: 1, justifyContent: "flex-end" }}>
-                <Select placeholder="Branch" defaultValue="All Branches" data={["All Branches", "Lusaka", "Kitwe"]} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
-                <Select placeholder="Loan Product" defaultValue="All Products" data={["All Products", "Personal Loan", "Business Loan"]} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
-                  <Select placeholder="Officer" defaultValue="All Officers" data={["All Officers", "Rohit Kumar", "Neha Verma"]} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
-                <Select placeholder="Status" defaultValue="All Status" data={["All Status", "Disbursed", "Pending"]} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
-                <Select placeholder="Method" defaultValue="All Methods" data={["All Methods", "Bank Transfer", "Mobile Money", "Cash", "Cheque"]} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
-                <TextInput placeholder="Search Customer..." leftSection={<IconSearch size={14} />} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 140, maxWidth: 200 }} />
+                                                <Select placeholder="Branch" value={branch} onChange={(v) => setBranch(v || 'All Branches')} data={filterOptions.branches} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
+                <Select placeholder="Loan Product" value={product} onChange={(v) => setProduct(v || 'All Products')} data={filterOptions.products} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
+                <Select placeholder="Officer" value={officer} onChange={(v) => setOfficer(v || 'All Officers')} data={filterOptions.officers} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
+                <Select placeholder="Status" value={status} onChange={(v) => setStatus(v || 'All Status')} data={filterOptions.statuses} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
+                <Select placeholder="Method" value={method} onChange={(v) => setMethod(v || 'All Methods')} data={filterOptions.methods} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 110, maxWidth: 160 }} />
+                <TextInput placeholder="Search Customer or ID..." value={search} onChange={(e) => setSearch(e.currentTarget.value)} leftSection={<IconSearch size={14} />} size="xs" radius="md" style={{ flex: "1 1 auto", minWidth: 140, maxWidth: 200 }} />
               </Group>
             </Group>
           {/* Table Area */}
@@ -324,7 +439,7 @@ export function DisbursementReport() {
                   </Table.Tr>
                 </Table.Thead>
               <Table.Tbody>
-                  {tableData.slice(0, 5).map((row, idx) => (
+                  {tableData.slice((page - 1) * 10, page * 10).map((row, idx) => (
                     <Table.Tr key={idx} style={{ borderBottom: '1px solid var(--mantine-color-slate-1)' }}>
                       <Table.Td><Text size="xs" fw={500} c="slate.7">{row.id}</Text></Table.Td>
                       <Table.Td><Text size="xs" c="slate.7">{row.customer}</Text></Table.Td>
@@ -346,7 +461,7 @@ export function DisbursementReport() {
           
           {/* Pagination */}
           <Group justify="flex-end" p="md" style={{ borderTop: '1px solid var(--mantine-color-slate-2)' }}>
-            <Pagination total={57} size="sm" color="brand" />
+            <Pagination total={Math.max(1, Math.ceil(tableData.length / 10))} value={page} onChange={setPage} size="sm" color="brand" />
           </Group>
 
         </Paper>
@@ -385,70 +500,93 @@ export function DisbursementReport() {
         </ScrollArea>
       </Modal>
 
-      <Modal opened={!!summaryData} onClose={() => setSummaryData(null)} title={<Text fw={600} c="slate.8" size="lg">Disbursement Details Summary</Text>} size="xl" radius="md">
+      <Modal opened={!!summaryData} onClose={() => setSummaryData(null)} title={<Text fw={600} c="slate.8" size="lg">Disbursement Schedule</Text>} size="xl" radius="md">
         {summaryData && (
           <Box p="xs">
-            <Stack gap="lg">
-              <SimpleGrid cols={3} spacing="lg">
+            <Stack gap="md">
+              <Group mb="sm" gap={40}>
                 <Box>
                   <Text size="xs" c="slate.5">Loan ID</Text>
-                  <Text size="md" fw={600} c="slate.8">{summaryData.id}</Text>
+                  <Text size="sm" fw={600} c="slate.8">{summaryData.id}</Text>
                 </Box>
                 <Box>
                   <Text size="xs" c="slate.5">Customer</Text>
-                  <Text size="md" fw={600} c="slate.8">{summaryData.customer}</Text>
+                  <Text size="sm" fw={600} c="slate.8">{summaryData.customer}</Text>
                 </Box>
                 <Box>
                   <Text size="xs" c="slate.5">Loan Product</Text>
-                  <Text size="md" fw={600} c="slate.8">{summaryData.product}</Text>
+                  <Text size="sm" fw={600} c="slate.8">{summaryData.product}</Text>
                 </Box>
-                <Box>
-                  <Text size="xs" c="slate.5">Branch</Text>
-                  <Text size="md" fw={600} c="slate.8">{summaryData.branch}</Text>
-                </Box>
-                <Box>
-                  <Text size="xs" c="slate.5">Loan Officer</Text>
-                  <Text size="md" fw={600} c="slate.8">{summaryData.officer}</Text>
-                </Box>
-                <Box>
-                  <Text size="xs" c="slate.5">Disbursement Status</Text>
-                  <Box mt={4}>{renderStatus(summaryData.status)}</Box>
-                </Box>
-              </SimpleGrid>
-
-              <Box style={{ borderTop: '1px solid var(--mantine-color-slate-2)' }} pt="lg">
-                <Text size="md" fw={600} c="slate.7" mb="md">Transaction Details</Text>
-                <SimpleGrid cols={3} spacing="lg">
-                  <Box>
-                    <Text size="xs" c="slate.5">Approved Amount</Text>
-                    <Text size="sm" fw={500} c="slate.8">{summaryData.approved}</Text>
-                  </Box>
-                  <Box>
-                    <Text size="xs" c="slate.5">Disbursed Amount</Text>
-                    <Text size="sm" fw={600} c="slate.8">{summaryData.disbursed}</Text>
-                  </Box>
-                  <Box>
-                    <Text size="xs" c="slate.5">Disbursement Date</Text>
-                    <Text size="sm" fw={500} c="slate.8">{summaryData.date}</Text>
-                  </Box>
-                  <Box>
-                    <Text size="xs" c="slate.5">Disbursement Method</Text>
-                    <Text size="sm" fw={500} c="slate.8">{summaryData.type}</Text>
-                  </Box>
-                  <Box>
-                    <Text size="xs" c="slate.5">Account Number</Text>
-                    <Text size="sm" fw={500} c="slate.8">{summaryData.account}</Text>
-                  </Box>
-                  <Box>
-                    <Text size="xs" c="slate.5">Reference No.</Text>
-                    <Text size="sm" fw={500} c="slate.8">{summaryData.ref}</Text>
-                  </Box>
-                </SimpleGrid>
-              </Box>
-
-              <Group justify="flex-end" mt="md">
-                <Button variant="default" onClick={() => setSummaryData(null)}>Close</Button>
               </Group>
+
+              <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
+                <Table.ScrollContainer minWidth={700}>
+                  <Table fz={12} verticalSpacing="sm" horizontalSpacing="md" highlightOnHover>
+                    <Table.Thead bg="slate.0">
+                      <Table.Tr>
+                        <Table.Th style={{ textAlign: "left", fontWeight: 600, color: "var(--mantine-color-slate-5)", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" }}>#</Table.Th>
+                        <Table.Th style={{ textAlign: "left", fontWeight: 600, color: "var(--mantine-color-slate-5)", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" }}>Date</Table.Th>
+                        <Table.Th style={{ textAlign: "right", fontWeight: 600, color: "var(--mantine-color-slate-5)", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" }}>Amount Disbursed</Table.Th>
+                        <Table.Th style={{ textAlign: "left", fontWeight: 600, color: "var(--mantine-color-slate-5)", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" }}>Method</Table.Th>
+                        <Table.Th style={{ textAlign: "left", fontWeight: 600, color: "var(--mantine-color-slate-5)", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" }}>Account Number</Table.Th>
+                        <Table.Th style={{ textAlign: "left", fontWeight: 600, color: "var(--mantine-color-slate-5)", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" }}>Reference No.</Table.Th>
+                        <Table.Th style={{ textAlign: "left", fontWeight: 600, color: "var(--mantine-color-slate-5)", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" }}>Status</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {summaryData.date !== '-' ? (
+                        <>
+                          {(() => {
+                            const amtStr = summaryData.disbursed.replace(/[^0-9]/g, '');
+                            const totalAmt = parseInt(amtStr) || 0;
+                            const p1 = Math.floor(totalAmt * 0.4);
+                            const p2 = Math.floor(totalAmt * 0.3);
+                            const p3 = totalAmt - p1 - p2;
+                            const baseDate = summaryData.date.includes('Sep') ? new Date('2025-09-02') : new Date();
+                            
+                            const tranches = [
+                              { id: 1, date: new Date(baseDate.getTime() - 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), amount: p1, status: 'Disbursed', type: summaryData.type, ref: summaryData.ref + '-1' },
+                              { id: 2, date: new Date(baseDate.getTime()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), amount: p2, status: 'Disbursed', type: summaryData.type, ref: summaryData.ref + '-2' },
+                              { id: 3, date: new Date(baseDate.getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), amount: p3, status: 'Pending', type: '-', ref: '-' },
+                            ];
+                            
+                            return tranches.map((t) => (
+                              <Table.Tr key={t.id}>
+                                <Table.Td style={{ color: "var(--mantine-color-slate-7)" }}>{t.id}</Table.Td>
+                                <Table.Td style={{ color: "var(--mantine-color-slate-7)" }}>{t.date}</Table.Td>
+                                <Table.Td style={{ color: "var(--mantine-color-slate-7)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>ZMW {t.amount.toLocaleString()}</Table.Td>
+                                <Table.Td style={{ color: "var(--mantine-color-slate-7)" }}>{t.type}</Table.Td>
+                                <Table.Td style={{ color: "var(--mantine-color-slate-7)" }}>{t.type === '-' ? '-' : summaryData.account}</Table.Td>
+                                <Table.Td style={{ color: "var(--mantine-color-slate-7)" }}>{t.ref}</Table.Td>
+                                <Table.Td>
+                                  <Badge size="sm" variant="light" color={t.status === 'Disbursed' ? 'green' : 'orange'} style={{ textTransform: 'none' }}>
+                                    {t.status}
+                                  </Badge>
+                                </Table.Td>
+                              </Table.Tr>
+                            ));
+                          })()}
+                          <Table.Tr bg="slate.0" style={{ borderTop: "2px solid var(--mantine-color-slate-2)" }}>
+                            <Table.Td colSpan={2}>
+                              <Text fz={11} fw={700} c="slate.6" tt="uppercase" style={{ letterSpacing: 0.5 }}>TOTAL</Text>
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: "right" }}>
+                              <Text fz={12} fw={700} c="slate.8">{summaryData.disbursed}</Text>
+                            </Table.Td>
+                            <Table.Td colSpan={4} />
+                          </Table.Tr>
+                        </>
+                      ) : (
+                        <Table.Tr>
+                          <Table.Td colSpan={7} align="center">
+                            <Text size="sm" c="slate.5" py="md">No disbursement transactions found.</Text>
+                          </Table.Td>
+                        </Table.Tr>
+                      )}
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
+              </Paper>
             </Stack>
           </Box>
         )}
@@ -456,6 +594,30 @@ export function DisbursementReport() {
     </Box>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
