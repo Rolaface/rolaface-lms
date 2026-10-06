@@ -299,6 +299,13 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     ],
   },
   {
+    path: "/investor",
+    label: "Investor",
+    icon: IconUsers,
+    matchPrefix: true,
+    modules: ["Investor"],
+  },
+  {
     path: "/settings",
     label: "Settings",
     icon: IconTool,
@@ -569,7 +576,7 @@ export function Sidebar({
 
 
   const HIDDEN_IN_LENDING_MODE = ["/origination", "/origination-setup"];
-  const HIDDEN_IN_LOS_MODE = ["/setup", "/operations", "/reports"];
+  const HIDDEN_IN_LOS_MODE = ["/setup", "/operations", "/reports", "/investor"];
 
   const navItemsForSubscription = React.useMemo(
     () =>
