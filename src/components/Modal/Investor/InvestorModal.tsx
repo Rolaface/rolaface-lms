@@ -1,46 +1,184 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { Affix, Box, Button, Group, Paper, Text, UnstyledButton } from "@mantine/core";
 import {
-  Affix,
-  ActionIcon,
-  Avatar,
-  Box,
-  Button,
-  Group,
-  Modal,
-  Paper,
-  Text,
-  ThemeIcon,
-  useMantineTheme,
-} from "@mantine/core";
-import { IconCheck, IconPencil, IconX } from "@tabler/icons-react";
-import {
-  CUSTOMERS,
-  PRODUCTS,
   STEP_NAMES,
   calcSchedule,
   createInitialState,
-  inr,
   validateTerms,
   type FundedInvestment,
   type ModalState,
+  type TabProps,
 } from "./InvestorModalShared";
+import {
+  PROCESSING_STEP_COUNT,
+  ReadOnlyFrame,
+  STAGES,
+  StageShell,
+  StepDot,
+  ViewOnlyBar,
+} from "./StageShell";
 import { InvestorProduct } from "./InvestorProduct";
 import { TermsSchedule } from "./TermsSchedule";
 import { ContractGeneration } from "./ContractGeneration";
 import { FundingAllotment } from "./FundingAllotment";
-import { EarningsStatements } from "./EarningsStatements";
-import { Maturity } from "./Maturity";
+import { EarningsStatementsModal } from "./EarningsStatementModal";
+import { MaturityModal } from "./MaturityModal";
 
 interface InvestorModalProps {
   opened: boolean;
   onClose: () => void;
   /** Number of investments currently in the list (used to build INV-/CON- numbers). */
   existingCount: number;
-  /** Called when the investor's funds are confirmed (stage 4). */
+  /** Called when the investor's funds are confirmed (Funding & Allotment). */
   onFunded: (investment: FundedInvestment) => void;
-  /** Called when the workflow is completed (stage 6). */
+  /** Called when the workflow is completed (Maturity modal). */
   onCompleted: (investmentNo: string, status: "Redeemed" | "Renewed") => void;
 }
+
+/*
+ * state.step keeps its old meaning (0..5), so ModalState and the tab
+ * components are untouched:
+ *
+ *   0..3  Investor Processing modal    (this file, top nav)
+ *   4     Earnings & Statements modal  (EarningsStatementsModal.tsx)
+ *   5     Maturity modal               (MaturityModal.tsx)
+ */
+
+const PROCESSING_STEPS = STEP_NAMES.slice(0, PROCESSING_STEP_COUNT);
+const LAST_PROCESSING_STEP = PROCESSING_STEP_COUNT - 1;
+
+const noop = () => {};
+
+/* ------------------------- Top nav (4 steps) ------------------------- */
+
+/**
+ * Horizontal nav for the four Investor Processing steps.
+ * - Without onSelect it is a progress indicator (movement is via Back / Next).
+ * - With onSelect (view-only mode) every step is clickable.
+ */
+function ProcessingTopNav({
+  current,
+  doneBefore,
+  onSelect,
+}: {
+  current: number;
+  /** Steps with an index lower than this are shown as done. */
+  doneBefore: number;
+  onSelect?: (index: number) => void;
+}) {
+  return (
+    <div className="inv-topnav">
+      {PROCESSING_STEPS.map((name, i) => {
+        const active = i === current;
+        const done = i < doneBefore;
+        const item = (
+          <Group
+            gap={8}
+            wrap="nowrap"
+            px={10}
+            py={7}
+            style={{
+              borderRadius: "var(--mantine-radius-md)",
+              whiteSpace: "nowrap",
+              background: active ? "var(--mantine-color-white)" : undefined,
+              boxShadow: active ? "0 0 0 1px var(--mantine-color-slate-2)" : undefined,
+            }}
+          >
+            <StepDot n={i + 1} active={active} done={done} />
+            <Text fz="sm" fw={600} c={active || done ? "slate.8" : "slate.5"}>
+              {name}
+            </Text>
+          </Group>
+        );
+        return (
+          <Fragment key={name}>
+            {i > 0 && <div className="inv-topnav-line" />}
+            {onSelect ? (
+              <UnstyledButton
+                onClick={() => onSelect(i)}
+                aria-current={active ? "step" : undefined}
+                style={{ flex: "none", borderRadius: "var(--mantine-radius-md)" }}
+              >
+                {item}
+              </UnstyledButton>
+            ) : (
+              <Box style={{ flex: "none" }} aria-current={active ? "step" : undefined}>
+                {item}
+              </Box>
+            )}
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------------------- The four processing tabs --------------------- */
+
+function ProcessingTab({
+  step,
+  tabProps,
+  existingCount,
+  onFunded,
+}: {
+  step: number;
+  tabProps: TabProps;
+  existingCount: number;
+  onFunded: (investment: FundedInvestment) => void;
+}) {
+  switch (step) {
+    case 0:
+      return <InvestorProduct {...tabProps} />;
+    case 1:
+      return <TermsSchedule {...tabProps} />;
+    case 2:
+      return <ContractGeneration {...tabProps} existingCount={existingCount} />;
+    case 3:
+      return (
+        <FundingAllotment
+          {...tabProps}
+          existingCount={existingCount}
+          onFunded={onFunded}
+        />
+      );
+    default:
+      return null;
+  }
+}
+
+/**
+ * Investor Processing as shown from the side nav of the two later modals:
+ * same top nav (clickable), same four tabs, nothing can be changed.
+ */
+export function ProcessingReadOnlyView({
+  state,
+  schedule,
+  existingCount,
+}: Pick<TabProps, "state" | "schedule"> & { existingCount: number }) {
+  const [viewStep, setViewStep] = useState(0);
+  return (
+    <>
+      <ViewOnlyBar label={STAGES[0].label} />
+      <ProcessingTopNav
+        current={viewStep}
+        doneBefore={PROCESSING_STEP_COUNT}
+        onSelect={setViewStep}
+      />
+      <section className="inv-content">
+        <ReadOnlyFrame key={viewStep}>
+          <ProcessingTab
+            step={viewStep}
+            tabProps={{ state, update: noop, schedule, onToast: noop }}
+            existingCount={existingCount}
+            onFunded={noop}
+          />
+        </ReadOnlyFrame>
+      </section>
+    </>
+  );
+}
+
+/* ------------------------------- Modal ------------------------------- */
 
 export function InvestorModal({
   opened,
@@ -49,7 +187,6 @@ export function InvestorModal({
   onFunded,
   onCompleted,
 }: InvestorModalProps) {
-  const theme = useMantineTheme();
   const [state, setState] = useState<ModalState>(createInitialState);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
@@ -73,8 +210,14 @@ export function InvestorModal({
   };
 
   const schedule = calcSchedule(state);
-  const customer = CUSTOMERS[state.customerIndex];
-  const product = PRODUCTS[state.productIndex];
+  const tabProps: TabProps = { state, update, schedule, onToast: showToast };
+
+  /** 0 = Investor Processing, 1 = Earnings & Statements, 2 = Maturity. */
+  const stage =
+    state.step < PROCESSING_STEP_COUNT ? 0 : state.step - PROCESSING_STEP_COUNT + 1;
+  /** Clamped so this modal keeps showing Funding & Allotment while it closes. */
+  const processingStep = Math.min(state.step, LAST_PROCESSING_STEP);
+  const isLastProcessingStep = processingStep === LAST_PROCESSING_STEP;
 
   const canNext = () => {
     switch (state.step) {
@@ -86,267 +229,96 @@ export function InvestorModal({
         return state.contractStatus === "Executed";
       case 3:
         return state.funded;
-      case 4:
-        return !!schedule && state.monthsElapsed >= schedule.totalMonths;
-      case 5:
-        return !!state.decision && !state.completed;
       default:
         return false;
     }
   };
 
-  const handleNext = () => {
-    if (state.step === 5) {
-      if (!state.decision) return;
-      onCompleted(
-        state.investmentNo,
-        state.decision === "redeem" ? "Redeemed" : "Renewed",
-      );
-      update({ completed: true });
-      showToast("Workflow completed for " + state.investmentNo);
-      closeTimer.current = window.setTimeout(onClose, 900);
-      return;
-    }
-    update({ step: state.step + 1 });
+  /** Next inside the four steps; on the last one it submits and pops Earnings & Statements. */
+  const handleNext = () => update({ step: state.step + 1 });
+
+  const handleComplete = () => {
+    if (!state.decision) return;
+    onCompleted(
+      state.investmentNo,
+      state.decision === "redeem" ? "Redeemed" : "Renewed",
+    );
+    update({ completed: true });
+    showToast("Workflow completed for " + state.investmentNo);
+    closeTimer.current = window.setTimeout(onClose, 900);
   };
 
-  const tabProps = { state, update, schedule, onToast: showToast };
+  const showBack =
+    state.step > 0 && !(state.step >= 3 && state.funded) && !state.completed;
 
-  const renderTab = () => {
-    switch (state.step) {
-      case 0:
-        return <InvestorProduct {...tabProps} />;
-      case 1:
-        return <TermsSchedule {...tabProps} />;
-      case 2:
-        return <ContractGeneration {...tabProps} existingCount={existingCount} />;
-      case 3:
-        return (
-          <FundingAllotment
-            {...tabProps}
-            existingCount={existingCount}
-            onFunded={onFunded}
-          />
-        );
-      case 4:
-        return <EarningsStatements {...tabProps} />;
-      case 5:
-        return <Maturity {...tabProps} />;
-      default:
-        return null;
-    }
-  };
-
-  const showBack = state.step > 0 && !(state.step >= 3 && state.funded) && !state.completed;
+  const processingView = (
+    <ProcessingReadOnlyView
+      state={state}
+      schedule={schedule}
+      existingCount={existingCount}
+    />
+  );
 
   return (
     <>
-      <Modal
-        opened={opened}
+      {/* Stage 1 — Investor Processing (4 steps, top nav, no side nav) */}
+      <StageShell
+        opened={opened && stage === 0}
         onClose={onClose}
-        centered
-        radius="lg"
-        withCloseButton={false}
-        size="90vw"
-        padding={0}
-        lockScroll
-        closeOnClickOutside={false}
-        closeOnEscape={false}
-         styles={{
-        content: {
-          height: "92vh",
-          maxHeight: "99vh",
-          width: "90vw",
-          maxWidth: "1600px",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        },
-          header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
-          body: {
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            padding: 0,
-            minHeight: 0,
-            overflow: "hidden",
-          },
-        }}
-      >
-        <style>{`
-          .inv-main { display: flex; flex: 1; min-height: 0; }
-          .inv-nav { width: 260px; flex: none; padding: 14px 10px; border-right: 1px solid var(--mantine-color-slate-2); overflow-y: auto; }
-          .inv-content { flex: 1; overflow: auto; padding: 16px 18px; }
-          @media (max-width: 760px) {
-            .inv-main { flex-direction: column; }
-            .inv-nav { width: auto; display: flex; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--mantine-color-slate-2); padding: 8px; }
-          }
-        `}</style>
-
-        {/* Header */}
-        <Group
-          gap="sm"
-          wrap="nowrap"
-          px={18}
-          py={14}
-          style={{ background: theme.other.brandGradient, color: "var(--mantine-color-white)" }}
-        >
-          <ThemeIcon size={34} radius="md" color="white" c="brand.6">
-            <IconPencil size={18} />
-          </ThemeIcon>
-          <Box>
-            <Text fw={700} c="white">
-              New Investment
-            </Text>
-            <Text fz="xs" c="white" style={{ opacity: 0.85 }}>
-              Stage {state.step + 1} of 6 — {STEP_NAMES[state.step]}
-            </Text>
-          </Box>
-          <ActionIcon
-            variant="subtle"
-            color="white"
-            ml="auto"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            <IconX size={18} />
-          </ActionIcon>
-        </Group>
-
-        {/* Customer bar */}
-        {customer && (
-          <Group
-            gap="sm"
-            wrap="nowrap"
-            px={18}
-            py={10}
-            style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
-          >
-            <Avatar color="brand" variant="light" radius="xl" size={34}>
-              {customer.name
-                .split(" ")
-                .map((w) => w[0])
-                .slice(0, 2)
-                .join("")}
-            </Avatar>
-            <Box>
-              <Text fw={700} fz="sm" c="slate.8">
-                {customer.name}
-              </Text>
-              <Text fz={11} c="slate.5">
-                {product ? product.name : "No product selected"}
-              </Text>
-            </Box>
-            <Group gap={18} ml="auto" wrap="nowrap">
-              <Box ta="right">
-                <Text fz={11} c="slate.5">
-                  Amount
-                </Text>
-                <Text fw={700} fz="sm" c="slate.8">
-                  {state.amount ? inr(state.amount) : "—"}
-                </Text>
-              </Box>
-              <Box ta="right">
-                <Text fz={11} c="slate.5">
-                  Investment No.
-                </Text>
-                <Text fw={700} fz="sm" c="slate.8">
-                  {state.investmentNo || "Pending"}
-                </Text>
-              </Box>
-            </Group>
-          </Group>
-        )}
-
-        {/* Stage navigation + active tab */}
-        <Box className="inv-main">
-          <nav className="inv-nav">
-            {STEP_NAMES.map((name, i) => {
-              const active = i === state.step;
-              const done = i < state.step;
-              return (
-                <Group
-                  key={name}
-                  gap="sm"
-                  wrap="nowrap"
-                  px={10}
-                  py={9}
-                  mb={4}
-                  style={{
-                    borderRadius: "var(--mantine-radius-md)",
-                    whiteSpace: "nowrap",
-                    background: active ? "var(--mantine-color-white)" : undefined,
-                    boxShadow: active ? "0 0 0 1px var(--mantine-color-slate-2)" : undefined,
-                  }}
-                >
-                  <Box
-                    w={24}
-                    h={24}
-                    style={{
-                      flex: "none",
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      background: active
-                        ? "var(--mantine-color-brand-6)"
-                        : done
-                          ? "var(--mantine-color-success-light)"
-                          : "var(--mantine-color-slate-2)",
-                      color: active
-                        ? "var(--mantine-color-white)"
-                        : done
-                          ? "var(--mantine-color-success-light-color)"
-                          : "var(--mantine-color-slate-5)",
-                    }}
-                  >
-                    {done ? <IconCheck size={13} /> : i + 1}
-                  </Box>
-                  <Text fz="sm" fw={600} c={active || done ? "slate.8" : "slate.5"}>
-                    {name}
-                  </Text>
-                </Group>
-              );
-            })}
-          </nav>
-
-          <section className="inv-content">{renderTab()}</section>
-        </Box>
-
-        {/* Footer */}
-        <Group
-          gap="xs"
-          px={18}
-          py={12}
-          style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}
-        >
-          <Button size="sm" radius="xl" variant="default" onClick={onClose}>
-            Close
-          </Button>
-          <Box style={{ flex: 1 }} />
-          {showBack && (
+        stageIndex={0}
+        state={state}
+        footer={
+          <>
+            {showBack && (
+              <Button
+                size="sm"
+                radius="xl"
+                variant="default"
+                onClick={() => update({ step: state.step - 1 })}
+              >
+                ← Back
+              </Button>
+            )}
             <Button
               size="sm"
               radius="xl"
-              variant="default"
-              onClick={() => update({ step: state.step - 1 })}
+              color="brand"
+              disabled={!canNext()}
+              onClick={handleNext}
             >
-              ← Back
+              {isLastProcessingStep ? "Submit" : "Next →"}
             </Button>
-          )}
-          <Button
-            size="sm"
-            radius="xl"
-            color="brand"
-            disabled={!canNext()}
-            onClick={handleNext}
-          >
-            {state.step === 5 ? "Complete workflow" : "Next →"}
-          </Button>
-        </Group>
-      </Modal>
+          </>
+        }
+      >
+        <ProcessingTopNav current={processingStep} doneBefore={processingStep} />
+        <section className="inv-content">
+          <ProcessingTab
+            step={processingStep}
+            tabProps={tabProps}
+            existingCount={existingCount}
+            onFunded={onFunded}
+          />
+        </section>
+      </StageShell>
+
+      {/* Stage 2 — pops when Investor Processing is submitted */}
+      <EarningsStatementsModal
+        {...tabProps}
+        opened={opened && stage === 1}
+        onClose={onClose}
+        processingView={processingView}
+        onSubmit={() => update({ step: 5 })}
+      />
+
+      {/* Stage 3 — pops when Earnings & Statements is submitted */}
+      <MaturityModal
+        {...tabProps}
+        opened={opened && stage === 2}
+        onClose={onClose}
+        processingView={processingView}
+        onComplete={handleComplete}
+      />
 
       {toast && (
         <Affix position={{ bottom: 20, left: 0, right: 0 }} zIndex={1000}>

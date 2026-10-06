@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from "react";
 import {
   ActionIcon,
   Alert,
@@ -14,8 +15,6 @@ import { IconDownload, IconEye } from "@tabler/icons-react";
 import {
   CUSTOMERS,
   PRODUCTS,
-  DocumentPaper,
-  KeyValueList,
   KpiGrid,
   SectionBox,
   TH_STYLE,
@@ -25,10 +24,26 @@ import {
   inr,
   type TabProps,
 } from "./InvestorModalShared";
+import {
+  STAGES,
+  StageShell,
+  StageSideNav,
+  type StageId,
+} from "./StageShell";
 import { usePdfPreview } from "./PdfPreviewModal";
 import { buildStatementPdf, getPdfPalette } from "./Investmentpdf";
 
-export function EarningsStatements({ state, update, schedule, onToast }: TabProps) {
+interface EarningsStatementsProps extends TabProps {
+  readOnly?: boolean;
+}
+
+export function EarningsStatements({
+  state,
+  update,
+  schedule,
+  onToast,
+  readOnly = false,
+}: EarningsStatementsProps) {
   const theme = useMantineTheme();
   const pdfPreview = usePdfPreview();
   const customer = CUSTOMERS[state.customerIndex];
@@ -145,35 +160,39 @@ export function EarningsStatements({ state, update, schedule, onToast }: TabProp
       <SectionBox
         title="Monthly statements"
         actions={
-          <>
-            <Button
-              size="xs"
-              radius="xl"
-              variant="default"
-              disabled={pendingCount === 0}
-              onClick={sendAllPending}
-            >
-              Send all pending ({pendingCount})
-            </Button>
-            <Button
-              size="xs"
-              radius="xl"
-              color="brand"
-              disabled={state.monthsElapsed >= totalMonths}
-              onClick={() => update({ monthsElapsed: state.monthsElapsed + 1 })}
-            >
-              Advance one month
-            </Button>
-          </>
+          readOnly ? undefined : (
+            <>
+              <Button
+                size="xs"
+                radius="xl"
+                variant="default"
+                disabled={pendingCount === 0}
+                onClick={sendAllPending}
+              >
+                Send all pending ({pendingCount})
+              </Button>
+              <Button
+                size="xs"
+                radius="xl"
+                color="brand"
+                disabled={state.monthsElapsed >= totalMonths}
+                onClick={() => update({ monthsElapsed: state.monthsElapsed + 1 })}
+              >
+                Advance one month
+              </Button>
+            </>
+          )
         }
       >
-        <Text fz="xs" c="slate.5">
-          “Advance one month” simulates month-end. A statement is created for each
-          month and sent to {customer.email}.
-        </Text>
+        {!readOnly && (
+          <Text fz="xs" c="slate.5">
+            “Advance one month” simulates month-end. A statement is created for each
+            month and sent to {customer.email}.
+          </Text>
+        )}
 
         {state.monthsElapsed > 0 ? (
-          <Box mt="sm" style={{ maxHeight: 240, overflow: "auto" }}>
+          <Box mt={readOnly ? 0 : "sm"} style={{ maxHeight: 240, overflow: "auto" }}>
             <Table stickyHeader verticalSpacing={6} horizontalSpacing="sm" fz="xs">
               <Table.Thead>
                 <Table.Tr>
@@ -231,15 +250,17 @@ export function EarningsStatements({ state, update, schedule, onToast }: TabProp
                           >
                             View
                           </Button> */}
-                          <Button
-                            size="compact-xs"
-                            radius="xl"
-                            variant="default"
-                            disabled={sent}
-                            onClick={() => sendStatement(i)}
-                          >
-                            Send
-                          </Button>
+                          {!readOnly && (
+                            <Button
+                              size="compact-xs"
+                              radius="xl"
+                              variant="default"
+                              disabled={sent}
+                              onClick={() => sendStatement(i)}
+                            >
+                              Send
+                            </Button>
+                          )}
                         </Group>
                       </Table.Td>
                     </Table.Tr>
@@ -256,5 +277,89 @@ export function EarningsStatements({ state, update, schedule, onToast }: TabProp
       </SectionBox>
       {pdfPreview.modal}
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Modal                                                               */
+/* ------------------------------------------------------------------ */
+
+interface EarningsStatementsModalProps extends TabProps {
+  opened: boolean;
+  onClose: () => void;
+  /** Investor Processing (the four steps) rendered view-only by InvestorModal. */
+  processingView: ReactNode;
+  /** Called on Submit; InvestorModal then pops the Maturity modal. */
+  onSubmit: () => void;
+}
+
+const STAGE_INDEX = 1;
+
+/**
+ * Stage 2 — Earnings & Statements.
+ * Side nav: Investor Processing (view only) and Earnings & Statements (working).
+ */
+export function EarningsStatementsModal({
+  opened,
+  onClose,
+  state,
+  update,
+  schedule,
+  onToast,
+  processingView,
+  onSubmit,
+}: EarningsStatementsModalProps) {
+  const [section, setSection] = useState<StageId>("earnings");
+  const viewingEarlier = section !== "earnings";
+
+  // Same rule the old single modal used for leaving this step.
+  const canSubmit = !!schedule && state.monthsElapsed >= schedule.totalMonths;
+
+  return (
+    <StageShell
+      opened={opened}
+      onClose={onClose}
+      stageIndex={STAGE_INDEX}
+      state={state}
+      sideNav={
+        <StageSideNav stageIndex={STAGE_INDEX} section={section} onSelect={setSection} />
+      }
+      footer={
+        viewingEarlier ? (
+          <Button
+            size="sm"
+            radius="xl"
+            variant="light"
+            color="brand"
+            onClick={() => setSection("earnings")}
+          >
+            Return to {STAGES[STAGE_INDEX].label}
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            radius="xl"
+            color="brand"
+            disabled={!canSubmit}
+            onClick={onSubmit}
+          >
+            Submit
+          </Button>
+        )
+      }
+    >
+      {section === "processing" ? (
+        processingView
+      ) : (
+        <section className="inv-content">
+          <EarningsStatements
+            state={state}
+            update={update}
+            schedule={schedule}
+            onToast={onToast}
+          />
+        </section>
+      )}
+    </StageShell>
   );
 }
