@@ -102,6 +102,11 @@ const indexRoute = createRoute({
 const customerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/customer",
+  validateSearch: (search: Record<string, unknown>): { customerId?: string; id?: string; customer?: string } => ({
+    customerId: typeof search.customerId === "string" ? search.customerId : undefined,
+    id: typeof search.id === "string" ? search.id : undefined,
+    customer: typeof search.customer === "string" ? search.customer : undefined,
+  }),
   component: () => (
     <PermissionGuard modules={["Customer"]}>
       <Customer />
