@@ -56,6 +56,10 @@ export const TONE_STYLES: Record<ActionTone, { border: string; bg: string; text:
   neutral: { border: "border-slate-200", bg: "bg-slate-50 hover:border-slate-300 hover:bg-white", text: "text-slate-700", icon: "text-slate-400", target: "text-slate-600", stroke: "#6366f1" },
 };
 
+export const compactInputStyles = { input: { fontSize: "var(--mantine-font-size-xs)" } };
+
+export const labelCls = "mb-1 block text-[11px] font-medium text-slate-600";
+
 export function initials(name: string) {
   const clean = (name || "").trim();
   if (!clean) return "?";
@@ -63,6 +67,3 @@ export function initials(name: string) {
   if (words.length === 1) return clean.slice(0, 2).toUpperCase();
   return (words[0][0] + words[1][0]).toUpperCase();
 }
-
-export const inputCls =
-  "w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500";

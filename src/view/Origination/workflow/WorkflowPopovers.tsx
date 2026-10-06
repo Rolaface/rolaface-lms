@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type React from "react";
+import { Button, Select } from "@mantine/core";
 import { CreatableSelect } from "../../../components/CreatableSelect";
-import { inputCls, type Anchor, type WfRule, type WfState } from "./workflowUtils";
+import { compactInputStyles, labelCls, type Anchor, type WfRule, type WfState } from "./workflowUtils";
 
 export function Popover({ anchor, onClose, children, width = 300 }: { anchor: Anchor; onClose: () => void; children: React.ReactNode; width?: number }) {
   const style = useMemo(() => {
@@ -27,8 +28,6 @@ export function Popover({ anchor, onClose, children, width = 300 }: { anchor: An
     </>
   );
 }
-
-const labelCls = "mb-1.5 block text-xs font-medium text-slate-600";
 
 interface AddStatePopoverContentProps {
   existingStates: WfState[];
@@ -63,55 +62,52 @@ export function AddStatePopoverContent({ existingStates, stateById, stateNameOpt
     <div>
       <div className="mb-3">
         <span className={labelCls}>State name</span>
-        <CreatableSelect data={available} value={name} onChange={handleNameChange} placeholder="Pick or type a state" width="100%" size="sm" />
-        {duplicate && <p className="mt-1 text-xs text-rose-600">A state with this name already exists.</p>}
+        <CreatableSelect data={available} value={name} onChange={handleNameChange} placeholder="Pick or type a state" width="100%" size="xs" />
+        {duplicate && <p className="mt-1 text-[11px] text-rose-600">A state with this name already exists.</p>}
       </div>
 
       <div className="mb-3">
         <span className={labelCls}>Role</span>
-        <select className={inputCls} value={role} onChange={(e) => setRole(e.target.value)}>
-          {roleOptions.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
+        <Select size="xs" radius="md" styles={compactInputStyles} data={roleOptions} value={role} onChange={(v) => v && setRole(v)} allowDeselect={false} searchable />
       </div>
 
       {lockedFromId ? (
         <div className="mb-3 rounded-md border border-slate-200 p-2.5">
           <span className={labelCls}>Add action</span>
-          <p className="mb-1.5 text-xs text-slate-500">From {stateById[lockedFromId]?.name}</p>
-          <CreatableSelect data={actionOptions} value={actionName} onChange={(v) => { setActionName(v); setActionTouched(true); }} placeholder="Action name" width="100%" size="sm" />
+          <p className="mb-1.5 text-[11px] text-slate-500">From {stateById[lockedFromId]?.name}</p>
+          <CreatableSelect data={actionOptions} value={actionName} onChange={(v) => { setActionName(v); setActionTouched(true); }} placeholder="Action name" width="100%" size="xs" />
         </div>
       ) : existingStates.length > 0 ? (
         <div className="mb-3 rounded-md border border-slate-200 p-2.5">
           <span className={labelCls}>Add action (optional)</span>
-          <select className={`${inputCls} mb-1.5`} value={fromId} onChange={(e) => setFromId(e.target.value)}>
-            <option value="">Don't connect yet</option>
-            {existingStates.map((s) => (
-              <option key={s.id} value={s.id}>
-                From {s.name}
-              </option>
-            ))}
-          </select>
+          <Select
+            size="xs"
+            radius="md"
+            styles={compactInputStyles}
+            mb={6}
+            data={[{ value: "", label: "Don't connect yet" }, ...existingStates.map((s) => ({ value: s.id, label: `From ${s.name}` }))]}
+            value={fromId}
+            onChange={(v) => setFromId(v ?? "")}
+            allowDeselect={false}
+          />
           {fromId && (
-            <CreatableSelect data={actionOptions} value={actionName} onChange={(v) => { setActionName(v); setActionTouched(true); }} placeholder="Action name" width="100%" size="sm" />
+            <CreatableSelect data={actionOptions} value={actionName} onChange={(v) => { setActionName(v); setActionTouched(true); }} placeholder="Action name" width="100%" size="xs" />
           )}
         </div>
       ) : null}
 
       <div className="mt-3 flex justify-end gap-2">
-        <button onClick={onClose} className="px-2 py-1 text-xs text-slate-500">
+        <Button size="xs" variant="subtle" color="slate" onClick={onClose}>
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
+          size="xs"
+          color="brand"
           disabled={!canSubmit}
           onClick={() => onCreate({ name: trimmed, role, fromId: fromId || null, actionName: fromId ? actionName.trim() : null })}
-          className="rounded bg-indigo-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Add state
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -152,31 +148,27 @@ export function RulePopoverContent({ rule, fromState, states, stateById, actionO
 
   return (
     <div>
-      <p className="mb-3 text-xs text-slate-400">From {fromState?.name || "—"}</p>
+      <p className="mb-2 text-[11px] text-slate-400">From {fromState?.name || "—"}</p>
 
-      <CreatableSelect data={actionOptions} value={action} onChange={handleActionChange} placeholder="Action name, e.g. Approve" width="100%" size="sm" />
+      <CreatableSelect data={actionOptions} value={action} onChange={handleActionChange} placeholder="Action name, e.g. Approve" width="100%" size="xs" />
 
-      <select className={`${inputCls} mt-2`} value={to} onChange={(e) => handleToChange(e.target.value)}>
-        <option value="">Moves to…</option>
-        {states
-          .filter((s) => s.id !== rule.from)
-          .map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-      </select>
+      <Select
+        size="xs"
+        radius="md"
+        styles={compactInputStyles}
+        mt="xs"
+        placeholder="Moves to…"
+        data={states.filter((s) => s.id !== rule.from).map((s) => ({ value: s.id, label: s.name }))}
+        value={to || null}
+        onChange={(v) => handleToChange(v ?? "")}
+        allowDeselect={false}
+        searchable
+      />
 
-      <div className="mt-2 text-xs text-slate-500">
+      <div className="mt-2 text-[11px] text-slate-500">
         {overrideOn ? (
           <div className="flex items-center gap-2">
-            <select className={inputCls} value={roleVal} onChange={(e) => setRoleVal(e.target.value)}>
-              {roleOptions.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+            <Select size="xs" radius="md" styles={compactInputStyles} className="flex-1" data={roleOptions} value={roleVal} onChange={(v) => v && setRoleVal(v)} allowDeselect={false} searchable />
             <button onClick={() => setOverrideOn(false)} className="shrink-0 text-slate-400 hover:text-slate-600">
               Reset
             </button>
@@ -188,11 +180,11 @@ export function RulePopoverContent({ rule, fromState, states, stateById, actionO
         )}
       </div>
 
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-3 flex items-center justify-between text-xs font-medium">
         {confirmingDelete ? (
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2">
             <span className="text-rose-700">Delete?</span>
-            <button onClick={onDelete} className="font-medium text-rose-600">
+            <button onClick={onDelete} className="text-rose-600">
               Yes
             </button>
             <button onClick={() => setConfirmingDelete(false)} className="text-slate-500">
@@ -200,21 +192,17 @@ export function RulePopoverContent({ rule, fromState, states, stateById, actionO
             </button>
           </div>
         ) : (
-          <button onClick={() => setConfirmingDelete(true)} className="text-xs font-medium text-rose-600 hover:text-rose-700">
+          <button onClick={() => setConfirmingDelete(true)} className="text-rose-600 hover:text-rose-700">
             Delete
           </button>
         )}
         <div className="flex gap-2">
-          <button onClick={onClose} className="px-2 py-1 text-xs text-slate-500">
+          <Button size="xs" variant="subtle" color="slate" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            disabled={!action.trim() || !to}
-            onClick={() => onSave({ action: action.trim(), to, roleOverride: overrideOn ? roleVal : null })}
-            className="rounded bg-indigo-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-40"
-          >
+          </Button>
+          <Button size="xs" color="brand" disabled={!action.trim() || !to} onClick={() => onSave({ action: action.trim(), to, roleOverride: overrideOn ? roleVal : null })}>
             Save
-          </button>
+          </Button>
         </div>
       </div>
     </div>

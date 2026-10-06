@@ -71,7 +71,7 @@ export function WorkflowConfiguration() {
   const { data: dbActions = [] } = useQuery<string[]>({ queryKey: ["workflow-actions"], queryFn: getWorkflowActionMasters });
   const { data: dbRoles = ["All"] } = useQuery<string[]>({ queryKey: ["roles"], queryFn: getRoles });
 
-  const { data: workflowData, isLoading } = useQuery<ApiWorkflow>({
+  const { data: workflowData, isError, refetch } = useQuery<ApiWorkflow>({
     queryKey: ["workflow-configuration", doctype],
     queryFn: () => getWorkflow(doctype),
   });
@@ -86,7 +86,10 @@ export function WorkflowConfiguration() {
     setDirty(false);
   }
 
-  const roleOptions = useMemo(() => ["All", ...dbRoles.filter((r) => r !== "All")], [dbRoles]);
+  const roleOptions = useMemo(
+    () => Array.from(new Set(["All", ...dbRoles, ...states.map((s) => s.role), ...rules.map((r) => r.roleOverride)].filter((r): r is string => !!r))),
+    [dbRoles, states, rules]
+  );
   const stateNameOptions = useMemo(() => Array.from(new Set([...dbStates, ...states.map((s) => s.name)])), [dbStates, states]);
   const actionOptions = useMemo(() => Array.from(new Set([...dbActions, ...rules.map((r) => r.action).filter(Boolean)])), [dbActions, rules]);
 
@@ -95,7 +98,6 @@ export function WorkflowConfiguration() {
 
   const mainRow = states.filter((s) => !isRejectionState(s));
   const stateIndex = Object.fromEntries(mainRow.map((s, i) => [s.id, i])); // position in the pipeline — used to color forward-moving actions
-  const stateList = states.filter((s) => rulesFrom(s.id).length > 0); // non-final states a case actively moves through
 
   const markDirty = () => setDirty(true);
 
@@ -185,31 +187,6 @@ export function WorkflowConfiguration() {
     });
     markDirty();
   }
-  function moveState(id: string, dir: -1 | 1) {
-    setStates((prev) => {
-      const i = prev.findIndex((s) => s.id === id);
-      const j = i + dir;
-      if (i === -1 || j < 0 || j >= prev.length) return prev;
-      const copy = [...prev];
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-      return copy;
-    });
-    markDirty();
-  }
-  // Moves within the State Editor list (non-final states only), swapping positions in the full list.
-  function moveStateEditorItem(id: string, dir: -1 | 1) {
-    const idx = stateList.findIndex((s) => s.id === id);
-    const other = stateList[idx + dir];
-    if (idx === -1 || !other) return;
-    setStates((prev) => {
-      const copy = [...prev];
-      const posA = copy.findIndex((s) => s.id === id);
-      const posB = copy.findIndex((s) => s.id === other.id);
-      [copy[posA], copy[posB]] = [copy[posB], copy[posA]];
-      return copy;
-    });
-    markDirty();
-  }
   function reorderStates(draggedId: string, targetId: string) {
     if (!draggedId || draggedId === targetId) return;
     setStates((prev) => {
@@ -275,10 +252,19 @@ export function WorkflowConfiguration() {
     });
   };
 
-  if (isLoading) {
+  if (!loadedData) {
     return (
       <Center h="100%">
-        <Loader />
+        {isError ? (
+          <div className="text-center">
+            <p className="text-xs text-rose-700">Failed to load the workflow configuration.</p>
+            <Button mt="sm" size="xs" variant="default" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <Loader />
+        )}
       </Center>
     );
   }
@@ -286,51 +272,46 @@ export function WorkflowConfiguration() {
   const popoverRule = popover?.type === "rule" ? rules.find((r) => r.id === popover.id) : undefined;
   const drawerState = drawerStateId ? stateById[drawerStateId] : undefined;
   const tabCls = (active: boolean) =>
-    `inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium ${active ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`;
+    `inline-flex items-center gap-1 rounded px-2.5 py-1 ${active ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-50"}`;
 
   return (
     <div className="min-h-screen w-full bg-slate-50 text-slate-900">
-      <div className="px-4 py-6 sm:px-6">
-        {/* Header */}
-        <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">Loan application workflow</h1>
-            <p className="mt-1 max-w-md text-sm text-slate-500">Set up the states an application moves through, who's responsible at each one, and what happens next.</p>
+      <div className="px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h1 className="text-base font-semibold text-slate-900">Loan application workflow</h1>
+            <p className="text-xs text-slate-500">States an application moves through, who owns each one, and what happens next.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
             {dirty && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-amber-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                Unsaved changes
+                Unsaved
               </span>
             )}
-            <Button size="sm" color="brand" onClick={handleSave} loading={saveMutation.isPending}>
+            <div className="inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-xs font-medium">
+              <button onClick={() => setView("flow")} className={tabCls(view === "flow")}>
+                <IconLayoutGrid size={13} /> Flow
+              </button>
+              <button onClick={() => setView("tree")} className={tabCls(view === "tree")}>
+                <IconGitBranch size={13} /> Tree
+              </button>
+            </div>
+            <button
+              onClick={openAddStatePopover}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-slate-700 hover:bg-slate-50"
+            >
+              <IconPlus size={13} /> Add state
+            </button>
+            <Button size="xs" color="brand" onClick={handleSave} loading={saveMutation.isPending}>
               Save workflow
             </Button>
           </div>
         </div>
 
-        {/* Toolbar */}
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex rounded-md border border-slate-200 bg-white p-0.5">
-            <button onClick={() => setView("flow")} className={tabCls(view === "flow")}>
-              <IconLayoutGrid size={14} /> Flow
-            </button>
-            <button onClick={() => setView("tree")} className={tabCls(view === "tree")}>
-              <IconGitBranch size={14} /> Tree preview
-            </button>
-          </div>
-          <button
-            onClick={openAddStatePopover}
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <IconPlus size={14} /> Add state
-          </button>
-        </div>
-
         {view === "flow" && showHint && (
-          <div className="mt-3 flex items-start justify-between gap-3 rounded-md bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
-            <span>Drag a card's grip to reorder it. Drag the + on its edge onto another card to connect them, or onto empty space to create a new connected state.</span>
+          <div className="mt-2 flex items-center justify-between gap-3 rounded-md bg-indigo-50 px-3 py-1.5 text-[11px] text-indigo-700">
+            <span>Drag a card's grip to reorder. Drag its + onto another card to connect, or onto empty space to create a connected state.</span>
             <button onClick={() => setShowHint(false)} className="shrink-0 text-indigo-400 hover:text-indigo-600">
               <IconX size={12} />
             </button>
@@ -339,40 +320,42 @@ export function WorkflowConfiguration() {
 
         {/* FLOW VIEW */}
         {view === "flow" && (
-          <div className="mt-6 space-y-8" data-flow-canvas="true">
-            <div className="flex flex-wrap items-stretch gap-3">
-              {mainRow.length === 0 && <p className="text-sm text-slate-400">No states yet — add one to get started.</p>}
-              {mainRow.map((s, i) => (
-                <div key={s.id} className="flex items-stretch gap-3">
-                  <StateCard
-                    state={s}
-                    rules={rulesFrom(s.id)}
-                    stateById={stateById}
-                    stateIndex={stateIndex}
-                    roleOptions={roleOptions}
-                    onRoleChange={(role) => saveState(s.id, { role })}
-                    onEditRule={openRulePopover}
-                    isDragOverTarget={dragOverId === s.id}
-                    onDragOverReorder={setDragOverId}
-                    onDropReorder={reorderStates}
-                    onConnectStart={handleConnectStart}
-                    isConnectDropTarget={!!connectFromId && connectFromId !== s.id && hoverTargetId === s.id}
-                  />
-                  {i < mainRow.length - 1 && (
-                    <div className="flex items-center text-slate-400">
-                      <IconArrowRight size={22} />
+          <div className="mt-3 space-y-4" data-flow-canvas="true">
+            {mainRow.length === 0 ? (
+              <p className="text-xs text-slate-400">No states yet — add one to get started.</p>
+            ) : (
+              <div className="-ml-1 overflow-hidden py-1 pl-1 pr-3">
+                <div className="-ml-11 flex flex-wrap items-stretch gap-y-3">
+                  {mainRow.map((s) => (
+                    <div key={s.id} className="relative flex items-stretch pl-11">
+                      <div className="absolute inset-y-0 left-0 flex w-11 items-center justify-center text-slate-400">
+                        <IconArrowRight size={14} />
+                      </div>
+                      <StateCard
+                        state={s}
+                        rules={rulesFrom(s.id)}
+                        stateById={stateById}
+                        stateIndex={stateIndex}
+                        roleOptions={roleOptions}
+                        onRoleChange={(role) => saveState(s.id, { role })}
+                        onEditRule={openRulePopover}
+                        isDragOverTarget={dragOverId === s.id}
+                        onDragOverReorder={setDragOverId}
+                        onDropReorder={reorderStates}
+                        onConnectStart={handleConnectStart}
+                        isConnectDropTarget={!!connectFromId && connectFromId !== s.id && hoverTargetId === s.id}
+                      />
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
 
             <StateEditor
-              stateList={stateList}
+              stateList={states}
               dragOverId={dragOverId}
               onDragOverReorder={setDragOverId}
               onDropReorder={reorderStates}
-              onMove={moveStateEditorItem}
               onToggleActive={(id, active) => saveState(id, { active })}
               onEditState={setDrawerStateId}
               onAddState={openAddStatePopover}
@@ -382,7 +365,7 @@ export function WorkflowConfiguration() {
 
         {/* TREE PREVIEW */}
         {view === "tree" && (
-          <div className="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+          <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
             <WorkflowTreeView states={states} rules={rules} stateById={stateById} stateIndex={stateIndex} onEditState={setDrawerStateId} onEditRule={openRulePopover} />
           </div>
         )}
@@ -455,8 +438,6 @@ export function WorkflowConfiguration() {
             duplicateState(drawerState.id);
             closeDrawer();
           }}
-          onMoveUp={() => moveState(drawerState.id, -1)}
-          onMoveDown={() => moveState(drawerState.id, 1)}
         />
       )}
     </div>

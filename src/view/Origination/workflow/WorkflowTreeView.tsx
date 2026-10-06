@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type React from "react";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
 import { actionTone, isRejectionState, TONE_STYLES, type WfRule, type WfState } from "./workflowUtils";
@@ -15,6 +15,7 @@ const REJECT_DROP = 130;
 // Rough width of an 11px medium action pill; avoids measuring the DOM before layout.
 const labelWidth = (text: string) => Math.ceil(text.length * 6.4) + 22;
 const ZOOM_MIN = 0.3;
+const FIT_ZOOM_MIN = 0.7;
 const ZOOM_MAX = 2;
 const ZOOM_STEP = 0.15;
 
@@ -32,8 +33,9 @@ export function WorkflowTreeView({ states, rules, stateById, stateIndex, onEditS
   const [containerWidth, setContainerWidth] = useState(0);
   const [manualZoom, setManualZoom] = useState<number | null>(null); // null = auto-fit to the panel
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!containerRef.current) return;
+    setContainerWidth(containerRef.current.clientWidth);
     const obs = new ResizeObserver((entries) => {
       for (const entry of entries) setContainerWidth(entry.contentRect.width);
     });
@@ -68,7 +70,7 @@ export function WorkflowTreeView({ states, rules, stateById, stateIndex, onEditS
   const width = PAD_X * 2 + Math.max(mainWidth, rejectWidth);
   const height = (rejectNodes.length > 0 ? rejectY : mainY) + NODE_H + 40;
 
-  const fitZoom = containerWidth > 0 ? Math.min(1, Math.max(ZOOM_MIN, (containerWidth - 8) / width)) : 1;
+  const fitZoom = containerWidth > 0 ? Math.min(1, Math.max(FIT_ZOOM_MIN, (containerWidth - 8) / width)) : 1;
   const zoom = manualZoom ?? fitZoom;
 
   const edges = drawable.map((r) => {
@@ -106,13 +108,13 @@ export function WorkflowTreeView({ states, rules, stateById, stateIndex, onEditS
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs text-slate-400">Click a state or action to edit it.</p>
-        <div className="flex items-center gap-1">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[11px] text-slate-400">Click a state or action to edit it.</p>
+        <div className="flex items-center gap-1 text-[11px]">
           <button onClick={() => setManualZoom(Math.max(ZOOM_MIN, Math.round((zoom - ZOOM_STEP) * 100) / 100))} disabled={zoom <= ZOOM_MIN} title="Zoom out" className={zoomBtnCls}>
             <IconMinus size={14} />
           </button>
-          <button onClick={() => setManualZoom(null)} title="Reset zoom to fit" className="w-12 rounded border border-slate-200 px-1 py-1.5 text-center text-xs text-slate-500 hover:bg-slate-50">
+          <button onClick={() => setManualZoom(null)} title="Reset zoom to fit" className="w-12 rounded border border-slate-200 px-1 py-1.5 text-center text-slate-500 hover:bg-slate-50">
             {Math.round(zoom * 100)}%
           </button>
           <button onClick={() => setManualZoom(Math.min(ZOOM_MAX, Math.round((zoom + ZOOM_STEP) * 100) / 100))} disabled={zoom >= ZOOM_MAX} title="Zoom in" className={zoomBtnCls}>
@@ -123,7 +125,7 @@ export function WorkflowTreeView({ states, rules, stateById, stateIndex, onEditS
 
       <div ref={containerRef} className="relative overflow-auto rounded-md border border-slate-100 bg-slate-50" style={{ maxHeight: 480 }}>
         {states.length === 0 ? (
-          <p className="p-4 text-sm text-slate-400">No states yet.</p>
+          <p className="p-4 text-xs text-slate-400">No states yet.</p>
         ) : (
           <div style={{ width: width * zoom, height: height * zoom }}>
             <div className="relative" style={{ width, height, transform: `scale(${zoom})`, transformOrigin: "0 0" }}>
@@ -146,10 +148,10 @@ export function WorkflowTreeView({ states, rules, stateById, stateIndex, onEditS
                   <button
                     key={`label-${g.rule.id}`}
                     onClick={(e) => onEditRule(e, g.rule.id)}
-                    className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${cls.border} ${cls.bg} ${cls.text}`}
+                    className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 ${cls.border} ${cls.bg} ${cls.text}`}
                     style={{ left: g.labelX, top: g.labelY }}
                   >
-                    {g.rule.action || "Unnamed action"}
+                    <span className="text-[11px] font-medium leading-4">{g.rule.action || "Unnamed action"}</span>
                   </button>
                 );
               })}
@@ -161,8 +163,8 @@ export function WorkflowTreeView({ states, rules, stateById, stateIndex, onEditS
                   className={`absolute flex flex-col items-center justify-center rounded-lg border border-slate-300 bg-white px-2 text-center shadow-sm hover:border-indigo-400 hover:shadow ${s.active ? "" : "opacity-60"}`}
                   style={{ left: pos[s.id].x, top: pos[s.id].y, width: NODE_W, height: NODE_H }}
                 >
-                  <span className="max-w-full truncate text-sm font-semibold text-slate-900">{s.name}</span>
-                  <span className="max-w-full truncate text-xs text-slate-500">{s.role || "No role set"}</span>
+                  <span className="max-w-full truncate text-xs font-semibold text-slate-900">{s.name}</span>
+                  <span className="max-w-full truncate text-[11px] text-slate-500">{s.role || "No role set"}</span>
                 </button>
               ))}
             </div>
