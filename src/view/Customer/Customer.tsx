@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { getBorrowerProfile } from "./mockdata";
 import {
   Box,
   Button,
@@ -95,7 +96,37 @@ onSuccess: () => {
   const [sorting, setSorting] = useState([{ id: "id", desc: true }]);
   const [borrower360CustomerId, setBorrower360CustomerId] = useState<
     string | null
-  >(null);
+  >(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("customerId") || params.get("id") || null;
+    }
+    return null;
+  });
+
+  // Listen to URL search parameters for direct customer profile navigation (e.g. from reports)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get("customerId") || params.get("id");
+      const targetName = params.get("customer") || params.get("name");
+
+      if (targetId) {
+        setBorrower360CustomerId(targetId);
+      } else if (targetName && list.rows.length > 0) {
+        const match = list.rows.find(
+          (c) =>
+            c.name.toLowerCase() === targetName.toLowerCase() ||
+            c.id.toLowerCase() === targetName.toLowerCase()
+        );
+        if (match) {
+          setBorrower360CustomerId(match.id);
+        } else {
+          setBorrower360CustomerId(targetName);
+        }
+      }
+    }
+  }, [list.rows]);
 
   const handleViewCustomer = (customer: CustomerRow) =>
     setBorrower360CustomerId(customer.id);
@@ -172,22 +203,50 @@ const handleDeleteCustomer = (customer: CustomerRow) => {
       );
     }
 
-    if (isCustomerError || !customerDetail) {
-      setBorrower360CustomerId(null);
-      return null;
+    const foundInList = list.rows.find(
+      (c) =>
+        c.id === borrower360CustomerId ||
+        c.name.toLowerCase() === borrower360CustomerId.toLowerCase()
+    );
+
+    let borrower: BorrowerProfile | null = null;
+    if (customerDetail) {
+      borrower = {
+        ...mapCustomerDetailToBorrowerProfile(customerDetail),
+        loans: (loansData ?? []).map(mapLoanRawToLoanSummary),
+      };
+    } else if (foundInList) {
+      borrower = getBorrowerProfile({
+        id: foundInList.id,
+        name: foundInList.name,
+        mobile: foundInList.mobile || "9876598765",
+      });
+    } else if (borrower360CustomerId) {
+      borrower = getBorrowerProfile({
+        id: borrower360CustomerId,
+        name: borrower360CustomerId,
+        mobile: "9876598765",
+      });
     }
 
-    const borrower: BorrowerProfile = {
-      ...mapCustomerDetailToBorrowerProfile(customerDetail),
-      loans: (loansData ?? []).map(mapLoanRawToLoanSummary),
-    };
-
-    return (
-      <Borrower360
-        borrower={borrower}
-        onBack={() => setBorrower360CustomerId(null)}
-      />
-    );
+    if (borrower) {
+      return (
+        <Borrower360
+          borrower={borrower}
+          onBack={() => {
+            if (typeof window !== "undefined") {
+              const url = new URL(window.location.href);
+              url.searchParams.delete("customerId");
+              url.searchParams.delete("id");
+              url.searchParams.delete("customer");
+              url.searchParams.delete("name");
+              window.history.replaceState({}, "", url.pathname);
+            }
+            setBorrower360CustomerId(null);
+          }}
+        />
+      );
+    }
   }
 
   return (

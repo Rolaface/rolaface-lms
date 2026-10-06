@@ -195,14 +195,15 @@ export const ACTIVITY: ActivityItem[] = [
 ];
 
 // Builds a full Borrower 360 profile for any customer row from the Customer table.
-export function getBorrowerProfile(customer: { id: number; name: string; mobile: string }): BorrowerProfile {
+export function getBorrowerProfile(customer: { id: number | string; name: string; mobile?: string }): BorrowerProfile {
+  const numId = typeof customer.id === 'number' ? customer.id : (parseInt(String(customer.id).replace(/\D/g, ''), 10) || 1);
   const totalExposure = MOCK_LOANS.reduce((sum, l) => sum + l.outstanding, 0);
   return {
-    customerId: customer.id,
+    customerId: String(customer.id),
     name: customer.name,
-    custId: `CUST-${String(48213 + customer.id).padStart(7, '0')}`,
+    custId: typeof customer.id === 'string' && customer.id.startsWith('CUST-') ? customer.id : `CUST-${String(48213 + numId).padStart(7, '0')}`,
     status: 'Active',
-    mobile: customer.mobile,
+    mobile: customer.mobile || '9876598765',
     nationalId: '221114/10/1',
     branch: 'Lusaka — Cairo Road',
     totalExposure,
