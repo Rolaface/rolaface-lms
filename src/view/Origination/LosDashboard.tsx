@@ -3,12 +3,6 @@ import { DatePickerInput } from '@mantine/dates';
 import { Box, Avatar, Progress, Modal, Button, Title, Text, Paper, Group, Stack, SimpleGrid, Grid, Table, Badge, ActionIcon, Menu, ThemeIcon, RingProgress } from '@mantine/core';
 import { IconDots, IconAlertCircle, IconArrowUpRight, IconArrowDownRight, IconCheck, IconClock, IconX, IconUser, IconBriefcase, IconCar, IconHome, IconFileText, IconCurrencyDollar, IconPercentage, IconCalendar } from '@tabler/icons-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, ComposedChart, Line, LabelList, PieChart, Pie, Cell, FunnelChart, Funnel , AreaChart, Area } from 'recharts';
-import { useNavigate } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
-import { getAllLoanApplications } from '../../api/loanApplicationApi';
-import { useLoanDashboard } from '../../hooks/Dashboard/useLoanDashboard';
-import { useCompanyStore } from '../../store/companyStore';
-
 
 const funnelData = [
   { name: 'Applications Logged', count: 12458, fill: '#6366f1', conv: '100%' },
@@ -158,32 +152,6 @@ export default function LosDashboard() {
   const [reviewState, setReviewState] = React.useState<any>({ isOpen: false, app: null });
   const openDetails = (title: string) => setModalState({ isOpen: true, title });
 
-  const navigate = useNavigate();
-  const dashboard = useLoanDashboard();
-  const { summary } = dashboard.data;
-
-  // Fetch recent loan applications from real API
-  const { data: loanAppsResponse } = useQuery({
-    queryKey: ['loan-applications'],
-    queryFn: getAllLoanApplications,
-  });
-
-  // Map real API data to table format, fallback to mock data
-  const recentApps = React.useMemo(() => {
-    const raw = loanAppsResponse?.message?.data || loanAppsResponse?.data || [];
-    if (!Array.isArray(raw) || raw.length === 0) return recentApplicationsData;
-    return raw.slice(0, 5).map((app: any) => ({
-      id: app.name || app.id || '',
-      name: app.customer || app.applicant_name || app.first_name || 'Unknown',
-      type: app.application_type || app.loan_type || 'Loan',
-      amount: typeof app.amount === 'number' ? `ZMW ${(app.amount >= 1000000 ? (app.amount/1000000).toFixed(1) + 'M' : app.amount >= 1000 ? (app.amount/1000).toFixed(0) + 'K' : app.amount.toLocaleString())}` : (app.amount || 'N/A'),
-      stage: app.loan_application_status || app.status || 'Pending',
-      status: app.loan_application_status || app.status || 'Pending',
-      date: app.creation ? new Date(app.creation).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : 'N/A',
-      customer: app.customer || '',
-    }));
-  }, [loanAppsResponse]);
-
   const getModalData = () => {
     const t = modalState.title;
     if (t.includes('Stages')) return {
@@ -226,7 +194,14 @@ export default function LosDashboard() {
       headers: ['CATEGORY', 'SEGMENT', 'PERCENTAGE', 'STATUS'],
       rows: demographicData.flatMap(d => d.data.map(item => ({ col1: d.title, col2: item.name.split(' (')[0], col3: item.value+'%', status: 'Active', color: 'green' })))
     };
-            if (t.includes('Recent')) {
+    if (t.includes('Recent') || t.includes('App:')) {
+      const selected = recentApplicationsData.find(d => t.includes(d.id));
+      if (selected) {
+        return {
+          headers: ['APPLICATION NO.', 'APPLICANT NAME', 'LOAN PRODUCT', 'CURRENT STAGE'],
+          rows: [{ col1: selected.id, col2: selected.name, col3: `${selected.type} (${selected.amount})`, status: selected.stage, color: 'blue', isText: true }]
+        };
+      }
       return {
         headers: ['APPLICANT NAME', 'APPLICATION NO.', 'LOAN PRODUCT', 'CURRENT STAGE'],
         rows: recentApplicationsData.map(d => ({ col1: d.name, col2: d.id, col3: d.type, status: d.stage, color: 'blue', isText: true }))
@@ -250,9 +225,6 @@ if (t.includes('Escalation')) return {
       headers: ['APPLICANT', 'LOAN PRODUCT', 'REVIEW REASON', 'SLA STATUS'],
       rows: escalatedApplications.map(d => ({ col1: d.name, col2: d.type, col3: d.reason, status: d.sla, color: d.severity === 'yellow' ? 'orange' : d.severity }))
     };
-    
-
-
     return {
       headers: ['METRIC', 'VALUE', 'PERCENTAGE', 'STATUS'],
       rows: [{ col1: 'Overall', col2: 'N/A', col3: 'N/A', status: 'N/A', color: 'gray' }]
@@ -274,10 +246,10 @@ if (t.includes('Escalation')) return {
       </Group>
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 5 }} spacing="md" mb="lg">
-        <MetricCard title="Total Applications" value={summary?.total_loans?.toLocaleString() || '12,458'} trend="+12.5%" subtext="vs last month" isPositive={true} />
-        <MetricCard title="Active Customers" value={summary?.active_customers?.toLocaleString() || '6,842'} trend="+8.2%" subtext="vs last month" isPositive={true} />
-        <MetricCard title="Total Disbursed" value={summary?.total_disbursed ? `ZMW ${(summary.total_disbursed / 1000000).toFixed(1)}M` : 'ZMW 1.8B'} trend="+15.3%" subtext="vs last month" isPositive={true} />
-        <MetricCard title="Pending Applications" value={summary?.pending_applications?.toLocaleString() || '4.2 Days'} trend="-0.5" subtext="vs last month" isPositive={true} />
+        <MetricCard title="Total Applications" value="12,458" trend="+12.5%" subtext="vs last month" isPositive={true} secondaryValue="ZMW 4.2B" />
+        <MetricCard title="Approved Loans" value="6,842" trend="+8.2%" subtext="vs last month" isPositive={true} secondaryValue="ZMW 2.1B" />
+        <MetricCard title="Total Disbursed" value="ZMW 1.8B" trend="+15.3%" subtext="vs last month" isPositive={true} />
+        <MetricCard title="Avg Processing Time" value="4.2 Days" trend="-0.5 days" subtext="vs last month" isPositive={true} />
         <MetricCard title="Overall Approval Rate" value="54.9%" trend="-2.1%" subtext="vs last month" isPositive={false} />
       </SimpleGrid>
 
@@ -406,7 +378,7 @@ if (t.includes('Escalation')) return {
             <Text size="md" fw={700} c="slate.8">Recent Loan Applications</Text>
             <Text size="xs" c="slate.5" mt={2}>Live feed of the latest applications currently moving through the origination pipeline.</Text>
           </Box>
-          <Button variant="light" size="xs" radius="xl" onClick={() => navigate({ to: '/origination/loanApplication' })}>View All Applications</Button>
+          <Button variant="light" size="xs" radius="xl" onClick={() => openDetails('Recent Applications')}>View All Applications</Button>
         </Group>
         <Box style={{ overflowX: 'auto' }}>
           <Table verticalSpacing="sm" horizontalSpacing="md" striped highlightOnHover style={{ border: '1px solid var(--mantine-color-slate-2)', borderRadius: 8 }}>
@@ -421,7 +393,7 @@ if (t.includes('Escalation')) return {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {recentApps.map((app: any) => (
+              {recentApplicationsData.map((app) => (
                 <Table.Tr key={app.id}>
                   <Table.Td>
                     <Text size="sm" fw={600} c="slate.8">{app.name}</Text>
@@ -442,7 +414,7 @@ if (t.includes('Escalation')) return {
                     </Badge>
                   </Table.Td>
                   <Table.Td ta="right">
-                    <Button size="xs" variant="default" onClick={() => navigate({ to: '/customer' })}>View File</Button>
+                    <Button size="xs" variant="default" onClick={() => openDetails(`App: ${app.id}`)}>View File</Button>
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -464,6 +436,7 @@ if (t.includes('Escalation')) return {
                modalState.title.includes('Rejection') ? 'Detailed list of recently rejected loan applications and their reasons.' :
                modalState.title.includes('Escalation') ? 'Complete list of all escalated applications requiring administrative review.' :
                modalState.title.includes('Risk') ? 'Distribution of credit risk across active applicants.' :
+               modalState.title.includes('App:') ? 'Detailed application summary and current origination stage.' :
                'Comprehensive view of selected metrics.'}
             </Text>
           </Box>
