@@ -1,6 +1,6 @@
 import React from 'react';
 import { DatePickerInput } from '@mantine/dates';
-import { Box, Avatar, Progress, Modal, Button, Title, Text, Paper, Group, Stack, SimpleGrid, Grid, Table, Badge, ActionIcon, Menu, ThemeIcon, RingProgress } from '@mantine/core';
+import { Box, Avatar, Progress, Modal, Button, Title, Text, Paper, Group, Stack, SimpleGrid, Grid, Table, Badge, ActionIcon, Menu, ThemeIcon, RingProgress, Stepper } from '@mantine/core';
 import { IconDots, IconAlertCircle, IconArrowUpRight, IconArrowDownRight, IconCheck, IconClock, IconX, IconUser, IconBriefcase, IconCar, IconHome, IconFileText, IconCurrencyDollar, IconPercentage, IconCalendar } from '@tabler/icons-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, ComposedChart, Line, LabelList, PieChart, Pie, Cell, FunnelChart, Funnel , AreaChart, Area } from 'recharts';
 
@@ -61,11 +61,16 @@ const escalatedApplications = [
 ];
 
 const recentApplicationsData = [
-  { id: 'APP-10522', name: 'Zambia Traders Ltd', type: 'Business Loan', amount: 'ZMW 4.5M', stage: 'Underwriting', status: 'In Progress', date: 'Oct 05, 2026' },
-  { id: 'APP-10521', name: 'Dr. Mutale Banda', type: 'Personal Loan', amount: 'ZMW 150K', stage: 'Pre-Screening', status: 'Pending Review', date: 'Oct 05, 2026' },
-  { id: 'APP-10520', name: 'Copperbelt Logistics', type: 'Asset Finance', amount: 'ZMW 2.8M', stage: 'Offer Issued', status: 'Approved', date: 'Oct 04, 2026' },
-  { id: 'APP-10519', name: 'Sara Phiri', type: 'Home Loan', amount: 'ZMW 850K', stage: 'Appraisal', status: 'In Progress', date: 'Oct 04, 2026' },
-  { id: 'APP-10518', name: 'Emmanuel Banda', type: 'Business Loan', amount: 'ZMW 1.2M', stage: 'Applications Logged', status: 'New', date: 'Oct 04, 2026' },
+  { id: 'APP-10522', name: 'Zambia Traders Ltd', type: 'Business Loan', amount: 'ZMW 4.5M', stage: 'Underwriting', status: 'In Progress', date: 'Oct 05, 2026',
+    phone: '+260 97 123 4567', channel: 'Branch', officer: 'Rahul Sharma', tenure: '60 Months', rate: '14.5%', city: 'Lusaka' },
+  { id: 'APP-10521', name: 'Dr. Mutale Banda', type: 'Personal Loan', amount: 'ZMW 150K', stage: 'Pre-Screening', status: 'Pending Review', date: 'Oct 05, 2026',
+    phone: '+260 96 234 5678', channel: 'Mobile App', officer: 'Priya Patel', tenure: '24 Months', rate: '18.0%', city: 'Ndola' },
+  { id: 'APP-10520', name: 'Copperbelt Logistics', type: 'Asset Finance', amount: 'ZMW 2.8M', stage: 'Offer Issued', status: 'Approved', date: 'Oct 04, 2026',
+    phone: '+260 95 345 6789', channel: 'DSA / Agent', officer: 'Rahul Sharma', tenure: '48 Months', rate: '15.2%', city: 'Kitwe' },
+  { id: 'APP-10519', name: 'Sara Phiri', type: 'Home Loan', amount: 'ZMW 850K', stage: 'Appraisal', status: 'In Progress', date: 'Oct 04, 2026',
+    phone: '+260 97 456 7890', channel: 'Website', officer: 'Amit Singh', tenure: '180 Months', rate: '12.8%', city: 'Lusaka' },
+  { id: 'APP-10518', name: 'Emmanuel Banda', type: 'Business Loan', amount: 'ZMW 1.2M', stage: 'Applications Logged', status: 'New', date: 'Oct 04, 2026',
+    phone: '+260 96 567 8901', channel: 'Partner', officer: 'Neha Gupta', tenure: '36 Months', rate: '14.0%', city: 'Livingstone' },
 ];
 
 const rejectedAppsData = [
@@ -103,6 +108,7 @@ const riskData = [
   { name: 'Medium (650-749)', value: 30, color: '#f59e0b' },
 ];
 
+const statusColor = (s: string) => s === 'Approved' ? 'teal' : s === 'New' ? 'blue' : 'orange';
 
 function MetricCard({ title, value, trend, subtext, isPositive, secondaryValue }: any) {
   return (
@@ -146,11 +152,26 @@ function DemographicProgressBar({ title, data }: { title: string, data: any[] })
   );
 }
 
+function DetailItem({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <Box>
+      <Text fz={11} c="slate.5" fw={600} tt="uppercase">{label}</Text>
+      <Text size="sm" fw={bold ? 700 : 500} c="slate.8">{value}</Text>
+    </Box>
+  );
+}
+
 export default function LosDashboard() {
   const [modalState, setModalState] = React.useState({ isOpen: false, title: '' });
   const [tasks, setTasks] = React.useState(initialTasks);
   const [reviewState, setReviewState] = React.useState<any>({ isOpen: false, app: null });
   const openDetails = (title: string) => setModalState({ isOpen: true, title });
+
+  const isRecentList = modalState.title === 'Recent Applications';
+  const selectedApp = modalState.title.startsWith('App:')
+    ? recentApplicationsData.find(d => modalState.title.includes(d.id))
+    : null;
+  const stageNames = funnelData.map(f => f.name);
 
   const getModalData = () => {
     const t = modalState.title;
@@ -194,20 +215,7 @@ export default function LosDashboard() {
       headers: ['CATEGORY', 'SEGMENT', 'PERCENTAGE', 'STATUS'],
       rows: demographicData.flatMap(d => d.data.map(item => ({ col1: d.title, col2: item.name.split(' (')[0], col3: item.value+'%', status: 'Active', color: 'green' })))
     };
-    if (t.includes('Recent') || t.includes('App:')) {
-      const selected = recentApplicationsData.find(d => t.includes(d.id));
-      if (selected) {
-        return {
-          headers: ['APPLICATION NO.', 'APPLICANT NAME', 'LOAN PRODUCT', 'CURRENT STAGE'],
-          rows: [{ col1: selected.id, col2: selected.name, col3: `${selected.type} (${selected.amount})`, status: selected.stage, color: 'blue', isText: true }]
-        };
-      }
-      return {
-        headers: ['APPLICANT NAME', 'APPLICATION NO.', 'LOAN PRODUCT', 'CURRENT STAGE'],
-        rows: recentApplicationsData.map(d => ({ col1: d.name, col2: d.id, col3: d.type, status: d.stage, color: 'blue', isText: true }))
-      };
-    }
-if (t.includes('Queue')) {
+    if (t.includes('Queue')) {
       const mockQueueApps = [
         { applicant: 'Zambia Traders Ltd', amount: 'ZMW 4.5M', time: '48 Hrs', status: 'Breached', severity: 'red' },
         { applicant: 'Mining Solutions Corp', amount: 'ZMW 2.8M', time: '24 Hrs', status: 'Warning', severity: 'orange' },
@@ -221,7 +229,7 @@ if (t.includes('Queue')) {
         rows: mockQueueApps.map(d => ({ col1: d.applicant, col2: d.amount, col3: d.time, status: d.status, color: d.severity }))
       };
     }
-if (t.includes('Escalation')) return {
+    if (t.includes('Escalation')) return {
       headers: ['APPLICANT', 'LOAN PRODUCT', 'REVIEW REASON', 'SLA STATUS'],
       rows: escalatedApplications.map(d => ({ col1: d.name, col2: d.type, col3: d.reason, status: d.sla, color: d.severity === 'yellow' ? 'orange' : d.severity }))
     };
@@ -370,7 +378,6 @@ if (t.includes('Escalation')) return {
         </Grid.Col>
       </Grid>
 
-      
       {/* Recent Applications Table */}
       <Paper p="lg" radius="md" shadow="sm" withBorder mb="lg">
         <Group justify="space-between" mb="lg">
@@ -409,7 +416,7 @@ if (t.includes('Escalation')) return {
                     <Text size="sm" fw={600} c="brand.6">{app.stage}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Badge color={app.status === 'Approved' ? 'teal' : app.status === 'New' ? 'blue' : 'orange'} variant="light">
+                    <Badge color={statusColor(app.status)} variant="light">
                       {app.status}
                     </Badge>
                   </Table.Td>
@@ -423,10 +430,12 @@ if (t.includes('Escalation')) return {
         </Box>
       </Paper>
 
-      <Modal opened={modalState.isOpen} onClose={() => setModalState({ isOpen: false, title: '' })} title={null} size="xl" padding="xl" radius="md" withCloseButton={false}>
+      <Modal opened={modalState.isOpen} onClose={() => setModalState({ isOpen: false, title: '' })} title={null} size={isRecentList ? 1000 : 'xl'} padding="xl" radius="md" withCloseButton={false}>
         <Group justify="space-between" mb="xl">
           <Box>
-            <Title order={4} c="slate.8">{modalState.title} Details</Title>
+            <Title order={4} c="slate.8">
+              {selectedApp ? `Application ${selectedApp.id}` : `${modalState.title} Details`}
+            </Title>
             <Text size="sm" c="slate.5" mt={4}>
               {modalState.title.includes('Stages') ? 'Detailed breakdown of all applications currently in the pipeline.' :
                modalState.title.includes('Channel') ? 'Performance metrics across all origination channels.' :
@@ -437,6 +446,7 @@ if (t.includes('Escalation')) return {
                modalState.title.includes('Escalation') ? 'Complete list of all escalated applications requiring administrative review.' :
                modalState.title.includes('Risk') ? 'Distribution of credit risk across active applicants.' :
                modalState.title.includes('App:') ? 'Detailed application summary and current origination stage.' :
+               isRecentList ? 'Complete list of the latest loan applications in the origination pipeline.' :
                'Comprehensive view of selected metrics.'}
             </Text>
           </Box>
@@ -446,31 +456,121 @@ if (t.includes('Escalation')) return {
           </Group>
         </Group>
 
-        <Table verticalSpacing="sm" horizontalSpacing="md" striped highlightOnHover style={{ border: '1px solid var(--mantine-color-slate-2)', borderRadius: 8 }}>
-          <Table.Thead bg="slate.0">
-            <Table.Tr>
-              {getModalData().headers.map((h, i) => (
-                <Table.Th key={i} style={{ color: 'var(--mantine-color-slate-5)' }}>{h}</Table.Th>
-              ))}
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {getModalData().rows.map((r, i) => (
-              <Table.Tr key={i}>
-                <Table.Td><Text size="sm" fw={600} c="slate.7">{r.col1}</Text></Table.Td>
-                <Table.Td><Text size="sm" fw={500} c="slate.6">{r.col2}</Text></Table.Td>
-                <Table.Td><Text size="sm" fw={500} c="slate.6">{r.col3}</Text></Table.Td>
-                <Table.Td>
-                  {r.isText ? (
-                    <Text size="sm" fw={500} c="slate.6">{r.status}</Text>
-                  ) : (
-                    <Badge size="xs" variant="light" color={r.color}>{r.status}</Badge>
-                  )}
-                </Table.Td>
+        {selectedApp ? (
+          <Stack gap="lg">
+            {/* Top summary */}
+            <Paper p="sm" radius="md" withBorder bg="slate.0">
+              <Group justify="space-between" align="center">
+                <Group gap="sm">
+                  <Avatar color="indigo" radius="xl" size="md">
+                    {selectedApp.name.split(' ').map(w => w[0]).slice(0, 2).join('')}
+                  </Avatar>
+                  <Box>
+                    <Text fw={700} size="sm" c="slate.8">{selectedApp.name}</Text>
+                    <Text fz={11} c="slate.5">{selectedApp.id} • Applied on {selectedApp.date}</Text>
+                  </Box>
+                </Group>
+                <Box ta="right">
+                  <Text fz={10} c="slate.5" fw={600}>LOAN AMOUNT</Text>
+                  <Text fw={800} size="lg" c="slate.8">{selectedApp.amount}</Text>
+                </Box>
+              </Group>
+            </Paper>
+
+            {/* Stage tracker */}
+            <Box>
+              <Text size="xs" fw={700} c="slate.5" mb="sm" tt="uppercase">Application Progress</Text>
+              <Stepper active={stageNames.indexOf(selectedApp.stage)} size="xs" iconSize={26}>
+                {stageNames.map(s => <Stepper.Step key={s} label={s} />)}
+              </Stepper>
+            </Box>
+
+            {/* Details grid */}
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <Paper p="md" radius="md" withBorder>
+                <Text size="xs" fw={700} c="slate.5" mb="sm" tt="uppercase">Applicant Info</Text>
+                <SimpleGrid cols={2} spacing="sm">
+                  <DetailItem label="Applicant Name" value={selectedApp.name} bold />
+                  <DetailItem label="Phone" value={selectedApp.phone} />
+                  <DetailItem label="City" value={selectedApp.city} />
+                  <DetailItem label="Channel" value={selectedApp.channel} />
+                </SimpleGrid>
+              </Paper>
+
+              <Paper p="md" radius="md" withBorder>
+                <Text size="xs" fw={700} c="slate.5" mb="sm" tt="uppercase">Loan Info</Text>
+                <SimpleGrid cols={2} spacing="sm">
+                  <DetailItem label="Loan Product" value={selectedApp.type} bold />
+                  <DetailItem label="Amount" value={selectedApp.amount} bold />
+                  <DetailItem label="Tenure" value={selectedApp.tenure} />
+                  <DetailItem label="Interest Rate" value={selectedApp.rate} />
+                </SimpleGrid>
+              </Paper>
+            </SimpleGrid>
+
+            <Paper p="md" radius="md" withBorder>
+              <SimpleGrid cols={3} spacing="xl">
+                <DetailItem label="Current Stage" value={selectedApp.stage} bold />
+                <DetailItem label="Assigned Officer" value={selectedApp.officer} />
+                <Box>
+                  <Text fz={11} c="slate.5" fw={600} tt="uppercase">Status</Text>
+                  <Badge variant="light" color={statusColor(selectedApp.status)} mt={2}>{selectedApp.status}</Badge>
+                </Box>
+              </SimpleGrid>
+            </Paper>
+          </Stack>
+        ) : isRecentList ? (
+          <Table verticalSpacing="sm" horizontalSpacing="sm" striped highlightOnHover style={{ border: '1px solid var(--mantine-color-slate-2)', borderRadius: 8 }}>
+            <Table.Thead bg="slate.0">
+              <Table.Tr>
+                {['APPLICANT', 'LOAN PRODUCT', 'AMOUNT', 'CURRENT STAGE', 'STATUS', 'DATE'].map(h => (
+                  <Table.Th key={h} style={{ color: 'var(--mantine-color-slate-5)', whiteSpace: 'nowrap' }}>{h}</Table.Th>
+                ))}
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {recentApplicationsData.map(app => (
+                <Table.Tr key={app.id}>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                    <Text size="sm" fw={600} c="slate.8">{app.name}</Text>
+                    <Text fz={11} c="slate.5">{app.id}</Text>
+                  </Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}><Text size="sm" fw={500} c="slate.6">{app.type}</Text></Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}><Text size="sm" fw={700} c="slate.7">{app.amount}</Text></Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}><Text size="sm" fw={600} c="brand.6">{app.stage}</Text></Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}><Badge variant="light" color={statusColor(app.status)}>{app.status}</Badge></Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}><Text size="sm" c="slate.6">{app.date}</Text></Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        ) : (
+          <Table verticalSpacing="sm" horizontalSpacing="md" striped highlightOnHover style={{ border: '1px solid var(--mantine-color-slate-2)', borderRadius: 8 }}>
+            <Table.Thead bg="slate.0">
+              <Table.Tr>
+                {getModalData().headers.map((h, i) => (
+                  <Table.Th key={i} style={{ color: 'var(--mantine-color-slate-5)' }}>{h}</Table.Th>
+                ))}
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {getModalData().rows.map((r: any, i: number) => (
+                <Table.Tr key={i}>
+                  <Table.Td><Text size="sm" fw={600} c="slate.7">{r.col1}</Text></Table.Td>
+                  <Table.Td><Text size="sm" fw={500} c="slate.6">{r.col2}</Text></Table.Td>
+                  <Table.Td><Text size="sm" fw={500} c="slate.6">{r.col3}</Text></Table.Td>
+                  <Table.Td>
+                    {r.isText ? (
+                      <Text size="sm" fw={500} c="slate.6">{r.status}</Text>
+                    ) : (
+                      <Badge size="xs" variant="light" color={r.color}>{r.status}</Badge>
+                    )}
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )}
       </Modal>
 
       {/* Application Review Modal */}
