@@ -25,6 +25,7 @@ export interface CustomerRaw {
   email_id: string;
   mobile_no: string;
   status: string;
+  is_investor?: boolean;
 }
 
 export interface CustomerPagination {
@@ -89,6 +90,7 @@ export interface CustomerBasicDetails {
   nationality: string | null;
   is_staff_customer: 0 | 1;
   staff_id: string | null;
+  is_investor?: 0 | 1;
   occupation: string | null;
   education_level: string | null;
   employment_type: string | null;
@@ -263,6 +265,7 @@ export interface IndividualBasicDetails {
   nationality: string | null;
   is_staff_customer: 0 | 1;
   staff_id?: string | null;
+  is_investor: 0 | 1;
   occupation: string;
   education_level: string | null;
   employment_type: string | null;

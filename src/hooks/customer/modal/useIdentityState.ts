@@ -36,6 +36,7 @@ export function useIdentityState() {
 const [customerGroup, setCustomerGroup] = useState<string | null>(null);
   const [isStaffCustomer, setIsStaffCustomer] = useState(false);
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [isInvestor, setIsInvestor] = useState(false);
 
   const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
@@ -96,6 +97,7 @@ const [customerGroup, setCustomerGroup] = useState<string | null>(null);
     setCustomerGroup(null);
     setIsStaffCustomer(false);
     setStaffId(null);
+    setIsInvestor(false);
     setFirstName("");
     setMiddleName("");
     setLastName("");
@@ -143,6 +145,8 @@ const [customerGroup, setCustomerGroup] = useState<string | null>(null);
     setIsStaffCustomer,
     staffId,
     setStaffId,
+    isInvestor,
+    setIsInvestor,
     firstName,
     setFirstName,
     middleName,

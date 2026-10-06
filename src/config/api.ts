@@ -515,6 +515,16 @@ losDocumentSetup: {
     delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.delete_investment_product`,
     enable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.enable_investment_product`,
     disable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.disable_investment_product`,
+  },
+
+  investorFlow: {
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investor_flow`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investor_flow_by_id`,
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.create_investor_flow`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.update_investor_flow`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.delete_investor_flow`,
+    updateStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.update_investor_flow_status`,
+    getSchedule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_schedules`,
   }
 } as const;
 

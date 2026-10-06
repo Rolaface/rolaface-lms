@@ -3,8 +3,6 @@ import { IconDownload, IconEye } from "@tabler/icons-react";
 import { usePdfPreview } from "./PdfPreviewModal";
 import { buildContractPdf, getPdfPalette } from "./Investmentpdf";
 import {
-  CUSTOMERS,
-  PRODUCTS,
   DocumentPaper,
   KeyValueList,
   KpiGrid,
@@ -13,6 +11,8 @@ import {
   buildNumber,
   fmtDate,
   inr,
+  stateCustomer,
+  stateProduct,
   type SignMethod,
   type TabProps,
 } from "./InvestorModalShared";
@@ -27,8 +27,8 @@ export function ContractGeneration({
   schedule,
   existingCount,
 }: ContractGenerationProps) {
-  const customer = CUSTOMERS[state.customerIndex];
-  const product = PRODUCTS[state.productIndex];
+  const customer = stateCustomer(state);
+  const product = stateProduct(state);
   const status = state.contractStatus;
   const statusColor =
     status === "Executed" ? "success" : status === "Not generated" ? "brand" : "warning";
@@ -45,7 +45,7 @@ export function ContractGeneration({
         issuedOn: new Date(),
         status: state.contractStatus,
         signMethod: state.signMethod,
-        customer,
+        customer: { ...customer, bank: customer.bank || "—" },
         productName: product.name,
         amount: state.amount,
         rate: state.rate,

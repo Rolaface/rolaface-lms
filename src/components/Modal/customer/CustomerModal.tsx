@@ -191,6 +191,7 @@ export function CustomerModal({
     identity.setOccupation(text(basicDetails?.occupation));
     identity.setIsStaffCustomer(!!basicDetails?.is_staff_customer);
     identity.setStaffId(nullableText(basicDetails?.staff_id));
+    identity.setIsInvestor(!!basicDetails?.is_investor);
     identity.setEmployer(text(basicDetails?.employer_name));
   
     
@@ -580,6 +581,8 @@ if (idDocs.length > 0) {
             setIsStaffCustomer={identity.setIsStaffCustomer}
             staffId={identity.staffId}
             setStaffId={identity.setStaffId}
+            isInvestor={identity.isInvestor}
+            setIsInvestor={identity.setIsInvestor}
             firstName={identity.firstName}
             setFirstName={identity.setFirstName}
             middleName={identity.middleName}
