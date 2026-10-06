@@ -48,6 +48,8 @@ interface IdentityStepProps {
   setIsStaffCustomer: (v: boolean) => void;
   staffId: string | null;
   setStaffId: (v: string | null) => void;
+  isInvestor: boolean;
+  setIsInvestor: (v: boolean) => void;
   firstName: string;
   setFirstName: (v: string) => void;
   middleName: string;
@@ -169,6 +171,8 @@ export function IdentityStep(props: IdentityStepProps) {
     setIsStaffCustomer,
     staffId,
     setStaffId,
+    isInvestor,
+    setIsInvestor,
     firstName,
     setFirstName,
     middleName,
@@ -433,6 +437,15 @@ export function IdentityStep(props: IdentityStepProps) {
                   setStaffId(null);
                 }
               }}
+            />
+          </Stack>
+
+          <Stack gap={2} style={{ flex: "0 0 auto" }}>
+            <Switch
+              label="Is Investor"
+              description="Is the customer an investor?"
+              checked={isInvestor}
+              onChange={(event) => setIsInvestor(event.currentTarget.checked)}
             />
           </Stack>
 

@@ -1,8 +1,18 @@
 import type { ReactNode } from "react";
 import { Badge, Box, Group, Paper, Text } from "@mantine/core";
+import type { InvestmentProductListItem } from "../../../api/Investor/productApi";
+import {
+  REPAYMENT_FREQUENCIES,
+  type InvestorFlowPayload,
+  type InvestorFlowRecord,
+  type InvestorFlowSchedule,
+  type InvestorFlowTerms,
+  type RepaymentFrequency,
+} from "../../../types/Investor/investorFlow";
 
 /* ------------------------------ Types ------------------------------ */
-export type Frequency = "Monthly" | "Quarterly" | "At maturity";
+/** The Investor Flow frequencies, plus "At maturity" used by the Earnings / Maturity mock data. */
+export type Frequency = RepaymentFrequency | "At maturity";
 export type ContractStatus =
   | "Not generated"
   | "Generated"
@@ -43,8 +53,17 @@ export interface Schedule {
 
 export interface ModalState {
   step: number;
+  /** Mock data (Earnings & Maturity): index into CUSTOMERS / PRODUCTS. */
   customerIndex: number;
   productIndex: number;
+  /** Investor Flow API: chosen Customer and Custom Investment Product. */
+  customerId: string | null;
+  customerName: string;
+  customerEmail: string;
+  productId: string | null;
+  productName: string;
+  productTenureMonths: number;
+  productMinAmount: number;
   amount: number;
   rate: number;
   frequency: Frequency;
@@ -83,11 +102,14 @@ export interface TabProps {
   state: ModalState;
   update: (patch: Partial<ModalState>) => void;
   schedule: Schedule | null;
+  /** Error from the schedule API for the current terms. */
+  scheduleError?: string;
   onToast: (message: string) => void;
 }
 
 /* ----------------------------- Constants ----------------------------- */
-export const FREQUENCY_MONTHS: Record<Frequency, number> = {
+/** Months between payouts for the mock schedule (calcSchedule). */
+export const FREQUENCY_MONTHS: Partial<Record<Frequency, number>> = {
   Monthly: 1,
   Quarterly: 3,
   "At maturity": 0,
@@ -156,6 +178,13 @@ export function createInitialState(): ModalState {
     step: 0,
     customerIndex: -1,
     productIndex: -1,
+    customerId: null,
+    customerName: "",
+    customerEmail: "",
+    productId: null,
+    productName: "",
+    productTenureMonths: 0,
+    productMinAmount: 0,
     amount: 0,
     rate: 0,
     frequency: "Monthly",
@@ -250,12 +279,15 @@ export function calcSchedule(s: ModalState): Schedule | null {
 }
 
 export function validateTerms(s: ModalState): string {
-  if (s.customerIndex < 0 || s.productIndex < 0) return "";
-  const p = PRODUCTS[s.productIndex];
-  if (!(s.amount >= p.minAmount))
-    return "Minimum investment for " + p.name + " is " + inr(p.minAmount) + ".";
+  const product = stateProduct(s);
+  if (!stateCustomer(s) || !product) return "";
+  if (!(s.amount >= product.minAmount))
+    return "Minimum investment for " + product.name + " is " + inr(product.minAmount) + ".";
+  if (!Number.isInteger(s.amount))
+    return "Investment amount must be a whole number.";
   if (!(s.rate > 0 && s.rate <= 24))
     return "Interest rate must be between 0 and 24%.";
+  if (!isRepaymentFrequency(s.frequency)) return "Select the repayment frequency.";
   if (!s.firstRepayment) return "Enter the first repayment date.";
   if (!s.maturity) return "Enter the maturity date.";
   if (new Date(s.firstRepayment).getTime() <= Date.now())
@@ -265,6 +297,132 @@ export function validateTerms(s: ModalState): string {
   if (s.penaltyApplicable && !(s.penaltyRate > 0))
     return "Enter the penalty rate.";
   return "";
+}
+
+/* ------------------------- Investor Flow API ------------------------- */
+export function isRepaymentFrequency(value: string): value is RepaymentFrequency {
+  return (REPAYMENT_FREQUENCIES as readonly string[]).includes(value);
+}
+
+/** Same gaps between payouts as the backend schedule (SCHEDULE_FREQUENCY_STEP). */
+export function nextPayoutDate(from: Date, frequency: RepaymentFrequency): Date {
+  const x = new Date(from);
+  switch (frequency) {
+    case "Weekly":
+      x.setDate(x.getDate() + 7);
+      return x;
+    case "Bi-Weekly":
+      x.setDate(x.getDate() + 14);
+      return x;
+    case "Monthly":
+      return addMonths(x, 1);
+    case "Quarterly":
+      return addMonths(x, 3);
+    case "Yearly":
+      return addMonths(x, 12);
+  }
+}
+
+/** The customer chosen in the modal: the API customer, else the mock one. */
+export function stateCustomer(s: ModalState): CustomerOption | null {
+  if (s.customerId) {
+    return { id: s.customerId, name: s.customerName || s.customerId, email: s.customerEmail, bank: "" };
+  }
+  return CUSTOMERS[s.customerIndex] ?? null;
+}
+
+/** The product chosen in the modal: the API product, else the mock one. */
+export function stateProduct(s: ModalState): ProductOption | null {
+  if (s.productId) {
+    return {
+      name: s.productName || s.productId,
+      rate: s.rate,
+      tenureMonths: s.productTenureMonths,
+      frequency: s.frequency,
+      minAmount: s.productMinAmount,
+    };
+  }
+  return PRODUCTS[s.productIndex] ?? null;
+}
+
+/** Product details only (used when an existing Investor Flow is loaded). */
+export function apiProductFields(p: InvestmentProductListItem): Partial<ModalState> {
+  return {
+    productId: p.name,
+    productName: p.product_name,
+    productTenureMonths: Number(p.tenure) || 0,
+    productMinAmount: Number(p.minimum_investment) || 0,
+  };
+}
+
+/** Product details plus the terms copied from it (when a product is picked). */
+export function apiProductPatch(p: InvestmentProductListItem | null): Partial<ModalState> {
+  if (!p) {
+    return { productId: null, productName: "", productTenureMonths: 0, productMinAmount: 0 };
+  }
+  const today = new Date();
+  const tenure = Number(p.tenure) || 0;
+  const patch: Partial<ModalState> = {
+    ...apiProductFields(p),
+    amount: Number(p.minimum_investment) || 0,
+    rate: Number(p.interest_rate) || 0,
+    maturity: toIso(addMonths(today, tenure)),
+  };
+  if (isRepaymentFrequency(p.payout_frequency)) {
+    patch.frequency = p.payout_frequency;
+    patch.firstRepayment = toIso(nextPayoutDate(today, p.payout_frequency));
+  }
+  return patch;
+}
+
+export function termsFromState(s: ModalState): InvestorFlowTerms {
+  return {
+    investment_amount: s.amount,
+    repayment_frequency: s.frequency as RepaymentFrequency, // checked by validateTerms
+    maturity_date: s.maturity,
+    interest_rate: s.rate,
+    first_repayment_date: s.firstRepayment,
+    ...(s.penaltyApplicable ? { penalty_rate: s.penaltyRate } : {}),
+  };
+}
+
+export function payloadFromState(s: ModalState): InvestorFlowPayload {
+  return {
+    investor: s.customerId ?? "",
+    investment_product: s.productId ?? "",
+    ...termsFromState(s),
+  };
+}
+
+/** Modal state for an existing Investor Flow. */
+export function stateFromRecord(r: InvestorFlowRecord): ModalState {
+  const penalty = Number(r.penalty_rate) || 0;
+  return {
+    ...createInitialState(),
+    customerId: r.investor,
+    productId: r.investment_product,
+    amount: Number(r.investment_amount) || 0,
+    rate: Number(r.interest_rate) || 0,
+    frequency: r.repayment_frequency,
+    firstRepayment: r.first_repayment_date,
+    maturity: r.maturity_date,
+    penaltyApplicable: penalty > 0,
+    penaltyRate: penalty > 0 ? penalty : createInitialState().penaltyRate,
+  };
+}
+
+export function scheduleFromApi(res: InvestorFlowSchedule): Schedule {
+  return {
+    totalMonths: res.total_months,
+    totalInterest: res.total_interest,
+    perPayment: res.per_payment,
+    count: res.count,
+    rows: res.schedule.map((r) => ({
+      date: new Date(r.date),
+      principal: r.principal,
+      interest: r.interest,
+    })),
+  };
 }
 
 /* ---------------------------- UI helpers ----------------------------- */

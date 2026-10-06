@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDebouncedValue } from "@mantine/hooks";
 import {
   ActionIcon,
   Affix,
@@ -6,8 +7,11 @@ import {
   Button,
   TextInput,
   Group,
+  Loader,
   Menu,
+  Pagination,
   Paper,
+  Select,
   Table,
   Badge,
   Text,
@@ -36,6 +40,17 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  deleteInvestorFlow,
+  getAllInvestorFlows,
+  updateInvestorFlowStatus,
+} from "../../api/Investor/investorFlowApi";
+import { getEveryInvestmentProduct } from "../../api/Investor/productApi";
+import type { InvestorFlowStatusAction } from "../../types/Investor/investorFlow";
+import { parseFrappeError } from "../../utils/parseFrappeError";
+import { formatAmount } from "../../store/currencyStore";
+import { useCompanyStore } from "../../store/companyStore";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
 import { openCommonModal } from "../../components/Modal/AlertModal";
 import {
@@ -43,9 +58,9 @@ import {
   PRODUCTS,
   buildNumber,
   calcSchedule,
-   createInitialState,   // added
-  productPatch, 
-  toIso,
+  createInitialState,
+  productPatch,
+  type Frequency,
   type ModalState,
 } from "../../components/Modal/Investor/InvestorModalShared";
 import {
@@ -61,58 +76,16 @@ import { MaturityModal } from "../../components/Modal/Investor/MaturityModal";
 
 interface InvestmentRow {
   id: string;
-  investmentNo: string;
   customer: string;
+  productId: string;
   product: string;
   amount: number;
   rate: number;
-  startDate: string; 
+  frequency: Frequency;
+  firstRepayment: string;
+  maturity: string;
   status: string;
-  state?: ModalState;
 }
-
-const MOCK_INVESTMENTS: InvestmentRow[] = [
-  {
-    id: "INV-2026-0004",
-    investmentNo: "INV-2026-0004",
-    customer: "John Doe",
-    product: "Steady Income NCD",
-    amount: 50000,
-    rate: 10.5,
-    startDate: "2026-10-05",
-    status: "Approved",
-  },
-  {
-    id: "INV-2026-0003",
-    investmentNo: "INV-2026-0003",
-    customer: "John Doe",
-    product: "Steady Income NCD",
-    amount: 200000,
-    rate: 10.5,
-    startDate: "2026-08-01",
-    status: "Approved",
-  },
-  {
-    id: "INV-2026-0002",
-    investmentNo: "INV-2026-0002",
-    customer: "Abhishek",
-    product: "Growth NCD",
-    amount: 500000,
-    rate: 12.5,
-    startDate: "2026-07-01",
-    status: "Approved",
-  },
-  {
-    id: "INV-2026-0001",
-    investmentNo: "INV-2026-0001",
-    customer: "Arjun Mehta",
-    product: "Quarterly Yield NCD",
-    amount: 100000,
-    rate: 11.75,
-    startDate: "2026-06-10",
-    status: "Received",
-  },
-];
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   Draft: { label: "Draft", color: "slate" },
@@ -164,22 +137,97 @@ const fmtDate = (iso: string) =>
       })
     : "-";
 
-const fmtAmount = (value: number) => `₹${value.toLocaleString("en-IN")}`;
+const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
+
+const RIGHT_ALIGNED = ["amount", "rate", "actions"];
 
 export function Investor() {
   const theme = useMantineTheme();
+  const queryClient = useQueryClient();
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
 
   const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch] = useDebouncedValue(searchInput, 400);
   const [productFilter, setProductFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [sorting, setSorting] = useState([{ id: "investmentNo", desc: true }]);
-  const [investments, setInvestments] = useState<InvestmentRow[]>(MOCK_INVESTMENTS);
+  const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  /* ------------------------- New investment ------------------------- */
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, productFilter, statusFilter]);
+
+  /* ------------------------------- Data ------------------------------- */
+  const {
+    data: flowsResponse,
+    isLoading,
+    isFetching,
+  } = useQuery({
+    queryKey: [
+      "investorFlows",
+      debouncedSearch,
+      productFilter,
+      statusFilter,
+      page,
+      pageSize,
+    ],
+    queryFn: () =>
+      getAllInvestorFlows({
+        search: debouncedSearch.trim() || undefined,
+        investment_product: productFilter,
+        status: statusFilter,
+        page,
+        page_size: pageSize,
+      }),
+    placeholderData: (prev) => prev,
+  });
+
+  // Investor Flow rows only hold the product ID, so names come from the product list.
+  const { data: products = [] } = useQuery({
+    queryKey: ["investmentProducts", "all"],
+    queryFn: getEveryInvestmentProduct,
+  });
+
+  const productNames = useMemo(
+    () => new Map(products.map((p) => [p.name, p.product_name])),
+    [products],
+  );
+
+  const investments = useMemo<InvestmentRow[]>(
+    () =>
+      (flowsResponse?.data ?? []).map((item) => ({
+        id: item.name,
+        customer: item.investor,
+        productId: item.investment_product,
+        product:
+          productNames.get(item.investment_product) ?? item.investment_product,
+        amount: Number(item.investment_amount) || 0,
+        rate: Number(item.interest_rate) || 0,
+        frequency: item.repayment_frequency,
+        firstRepayment: item.first_repayment_date,
+        maturity: item.maturity_date,
+        status: item.status,
+      })),
+    [flowsResponse, productNames],
+  );
+
+  const totalRows = flowsResponse?.pagination?.total ?? 0;
+  const totalPages = flowsResponse?.pagination?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
+
+  /* --------------------- New / view / edit investment -------------------- */
   const [modalOpened, setModalOpened] = useState(false);
   const [modalKey, setModalKey] = useState(0);
+  const [modalEditId, setModalEditId] = useState<string | null>(null);
+  const [modalIsView, setModalIsView] = useState(false);
 
-  const openModal = () => {
+  const openModal = (editId: string | null = null, isView = false) => {
+    setModalEditId(editId);
+    setModalIsView(isView);
     setModalKey((k) => k + 1); // fresh modal state on every open
     setModalOpened(true);
   };
@@ -203,45 +251,64 @@ export function Investor() {
     toastTimer.current = window.setTimeout(() => setToast(null), 2600);
   };
 
-  /* -------------------- Row the user is acting on ------------------- */
+  const showError = (heading: string, error: any) => {
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  };
+
+  /* ---------------------- Status change / delete ---------------------- */
+  const { mutate: changeStatus } = useMutation({
+    mutationFn: ({
+      id,
+      action,
+    }: {
+      id: string;
+      action: InvestorFlowStatusAction;
+    }) => updateInvestorFlowStatus({ id, action }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
+      queryClient.invalidateQueries({ queryKey: ["investorFlow", result.id] });
+      showToast(`Investment ${result.status.toLowerCase()}`);
+    },
+    onError: (error: any) => showError("Status Update Failed", error),
+  });
+
+  const { mutate: removeItem } = useMutation({
+    mutationFn: (id: string) => deleteInvestorFlow(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
+      showToast("Investment deleted");
+    },
+    onError: (error: any) => showError("Delete Failed", error),
+  });
+
+  /* ---- Receive Payment / Earnings / Maturity (mock, no API yet) ---- */
+  /** Modal state for these stages, by Investor Flow ID (kept in memory only). */
+  const [stageStates, setStageStates] = useState<Record<string, ModalState>>(
+    {},
+  );
   const [activeId, setActiveId] = useState<string | null>(null);
   const [paymentOpened, setPaymentOpened] = useState(false);
   /** Earnings & Statements / Maturity modal for the active row. */
   const [stageOpened, setStageOpened] = useState(false);
 
-  const active = investments.find((r) => r.id === activeId) ?? null;
-  const activeState = active?.state ?? null;
+  const activeState = activeId ? (stageStates[activeId] ?? null) : null;
   const activeSchedule = activeState ? calcSchedule(activeState) : null;
 
   /** Same "patch the state" contract the tabs use, applied to the active row. */
   const updateActive = (patch: Partial<ModalState>) =>
-    setInvestments((prev) =>
-      prev.map((r) =>
-        r.id === activeId && r.state ? { ...r, state: { ...r.state, ...patch } } : r,
-      ),
+    setStageStates((prev) =>
+      activeId && prev[activeId]
+        ? { ...prev, [activeId]: { ...prev[activeId], ...patch } }
+        : prev,
     );
 
-  /* 1. Submit on Contract Generation -> Draft */
-  const handleSubmitted = (state: ModalState) => {
-    setInvestments((prev) => [
-      {
-        id: `ROW-${Date.now()}`,
-        investmentNo: "",
-        customer: CUSTOMERS[state.customerIndex].name,
-        product: PRODUCTS[state.productIndex].name,
-        amount: state.amount,
-        rate: state.rate,
-        startDate: "",
-        status: "Draft",
-        state,
-      },
-      ...prev,
-    ]);
-    setModalOpened(false);
-    showToast("Investment saved as Draft");
-  };
-
-  /* 2. Approve (Draft) -> Approved */
+  /* Approve (Draft) -> Approved */
   const confirmApprove = (row: InvestmentRow) => {
     openCommonModal({
       heading: "Approve Investment",
@@ -265,83 +332,58 @@ export function Investor() {
         {
           label: "Approve",
           color: "green",
-          onClick: () => {
-            // TODO(API): call the approve / status-change API here.
-            // For now the status is changed locally.
-            setInvestments((prev) =>
-              prev.map((r) => (r.id === row.id ? { ...r, status: "Approved" } : r)),
-            );
-          },
+          onClick: () => changeStatus({ id: row.id, action: "approved" }),
         },
       ],
     });
   };
 
-const openReceivePayment = (row: InvestmentRow) => {
-   if (!row.state) {
-    const customerIndex = CUSTOMERS.findIndex((c) => c.name === row.customer);
-    const productIndex = PRODUCTS.findIndex((p) => p.name === row.product);
-    setInvestments((prev) =>
-      prev.map((r) =>
-        r.id === row.id && !r.state
-          ? {
-              ...r,
-              state: {
-                ...createInitialState(),
-                ...productPatch(productIndex),
-                customerIndex,
-                productIndex,
-                amount: r.amount,
-                rate: r.rate,
-                contractStatus: "Executed",
-                contractNo: buildNumber("CON", prev.length - 1),
-                step: 2,
-              },
-            }
-          : r,
-      ),
-    );
-  }
-  setActiveId(row.id);
-  setPaymentOpened(true);
-};
+  const openReceivePayment = (row: InvestmentRow) => {
+    if (!stageStates[row.id]) {
+      const customerIndex = CUSTOMERS.findIndex((c) => c.name === row.customer);
+      const productIndex = PRODUCTS.findIndex((p) => p.name === row.product);
+      setStageStates((prev) => ({
+        ...prev,
+        [row.id]: {
+          ...createInitialState(),
+          ...productPatch(productIndex),
+          customerIndex,
+          productIndex,
+          amount: row.amount,
+          rate: row.rate,
+          contractStatus: "Executed",
+          contractNo: buildNumber("CON", Object.keys(prev).length),
+          step: 2,
+        },
+      }));
+    }
+    setActiveId(row.id);
+    setPaymentOpened(true);
+  };
 
   const handleReceivePayment = ({ paymentMode, utr }: ReceivePaymentValues) => {
-    if (!activeState) return;
+    if (!activeId || !activeState) return;
 
     const startDate = new Date();
     const investmentNo = buildNumber(
       "INV",
-      investments.filter((r) => r.investmentNo).length,
+      Object.values(stageStates).filter((st) => st.investmentNo).length,
     );
 
-    setInvestments((prev) =>
-      prev.map((r) =>
-        r.id === activeId && r.state
-          ? {
-              ...r,
-              investmentNo,
-              startDate: toIso(startDate),
-              status: "Received",
-              state: {
-                ...r.state,
-                paymentMode,
-                utr,
-                funded: true,
-                startDate,
-                investmentNo,
-                step: 4, // Earnings & Statements
-              },
-            }
-          : r,
-      ),
-    );
+    updateActive({
+      paymentMode,
+      utr,
+      funded: true,
+      startDate,
+      investmentNo,
+      step: 4, // Earnings & Statements
+    });
     setPaymentOpened(false);
     showToast("Payment received for " + investmentNo);
     setStageOpened(true); // only now the Earnings & Statements modal opens
   };
 
-  /* 4. Cancel (Approved) -> Cancelled */
+  /* Cancel (Approved) -> Cancelled */
   const confirmCancel = (row: InvestmentRow) => {
     openCommonModal({
       heading: "Cancel Investment",
@@ -365,20 +407,13 @@ const openReceivePayment = (row: InvestmentRow) => {
         {
           label: "Cancel Investment",
           color: "red",
-          onClick: () => {
-            // TODO(API): call the cancel / status-change API here.
-            // For now the status is changed locally.
-            setInvestments((prev) =>
-              prev.map((r) => (r.id === row.id ? { ...r, status: "Cancelled" } : r)),
-            );
-            showToast("Investment cancelled");
-          },
+          onClick: () => changeStatus({ id: row.id, action: "cancelled" }),
         },
       ],
     });
   };
 
-  /* 5. Delete (Draft only) */
+  /* Delete (Draft only) */
   const confirmDelete = (row: InvestmentRow) => {
     openCommonModal({
       heading: "Delete Investment",
@@ -402,27 +437,13 @@ const openReceivePayment = (row: InvestmentRow) => {
         {
           label: "Delete",
           color: "red",
-          onClick: () => {
-            // TODO(API): call the delete API here.
-            // For now the row is removed locally.
-            setInvestments((prev) => prev.filter((r) => r.id !== row.id));
-            showToast("Investment deleted");
-          },
+          onClick: () => removeItem(row.id),
         },
       ],
     });
   };
 
-  /* 6. View / Edit — what these open has not been defined yet */
-  const handleViewInvestment = (_row: InvestmentRow) => {
-    // TODO: decide what the View (eye) button opens.
-  };
-
-  const handleEditInvestment = (_row: InvestmentRow) => {
-    // TODO: decide what the Edit (pencil) button opens (Draft rows only).
-  };
-
-  /* 7. Earnings & Statements / Maturity (only for Received rows) */
+  /* Earnings & Statements / Maturity (only for Received rows) */
   const openStage = (row: InvestmentRow) => {
     setActiveId(row.id);
     setStageOpened(true);
@@ -431,21 +452,15 @@ const openReceivePayment = (row: InvestmentRow) => {
   const handleComplete = () => {
     if (!activeState || !activeState.decision) return;
     // Status stays "Received": only Draft / Approved / Received / Cancelled exist.
-    setInvestments((prev) =>
-      prev.map((r) =>
-        r.id === activeId && r.state
-          ? { ...r, state: { ...r.state, completed: true } }
-          : r,
-      ),
-    );
+    updateActive({ completed: true });
     showToast("Workflow completed for " + activeState.investmentNo);
     closeTimer.current = window.setTimeout(() => setStageOpened(false), 900);
   };
 
   /* ------------------------------ Table ----------------------------- */
   const productOptions = useMemo(
-    () => PRODUCTS.map((p) => ({ value: p.name, label: p.name })),
-    [],
+    () => products.map((p) => ({ value: p.name, label: p.product_name })),
+    [products],
   );
 
   const statusOptions = useMemo(
@@ -453,45 +468,23 @@ const openReceivePayment = (row: InvestmentRow) => {
     [],
   );
 
-  const filteredData = useMemo(() => {
-    const q = searchInput.trim().toLowerCase();
-    return investments.filter((row) => {
-      const matchesSearch =
-        !q ||
-        row.investmentNo.toLowerCase().includes(q) ||
-        row.customer.toLowerCase().includes(q);
-      const matchesProduct =
-        productFilter.length === 0 || productFilter.includes(row.product);
-      const matchesStatus =
-        statusFilter.length === 0 || statusFilter.includes(row.status);
-      return matchesSearch && matchesProduct && matchesStatus;
-    });
-  }, [investments, searchInput, productFilter, statusFilter]);
-
   const columns = useMemo(
     () => [
-      columnHelper.accessor("investmentNo", {
-        header: "Investment No.",
-        cell: (info) => (
-          <Text
-            fz="sm"
-            fw={700}
-            c={info.getValue() ? "slate.8" : "slate.5"}
-            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
-          >
-            {info.getValue() || "Pending"}
-          </Text>
-        ),
-        // Rows without a number yet count as the newest, so with the default
-        // (descending) sort a new Draft shows at the top of the list.
-        sortingFn: (a, b, columnId) => {
-          const x = a.getValue<string>(columnId) || "\uffff";
-          const y = b.getValue<string>(columnId) || "\uffff";
-          return x < y ? -1 : x > y ? 1 : 0;
-        },
-      }),
+      // columnHelper.accessor("id", {
+      //   header: "Investment No.",
+      //   cell: (info) => (
+      //     <Text
+      //       fz="sm"
+      //       fw={700}
+      //       c="slate.8"
+      //       style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+      //     >
+      //       {info.getValue()}
+      //     </Text>
+      //   ),
+      // }),
       columnHelper.accessor("customer", {
-        header: "Customer",
+        header: "Investor",
         cell: (info) => (
           <Text fz="sm" fw={600} c="slate.8">
             {info.getValue()}
@@ -538,8 +531,17 @@ const openReceivePayment = (row: InvestmentRow) => {
         ),
         sortingFn: "basic",
       }),
-      columnHelper.accessor("startDate", {
-        header: "Start",
+      columnHelper.accessor("firstRepayment", {
+        header: "First Repayment",
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {fmtDate(info.getValue())}
+          </Text>
+        ),
+        sortingFn: "basic",
+      }),
+      columnHelper.accessor("maturity", {
+        header: "Maturity",
         cell: (info) => (
           <Text fz="xs" c="slate.6">
             {fmtDate(info.getValue())}
@@ -566,10 +568,12 @@ const openReceivePayment = (row: InvestmentRow) => {
         ),
         cell: (info) => {
           const row = info.row.original;
+          const stageState = stageStates[row.id];
           const isDraft = row.status === "Draft";
           const isApproved = row.status === "Approved";
           const isReceived = row.status === "Received";
-          const hasActions = isDraft || isApproved || (!!row.state && isReceived);
+          const hasActions =
+            isDraft || isApproved || (!!stageState && isReceived);
 
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap">
@@ -579,7 +583,7 @@ const openReceivePayment = (row: InvestmentRow) => {
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => handleViewInvestment(row)}
+                  onClick={() => openModal(row.id, true)}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -595,7 +599,7 @@ const openReceivePayment = (row: InvestmentRow) => {
                   color={isDraft ? "brand" : "slate"}
                   radius="md"
                   disabled={!isDraft}
-                  onClick={() => handleEditInvestment(row)}
+                  onClick={() => openModal(row.id, false)}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
@@ -639,7 +643,9 @@ const openReceivePayment = (row: InvestmentRow) => {
 
                 <Menu.Dropdown>
                   {isDraft && (
-                    <Menu.Item onClick={() => confirmApprove(row)}>Approve</Menu.Item>
+                    <Menu.Item onClick={() => confirmApprove(row)}>
+                      Approve
+                    </Menu.Item>
                   )}
                   {isApproved && (
                     <Menu.Item onClick={() => openReceivePayment(row)}>
@@ -647,13 +653,16 @@ const openReceivePayment = (row: InvestmentRow) => {
                     </Menu.Item>
                   )}
                   {isApproved && (
-                    <Menu.Item color="danger" onClick={() => confirmCancel(row)}>
+                    <Menu.Item
+                      color="danger"
+                      onClick={() => confirmCancel(row)}
+                    >
                       Cancel
                     </Menu.Item>
                   )}
-                  {isReceived && (
+                  {isReceived && stageState && (
                     <Menu.Item onClick={() => openStage(row)}>
-                      {row.state && row.state.step >= 5
+                      {stageState.step >= 5
                         ? "Maturity"
                         : "Earnings & Statements"}
                     </Menu.Item>
@@ -665,11 +674,12 @@ const openReceivePayment = (row: InvestmentRow) => {
         },
       }),
     ],
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stageStates, companyCurrency],
   );
 
   const table = useReactTable({
-    data: filteredData,
+    data: investments,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -683,6 +693,7 @@ const openReceivePayment = (row: InvestmentRow) => {
     setSearchInput("");
     setProductFilter([]);
     setStatusFilter([]);
+    setPage(1);
   };
 
   return (
@@ -790,7 +801,7 @@ const openReceivePayment = (row: InvestmentRow) => {
               boxShadow: theme.other.brandGlowShadowSm,
             }}
             leftSection={<IconPlus size={14} />}
-            onClick={openModal}
+            onClick={() => openModal()}
           >
             Add Investment
           </Button>
@@ -807,135 +818,188 @@ const openReceivePayment = (row: InvestmentRow) => {
           border: "1px solid var(--mantine-color-slate-2)",
         }}
       >
-        <Box
-          style={{
-            height: "clamp(320px, calc(100vh - 280px), 720px)",
-            overflowY: "auto",
-          }}
-        >
-          <Table
-            verticalSpacing="sm"
-            horizontalSpacing="sm"
-            fz="xs"
-            w="100%"
-            style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
-          >
-            <Table.Thead>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <Table.Tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    const canSort = header.column.getCanSort();
-                    const rightAligned =
-                      header.id === "amount" ||
-                      header.id === "rate" ||
-                      header.id === "actions";
-                    return (
-                      <Table.Th
-                        key={header.id}
-                        className="lms-thead-cell"
-                        c="slate.5"
-                        fw={700}
-                        style={{
-                          fontSize: "var(--mantine-font-size-xs)",
-                          padding: "0 10px 6px",
-                          userSelect: "none",
-                          cursor: canSort ? "pointer" : "default",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.04em",
-                          border: "none",
-                        }}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        <Group
-                          gap="xs"
-                          wrap="nowrap"
-                          justify={rightAligned ? "flex-end" : "flex-start"}
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                          {canSort && (
-                            <SortIcon sorted={header.column.getIsSorted()} />
-                          )}
-                        </Group>
-                      </Table.Th>
-                    );
-                  })}
-                </Table.Tr>
-              ))}
-            </Table.Thead>
-
-            <Table.Tbody>
-              {rows.length === 0 ? (
-                <Table.Tr>
-                  <Table.Td colSpan={columns.length} style={{ border: "none" }}>
-                    <Stack align="center" gap="xs" py="xl">
-                      <Box
-                        style={{
-                          width: 52,
-                          height: 52,
-                          borderRadius: "50%",
-                          background: "var(--mantine-color-white)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          border: "1px solid var(--mantine-color-slate-2)",
-                        }}
-                      >
-                        <IconFileText
-                          size={24}
-                          color="var(--mantine-color-slate-4)"
-                        />
-                      </Box>
-                      <Text ta="center" c="slate.5" fz="xs">
-                        No investments match your filters.
-                      </Text>
-                    </Stack>
-                  </Table.Td>
-                </Table.Tr>
-              ) : (
-                rows.map((row) => {
-                  const rowMeta = STATUS_META[row.original.status] || {
-                    label: row.original.status,
-                    color: "gray",
-                  };
-                  return (
-                    <Table.Tr key={row.id} className="lms-row">
-                      {row.getVisibleCells().map((cell, idx) => (
-                        <Table.Td
-                          key={cell.id}
-                          style={{
-                            padding: "10px 10px",
-                            border: "none",
-                            boxShadow: "var(--mantine-shadow-xs)",
-                            borderLeft:
-                              idx === 0
-                                ? `3px solid var(--mantine-color-${rowMeta.color}-4)`
-                                : undefined,
-                          }}
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </Table.Td>
-                      ))}
+        {isLoading ? (
+          <Group justify="center" py="xl">
+            <Loader size="sm" color="brand" />
+          </Group>
+        ) : (
+          <>
+            <Box
+              style={{
+                height: "clamp(320px, calc(100vh - 280px), 720px)",
+                overflowY: "auto",
+                opacity: isFetching ? 0.6 : 1,
+                transition: "opacity 120ms ease",
+              }}
+            >
+              <Table
+                verticalSpacing="sm"
+                horizontalSpacing="sm"
+                fz="xs"
+                w="100%"
+                style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+              >
+                <Table.Thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <Table.Tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        const canSort = header.column.getCanSort();
+                        const rightAligned = RIGHT_ALIGNED.includes(header.id);
+                        return (
+                          <Table.Th
+                            key={header.id}
+                            className="lms-thead-cell"
+                            c="slate.5"
+                            fw={700}
+                            style={{
+                              fontSize: "var(--mantine-font-size-xs)",
+                              padding: "0 10px 6px",
+                              userSelect: "none",
+                              cursor: canSort ? "pointer" : "default",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                              border: "none",
+                            }}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            <Group
+                              gap="xs"
+                              wrap="nowrap"
+                              justify={rightAligned ? "flex-end" : "flex-start"}
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                              {canSort && (
+                                <SortIcon
+                                  sorted={header.column.getIsSorted()}
+                                />
+                              )}
+                            </Group>
+                          </Table.Th>
+                        );
+                      })}
                     </Table.Tr>
-                  );
-                })
-              )}
-            </Table.Tbody>
-          </Table>
-        </Box>
+                  ))}
+                </Table.Thead>
+
+                <Table.Tbody>
+                  {rows.length === 0 ? (
+                    <Table.Tr>
+                      <Table.Td
+                        colSpan={columns.length}
+                        style={{ border: "none" }}
+                      >
+                        <Stack align="center" gap="xs" py="xl">
+                          <Box
+                            style={{
+                              width: 52,
+                              height: 52,
+                              borderRadius: "50%",
+                              background: "var(--mantine-color-white)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              border: "1px solid var(--mantine-color-slate-2)",
+                            }}
+                          >
+                            <IconFileText
+                              size={24}
+                              color="var(--mantine-color-slate-4)"
+                            />
+                          </Box>
+                          <Text ta="center" c="slate.5" fz="xs">
+                            No investments match your filters.
+                          </Text>
+                        </Stack>
+                      </Table.Td>
+                    </Table.Tr>
+                  ) : (
+                    rows.map((row) => {
+                      const rowMeta = STATUS_META[row.original.status] || {
+                        label: row.original.status,
+                        color: "gray",
+                      };
+                      return (
+                        <Table.Tr key={row.id} className="lms-row">
+                          {row.getVisibleCells().map((cell, idx) => (
+                            <Table.Td
+                              key={cell.id}
+                              style={{
+                                padding: "10px 10px",
+                                border: "none",
+                                boxShadow: "var(--mantine-shadow-xs)",
+                                borderLeft:
+                                  idx === 0
+                                    ? `3px solid var(--mantine-color-${rowMeta.color}-4)`
+                                    : undefined,
+                              }}
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                              )}
+                            </Table.Td>
+                          ))}
+                        </Table.Tr>
+                      );
+                    })
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Box>
+
+            {/* Pagination Footer */}
+            <Group justify="space-between" px="sm" pt="xs">
+              <Group
+                gap="sm"
+                c="slate.6"
+                style={{ fontSize: "var(--mantine-font-size-xs)" }}
+              >
+                <span>
+                  {totalRows === 0
+                    ? "Showing 0 of 0"
+                    : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+                </span>
+                <Group gap="xs">
+                  <span>Rows:</span>
+                  <Select
+                    data={["10", "20", "50"]}
+                    value={String(pageSize)}
+                    onChange={(v) => {
+                      setPageSize(Number(v) || 10);
+                      setPage(1);
+                    }}
+                    rightSection={chevronDown}
+                    size="xs"
+                    radius="xl"
+                    w={60}
+                  />
+                </Group>
+              </Group>
+              <Pagination
+                total={totalPages}
+                value={page}
+                onChange={(p) => setPage(p)}
+                color="brand"
+                size="xs"
+                radius="xl"
+                disabled={totalRows === 0}
+              />
+            </Group>
+          </>
+        )}
       </Paper>
 
       <InvestorModal
         key={modalKey}
         opened={modalOpened}
         onClose={() => setModalOpened(false)}
-        existingCount={investments.length}
-        onSubmitted={handleSubmitted}
+        existingCount={totalRows}
+        editId={modalEditId}
+        isView={modalIsView}
+        onSaved={() => setModalOpened(false)}
       />
 
       {activeState && (
@@ -962,7 +1026,7 @@ const openReceivePayment = (row: InvestmentRow) => {
               <ProcessingReadOnlyView
                 state={activeState}
                 schedule={activeSchedule}
-                existingCount={investments.length}
+                existingCount={totalRows}
               />
             }
             onSubmit={() => updateActive({ step: 5 })}
@@ -981,7 +1045,7 @@ const openReceivePayment = (row: InvestmentRow) => {
               <ProcessingReadOnlyView
                 state={activeState}
                 schedule={activeSchedule}
-                existingCount={investments.length}
+                existingCount={totalRows}
               />
             }
             onComplete={handleComplete}
@@ -991,7 +1055,13 @@ const openReceivePayment = (row: InvestmentRow) => {
 
       {toast && (
         <Affix position={{ bottom: 20, left: 0, right: 0 }} zIndex={1000}>
-          <Box style={{ display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+          <Box
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              pointerEvents: "none",
+            }}
+          >
             <Paper
               radius="md"
               px={18}

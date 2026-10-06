@@ -14,10 +14,10 @@ import {
 } from "@mantine/core";
 import { IconCheck, IconEye, IconPencil, IconX } from "@tabler/icons-react";
 import {
-  CUSTOMERS,
-  PRODUCTS,
   STEP_NAMES,
   inr,
+  stateCustomer,
+  stateProduct,
   type ModalState,
 } from "./InvestorModalShared";
 
@@ -168,6 +168,8 @@ interface StageShellProps {
   /** Index in STAGES of the stage this modal belongs to (0, 1 or 2). */
   stageIndex: number;
   state: ModalState;
+  /** Header title; defaults to "New Investment". */
+  title?: string;
   /** Optional side nav (not used by the Investor Processing modal). */
   sideNav?: ReactNode;
   /** Buttons shown on the right of the footer; "Close" is always on the left. */
@@ -181,13 +183,14 @@ export function StageShell({
   onClose,
   stageIndex,
   state,
+  title = "New Investment",
   sideNav,
   footer,
   children,
 }: StageShellProps) {
   const theme = useMantineTheme();
-  const customer = CUSTOMERS[state.customerIndex];
-  const product = PRODUCTS[state.productIndex];
+  const customer = stateCustomer(state);
+  const product = stateProduct(state);
 
   return (
     <Modal
@@ -252,7 +255,7 @@ export function StageShell({
         </ThemeIcon>
         <Box>
           <Text fw={700} c="white">
-            New Investment
+            {title}
           </Text>
           <Text fz="xs" c="white" style={{ opacity: 0.85 }}>
             Stage {stageIndex + 1} of {STAGES.length} — {STAGES[stageIndex].label}

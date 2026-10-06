@@ -8,40 +8,37 @@ import {
   Text,
   TextInput,
 } from "@mantine/core";
+import { REPAYMENT_FREQUENCIES } from "../../../types/Investor/investorFlow";
 import {
-  FREQUENCY_MONTHS,
   KpiGrid,
   SectionBox,
   TH_STYLE,
   Tag,
-  addMonths,
   inr,
   fmtDate,
+  isRepaymentFrequency,
+  nextPayoutDate,
+  stateProduct,
   toIso,
   validateTerms,
-  type Frequency,
   type ModalState,
   type TabProps,
 } from "./InvestorModalShared";
 
-export function TermsSchedule({ state, update, schedule }: TabProps) {
-  const error = validateTerms(state);
+export function TermsSchedule({ state, update, schedule, scheduleError }: TabProps) {
+  const error = validateTerms(state) || scheduleError || "";
   const penaltyLabel = state.penaltyApplicable ? `${state.penaltyRate}% p.a.` : "—";
 
+  // The mock data (Earnings & Maturity view) can hold "At maturity", which is not an option here.
+  const frequencyOptions: string[] = isRepaymentFrequency(state.frequency)
+    ? [...REPAYMENT_FREQUENCIES]
+    : [...REPAYMENT_FREQUENCIES, state.frequency];
+
   const handleFrequencyChange = (value: string | null) => {
-    if (!value) return;
-    const frequency = value as Frequency;
-    const patch: Partial<ModalState> = { frequency };
-    if (state.productIndex >= 0) {
-      const months =
-        FREQUENCY_MONTHS[frequency] ||
-        Math.max(
-          1,
-          Math.round(
-            (new Date(state.maturity).getTime() - Date.now()) / 2629800000,
-          ),
-        );
-      patch.firstRepayment = toIso(addMonths(new Date(), months));
+    if (!value || !isRepaymentFrequency(value)) return;
+    const patch: Partial<ModalState> = { frequency: value };
+    if (stateProduct(state)) {
+      patch.firstRepayment = toIso(nextPayoutDate(new Date(), value));
     }
     update(patch);
   };
@@ -107,7 +104,7 @@ export function TermsSchedule({ state, update, schedule }: TabProps) {
             size="sm"
             radius="md"
             allowDeselect={false}
-            data={Object.keys(FREQUENCY_MONTHS)}
+            data={frequencyOptions}
             value={state.frequency}
             onChange={handleFrequencyChange}
           />
