@@ -8,13 +8,11 @@ import {
   Slider,
   Table,
   Switch,
-  ActionIcon,
 } from "@mantine/core";
 import {
   IconMath,
   IconDots,
   IconBuilding,
-  IconTrash,
 } from "@tabler/icons-react";
 import {
   Field,
@@ -72,8 +70,8 @@ export function ObligationAssessment({
               <Slider
                 value={formulaParams.maxDtiRatio}
                 onChange={(value) => setFormulaParam("maxDtiRatio")(value)}
-                min={10}
-                max={70}
+                min={0}
+                max={100}
                 color="violet"
                 style={{ flex: 1 }}
                 label={(v) => `${v}%`}
@@ -128,8 +126,8 @@ export function ObligationAssessment({
               <Slider
                 value={formulaParams.maxEmiRatio}
                 onChange={(value) => setFormulaParam("maxEmiRatio")(value)}
-                min={10}
-                max={60}
+                min={0}
+                max={100}
                 color="brand"
                 style={{ flex: 1 }}
                 label={(v) => `${v}%`}
@@ -212,9 +210,6 @@ export function ObligationAssessment({
               >
                 Included
               </Table.Th>
-              <Table.Th
-                style={{ borderColor: "transparent", width: 36 }}
-              ></Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -235,7 +230,7 @@ export function ObligationAssessment({
                       paddingLeft: 8,
                     }}
                   >
-                    <Group gap={8}>
+                    <Group gap={8} wrap="nowrap">
                       <Icon size={12} color="var(--mantine-color-slate-5)" />
                       <Text fz={11} fw={500} c="slate.8">
                         {obs.name}
@@ -311,18 +306,6 @@ export function ObligationAssessment({
                         justifyContent: "center",
                       }}
                     />
-                  </Table.Td>
-                  <Table.Td
-                    style={{
-                      borderColor: "var(--mantine-color-slate-1)",
-                      textAlign: "center",
-                      width: 36,
-                      paddingRight: 8,
-                    }}
-                  >
-                    <ActionIcon variant="subtle" color="slate.4" size="sm">
-                      <IconTrash size={12} />
-                    </ActionIcon>
                   </Table.Td>
                 </Table.Tr>
               );

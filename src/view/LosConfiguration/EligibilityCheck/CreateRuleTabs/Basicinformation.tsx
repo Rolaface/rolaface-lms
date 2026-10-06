@@ -1,306 +1,141 @@
-import { Box, Paper, Title, Text, Grid, TextInput, Select, NumberInput } from "@mantine/core";
+import { Badge, Box, Group, NumberInput, Select, Text, TextInput, Title } from "@mantine/core";
 import type { FormulaParams, SetFormulaParam } from "./Ruleshared";
-import { useQuery } from "@tanstack/react-query";
-import { getAllLoanProducts } from "../../../../api/productApi";
-import { useMemo } from "react";
+import { useLoanProductOptions } from "../../../../components/Modal/OriginationSetup/LoanProductAssignmentModal";
 
 interface BasicInformationProps {
   ruleName: string;
   setRuleName: (v: string) => void;
   loanProduct: string | null;
   setLoanProduct: (v: string | null) => void;
-  riskCategory: string | null;
-  setRiskCategory: (v: string | null) => void;
   ruleStatus: string | null;
-  setRuleStatus: (v: string | null) => void;
   formulaParams: FormulaParams;
   setFormulaParam: SetFormulaParam;
   effectiveFrom: string;
   setEffectiveFrom: (v: string) => void;
   effectiveUntil: string;
   setEffectiveUntil: (v: string) => void;
+  version: string;
+  productLocked: boolean;
 }
+
+const FIELD_STYLES = {
+  label: { fontSize: 11, fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 },
+  input: { height: 32, minHeight: 32, fontSize: 12.5, borderRadius: 8 },
+  description: { fontSize: 10.5, marginTop: 4 },
+};
+
 export function BasicInformation({
   ruleName,
   setRuleName,
   loanProduct,
   setLoanProduct,
-  riskCategory,
-  setRiskCategory,
   ruleStatus,
-  setRuleStatus,
   formulaParams,
   setFormulaParam,
   effectiveFrom,
   setEffectiveFrom,
   effectiveUntil,
   setEffectiveUntil,
+  version,
+  productLocked,
 }: BasicInformationProps) {
-  const { data: productResponse, isLoading: isProductsLoading, refetch: refetchProducts } = useQuery({
-    queryKey: ["loanProducts"],
-    queryFn: () => getAllLoanProducts(),
-  });
-
-  const availableProduct = useMemo(() => {
-    const products = productResponse?.data || [];
-    return products
-      .filter((p: any) => p.disabled !== 1)
-      .map((p: any) => ({
-        value: p.name,
-        label: p.name,
-      }));
-  }, [productResponse]);
+  const { options: productOptions } = useLoanProductOptions();
+  const availableProduct = productOptions.map((p) => ({ value: p.value, label: `${p.value} · ${p.label}` }));
+  const datesInvalid = !!effectiveUntil && !!effectiveFrom && effectiveUntil < effectiveFrom;
 
   return (
     <Box>
-      <Paper
-        radius="md"
-        style={{
-          border: "1px solid var(--mantine-color-slate-2)",
-          overflow: "hidden",
-        }}
+      <Group
+        justify="space-between"
+        align="flex-start"
+        py={6}
+        px={8}
+        mb="md"
+        style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
       >
-        <Box
-          py={8}
-          px="sm"
-          style={{
-            borderBottom: "1px solid var(--mantine-color-slate-2)",
-            background: "transparent",
-          }}
-        >
-          <Title order={6} c="slate.8" fw={600}>
-            Basic information
+        <Box>
+          <Title order={6} c="slate.8" fw={600} mb={1}>
+            Basic Information
           </Title>
+          <Text fz={10} c="slate.5">
+            Name the rule, choose the loan product it applies to and set when it is in force.
+          </Text>
         </Box>
+        <Group gap={6}>
+          <Badge size="sm" radius="sm" variant="light" color="slate">
+            v{version}
+          </Badge>
+          <Badge size="sm" radius="sm" variant="light" color={ruleStatus === "Active" ? "success" : "brand"}>
+            {ruleStatus || "Draft"}
+          </Badge>
+        </Group>
+      </Group>
 
-        <Grid
-          gutter={10}
-          py={10}
-          px="sm"
-          align="flex-start"
-          style={{
-            borderBottom: "1px solid var(--mantine-color-slate-2)",
-            margin: 0,
-          }}
-        >
-          <Grid.Col span={2}>
-            <Text fz={11} fw={600} c="slate.6">
-              Identity
+      <Box px={8} style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: "14px 16px" }}>
+        <TextInput
+          label="Rule name"
+          withAsterisk
+          placeholder="Standard Personal Loan Eligibility"
+          value={ruleName}
+          onChange={(e) => setRuleName(e.currentTarget.value)}
+          maxLength={140}
+          styles={FIELD_STYLES}
+          style={{ gridColumn: "span 3" }}
+        />
+        <Select
+          label="Loan product"
+          withAsterisk
+          placeholder="Select loan product"
+          value={loanProduct || null}
+          onChange={setLoanProduct}
+          data={
+            loanProduct && !availableProduct.some((p) => p.value === loanProduct)
+              ? [{ value: loanProduct, label: loanProduct }, ...availableProduct]
+              : availableProduct
+          }
+          searchable
+          disabled={productLocked}
+          description={productLocked ? "Fixed after the rule is created" : undefined}
+          inputWrapperOrder={["label", "input", "description", "error"]}
+          styles={FIELD_STYLES}
+          style={{ gridColumn: "span 3" }}
+        />
+        <NumberInput
+          label="Maximum amount"
+          hideControls
+          min={0}
+          placeholder="0"
+          thousandSeparator=","
+          value={formulaParams.productMax}
+          onChange={(val) => setFormulaParam("productMax")(val === "" ? 0 : Number(val))}
+          rightSection={
+            <Text fz={10} c="slate.5">
+              ZMW
             </Text>
-          </Grid.Col>
-          <Grid.Col span={10}>
-            <Grid gutter={10}>
-              <Grid.Col span={8}>
-                <Box mb={1}>
-                  <Text fz={10} fw={500} c="slate.7">
-                    Rule name{" "}
-                    <span style={{ color: "var(--mantine-color-red-6)" }}>
-                      *
-                    </span>
-                  </Text>
-                </Box>
-                <TextInput
-                  radius="md"
-                  size="xs"
-                  value={ruleName}
-                  onChange={(e) => setRuleName(e.target.value)}
-                  placeholder="Standard Personal Loan Eligibility"
-                  styles={{ input: { minHeight: 26, height: 26 } }}
-                />
-              </Grid.Col>
-              <Grid.Col span={2}>
-                <Box mb={1}>
-                  <Text fz={10} fw={500} c="slate.7">
-                    Version
-                  </Text>
-                </Box>
-                <TextInput
-                  radius="md"
-                  size="xs"
-                  defaultValue="1.0"
-                  disabled
-                  styles={{ input: { minHeight: 26, height: 26 } }}
-                />
-              </Grid.Col>
-              <Grid.Col span={2}>
-                <Box mb={1}>
-                  <Text fz={10} fw={500} c="slate.7">
-                    Priority
-                  </Text>
-                </Box>
-                <TextInput
-                  radius="md"
-                  size="xs"
-                  type="number"
-                  defaultValue={1}
-                  styles={{ input: { minHeight: 26, height: 26 } }}
-                />
-              </Grid.Col>
-            </Grid>
-          </Grid.Col>
-        </Grid>
-
-        <Grid
-          gutter={10}
-          py={10}
-          px="sm"
-          align="flex-start"
-          style={{
-            borderBottom: "1px solid var(--mantine-color-slate-2)",
-            margin: 0,
-          }}
-        >
-          <Grid.Col span={2}>
-            <Text fz={11} fw={600} c="slate.6">
-              Applies to
-            </Text>
-          </Grid.Col>
-          <Grid.Col span={10}>
-            <Grid gutter={10} mb={8}>
-              <Grid.Col span={6}>
-                <Box mb={1}>
-                  <Text fz={10} fw={500} c="slate.7">
-                    Loan product
-                  </Text>
-                </Box>
-                <Select
-                  radius="md"
-                  size="xs"
-                  value={loanProduct}
-                  onChange={setLoanProduct}
-                 data={availableProduct}
-                  styles={{ input: { minHeight: 26, height: 26 } }}
-                />
-              </Grid.Col>
-              <Grid.Col span={3}>
-  <NumberInput
-    label="Maximum amount"
-    hideControls
-    min={0}
-    placeholder="0"
-    thousandSeparator=","
-    value={formulaParams.productMax}
-    onChange={(val) => setFormulaParam("productMax")(val === "" ? 0 : Number(val))}
-    rightSection={
-      <Text fz={9} c="dimmed" mr={8}>
-        ZMW
-      </Text>
-    }
-    rightSectionWidth={36}
-    radius="md"
-    size="xs"
-    styles={{ input: { minHeight: 26, height: 26 } }}
-  />
-</Grid.Col>
-              <Grid.Col span={3}>
-                <Box mb={1}>
-                  <Text fz={10} fw={500} c="slate.7">
-                    Risk category
-                  </Text>
-                </Box>
-                <Select
-                  radius="md"
-                  size="xs"
-                  value={riskCategory}
-                  onChange={setRiskCategory}
-                  data={["Low Risk", "Medium Risk", "High Risk"]}
-                  styles={{ input: { minHeight: 26, height: 26 } }}
-                />
-              </Grid.Col>
-            </Grid>
-            <Grid gutter={10}>
-              <Grid.Col span={3}>
-                <Box mb={1}>
-                  <Text fz={10} fw={500} c="slate.7">
-                    Customer type
-                  </Text>
-                </Box>
-                <Select
-                  radius="md"
-                  size="xs"
-                  data={["Individual", "Employee", "SME", "Corporate"]}
-                  styles={{ input: { minHeight: 26, height: 26 } }}
-                />
-              </Grid.Col>
-              <Grid.Col span={3}>
-                <Box mb={1}>
-                  <Text fz={10} fw={500} c="slate.7">
-                    Customer segment
-                  </Text>
-                </Box>
-                <Select
-                  radius="md"
-                  size="xs"
-                  data={[
-                    "New Customer",
-                    "Existing Customer",
-                    "Repeat Borrower",
-                    "Preferred Customer",
-                  ]}
-                  styles={{ input: { minHeight: 26, height: 26 } }}
-                />
-              </Grid.Col>
-            </Grid>
-          </Grid.Col>
-        </Grid>
-
-        <Grid gutter={10} py={10} px="sm" align="flex-start" style={{ margin: 0 }}>
-          <Grid.Col span={2}>
-            <Text fz={11} fw={600} c="slate.6">
-              In force
-            </Text>
-          </Grid.Col>
-          <Grid.Col span={10}>
-            <Grid gutter={10}>
-              <Grid.Col span={4}>
-                <Box mb={1}>
-                  <Text fz={10} fw={500} c="slate.7">
-                    Status
-                  </Text>
-                </Box>
-                <Select
-                  radius="md"
-                  size="xs"
-                  value={ruleStatus}
-                  onChange={setRuleStatus}
-                  data={["Draft", "Active", "Disabled"]}
-                  styles={{ input: { minHeight: 26, height: 26 } }}
-                />
-              </Grid.Col>
-              <Grid.Col span={4}>
-  <Box mb={1}>
-    <Text fz={10} fw={500} c="slate.7">
-      Effective from
-    </Text>
-  </Box>
-  <TextInput
-    radius="md"
-    size="xs"
-    type="date"
-    value={effectiveFrom}
-    onChange={(e) => setEffectiveFrom(e.target.value)}
-    styles={{ input: { minHeight: 26, height: 26 } }}
-  />
-</Grid.Col>
-<Grid.Col span={4}>
-  <Box mb={1}>
-    <Text fz={10} fw={500} c="slate.7">
-      Effective until
-    </Text>
-  </Box>
-  <TextInput
-    radius="md"
-    size="xs"
-    type="date"
-    value={effectiveUntil}
-    onChange={(e) => setEffectiveUntil(e.target.value)}
-    styles={{ input: { minHeight: 26, height: 26 } }}
-  />
-</Grid.Col>
-            </Grid>
-          </Grid.Col>
-        </Grid>
-      </Paper>
+          }
+          rightSectionWidth={44}
+          styles={FIELD_STYLES}
+          style={{ gridColumn: "span 2" }}
+        />
+        <TextInput
+          label="Effective from"
+          type="date"
+          value={effectiveFrom}
+          onChange={(e) => setEffectiveFrom(e.currentTarget.value)}
+          styles={FIELD_STYLES}
+          style={{ gridColumn: "span 2" }}
+        />
+        <TextInput
+          label="Effective until"
+          type="date"
+          value={effectiveUntil}
+          min={effectiveFrom || undefined}
+          onChange={(e) => setEffectiveUntil(e.currentTarget.value)}
+          error={datesInvalid ? "Cannot be before effective from" : undefined}
+          styles={FIELD_STYLES}
+          style={{ gridColumn: "span 2" }}
+        />
+      </Box>
     </Box>
   );
 }

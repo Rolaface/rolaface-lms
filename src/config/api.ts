@@ -282,6 +282,7 @@ export const API = {
      getEligibilityRuleById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.get_eligibility_rule`,
      updateEligibilityRule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.update_eligibility_rule`,
      deleteEligibilityRule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.delete_eligibility_rule`,
+     setEligibilityRuleStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.set_eligibility_rule_status`,
     },
 
   // =========================

@@ -5,7 +5,6 @@ import {
   Table,
   Slider,
   Switch,
-  ActionIcon,
   TextInput,
   NumberInput,
 } from "@mantine/core";
@@ -14,7 +13,6 @@ import {
   IconBuildingBank,
   IconBuilding,
   IconDots,
-  IconTrash,
   IconInfoCircle,
 } from "@tabler/icons-react";
 import {
@@ -103,9 +101,6 @@ export function IncomeAssessment({
               >
                 Included
               </Table.Th>
-              <Table.Th
-                style={{ borderColor: "transparent", width: 36 }}
-              ></Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -126,7 +121,7 @@ export function IncomeAssessment({
                       paddingLeft: 8,
                     }}
                   >
-                    <Group gap={8}>
+                    <Group gap={8} wrap="nowrap">
                       <Icon size={12} color="var(--mantine-color-slate-5)" />
                       <Text fz={11} fw={500} c="slate.8">
                         {n as string}
@@ -200,18 +195,6 @@ export function IncomeAssessment({
                         justifyContent: "center",
                       }}
                     />
-                  </Table.Td>
-                  <Table.Td
-                    style={{
-                      borderColor: "var(--mantine-color-slate-1)",
-                      textAlign: "center",
-                      width: 36,
-                      paddingRight: 8,
-                    }}
-                  >
-                    <ActionIcon variant="subtle" color="slate.4" size="sm">
-                      <IconTrash size={12} />
-                    </ActionIcon>
                   </Table.Td>
                 </Table.Tr>
               );

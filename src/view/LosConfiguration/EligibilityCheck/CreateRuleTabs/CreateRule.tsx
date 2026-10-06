@@ -10,6 +10,7 @@ import {
   ThemeIcon,
   Modal,
   ActionIcon,
+  Loader,
 } from "@mantine/core";
 import {
   IconCheck,
@@ -30,9 +31,11 @@ import {
 import {
   INCOME_SOURCES,
   OBLIGATION_SOURCES,
-  DEFAULT_CREDIT_BANDS,
   DEFAULT_FORMULA_PARAMS,
-  COLLATERAL_TYPES,
+  CREDIT_SCORE_SCALE,
+  INTERNAL_SCORE_SCALE,
+  bandsReady,
+  newBand,
   RULE_FACTORS,
   RULE_OPERATORS,
   TIERS,
@@ -51,20 +54,26 @@ import {
 import { BasicInformation } from "./Basicinformation";
 import { IncomeAssessment } from "./Incomeassessment";
 import { ObligationAssessment } from "./Obligationassessment";
-import { CreditScoreLimit } from "./Creditscorelimit";
+import { ScoreBandTable } from "./ScoreBandTable";
 import { CollateralLimit } from "./Collaterallimit";
-import type { CreateEligibilityRulePayload, ScoreBand } from "../../../../types/OriginationSetup/createRuleForm";
+import type {
+  CreateEligibilityRulePayload,
+  FormulaParams as ApiFormulaParams,
+  ScoreBand,
+} from "../../../../types/OriginationSetup/createRuleForm";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { openCommonModal } from "../../../../components/Modal/AlertModal";
 import { parseFrappeError } from "../../../../utils/parseFrappeError";
-import { createEligibilityRule, getEligibilityRuleById, updateEligibilityRule } from "../../../../api/OriginationSetupAPi/createRuleApi";
-import { InternalScoringLimit } from "./Internalscoringlimit";
+import {
+  createEligibilityRule,
+  getEligibilityRuleById,
+  setEligibilityRuleStatus,
+  updateEligibilityRule,
+} from "../../../../api/OriginationSetupAPi/createRuleApi";
 import { EligibilityFormula } from "./Eligibilityformula";
 import { PreApprovalLimits } from "./Preapprovallimits";
 import { DecisionRules } from "./Decisionrules";
 import { ReviewPublish } from "./Reviewpublish";
-
-export type WeightItem = { w: number; label: string };
 
 export const STEPS = [
   "Basic Information",
@@ -79,9 +88,6 @@ export const STEPS = [
   "Review & Publish"
 ];
 
-export const DEFAULT_WEIGHTS: WeightItem[] = [
-  { label: "Base", w: 100 }
-];
 const toScoreBand = (b: CreditBand): ScoreBand => ({
   grade: b.grade,
   min_score: Number(b.min),
@@ -98,6 +104,25 @@ const fromScoreBand = (b: ScoreBand, prefix: string, i: number): CreditBand => (
   basis: b.basis as CreditBand["basis"],
   decision: b.decision as CreditBand["decision"],
 });
+const toApiFormula = (p: FormulaParams): ApiFormulaParams => ({
+  other_income_recognition: p.otherIncomeRecognition,
+  salary_multiple: p.salaryMultiple,
+  max_emi_ratio: p.maxEmiRatio,
+  max_dti_ratio: p.maxDtiRatio,
+  affordability_buffer: p.affordabilityBuffer,
+  product_max: p.productMax,
+});
+
+const fromApiFormula = (p: Partial<ApiFormulaParams> | null | undefined): FormulaParams => ({
+  ...BLANK_FORMULA_PARAMS,
+  ...(p?.other_income_recognition !== undefined && { otherIncomeRecognition: p.other_income_recognition }),
+  ...(p?.salary_multiple !== undefined && { salaryMultiple: p.salary_multiple }),
+  ...(p?.max_emi_ratio !== undefined && { maxEmiRatio: p.max_emi_ratio }),
+  ...(p?.max_dti_ratio !== undefined && { maxDtiRatio: p.max_dti_ratio }),
+  ...(p?.affordability_buffer !== undefined && { affordabilityBuffer: p.affordability_buffer }),
+  ...(p?.product_max !== undefined && { productMax: p.product_max }),
+});
+
 export const riskTier = (creditScore: number, onTime: number, maxDPD: number, npa: number) => {
   return { label: "Medium Risk" }; // Returns a mock tier label
 };
@@ -121,21 +146,6 @@ const BLANK_INCOME_SOURCES: IncomeSourceTuple[] = INCOME_SOURCES.map(
 const BLANK_OBLIGATION_SOURCES: ObligationDef[] = OBLIGATION_SOURCES.map(
   (o) => ({ ...o, pct: 0, ver: false, inc: false }),
 );
-const BLANK_CREDIT_BANDS: CreditBand[] = DEFAULT_CREDIT_BANDS.map((b) => ({
-  ...b,
-  min: "",
-  multiple: "",
-  basis: "",
-  decision: "",
-}));
-const BLANK_INTERNAL_BANDS: CreditBand[] = [
-  { id: "ib1", grade: "A", min: "", multiple: "", basis: "", decision: "" },
-  { id: "ib2", grade: "B", min: "", multiple: "", basis: "", decision: "" },
-  { id: "ib3", grade: "C", min: "", multiple: "", basis: "", decision: "" },
-  { id: "ib4", grade: "D", min: "", multiple: "", basis: "", decision: "" },
-  { id: "ib5", grade: "E", min: "", multiple: "", basis: "", decision: "" },
-];
-
 const BLANK_FORMULA_PARAMS: FormulaParams = {
   ...DEFAULT_FORMULA_PARAMS,
   salaryMultiple: 0,
@@ -155,16 +165,16 @@ export function CreateRule({
   ruleId?: string;
   opened: boolean;
   viewOnly?: boolean;
-}) {  const queryClient = useQueryClient();
-  const handleModalClose = onExit;
+}) {
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
+  const [visited, setVisited] = useState<Set<number>>(() => new Set());
   const [ruleName, setRuleName] = useState("");
   const [loanProduct, setLoanProduct] = useState<string | null>("");
-  const [riskCategory, setRiskCategory] = useState<string | null>("");
   const [ruleStatus, setRuleStatus] = useState<string | null>("");
+  const [version, setVersion] = useState("1.0");
   const [effectiveFrom, setEffectiveFrom] = useState(new Date().toISOString().split("T")[0]);
 const [effectiveUntil, setEffectiveUntil] = useState("");
-   const totalWeight = 100;
   const [formulaParams, setFormulaParams] = useState<FormulaParams>(
     BLANK_FORMULA_PARAMS,
   );
@@ -182,18 +192,27 @@ const [effectiveUntil, setEffectiveUntil] = useState("");
 };
 
 const saveMutation = useMutation({
- mutationFn: (vars: { payload: CreateEligibilityRulePayload; status: "Draft" | "Active" }) =>
-  ruleId
-    ? updateEligibilityRule(ruleId, vars.payload)
-    : createEligibilityRule(vars.payload),
-  onSuccess: (_, vars) => {
-    if (ruleId) queryClient.invalidateQueries({ queryKey: ["eligibility-rule", ruleId] });
-    queryClient.invalidateQueries({ queryKey: ["eligibility-rules"] }); 
-    setRuleStatus(vars.status);
+  mutationFn: async (payload: CreateEligibilityRulePayload) => {
+    if (!ruleId) return (await createEligibilityRule(payload)).message.data;
+    const { loan_product: _product, ...changes } = payload;
+    const rule = (await updateEligibilityRule(ruleId, changes)).message.data;
+    if (isLive && rule.status === "Draft") {
+      return (await setEligibilityRuleStatus(rule.name, "Active")).message.data;
+    }
+    return rule;
+  },
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: ["eligibility-rules"] });
+    if (ruleId) queryClient.invalidateQueries({ queryKey: ["eligibility-rule"] });
+  },
+  onSuccess: (rule) => {
     showSuccess(
-      vars.status === "Active" ? "Rule Published" : "Draft Saved",
-      `Eligibility rule "${ruleName.trim()}" was saved successfully.`,
+      "Rule Saved",
+      rule.status === "Active"
+        ? `Eligibility rule "${rule.rule_name}" was saved. Version ${rule.version} is active.`
+        : `Eligibility rule "${rule.rule_name}" was saved as draft version ${rule.version}.`,
     );
+    onExit();
   },
   onError: (error: any) => {
     openCommonModal({
@@ -206,41 +225,76 @@ const saveMutation = useMutation({
   },
 });
 
-const persistRule = (status: "Draft" | "Active") => {
-  const payload: CreateEligibilityRulePayload = {
-    rule_name: ruleName.trim(),
-    loan_product: loanProduct || "",
-    effective_from: effectiveFrom,
-  effective_to: effectiveUntil,
-    income_sources: incomeSources.map(([name, pct, ver, inc]) => ({
-      name,
-      recognition_pct: pct,
-      verification_required: ver,
-      included: inc,
-    })),
-    obligation_sources: obligationSources.map((o) => ({
-      name: o.name,  
-      pct: o.pct,  
-      verification_required: o.ver,
-      included: o.inc,
-    })),
-    credit_bands: creditBands.map(toScoreBand),
-    internal_bands: internalBands.map(toScoreBand),
-    collateral_items: collateralItems.map((it) => ({
-      type: it.type,
-      haircut_pct: it.haircutPct,
-      max_ltv_pct: it.maxLtvPct,
-    })),
-    formula_params: formulaParams, 
-    hard_stops: hardStops.map(({ factor, operator, value }) => ({ factor, operator, value })),
-    manual_reviews: manualReviews.map(({ factor, operator, value1, value2 }) => ({
-      factor,
-      operator,
-      value1,
-      value2,
-    })),
-  };
-  saveMutation.mutate({ payload, status });
+const buildPayload = (): CreateEligibilityRulePayload => ({
+  rule_name: ruleName.trim(),
+  loan_product: loanProduct || "",
+  effective_from: effectiveFrom,
+  effective_to: effectiveUntil || null,
+  income_sources: incomeSources.map(([name, pct, ver, inc]) => ({
+    name,
+    recognition_pct: pct,
+    verification_required: ver,
+    included: inc,
+  })),
+  obligation_sources: obligationSources.map((o) => ({
+    name: o.name,
+    pct: o.pct,
+    verification_required: o.ver,
+    included: o.inc,
+  })),
+  credit_bands: creditBands.map(toScoreBand),
+  internal_bands: internalBands.map(toScoreBand),
+  collateral_items: collateralItems.map((it) => ({
+    type: it.type,
+    haircut_pct: it.haircutPct,
+    max_ltv_pct: it.maxLtvPct,
+  })),
+  formula_params: toApiFormula(formulaParams),
+  hard_stops: hardStops.map(({ factor, operator, value }) => ({ factor, operator, value })),
+  manual_reviews: manualReviews.map(({ factor, operator, value1, value2 }) => ({
+    factor,
+    operator,
+    value1,
+    value2,
+  })),
+});
+
+const persistRule = () => {
+  const missing = [!ruleName.trim() && "rule name", !loanProduct && "loan product"].filter(Boolean);
+  if (missing.length) {
+    setStep(0);
+    openCommonModal({
+      heading: "Missing Information",
+      subtitle: "",
+      body: `Enter the ${missing.join(" and ")} before saving.`,
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+    return;
+  }
+  if (effectiveUntil && effectiveFrom && effectiveUntil < effectiveFrom) {
+    setStep(0);
+    openCommonModal({
+      heading: "Invalid Dates",
+      subtitle: "",
+      body: "Effective until cannot be before effective from.",
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+    return;
+  }
+  if (isLive && reviewIssues.length) {
+    setStep(STEPS.length - 1);
+    openCommonModal({
+      heading: "Rule Is Active",
+      subtitle: "",
+      body: `This rule is live, so it must stay complete. Fix these first: ${reviewIssues.map((i) => i.label).join("; ")}.`,
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+    return;
+  }
+  saveMutation.mutate(buildPayload());
 };
   const [incomeSources, setIncomeSources] =
     useState<IncomeSourceTuple[]>(BLANK_INCOME_SOURCES);
@@ -280,59 +334,12 @@ const persistRule = (status: "Draft" | "Active") => {
       }),
     );
   };
-  const [creditBands, setCreditBands] =
-    useState<CreditBand[]>(BLANK_CREDIT_BANDS);
+  const [creditBands, setCreditBands] = useState<CreditBand[]>(() => [newBand("cb")]);
   const sampleCreditBand = useMemo(
     () => creditBandFor(FORMULA_SAMPLE.creditScore, creditBands),
     [creditBands],
   );
-  const updateCreditBand = (id: string, patch: Partial<CreditBand>) =>
-    setCreditBands((bands) =>
-      bands.map((b) => (b.id === id ? { ...b, ...patch } : b)),
-    );
-  const addCreditBand = () => {
-    const lowestMin = Math.min(...creditBands.map((b) => Number(b.min) || 0));
-    setCreditBands((bands) => [
-      ...bands,
-      {
-        id: "cb" + Date.now(),
-        grade: "New",
-        min: Math.max(lowestMin - 100, 0),
-        multiple: 0,
-        basis: "Basic Salary",
-        decision: "Manual Review",
-      },
-    ]);
-  };
-  const removeCreditBand = (id: string) =>
-    setCreditBands((bands) =>
-      bands.length > 1 ? bands.filter((b) => b.id !== id) : bands,
-    );
-
-  const [internalBands, setInternalBands] =
-    useState<CreditBand[]>(BLANK_INTERNAL_BANDS);
-  const updateInternalBand = (id: string, patch: Partial<CreditBand>) =>
-    setInternalBands((bands) =>
-      bands.map((b) => (b.id === id ? { ...b, ...patch } : b)),
-    );
-  const addInternalBand = () => {
-    const lowestMin = Math.min(...internalBands.map((b) => Number(b.min) || 0));
-    setInternalBands((bands) => [
-      ...bands,
-      {
-        id: "ib" + Date.now(),
-        grade: "New",
-        min: Math.max(lowestMin - 10, 0),
-        multiple: 0,
-        basis: "Basic Salary",
-        decision: "Manual Review",
-      },
-    ]);
-  };
-  const removeInternalBand = (id: string) =>
-    setInternalBands((bands) =>
-      bands.length > 1 ? bands.filter((b) => b.id !== id) : bands,
-    );
+  const [internalBands, setInternalBands] = useState<CreditBand[]>([]);
   const [collateralItems, setCollateralItems] = useState<CollateralItem[]>([]);
   const updateCollateralItem = (id: string, patch: Partial<CollateralItem>) =>
     setCollateralItems((items) =>
@@ -343,7 +350,7 @@ const persistRule = (status: "Draft" | "Active") => {
       ...items,
       {
         id: "col" + Date.now(),
-        type: COLLATERAL_TYPES[0],
+        type: "",
         marketValue: 0,
         haircutPct: 20,
         maxLtvPct: 70,
@@ -396,11 +403,13 @@ const persistRule = (status: "Draft" | "Active") => {
     setHardStops((hs) => hs.filter((x) => x.id !== id));
 
   const [manualReviews, setManualReviews] = useState<ManualReviewRule[]>([]);
-  const { data: ruleResponse } = useQuery({
+  const { data: ruleResponse, isLoading: ruleLoading, isError: ruleError } = useQuery({
   queryKey: ["eligibility-rule", ruleId],
   queryFn: () => getEligibilityRuleById(ruleId as string),
   enabled: !!ruleId,
 });
+  const [loaded, setLoaded] = useState(!ruleId);
+  const isLive = ruleResponse?.message?.data?.status === "Active";
 
 useEffect(() => {
   const r = ruleResponse?.message?.data;
@@ -408,32 +417,64 @@ useEffect(() => {
   setRuleName(r.rule_name);
   setLoanProduct(r.loan_product);
   setRuleStatus(r.status);
-  setIncomeSources(
-    r.income_sources.map((s) => [s.name, s.recognition_pct, s.verification_required, s.included] as IncomeSourceTuple),
-  );
-  setObligationSources(
-    r.obligation_sources.map((o) => ({
-      name: o.name, // CONFIRM: see note 2
-      pct: o.pct,   // CONFIRM: see note 2
-      ver: o.verification_required,
-      inc: o.included,
-    })) as ObligationDef[],
-  );
-  setCreditBands(r.credit_bands.map((b, i) => fromScoreBand(b, "cb", i)));
-  setInternalBands(r.internal_bands.map((b, i) => fromScoreBand(b, "ib", i)));
+  setVersion(r.version);
+  setEffectiveFrom(r.effective_from ?? "");
+  setEffectiveUntil(r.effective_to ?? "");
+  if (r.income_sources?.length) {
+    setIncomeSources(
+      r.income_sources.map((s) => [s.name, s.recognition_pct, s.verification_required, s.included] as IncomeSourceTuple),
+    );
+  }
+  if (r.obligation_sources?.length) {
+    setObligationSources(
+      r.obligation_sources.map((o) => ({
+        name: o.name,
+        pct: o.pct,
+        ver: o.verification_required,
+        inc: o.included,
+      })) as ObligationDef[],
+    );
+  }
+  setCreditBands((r.credit_bands ?? []).map((b, i) => fromScoreBand(b, "cb", i)));
+  setInternalBands((r.internal_bands ?? []).map((b, i) => fromScoreBand(b, "ib", i)));
   setCollateralItems(
-    r.collateral_items.map((c, i) => ({
+    (r.collateral_items ?? []).map((c, i) => ({
       id: `col${i}`,
       type: c.type,
-      marketValue: 0, // CONFIRM: see note 4
+      marketValue: 0,
       haircutPct: c.haircut_pct,
       maxLtvPct: c.max_ltv_pct,
     })),
   );
-  setFormulaParams(r.formula_params as unknown as FormulaParams); // CONFIRM: see note 3
-  setHardStops(r.hard_stops.map((h, i) => ({ id: `hs${i}`, ...h })) as HardStop[]);
-  setManualReviews(r.manual_reviews.map((m, i) => ({ id: `mr${i}`, ...m })) as ManualReviewRule[]);
+  setFormulaParams(fromApiFormula(r.formula_params));
+  setHardStops((r.hard_stops ?? []).map((h, i) => ({ id: `hs${i}`, ...h })) as HardStop[]);
+  setManualReviews((r.manual_reviews ?? []).map((m, i) => ({ id: `mr${i}`, ...m })) as ManualReviewRule[]);
+  setLoaded(true);
 }, [ruleResponse]);
+
+  const currentSnapshot = JSON.stringify(buildPayload());
+  const [baseline, setBaseline] = useState<string | null>(null);
+  useEffect(() => {
+    if (loaded && baseline === null) setBaseline(currentSnapshot);
+  }, [loaded, baseline, currentSnapshot]);
+  const dirty = !viewOnly && baseline !== null && baseline !== currentSnapshot;
+
+  const requestClose = () => {
+    if (!dirty || saveMutation.isPending) {
+      if (!saveMutation.isPending) onExit();
+      return;
+    }
+    openCommonModal({
+      heading: "Discard changes?",
+      subtitle: "",
+      body: "You have unsaved changes to this rule. Close without saving?",
+      color: "red",
+      buttons: [
+        { label: "Keep editing", variant: "default" },
+        { label: "Discard", color: "red", onClick: onExit },
+      ],
+    });
+  };
   const addManualReview = () =>
     setManualReviews((mr) => [
       ...mr,
@@ -453,24 +494,38 @@ useEffect(() => {
     setManualReviews((mr) => mr.filter((x) => x.id !== id));
 
   const reviewChecks = [
-    { label: "Risk weights total exactly 100%", ok: totalWeight === 100 },
     {
-      label: "At least one credit band is configured",
-      ok: creditBands.length > 0,
+      label: "Credit score bands are complete with no conflicts",
+      ok: creditBands.length > 0 && bandsReady(creditBands, CREDIT_SCORE_SCALE),
+    },
+    {
+      label: "Internal scoring bands are complete with no conflicts",
+      ok: bandsReady(internalBands, INTERNAL_SCORE_SCALE),
     },
     { label: "At least one hard stop is configured", ok: hardStops.length > 0 },
-    { label: "Rule name is set", ok: ruleName.trim().length > 0 },
+    { label: "Rule name and loan product are set", ok: ruleName.trim().length > 0 && !!loanProduct },
   ];
   const reviewIssues = reviewChecks.filter((c) => !c.ok);
   const readyToPublish = reviewIssues.length === 0;
 
-  const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
-  const back = () => setStep((s) => Math.max(s - 1, 0));
+  const stepComplete = (i: number) => {
+    if (i === 0) return !!ruleName.trim() && !!loanProduct && !(effectiveUntil && effectiveUntil < effectiveFrom);
+    if (i === 3) return creditBands.length > 0 && bandsReady(creditBands, CREDIT_SCORE_SCALE);
+    if (i === 5) return bandsReady(internalBands, INTERNAL_SCORE_SCALE);
+    if (i === 8) return hardStops.length > 0;
+    return true;
+  };
+  const goTo = (i: number) => {
+    setVisited((v) => new Set(v).add(step));
+    setStep(i);
+  };
+  const next = () => goTo(Math.min(step + 1, STEPS.length - 1));
+  const back = () => goTo(Math.max(step - 1, 0));
 
  return (
  <Modal
   opened={opened}
-  onClose={handleModalClose}
+  onClose={requestClose}
   size="95%"
   centered
   withCloseButton={false}
@@ -532,7 +587,7 @@ useEffect(() => {
                 }}
               >
                 <Text fz={10} fw={600} c="white">
-                  {ruleStatus || "Draft"}
+                  {ruleStatus || "Draft"} · v{version}
                 </Text>
               </Box>
             </Group>
@@ -541,7 +596,7 @@ useEffect(() => {
             </Text>
           </Box>
           <Group gap="xs">
-            <ActionIcon variant="white" color="brand" radius="xl" size="md" onClick={handleModalClose}>
+            <ActionIcon variant="white" color="brand" radius="xl" size="md" onClick={requestClose} aria-label="Close">
   <IconX size={14} />
 </ActionIcon>
           </Group>
@@ -592,12 +647,12 @@ useEffect(() => {
           <Stack gap={1}>
             {STEPS.map((s, i) => {
               const Icon = STEP_ICONS[i];
-              const done = i < step;
+              const done = i !== step && (visited.has(i) || !!ruleId) && stepComplete(i);
               const active = i === step;
               return (
                 <Box
                   key={s}
-                  onClick={() => setStep(i)}
+                  onClick={() => goTo(i)}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -663,6 +718,18 @@ useEffect(() => {
               overflowY: "auto",
             }}
           >
+            {!loaded ? (
+              <Stack align="center" justify="center" gap="xs" h="100%" mih={240}>
+                {ruleError ? (
+                  <Text fz="sm" c="red.7">Could not load this rule.</Text>
+                ) : (
+                  <>
+                    <Loader size="sm" color="brand" />
+                    <Text fz="xs" c="slate.5">{ruleLoading ? "Loading rule…" : ""}</Text>
+                  </>
+                )}
+              </Stack>
+            ) : (
             <Box
     ref={(el) => {
       el?.toggleAttribute("inert", viewOnly);
@@ -674,16 +741,15 @@ useEffect(() => {
                 setRuleName={setRuleName}
                 loanProduct={loanProduct}
                 setLoanProduct={setLoanProduct}
-                riskCategory={riskCategory}
-                setRiskCategory={setRiskCategory}
                 ruleStatus={ruleStatus}
-                setRuleStatus={setRuleStatus}
                 formulaParams={formulaParams}
                 setFormulaParam={setFormulaParam}
                 effectiveFrom={effectiveFrom}
   setEffectiveFrom={setEffectiveFrom}
   effectiveUntil={effectiveUntil}
   setEffectiveUntil={setEffectiveUntil}
+                version={version}
+                productLocked={!!ruleId}
               />
             )}
 
@@ -706,11 +772,14 @@ useEffect(() => {
             )}
 
             {step === 3 && (
-              <CreditScoreLimit
-                creditBands={creditBands}
-                updateCreditBand={updateCreditBand}
-                addCreditBand={addCreditBand}
-                removeCreditBand={removeCreditBand}
+              <ScoreBandTable
+                title="Credit Score Limit"
+                description="Define credit score bands with a grade, credit limit and decision for each."
+                scoreLabel="Credit score"
+                bands={creditBands}
+                onChange={setCreditBands}
+                scale={CREDIT_SCORE_SCALE}
+                idPrefix="cb"
               />
             )}
 
@@ -724,11 +793,14 @@ useEffect(() => {
             )}
 
             {step === 5 && (
-              <InternalScoringLimit
-                internalBands={internalBands}
-                updateInternalBand={updateInternalBand}
-                addInternalBand={addInternalBand}
-                removeInternalBand={removeInternalBand}
+              <ScoreBandTable
+                title="Internal Scoring Limit"
+                description="Define internal score bands (0–100) with a grade, credit limit and decision for each."
+                scoreLabel="Internal score"
+                bands={internalBands}
+                onChange={setInternalBands}
+                scale={INTERNAL_SCORE_SCALE}
+                idPrefix="ib"
               />
             )}
 
@@ -767,22 +839,20 @@ useEffect(() => {
                 reviewIssues={reviewIssues}
                 ruleName={ruleName}
                 loanProduct={loanProduct}
-                riskCategory={riskCategory}
                 ruleStatus={ruleStatus}
                 incomeSources={incomeSources}
                 obligationSources={obligationSources}
                 formulaParams={formulaParams}
                 creditBands={creditBands}
-                totalWeight={totalWeight}
                 collateralItems={collateralItems}
                 totalCollateralLimit={totalCollateralLimit}
                 hardStops={hardStops}
                 formulaPreview={formulaPreview}
                 preApprovedPreview={preApprovedPreview}
-                persistRule={persistRule}
               />
             )}
             </Box>
+            )}
           </Paper>
 
           {/* nav */}
@@ -812,34 +882,21 @@ useEffect(() => {
     Continue
   </Button>
 ) : !viewOnly ? (
-  <Group gap="xs">
-    <Button
-      size="sm"
-      variant="default"
-      radius="xl"
-      fw={600}
-      loading={saveMutation.isPending}
-      onClick={() => persistRule("Draft")}
-    >
-      Save Draft
-    </Button>
-    <Button
-      color="brand"
-      size="sm"
-      radius="xl"
-      fw={700}
-      disabled={!readyToPublish}
-      loading={saveMutation.isPending}
-      onClick={() => persistRule("Active")}
-      style={{
-        background: readyToPublish
-          ? "linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-5) 100%)"
-          : undefined,
-      }}
-    >
-      Submit
-    </Button>
-  </Group>
+  <Button
+    color="brand"
+    size="sm"
+    radius="xl"
+    fw={700}
+    loading={saveMutation.isPending}
+    disabled={!loaded}
+    onClick={persistRule}
+    style={{
+      background:
+        "linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-5) 100%)",
+    }}
+  >
+    Save
+  </Button>
 ) : null}
           </Group>
         </Box>
