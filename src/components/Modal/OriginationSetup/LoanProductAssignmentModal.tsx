@@ -58,7 +58,37 @@ import { getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
 import {type CreateLoantypeResponse } from "../../../types/OriginationSetup/loanTypeForm";
 import { getAllLoanProducts } from "../../../api/productApi";
 import {getSources} from "../../../api/LosConfiguration/sourceApi";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { CreateProductAssignmentPayload, CreateProductAssignmentResponse } from "../../../types/OriginationSetup/productAssignemntForm";
+import { createProductAssignments, updateProductAssignments } from "../../../api/OriginationSetupAPi/productAssignmentApi";
+import { openCommonModal } from "../AlertModal";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+
+type PayloadClause = NonNullable<CreateProductAssignmentPayload["condition"]>["groups"][number]["clauses"][number];
+
+const toPayload = (row: AssignmentRow): CreateProductAssignmentPayload => ({
+  sources: row.sources,
+  loan_types: row.loanTypes,
+  product: row.productCode,
+  condition: hasCondition(row)
+    ? {
+        join: row.join,
+        groups: row.groups
+          .filter((gr) => gr.clauses.length > 0)
+          .map((gr) => ({
+            id: gr.id,
+            name: gr.name,
+            join: gr.join,
+            clauses: gr.clauses.map((cl) => ({
+              id: cl.id,
+              variable: cl.variable,
+              operator: cl.operator as PayloadClause["operator"],
+              value: cl.value,
+            })),
+          })),
+      }
+    : null,
+});
 
 export const FIELD = { input: { height: 30, minHeight: 30, fontSize: 12.5, paddingLeft: 10 } };
 
@@ -308,11 +338,6 @@ export function ConditionText({ row }: { row: Pick<AssignmentRow, "join" | "grou
     </>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/* Modal-only pieces                                                   */
-/* ------------------------------------------------------------------ */
-
 const LINE = { input: { height: 26, minHeight: 26, fontSize: 12, paddingLeft: 8, borderRadius: 6 } };
 
 function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onChange: (groups: ConditionGroup[]) => void }) {
@@ -512,30 +537,105 @@ function RuleSummary({ row, loanTypeOptions }: { row: AssignmentRow; loanTypeOpt
      </Text>
   );
 }
-
 export interface EditingState {
-  mode: "add" | "edit";
+  mode: "add" | "edit" | "view";
   row: AssignmentRow;
   original: string;
   attempted: boolean;
 }
-
 interface LoanProductAssignmentModalProps {
   editing: EditingState | null;
-  saving: boolean;
-  saveError: string | null;
   onClose: () => void;
   onEditRow: (patch: Partial<AssignmentRow>) => void;
   onChangeLoanTypes: (loanTypes: string[]) => void;
-  onSave: () => void;
+  onSaved: (mode: "add" | "edit") => void;
 }
 
-export function LoanProductAssignmentModal({ editing, saving, saveError, onClose, onEditRow, onChangeLoanTypes, onSave }: LoanProductAssignmentModalProps) {
+export function LoanProductAssignmentModal({ editing, onClose, onEditRow, onChangeLoanTypes, onSaved }: LoanProductAssignmentModalProps) {
   const theme = useMantineTheme();
-  const [loanTypeOptions, setLoanTypeOptions] = useState<PickerOption[]>([]);
+    const [loanTypeOptions, setLoanTypeOptions] = useState<PickerOption[]>([]);
   const [loanTypesLoading, setLoanTypesLoading] = useState(false);
   const [loanTypesError, setLoanTypesError] = useState<string | null>(null);
   const isOpen = editing !== null;
+  const queryClient = useQueryClient();
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [attempted, setAttempted] = useState(false);
+
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  };
+
+  const createMutation = useMutation({
+    mutationFn: createProductAssignments,
+    onSuccess: (res: CreateProductAssignmentResponse) => {
+      queryClient.invalidateQueries({ queryKey: ["product-assignments"] });
+      onSaved("add");
+      showSuccess("Rule Added", res.message.message);
+    },
+    onError: (error: any) => {
+      setSaveError(error instanceof Error ? error.message : "Could not add the rule.");
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: updateProductAssignments,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["product-assignments"] });
+      onSaved("edit");
+      showSuccess("Rule Updated", `Product Assignment Rule ${variables.id} updated successfully.`);
+    },
+    onError: (error: any) => {
+      setSaveError(error instanceof Error ? error.message : "Could not update the rule.");
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      });
+    },
+  });
+
+  const saving = createMutation.isPending || updateMutation.isPending;
+useEffect(() => {
+  setAttempted(false);
+  setSaveError(null);
+}, [isOpen]);
+
+const isView = editing?.mode === "view";
+
+const handleClose = () => {
+  if (saving) return;
+  onClose();
+};
+
+const handleSave = () => {
+  if (!editing || editing.mode === "view") return;
+  if (rowError(editing.row)) {
+    setAttempted(true);
+    return;
+  }
+  const { mode, row } = editing;
+  setSaveError(null);
+  if (mode === "add") {
+    createMutation.mutate(toPayload(row));
+    return;
+  }
+  updateMutation.mutate({ id: row.id, payload: toPayload(row) });
+};
 
   useEffect(() => {
     if (!isOpen) return;
@@ -632,7 +732,7 @@ export function LoanProductAssignmentModal({ editing, saving, saveError, onClose
               <Box>
                 <Group gap={8} wrap="nowrap">
                   <Text fz={16} fw={700} c="slate.9" lh={1.3}>
-                    {editing.mode === "add" ? "Add rule" : "Edit rule"}
+                    {editing.mode === "add" ? "Add rule" : editing.mode === "view" ? "View rule" : "Edit rule"}
                   </Text>
                   <Badge variant="light" color={hasCondition(editing.row) ? "brand" : "success"} radius="sm" size="sm" tt="none" fw={600}>
                     {hasCondition(editing.row) ? "Conditional" : "Direct mapping"}
@@ -650,7 +750,8 @@ export function LoanProductAssignmentModal({ editing, saving, saveError, onClose
             </ActionIcon>
           </Group>
 
-          <Stack gap={16} px={24} py={16} style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          <Box style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+ <Stack gap={16} px={24} py={16} style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             <Box>
               <Box style={{ display: "grid", gridTemplateColumns: "minmax(0, 35fr) minmax(0, 35fr) minmax(0, 30fr)", columnGap: 32, alignItems: "start" }}>
                 <Box style={{ minWidth: 0 }}>
@@ -738,36 +839,39 @@ export function LoanProductAssignmentModal({ editing, saving, saveError, onClose
                             <RuleSummary row={editing.row} loanTypeOptions={loanTypeOptions} />
             </Box>
           </Stack>
+</Box>
 
           <Group justify="space-between" align="center" px={24} py={14} style={{ borderTop: "1px solid var(--mantine-color-slate-2)" }}>
-            <Text
-              fz={12.5}
-              c={saveError || (editing.attempted && editingError) ? "danger.6" : editingChanged ? "brand.6" : "slate.5"}
-              fw={saveError || (editing.attempted && editingError) ? 600 : 400}
-            >
-              {saveError ?? (editing.attempted && editingError ? editingError : editingChanged ? "Unsaved changes" : "No changes yet")}
-            </Text>
-            <Group gap="xs">
-              <Button size="sm" variant="subtle" color="slate" radius="md" onClick={onClose} disabled={saving}>
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                radius="md"
-                px="lg"
-                loading={saving}
-                disabled={!editingChanged}
-                onClick={onSave}
-                style={
-                  editingChanged
-                    ? { background: theme.other?.brandGradient, boxShadow: theme.other?.brandGlowShadowSm }
-                    : { background: "var(--mantine-color-brand-1)", color: "var(--mantine-color-brand-4)" }
-                }
-              >
-                {editing.mode === "add" ? "Add rule" : "Save rule"}
-              </Button>
-            </Group>
-          </Group>
+  <Text
+    fz={12.5}
+    c={saveError || (attempted && editingError) ? "danger.6" : editingChanged ? "brand.6" : "slate.5"}
+    fw={saveError || (attempted && editingError) ? 600 : 400}
+  >
+    {isView ? "" : (saveError ?? (attempted && editingError ? editingError : editingChanged ? "Unsaved changes" : "No changes yet"))}
+  </Text>
+  <Group gap="xs">
+    <Button size="sm" variant="subtle" color="slate" radius="md" onClick={handleClose} disabled={saving}>
+      {isView ? "Close" : "Cancel"}
+    </Button>
+    {!isView && (
+      <Button
+        size="sm"
+        radius="md"
+        px="lg"
+        loading={saving}
+        disabled={!editingChanged}
+        onClick={handleSave}
+        style={
+          editingChanged
+            ? { background: theme.other?.brandGradient, boxShadow: theme.other?.brandGlowShadowSm }
+            : { background: "var(--mantine-color-brand-1)", color: "var(--mantine-color-brand-4)" }
+        }
+      >
+        {editing.mode === "add" ? "Add rule" : "Save rule"}
+      </Button>
+    )}
+  </Group>
+</Group>
         </>
       )}
     </Modal>
