@@ -11,11 +11,15 @@ export interface OffsetOrderComponent {
 
 export interface GetLoanProductsParams {
   search?: string;
+  disabled?: number;
+  page_size?: number;
 }
 
 export async function getAllLoanProducts(params: GetLoanProductsParams = {}) {
   const queryParams: Record<string, string> = {};
   if (params.search) queryParams.search = params.search;
+  if (params.disabled !== undefined) queryParams.disabled = String(params.disabled);
+  if (params.page_size) queryParams.page_size = String(params.page_size);
 
   const { data } = await apiClient.get(API.loanProduct.getAllLoanProducts, {
     params: queryParams,

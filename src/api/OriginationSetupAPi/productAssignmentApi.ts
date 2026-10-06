@@ -1,6 +1,6 @@
 import apiClient from "../../config/axios"; 
 import { API } from "../../config/api";
-import type { CreateProductAssignmentPayload, CreateProductAssignmentResponse, GetProductAssignmentsParams } from "../../types/OriginationSetup/productAssignemntForm";
+import type { CreateProductAssignmentPayload, CreateProductAssignmentResponse, GetProductAssignmentsParams, ProductAssignmentSettings } from "../../types/OriginationSetup/productAssignemntForm";
  
 
 export async function createProductAssignments(payload: CreateProductAssignmentPayload) {
@@ -35,5 +35,15 @@ export async function updateProductAssignments({id, payload,}: {
     }
   );
 
+  return data;
+}
+
+export async function getProductAssignmentSettings() {
+  const { data } = await apiClient.get<{ message: { data: ProductAssignmentSettings } }>(API.productAssignmentSetup.getSettings);
+  return data;
+}
+
+export async function updateProductAssignmentSettings(payload: ProductAssignmentSettings) {
+  const { data } = await apiClient.put<{ message: { data: ProductAssignmentSettings } }>(API.productAssignmentSetup.updateSettings, payload);
   return data;
 }

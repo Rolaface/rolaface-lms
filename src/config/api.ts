@@ -272,6 +272,8 @@ export const API = {
     getProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_rules`,
     getProductAssignmentById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_rule_by_id`,
     deleteProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.delete_rule`,
+    getSettings: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_settings`,
+    updateSettings: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.update_settings`,
   },
 
   createEligibilityRule: {

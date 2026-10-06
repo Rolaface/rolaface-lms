@@ -36,16 +36,12 @@ import {
 } from "@tabler/icons-react";
 
 import {
-  LOAN_TYPES,
-  SOURCES,
   VARIABLES,
   clauseText,
   hasCondition,
   newClause,
   newGroup,
   operatorsFor,
-  productByCode,
-  productsFor,
   rowError,
   variableByName,
   type AssignmentRow,
@@ -57,7 +53,7 @@ import {
 import { getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
 import {type CreateLoantypeResponse } from "../../../types/OriginationSetup/loanTypeForm";
 import { getAllLoanProducts } from "../../../api/productApi";
-import {getSources} from "../../../api/LosConfiguration/sourceApi";
+import { getSources, type Source } from "../../../api/LosConfiguration/sourceApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateProductAssignmentPayload, CreateProductAssignmentResponse } from "../../../types/OriginationSetup/productAssignemntForm";
 import { createProductAssignments, updateProductAssignments } from "../../../api/OriginationSetupAPi/productAssignmentApi";
@@ -84,6 +80,7 @@ const toPayload = (row: AssignmentRow): CreateProductAssignmentPayload => ({
               variable: cl.variable,
               operator: cl.operator as PayloadClause["operator"],
               value: cl.value,
+              ...(cl.operator === "between" && { value2: cl.value2 ?? "" }),
             })),
           })),
       }
@@ -111,6 +108,32 @@ const SOURCE_ICON: Record<string, Icon> = {
   "Third Party": IconAffiliate,
 };
 
+export function useLoanProductOptions(enabled = true) {
+  const { data } = useQuery({
+    queryKey: ["loanProducts", "enabled"],
+    queryFn: () => getAllLoanProducts({ disabled: 0, page_size: 1000 }),
+    enabled,
+  });
+  const options = useMemo<PickerOption[]>(
+    () => ((data?.data ?? []) as { name: string; product_name?: string }[]).map((p) => ({ value: p.name, label: p.product_name || p.name })),
+    [data],
+  );
+  return { options };
+}
+
+export function useSourceOptions(enabled = true) {
+  const { data } = useQuery({
+    queryKey: ["sources", "all"],
+    queryFn: () => getSources({ page_size: 1000 }),
+    enabled,
+  });
+  return useMemo(() => {
+    const sources = (Array.isArray(data) ? data : data?.data) ?? [];
+    const toOption = (s: Source): PickerOption => ({ value: s.name ?? s.channel_name, label: s.channel_name });
+    return { all: sources.map(toOption), active: sources.filter((s) => s.is_active === 1).map(toOption) };
+  }, [data]);
+}
+
 export const LOAN_TONE: Record<string, string> = { Personal: "brand", Business: "info", Auto: "orange", Mortgage: "teal", Education: "grape" };
 
 type PickerKind = "source" | "loanType";
@@ -120,7 +143,6 @@ export interface PickerOption {
   label: string;
 }
 
-export const SOURCE_OPTIONS: PickerOption[] = SOURCES.map((s) => ({ value: s, label: s }));
 
 const PICKER = {
   source: { label: "Sources", allLabel: "All sources" },
@@ -244,7 +266,7 @@ export function InlinePicker({
   options?: PickerOption[];
 }) {
   const { label } = PICKER[kind];
-  const opts = options ?? (kind === "source" ? SOURCE_OPTIONS : []);
+  const opts = options ?? [];
   const all = opts.length > 0 && value.length === opts.length;
   const toggle = (item: string) => onChange(opts.map((o) => o.value).filter((v) => (v === item ? !value.includes(v) : value.includes(v))));
 
@@ -416,7 +438,7 @@ function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onCh
                       onChange={(v) => {
                         if (!v) return;
                         const allowed = operatorsFor(variableByName(v)).some((o) => o.value === clause.operator);
-                        updateClause(gr, clause.id, { variable: v, operator: allowed ? clause.operator : "=", value: "" });
+                        updateClause(gr, clause.id, { variable: v, operator: allowed ? clause.operator : "=", value: "", value2: undefined });
                       }}
                       allowDeselect={false}
                       searchable
@@ -427,7 +449,7 @@ function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onCh
                       aria-label="Operator"
                       data={operatorsFor(variable)}
                       value={clause.operator}
-                      onChange={(v) => v && updateClause(gr, clause.id, { operator: v as Operator })}
+                      onChange={(v) => v && updateClause(gr, clause.id, { operator: v as Operator, ...(v !== "between" && { value2: undefined }) })}
                       allowDeselect={false}
                       styles={{ input: { ...LINE.input, fontWeight: 500, color: "var(--mantine-color-brand-7)" } }}
                       style={{ width: 138, flexShrink: 0 }}
@@ -443,6 +465,34 @@ function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onCh
                         styles={LINE}
                         style={{ flex: "1 1 0", minWidth: 0 }}
                       />
+                    ) : clause.operator === "between" ? (
+                      <Group gap={4} wrap="nowrap" style={{ flex: "1 1 0", minWidth: 0 }}>
+                        <NumberInput
+                          aria-label="From"
+                          placeholder="From"
+                          value={clause.value}
+                          onChange={(v) => updateClause(gr, clause.id, { value: String(v) })}
+                          hideControls
+                          thousandSeparator=","
+                          disabled={!variable}
+                          styles={LINE}
+                          style={{ flex: 1, minWidth: 0 }}
+                        />
+                        <Text fz={11} c="slate.5">
+                          and
+                        </Text>
+                        <NumberInput
+                          aria-label="To"
+                          placeholder="To"
+                          value={clause.value2 ?? ""}
+                          onChange={(v) => updateClause(gr, clause.id, { value2: String(v) })}
+                          hideControls
+                          thousandSeparator=","
+                          disabled={!variable}
+                          styles={LINE}
+                          style={{ flex: 1, minWidth: 0 }}
+                        />
+                      </Group>
                     ) : (
                       <NumberInput
                         aria-label="Value"
@@ -511,7 +561,7 @@ function SectionTitle({ title, hint, action }: { title: string; hint?: string; a
 
 const joinWords = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}`);
 
-function RuleSummary({ row, loanTypeOptions }: { row: AssignmentRow; loanTypeOptions: PickerOption[] }) {
+function RuleSummary({ row, loanTypeOptions, sourceOptions }: { row: AssignmentRow; loanTypeOptions: PickerOption[]; sourceOptions: PickerOption[] }) {
   const strong = (text: ReactNode) => (
     <Text span inherit fw={600} c="slate.9">
       {text}
@@ -519,7 +569,8 @@ function RuleSummary({ row, loanTypeOptions }: { row: AssignmentRow; loanTypeOpt
   );
   const loanNames = row.loanTypes.map((id) => loanTypeOptions.find((o) => o.value === id)?.label ?? id);
   const loanList = joinWords(loanNames);
-  const sources = row.sources.length === SOURCES.length ? "any source" : joinWords(row.sources);
+  const sources =
+    sourceOptions.length > 0 && row.sources.length === sourceOptions.length ? "any source" : joinWords(row.sources);
   const loanTypes =
     loanTypeOptions.length > 0 && row.loanTypes.length === loanTypeOptions.length
       ? "any loan type"
@@ -662,38 +713,9 @@ const handleSave = () => {
   const editingError = editing ? rowError(editing.row) : null;
   const editingChanged = editing ? JSON.stringify(editing.row) !== editing.original : false;
 
-    const { data: productResponse, isLoading: isProductsLoading, refetch: refetchProducts } = useQuery({
-    queryKey: ["loanProducts"],
-    queryFn: () => getAllLoanProducts(),
-    enabled: isOpen,
-  });
+  const { options: availableProduct } = useLoanProductOptions(isOpen);
 
-  const availableProduct = useMemo(() => {
-    const products = productResponse?.data || [];
-    return products
-      .filter((p: any) => p.disabled !== 1)
-      .map((p: any) => ({
-        value: p.name,
-        label: p.name,
-      }));
-  }, [productResponse]);
-
-      const { data: sourceResponse, isLoading: isSourcesLoading, refetch: refetchSources } = useQuery({
-    queryKey: ["sources"],
-    queryFn: () => getSources(),
-    enabled: isOpen,
-  });
-
- const availableSource = useMemo(() => {
-    const sources = (Array.isArray(sourceResponse) ? sourceResponse : sourceResponse?.data) || [];
-    
-    return sources
-      .filter((s: any) => s.is_active === 1) 
-      .map((s: any) => ({
-        value: s.name,
-        label: s.name,
-      }));
-  }, [sourceResponse]);
+  const { active: availableSource } = useSourceOptions(isOpen);
 
   return (
     <Modal
@@ -836,7 +858,7 @@ const handleSave = () => {
             </Box>
 
             <Box px={14} py={10} style={{ borderRadius: 10, background: "var(--mantine-color-brand-0)", borderLeft: "3px solid var(--mantine-color-brand-5)", flexShrink: 0 }}>
-                            <RuleSummary row={editing.row} loanTypeOptions={loanTypeOptions} />
+                            <RuleSummary row={editing.row} loanTypeOptions={loanTypeOptions} sourceOptions={availableSource} />
             </Box>
           </Stack>
 </Box>

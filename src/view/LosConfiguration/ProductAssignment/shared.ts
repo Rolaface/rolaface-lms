@@ -1,30 +1,3 @@
-export const SOURCES = ["Branch", "Mobile Banking", "Online Portal", "USSD", "Third Party"];
-
-export const LOAN_TYPES = ["Business", "Individual", "Auto", "Mortgage", "Education"];
-
-export interface LoanProduct {
-  code: string;
-  name: string;
-  loanType: string;
-}
-
-export const PRODUCTS: LoanProduct[] = [
-  { code: "PL-SAL", name: "Salaried Personal Loan", loanType: "Individual" },
-  { code: "PL-SE", name: "Self-Employed Personal Loan", loanType: "Individual" },
-  { code: "B03", name: "Staff Loan", loanType: "Personal Loan" },
-  { code: "SME-WC", name: "SME Working Capital", loanType: "Business" },
-  { code: "SME-TL", name: "SME Term Loan", loanType: "Business" },
-  { code: "AL-NEW", name: "New Vehicle Loan", loanType: "Auto" },
-  { code: "AL-USED", name: "Used Vehicle Loan", loanType: "Auto" },
-  { code: "HL-PUR", name: "Home Purchase Loan", loanType: "Mortgage" },
-  { code: "HL-TOP", name: "Home Top-up Loan", loanType: "Mortgage" },
-  { code: "EDU-01", name: "Study Loan", loanType: "Education" },
-];
-
-export const productsFor = (loanTypes: string[]): LoanProduct[] => PRODUCTS.filter((p) => loanTypes.includes(p.loanType));
-
-export const productByCode = (code: string): LoanProduct | undefined => PRODUCTS.find((p) => p.code === code);
-
 export interface Variable {
   name: string;
   label: string;
@@ -48,7 +21,7 @@ export const VARIABLES: Variable[] = [
 
 export const variableByName = (name: string): Variable | undefined => VARIABLES.find((v) => v.name === name);
 
-export type Operator = "=" | "<>" | ">" | ">=" | "<" | "<=";
+export type Operator = "=" | "<>" | ">" | ">=" | "<" | "<=" | "between";
 
 const NUMBER_OPERATORS: { value: Operator; label: string }[] = [
   { value: "=", label: "is equal to" },
@@ -57,6 +30,7 @@ const NUMBER_OPERATORS: { value: Operator; label: string }[] = [
   { value: ">=", label: "is at least" },
   { value: "<", label: "is less than" },
   { value: "<=", label: "is at most" },
+  { value: "between", label: "is between" },
 ];
 
 const LIST_OPERATORS: { value: Operator; label: string }[] = [
@@ -73,6 +47,7 @@ export interface Clause {
   variable: string;
   operator: Operator;
   value: string;
+  value2?: string;
 }
 
 export interface ConditionGroup {
@@ -115,21 +90,13 @@ export const allClauses = (row: Pick<AssignmentRow, "groups">): Clause[] => row.
 
 export const hasCondition = (row: Pick<AssignmentRow, "groups">): boolean => allClauses(row).length > 0;
 
-const covers = (outer: string[], inner: string[]) => inner.length > 0 && inner.every((v) => outer.includes(v));
-
-export const isShadowed = (rows: AssignmentRow[], index: number): boolean => {
-  const row = rows[index];
-  return rows
-    .slice(0, index)
-    .some((earlier) => !hasCondition(earlier) && covers(earlier.sources, row.sources) && covers(earlier.loanTypes, row.loanTypes));
-};
-
 export const rowError = (row: AssignmentRow): string | null => {
   const clauses = allClauses(row);
   if (row.sources.length === 0) return "Choose at least one source";
   if (row.loanTypes.length === 0) return "Choose at least one loan type";
   if (clauses.some((c) => !c.variable)) return "Choose a variable";
-  if (clauses.some((c) => c.value.trim() === "")) return "Enter a value";
+  if (clauses.some((c) => c.value.trim() === "" || (c.operator === "between" && !c.value2?.trim()))) return "Enter a value";
+  if (clauses.some((c) => c.operator === "between" && Number(c.value2) < Number(c.value))) return "The second value must not be lower than the first";
   if (!row.productCode) return "Choose a product";
   return null;
 };
@@ -137,8 +104,9 @@ export const rowError = (row: AssignmentRow): string | null => {
 export const clauseText = (clause: Clause): string => {
   const variable = variableByName(clause.variable);
   const operator = operatorsFor(variable).find((o) => o.value === clause.operator)?.label ?? clause.operator;
-  const value = variable?.numeric && clause.value !== "" ? Number(clause.value).toLocaleString("en-US") : clause.value;
-  return `${variable?.label ?? "…"} ${operator} ${value || "…"}`;
+  const format = (v?: string) => (variable?.numeric && v ? Number(v).toLocaleString("en-US") : v) || "…";
+  const value = clause.operator === "between" ? `${format(clause.value)} and ${format(clause.value2)}` : format(clause.value);
+  return `${variable?.label ?? "…"} ${operator} ${value}`;
 };
 
 export const groupText = (group: ConditionGroup): string => group.clauses.map(clauseText).join(` ${group.join.toLowerCase()} `);
