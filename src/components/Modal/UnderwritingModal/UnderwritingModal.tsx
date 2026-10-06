@@ -9,11 +9,12 @@ import {
   IconBell, IconChevronDown, IconChevronLeft, IconChevronRight, IconFileText, IconGauge, IconBuildingBank, IconScale,
   IconShieldCheck, IconCar, IconIdBadge2, IconCheck, IconX, IconPlus, IconInfoCircle,
   IconAlertTriangle, IconCircleCheck, IconCircleX, IconArrowRight, IconMinus, IconTrash, IconUpload, IconLock,
+  IconCertificate,
 } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
 import { PreScreeningModal } from "../PreScreeningModal/PreScreeningModal";
-import { LeftNav } from "../PreScreeningModal/PreScreeningShared";
+import { LeftNav, ContextHeader } from "../PreScreeningModal/PreScreeningShared";
 import { EnrichmentModal } from "../Enrichment/EnrichmentModal";
 import {
   DUMMY_PERSONAL_LOAN_APPLICATION, DUMMY_PRESCREENING_CONTEXT, DUMMY_PRESCREENING_DATA, DUMMY_ENRICHMENT_TERMS,
@@ -527,7 +528,27 @@ export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_P
       }}
     >
       <Box style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-        <TopBar onMinimize={onMinimize} onClose={onClose} />
+        <Group justify="space-between" align="center" px="xl" py="sm" bg="brand.6" style={{ borderBottom: "1px solid var(--mantine-color-brand-7)", flexShrink: 0 }}>
+          <Group gap="sm">
+            <ThemeIcon radius="md" size={34} variant="white" color="brand">
+              <IconCertificate size={16} />
+            </ThemeIcon>
+            <Box>
+              <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>Loan Application</Text>
+              <Text size="xs" fw={500} c="brand.1">Stage 4 &mdash; Underwriting</Text>
+            </Box>
+          </Group>
+          <Group gap="xs" wrap="nowrap">
+            <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={onMinimize} aria-label="Minimize">
+              <IconMinus size={16} color="white" />
+            </ActionIcon>
+            <ActionIcon variant="subtle" color="white" radius="xl" size="md" onClick={onClose} aria-label="Close">
+              <IconX size={16} color="white" />
+            </ActionIcon>
+          </Group>
+        </Group>
+
+        <ContextHeader values={applicationValues} applicationId={DUMMY_PRESCREENING_CONTEXT.applicationId} />
         <Box style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
           <LeftNav activeSubItem={tab} onSubItemClick={(sub) => { setTab(sub as TabId); setSection("underwriting"); }} section={section} 
   setSection={setSection} 

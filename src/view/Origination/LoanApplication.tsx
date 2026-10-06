@@ -28,13 +28,14 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
-  IconFileText,
+  IconClipboardList,
   IconTrash,
   IconAlertTriangle,
   IconDotsVertical,
   IconEye,
   IconSend,
-  IconGavel, IconMessageCircle2
+  IconGavel,
+  IconMessageCircle2
 } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -236,7 +237,7 @@ function ApplicationIdCell({ name }: { name: string }) {
           flexShrink: 0,
         }}
       >
-        <IconFileText size={14} color="var(--mantine-color-brand-6)" />
+        <IconClipboardList size={14} color="var(--mantine-color-brand-6)" />
       </Box>
       <Text
         fz={11}
@@ -918,7 +919,7 @@ export function LoanApplication() {
               justifyContent: "center",
             }}
           >
-            <IconFileText
+            <IconClipboardList
               size={20}
               color="var(--mantine-color-white)"
               stroke={1.8}
@@ -1127,7 +1128,7 @@ export function LoanApplication() {
                               border: "1px solid var(--mantine-color-slate-2)",
                             }}
                           >
-                            <IconFileText
+                            <IconClipboardList
                               size={26}
                               color="var(--mantine-color-slate-4)"
                             />

@@ -4,8 +4,14 @@ import {
   Text, Pagination, Tooltip, Title, Stack, useMantineTheme, Loader, Menu,
 } from '@mantine/core';
 import {
-  IconEye, IconPencil, IconPlus, IconSearch, IconFileOff, IconTrash, IconRefresh,
-  IconCircleCheck, IconDotsVertical,
+  IconEye,
+  IconPencil,
+  IconPlus,
+  IconSearch,
+  IconExchange,
+  IconTrash,
+  IconCircleCheck,
+  IconDotsVertical
 } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import { useLoanRestructureList } from '../../../hooks/useLoanRestructureList';
@@ -92,7 +98,7 @@ export function LoanRestructure() {
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
         <Group gap="sm" align="center">
           <Box style={{ width: 40, height: 40, borderRadius: 'var(--mantine-radius-md)', background: theme.other.brandGradient, boxShadow: theme.other.brandGlowShadow, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <IconRefresh size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconExchange size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>Loan Restructures</Title>
@@ -151,7 +157,7 @@ export function LoanRestructure() {
               <Table.Tr>
                 <Table.Td colSpan={6} style={{ border: 'none' }}>
                   <Stack align="center" gap="xs" py="xl">
-                    <IconFileOff size={26} color="var(--mantine-color-slate-4)" />
+                    <IconExchange size={26} color="var(--mantine-color-slate-4)" />
                     <Text ta="center" c="slate.5" fz="xs">No restructure requests match your filters.</Text>
                   </Stack>
                 </Table.Td>
