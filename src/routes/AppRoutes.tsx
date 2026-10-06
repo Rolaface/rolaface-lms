@@ -84,6 +84,7 @@ import { LoanTypeSetup } from "../view/LosConfiguration/LoanTpeSetup/Loantypeset
 import { DocumentSetup } from "../view/LosConfiguration/DocumentSetup/DocumentSetup";
 import { SourceMaintenance } from "../view/LosConfiguration/SourceMaintenance/SourceMaintenance";
 import { Investor } from "../view/Investor/Investor";
+import { InvestmentProduct } from "../view/Investor/Product/InvestmentProduct";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -500,6 +501,16 @@ const reportsPortfolioRoute = createRoute({
 const investorRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/investor",
+  component: Outlet,
+});
+const investmentProductRoute = createRoute({
+  getParentRoute: () => investorRoute,
+  path: "/product",
+  component: InvestmentProduct,
+});
+const investmentRoute = createRoute({
+  getParentRoute: () => investorRoute,
+  path: "/investments",
   component: Investor,
 });
 const settingsRoute = createRoute({
@@ -588,7 +599,7 @@ const routeTree = rootRoute.addChildren([
   // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
   originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute, originationLoanTypeSetupRoute, originationDocumentSetupRoute, originationSourceMaintenanceRoute]),
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute, reportsDisbursementRoute, reportsPortfolioRoute]),
-  investorRoute,
+  investorRoute.addChildren([investmentProductRoute, investmentRoute]),
   settingsRoute.addChildren([
     emailTemplateRoute,
     schedulerRoute,

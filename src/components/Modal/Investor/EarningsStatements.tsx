@@ -223,14 +223,14 @@ export function EarningsStatements({ state, update, schedule, onToast }: TabProp
                               <IconDownload size={14} />
                             </ActionIcon>
                           </Tooltip>
-                          <Button
+                          {/* <Button
                             size="compact-xs"
                             radius="xl"
                             variant="default"
                             onClick={() => update({ viewMonth: i })}
                           >
                             View
-                          </Button>
+                          </Button> */}
                           <Button
                             size="compact-xs"
                             radius="xl"
@@ -254,62 +254,6 @@ export function EarningsStatements({ state, update, schedule, onToast }: TabProp
           </Alert>
         )}
       </SectionBox>
-
-      {viewed && (
-        <DocumentPaper>
-          <Text ta="center" fw={700} fz="md" c="slate.8">
-            Investment Statement · {viewed.label}
-          </Text>
-          <Text ta="center" fz="sm" c="slate.5" mb="md">
-            To {customer.name} · {customer.email}
-          </Text>
-          <KeyValueList
-            rows={[
-              { label: "Contract No.", value: state.contractNo },
-              { label: "Principal", value: inr(state.amount) },
-              { label: "Interest rate", value: `${state.rate}% p.a.` },
-              { label: "Interest earned this month", value: inr(monthlyInterest) },
-              { label: "Paid out this month", value: inr(viewed.paidOut) },
-              {
-                label: "Total interest earned to date",
-                value: inr(monthlyInterest * state.viewMonth),
-              },
-            ]}
-          />
-          <Group mt="md" gap="xs">
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              disabled={!!state.sentStatements[state.viewMonth]}
-              onClick={() => sendStatement(state.viewMonth)}
-            >
-              {state.sentStatements[state.viewMonth]
-                ? "Sent to investor"
-                : "Send to investor"}
-            </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              variant="default"
-              leftSection={<IconEye size={14} />}
-              onClick={() => viewStatementPdf(state.viewMonth)}
-            >
-              View PDF
-            </Button>
-            <Button
-              size="sm"
-              radius="xl"
-              variant="default"
-              leftSection={<IconDownload size={14} />}
-              onClick={() => downloadStatementPdf(state.viewMonth)}
-            >
-              Download PDF
-            </Button>
-          </Group>
-        </DocumentPaper>
-      )}
-
       {pdfPreview.modal}
     </>
   );

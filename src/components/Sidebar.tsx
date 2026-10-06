@@ -303,8 +303,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     label: "Investor",
     icon: IconUsers,
     matchPrefix: true,
-    modules: ["Investor"],
-  },
+     subItems: [
+      { path: "/investor/product", label: "Product", icon: IconBuildingBank, modules: ["Loan"] },
+      { path: "/investor/investments", label: "Investments", icon: IconReportAnalytics, modules: ["Loan"] },
+     ],
+   },
   {
     path: "/settings",
     label: "Settings",
