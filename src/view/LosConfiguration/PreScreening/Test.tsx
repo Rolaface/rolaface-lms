@@ -15,6 +15,7 @@ import {
 
 export interface TestTabProps {
   ruleSet: RuleSet;
+  dirty: boolean;
 }
 
 const findResult = (res: any) => {
@@ -53,7 +54,7 @@ function CardHeader({ icon, title, hint }: { icon: ReactNode; title: string; hin
   );
 }
 
-export default function TestTab({ ruleSet }: TestTabProps) {
+export default function TestTab({ ruleSet, dirty }: TestTabProps) {
   const usedFieldIds = useMemo(() => {
     const seen = new Set<string>();
     const ids: string[] = [];
@@ -86,14 +87,8 @@ export default function TestTab({ ruleSet }: TestTabProps) {
         Object.entries(sample).filter(([, v]) => v !== undefined && v !== null && v !== "")
       );
       const response = await test(ruleSet.id, { facts });
-      console.log("test_ruleset response:", response);
-      const found = findResult(response);
-      if (!found) {
-        console.warn("verdict not found in response");
-      }
-      setResults(found);
+      setResults(findResult(response));
     } catch (err: any) {
-      console.error(err);
       let body = "";
       try {
         const m = parseFrappeError(err);
@@ -126,7 +121,7 @@ export default function TestTab({ ruleSet }: TestTabProps) {
   };
 
   return (
-    <Grid gutter="lg">
+    <Grid gap="lg">
       <Grid.Col span={{ base: 12, md: 6 }}>
         <Paper withBorder radius="md" p={12} style={{ alignSelf: "start", background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderTop: "2px solid var(--mantine-color-brand-6)" }}>
           <CardHeader icon={<IconFlask size={13} stroke={2} />} title="Sample Applicant" hint={usedFieldIds.length ? `${usedFieldIds.length} criteria` : undefined} />
@@ -138,7 +133,7 @@ export default function TestTab({ ruleSet }: TestTabProps) {
             </Paper>
           ) : (
             <>
-              <Grid gutter={10}>
+              <Grid gap={10}>
                 {usedFieldIds.map((fid) => {
                   const f = fieldById(fid);
                   if (!f) return null;
@@ -202,9 +197,15 @@ export default function TestTab({ ruleSet }: TestTabProps) {
               <Button size="xs" radius="md" fullWidth mt={12} color="brand" leftSection={<IconPlayerPlay size={12} stroke={2.4} />} onClick={runTest} loading={testing}>
                 Run Simulation
               </Button>
-              <Text fz={10.5} c="slate.5" mt={6}>
-                Note: test runs on the saved draft. Click Save Draft after changing rules.
-              </Text>
+              {dirty ? (
+                <Alert color="orange" mt={8} p={8} fz={11.5}>
+                  You have unsaved changes. The test runs on the saved version, so save the draft first to test them.
+                </Alert>
+              ) : (
+                <Text fz={10.5} c="slate.5" mt={6}>
+                  The test runs on the saved version of this rule set.
+                </Text>
+              )}
             </>
           )}
         </Paper>

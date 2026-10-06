@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import {
   Button,
   TextInput,
@@ -20,6 +20,7 @@ import {
   SimpleGrid,
   ActionIcon,
   Modal,
+  Popover,
   Tooltip,
 } from "@mantine/core";
 import {
@@ -44,12 +45,20 @@ import {
   ruleSentence,
   ruleIsComplete,
   computeValidation,
+  isListOp,
+  isRelativeOp,
+  formatDate,
+  formatDay,
   type Rule,
   type RuleGroup,
   type RuleSet,
   type Severity,
 } from "./types";
 import { SeverityBadge, ValidationLine } from "./shared";
+import { DateInput } from "@mantine/dates";
+import { openCommonModal } from "../../../components/Modal/AlertModal";
+
+const asInput = (v: unknown) => (typeof v === "string" || typeof v === "number" ? v : "");
 
 const makeEmptyRule = (): Rule => ({
   id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -63,80 +72,65 @@ const makeEmptyRule = (): Rule => ({
 function FieldPicker({ value, onSelect, disabled }: { value: string | null; onSelect: (fid: string) => void; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
 
   const field = fieldById(value);
   const filtered = FIELDS.filter((f) => f.label.toLowerCase().includes(q.toLowerCase()));
 
   return (
-    <Box ref={ref} pos="relative">
-      <Button
+    <Popover opened={open} onChange={setOpen} position="bottom-start" width="target" shadow="md" radius="md" withinPortal>
+      <Popover.Target>
+        <Button
           fullWidth
           size="xs"
           variant="default"
           disabled={disabled}
           rightSection={<IconChevronDown size={13} color="var(--mantine-color-slate-4)" />}
-          onClick={() => !disabled && setOpen(!open)}
-        styles={{
-          root: { height: 30, minHeight: 30, paddingLeft: 10, paddingRight: 8 },
-          inner: { justifyContent: "space-between", width: "100%" },
-          label: { fontSize: 12.5, fontWeight: field ? 600 : 400, color: field ? "var(--mantine-color-slate-8)" : "var(--mantine-color-slate-4)" },
-        }}
-      >
-        {field ? field.label : "Search criteria…"}
-      </Button>
-      {open && (
-        <Paper
-          withBorder
-          shadow="md"
-          radius="md"
-          pos="absolute"
-          top="calc(100% + 6px)"
-          left={0}
-          right={0}
-          style={{ zIndex: 40, maxHeight: 320, overflow: "auto" }}
+          onClick={() => !disabled && setOpen((o) => !o)}
+          styles={{
+            root: { height: 30, minHeight: 30, paddingLeft: 10, paddingRight: 8 },
+            inner: { justifyContent: "space-between", width: "100%" },
+            label: { fontSize: 12.5, fontWeight: field ? 600 : 400, color: field ? "var(--mantine-color-slate-8)" : "var(--mantine-color-slate-4)" },
+          }}
         >
-          <Box p={8} style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", position: "sticky", top: 0, background: "var(--mantine-color-white)", zIndex: 1 }}>
-            <TextInput
-              autoFocus
-              size="xs"
-              leftSection={<IconSearch size={13} />}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search criteria…"
-            />
-          </Box>
-          {CATEGORY_ORDER.map((cat) => {
-            const items = filtered.filter((f) => f.category === cat);
-            if (!items.length) return null;
-            return (
-              <Box key={cat} py={4}>
-                <Text fz={10} fw={700} c="dimmed" tt="uppercase" px={8} py={2} style={{ letterSpacing: ".04em" }}>
-                  {cat}
-                </Text>
-                {items.map((f) => (
-                  <NavLink
-                    key={f.id}
-                    label={f.label}
-                    onClick={() => { onSelect(f.id); setOpen(false); setQ(""); }}
-                    styles={{ label: { fontSize: 12.5 }, root: { borderRadius: "var(--mantine-radius-sm)", padding: "5px 8px" } }}
-                  />
-                ))}
-              </Box>
-            );
-          })}
-          {filtered.length === 0 && (
-            <Text p="md" fz="sm" c="dimmed">No matching criteria.</Text>
-          )}
-        </Paper>
-      )}
-    </Box>
+          {field ? field.label : "Search criteria…"}
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown p={0} style={{ maxHeight: 320, overflow: "auto" }}>
+        <Box p={8} style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", position: "sticky", top: 0, background: "var(--mantine-color-white)", zIndex: 1 }}>
+          <TextInput
+            autoFocus
+            size="xs"
+            leftSection={<IconSearch size={13} />}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search criteria…"
+          />
+        </Box>
+        {CATEGORY_ORDER.map((cat) => {
+          const items = filtered.filter((f) => f.category === cat);
+          if (!items.length) return null;
+          return (
+            <Box key={cat} py={4}>
+              <Text fz={10} fw={700} c="dimmed" tt="uppercase" px={8} py={2} style={{ letterSpacing: ".04em" }}>
+                {cat}
+              </Text>
+              {items.map((f) => (
+                <NavLink
+                  key={f.id}
+                  label={f.label}
+                  active={f.id === value}
+                  onClick={() => { onSelect(f.id); setOpen(false); setQ(""); }}
+                  styles={{ label: { fontSize: 12.5 }, root: { borderRadius: "var(--mantine-radius-sm)", padding: "5px 8px" } }}
+                />
+              ))}
+            </Box>
+          );
+        })}
+        {filtered.length === 0 && (
+          <Text p="md" fz="sm" c="dimmed">No matching criteria.</Text>
+        )}
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 
@@ -174,26 +168,26 @@ function ValueEditor({ field, rule, setRule, disabled }: { field: ReturnType<typ
     if (rule.operator === "between") {
       return (
         <Group gap="sm" align="center" wrap="nowrap">
-          <Input disabled={disabled} size="xs" component="input" type="number" placeholder="From" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
+          <Input disabled={disabled} size="xs" component="input" type="number" placeholder="From" value={asInput(rule.value)} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
           <Text c="dimmed" fz={11.5}>and</Text>
-          <Input disabled={disabled} size="xs" component="input" type="number" placeholder="To" value={rule.value2 ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value2: e.target.value })} style={{ flex: 1 }} />
+          <Input disabled={disabled} size="xs" component="input" type="number" placeholder="To" value={asInput(rule.value2)} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value2: e.target.value })} style={{ flex: 1 }} />
           {field.unit && <Text c="dimmed" fz={11.5} style={{ whiteSpace: "nowrap" }}>{field.unit}</Text>}
         </Group>
       );
     }
     return (
       <Group gap="sm" align="center" wrap="nowrap">
-        <Input disabled={disabled} size="xs" component="input" type="number" placeholder="Value" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
+        <Input disabled={disabled} size="xs" component="input" type="number" placeholder="Value" value={asInput(rule.value)} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
         {field.unit && <Text c="dimmed" fz={11.5} style={{ whiteSpace: "nowrap" }}>{field.unit}</Text>}
       </Group>
     );
   }
   if (field.type === "text") {
-    if (rule.operator === "oneOf") return <ChipInput values={rule.values || []} onChange={(vals) => setRule({ ...rule, values: vals })} placeholder="Type a value and press Enter" />;
-    return <Input disabled={disabled} size="xs" component="input" placeholder="Value" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} />;
+    if (isListOp(rule.operator)) return <ChipInput values={rule.values || []} onChange={(vals) => setRule({ ...rule, values: vals })} placeholder="Type a value and press Enter" />;
+    return <Input disabled={disabled} size="xs" component="input" placeholder="Value" value={asInput(rule.value)} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} />;
   }
   if (field.type === "dropdown") {
-    if (rule.operator === "isOneOf" || rule.operator === "isNotOneOf") {
+    if (isListOp(rule.operator)) {
       return (
         <Chip.Group multiple value={rule.values || []} onChange={(vals) => setRule({ ...rule, values: vals })}>
           <Group gap="xs">
@@ -229,34 +223,35 @@ function ValueEditor({ field, rule, setRule, disabled }: { field: ReturnType<typ
     );
   }
   if (field.type === "date") {
-    if (rule.operator === "relative") {
+    if (isRelativeOp(rule.operator)) {
       return (
         <Group gap="sm" wrap="nowrap">
-          <Input disabled={disabled} size="xs" component="input" type="number" placeholder="Number" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
+          <Input disabled={disabled} size="xs" component="input" type="number" placeholder="Number" value={asInput(rule.value)} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
           <Select
             size="xs"
             data={[
-              { value: "days", label: "days ago" },
-              { value: "months", label: "months ago" },
-              { value: "years", label: "years ago" },
+              { value: "days", label: "days" },
+              { value: "months", label: "months" },
+              { value: "years", label: "years" },
             ]}
             value={rule.dateUnit || "months"}
             disabled={disabled} onChange={(val) => setRule({ ...rule, dateUnit: val ?? "months" })}
             style={{ flex: 1 }}
           />
+          <Text c="dimmed" fz={11.5}>ago</Text>
         </Group>
       );
     }
     if (rule.operator === "between") {
       return (
         <Group gap="sm" align="center" wrap="nowrap">
-          <Input disabled={disabled} size="xs" component="input" type="date" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
+          <Input disabled={disabled} size="xs" component="input" type="date" value={asInput(rule.value)} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} style={{ flex: 1 }} />
           <Text c="dimmed" fz={11.5}>and</Text>
-          <Input disabled={disabled} size="xs" component="input" type="date" value={rule.value2 ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value2: e.target.value })} style={{ flex: 1 }} />
+          <Input disabled={disabled} size="xs" component="input" type="date" value={asInput(rule.value2)} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value2: e.target.value })} style={{ flex: 1 }} />
         </Group>
       );
     }
-    return <Input disabled={disabled} size="xs" component="input" type="date" value={rule.value ?? ""} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} />;
+    return <Input disabled={disabled} size="xs" component="input" type="date" value={asInput(rule.value)} onChange={(e: ChangeEvent<HTMLInputElement>) => setRule({ ...rule, value: e.target.value })} />;
   }
   return null;
 }
@@ -265,9 +260,9 @@ function ValueEditor({ field, rule, setRule, disabled }: { field: ReturnType<typ
    RULE ROW
    ============================================================ */
 function RuleRow({
-  rule, editing, viewing, isNew, displayIndex, onStartEdit, onCancelEdit, onStartView, onCancelView, onSave, onDelete, onDuplicate,
+  rule, editing, viewing, isNew, readOnly, displayIndex, onStartEdit, onCancelEdit, onStartView, onCancelView, onSave, onDelete, onDuplicate,
 }: {
-  rule: Rule; editing: boolean; viewing?: boolean; isNew?: boolean; displayIndex?: number;
+  rule: Rule; editing: boolean; viewing?: boolean; isNew?: boolean; readOnly?: boolean; displayIndex?: number;
   onStartEdit: () => void; onCancelEdit: () => void;
   onStartView?: () => void; onCancelView?: () => void;
   onSave: (rule: Rule) => void; onDelete: () => void;
@@ -278,26 +273,15 @@ function RuleRow({
   const field = fieldById(draft.fieldId);
   const operators = field ? OPERATORS[field.type] : [];
   const complete = !!field && !!draft.operator && ruleIsComplete(draft);
-  const conditionOptions = operators.map((operator) => ({
-    value: operator.id,
-    label: {
-      oneOf: "is one of",
-      isOneOf: "is one of",
-      isNotOneOf: "is not one of",
-      is: "is",
-      eq: "equals",
-      gte: "is at least",
-      lte: "is at most",
-      lt: "is less than",
-      gt: "is greater than",
-    }[operator.id] || operator.label,
-  }));
+  const conditionOptions = operators.map((operator) => ({ value: operator.id, label: operator.label }));
 
   const chooseField = (fid: string) => {
     const f = fieldById(fid)!;
-    setDraft({ id: draft.id, fieldId: fid, operator: OPERATORS[f.type][0].id, severity: draft.severity || "Blocking", action: draft.action, value: undefined, values: undefined, value2: undefined });
+    const operator = OPERATORS[f.type][0].id;
+    setDraft({ id: draft.id, fieldId: fid, operator, severity: draft.severity || "Blocking", action: draft.action, value: undefined, values: undefined, value2: undefined, dateUnit: isRelativeOp(operator) ? "months" : undefined });
   };
-  const changeOperator = (opId: string) => setDraft({ ...draft, operator: opId, value: undefined, values: undefined, value2: undefined });
+  const changeOperator = (opId: string) =>
+    setDraft({ ...draft, operator: opId, value: undefined, values: undefined, value2: undefined, dateUnit: isRelativeOp(opId) ? "months" : undefined });
   const changeSeverity = (sev: Severity) => setDraft({ ...draft, severity: sev, action: draft.actionTouched ? draft.action : SEVERITIES[sev].defaultAction });
 
   const handleStartEdit = () => {
@@ -310,8 +294,7 @@ function RuleRow({
     onCancelEdit();
   };
 
-  if (!editing && !viewing) {
-    return (
+  const rowView = (
       <Paper
         withBorder
         radius="md"
@@ -342,11 +325,13 @@ function RuleRow({
           >
             {displayIndex ?? "•"}
           </Box>
+          {!readOnly && (
           <Tooltip label="Drag to reorder rule" withArrow position="top" transitionProps={{ transition: "fade", duration: 150 }}>
             <ActionIcon variant="subtle" color="gray" radius="sm" aria-label="Reorder rule" style={{ width: 24, height: 24, minWidth: 24, cursor: "grab", background: "var(--mantine-color-slate-0)" }}>
               <IconGripVertical size={14} stroke={1.8} />
             </ActionIcon>
           </Tooltip>
+          )}
           <Box style={{ flex: 1, minWidth: 0 }}>
             <Tooltip label={`If not met -> ${rule.action || SEVERITIES[rule.severity].defaultAction}`} withArrow position="top-start" transitionProps={{ transition: "fade", duration: 150 }}>
               <Text fz={12.5} fw={600} c="slate.8" lineClamp={1}>{ruleSentence(rule)}</Text>
@@ -359,6 +344,7 @@ function RuleRow({
                   <IconEye size={14} stroke={2} />
                 </ActionIcon>
               </Tooltip>
+              {!readOnly && (<>
               <Tooltip label="Duplicate rule" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
                 <ActionIcon variant="subtle" color="gray" radius="sm" aria-label="Duplicate rule" onClick={onDuplicate} style={{ width: 24, height: 24, minWidth: 24 }}>
                   <IconCopy size={14} stroke={2} />
@@ -374,13 +360,17 @@ function RuleRow({
                 <IconTrash size={14} stroke={2} />
               </ActionIcon>
             </Tooltip>
+              </>)}
           </Group>
         </Group>
       </Paper>
-    );
-  }
+  );
+
+  if (!editing && !viewing) return rowView;
 
   return (
+    <>
+      {!isNew && rowView}
     <Modal
       opened
       onClose={viewing ? (onCancelView || handleCancelEdit) : handleCancelEdit}
@@ -465,14 +455,16 @@ function RuleRow({
         </Group>
       </Stack>
     </Modal>
+    </>
   );
 }
 /* ============================================================
    GROUP CARD
    ============================================================ */
 function GroupCard({
-  group, groupIndex, onSaveRule, onDeleteRule, onReorderRules, onDuplicateRule, onDeleteGroup, onRenameGroup, onSetLogic,
+  group, groupIndex, readOnly, onSaveRule, onDeleteRule, onReorderRules, onDuplicateRule, onDeleteGroup, onRenameGroup, onSetLogic,
 }: {
+  readOnly?: boolean;
   group: RuleGroup;
   groupIndex: number;
   onSaveRule: (groupId: string, rule: Rule, isNew: boolean) => void;
@@ -521,7 +513,12 @@ function GroupCard({
       <Group justify="space-between" align="center" mb={8} pt={0} wrap="nowrap">
         {editingName ? (
           <TextInput autoFocus size="xs" value={name} onChange={(e) => setName(e.currentTarget.value)}
-            onBlur={() => { onRenameGroup(group.id, name); setEditingName(false); }}
+            onBlur={() => {
+              const trimmed = name.trim();
+              if (trimmed) onRenameGroup(group.id, trimmed);
+              else setName(group.name);
+              setEditingName(false);
+            }}
             onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} w={210} />
         ) : (
           <Group gap={8} align="center" wrap="nowrap">
@@ -545,11 +542,13 @@ function GroupCard({
             </Box>
             <Group gap={3} align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
               <Title order={4} fz={13} c="slate.8">{group.name}</Title>
+              {!readOnly && (
               <Tooltip label="Rename group" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
                 <ActionIcon variant="subtle" color="slate" radius="sm" aria-label="Rename group" onClick={() => setEditingName(true)} style={{ width: 18, height: 18, minWidth: 18 }}>
                   <IconPencil size={11} stroke={2} />
                 </ActionIcon>
               </Tooltip>
+              )}
             </Group>
             <Group gap={6} align="center" wrap="nowrap" ml={4}>
               <Text fz={11.5} c="dimmed" style={{ flexShrink: 0 }}>Match</Text>
@@ -557,6 +556,7 @@ function GroupCard({
                 size="xs"
                 radius="md"
                 value={group.logic}
+                readOnly={readOnly}
                 onChange={(val) => onSetLogic(group.id, val as "ALL" | "ANY")}
                 color="brand"
                 data={[{ label: "ALL", value: "ALL" }, { label: "ANY", value: "ANY" }]}
@@ -570,11 +570,31 @@ function GroupCard({
             </Group>
           </Group>
         )}
+        {!readOnly && (
         <Tooltip label="Remove group" withArrow transitionProps={{ transition: "fade", duration: 150 }}>
-          <ActionIcon variant="subtle" color="red" radius="sm" aria-label="Remove group" onClick={() => onDeleteGroup(group.id)} style={{ width: 24, height: 24, minWidth: 24, flexShrink: 0 }}>
+          <ActionIcon
+            variant="subtle"
+            color="red"
+            radius="sm"
+            aria-label="Remove group"
+            onClick={() =>
+              group.rules.length === 0
+                ? onDeleteGroup(group.id)
+                : openCommonModal({
+                    heading: "Remove Rule Group",
+                    subtitle: "",
+                    body: `Remove "${group.name}" and its ${group.rules.length} rule${group.rules.length === 1 ? "" : "s"}?`,
+                    color: "red",
+                    buttons: [
+                      { label: "Cancel", variant: "default" },
+                      { label: "Remove", color: "red", onClick: () => onDeleteGroup(group.id) },
+                    ],
+                  })
+            } style={{ width: 24, height: 24, minWidth: 24, flexShrink: 0 }}>
             <IconTrash size={13} stroke={2} />
           </ActionIcon>
         </Tooltip>
+        )}
       </Group>
 
       {visibleRules.length === 0 && !addingNew ? (
@@ -583,9 +603,10 @@ function GroupCard({
         </Paper>
       ) : (
         orderedRules.map((r, i) => (
-          <Box key={r.id} draggable onDragStart={() => setDraggedIndex(i)} onDragEnter={() => handleDragEnter(i)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} style={{ opacity: draggedIndex === i ? 0.4 : 1 }}>
+          <Box key={r.id} draggable={!readOnly} onDragStart={() => { setLocalRules(group.rules); setDraggedIndex(i); }} onDragEnter={() => handleDragEnter(i)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} style={{ opacity: draggedIndex === i ? 0.4 : 1 }}>
             <RuleRow
               rule={r}
+              readOnly={readOnly}
               editing={editingRuleId === r.id}
               viewing={viewingRuleId === r.id}
               displayIndex={i + 1}
@@ -614,7 +635,7 @@ function GroupCard({
         />
       )}
 
-      <Button
+      {!readOnly && <Button
         size="xs"
         radius="md"
         variant="outline"
@@ -627,7 +648,7 @@ function GroupCard({
         style={{ borderStyle: "dashed", borderWidth: 1, background: "var(--mantine-color-slate-0)" }}
       >
         Add Rule
-      </Button>
+      </Button>}
     </Paper>
   );
 }
@@ -643,11 +664,13 @@ export interface BuilderTabProps {
   onDuplicateRule: (gid: string, rule: Rule) => void;
   onSaveRule: (groupId: string, rule: Rule, isNew: boolean) => void;
   onDeleteRule: (groupId: string, ruleId: string) => void;
-  onReorderRules: (groupId: string, rules: Rule[]) => void; // new
+  onReorderRules: (groupId: string, rules: Rule[]) => void;
+  onSetEffectiveFrom: (date: string) => void;
+  readOnly?: boolean;
 }
 
 export default function BuilderTab({
-  ruleSet, onAddGroup, onRenameGroup, onSetLogic, onDeleteGroup,
+  ruleSet, readOnly, onSetEffectiveFrom, onAddGroup, onRenameGroup, onSetLogic, onDeleteGroup,
   onDuplicateRule, onSaveRule, onDeleteRule, onReorderRules,
 }: BuilderTabProps) {
   const v = computeValidation(ruleSet);
@@ -669,13 +692,30 @@ export default function BuilderTab({
               onDeleteGroup={onDeleteGroup}
               onRenameGroup={onRenameGroup}
               onSetLogic={onSetLogic}
+              readOnly={readOnly}
             />
           </Box>
         ))}
 
-        <Button size="xs" radius="md" variant="default" leftSection={<IconPlus size={12} stroke={2.4} />} onClick={onAddGroup}>
-          Add Rule Group
-        </Button>
+        {ruleSet.groups.length === 0 ? (
+          <Paper radius="md" p="xl" style={{ border: "1px dashed var(--mantine-color-slate-3)", textAlign: "center", background: "var(--mantine-color-slate-0)" }}>
+            <Text fz={13} fw={600} c="slate.8">No rule groups yet</Text>
+            <Text fz={12} c="slate.5" mt={4} mb={readOnly ? 0 : 14} maw={420} mx="auto">
+              A rule group holds the checks an applicant must pass, matched as ALL or ANY. Add a group, then add rules to it.
+            </Text>
+            {!readOnly && (
+              <Button size="xs" radius="md" color="brand" leftSection={<IconPlus size={12} stroke={2.4} />} onClick={onAddGroup}>
+                Add Rule Group
+              </Button>
+            )}
+          </Paper>
+        ) : (
+          !readOnly && (
+            <Button size="xs" radius="md" variant="default" leftSection={<IconPlus size={12} stroke={2.4} />} onClick={onAddGroup}>
+              Add Rule Group
+            </Button>
+          )
+        )}
       </Grid.Col>
 
       <Grid.Col span={{ base: 12, md: 4 }}>
@@ -689,10 +729,25 @@ export default function BuilderTab({
             </Group>
             <Stack gap={0}>
               {([
-                ["Loan Product", ruleSet.product],
-                ["Effective From", ruleSet.effectiveFrom],
-                ["Created By", ruleSet.createdBy],
-                ["Last Modified", `${ruleSet.modifiedDate} · ${ruleSet.modifiedBy}`],
+                ["Loan Product", ruleSet.productName],
+                [
+                  "Effective From",
+                  readOnly ? (
+                    ruleSet.effectiveFrom ? formatDay(ruleSet.effectiveFrom) : "When activated"
+                  ) : (
+                    <DateInput
+                      size="xs"
+                      w={150}
+                      valueFormat="DD MMM YYYY"
+                      placeholder="When activated"
+                      clearable
+                      value={ruleSet.effectiveFrom || null}
+                      onChange={(v) => onSetEffectiveFrom(v ? String(v).slice(0, 10) : "")}
+                    />
+                  ),
+                ],
+                ["Created By", ruleSet.createdBy || "—"],
+                ["Last Modified", `${formatDate(ruleSet.modifiedDate)} · ${ruleSet.modifiedBy}`],
               ] as const).map(([k, val], i) => (
                 <Box key={k}>
                   {i > 0 && <Divider color="var(--mantine-color-slate-1)" />}
@@ -716,10 +771,20 @@ export default function BuilderTab({
               <ValidationLine ok={v.issues.length === 0} text={v.issues.length === 0 ? "Conditions complete" : `${v.issues.length} incomplete`} />
               <ValidationLine ok={v.warnings.length === 0} text={v.warnings.length === 0 ? "No conflicts" : `${v.warnings.length} possible conflict`} warnOnly />
             </Stack>
-            <Group gap={5} justify="center" mt={8} pt={8} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
-              <IconInfoCircle size={12} color="var(--mantine-color-slate-4)" />
-              <Text fz={10.5} c="slate.4" ta="center">Activate Rule Set — complete pending items above</Text>
-            </Group>
+            {v.issues.length > 0 && (
+              <Stack gap={2} mt={8} pt={8} style={{ borderTop: "1px solid var(--mantine-color-slate-1)" }}>
+                {v.issues.slice(0, 4).map((issue) => (
+                  <Text key={issue} fz={10.5} c="red.7">
+                    • {issue}
+                  </Text>
+                ))}
+                {v.issues.length > 4 && (
+                  <Text fz={10.5} c="slate.5">
+                    and {v.issues.length - 4} more
+                  </Text>
+                )}
+              </Stack>
+            )}
           </Paper>
 
           <Paper withBorder radius="md" p={12} style={{ background: "var(--mantine-color-white)", borderColor: "var(--mantine-color-slate-2)", borderTop: "2px solid var(--mantine-color-brand-6)" }}>
@@ -735,7 +800,7 @@ export default function BuilderTab({
               </Text>
             ) : (
               <Text fz={13} lh={1.65} c="slate.6" px={14} py={10} style={{ overflowWrap: "anywhere", wordBreak: "break-word", borderRadius: 10, background: "var(--mantine-color-brand-0)", borderLeft: "3px solid var(--mantine-color-brand-5)" }}>
-                For <Text span inherit fw={600} c="slate.9">{ruleSet.product}</Text> applications, where{" "}
+                For <Text span inherit fw={600} c="slate.9">{ruleSet.productName}</Text> applications, where{" "}
                 {summaryGroups.map((group, groupIndex) => {
                   const activeRules = group.rules.filter((rule) => !rule.disabled);
                   return (
