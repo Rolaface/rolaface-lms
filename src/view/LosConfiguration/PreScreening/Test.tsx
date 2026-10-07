@@ -101,7 +101,7 @@ export default function TestTab({ ruleSet, dirty }: TestTabProps) {
         subtitle: "We couldn't complete your request.",
         body,
         color: "red",
-        buttons: [{ label: "Close", color: "red" }],
+        buttons: [{ label: "OK", color: "red" }],
       });
     } finally {
       setTesting(false);

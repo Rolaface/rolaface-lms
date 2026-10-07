@@ -48,7 +48,7 @@ function toLocalModel(data: ApiWorkflow): { states: WfState[]; rules: WfRule[] }
 }
 
 const showAlert =(heading: string, body: string, color: "success" | "danger" | "warning") =>
-  openCommonModal({ heading, subtitle: "", body, color, buttons: [{ label: "Close", color }] });
+  openCommonModal({ heading, subtitle: "", body, color, buttons: [{ label: "OK", color }] });
 
 export function WorkflowConfiguration() {
   const queryClient = useQueryClient();

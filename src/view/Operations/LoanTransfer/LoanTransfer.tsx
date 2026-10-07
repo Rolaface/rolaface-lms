@@ -131,7 +131,7 @@ export function LoanTransfer() {
       subtitle: "We couldn't complete your request.",
       body: message,
       color: 'red',
-      buttons: [{ label: 'Close', color: 'red' }],
+      buttons: [{ label: 'OK', color: 'red' }],
     });
   };
 
@@ -141,7 +141,7 @@ export function LoanTransfer() {
       subtitle: '',
       body,
       color: 'green',
-      buttons: [{ label: 'Close', color: 'green' }],
+      buttons: [{ label: 'OK', color: 'green' }],
     });
   };
 

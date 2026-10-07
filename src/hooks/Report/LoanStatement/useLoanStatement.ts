@@ -200,7 +200,7 @@ export function useLoanStatement() {
         subtitle: "",
         body: "Loan statement has been emailed successfully.",
         color: "green",
-        buttons: [{ label: "Close", color: "green" }],
+        buttons: [{ label: "OK", color: "green" }],
       });
     } catch (err) {
       notifyError(parseFrappeError(err), 'Failed to send statement');

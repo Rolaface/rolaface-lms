@@ -332,7 +332,7 @@ export function LoanAccountModal({
         subtitle: "Loan saved, but attaching documents failed.",
         body: parseFrappeError(error),
         color: "red",
-        buttons: [{ label: "Close", color: "red" }],
+        buttons: [{ label: "OK", color: "red" }],
       });
     },
   });
@@ -343,7 +343,7 @@ export function LoanAccountModal({
       subtitle: "",
       body,
       color: "green",
-      buttons: [{ label: "Close", color: "green" }],
+      buttons: [{ label: "OK", color: "green" }],
     });
   };
   const createLoanMutation = useMutation({
@@ -378,7 +378,7 @@ export function LoanAccountModal({
         color: "red",
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "red",
           },
         ],
@@ -767,7 +767,7 @@ const previousScheduleErrorRef = useRef<string | null>(null);
         color: "red",
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "red",
           },
         ],

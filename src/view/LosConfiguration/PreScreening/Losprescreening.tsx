@@ -78,7 +78,7 @@ const showError = (heading: string, error: any) => {
     subtitle: "We couldn't complete your request.",
     body: getSafeErrorMessage(error),
     color: "red",
-    buttons: [{ label: "Close", color: "red" }],
+    buttons: [{ label: "OK", color: "red" }],
   });
 };
 
@@ -88,7 +88,7 @@ const showSuccess = (heading: string, body: string) => {
     subtitle: "",
     body,
     color: "green",
-    buttons: [{ label: "Close", color: "green" }],
+    buttons: [{ label: "OK", color: "green" }],
   });
 };
 

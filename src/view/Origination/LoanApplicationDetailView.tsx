@@ -82,7 +82,7 @@ export function LoanApplicationDetailView({
         subtitle: '',
         body: `Workflow action '${variables.action}' applied successfully.`,
         color: 'green',
-        buttons: [{ label: 'Close', color: 'green' }],
+        buttons: [{ label: 'OK', color: 'green' }],
       });
     },
     onError: (error: any) => {
@@ -91,7 +91,7 @@ export function LoanApplicationDetailView({
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(error),
         color: 'red',
-        buttons: [{ label: 'Close', color: 'red' }],
+        buttons: [{ label: 'OK', color: 'red' }],
       });
     },
   });

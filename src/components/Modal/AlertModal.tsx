@@ -122,20 +122,23 @@ export const openCommonModal = ({
           </Alert>
 
           <Group justify="flex-end" w="100%" mt="sm">
-            {buttons.map((btn, i) => (
-              <Button
-                key={i}
-                color={btn.color ?? color}
-                variant={btn.variant ?? "filled"}
-                radius="md"
-                onClick={() => {
-                  modals.close(modalId);
-                  btn.onClick?.();
-                }}
-              >
-                {btn.label}
-              </Button>
-            ))}
+            {buttons.map((btn, i) => {
+              const label = btn.label.trim().toLowerCase() === "close" ? "OK" : btn.label;
+              return (
+                <Button
+                  key={i}
+                  color={btn.color ?? color}
+                  variant={btn.variant ?? "filled"}
+                  radius="md"
+                  onClick={() => {
+                    modals.close(modalId);
+                    btn.onClick?.();
+                  }}
+                >
+                  {label}
+                </Button>
+              );
+            })}
           </Group>
         </Stack>
       </Stack>

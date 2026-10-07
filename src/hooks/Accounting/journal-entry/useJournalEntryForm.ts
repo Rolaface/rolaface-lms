@@ -47,7 +47,7 @@ export function useJournalEntryForm({
     subtitle: "We couldn't complete your request.",
     body: parseFrappeError(error),
     color: "red",
-    buttons: [{ label: "Close", color: "red" }],
+    buttons: [{ label: "OK", color: "red" }],
   });
 };
 
@@ -57,7 +57,7 @@ const showSuccessModal = (heading: string, body: string) => {
     subtitle: "",
     body,
     color: "green",
-    buttons: [{ label: "Close", color: "green" }],
+    buttons: [{ label: "OK", color: "green" }],
   });
 };
 
@@ -224,7 +224,7 @@ if (!result.isValid) {
       subtitle: "",
       body: result.blockingMessage,
       color: "red",
-      buttons: [{ label: "Close", color: "red" }],
+      buttons: [{ label: "OK", color: "red" }],
     });
   }
   return;

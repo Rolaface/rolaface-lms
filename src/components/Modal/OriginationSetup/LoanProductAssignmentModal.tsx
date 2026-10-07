@@ -618,7 +618,7 @@ export function LoanProductAssignmentModal({ editing, onClose, onEditRow, onChan
       subtitle: "",
       body,
       color: "green",
-      buttons: [{ label: "Close", color: "green" }],
+      buttons: [{ label: "OK", color: "green" }],
     });
   };
 
@@ -636,7 +636,7 @@ export function LoanProductAssignmentModal({ editing, onClose, onEditRow, onChan
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(error),
         color: "red",
-        buttons: [{ label: "Close", color: "red" }],
+        buttons: [{ label: "OK", color: "red" }],
       });
     },
   });
@@ -655,7 +655,7 @@ export function LoanProductAssignmentModal({ editing, onClose, onEditRow, onChan
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(error),
         color: "red",
-        buttons: [{ label: "Close", color: "red" }],
+        buttons: [{ label: "OK", color: "red" }],
       });
     },
   });

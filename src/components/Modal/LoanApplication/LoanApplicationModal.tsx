@@ -466,7 +466,7 @@ export function LoanApplicationModal({
       subtitle: "",
       body,
       color: "green",
-      buttons: [{ label: "Close", color: "green" }],
+      buttons: [{ label: "OK", color: "green" }],
     });
   };
 
@@ -1021,7 +1021,7 @@ export function LoanApplicationModal({
 
           buttons: [
             {
-              label: "Close",
+              label: "OK",
               color: "red",
             },
           ],
@@ -1049,7 +1049,7 @@ export function LoanApplicationModal({
 
           buttons: [
             {
-              label: "Close",
+              label: "OK",
               color: "red",
             },
           ],

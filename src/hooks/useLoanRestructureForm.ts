@@ -85,7 +85,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
       subtitle: "We couldn't complete your request.",
       body: parseFrappeError(error),
       color: "red",
-      buttons: [{ label: "Close", color: "red" }],
+      buttons: [{ label: "OK", color: "red" }],
     });
   };
 
@@ -95,7 +95,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
       subtitle: "Please review before continuing.",
       body,
       color: "orange",
-      buttons: [{ label: "Close", color: "orange" }],
+      buttons: [{ label: "OK", color: "orange" }],
     });
   };
 
@@ -105,7 +105,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
       subtitle: "",
       body,
       color: "green",
-      buttons: [{ label: "Close", color: "green" }],
+      buttons: [{ label: "OK", color: "green" }],
     });
   };
 
