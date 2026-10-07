@@ -16,7 +16,7 @@ import {
 } from '@tabler/icons-react';
 
 import type { LoanApplicationRow } from './LoanApplication';
-import { STATUS_COLOR, getDisplayStatus } from './LoanApplication';
+import { STATUS_COLOR } from './LoanApplication';
 import { themeTokens, serif, OverviewField, SectionHeading } from '../LoanAccount/LoanView/SharedUI';
 import { ERP_BASE } from '../../config/api';
 import { useState } from 'react';
@@ -83,6 +83,7 @@ export interface DirectorInfo {
 }
 
 export interface LoanApplicationDetail {
+  displayName: string;
   applicant: {
     fullName: string;
     gender: string;
@@ -100,6 +101,8 @@ export interface LoanApplicationDetail {
     isBusinessLoan: boolean;
     companyName: string;
     typeOfBusiness: string;
+    registrationNumber: string;
+    tpin: string;
     establishedDate: string;
     registeredOffice: string;
     natureOfBusiness: string;
@@ -111,6 +114,8 @@ export interface LoanApplicationDetail {
     phone: string;
   };
   loanTerms: {
+    loanType: string;
+    product: string;
     amountRequested: number;
     tenureMonths: number;
     purpose: string;
@@ -142,6 +147,8 @@ export function stageForStatus(status: string): LoanApplicationDetail['stage'] {
     case 'Open':
       return 'Under review';
     case 'Submitted':
+      return 'Submitted';
+    case 'Approved':
     case 'Cancelled':
     case 'Sanctioned':
     case 'Rejected':
@@ -153,106 +160,26 @@ export function stageForStatus(status: string): LoanApplicationDetail['stage'] {
   }
 }
 
-function applicantNameFromRow(row: LoanApplicationRow) {
-  if (row.application_type === 'Business Loan') {
-    return row.company_name || '—';
-  }
-  const fullName = [row.first_name, row.last_name].filter(Boolean).join(' ');
-  return fullName || '—';
-}
-
-function buildApplicantFullName(data: any, isBusinessLoan: boolean) {
-  if (isBusinessLoan) {
-    return (
-      [data.applicant_first_name, data.applicant_middle_name, data.applicant_last_name]
-        .filter(Boolean)
-        .join(' ') || '—'
-    );
-  }
-  return [data.first_name, data.middle_name, data.last_name].filter(Boolean).join(' ') || '—';
+function formatApiAddress(address: any) {
+  if (!address) return '—';
+  return (
+    [address.address_line1, address.address_line2, address.city, address.state, address.country, address.pincode]
+      .filter(Boolean)
+      .join(', ') || '—'
+  );
 }
 
 function mapDocuments(data: any): ApplicationDocument[] {
-  const docs: ApplicationDocument[] = [];
-
-  // 1. Loop for Personal Loan Documents
-  (data.documents || []).forEach((d: any) => {
-    if (!d.document_name && !d.file) return;
-
-    const fileName = d.file ? d.file.split('/').pop() : '—';
-
-    docs.push({
-      id: d.name,
+  return (data.documents || [])
+    .filter((d: any) => d.document_name || d.file)
+    .map((d: any) => ({
+      id: d.row_id,
       name: d.document_name || 'Document',
       status: d.file ? 'Uploaded' : 'Missing',
-      size: fileName,
+      size: d.file ? d.file.split('/').pop() : '—',
       icon: 'file',
       file: d.file,
-    });
-  });
-
-  // 2. Loop for Business Loan Documents
-  (data.business_documents || []).forEach((d: any) => {
-    if (!d.document_name && !d.file) return;
-
-    const fileName = d.file ? d.file.split('/').pop() : '—';
-
-    docs.push({
-      id: d.name,
-      name: d.document_name || 'Document',
-      status: d.file ? 'Uploaded' : 'Missing',
-      size: fileName,
-      icon: 'certificate',
-      file: d.file,
-    });
-  });
-
-  return docs;
-}
-
-// function mapActivity(data: any): ApplicationActivityItem[] {
-//   const activity: ApplicationActivityItem[] = [
-//     {
-//       id: 'created',
-//       date: data.application_date,
-//       kind: 'note',
-//       title: 'Application created',
-//       description: `Loan application ${data.name} was created.`,
-//       actor: 'Applicant',
-//     },
-//   ];
-
-//   if (data.status === 'Submitted' || data.status === 'Cancelled' || data.status === 'Sanctioned') {
-//     activity.push({
-//       id: 'decision',
-//       date: data.modified,
-//       kind: 'decision',
-//       title: `Application ${getDisplayStatus(data.status).toLowerCase()}`,
-//       description: data.status === 'Cancelled' ? 'Application was rejected.' : 'Application was approved.',
-//       actor: 'Loan Officer',
-//     });
-//   }
-
-//   return activity;
-// }
-function mapComments(data: any): ApplicationActivityItem[] {
-  if (!data._comments) return [];
-
-  let parsed: { comment: string; by: string; name: string }[] = [];
-  try {
-    parsed = JSON.parse(data._comments);
-  } catch {
-    return [];
-  }
-
-  return parsed.map((c) => ({
-    id: c.name,
-    date: data.modified,
-    kind: 'note',
-    title: c.by,
-    description: c.comment,
-    actor: c.by,
-  }));
+    }));
 }
 
 function mapActivity(data: any): ApplicationActivityItem[] {
@@ -263,20 +190,18 @@ function mapActivity(data: any): ApplicationActivityItem[] {
       kind: 'note',
       title: 'Application created',
       description: `Loan application ${data.name} was created.`,
-      actor: 'Applicant',
+      actor: data.owner || 'Applicant',
     },
   ];
 
-  activity.push(...mapComments(data));
-
-  if (data.status === 'Submitted' || data.status === 'Cancelled' || data.status === 'Sanctioned') {
+  if (['Approved', 'Rejected', 'Cancelled'].includes(data.status)) {
     activity.push({
       id: 'decision',
       date: data.modified,
       kind: 'decision',
-      title: `Application ${getDisplayStatus(data.status).toLowerCase()}`,
-      description: data.status === 'Cancelled' ? 'Application was rejected.' : 'Application was approved.',
-      actor: 'Loan Officer',
+      title: `Application ${String(data.status).toLowerCase()}`,
+      description: `Application was ${String(data.status).toLowerCase()}.`,
+      actor: data.modified_by || 'Loan Officer',
     });
   }
 
@@ -284,50 +209,57 @@ function mapActivity(data: any): ApplicationActivityItem[] {
 }
 
 export function buildDetailFromApi(data: any): LoanApplicationDetail {
-  const isBusinessLoan = data.application_type === 'Business Loan';
+  const isBusinessLoan = data.applicant_type === 'Business';
+  const addressOf = (type: string) => formatApiAddress((data.addresses || []).find((a: any) => a.address_type === type));
+  const collaterals = (data.collaterals || [])
+    .map((c: any) => [c.collateral_type, c.estimated_value ? Number(c.estimated_value).toLocaleString() : null].filter(Boolean).join(' — '))
+    .join('; ');
 
   return {
+    displayName: data.applicant_name || '—',
     applicant: {
-      fullName: buildApplicantFullName(data, isBusinessLoan),
-      gender: (isBusinessLoan ? data.applicant_gender : data.gender) || '—',
-      maritalStatus: (isBusinessLoan ? data.applicant_marital_status : data.marital_status) || '—',
-      birthDate: formatDate(isBusinessLoan ? data.applicant_birth_date : data.birth_date),
-      nrc:
-        (isBusinessLoan ? data.applicant_national_registration_card : data.national_registration_card) ||
-        '—',
-      phone: (isBusinessLoan ? data.applicant_phone : data.phone) || '—',
-      email: (isBusinessLoan ? data.applicant_email : data.email) || '—',
-      nationality: (isBusinessLoan ? data.applicant_nationality : data.nationality) || '—',
-      residentialAddress: (isBusinessLoan ? data.applicant_address : data.residential_address) || '—',
-      occupation: isBusinessLoan ? data.applicant_position || '—' : data.occupation || '—',
-      employerName: isBusinessLoan ? data.company_name || '—' : data.employer_name || '—',
+      fullName: [data.first_name, data.middle_name, data.last_name].filter(Boolean).join(' ') || '—',
+      gender: data.gender || '—',
+      maritalStatus: data.marital_status || '—',
+      birthDate: formatDate(data.date_of_birth),
+      nrc: data.nrc || '—',
+      phone: data.phone || '—',
+      email: data.email || '—',
+      nationality: data.nationality || '—',
+      residentialAddress: addressOf('Current'),
+      occupation: (isBusinessLoan ? data.position : data.designation) || '—',
+      employerName: (isBusinessLoan ? data.company_name : data.employer_name) || '—',
     },
     business: {
       isBusinessLoan,
       companyName: data.company_name || '—',
-      typeOfBusiness: data.type_of_business || '—',
+      typeOfBusiness: data.business_type || '—',
+      registrationNumber: data.registration_number || '—',
+      tpin: data.tpin || '—',
       establishedDate: isBusinessLoan ? formatDate(data.established_date) : '—',
-      registeredOffice: data.registered_office || '—',
+      registeredOffice: addressOf('Office'),
       natureOfBusiness: data.nature_of_business || '—',
     },
     directors: (data.directors || []).map((d: any) => ({
-      name: d.name,
-      fullName: d.director_name || '—',
-      phone: d.director_phone || '—',
-      email: d.director_email || '—',
-      nrc: d.national_registration_card || '—',
+      name: d.row_id,
+      fullName: d.full_name || '—',
+      phone: d.phone || '—',
+      email: d.email || '—',
+      nrc: d.nrc || '—',
     })),
     nextOfKin: {
-      name: data.next_of_kin_name || '—',
-      relationship: data.next_of_kin_relationship || '—',
-      phone: data.next_of_kin_phone || '—',
+      name: data.kin_name || '—',
+      relationship: data.kin_relationship || '—',
+      phone: data.kin_phone || '—',
     },
     loanTerms: {
-      amountRequested: Number(data.amount) || 0,
-      tenureMonths: Number(data.tenure) || 0,
-      purpose: (isBusinessLoan ? data.purpose_of_loan : data.loan_purpose) || '—',
-      collateralPledged: data.collateral_pledged || 'None',
-      proposedRepaymentFrequency: '—',
+      loanType: [data.loan_type_name, data.loan_sub_type_name].filter(Boolean).join(' › ') || '—',
+      product: data.product_name || data.loan_product || '—',
+      amountRequested: Number(data.requested_amount) || 0,
+      tenureMonths: Number(data.tenure_months) || 0,
+      purpose: data.loan_purpose_name || '—',
+      collateralPledged: collaterals || 'None',
+      proposedRepaymentFrequency: data.repayment_frequency || '—',
     },
     reviewer: { name: '—', initials: '—', branch: '—' },
     documents: mapDocuments(data),
@@ -338,13 +270,14 @@ export function buildDetailFromApi(data: any): LoanApplicationDetail {
 
 export function buildFallbackDetail(row: LoanApplicationRow): LoanApplicationDetail {
   return {
+    displayName: row.applicant_name || '—',
     applicant: {
-      fullName: applicantNameFromRow(row),
+      fullName: [row.first_name, row.last_name].filter(Boolean).join(' ') || row.applicant_name || '—',
       gender: '—',
       maritalStatus: '—',
       birthDate: '—',
-      nrc: '—',
-      phone: '—',
+      nrc: row.nrc || '—',
+      phone: row.phone || '—',
       email: '—',
       nationality: '—',
       residentialAddress: '—',
@@ -352,9 +285,11 @@ export function buildFallbackDetail(row: LoanApplicationRow): LoanApplicationDet
       employerName: '—',
     },
     business: {
-      isBusinessLoan: row.application_type === 'Business Loan',
+      isBusinessLoan: row.applicant_type === 'Business',
       companyName: row.company_name || '—',
       typeOfBusiness: '—',
+      registrationNumber: '—',
+      tpin: '—',
       establishedDate: '—',
       registeredOffice: '—',
       natureOfBusiness: '—',
@@ -362,11 +297,13 @@ export function buildFallbackDetail(row: LoanApplicationRow): LoanApplicationDet
     directors: [],
     nextOfKin: { name: '—', relationship: '—', phone: '—' },
     loanTerms: {
-      amountRequested: 0,
-      tenureMonths: 0,
+      loanType: row.loan_type_name || '—',
+      product: row.product_name || row.loan_product || '—',
+      amountRequested: Number(row.requested_amount) || 0,
+      tenureMonths: Number(row.tenure_months) || 0,
       purpose: '—',
       collateralPledged: '—',
-      proposedRepaymentFrequency: '—',
+      proposedRepaymentFrequency: row.repayment_frequency || '—',
     },
     reviewer: { name: '—', initials: '—', branch: '—' },
     documents: [],
@@ -648,7 +585,7 @@ export function ApplicationSidebar({
   onToggleCollapsed: () => void;
   onBack: () => void;
 }) {
-  const displayStatus = getDisplayStatus(application.status);
+  const displayStatus = application.workflow_state || application.status;
   const scale = STATUS_COLOR[displayStatus] ?? 'slate';
 
   if (collapsed) {
@@ -667,7 +604,7 @@ export function ApplicationSidebar({
             fontWeight: 700,
           }}
         >
-          {initialsOf(detail.applicant.fullName)}
+          {initialsOf(detail.displayName)}
         </Avatar>
       </div>
     );
@@ -696,11 +633,11 @@ export function ApplicationSidebar({
               fontWeight: 700,
             }}
           >
-            {initialsOf(detail.applicant.fullName)}
+            {initialsOf(detail.displayName)}
           </Avatar>
           <div>
             <Text fz="sm" fw={700} c="slate.9">
-              {detail.applicant.fullName || 'Unnamed applicant'}
+              {detail.displayName}
             </Text>
             <Text fz="xs" c="dimmed">
               {application.name}
@@ -780,7 +717,7 @@ export function ApplicationSidebar({
                 {application.name}
               </Text>
               <Text fz={10} c="dimmed">
-                {application.application_type}
+                {detail.loanTerms.loanType}
               </Text>
             </div>
             <Badge size="xs" variant="light" color={scale} styles={{ root: { fontSize: 9 } }}>
@@ -859,7 +796,7 @@ export function ApplicationSnapshotPanel({ detail }: { detail: LoanApplicationDe
               Loan product
             </Text>
             <Text fz="xs" fw={700} c="slate.9">
-              {detail.loanTerms.purpose}
+              {detail.loanTerms.product}
             </Text>
           </div>
           <div className="flex justify-between items-center">

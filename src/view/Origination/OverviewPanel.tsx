@@ -1,16 +1,9 @@
 import { Paper, Text } from '@mantine/core';
-import type { LoanApplicationRow } from './LoanApplication';
 import type { LoanApplicationDetail } from './LoanApplicationDetailParts';
 import { DocumentCard, ActivityFeed, formatCurrency } from './LoanApplicationDetailParts';
 import { OverviewField, SectionHeading, serif } from '../LoanAccount/LoanView/SharedUI';
 
-export function OverviewPanel({
-  application,
-  detail,
-}: {
-  application: LoanApplicationRow;
-  detail: LoanApplicationDetail;
-}) {
+export function OverviewPanel({ detail }: { detail: LoanApplicationDetail }) {
   const docsUploaded = detail.documents.filter((d) => d.status === 'Uploaded').length;
 
   return (
@@ -34,7 +27,7 @@ export function OverviewPanel({
           <OverviewField label="REPAYMENT FREQUENCY" value={detail.loanTerms.proposedRepaymentFrequency} />
           <OverviewField label="PURPOSE OF LOAN" value={detail.loanTerms.purpose} />
           <OverviewField label="COLLATERAL PLEDGED" value={detail.loanTerms.collateralPledged} />
-          <OverviewField label="LOAN PRODUCT" value={application.application_type || '—'} />
+          <OverviewField label="LOAN TYPE" value={detail.loanTerms.loanType} />
         </div>
       </Paper>
 

@@ -17,13 +17,15 @@ import {
   IconPercentage,
 } from "@tabler/icons-react";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
+import type { LoanApplication } from "../../../api/LosConfiguration/LoanApplicationApi";
 import "./prescreening.css";
 
 export interface PreScreeningModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize: () => void;
-  applicationValues?: LoanApplicationValues;
+  loanApplicationId?: string | null;
+  application?: LoanApplication;
   embedded?: boolean;
   readOnly?: boolean;
 }
@@ -637,17 +639,23 @@ export function RuleRow({
   );
 }
 
+const STAGE_LABELS = ["Application", "Prescreening", "Loan Appraisal", "Underwriting", "Offer"];
+
 export function ContextHeader({
   values,
   applicationId,
+  loanTypeName,
+  stageIndex = 2,
 }: {
   values: LoanApplicationValues;
   applicationId: string;
+  loanTypeName?: string | null;
+  stageIndex?: number;
 }) {
-  const isBusiness = values.loanType === "Business";
+  const isBusiness = values.applicant_type === "Business";
   const name = isBusiness
-    ? values.companyName
-    : [values.firstName, values.surname].filter(Boolean).join(" ");
+    ? values.company_name
+    : [values.first_name, values.last_name].filter(Boolean).join(" ");
   const initials = name
     .split(" ")
     .map((p) => p[0])
@@ -694,7 +702,7 @@ export function ContextHeader({
           </Text>
           <Group gap={8} wrap="nowrap" mt={2}>
             <Badge size="xs" radius="xl" color="brand" variant="light">
-              {isBusiness ? "Business Loan" : "Personal Loan"}
+              {loanTypeName || (isBusiness ? "Business Loan" : "Personal Loan")}
             </Badge>
             <Text fz={10} c="slate.4">
               ·
@@ -710,7 +718,7 @@ export function ContextHeader({
         <Box ta="right" px={18}>
           <MicroLabel c="slate.4">Requested amount</MicroLabel>
           <Text fz={16} fw={800} c="slate.9" lh={1.2} style={NUMERIC} mt={2}>
-            {zmw(values.loanAmount)}
+            {zmw(Number(values.requested_amount) || 0)}
           </Text>
         </Box>
         <Box
@@ -724,7 +732,7 @@ export function ContextHeader({
         <Box ta="right" px={18}>
           <MicroLabel c="slate.4">Tenure</MicroLabel>
           <Text fz={16} fw={800} c="slate.9" lh={1.2} style={NUMERIC} mt={2}>
-            {values.tenureMonths ? `${values.tenureMonths} mo` : "—"}
+            {values.tenure_months ? `${values.tenure_months} mo` : "—"}
           </Text>
         </Box>
         <Box
@@ -743,11 +751,11 @@ export function ContextHeader({
                 <Box
                   key={i}
                   style={{
-                    width: i === 1 ? 16 : 7,
+                    width: i === stageIndex - 1 ? 16 : 7,
                     height: 5,
                     borderRadius: 99,
                     background:
-                      i <= 1
+                      i < stageIndex
                         ? "var(--mantine-color-brand-5)"
                         : "var(--mantine-color-slate-2)",
                     transition: "width 200ms ease",
@@ -756,7 +764,7 @@ export function ContextHeader({
               ))}
             </Group>
             <Text fz={11.5} fw={700} c="brand.6">
-              Prescreening
+              {STAGE_LABELS[stageIndex - 1]}
             </Text>
           </Group>
         </Box>

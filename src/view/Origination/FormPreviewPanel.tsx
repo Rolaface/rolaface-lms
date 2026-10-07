@@ -63,7 +63,7 @@ export function FormPreviewPanel({ detail, application }: { detail: LoanApplicat
 
         <SectionHeading title="1. Loan Request Specifics" />
         <Grid gutter={0} style={{ marginLeft: 0, marginRight: 0 }}>
-          <Field label="Loan Product Type" value={application.application_type} span={4} />
+          <Field label="Loan Type" value={detail.loanTerms.loanType} span={4} />
           <Field label="Amount Requested" value={formatCurrency(detail.loanTerms.amountRequested)} span={4} />
           <Field label="Tenure" value={`${detail.loanTerms.tenureMonths} months`} span={4} />
           <Field label="Repayment Frequency" value={detail.loanTerms.proposedRepaymentFrequency} span={4} />

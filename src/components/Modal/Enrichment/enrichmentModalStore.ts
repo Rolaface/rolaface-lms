@@ -1,17 +1,18 @@
 import { IconBuildingBank } from '@tabler/icons-react';
 import { createModal } from '../../../store/modal store/createModal';
 import { EnrichmentModal } from './EnrichmentModal';
-import type { LoanApplicationValues } from '../LoanApplication/LoanApplicationModal';
 
 export interface EnrichmentModalParams {
-  applicationValues?: LoanApplicationValues;
+  loanApplicationId?: string | null;
+  readOnly?: boolean;
 }
 
 interface EnrichmentModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize: () => void;
-  applicationValues?: LoanApplicationValues;
+  loanApplicationId?: string | null;
+  readOnly?: boolean;
 }
 function getTitle() {
   return 'Loan Appraisal';
@@ -24,7 +25,8 @@ export const enrichmentModal = createModal<EnrichmentModalParams, EnrichmentModa
     icon: IconBuildingBank,
     getTitle,
     buildProps: (params) => ({
-      applicationValues: params.applicationValues,
+      loanApplicationId: params.loanApplicationId,
+      readOnly: params.readOnly,
     }),
   },
 );

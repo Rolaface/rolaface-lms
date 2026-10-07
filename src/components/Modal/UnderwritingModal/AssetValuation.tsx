@@ -8,6 +8,7 @@ import {
   IconAlertTriangle, IconUpload, IconFileText, IconCircleCheck, IconCircleX, IconLock, IconX, IconPlus, IconTrash,
 } from "@tabler/icons-react";
 import { DUMMY_ASSET_TYPES } from "../PreScreeningModal/Dummyloanapplicationdata";
+import { useCollateralTypeOptions } from "../LoanApplication/lookups";
 // Types only — erased at build time, so this file has no *runtime* dependency
 // on UnderwritingModal.tsx. That keeps the import graph one-directional
 // (UnderwritingModal -> LegalVerification -> AssetValuation) instead of
@@ -28,10 +29,10 @@ export const STATUS_COLORS: Record<string, string> = {
 };
 
 export function requiredDocsVerified(docs: AssetDoc[]): boolean {
-  return docs.filter((d) => d.tier === "required").every((d) => d.status === "Verified");
+  return docs.filter((d) => d.tier === "required").every((d) => ["Uploaded", "Verified"].includes(d.status));
 }
 export function missingRequiredDocs(docs: AssetDoc[]): AssetDoc[] {
-  return docs.filter((d) => d.tier === "required" && d.status !== "Verified");
+  return docs.filter((d) => d.tier === "required" && !["Uploaded", "Verified"].includes(d.status));
 }
 
 export const DECISION_LABEL: Record<string, string> = {
@@ -110,7 +111,8 @@ export function DocumentsTable({ title, docs, setDocs }: { title?: string; docs:
     const f = e.target.files?.[0];
     if (!f) return;
     update(i, {
-      status: "Uploaded", fileMeta: `${f.name} (${(f.size / 1048576).toFixed(1)} MB)`, uploadedBy: "You",
+      status: "Uploaded", fileMeta: `${f.name} (${(f.size / 1048576).toFixed(1)} MB)`, uploadedBy: "You", file: f,
+      fileUrl: URL.createObjectURL(f), fileType: f.type,
       uploadedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
     });
     e.target.value = "";
@@ -241,6 +243,7 @@ export function AssetValuation({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const { options: securityTypes } = useCollateralTypeOptions();
   const reportDoc = asset.docs[0];
   const hasReport = !!reportDoc?.fileMeta;
   
@@ -251,7 +254,7 @@ export function AssetValuation({
     const date = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
     
     if (reportDoc?.fileUrl) URL.revokeObjectURL(reportDoc.fileUrl);
-    onUpdate({ docs: [{ name: f.name.split('.')[0], tier: "optional", status: "Uploaded", fileMeta: meta, uploadedDate: date, uploadedBy: "You", validUntil: "", comment: "", fileUrl: URL.createObjectURL(f), fileType: f.type }] });
+    onUpdate({ docs: [{ name: f.name, tier: "required", status: "Uploaded", fileMeta: meta, uploadedDate: date, uploadedBy: "You", validUntil: "", comment: "", fileUrl: URL.createObjectURL(f), fileType: f.type, file: f }] });
     
     if (e.target) e.target.value = "";
   };
@@ -294,6 +297,32 @@ export function AssetValuation({
             radius="md"
           />
           <TextInput size="xs" label="Asset ID" value={asset.base.assetId || ""} onChange={(e) => setBase({ assetId: e.currentTarget.value })} placeholder="e.g. AST-33022" radius="md" />
+          {asset.source === "manual" && (
+            <>
+          <Select
+            size="xs"
+            label="Security type"
+            data={securityTypes}
+            value={asset.securityType}
+            onChange={(x) => onUpdate({ securityType: x })}
+            error={asset.securityType ? undefined : "Required"}
+            searchable
+            radius="md"
+          />
+          <NumberInput
+            size="xs"
+            label="Estimated value"
+            value={asset.estimatedValue}
+            onChange={(x) => onUpdate({ estimatedValue: typeof x === "number" ? x : "" })}
+            error={Number(asset.estimatedValue) > 0 ? undefined : "Required"}
+            min={0}
+            allowNegative={false}
+            thousandSeparator=","
+            hideControls
+            radius="md"
+          />
+            </>
+          )}
           
           {asset.base.type === "Motor vehicle" && (
             <>
@@ -345,7 +374,7 @@ export function AssetValuation({
                     valueFormat="DD-MMM-YYYY"
                     placeholder="DD-MMM-YYYY"
                     value={toDateObj(asset.base.acquisition)}
-                    onChange={(d) => setBase({ acquisition: d ? d.toISOString().slice(0, 10) : "" })}
+                    onChange={(d) => setBase({ acquisition: d ?? "" })}
                     radius="md"
                   />
                 </SimpleGrid>
@@ -422,7 +451,7 @@ export function AssetValuation({
               <Paper withBorder className="ps-surface" radius="md" p={8} bg="indigo.0" style={{ borderColor: 'var(--mantine-color-indigo-2)', minWidth: 0 }} mb={10}>
                 <Group wrap="nowrap" gap={8} style={{ minWidth: 0 }}>
                   <IconFileText size={16} color="var(--mantine-color-indigo-6)" style={{ flexShrink: 0 }} />
-                  <Text fz={12.5} fw={600} c="indigo.9" truncate style={{ flexShrink: 0, maxWidth: "55%" }}>{reportDoc?.name || "Report"}.pdf</Text>
+                  <Text fz={12.5} fw={600} c="indigo.9" truncate style={{ flexShrink: 0, maxWidth: "55%" }}>{reportDoc?.name || "Report"}</Text>
                   <Text fz={12} c="indigo.7" truncate style={{ flex: 1, minWidth: 0 }}>{reportDoc?.fileMeta || ""} · uploaded by {reportDoc?.uploadedBy || "You"}, {reportDoc?.uploadedDate}</Text>
                 </Group>
               </Paper>

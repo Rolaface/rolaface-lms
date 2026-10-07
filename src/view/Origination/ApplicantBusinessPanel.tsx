@@ -80,6 +80,8 @@ export function ApplicantBusinessPanel({ detail }: { detail: LoanApplicationDeta
           <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 p-4">
             <OverviewField label="COMPANY NAME" value={detail.business.companyName} />
             <OverviewField label="TYPE OF BUSINESS" value={detail.business.typeOfBusiness} />
+            <OverviewField label="PACRA NUMBER" value={detail.business.registrationNumber} />
+            <OverviewField label="TPIN" value={detail.business.tpin} />
             <OverviewField label="ESTABLISHED DATE" value={detail.business.establishedDate} />
             <OverviewField label="REGISTERED OFFICE" value={detail.business.registeredOffice} />
             <OverviewField label="NATURE OF BUSINESS" value={detail.business.natureOfBusiness} />
@@ -87,6 +89,7 @@ export function ApplicantBusinessPanel({ detail }: { detail: LoanApplicationDeta
         </Paper>
       )}
 
+      {!detail.business.isBusinessLoan && (
       <Paper
         radius="lg"
         className="overflow-hidden"
@@ -106,6 +109,7 @@ export function ApplicantBusinessPanel({ detail }: { detail: LoanApplicationDeta
           <OverviewField label="PHONE" value={detail.nextOfKin.phone} />
         </div>
       </Paper>
+      )}
     </div>
   );
 }

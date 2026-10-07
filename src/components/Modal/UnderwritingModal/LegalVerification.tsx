@@ -42,6 +42,7 @@ export function LegalVerification({
       uploadedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
       fileUrl: URL.createObjectURL(f),
       fileType: f.type,
+      file: f,
     });
 
     const setDoc = (i: number, patch: Partial<AssetDoc>) =>
@@ -161,15 +162,15 @@ export function LegalVerification({
               <TextInput size="xs" radius="md" label="Registered owner" value={asset.title.registeredOwner} onChange={(e) => onUpdate({ title: { ...asset.title, registeredOwner: e.currentTarget.value } })} />
             </SimpleGrid>
             
-            <TextInput size="xs" radius="md" label="Registration details" value="RTSA · first registered 14 Mar 2019" mb={10} readOnly />
+            <TextInput size="xs" radius="md" label="Registration details" value={asset.title.registrationInfo} onChange={(e) => onUpdate({ title: { ...asset.title, registrationInfo: e.currentTarget.value } })} mb={10} />
             
 
             <Text fz={11.5} fw={700} c="indigo.9" tt="uppercase" mb={6}>Verified By</Text>
             <SimpleGrid cols={2} spacing={10}>
               <TextInput size="xs" radius="md" label="Name" value={asset.legalVerifier.name} onChange={(e) => onUpdate({ legalVerifier: { ...asset.legalVerifier, name: e.currentTarget.value } })} />
               <TextInput size="xs" radius="md" label="Firm" value={asset.legalVerifier.company} onChange={(e) => onUpdate({ legalVerifier: { ...asset.legalVerifier, company: e.currentTarget.value } })} />
-              <Select size="xs" radius="md" label="Role" value="External counsel" data={["External counsel", "Internal legal"]} allowDeselect={false} />
-              <TextInput size="xs" radius="md" label="License number" value="LZ-4471" readOnly />
+              <Select size="xs" radius="md" label="Role" value={asset.legalVerifier.role || null} onChange={(x) => onUpdate({ legalVerifier: { ...asset.legalVerifier, role: x || "" } })} data={["External counsel", "Internal legal"]} />
+              <TextInput size="xs" radius="md" label="License number" value={asset.legalVerifier.license} onChange={(e) => onUpdate({ legalVerifier: { ...asset.legalVerifier, license: e.currentTarget.value } })} />
             </SimpleGrid>
           </Box>
 

@@ -33,11 +33,14 @@ import {
   IconEye,
 } from "@tabler/icons-react";
 import type { UseFormReturnType } from "@mantine/form";
-import type {
-  LoanApplicationValues,
-  LoanType,
-  DirectorDocEntry,
-} from "./LoanApplicationModal";
+import {
+  DOCUMENT_NAMES,
+  nextId,
+  type ApplicantType,
+  type DirectorDocEntry,
+  type DocumentKey,
+  type LoanApplicationValues,
+} from "./form";
 import {
   DocumentPreviewModal,
   formatFileSize,
@@ -47,38 +50,20 @@ import {
 } from "./ViewDoc";
 interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
-  loanType: LoanType;
+  applicantType: ApplicantType;
   directorDocsError?: string | null;
-  originalDocumentUrls?: Record<string, string>;
+  existingUrls?: WeakMap<File, string>;
   readOnly?: boolean;
 }
 
-type FileFieldKey = Extract<
-  keyof LoanApplicationValues,
-  | "payslips"
-  | "bankStatementsPersonal"
-  | "nrcCopy"
-  | "passportPhotoPersonal"
-  | "tpinCertificate"
-  | "pacraCertificate"
-  | "form2"
-  | "taxClearanceCertificate"
-  | "taxComplianceReturn"
-  | "orderInvoice"
-  | "bankStatementsBusiness"
-  | "applicantPassportPhoto"
-  | "boardResolution"
->;
 interface DocTile {
-  key: FileFieldKey;
+  key: DocumentKey;
   label: string;
   description: string;
   icon: React.FC<any>;
   required: boolean;
   guidelines: string[];
 }
-
-const nextId = () => Math.random().toString(36).slice(2, 10);
 
 const DEFAULT_GUIDELINES = [
   "File must be clear, legible and unedited",
@@ -89,7 +74,7 @@ const DEFAULT_GUIDELINES = [
 const PERSONAL_DOC_TILES: DocTile[] = [
   {
     key: "payslips",
-    label: "Latest three payslips",
+    label: DOCUMENT_NAMES.payslips,
     description: "Most recent 3 months of salary slips from your employer.",
     icon: IconReceipt,
     required: true,
@@ -97,7 +82,7 @@ const PERSONAL_DOC_TILES: DocTile[] = [
   },
   {
     key: "bankStatementsPersonal",
-    label: "Bank statements (3 months)",
+    label: DOCUMENT_NAMES.bankStatementsPersonal,
     description: "Statements from your primary bank account, last 3 months.",
     icon: IconBuildingBank,
     required: true,
@@ -105,7 +90,7 @@ const PERSONAL_DOC_TILES: DocTile[] = [
   },
   {
     key: "nrcCopy",
-    label: "NRC copy",
+    label: DOCUMENT_NAMES.nrcCopy,
     description: "A clear scan or photo of both sides of your NRC.",
     icon: IconIdBadge2,
     required: true,
@@ -113,7 +98,7 @@ const PERSONAL_DOC_TILES: DocTile[] = [
   },
   {
     key: "passportPhotoPersonal",
-    label: "Passport-sized photo",
+    label: DOCUMENT_NAMES.passportPhotoPersonal,
     description: "Recent passport-sized photo with a plain background.",
     icon: IconCamera,
     required: true,
@@ -125,7 +110,7 @@ const PERSONAL_DOC_TILES: DocTile[] = [
   },
   {
     key: "tpinCertificate",
-    label: "TPIN certificate",
+    label: DOCUMENT_NAMES.tpinCertificate,
     description: "Taxpayer Identification Number certificate.",
     icon: IconCertificate,
     required: true,
@@ -136,7 +121,7 @@ const PERSONAL_DOC_TILES: DocTile[] = [
 const BUSINESS_DOC_TILES: DocTile[] = [
   {
     key: "pacraCertificate",
-    label: "PACRA certificate",
+    label: DOCUMENT_NAMES.pacraCertificate,
     description: "Certificate of incorporation / business registration.",
     icon: IconCertificate,
     required: true,
@@ -144,7 +129,7 @@ const BUSINESS_DOC_TILES: DocTile[] = [
   },
   {
     key: "form2",
-    label: "Form 2",
+    label: DOCUMENT_NAMES.form2,
     description: "Particulars of directors and shareholders.",
     icon: IconFileCertificate,
     required: true,
@@ -152,7 +137,7 @@ const BUSINESS_DOC_TILES: DocTile[] = [
   },
   {
     key: "taxClearanceCertificate",
-    label: "Tax clearance certificate / TPIN",
+    label: DOCUMENT_NAMES.taxClearanceCertificate,
     description: "Proof of tax compliance for the business.",
     icon: IconFileInvoice,
     required: true,
@@ -160,7 +145,7 @@ const BUSINESS_DOC_TILES: DocTile[] = [
   },
   {
     key: "taxComplianceReturn",
-    label: "Latest tax compliance return",
+    label: DOCUMENT_NAMES.taxComplianceReturn,
     description: "Most recently filed tax compliance return.",
     icon: IconFileInvoice,
     required: true,
@@ -168,7 +153,7 @@ const BUSINESS_DOC_TILES: DocTile[] = [
   },
   {
     key: "orderInvoice",
-    label: "Order / Invoice",
+    label: DOCUMENT_NAMES.orderInvoice,
     description:
       "Only required if applying for order financing or invoice discounting.",
     icon: IconFileInvoice,
@@ -177,7 +162,7 @@ const BUSINESS_DOC_TILES: DocTile[] = [
   },
   {
     key: "bankStatementsBusiness",
-    label: "Bank statements (6 months)",
+    label: DOCUMENT_NAMES.bankStatementsBusiness,
     description: "Business account statements, last 6 months.",
     icon: IconBuildingBank,
     required: true,
@@ -185,7 +170,7 @@ const BUSINESS_DOC_TILES: DocTile[] = [
   },
   {
     key: "applicantPassportPhoto",
-    label: "Applicant passport-sized photo",
+    label: DOCUMENT_NAMES.applicantPassportPhoto,
     description: "Recent passport-sized photo of the applicant.",
     icon: IconCamera,
     required: true,
@@ -197,7 +182,7 @@ const BUSINESS_DOC_TILES: DocTile[] = [
   },
   {
     key: "boardResolution",
-    label: "Board resolution",
+    label: DOCUMENT_NAMES.boardResolution,
     description: "Resolution authorizing the loan application.",
     icon: IconGavel,
     required: true,
@@ -277,18 +262,18 @@ function UploadedDocRow({ file, onPreview, onRemove, readOnly = false, }: Upload
   );
 }
 
-export function DocumentsStep({ form, loanType, directorDocsError, originalDocumentUrls, readOnly = false, }: StepProps) {
-  const tiles = loanType === "Personal" ? PERSONAL_DOC_TILES : BUSINESS_DOC_TILES;
-  const [selectedKey, setSelectedKey] = useState<FileFieldKey>(tiles[0].key);
+export function DocumentsStep({ form, applicantType, directorDocsError, existingUrls, readOnly = false }: StepProps) {
+  const tiles = applicantType === "Individual" ? PERSONAL_DOC_TILES : BUSINESS_DOC_TILES;
+  const [selectedKey, setSelectedKey] = useState<DocumentKey>(tiles[0].key);
 
   useEffect(() => {
     setSelectedKey(tiles[0].key);
-  }, [loanType]);
+  }, [applicantType]);
 
   const selected = tiles.find((t) => t.key === selectedKey) ?? tiles[0];
   const SelectedIcon = selected.icon;
-  const file = form.values[selected.key] as File | null;
-  const error = form.errors[selected.key];
+  const file = form.values.documents[selected.key];
+  const error = form.errors[`documents.${selected.key}`];
 
   const [previewOpened, setPreviewOpened] = useState(false);
 
@@ -296,11 +281,7 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const directorDocs = form.values.directorDocuments || [];
 
-  const [directorPreview, setDirectorPreview] = useState<{
-  file: File;
-  title: string;
-  key: string;
-} | null>(null);
+  const [directorPreview, setDirectorPreview] = useState<{ file: File; title: string } | null>(null);
 
   const handleAddDirectorDoc = () => {
     const newIndex = directorDocs.length;
@@ -375,8 +356,8 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
 
           <Stack gap={2} px={6} pb={6}>
             {tiles.map((tile) => {
-              const tileFile = form.values[tile.key] as File | null;
-              const tileHasError = !!form.errors[tile.key];
+              const tileFile = form.values.documents[tile.key];
+              const tileHasError = !!form.errors[`documents.${tile.key}`];
               const isSelected = tile.key === selectedKey;
               const TileIcon = tile.icon;
               return (
@@ -469,7 +450,7 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
                 <UploadedDocRow
                   file={file}
                   onPreview={() => setPreviewOpened(true)}
-                  onRemove={() => form.setFieldValue(selected.key, null)}
+                  onRemove={() => form.setFieldValue(`documents.${selected.key}`, null)}
                   readOnly={readOnly}
                 />
               </Stack>
@@ -488,7 +469,7 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
               </Paper>
             ) : (
               <FileButton
-                onChange={(f) => f && form.setFieldValue(selected.key, f)}
+                onChange={(f) => f && form.setFieldValue(`documents.${selected.key}`, f)}
                 accept="application/pdf,image/jpeg,image/jpg,image/png,.pdf,.jpg,.jpeg,.png"
               >
                 {(fileButtonProps) => (
@@ -555,7 +536,7 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
         </Box>
       </Group>
 
-      {loanType === "Business" && (
+      {applicantType === "Business" && (
         <Box>
           <Group justify="space-between" align="center" mb="sm">
             <Group gap="sm" align="center">
@@ -635,7 +616,7 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
         onClose={() => setPreviewOpened(false)}
         file={file}
         title={selected.label}
-        sourceUrl={originalDocumentUrls?.[selected.key] ?? null}
+        sourceUrl={file ? existingUrls?.get(file) ?? null : null}
       />
 
       <Modal
@@ -675,9 +656,7 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
                     {docFile ? (
                       <UploadedDocRow
                         file={docFile}
-                       onPreview={() =>
-  setDirectorPreview({ file: docFile, title: docLabel, key: `directorDocuments.${editingIndex}.${docKey}` })
-}
+                        onPreview={() => setDirectorPreview({ file: docFile, title: docLabel })}
                         onRemove={() =>
                           form.setFieldValue(
                             `directorDocuments.${editingIndex}.${docKey}`,
@@ -746,7 +725,7 @@ export function DocumentsStep({ form, loanType, directorDocsError, originalDocum
   onClose={() => setDirectorPreview(null)}
   file={directorPreview?.file ?? null}
   title={directorPreview?.title ?? ""}
-  sourceUrl={directorPreview ? (originalDocumentUrls?.[directorPreview.key] ?? null) : null}
+  sourceUrl={directorPreview ? existingUrls?.get(directorPreview.file) ?? null : null}
 />
     </Stack>
   );

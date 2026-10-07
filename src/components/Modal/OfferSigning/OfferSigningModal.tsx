@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Modal,
   Box,
@@ -48,20 +48,18 @@ import {
 import '../PreScreeningModal/prescreening.css';
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
+import type { LoanApplication, StagePayload } from "../../../api/LosConfiguration/LoanApplicationApi";
+import { StageLoading, stagePolicy, useStageApplication } from "../stageData";
 import { PreScreeningModal } from "../PreScreeningModal/PreScreeningModal";
 import { LeftNav } from "../PreScreeningModal/PreScreeningShared";
 import { EnrichmentModal } from "../Enrichment/EnrichmentModal";
 import { UnderwritingModal } from "../UnderwritingModal/UnderwritingModal";
-import {
-  DUMMY_PERSONAL_LOAN_APPLICATION,
-  DUMMY_PRESCREENING_CONTEXT,
-} from "../PreScreeningModal/Dummyloanapplicationdata";
 
 interface OfferModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize: () => void;
-  applicationValues?: LoanApplicationValues;
+  loanApplicationId?: string | null;
   embedded?: boolean;
   readOnly?: boolean;
 }
@@ -69,21 +67,16 @@ interface OfferModalProps {
 // ---------------------------------------------------------------------------
 // Mock Data
 // ---------------------------------------------------------------------------
-const APPLICATION = {
-  id: "APP-58231",
-  customer: { name: "Chanda Mwansa", type: "Existing customer", id: "CU-10234", phone: "0977 123 456", email: "chanda.mwansa@example.com" },
-  loan: { product: "Personal loan", typeId: "personal", subtype: "Salary-backed", purpose: "Home improvement", amount: 76500, tenure: 24, rate: 25, frequency: "Monthly" },
-};
-
-const FINAL_TERMS = { amount: 40183, rate: 25, tenure: 24, frequency: "Monthly", processingFeePct: 2, insurancePct: 1, taxPct: 16 };
-
-function computeSimulation(amount: number, tenure: number, rate: number, frequency: string) {
+function computeSimulation(amount: number, tenure: number, rate: number, frequency: string, startDate?: string) {
   const nPeriods = frequency === "Bi-weekly" ? Math.round((tenure / 12) * 26) : tenure;
   const periodsPerYear = frequency === "Bi-weekly" ? 26 : 12;
   const periodicRate = rate / 100 / periodsPerYear;
   const installment = periodicRate > 0 ? (amount * periodicRate * Math.pow(1 + periodicRate, nPeriods)) / (Math.pow(1 + periodicRate, nPeriods) - 1) : amount / nPeriods;
   const totalRepayment = installment * nPeriods;
-  const first = new Date(); first.setMonth(first.getMonth() + 1);
+  const start = startDate ? new Date(`${startDate}T00:00:00`) : new Date();
+  const first = new Date(start);
+  if (frequency === "Bi-weekly") first.setDate(first.getDate() + 14);
+  else first.setMonth(first.getMonth() + 1);
   const final = new Date(first);
   if (frequency === "Bi-weekly") final.setDate(final.getDate() + 14 * (nPeriods - 1));
   else final.setMonth(final.getMonth() + (nPeriods - 1));
@@ -101,24 +94,86 @@ function computeSimulation(amount: number, tenure: number, rate: number, frequen
   }
   return { installment, totalRepayment, totalInterest: totalRepayment - amount, nPeriods, first, final, schedule };
 }
-const FINAL_SIM = computeSimulation(FINAL_TERMS.amount, FINAL_TERMS.tenure, FINAL_TERMS.rate, FINAL_TERMS.frequency);
-const FINAL_FEES = (() => {
-  const processingFee = FINAL_TERMS.amount * (FINAL_TERMS.processingFeePct / 100);
-  const insurance = FINAL_TERMS.amount * (FINAL_TERMS.insurancePct / 100);
-  const tax = (processingFee + insurance) * (FINAL_TERMS.taxPct / 100);
-  return { processingFee, insurance, tax, total: processingFee + insurance + tax };
-})();
-const ISSUED_DATE = new Date();
-const VALID_UNTIL = new Date(ISSUED_DATE); VALID_UNTIL.setDate(VALID_UNTIL.getDate() + 14);
+type OfferContext = ReturnType<typeof buildOfferContext>;
 
-const ASSETS_SUMMARY = [{ type: "Motor vehicle", description: "2019 Toyota Hilux D/Cab, registration ABC 1234 ZM", value: 95000 }];
+function buildOfferContext(application: LoanApplication) {
+  const policy = stagePolicy(application);
+  const offerData = (application.offer_data ?? {}) as Record<string, any>;
+  const appraisal = (application.appraisal_data ?? {}) as Record<string, any>;
+  const prescreening = (application.prescreening_data ?? {}) as Record<string, any>;
+  const underwriting = (application.underwriting_data ?? {}) as Record<string, any>;
+  const collaterals = application.collaterals ?? [];
 
-const UNDERWRITING_DECISION = {
-  outcome: "conditions",
-  conditions: [{ condition: "Obtain a discharge / clearance letter from the existing financier for the vehicle encumbrance.", responsible: "Customer", dueBefore: "Disbursement" }],
-  legalCheckCounts: { passed: 5, exception: 1, failed: 0 },
-  underwriter: "Logged-in credit officer",
-};
+  const FINAL_TERMS = {
+    amount: Number(application.final_amount) || Number(application.approved_amount) || Number(application.requested_amount) || 0,
+    rate: Number(application.interest_rate) || policy.rate,
+    tenure: Number(application.approved_tenure_months) || Number(application.tenure_months) || 0,
+    frequency: application.approved_frequency || application.repayment_frequency || "Monthly",
+  };
+  const FINAL_SIM = computeSimulation(FINAL_TERMS.amount, FINAL_TERMS.tenure, FINAL_TERMS.rate, FINAL_TERMS.frequency, appraisal.effective_date);
+  const charges = (appraisal.charges ?? []) as { name: string; basis: string; value: number }[];
+  const feeLines = charges.map((charge) => ({
+    name: charge.name,
+    label: charge.basis === "Percentage" ? `${charge.name} (${charge.value}%)` : charge.name,
+    amount: charge.basis === "Percentage" ? FINAL_TERMS.amount * (Number(charge.value) / 100) : Number(charge.value) || 0,
+  }));
+  const FINAL_FEES = { lines: feeLines, total: feeLines.reduce((total, line) => total + line.amount, 0) };
+
+  const ISSUED_DATE = offerData.issued_on ? new Date(offerData.issued_on) : new Date();
+  const VALID_UNTIL = offerData.valid_until ? new Date(offerData.valid_until) : new Date(ISSUED_DATE.getTime() + 14 * 86400000);
+
+  const ASSETS_SUMMARY = collaterals.map((c) => ({
+    type: c.collateral_type,
+    description: c.description || c.collateral_type,
+    value: Number(c.valuation_amount) || Number(c.estimated_value) || 0,
+  }));
+  const securityValue = ASSETS_SUMMARY.reduce((total, asset) => total + asset.value, 0);
+  const legalChecks = collaterals.flatMap((c) => ((c.valuation_details as any)?.legalChecks ?? []) as { status: string }[]);
+  const legalCount = (status: string) => legalChecks.filter((check) => check.status === status).length;
+  const legalSummary = legalChecks.length
+    ? [`${legalCount("Passed")} Passed`, legalCount("Exception") && `${legalCount("Exception")} Exception`, legalCount("Failed") && `${legalCount("Failed")} Failed`].filter(Boolean).join(", ")
+    : "—";
+  const legalStatus = !collaterals.length
+    ? "No collateral"
+    : collaterals.every((c) => c.legal_status === "Passed")
+      ? "Cleared"
+      : collaterals.some((c) => c.legal_status === "Unresolved")
+        ? "Unresolved"
+        : "Pending";
+
+  const APPLICATION = {
+    id: application.name,
+    customer: {
+      name: application.applicant_name || "—",
+      type: application.customer_type === "Existing" ? "Existing customer" : "New customer",
+      id: application.customer || "—",
+      phone: application.phone,
+      email: application.email,
+    },
+    loan: {
+      product: application.product_name || application.loan_type_name || "Loan",
+      subtype: application.loan_sub_type_name || "—",
+      purpose: application.loan_purpose_name || "—",
+    },
+  };
+  const UNDERWRITING_DECISION = {
+    decision: application.underwriting_decision || "—",
+    conditions: (underwriting.conditions ?? []) as { condition: string; responsible: string; dueBefore: string }[],
+  };
+
+  return {
+    APPLICATION, FINAL_TERMS, FINAL_SIM, FINAL_FEES, ISSUED_DATE, VALID_UNTIL, ASSETS_SUMMARY, UNDERWRITING_DECISION,
+    prescreeningResult: prescreening.result || "—",
+    riskBand: prescreening.risk_band ? `${prescreening.risk_band} risk` : "—",
+    dti: prescreening.dti != null ? `${prescreening.dti}%` : "—",
+    legalSummary,
+    legalStatus,
+    securityValue,
+    coverage: FINAL_TERMS.amount && securityValue ? `${Math.round((securityValue / FINAL_TERMS.amount) * 100)}%` : "—",
+    assetsLabel: ASSETS_SUMMARY.map((asset) => asset.type).join(", ") || "None",
+    offerData,
+  };
+}
 
 const zmw = (n: number | null | undefined) => (n == null ? "—" : "ZMW " + Math.round(n).toLocaleString());
 const fmtDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -204,9 +259,10 @@ type Section = "application" | "prescreening" | "appraisal" | "underwriting" | "
 
 
 
-function ContextHeader({ values, applicationId }: { values: LoanApplicationValues; applicationId: string; }) {
-  const isBusiness = values.loanType === "Business";
-  const name = isBusiness ? values.companyName : [values.firstName, values.surname].filter(Boolean).join(" ");
+function ContextHeader({ values, applicationId, ctx }: { values: LoanApplicationValues; applicationId: string; ctx: OfferContext }) {
+  const { FINAL_TERMS } = ctx;
+  const isBusiness = values.applicant_type === "Business";
+  const name = isBusiness ? values.company_name : [values.first_name, values.last_name].filter(Boolean).join(" ");
   const initials = name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 
   return (
@@ -217,7 +273,7 @@ function ContextHeader({ values, applicationId }: { values: LoanApplicationValue
         </ThemeIcon>
         <Box>
           <Text fz="sm" fw={700} c="slate.9">{name || "—"}</Text>
-          <Text fz="xs" c="slate.5">{isBusiness ? "Business Loan" : "Personal Loan"}</Text>
+          <Text fz="xs" c="slate.5">{ctx.APPLICATION.loan.product}</Text>
         </Box>
       </Group>
       <Group gap={26}>
@@ -242,18 +298,23 @@ const ROUTE_STAGES = ["Loan Appraisal", "Underwriting", "Prescreening"];
 
 
 function OfferPendingView({
+  ctx,
   onAccept,
   onReject,
   onAmend,
   scheduleOpen,
   setScheduleOpen,
+  readOnly,
 }: {
+  ctx: OfferContext;
   onAccept: () => void;
   onReject: () => void;
   onAmend: () => void;
   scheduleOpen: boolean;
   setScheduleOpen: (v: boolean) => void;
+  readOnly?: boolean;
 }) {
+  const { FINAL_TERMS, FINAL_SIM, FINAL_FEES, VALID_UNTIL } = ctx;
   const netDisbursed = FINAL_TERMS.amount - FINAL_FEES.total;
   const [schedulePage, setSchedulePage] = useState(1);
   const ITEMS_PER_PAGE = 8;
@@ -267,23 +328,23 @@ function OfferPendingView({
          <Group gap="lg" pl="xs">
            <Group gap={6}>
              <Text fz={10.5} fw={700} c="slate.5" tt="uppercase">Prescreening</Text>
-             <Badge color="green" variant="light" size="sm" radius="sm" style={{ textTransform: 'none' }}>Passed</Badge>
+             <Badge color="green" variant="light" size="sm" radius="sm" style={{ textTransform: 'none' }}>{ctx.prescreeningResult}</Badge>
            </Group>
            <Group gap={6}>
              <Text fz={10.5} fw={700} c="slate.5" tt="uppercase">Risk Grade</Text>
-             <Badge color="indigo" variant="light" size="sm" radius="sm" style={{ textTransform: 'none' }}>A (Low Risk)</Badge>
+             <Badge color="indigo" variant="light" size="sm" radius="sm" style={{ textTransform: 'none' }}>{ctx.riskBand}</Badge>
            </Group>
            <Group gap={6}>
              <Text fz={10.5} fw={700} c="slate.5" tt="uppercase">DTI</Text>
-             <Text fz={12} fw={600} c="slate.8">34%</Text>
+             <Text fz={12} fw={600} c="slate.8">{ctx.dti}</Text>
            </Group>
            <Group gap={6}>
              <Text fz={10.5} fw={700} c="slate.5" tt="uppercase">Legal</Text>
-             <Text fz={12} fw={600} c="slate.8">5 Passed, 1 Exception</Text>
+             <Text fz={12} fw={600} c="slate.8">{ctx.legalSummary}</Text>
            </Group>
            <Group gap={6}>
              <Text fz={10.5} fw={700} c="slate.5" tt="uppercase">Underwriting</Text>
-             <Badge color="green" variant="light" size="sm" radius="sm" style={{ textTransform: 'none' }}>Approved</Badge>
+             <Badge color="green" variant="light" size="sm" radius="sm" style={{ textTransform: 'none' }}>{ctx.UNDERWRITING_DECISION.decision}</Badge>
            </Group>
          </Group>
          <Badge color="indigo" variant="light" size="md" radius="sm" style={{ textTransform: 'none' }}>Valid until {fmtDate(VALID_UNTIL)}</Badge>
@@ -404,9 +465,11 @@ function OfferPendingView({
               <Text fz={11} c="slate.5">Pre-deducted</Text>
             </Group>
             <Box style={{ flexGrow: 1 }}>
-              <SimRow label={`Processing fee (${FINAL_TERMS.processingFeePct}%)`} value={zmw(FINAL_FEES.processingFee)} />
-              <SimRow label={`Credit life insurance (${FINAL_TERMS.insurancePct}%)`} value={zmw(FINAL_FEES.insurance)} />
-              <SimRow label={`Tax on fees (${FINAL_TERMS.taxPct}% VAT)`} value={zmw(FINAL_FEES.tax)} />
+              {FINAL_FEES.lines.length === 0 ? (
+                <Text fz={12} c="slate.5">No charges recorded at appraisal.</Text>
+              ) : (
+                FINAL_FEES.lines.map((line) => <SimRow key={line.label} label={line.label} value={zmw(line.amount)} />)
+              )}
             </Box>
             <Group justify="space-between" p={8} mt={8} bg="brand.0" style={{ borderRadius: "var(--mantine-radius-md)", border: "1px solid var(--mantine-color-brand-2)" }}>
                <Text fz={13} fw={700} c="brand.9">Net disbursed amount</Text>
@@ -423,9 +486,9 @@ function OfferPendingView({
            <Text fz={12} c="slate.5" mt={2}>Select the borrower's response to generate and execute the contract.</Text>
         </Box>
         <Group gap="sm">
-          <Button variant="outline" color="red.7" size="sm" onClick={onReject}>Reject offer</Button>
-          <Button variant="default" size="sm" onClick={onAmend}>Request amendment</Button>
-          <Button color="green.8" size="sm" onClick={onAccept}>Accept offer</Button>
+          <Button variant="outline" color="red.7" size="sm" onClick={onReject} disabled={readOnly}>Reject offer</Button>
+          <Button variant="default" size="sm" onClick={onAmend} disabled={readOnly}>Request amendment</Button>
+          <Button color="green.8" size="sm" onClick={onAccept} disabled={readOnly}>Accept offer</Button>
         </Group>
       </Group>
     </Box>
@@ -436,24 +499,86 @@ const amendLabelStyles = {
   label: { fontSize: 12, fontWeight: 600, color: "var(--mantine-color-slate-7)", marginBottom: 4 },
 };
 
-function OfferWorkspace({ onClose }: { onClose: () => void }) {
-  const [offerStatus, setOfferStatus] = useState("pending"); // pending | accepted | rejected | amendment
+export interface OfferResult {
+  ready: boolean;
+  payload: StagePayload;
+}
+
+const OFFER_STATUS_LABEL: Record<string, string> = {
+  pending: "Offer Issued", accepted: "Accepted", rejected: "Rejected", amendment: "Amendment Requested",
+};
+const SIGNING_METHOD_LABEL: Record<string, string> = { esign: "E-signature", physical: "Physical Signature" };
+
+const isoDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+function OfferWorkspace({
+  ctx,
+  onClose,
+  onChange,
+  onDecision,
+  readOnly = false,
+}: {
+  ctx: OfferContext;
+  onClose: () => void;
+  onChange?: (result: OfferResult) => void;
+  onDecision?: () => void;
+  readOnly?: boolean;
+}) {
+  const { APPLICATION, FINAL_TERMS, FINAL_SIM, FINAL_FEES, ISSUED_DATE, VALID_UNTIL, ASSETS_SUMMARY, UNDERWRITING_DECISION, offerData } = ctx;
+  const [offerStatus, setOfferStatus] = useState<string>(offerData.status ?? "pending");
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  const [amendField, setAmendField] = useState(AMEND_FIELDS[0]);
-  const [amendDetail, setAmendDetail] = useState("");
-  const [amendRoute, setAmendRoute] = useState(ROUTE_STAGES[0]);
+  const [rejectCategory, setRejectCategory] = useState<string | null>(offerData.reject?.category ?? null);
+  const [rejectReason, setRejectReason] = useState<string>(offerData.reject?.reason ?? "");
+  const [amendField, setAmendField] = useState<string>(offerData.amendment?.field ?? AMEND_FIELDS[0]);
+  const [amendDetail, setAmendDetail] = useState<string>(offerData.amendment?.detail ?? "");
+  const [amendRoute, setAmendRoute] = useState<string>(offerData.amendment?.route ?? ROUTE_STAGES[0]);
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [showAmendForm, setShowAmendForm] = useState(false);
 
-  const [contractStatus] = useState("not_generated"); // not_generated | generated
-  const [signingMethod, setSigningMethod] = useState<string | null>(null); // esign | physical
-  const [signatories, setSignatories] = useState([
-    { name: APPLICATION.customer.name, role: "Customer", status: "Pending" },
-    { name: "Bwalya Mumba", role: "Bank officer", status: "Pending" },
-  ]);
-  const [physical, setPhysical] = useState({ dispatch: "Not dispatched", received: false, uploaded: false, verification: "Pending" });
-  const [executed, setExecuted] = useState(false);
+  const [contractStatus] = useState("not_generated");
+  const [signingMethod, setSigningMethod] = useState<string | null>(offerData.signing_method ?? null);
+  const [signatories, setSignatories] = useState<{ name: string; role: string; status: string }[]>(
+    offerData.signatories ?? [
+      { name: APPLICATION.customer.name, role: "Customer", status: "Pending" },
+      { name: "Bank officer", role: "Bank officer", status: "Pending" },
+    ],
+  );
+  const [physical, setPhysical] = useState(
+    offerData.physical ?? { dispatch: "Not dispatched", received: false, uploaded: false, verification: "Pending" },
+  );
+  const [executed, setExecuted] = useState<boolean>(!!offerData.executed);
+
+  useEffect(() => {
+    onChange?.({
+      ready: executed,
+      payload: {
+        custom_status: executed ? "Contract Executed" : OFFER_STATUS_LABEL[offerStatus],
+        signing_method: signingMethod ? SIGNING_METHOD_LABEL[signingMethod] : null,
+        contract_status: executed ? "Executed" : signingMethod ? "Signing in Progress" : "Not Generated",
+        first_payment_date: FINAL_TERMS.tenure ? isoDate(FINAL_SIM.first) : null,
+        offer_data: {
+          status: offerStatus,
+          issued_on: isoDate(ISSUED_DATE),
+          valid_until: isoDate(VALID_UNTIL),
+          reject: offerStatus === "rejected" ? { category: rejectCategory, reason: rejectReason.trim() } : null,
+          amendment: offerStatus === "amendment" ? { field: amendField, detail: amendDetail.trim(), route: amendRoute } : null,
+          signing_method: signingMethod,
+          signatories,
+          physical,
+          executed,
+        },
+      },
+    });
+  }, [offerStatus, rejectCategory, rejectReason, amendField, amendDetail, amendRoute, signingMethod, signatories, physical, executed]);
+
+  const decisionKey = `${offerStatus}|${executed}`;
+  const lastDecision = useRef(decisionKey);
+  useEffect(() => {
+    if (lastDecision.current === decisionKey) return;
+    lastDecision.current = decisionKey;
+    onDecision?.();
+  }, [decisionKey]);
 
   const overallStatus = executed ? "Contract Executed"
     : offerStatus === "rejected" ? "Offer Rejected"
@@ -491,11 +616,13 @@ function OfferWorkspace({ onClose }: { onClose: () => void }) {
 
       {offerStatus === "pending" && !showRejectForm && !showAmendForm && (
         <OfferPendingView
+          ctx={ctx}
           onAccept={() => setOfferStatus("accepted")}
           onReject={() => setShowRejectForm(true)}
           onAmend={() => setShowAmendForm(true)}
           scheduleOpen={scheduleOpen}
           setScheduleOpen={setScheduleOpen}
+          readOnly={readOnly}
         />
       )}
 
@@ -513,6 +640,8 @@ function OfferWorkspace({ onClose }: { onClose: () => void }) {
               label={<Text fz={13} fw={700} c="slate.8" mb={2}>Rejection Category <Text span c="red">*</Text></Text>}
               placeholder="Select primary reason category..."
               data={["Rates too high", "Competitor offer", "Changed mind", "Other"]}
+              value={rejectCategory}
+              onChange={setRejectCategory}
               radius="md"
               size="md"
               mb="sm"
@@ -554,7 +683,7 @@ function OfferWorkspace({ onClose }: { onClose: () => void }) {
             
             <Group justify="flex-end" mt={32}>
               <Button variant="default" radius="md" onClick={() => setShowRejectForm(false)}>Cancel</Button>
-              <Button color="red.7" radius="md" disabled={!rejectReason.trim()} onClick={() => setOfferStatus("rejected")}>Confirm Rejection</Button>
+              <Button color="red.7" radius="md" disabled={!rejectReason.trim() || !rejectCategory} onClick={() => setOfferStatus("rejected")}>Confirm Rejection</Button>
             </Group>
           </Box>
         </Paper>
@@ -685,14 +814,14 @@ function OfferWorkspace({ onClose }: { onClose: () => void }) {
                     <Group justify="space-between" mb="md">
                       <Group gap="sm">
                         <Text fz={14} fw={800} c="slate.9">LOAN AGREEMENT</Text>
-                        <Badge variant="light" color="gray" radius="sm" size="sm" fw={600}>AGR-2023-58231</Badge>
+                        <Badge variant="light" color="gray" radius="sm" size="sm" fw={600}>{APPLICATION.id}</Badge>
                       </Group>
                       <IconCircleCheck size={20} color="var(--mantine-color-green-4)" style={{ fill: "transparent" }} />
                     </Group>
                     
                     <Paper bg="slate.0" p="sm" radius="sm" mb="lg">
                       <Text fz={12.5} c="slate.7" lh={1.6}>
-                        Between the Lender and <strong>{APPLICATION.customer.name}</strong> for a {APPLICATION.loan.product.toLowerCase()} of <strong>{zmw(FINAL_TERMS.amount)}</strong> at an agreed interest rate of <strong>{FINAL_TERMS.rate}.00% p.a.</strong> amortized over <strong>{FINAL_TERMS.tenure} months</strong>, repayable in equal monthly installments.
+                        Between the Lender and <strong>{APPLICATION.customer.name}</strong> for a {APPLICATION.loan.product.toLowerCase()} of <strong>{zmw(FINAL_TERMS.amount)}</strong> at an agreed interest rate of <strong>{FINAL_TERMS.rate.toFixed(2)}% p.a.</strong> amortized over <strong>{FINAL_TERMS.tenure} months</strong>, repayable in equal {FINAL_TERMS.frequency.toLowerCase()} installments.
                       </Text>
                     </Paper>
 
@@ -721,6 +850,7 @@ function OfferWorkspace({ onClose }: { onClose: () => void }) {
                 </Box>
               </Paper>
 
+              <Box component="fieldset" disabled={readOnly} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
               {/* CHOOSE SIGNING METHOD */}
               {!executed && !signingMethod && (
                 <Box mb="xl">
@@ -893,7 +1023,8 @@ function OfferWorkspace({ onClose }: { onClose: () => void }) {
                   </Tooltip>
                 </Box>
               )}
-{executed && (
+</Box>
+              {executed && (
                 <Paper bg="green.0" p="xl" radius="md" style={{ border: "1.5px solid var(--mantine-color-green-3)", boxShadow: "0 4px 12px rgba(43, 138, 62, 0.05)" }}>
                   <Group wrap="nowrap" align="flex-start" gap="lg">
                     <ThemeIcon size={50} radius="100%" color="green.6" variant="light" style={{ flexShrink: 0 }}>
@@ -928,7 +1059,7 @@ function OfferWorkspace({ onClose }: { onClose: () => void }) {
                   </Accordion.Control>
                   <Accordion.Panel>
                     <SimRow label="Approved Amount" value={zmw(FINAL_TERMS.amount)} />
-                    <SimRow label="Interest Rate" value={`${FINAL_TERMS.rate}.00% p.a.`} />
+                    <SimRow label="Interest Rate" value={`${FINAL_TERMS.rate}% p.a.`} />
                     <SimRow label="Tenure" value={`${FINAL_TERMS.tenure} Months`} />
                     <SimRow label="EMI" value={zmw(FINAL_SIM.installment)} last strong />
                   </Accordion.Panel>
@@ -939,10 +1070,10 @@ function OfferWorkspace({ onClose }: { onClose: () => void }) {
                     <Text fz={12.5} fw={600} c="slate.9">Security & Legal</Text>
                   </Accordion.Control>
                   <Accordion.Panel>
-                    <SimRow label="Asset" value="Motor Vehicle (Hilux)" />
-                    <SimRow label="Security Value" value="ZMW 76,000" />
-                    <SimRow label="LTV / Coverage" value="189%" />
-                    <SimRow label="Legal Status" value="Cleared" last strong />
+                    <SimRow label="Asset" value={ctx.assetsLabel} />
+                    <SimRow label="Security Value" value={zmw(ctx.securityValue)} />
+                    <SimRow label="LTV / Coverage" value={ctx.coverage} />
+                    <SimRow label="Legal Status" value={ctx.legalStatus} last strong />
                   </Accordion.Panel>
                 </Accordion.Item>
 
@@ -951,14 +1082,14 @@ function OfferWorkspace({ onClose }: { onClose: () => void }) {
                     <Text fz={12.5} fw={600} c="slate.9">Approval Conditions</Text>
                   </Accordion.Control>
                   <Accordion.Panel>
-                    <SimRow label="Decision" value="Approved" />
-                    <SimRow label="Processing Fee" value="2% (Billed by LMS)" />
-                    <SimRow label="Pending CPs" value="None" last strong />
+                    <SimRow label="Decision" value={UNDERWRITING_DECISION.decision} />
+                    <SimRow label="Processing Fee" value={zmw(FINAL_FEES.lines.find((line) => line.name === "Processing Fee")?.amount ?? null)} />
+                    <SimRow label="Pending CPs" value={UNDERWRITING_DECISION.conditions.length ? String(UNDERWRITING_DECISION.conditions.length) : "None"} last strong />
                   </Accordion.Panel>
                 </Accordion.Item>
               </Accordion>
               
-              <Button mt={8} fullWidth color="brand" radius="md" disabled={!executed} onClick={onClose} rightSection={<IconArrowRight size={14} />}>
+              <Button mt={8} fullWidth color="brand" radius="md" disabled={!executed || readOnly} onClick={onClose} rightSection={<IconArrowRight size={14} />}>
                 Complete workflow
               </Button>
             </Box>
@@ -1061,18 +1192,12 @@ function OfferWorkspace({ onClose }: { onClose: () => void }) {
             </Text>
           </Box>
           <Grid style={{ marginLeft: 0, marginRight: 0 }}>
-            <Grid.Col span={{ base: 12, sm: 3 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
-              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Processing Fee</Text>
-              <Text fz={11} fw={600} c="black">{zmw(FINAL_FEES.processingFee)}</Text>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 3 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
-              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Credit Life Insurance</Text>
-              <Text fz={11} fw={600} c="black">{zmw(FINAL_FEES.insurance)}</Text>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 3 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
-              <Text fz={9} fw={700} tt="uppercase" c="gray.7">Tax on Fees</Text>
-              <Text fz={11} fw={600} c="black">{zmw(FINAL_FEES.tax)}</Text>
-            </Grid.Col>
+            {FINAL_FEES.lines.map((line) => (
+              <Grid.Col key={line.label} span={{ base: 12, sm: 3 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px' }}>
+                <Text fz={9} fw={700} tt="uppercase" c="gray.7">{line.label}</Text>
+                <Text fz={11} fw={600} c="black">{zmw(line.amount)}</Text>
+              </Grid.Col>
+            ))}
             <Grid.Col span={{ base: 12, sm: 3 }} style={{ border: '1px solid #000', padding: '4px 8px', margin: '-0.5px', backgroundColor: '#f8f9fa' }}>
               <Text fz={9} fw={800} tt="uppercase" c="black">Total Fees</Text>
               <Text fz={12} fw={700} c="black">{zmw(FINAL_FEES.total)}</Text>
@@ -1161,11 +1286,30 @@ function OfferWorkspace({ onClose }: { onClose: () => void }) {
 export function OfferModal({
   opened,
   onClose,
-  applicationValues = DUMMY_PERSONAL_LOAN_APPLICATION,
+  loanApplicationId,
   onMinimize,
+  readOnly = false,
 }: OfferModalProps) {
   const [section, setSection] = useState<Section>("offer");
   const [uwTab, setUwTab] = useState<any>("asset");
+  const [result, setResult] = useState<OfferResult | null>(null);
+  const resultRef = useRef<OfferResult | null>(null);
+  const stage = useStageApplication(loanApplicationId);
+  const { application, values } = stage;
+  const ctx = application ? buildOfferContext(application) : null;
+
+  const handleChange = (next: OfferResult) => {
+    resultRef.current = next;
+    setResult(next);
+  };
+
+  const save = async (complete: boolean) => {
+    const current = resultRef.current;
+    if (!current) return;
+    const payload: StagePayload = complete ? { ...current.payload, custom_status: "Approved" } : current.payload;
+    const saved = await stage.save(payload);
+    if (saved && complete) onClose();
+  };
 
   return (
     <Modal
@@ -1174,7 +1318,7 @@ export function OfferModal({
       size={1400}
       padding={0}
       closeOnClickOutside={false}
-        closeOnEscape={false}
+      closeOnEscape={false}
       lockScroll
       styles={{
         content: { display: "flex", flexDirection: "column", overflow: "hidden", height: "90vh", maxHeight: "90vh" },
@@ -1203,64 +1347,71 @@ export function OfferModal({
           </Group>
         </Group>
 
-        <ContextHeader values={applicationValues} applicationId={DUMMY_PRESCREENING_CONTEXT.applicationId} />
+        {!application || !values || !ctx ? (
+          <StageLoading error={stage.error} />
+        ) : (
+          <>
+            <ContextHeader values={values} applicationId={application.name} ctx={ctx} />
 
-        <Box style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", overflow: "hidden" }}>
-          <LeftNav activeSubItem={uwTab} onSubItemClick={(sub) => { setUwTab(sub); setSection("underwriting"); }} section={section} 
-  setSection={setSection} 
-  stageIndex={5}
-  items={[
-    { id: "application", label: "Loan application", hint: "Submitted", icon: IconFileText, done: true },
-    { id: "prescreening", label: "Prescreening", hint: "Passed", icon: IconGauge, done: true },
-    { id: "appraisal", label: "Loan Appraisal", hint: "Passed", icon: IconBuildingBank, done: true },
-    { id: "underwriting", label: "Underwriting", hint: "Passed", icon: IconScale, done: true, subItems: [{ id: "asset", label: "Asset Valuation", icon: IconCircleCheck }, { id: "legal", label: "Legal Verification", icon: IconShieldCheck }] },
-    { id: "offer", label: "Offer & signing", hint: "In progress", icon: IconSignature, done: false },
-  ]}
-/>
+            <Box style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", overflow: "hidden" }}>
+              <LeftNav activeSubItem={uwTab} onSubItemClick={(sub) => { setUwTab(sub); setSection("underwriting"); }} section={section}
+                setSection={setSection}
+                stageIndex={5}
+                items={[
+                  { id: "application", label: "Loan application", hint: "Submitted", icon: IconFileText, done: true },
+                  { id: "prescreening", label: "Prescreening", hint: "Passed", icon: IconGauge, done: true },
+                  { id: "appraisal", label: "Loan Appraisal", hint: "Passed", icon: IconBuildingBank, done: true },
+                  { id: "underwriting", label: "Underwriting", hint: "Passed", icon: IconScale, done: true, subItems: [{ id: "asset", label: "Asset Valuation", icon: IconCircleCheck }, { id: "legal", label: "Legal Verification", icon: IconShieldCheck }] },
+                  { id: "offer", label: "Offer & signing", hint: "In progress", icon: IconSignature, done: false },
+                ]}
+              />
 
-          <Box style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
-            {section === "application" && (
-              <Box style={{ height: "100%" }}>
-                <LoanApplicationModal embedded readOnly initialValues={applicationValues} opened={false} onClose={() => {}} onMinimize={() => {}} />
+              <Box style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
+                {section === "application" && (
+                  <Box style={{ height: "100%" }}>
+                    <LoanApplicationModal embedded readOnly initialValues={values} opened={false} onClose={() => {}} onMinimize={() => {}} />
+                  </Box>
+                )}
+                {section === "prescreening" && (
+                  <Box style={{ height: "100%" }}>
+                    <PreScreeningModal embedded readOnly application={application} opened={false} onClose={() => {}} onMinimize={() => {}} />
+                  </Box>
+                )}
+                {section === "appraisal" && (
+                  <Box style={{ height: "100%" }}>
+                    <EnrichmentModal embedded readOnly application={application} opened={false} onClose={() => {}} onMinimize={() => {}} />
+                  </Box>
+                )}
+                {section === "underwriting" && (
+                  <Box style={{ height: "100%" }}>
+                    <UnderwritingModal embedded readOnly application={application} opened={false} onClose={() => {}} onMinimize={() => {}} tab={uwTab} onTabChange={setUwTab} />
+                  </Box>
+                )}
+                {section === "offer" && (
+                  <OfferWorkspace
+                    ctx={ctx}
+                    readOnly={readOnly}
+                    onClose={() => save(true)}
+                    onChange={handleChange}
+                    onDecision={readOnly ? undefined : () => save(false)}
+                  />
+                )}
               </Box>
+            </Box>
+
+            {!readOnly && (
+              <Group justify="space-between" align="center" px="xl" py="md" bg="white" style={{ borderTop: "1px solid var(--mantine-color-gray-2)", flexShrink: 0 }}>
+                <Button variant="transparent" c="dark.8" px={0} fw={600} onClick={onClose}>
+                  Close
+                </Button>
+                <Button color="brand" radius="md" onClick={() => save(true)} disabled={!result?.ready} loading={stage.saving}>
+                  Complete workflow
+                </Button>
+              </Group>
             )}
-
-            {section === "prescreening" && (
-              <Box style={{ height: "100%" }}>
-                <PreScreeningModal embedded readOnly applicationValues={applicationValues} opened={false} onClose={() => {}} onMinimize={() => {}} />
-              </Box>
-            )}
-
-            {section === "appraisal" && (
-              <Box style={{ height: "100%" }}>
-                <EnrichmentModal embedded readOnly applicationValues={applicationValues} opened={false} onClose={() => {}} onMinimize={() => {}} />
-              </Box>
-            )}
-
-            {section === "underwriting" && (
-              <Box style={{ height: "100%" }}>
-                <UnderwritingModal embedded readOnly applicationValues={applicationValues} opened={false} onClose={() => {}} onMinimize={() => {}} tab={uwTab} onTabChange={setUwTab} />
-              </Box>
-            )}
-
-            {section === "offer" && <OfferWorkspace onClose={onClose} />}
-          </Box>
-        </Box>
-
-        <Group justify="space-between" align="center" px="xl" py="md" bg="white" style={{ borderTop: "1px solid var(--mantine-color-gray-2)", flexShrink: 0 }}>
-          <Button variant="transparent" c="dark.8" px={0} fw={600} onClick={onClose}>
-            Close
-          </Button>
-          <Button color="brand" radius="md" onClick={onClose}>
-            Complete workflow
-          </Button>
-        </Group>
+          </>
+        )}
       </Box>
     </Modal>
   );
 }
-
-
-
-
-

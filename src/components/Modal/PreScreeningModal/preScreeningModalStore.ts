@@ -1,17 +1,18 @@
 import { IconGauge } from '@tabler/icons-react';
 import { createModal } from '../../../store/modal store/createModal';
 import { PreScreeningModal } from './PreScreeningModal';
-import type { LoanApplicationValues } from '../LoanApplication/LoanApplicationModal';
 
 export interface PreScreeningModalParams {
-  applicationValues?: LoanApplicationValues;
+  loanApplicationId?: string | null;
+  readOnly?: boolean;
 }
 
 interface PreScreeningModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize: () => void;
-  applicationValues?: LoanApplicationValues;
+  loanApplicationId?: string | null;
+  readOnly?: boolean;
 }
 
 function getTitle() {
@@ -25,7 +26,8 @@ export const preScreeningModal = createModal<PreScreeningModalParams, PreScreeni
     icon: IconGauge,
     getTitle,
     buildProps: (params) => ({
-      applicationValues: params.applicationValues,
+      loanApplicationId: params.loanApplicationId,
+      readOnly: params.readOnly,
     }),
   },
 );

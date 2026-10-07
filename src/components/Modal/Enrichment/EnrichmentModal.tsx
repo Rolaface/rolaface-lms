@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Modal,
   Box,
@@ -28,7 +28,6 @@ import {
   IconX,
   IconChevronUp,
   IconInfoCircle,
-  IconCircleCheck,
   IconHelp,
   IconArrowRight,
   IconMinus,
@@ -40,31 +39,27 @@ import {
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
-import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
 import { PreScreeningModal } from "../PreScreeningModal/PreScreeningModal";
 import { LeftNav, ContextHeader } from "../PreScreeningModal/PreScreeningShared";
-import {
-  DUMMY_PERSONAL_LOAN_APPLICATION,
-  DUMMY_PRESCREENING_CONTEXT,
-  DUMMY_PRESCREENING_DATA,
-} from "../PreScreeningModal/Dummyloanapplicationdata";
+import type { LoanApplication, StagePayload } from "../../../api/LosConfiguration/LoanApplicationApi";
+import { StageLoading, stagePolicy, useStageApplication } from "../stageData";
 
 interface EnrichmentModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize: () => void;
-  applicationValues?: LoanApplicationValues;
+  loanApplicationId?: string | null;
+  application?: LoanApplication;
   embedded?: boolean;
   readOnly?: boolean;
 }
 
-const POLICY: Record<"personal" | "business" | "mortgage", { minCreditScore: number; maxDTI: number; productMax: number }> = {
-  personal: { minCreditScore: 650, maxDTI: 50, productMax: 100000 },
-  business: { minCreditScore: 620, maxDTI: 55, productMax: 500000 },
-  mortgage: { minCreditScore: 680, maxDTI: 45, productMax: 2000000 },
-};
+export interface AppraisalResult {
+  ready: boolean;
+  payload: StagePayload;
+}
 
-const PRODUCT_LIMITS = { amountMin: 5000, rateMin: 18, rateMax: 32, tenureMin: 6, tenureMax: 60 };
+const PRODUCT_LIMITS = { amountMin: 5000, rateMin: 18, rateMax: 32, tenureMin: 1, tenureMax: 360 };
 
 type ChargeBasis = "Amount" | "Percentage";
 type ChargeTreatment = "Add to First Repayment" | "Billed Separately";
@@ -108,47 +103,6 @@ const zmw = (n: number | null) => (n == null ? "—" : "ZMW " + Math.round(n).to
 
 const fmtDate = (d: Date) =>
   d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-
-function calcEligibility({
-  income,
-  obligations,
-  maxDTI,
-  annualRate,
-  tenureMonths,
-  productMax,
-  creditScore,
-  minCreditScore,
-}: {
-  income: number;
-  obligations: number;
-  maxDTI: number;
-  annualRate: number;
-  tenureMonths: number;
-  productMax: number;
-  creditScore: number;
-  minCreditScore: number;
-}) {
-  const customerDTI = income > 0 ? (obligations / income) * 100 : 100;
-  const creditPassed = creditScore >= minCreditScore;
-  const dtiPassed = customerDTI <= maxDTI;
-  const maxAffordableMonthly = income * (maxDTI / 100);
-  const capacity = Math.max(0, maxAffordableMonthly - obligations);
-  const r = annualRate / 100 / 12;
-  const affordabilityAmount =
-    r > 0 ? capacity * ((1 - Math.pow(1 + r, -tenureMonths)) / r) : capacity * tenureMonths;
-  const eligibleAmount = creditPassed && dtiPassed ? Math.min(affordabilityAmount, productMax) : 0;
-  return {
-    customerDTI,
-    creditPassed,
-    dtiPassed,
-    maxAffordableMonthly,
-    capacity,
-    affordabilityAmount,
-    eligibleAmount,
-    productMax,
-    mandatoryPassed: creditPassed && dtiPassed,
-  };
-}
 
 function addMonths(base: Date, months: number) {
   const target = new Date(base.getFullYear(), base.getMonth() + months, 1);
@@ -320,36 +274,45 @@ type Section = "application" | "prescreening" | "appraisal";
 
 
 
-function EnrichmentWorkspace({
-  values,
-  approvedAmount: initialApprovedAmount,
-  eligibleAmount,
-  income,
-  obligations,
-  maxDTI,
-  onSubmitReady,
+export function EnrichmentWorkspace({
+  application,
+  readOnly = false,
+  onChange,
 }: {
-  values: LoanApplicationValues;
-  approvedAmount: number;
-  eligibleAmount: number;
-  income: number;
-  obligations: number;
-  maxDTI: number;
-  onSubmitReady?: (canSubmit: boolean, submit: () => void) => void;
+  application: LoanApplication;
+  readOnly?: boolean;
+  onChange?: (result: AppraisalResult) => void;
 }) {
-  const [approvedAmount, setApprovedAmount] = useState<number>(initialApprovedAmount);
-  const [overrideReason, setOverrideReason] = useState("");
+  const policy = stagePolicy(application);
+  const saved = application.appraisal_data ?? {};
+  const income = Number(application.monthly_income) || 0;
+  const obligations = Number(application.monthly_obligations) || 0;
+  const maxDTI = Number(application.prescreening_data?.policy?.max_dti) || policy.maxDTI;
+  const eligibleAmount = Number(application.eligible_amount) || 0;
+  const [approvedAmount, setApprovedAmount] = useState<number>(
+    () =>
+      Number(application.approved_amount) ||
+      Number(application.prescreening_data?.confirmed_amount) ||
+      eligibleAmount ||
+      Number(application.requested_amount) ||
+      0,
+  );
+  const [overrideReason, setOverrideReason] = useState<string>(saved.override_reason ?? "");
   const [tab, setTab] = useState<"terms" | "schedule">("terms");
-  const [tenure, setTenure] = useState<number>(Number(values.tenureMonths) || 0);
-  const [frequency, setFrequency] = useState<string>(values.repaymentFrequency);
-  const [rate, setRate] = useState<number>(DUMMY_PRESCREENING_CONTEXT.loanRate);
-  const [interestType, setInterestType] = useState("Fixed");
-  const [calcMethod, setCalcMethod] = useState("Reducing balance");
-  const [effectiveDate, setEffectiveDate] = useState<string>(() =>
-    new Date().toISOString().slice(0, 10),
+  const [tenure, setTenure] = useState<number>(
+    Number(application.approved_tenure_months) || Number(application.tenure_months) || 0,
+  );
+  const [frequency, setFrequency] = useState<string>(application.approved_frequency || application.repayment_frequency);
+  const [rate, setRate] = useState<number>(Number(application.interest_rate) || policy.rate);
+  const [interestType, setInterestType] = useState<string>(saved.interest_type ?? "Fixed");
+  const [calcMethod, setCalcMethod] = useState<string>(saved.interest_calculation ?? "Reducing balance");
+  const [effectiveDate, setEffectiveDate] = useState<string>(
+    () => saved.effective_date ?? new Date().toISOString().slice(0, 10),
   );
 
-  const [charges, setCharges] = useState<ChargeRow[]>([]);
+  const [charges, setCharges] = useState<ChargeRow[]>(() =>
+    ((saved.charges ?? []) as Omit<ChargeRow, "id">[]).map((charge) => ({ ...makeChargeRow(), ...charge })),
+  );
 
   function addCharge() {
     setCharges((prev) => [...prev, makeChargeRow()]);
@@ -362,11 +325,10 @@ function EnrichmentWorkspace({
   }
 
   const [schedulePage, setSchedulePage] = useState(1);
-  const [continued, setContinued] = useState(false);
   const theme = useMantineTheme();
 
-  const requestedAmount = Number(values.loanAmount) || 0;
-  const isOverride = approvedAmount > eligibleAmount;
+  const requestedAmount = Number(application.requested_amount) || 0;
+  const isOverride = eligibleAmount > 0 && approvedAmount > eligibleAmount;
   const overrideError =
     isOverride && !overrideReason.trim()
       ? "Record why the approved amount exceeds the calculated eligibility."
@@ -409,8 +371,29 @@ function EnrichmentWorkspace({
     };
   }, [valid, approvedAmount, tenure, rate, frequency, calcMethod, effectiveDate, charges, income, obligations]);
   useEffect(() => {
-    onSubmitReady?.(!!valid, () => setContinued(true));
-  }, [valid]);
+    onChange?.({
+      ready: !!valid,
+      payload: {
+        custom_status: "Pending",
+        approved_amount: approvedAmount || null,
+        approved_tenure_months: tenure || null,
+        approved_frequency: frequency,
+        interest_rate: rate,
+        appraisal_data: {
+          interest_type: interestType,
+          interest_calculation: calcMethod,
+          effective_date: effectiveDate,
+          override_reason: isOverride ? overrideReason.trim() || null : null,
+          charges: charges
+            .filter((charge) => charge.name)
+            .map(({ name, basis, value, account, treatment }) => ({ name, basis, value: Number(value) || 0, account, treatment })),
+          monthly_instalment: figures ? Math.round(figures.monthlyInstalment) : null,
+          total_repayment: figures ? Math.round(figures.totalRepayment) : null,
+          projected_dti: figures?.projectedDti != null ? Math.round(figures.projectedDti * 10) / 10 : null,
+        },
+      },
+    });
+  }, [valid, approvedAmount, tenure, frequency, rate, interestType, calcMethod, effectiveDate, overrideReason, charges, figures]);
 
   const scheduleTotalPages = figures ? Math.ceil(figures.sim.nPeriods / SCHEDULE_PAGE_SIZE) : 0;
   const pagedSchedule = useMemo(
@@ -462,22 +445,6 @@ function EnrichmentWorkspace({
     );
   };
 
-  if (continued) {
-    return (
-      <Box py={70} px={30} ta="center">
-        <ThemeIcon radius="xl" size={44} color="green" variant="light" mx="auto" mb={10}>
-          <IconCircleCheck size={26} />
-        </ThemeIcon>
-        <Text fz="md" fw={700} c="slate.9">
-          Moving to Stage 4 — Underwriting
-        </Text>
-        <Text fz={11.5} c="slate.5" mt={6}>
-          Final terms locked at {zmw(approvedAmount)} · {rate}% · {tenure} months.
-        </Text>
-      </Box>
-    );
-  }
-
    return (
     <Box pl={20} pr={16} py={8}>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(280px, 1fr)", gap: 10, alignItems: "start" }}>
@@ -485,7 +452,7 @@ function EnrichmentWorkspace({
           <EnrichmentTabs tab={tab} setTab={setTab} />
 
           {tab === "terms" && (
-            <>
+            <Box component="fieldset" disabled={readOnly} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
               <Paper withBorder radius="md" p={8} mb={4}>
                 <SectionLabel>Final loan terms</SectionLabel>
                 <SimpleGrid cols={{ base: 2, md: 4 }} spacing={8} verticalSpacing={4}>
@@ -748,7 +715,7 @@ function EnrichmentWorkspace({
                   )}
                 </Group>
               </Paper>
-            </>
+            </Box>
           )}
 
           {tab === "schedule" && (
@@ -1011,53 +978,27 @@ function EnrichmentWorkspace({
 export function EnrichmentModal({
   opened,
   onClose,
-  applicationValues = DUMMY_PERSONAL_LOAN_APPLICATION,
+  loanApplicationId,
+  application: embeddedApplication,
   onMinimize,
   embedded,
   readOnly,
 }: EnrichmentModalProps) {
   const [section, setSection] = useState<Section>("appraisal");
-
-  const policy = POLICY[DUMMY_PRESCREENING_CONTEXT.loanTypeId];
-  const income = DUMMY_PRESCREENING_DATA.income.value;
-  const obligations = DUMMY_PRESCREENING_DATA.liabilities.obligations;
-  const calc = calcEligibility({
-    income,
-    obligations,
-    maxDTI: policy.maxDTI,
-    annualRate: DUMMY_PRESCREENING_CONTEXT.loanRate,
-    tenureMonths: Number(applicationValues.tenureMonths) || 0,
-    productMax: policy.productMax,
-    creditScore: DUMMY_PRESCREENING_DATA.credit.value,
-    minCreditScore: policy.minCreditScore,
-  });
-  const approvedAmount = Math.round(calc.eligibleAmount);
-
-  const [canSubmit, setCanSubmit] = useState(false);
-  const submitRef = useRef<() => void>(() => {});
-
-  const handleSubmitReady = (ready: boolean, submit: () => void) => {
-    setCanSubmit(ready);
-    submitRef.current = submit;
-  };
-
-  const handleSubmit = () => {
-    submitRef.current();
-  };
+  const [result, setResult] = useState<AppraisalResult | null>(null);
+  const stage = useStageApplication(embedded ? null : loanApplicationId);
 
   if (embedded) {
-    return (
-      <EnrichmentWorkspace
-        values={applicationValues}
-        approvedAmount={approvedAmount}
-        eligibleAmount={approvedAmount}
-        income={income}
-        obligations={obligations}
-        maxDTI={policy.maxDTI}
-        onSubmitReady={handleSubmitReady}
-      />
-    );
+    return embeddedApplication ? <EnrichmentWorkspace application={embeddedApplication} readOnly={readOnly} /> : null;
   }
+
+  const { application, values } = stage;
+
+  const handleSubmit = async () => {
+    if (!result) return;
+    const payload: StagePayload = { ...result.payload, custom_status: "Approved" };
+    if (await stage.save(payload)) onClose();
+  };
 
   return (
     <Modal
@@ -1069,28 +1010,13 @@ export function EnrichmentModal({
       closeOnEscape={false}
       lockScroll
       styles={{
-        content: {
-          height: "96vh",
-          maxHeight: "99vh",
-          width: "90vw",
-          maxWidth: "1600px",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        },
+        content: { height: "96vh", maxHeight: "99vh", width: "90vw", maxWidth: "1600px", display: "flex", flexDirection: "column", overflow: "hidden" },
         header: { display: "none", padding: 0, margin: 0, minHeight: 0 },
-        body: {
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          padding: 0,
-          minHeight: 0,
-          overflow: "hidden",
-        },
+        body: { flex: 1, display: "flex", flexDirection: "column", padding: 0, minHeight: 0, overflow: "hidden" },
       }}
     >
       <Box style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-               <Group justify="space-between" align="center" px="xl" py="sm" bg="brand.6" style={{ borderBottom: "1px solid var(--mantine-color-brand-7)", flexShrink: 0 }}>
+        <Group justify="space-between" align="center" px="xl" py="sm" bg="brand.6" style={{ borderBottom: "1px solid var(--mantine-color-brand-7)", flexShrink: 0 }}>
           <Group gap="sm">
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
               <IconReportMoney size={16} />
@@ -1110,104 +1036,78 @@ export function EnrichmentModal({
           </Group>
         </Group>
 
-        <ContextHeader values={applicationValues} applicationId={DUMMY_PRESCREENING_CONTEXT.applicationId} />
-
-        <Box style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", overflow: "hidden" }}>
-          <LeftNav 
-  section={section} 
-  setSection={setSection} 
-  stageIndex={3}
-  items={[
-    { id: "application", label: "Loan application", icon: IconFileText, IconCalendarEvent, done: true },
-    { id: "prescreening", label: "Prescreening", icon: IconGauge, done: true },
-    { id: "appraisal", label: "Loan Appraisal", icon: IconBuildingBank, done: false },
-  ]}
-/>
-
-          <Box style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
-            {section === "application" && (
-              <Box style={{ height: "100%" }}>
-                <Group
-                  gap={10}
-                  align="flex-start"
-                  m="md"
-                  p="sm"
-                  bg="brand.0"
-                  style={{ border: "1px solid var(--mantine-color-brand-2)", borderRadius: "var(--mantine-radius-md)" }}
-                >
-                  <IconInfoCircle size={14} color="var(--mantine-color-brand-6)" style={{ marginTop: 2, flexShrink: 0 }} />
-                  <Text fz={11.5} c="brand.9">
-                    Submitted application data — read-only at this stage.
-                  </Text>
-                </Group>
-                <Box style={{ height: "calc(100% - 70px)" }}>
-                  <LoanApplicationModal
-                    embedded
-                    readOnly
-                    initialValues={applicationValues}
-                    opened={false}
-                    onClose={() => {}}
-                    onMinimize={() => {}}
-                  />
-                </Box>
-              </Box>
-            )}
-
-            {section === "prescreening" && (
-              <Box style={{ height: "100%" }}>
-                <PreScreeningModal
-                  embedded
-                  readOnly
-                  applicationValues={applicationValues}
-                  opened={false}
-                  onClose={() => {}}
-                />
-              </Box>
-            )}
-
-                       {section === "appraisal" && (
-              <EnrichmentWorkspace
-                values={applicationValues}
-                approvedAmount={approvedAmount}
-                eligibleAmount={approvedAmount}
-                income={income}
-                obligations={obligations}
-                maxDTI={policy.maxDTI}
-                onSubmitReady={handleSubmitReady}
+        {!application || !values ? (
+          <StageLoading error={stage.error} />
+        ) : (
+          <>
+            <ContextHeader values={values} applicationId={application.name} loanTypeName={application.loan_type_name} stageIndex={3} />
+            <Box style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", overflow: "hidden" }}>
+              <LeftNav
+                section={section}
+                setSection={setSection}
+                stageIndex={3}
+                items={[
+                  { id: "application", label: "Loan application", icon: IconFileText, done: true },
+                  { id: "prescreening", label: "Prescreening", icon: IconGauge, done: true },
+                  { id: "appraisal", label: "Loan Appraisal", icon: IconBuildingBank, done: false },
+                ]}
               />
+              <Box style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
+                {section === "application" && (
+                  <Box style={{ height: "100%" }}>
+                    <Group
+                      gap={10}
+                      align="flex-start"
+                      m="md"
+                      p="sm"
+                      bg="brand.0"
+                      style={{ border: "1px solid var(--mantine-color-brand-2)", borderRadius: "var(--mantine-radius-md)" }}
+                    >
+                      <IconInfoCircle size={14} color="var(--mantine-color-brand-6)" style={{ marginTop: 2, flexShrink: 0 }} />
+                      <Text fz={11.5} c="brand.9">
+                        Submitted application data — read-only at this stage.
+                      </Text>
+                    </Group>
+                    <Box style={{ height: "calc(100% - 70px)" }}>
+                      <LoanApplicationModal embedded readOnly initialValues={values} opened={false} onClose={() => {}} onMinimize={() => {}} />
+                    </Box>
+                  </Box>
+                )}
+                {section === "prescreening" && (
+                  <Box style={{ height: "100%" }}>
+                    <PreScreeningModal embedded readOnly application={application} opened={false} onClose={() => {}} onMinimize={() => {}} />
+                  </Box>
+                )}
+                {section === "appraisal" && <EnrichmentWorkspace application={application} readOnly={readOnly} onChange={setResult} />}
+              </Box>
+            </Box>
+            {!readOnly && (
+              <Group
+                justify="space-between"
+                align="center"
+                px="xl"
+                py="md"
+                bg="white"
+                style={{ borderTop: "1px solid var(--mantine-color-gray-2)", flexShrink: 0 }}
+              >
+                <Button variant="transparent" c="dark.8" px={0} fw={600} onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button
+                  color="brand"
+                  radius="md"
+                  onClick={handleSubmit}
+                  disabled={!result?.ready}
+                  loading={stage.saving}
+                  rightSection={<IconArrowRight size={16} />}
+                >
+                  Submit
+                </Button>
+              </Group>
             )}
-          </Box>
-        </Box>
-                <Group
-          justify="space-between"
-          align="center"
-          px="xl"
-          py="md"
-          bg="white"
-          style={{ borderTop: "1px solid var(--mantine-color-gray-2)", flexShrink: 0 }}
-        >
-          <Button variant="transparent" c="dark.8" px={0} fw={600} onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            color="brand"
-            radius="md"
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            rightSection={<IconArrowRight size={16} />}
-          >
-            Submit
-          </Button>
-        </Group>
+          </>
+        )}
       </Box>
     </Modal>
   );
 }
-
-
-
-
-
-
-
-

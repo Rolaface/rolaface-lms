@@ -1,98 +1,55 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  TextInput,
-  Select,
-  Table,
-  ActionIcon,
-  Paper,
-  Text,
-  Button,
-  Group,
-  Box,
-  SimpleGrid,
-} from "@mantine/core";
-import {
-  IconPencil,
-  IconTrash,
-  IconPlus,
-  IconBriefcase,
-  IconChevronLeft,
-  IconChevronRight,
-} from "@tabler/icons-react";
+import { useMemo, useState } from "react";
+import { TextInput, Select, NumberInput, ActionIcon, Paper, Text, Button, Group, Box, SimpleGrid } from "@mantine/core";
+import { IconTrash, IconPlus, IconBriefcase, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import type { UseFormReturnType } from "@mantine/form";
 import { DateInput } from "@mantine/dates";
-
-// Define the shape of your collateral entry. Merge this into your global form values type.
-export interface CollateralEntry {
-  id: string;
-  type: string;
-  description: string;
-  value: string;
-  ownership: string;
-}
+import { nextId, type LoanApplicationValues } from "./form";
+import { useCollateralTypeOptions } from "./lookups";
 
 interface CollateralStepProps {
-  form: UseFormReturnType<any>; // Replace 'any' with your actual FormValues type
-  collateralsError?: string | null;
+  form: UseFormReturnType<LoanApplicationValues>;
   readOnly?: boolean;
 }
 
-const COLLATERAL_TYPES = ["Property", "Vehicle", "Gold", "Deposit", "Other"];
-const OWNERSHIP_TYPES = ["Applicant", "Co-Applicant"];
-
-const nextId = () => Math.random().toString(36).slice(2, 10);
-
 const ROWS_PER_PAGE = 6;
 
-export function Collateral({ form, collateralsError, readOnly = false }: CollateralStepProps) {
-  const collaterals: CollateralEntry[] = form.values.collaterals || [];
-  const [page, setPage] = useState(1);
-
+export function Collateral({ form, readOnly = false }: CollateralStepProps) {
+  const collaterals = form.values.collaterals;
+  const { options: collateralTypeOptions, isLoading } = useCollateralTypeOptions();
+  const [requestedPage, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(collaterals.length / ROWS_PER_PAGE));
+  const page = Math.min(requestedPage, totalPages);
 
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
 
   const paginatedCollaterals = useMemo(() => {
     const start = (page - 1) * ROWS_PER_PAGE;
-    return collaterals
-      .map((collateral, idx) => ({ collateral, idx }))
-      .slice(start, start + ROWS_PER_PAGE);
+    return collaterals.map((collateral, idx) => ({ collateral, idx })).slice(start, start + ROWS_PER_PAGE);
   }, [collaterals, page]);
 
   const handleAddCollateral = () => {
     form.insertListItem("collaterals", {
       id: nextId(),
-      type: "",
+      collateral_type: null,
+      estimated_value: "",
+      ownership_date: "",
       description: "",
-      value: "",
-      ownership: "",
     });
-    const nextTotalPages = Math.max(1, Math.ceil((collaterals.length + 1) / ROWS_PER_PAGE));
-    setPage(nextTotalPages);
-  };
-
-  const handleDeleteCollateral = (index: number) => {
-    form.removeListItem("collaterals", index);
+    setPage(Math.max(1, Math.ceil((collaterals.length + 1) / ROWS_PER_PAGE)));
   };
 
   return (
     <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
-    <Box style={{ overflowX: "auto" }}>
+      <Box style={{ overflowX: "auto" }}>
         <Box miw={780}>
-          {/* Header Row */}
-          <div
-            className="flex items-center px-4 py-2.5"
-            style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
-          >
+          <div className="flex items-center px-4 py-2.5" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
             <div className="flex-1">
-              <Text size="sm" fw={700}>Add Collaterals</Text>
+              <Text size="sm" fw={700}>
+                Add Collaterals
+              </Text>
             </div>
             {!readOnly && <div className="w-24 shrink-0" />}
           </div>
 
-          {/* Body */}
           {collaterals.length === 0 ? (
             <div className="text-center py-10">
               <div className="flex flex-col items-center gap-2">
@@ -109,39 +66,32 @@ export function Collateral({ form, collateralsError, readOnly = false }: Collate
                 className="flex items-start px-4 py-3"
                 style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
               >
-                {/* Row Number */}
                 <div className="w-16 shrink-0 pt-7">
                   <Text size="sm" fw={500} c="slate.6">
                     {(page - 1) * ROWS_PER_PAGE + rowIndex + 1}
                   </Text>
                 </div>
 
-                <SimpleGrid cols={4} spacing="md" verticalSpacing="xs" className="flex-1">
+                <SimpleGrid cols={3} spacing="md" verticalSpacing="xs" className="flex-1">
                   <Select
                     size="sm"
                     label="Collateral Type"
-                    placeholder="Select type"
-                    data={COLLATERAL_TYPES}
+                    placeholder={isLoading ? "Loading..." : "Select type"}
+                    data={collateralTypeOptions}
+                    searchable
                     disabled={readOnly}
-                    {...form.getInputProps(`collaterals.${idx}.type`)}
-                    onBlur={() => form.validateField(`collaterals.${idx}.type`)}
+                    {...form.getInputProps(`collaterals.${idx}.collateral_type`)}
                   />
-                  <TextInput
+                  <NumberInput
                     size="sm"
                     label="Estimated Collateral Value"
-                    placeholder="e.g. 150000"
+                    placeholder="e.g. 150,000"
+                    min={0}
+                    allowNegative={false}
+                    hideControls
+                    thousandSeparator=","
                     readOnly={readOnly}
-                    {...form.getInputProps(`collaterals.${idx}.value`)}
-                    onBlur={() => form.validateField(`collaterals.${idx}.value`)}
-                  />
-                  <Select
-                    size="sm"
-                    label="Ownership"
-                    placeholder="Select ownership"
-                    data={OWNERSHIP_TYPES}
-                    disabled={readOnly}
-                    {...form.getInputProps(`collaterals.${idx}.ownership`)}
-                    onBlur={() => form.validateField(`collaterals.${idx}.ownership`)}
+                    {...form.getInputProps(`collaterals.${idx}.estimated_value`)}
                   />
                   <DateInput
                     size="sm"
@@ -149,14 +99,15 @@ export function Collateral({ form, collateralsError, readOnly = false }: Collate
                     label="Ownership Date if Applicable"
                     valueFormat="DD-MMM-YYYY"
                     placeholder="DD-MMM-YYYY"
-                    value={form.values.ownershipDate ? new Date(form.values.ownershipDate) : null}
+                    maxDate={new Date()}
+                    clearable
+                    value={collateral.ownership_date || null}
                     onChange={(date) =>
                       form.setFieldValue(
-                        "ownershipDate",
+                        `collaterals.${idx}.ownership_date`,
                         date ? new Date(date).toISOString().slice(0, 10) : "",
                       )
                     }
-                    error={form.errors.ownershipDate}
                     readOnly={readOnly}
                   />
                   <TextInput
@@ -166,18 +117,16 @@ export function Collateral({ form, collateralsError, readOnly = false }: Collate
                     readOnly={readOnly}
                     style={{ gridColumn: "1 / -1" }}
                     {...form.getInputProps(`collaterals.${idx}.description`)}
-                    onBlur={() => form.validateField(`collaterals.${idx}.description`)}
                   />
                 </SimpleGrid>
 
-                {/* Delete Action */}
                 {!readOnly && (
                   <div className="w-24 shrink-0 flex items-center gap-1 justify-end pt-7">
                     <ActionIcon
                       variant="subtle"
                       color="danger"
                       size="sm"
-                      onClick={() => handleDeleteCollateral(idx)}
+                      onClick={() => form.removeListItem("collaterals", idx)}
                       aria-label="Delete collateral"
                     >
                       <IconTrash size={16} stroke={1.5} />
@@ -189,12 +138,6 @@ export function Collateral({ form, collateralsError, readOnly = false }: Collate
           )}
         </Box>
       </Box>
-
-      {collateralsError && (
-        <Text fz="xs" c="red.6" px="md" pt="xs">
-          {collateralsError}
-        </Text>
-      )}
 
       {!readOnly && (
         <Group
@@ -222,7 +165,7 @@ export function Collateral({ form, collateralsError, readOnly = false }: Collate
                 size="sm"
                 radius="md"
                 disabled={page === 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => setPage(page - 1)}
               >
                 <IconChevronLeft size={14} />
               </ActionIcon>
@@ -231,7 +174,7 @@ export function Collateral({ form, collateralsError, readOnly = false }: Collate
                 size="sm"
                 radius="md"
                 disabled={page === totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => setPage(page + 1)}
               >
                 <IconChevronRight size={14} />
               </ActionIcon>

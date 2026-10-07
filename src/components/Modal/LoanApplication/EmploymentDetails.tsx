@@ -1,160 +1,193 @@
-import { SimpleGrid, TextInput, Select, NumberInput, Table, ActionIcon, Button, Group, Box, Text } from "@mantine/core";
-import { IconTrash, IconPlus } from "@tabler/icons-react";
+import { SimpleGrid, TextInput, Select, NumberInput, Group, Box, Text } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
-import { useState } from "react";
+import {
+  EMPLOYMENT_STATUSES,
+  EMPLOYMENT_TYPES,
+  EMPLOYMENT_TYPE_MAP,
+  type FinancialEntry,
+  type LoanApplicationValues,
+} from "./form";
 
 interface EmploymentDetailsProps {
-  form: UseFormReturnType<any>; // Replace 'any' with your specific form values type
+  form: UseFormReturnType<LoanApplicationValues>;
   readOnly?: boolean;
 }
-
-const EMPLOYMENT_STATUSES = ["Salaried", "Self Employed", "Pensioner", "Others"];
-
-const EMPLOYMENT_TYPE_MAP: Record<string, string[]> = {
-  "Salaried": ["Government", "Private", "Others"],
-  "Pensioner": ["Government", "Private", "Others"],
-  "Self Employed": ["Self-Employed", "Others"],
-  "Others": ["Others"],
-};
-const DEFAULT_EMPLOYMENT_TYPES = ["Government", "Private", "Self-Employed", "Others"];
-const INCOME_TYPES = ["Net Salary", "Business Income", "Rental Income", "Other Income"];
-// const EMPLOYMENT_STATUSES = ["Salaried", "Self Employed", "Pensioner", "Others"];
-const EMPLOYMENT_TYPES = ["Government", "Private", "Self-Employed", "Other"];
-// const INCOME_TYPES = ["Salary", "Business", "Interest Income", "Rentals", "Others"];
-const EXPENSE_TYPES = [ "Medical", "Education", "Travel", "Rentals", "Others"];
-const OBLIGATION_TYPES = ["Monthly Obligation","Rental Obligation", "Other Monthly Debt"];
 
 const LABEL_STYLES = {
   label: { display: "flex", alignItems: "center", marginBottom: 4 },
 } as const;
 
- function Label({
-  text,
-  required,
-  optional,
-}: {
-  text: string;
-  required?: boolean;
-  optional?: boolean;
-}) {
+function Label({ text, required }: { text: string; required?: boolean }) {
   return (
     <span className="text-sm font-semibold text-slate-800">
       {text}
       {required && <span className="text-red-500 ml-0.5">*</span>}
-      {optional && (
-        <span className="text-slate-400 font-normal ml-1">(Optional)</span>
-      )}
     </span>
   );
 }
 
-export function EmploymentDetails({ form, readOnly = false }: EmploymentDetailsProps) {
-  const [incomes, setIncomes] = useState(
-    INCOME_TYPES.map((type) => ({ type, amount: "" as number | string }))
-  );
-  const [obligations, setObligations] = useState(
-    OBLIGATION_TYPES.map((type) => ({ type, amount: "" as number | string }))
-  );
+const formatTotal = (entries: FinancialEntry[]) =>
+  entries
+    .reduce((acc, entry) => acc + (Number(entry.monthly_amount) || 0), 0)
+    .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const updateIncomeAmount = (index: number, val: number | string) => {
-    const newIncomes = [...incomes];
-    newIncomes[index].amount = val;
-    setIncomes(newIncomes);
-    form.setFieldValue("monthlyIncome", newIncomes);
-  };
-
-  const updateObligationAmount = (index: number, val: number | string) => {
-    const newObligations = [...obligations];
-    newObligations[index].amount = val;
-    setObligations(newObligations);
-    form.setFieldValue("monthlyObligation", newObligations);
-  };
-
-  const currentStatus = form.values.employmentStatus;
-  const availableEmploymentTypes = 
-    currentStatus && EMPLOYMENT_TYPE_MAP[currentStatus]
-      ? EMPLOYMENT_TYPE_MAP[currentStatus]
-      : DEFAULT_EMPLOYMENT_TYPES;
-  const [expenses, setExpenses] = useState([{ type: "Household", amount: 0 }]);
-  const addIncome = () => setIncomes([...incomes, { type: "", amount: 0 }]);
-  const updateIncome = (index: number, field: string, value: any) => {
-    const newIncomes = [...incomes];
-    newIncomes[index] = { ...newIncomes[index], [field]: value };
-    setIncomes(newIncomes);
-    form.setFieldValue("monthlyIncome", newIncomes); // Optional: sync with form
-  };
-  const removeIncome = (index: number) => setIncomes(incomes.filter((_, i) => i !== index));
-
-  const addExpense = () => setExpenses([...expenses, { type: "", amount: 0 }]);
-  const updateExpense = (index: number, field: string, value: any) => {
-    const newExpenses = [...expenses];
-    newExpenses[index] = { ...newExpenses[index], [field]: value };
-    setExpenses(newExpenses);
-    form.setFieldValue("monthlyExpense", newExpenses); // Optional: sync with form
-  };
-  const removeExpense = (index: number) => setExpenses(expenses.filter((_, i) => i !== index));
-
-  const getAvailableIncomeTypes = (currentIndex: number) => {
-    const selectedTypes = incomes.filter((_, i) => i !== currentIndex).map(item => item.type);
-    return INCOME_TYPES.filter(type => !selectedTypes.includes(type));
-  };
-
-  const getAvailableExpenseTypes = (currentIndex: number) => {
-    const selectedTypes = expenses.filter((_, i) => i !== currentIndex).map(item => item.type);
-    return EXPENSE_TYPES.filter(type => !selectedTypes.includes(type));
-  };
-return (
-    <SimpleGrid
-      cols={{ base: 1, xs: 2, lg: 3 }}
-      spacing="sm"
-      verticalSpacing="xs"
+function AmountPanel({
+  form,
+  field,
+  title,
+  totalLabel,
+  color,
+  readOnly,
+}: {
+  form: UseFormReturnType<LoanApplicationValues>;
+  field: "income" | "obligations";
+  title: string;
+  totalLabel: string;
+  color: "green" | "red";
+  readOnly: boolean;
+}) {
+  const entries = form.values[field];
+  return (
+    <Box
+      p="sm"
+      h="100%"
+      bd="1px solid var(--mantine-color-gray-2)"
+      style={{ borderRadius: "var(--mantine-radius-xl)", display: "flex", flexDirection: "column" }}
     >
+      <Group justify="space-between" mb="md">
+        <Group gap="xs">
+          <Box w={8} h={8} style={{ borderRadius: "50%", backgroundColor: `var(--mantine-color-${color}-5)` }} />
+          <Text fw={700} size="xs" c="dark.8" style={{ letterSpacing: "0.5px" }}>
+            {title}
+          </Text>
+        </Group>
+        <Box
+          px={8}
+          py={2}
+          bg={`${color}.0`}
+          c={`${color}.8`}
+          fw={700}
+          style={{
+            borderRadius: "var(--mantine-radius-sm)",
+            border: `1px solid var(--mantine-color-${color}-2)`,
+            fontSize: "10px",
+          }}
+        >
+          ZMW
+        </Box>
+      </Group>
+
+      <SimpleGrid cols={1} spacing="md" mb="xl">
+        {entries.map((item, index) => (
+          <Group key={item.source} wrap="nowrap" gap="xs">
+            <Select
+              size="sm"
+              radius="md"
+              data={[item.source]}
+              value={item.source}
+              readOnly
+              allowDeselect={false}
+              style={{ flex: 1.5 }}
+              styles={{
+                input: {
+                  backgroundColor: "var(--mantine-color-gray-0)",
+                  color: "var(--mantine-color-dark-4)",
+                  pointerEvents: "none",
+                },
+              }}
+            />
+            <NumberInput
+              size="sm"
+              radius="md"
+              hideControls
+              min={0}
+              allowNegative={false}
+              placeholder="0.00"
+              thousandSeparator=","
+              value={item.monthly_amount}
+              onChange={(val) =>
+                form.setFieldValue(`${field}.${index}.monthly_amount`, typeof val === "number" ? val : "")
+              }
+              readOnly={readOnly}
+              leftSection={
+                <Text size="xs" c="dimmed" pl={4}>
+                  ZMW
+                </Text>
+              }
+              styles={{ input: { textAlign: "right", fontWeight: 600 } }}
+              style={{ flex: 1 }}
+            />
+          </Group>
+        ))}
+      </SimpleGrid>
+
+      <Group
+        justify="space-between"
+        mt="auto"
+        pt="sm"
+        align="flex-end"
+        style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}
+      >
+        <Text size="10px" fw={700} c="dimmed" style={{ letterSpacing: "0.5px" }}>
+          {totalLabel}
+        </Text>
+        <Text size="sm" fw={800} c="dark.9">
+          ZMW {formatTotal(entries)}
+        </Text>
+      </Group>
+    </Box>
+  );
+}
+
+export function EmploymentDetails({ form, readOnly = false }: EmploymentDetailsProps) {
+  const status = form.values.employment_status;
+  const employmentTypes = status && EMPLOYMENT_TYPE_MAP[status] ? EMPLOYMENT_TYPE_MAP[status] : EMPLOYMENT_TYPES;
+
+  return (
+    <SimpleGrid cols={{ base: 1, xs: 2, lg: 3 }} spacing="sm" verticalSpacing="xs">
       <Select
         radius="md"
         styles={LABEL_STYLES}
         label={<Label text="Employment Status" required />}
         placeholder="Select status"
         data={EMPLOYMENT_STATUSES}
-        {...form.getInputProps("employmentStatus")}
+        {...form.getInputProps("employment_status")}
+        onChange={(value) => {
+          form.setFieldValue("employment_status", value);
+          const allowed = value ? EMPLOYMENT_TYPE_MAP[value] ?? EMPLOYMENT_TYPES : EMPLOYMENT_TYPES;
+          if (form.values.employment_type && !allowed.includes(form.values.employment_type)) {
+            form.setFieldValue("employment_type", null);
+          }
+        }}
         disabled={readOnly}
       />
-
-      {/* <Select
+      <Select
         radius="md"
         styles={LABEL_STYLES}
         label={<Label text="Employment Type" required />}
         placeholder="Select type"
-        data={EMPLOYMENT_TYPES}
-        {...form.getInputProps("employmentType")}
-        disabled={readOnly}
-      /> */}
-<Select
-        radius="md"
-        styles={LABEL_STYLES}
-        label={<Label text="Employment Type" required />}
-        placeholder="Select type"
-        data={availableEmploymentTypes}
-        {...form.getInputProps("employmentType")}
+        data={employmentTypes}
+        {...form.getInputProps("employment_type")}
         disabled={readOnly}
       />
       <TextInput
+        maxLength={140}
         radius="md"
         styles={LABEL_STYLES}
         label={<Label text="Employer Name" required />}
         placeholder="e.g. ABC Enterprises Ltd"
-        {...form.getInputProps("companyName")}
+        {...form.getInputProps("employer_name")}
         readOnly={readOnly}
       />
-
       <TextInput
+        maxLength={140}
         radius="md"
         styles={LABEL_STYLES}
         label={<Label text="Designation" required />}
         placeholder="e.g. Software Engineer"
         {...form.getInputProps("designation")}
-        readOnly={readOnly}Monthly Obligation
+        readOnly={readOnly}
       />
-
       <NumberInput
         min={0}
         allowNegative={false}
@@ -163,146 +196,40 @@ return (
         styles={LABEL_STYLES}
         label={<Label text="Experience (in years)" required />}
         placeholder="e.g. 5"
-        {...form.getInputProps("experience")}
+        {...form.getInputProps("experience_years")}
+        readOnly={readOnly}
+      />
+      <NumberInput
+        min={300}
+        max={850}
+        allowNegative={false}
+        allowDecimal={false}
+        radius="md"
+        hideControls
+        styles={LABEL_STYLES}
+        label={<Label text="Credit Score" required />}
+        placeholder="e.g. 720"
+        {...form.getInputProps("credit_score")}
         readOnly={readOnly}
       />
 
-{/* Income and Expense Tables */}
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm" style={{ gridColumn: "1 / -1", marginTop: "12px" }}>
-
-        {/* Monthly Income - Left Side */}
-      <Box>
-        <Box p="sm" bd="1px solid var(--mantine-color-gray-2)" style={{ borderRadius: "var(--mantine-radius-xl)" }}>
-          <Group justify="space-between" mb="md">
-            <Group gap="xs">
-              <Box w={8} h={8} style={{ borderRadius: "50%", backgroundColor: "var(--mantine-color-green-5)" }} />
-              <Text fw={700} size="xs" c="dark.8" style={{ letterSpacing: "0.5px" }}>MONTHLY INCOME</Text>
-            </Group>
-            <Box px={8} py={2} bg="green.0" c="green.8" fw={700} style={{ borderRadius: "var(--mantine-radius-sm)", border: "1px solid var(--mantine-color-green-2)", fontSize: "10px" }}>
-              ZMW
-            </Box>
-          </Group>
-
-         <SimpleGrid cols={1} spacing="md">
-            {incomes.map((item, index) => (
-              <Group key={item.type} wrap="nowrap" gap="xs">
-                <Select
-                  size="sm"
-                  radius="md"
-                  data={[item.type]}
-                  value={item.type}
-                  readOnly
-                  allowDeselect={false}
-                  style={{ flex: 1.5 }}
-                  styles={{
-                    input: {
-                      backgroundColor: "var(--mantine-color-gray-0)",
-                      color: "var(--mantine-color-dark-4)",
-                      pointerEvents: "none",
-                    },
-                  }}
-                />
-                <NumberInput
-                  size="sm"
-                  radius="md"
-                  hideControls
-                  placeholder="0.00"
-                  thousandSeparator=","
-                  value={item.amount}
-                  onChange={(val) => updateIncomeAmount(index, val)}
-                  readOnly={readOnly}
-                  leftSection={<Text size="xs" c="dimmed" pl={4}>ZMW</Text>}
-                  styles={{ input: { textAlign: 'right', fontWeight: 600 } }}
-                  style={{ flex: 1 }}
-                />
-              </Group>
-            ))}
-          </SimpleGrid>
-
-          <Group justify="space-between" mt="xl" pt="sm" align="flex-end" style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}>
-            <Text size="10px" fw={700} c="dimmed" style={{ letterSpacing: "0.5px" }}>GROSS MONTHLY INFLOW</Text>
-            <Text size="sm" fw={800} c="dark.9">
-              ZMW {incomes.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </Text>
-          </Group>
-        </Box>
-      </Box>
-
-        {/* Monthly Obligation - Right Side */}
-      <Box>
-        {/* <Box p="sm" bd="1px solid var(--mantine-color-gray-2)" style={{ borderRadius: "var(--mantine-radius-xl)" }}> */}
-        <Box
-  p="sm"
-  h="100%"
-  bd="1px solid var(--mantine-color-gray-2)"
-  style={{
-    borderRadius: "var(--mantine-radius-xl)",
-    display: "flex",
-    flexDirection: "column",
-  }}
->
-          <Group justify="space-between" mb="md">
-            <Group gap="xs">
-              <Box w={8} h={8} style={{ borderRadius: "50%", backgroundColor: "var(--mantine-color-red-5)" }} />
-              <Text fw={700} size="xs" c="dark.8" style={{ letterSpacing: "0.5px" }}>MONTHLY OBLIGATION</Text>
-            </Group>
-            <Box px={8} py={2} bg="red.0" c="red.8" fw={700} style={{ borderRadius: "var(--mantine-radius-sm)", border: "1px solid var(--mantine-color-red-2)", fontSize: "10px" }}>
-              ZMW
-            </Box>
-          </Group>
-
-         {/* <SimpleGrid cols={1} spacing="md"> */}
-         <SimpleGrid cols={1} spacing="md" mb="xl">
-            {obligations.map((item, index) => (
-              <Group key={item.type} wrap="nowrap" gap="xs">
-                <Select
-                  size="sm"
-                  radius="md"
-                  data={[item.type]}
-                  value={item.type}
-                  readOnly
-                  allowDeselect={false}
-                  style={{ flex: 1.5 }}
-                  styles={{
-                    input: {
-                      backgroundColor: "var(--mantine-color-gray-0)",
-                      color: "var(--mantine-color-dark-4)",
-                      pointerEvents: "none",
-                    },
-                  }}
-                />
-                <NumberInput
-                  size="sm"
-                  radius="md"
-                  hideControls
-                  placeholder="0.00"
-                  thousandSeparator=","
-                  value={item.amount}
-                  onChange={(val) => updateObligationAmount(index, val)}
-                  readOnly={readOnly}
-                  leftSection={<Text size="xs" c="dimmed" pl={4}>ZMW</Text>}
-                  styles={{ input: { textAlign: 'right', fontWeight: 600 } }}
-                  style={{ flex: 1 }}
-                />
-              </Group>
-            ))}
-          </SimpleGrid>
-
-          {/* <Group justify="space-between" mt="xl" pt="sm" align="flex-end" style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}> */}
-          <Group
-  justify="space-between"
-  mt="auto"
-  pt="sm"
-  align="flex-end"
-  style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}
->
-            <Text size="10px" fw={700} c="dimmed" style={{ letterSpacing: "0.5px" }}>TOTAL MONTHLY OUTFLOW</Text>
-            <Text size="sm" fw={800} c="dark.9">
-              ZMW {obligations.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </Text>
-          </Group>
-        </Box>
-      </Box>
+        <AmountPanel
+          form={form}
+          field="income"
+          title="MONTHLY INCOME"
+          totalLabel="GROSS MONTHLY INFLOW"
+          color="green"
+          readOnly={readOnly}
+        />
+        <AmountPanel
+          form={form}
+          field="obligations"
+          title="MONTHLY OBLIGATION"
+          totalLabel="TOTAL MONTHLY OUTFLOW"
+          color="red"
+          readOnly={readOnly}
+        />
       </SimpleGrid>
     </SimpleGrid>
   );

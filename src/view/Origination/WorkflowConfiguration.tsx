@@ -14,8 +14,8 @@ import { anchorFromElement, isRejectionState, uuidv4, type Anchor, type WfRule, 
 
 type PopoverState = { type: "rule"; id: string; anchor: Anchor } | { type: "addState"; anchor: Anchor; lockedFromId: string | null };
 
-const doctype = "Custom Loan Application";
-const workflowName = "Custom Loan Application Workflow";
+const doctype = "Custom LOS Loan Application";
+const workflowName = "Custom LOS Loan Application Workflow";
 
 interface ApiWorkflow {
   states: { state: string; doc_status?: string | number; allow_edit?: string; message?: string; is_active?: number | string | null }[];

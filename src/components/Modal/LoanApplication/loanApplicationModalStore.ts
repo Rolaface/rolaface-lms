@@ -4,6 +4,7 @@ import { LoanApplicationModal } from './LoanApplicationModal';
 
 export interface LoanApplicationModalParams {
   loanApplicationId?: string | null;
+  readOnly?: boolean;
   onSaved?: () => void;
 }
 
@@ -13,9 +14,11 @@ interface LoanApplicationModalProps {
   onMinimize: () => void;
   onSaved?: () => void;
   loanApplicationId?: string | null;
+  readOnly?: boolean;
 }
 
 function getTitle(params: LoanApplicationModalParams) {
+  if (params.readOnly) return 'Loan Application';
   return params.loanApplicationId ? 'Update Loan Application' : 'New Loan Application';
 }
 
@@ -27,6 +30,7 @@ export const loanApplicationModal = createModal<LoanApplicationModalParams, Loan
     getTitle,
    buildProps: (params) => ({
   loanApplicationId: params.loanApplicationId ?? null,
+  readOnly: params.readOnly,
   onSaved: params.onSaved,
 }),
   },

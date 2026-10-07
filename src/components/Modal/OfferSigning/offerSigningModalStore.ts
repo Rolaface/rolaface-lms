@@ -1,17 +1,17 @@
 import { IconSignature } from '@tabler/icons-react';
 import { createModal } from '../../../store/modal store/createModal';
 import { OfferModal } from './OfferSigningModal';
-import type { LoanApplicationValues } from '../LoanApplication/LoanApplicationModal';
 
 export interface OfferModalParams {
-  applicationValues?: LoanApplicationValues;
+  loanApplicationId?: string | null;
+  readOnly?: boolean;
 }
 
 interface OfferModalProps {
   opened: boolean;
   onClose: () => void;
   onMinimize: () => void;
-  applicationValues?: LoanApplicationValues;
+  loanApplicationId?: string | null;
   embedded?: boolean;
   readOnly?: boolean;
 }
@@ -27,7 +27,8 @@ export const offerModal = createModal<OfferModalParams, OfferModalProps>(
     icon: IconSignature,
     getTitle,
     buildProps: (params) => ({
-      applicationValues: params.applicationValues,
+      loanApplicationId: params.loanApplicationId,
+      readOnly: params.readOnly,
     }),
   },
 );

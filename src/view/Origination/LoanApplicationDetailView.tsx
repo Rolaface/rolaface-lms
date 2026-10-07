@@ -1,17 +1,13 @@
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Badge, Button, Paper, Tabs, Text } from '@mantine/core';
 import { IconPencil } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
 
 import type { LoanApplicationRow } from './LoanApplication';
-import { getDisplayStatus } from './LoanApplication';
-import { getLoanApplicationById } from '../../api/loanApplicationApi';
-import { getWorkflowActions, applyWorkflowAction } from '../../api/workflowApi';
-import { openCommonModal } from '../../components/Modal/AlertModal';
-import { parseFrappeError } from '../../utils/parseFrappeError';
-import { WorkflowActionModal } from '../../components/Modal/WorkflowActionModal';
-import { useUserStore } from '../../store/userStore';
+import { CLOSED_STATUSES, STATUS_COLOR, displayStatus } from './LoanApplication';
+import { getWorkflowActions } from '../../api/workflowApi';
+import { useApplicationWorkflow } from './useApplicationWorkflow';
+import * as LoanApplicationApi from '../../api/LosConfiguration/LoanApplicationApi';
 import {
   themeTokens,
   serif,
@@ -37,66 +33,13 @@ interface LoanApplicationDetailViewProps {
   application: LoanApplicationRow;
   onBack: () => void;
   onEdit?: () => void;
-  /** @deprecated — workflow actions are now driven by the backend */
-  onApprove?: () => void;
-  /** @deprecated — workflow actions are now driven by the backend */
-  onReject?: () => void;
-  /** @deprecated */
-  isActionPending?: boolean;
 }
 
-export function LoanApplicationDetailView({
-  application,
-  onBack,
-  onEdit,
-}: LoanApplicationDetailViewProps) {
-  const queryClient = useQueryClient();
-  const email = useUserStore((s) => s.user?.email);
-  const [workflowOpened, { open: openWorkflow, close: closeWorkflow }] = useDisclosure(false);
-  const [preAction, setPreAction] = useState<string | undefined>(undefined);
-
-  const { data: applicationDetailResponse } = useQuery({
-    queryKey: ['loan-application-detail', application.name],
-    queryFn: () => getLoanApplicationById(application.name),
+export function LoanApplicationDetailView({ application, onBack, onEdit }: LoanApplicationDetailViewProps) {
+  const { data: apiData } = useQuery({
+    queryKey: ['los-loan-application', application.name],
+    queryFn: () => LoanApplicationApi.getById(application.name),
   });
-
-  /** Fresh workflow actions for this document — separate query so detail view is always current. */
-  const { data: workflowData } = useQuery({
-    queryKey: ['workflow-actions', application.name],
-    queryFn: () => getWorkflowActions('Custom Loan Application', application.name),
-    refetchOnWindowFocus: true,
-  });
-
-  const allowedActions = workflowData?.allowed_actions ?? [];
-
-  const workflowMutation = useMutation({
-    mutationFn: (payload: { action: string; comment?: string; assign_to_user?: string }) =>
-      applyWorkflowAction({ docname: application.name, ...payload }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['loan-applications'] });
-      queryClient.invalidateQueries({ queryKey: ['loan-application-detail', application.name] });
-      queryClient.invalidateQueries({ queryKey: ['workflow-actions', application.name] });
-      closeWorkflow();
-      openCommonModal({
-        heading: 'Action Applied',
-        subtitle: '',
-        body: `Workflow action '${variables.action}' applied successfully.`,
-        color: 'green',
-        buttons: [{ label: 'Close', color: 'green' }],
-      });
-    },
-    onError: (error: any) => {
-      openCommonModal({
-        heading: 'Action Failed',
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: 'red',
-        buttons: [{ label: 'Close', color: 'red' }],
-      });
-    },
-  });
-
-  const apiData = applicationDetailResponse?.message?.data;
 
   const detail = useMemo(
     () => (apiData ? buildDetailFromApi(apiData) : buildFallbackDetail(application)),
@@ -107,33 +50,25 @@ export function LoanApplicationDetailView({
   const [collapsed, setCollapsed] = useState(false);
   const [search, setSearch] = useState('');
 
-  const displayStatus = getDisplayStatus(application.status);
-  const scale =
-    displayStatus === 'Approved'
-      ? 'info'
-      : displayStatus === 'Sanctioned'
-        ? 'success'
-        : displayStatus === 'Rejected'
-          ? 'danger'
-          : displayStatus === 'Closed'
-            ? 'slate'
-            : displayStatus === 'Draft'
-              ? 'slate'
-              : 'info';
+  const { data: workflowData } = useQuery({
+    queryKey: ['los-workflow-actions', application.name],
+    queryFn: () => getWorkflowActions(LoanApplicationApi.LOAN_APPLICATION_DOCTYPE, application.name),
+    staleTime: 0,
+  });
+  const allowedActions = workflowData?.allowed_actions ?? [];
+  const { modal: workflowModal, openAction } = useApplicationWorkflow();
 
-  const isDraft = application.status === 'Draft';
-  const isRejected = application.status === 'Cancelled';
+  const status = displayStatus(apiData ?? application);
+  const scale = STATUS_COLOR[status] ?? 'slate';
+  const canEdit = !CLOSED_STATUSES.includes(apiData?.status ?? application.status);
+  const isRejected = status === 'Rejected' || status === 'Cancelled';
 
   const accentColor =
-    application.status === 'Sanctioned'
+    status === 'Approved'
       ? themeTokens.success
-      : application.status === 'Cancelled'
+      : isRejected
         ? themeTokens.danger
-        : application.status === 'Closed'
-          ? themeTokens.slateSoft
-          : application.status === 'Submitted'
-            ? themeTokens.success
-            : themeTokens.info;
+        : themeTokens.info;
 
   const q = search.trim().toLowerCase();
   const filteredDocuments = useMemo(
@@ -156,19 +91,7 @@ export function LoanApplicationDetailView({
 
   return (
     <div className="flex h-full min-h-[calc(100vh-140px)] -m-8">
-      {/* Generic workflow action modal */}
-      <WorkflowActionModal
-        opened={workflowOpened}
-        applicationId={application.name}
-        applicantName={detail.applicant.fullName || null}
-        allowedActions={allowedActions}
-        preselectedAction={preAction}
-        currentUserEmail={email}
-        onClose={closeWorkflow}
-        onConfirm={(payload) => workflowMutation.mutate(payload)}
-        isSubmitting={workflowMutation.isPending}
-      />
-
+      {workflowModal}
       <ApplicationSidebar
         application={application}
         detail={detail}
@@ -202,10 +125,10 @@ export function LoanApplicationDetailView({
                       LOAN APPLICATION · {application.name}
                     </Text>
                     <Text fz="xl" fw={700} c="slate.9" style={serif}>
-                      {detail.applicant.fullName || 'Unnamed applicant'}
+                      {detail.displayName}
                     </Text>
                     <Text fz="xs" c="dimmed" className="mt-1">
-                      Product: <span className="font-semibold text-[var(--mantine-color-slate-7)]">{application.application_type || '—'}</span>
+                      Loan type: <span className="font-semibold text-[var(--mantine-color-slate-7)]">{detail.loanTerms.loanType}</span>
                       {'   '}Applied: <span className="font-semibold text-[var(--mantine-color-slate-7)]">{formatDate(application.application_date)}</span>
                     </Text>
                   </div>
@@ -218,14 +141,13 @@ export function LoanApplicationDetailView({
                       size="lg"
                       styles={{ root: { textTransform: 'none', fontWeight: 700, border: `1px solid var(--mantine-color-${scale}-2)` } }}
                     >
-                      {displayStatus}
+                      {status}
                     </Badge>
-                    {isDraft && onEdit && (
+                    {canEdit && onEdit && (
                       <Button size="xs" radius="md" variant="default" leftSection={<IconPencil size={13} />} onClick={onEdit}>
                         Edit
                       </Button>
                     )}
-                    {/* Dynamic workflow action buttons — one per allowed transition */}
                     {allowedActions.map((wf) => (
                       <Button
                         key={wf.action}
@@ -233,11 +155,14 @@ export function LoanApplicationDetailView({
                         radius="md"
                         variant="light"
                         color="violet"
-                        loading={workflowMutation.isPending}
-                        onClick={() => {
-                          setPreAction(wf.action);
-                          openWorkflow();
-                        }}
+                        onClick={() =>
+                          openAction({
+                            id: application.name,
+                            applicantName: detail.displayName,
+                            actions: allowedActions,
+                            preselectedAction: wf.action,
+                          })
+                        }
                       >
                         {wf.action}
                       </Button>
@@ -246,10 +171,10 @@ export function LoanApplicationDetailView({
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pb-3 border-b border-[var(--mantine-color-slate-1)]">
-                  <OverviewField label="LOAN PRODUCT" value={application.application_type || '—'} />
+                  <OverviewField label="LOAN TYPE" value={detail.loanTerms.loanType} />
                   <OverviewField label="AMOUNT REQUESTED" value={formatCurrency(detail.loanTerms.amountRequested)} />
                   <OverviewField label="TENURE REQUESTED" value={`${detail.loanTerms.tenureMonths} months`} />
-                  <OverviewField label="APPLICATION STATUS" value={displayStatus} />
+                  <OverviewField label="APPLICATION STATUS" value={status} />
                   <OverviewField label="APPLICATION DATE" value={formatDate(application.application_date)} />
                 </div>
 
@@ -277,7 +202,7 @@ export function LoanApplicationDetailView({
                 </Tabs.List>
 
                 <Tabs.Panel value="overview">
-                  <OverviewPanel application={application} detail={detail} />
+                  <OverviewPanel detail={detail} />
                 </Tabs.Panel>
 
                 <Tabs.Panel value="applicant">

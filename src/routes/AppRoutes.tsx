@@ -23,9 +23,6 @@ import { CollateralType } from "../view/Collateral/CollateralType/CollateralType
 import { Collateral } from "../view/Collateral/Collateral";
 import { LoanApplication } from "../view/Origination/LoanApplication";
 import { WorkflowConfiguration } from "../view/Origination/WorkflowConfiguration";
-import { PrescreeningTable } from "../view/Origination/Prescreening/PrescreeningTable";
-import { EnrichmentTable } from "../view/Origination/Enrichment/EnrichmentTable";
-import { UnderwritingTable } from "../view/Origination/Underwriting/UnderwritingTable";
 import { LoanStatement } from "../view/Reports/LoanStatement/LoanStatement";
 import { ArrearReports } from "../view/Reports/Arrear/ArrearReports";
 import { RepaymentSchedule } from "../view/Reports/RepaymentSchedule/RepaymentSchedule";
@@ -79,7 +76,6 @@ import type { LmsModule } from "../types/User/userRole";
 import LOSPreScreening from "../view/LosConfiguration/PreScreening/Losprescreening";
 import LOSEligibilityCheck from "../view/LosConfiguration/EligibilityCheck/LOSEligibilityCheck";
 import LoanProductAutoAssignment from "../view/LosConfiguration/ProductAssignment/LoanProductAssignment";
-import { OfferIssuanceStage } from "../view/Origination/OfferIssuanceStage/OfferIssuanceStage";
 import { LoanTypeSetup } from "../view/LosConfiguration/LoanTpeSetup/Loantypesetup";
 import { DocumentSetup } from "../view/LosConfiguration/DocumentSetup/DocumentSetup";
 import { SourceMaintenance } from "../view/LosConfiguration/SourceMaintenance/SourceMaintenance";
@@ -266,22 +262,22 @@ const originationWorkflowConfigurationRoute = createRoute({
 const originationPrescreeningRoute = createRoute({
   getParentRoute: () => originationRoute,
   path: "/prescreening",
-  component: PrescreeningTable,
+  component: () => <LoanApplication stage="prescreening" />,
 });
 const originationEnrichmentRoute = createRoute({
   getParentRoute: () => originationRoute,
   path: "/loan-appraisal",
-  component: EnrichmentTable,
+  component: () => <LoanApplication stage="appraisal" />,
 });
 const originationUnderwritingRoute = createRoute({
   getParentRoute: () => originationRoute,
   path: "/underwriting",
-  component: UnderwritingTable,
+  component: () => <LoanApplication stage="underwriting" />,
 });
 const originationOfferIssuanceRoute = createRoute({
   getParentRoute: () => originationRoute,
   path: "/offerIssuanceStage",
-  component: OfferIssuanceStage,
+  component: () => <LoanApplication stage="offer" />,
 });
 // const originationApplicationRoute = createRoute({
 //   getParentRoute: () => originationRoute,

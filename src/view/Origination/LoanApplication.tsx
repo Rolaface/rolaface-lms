@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Box,
   Button,
   TextInput,
   Select,
-  SegmentedControl,
   Group,
   Paper,
   Table,
@@ -18,8 +17,8 @@ import {
   Title,
   Stack,
   Loader,
+  Menu,
   useMantineTheme,
-  Menu, Popover, ScrollArea, Divider
 } from "@mantine/core";
 import {
   IconPencil,
@@ -31,161 +30,117 @@ import {
   IconClipboardList,
   IconTrash,
   IconAlertTriangle,
-  IconDotsVertical,
   IconEye,
-  IconSend,
-  IconGavel,
-  IconMessageCircle2
+  IconDotsVertical,
 } from "@tabler/icons-react";
-import { useDisclosure } from "@mantine/hooks";
+import { useDebouncedValue } from "@mantine/hooks";
 import {
   useReactTable,
   getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
   flexRender,
   createColumnHelper,
+  type SortingState,
 } from "@tanstack/react-table";
-
 
 import { loanApplicationModal } from "../../components/Modal/LoanApplication/loanApplicationModalStore";
 import { LoanApplicationDetailView } from "./LoanApplicationDetailView";
-import {
-  getAllLoanApplications,
-  deleteLoanApplication,
-  updateLoanApplicationStatus,
-  convertCustomLoanApplicationToLoan,
-} from "../../api/loanApplicationApi";
-import { applyWorkflowAction } from "../../api/workflowApi";
+import * as LoanApplicationApi from "../../api/LosConfiguration/LoanApplicationApi";
+import type { ApplicantType, LoanApplicationListRow } from "../../api/LosConfiguration/LoanApplicationApi";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 import { useCompanyStore } from "../../store/companyStore";
 import { openCommonModal } from "../../components/Modal/AlertModal";
-import { CreateLoanBookingModal } from "../../components/Modal/CreateLoanBookingModal";
-import { getSymbol, formatAmount } from "../../store/currencyStore";
-import { loanAccountModal } from "../../components/Modal/LoanBooking/loanAccountModalStore";
-import { WorkflowActionModal } from "../../components/Modal/WorkflowActionModal";
-import { useUserStore } from "../../store/userStore";
+import { formatAmount } from "../../store/currencyStore";
+import { getWorkflowActions } from "../../api/workflowApi";
 import type { WorkflowAction } from "../../types/workflow";
-export interface LoanApplicationRow {
-  name: string;
-  application_type: string;
-  amount: number;
-  customer: string | null;
-  loan_application_status: string;
-  status: string;
-  application_date: string;
-  first_name: string | null;
-  last_name: string | null;
-  company_name: string | null;
-  _assign?: string | null;
-  _comments?: string | null;
-  /** Canonical workflow state returned by the backend (e.g. "Pending", "Under Review"). */
-  workflow_state?: string | null;
-  /** Actions the current user is allowed to take, pre-computed server-side. */
-  allowed_workflow_actions?: WorkflowAction[];
-}
-interface ParsedComment {
-  comment: string;
-  by: string;
-  name: string;
-}
+import { useApplicationWorkflow } from "./useApplicationWorkflow";
+import { ORIGINATION_STAGES, type OriginationStageKey } from "./stages";
 
-function getComments(row: LoanApplicationRow): ParsedComment[] {
-  if (!row._comments) return [];
-  try {
-    return JSON.parse(row._comments);
-  } catch {
-    return [];
-  }
-}
-function CommentsPopover({ row }: { row: LoanApplicationRow }) {
-  const comments = getComments(row);
-  if (comments.length === 0) return null;
+export type LoanApplicationRow = LoanApplicationListRow;
 
-  return (
-    <Popover width={320} position="bottom-start" shadow="md" withArrow>
-      <Popover.Target>
-        <ActionIcon size="sm" variant="subtle" color="gray">
-          <IconMessageCircle2 size={14} />
-        </ActionIcon>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <ScrollArea.Autosize mah={260}>
-          <Stack gap="xs">
-            {comments.map((c, idx) => (
-              <Box key={c.name}>
-                <Group gap={6} justify="space-between">
-                  <Text fz={11} fw={700} c="slate.7">
-                    {c.by}
-                  </Text>
-                </Group>
-                <Text fz={11} c="slate.6" style={{ whiteSpace: "pre-wrap" }}>
-                  {c.comment}
-                </Text>
-                {idx < comments.length - 1 && <Divider my={6} />}
-              </Box>
-            ))}
-          </Stack>
-        </ScrollArea.Autosize>
-      </Popover.Dropdown>
-    </Popover>
-  );
-}
 const columnHelper = createColumnHelper<LoanApplicationRow>();
 
-const STATUS_OPTIONS = ["Pending", "Approved", "Created", "Rejected"];
+const APPLICANT_TYPES: ApplicantType[] = ["Individual", "Business"];
+const SORTABLE_COLUMNS: Record<string, string> = { name: "name", requested_amount: "requested_amount" };
 
 export const STATUS_COLOR: Record<string, string> = {
-  Pending: "warning",
-  Approved: "info",
-  Created: "success",
+  Draft: "warning",
+  Submitted: "info",
+  Approved: "success",
   Rejected: "danger",
-  "Under Review": "grape", 
-    "Ready for Approval": "info",
-  "Additional Information Required": "orange",
-  Rejection: "danger",
+  Cancelled: "slate",
+  "Pre-Screening": "info",
+  Appraisal: "info",
+  Underwriting: "grape",
+  Offer: "grape",
 };
-export function getDisplayStatus(status: string) {
-  if (status === "Cancelled") return "Rejected";
-  if (status === "Submitted") return "Approved";
-  return status;
-}
-const OUTCOME_STATUSES = [
-  "Under Review",
-  "Ready for Approval",
-  "Additional Information Required",
-  "Rejection",
-];
 
-/** The canonical display status — prefers backend workflow_state (multi-tenant safe). */
-function getEffectiveStatus(row: LoanApplicationRow) {
-  if (row.workflow_state) return row.workflow_state;
-  // Legacy fallback for rows without workflow configured
-  if (OUTCOME_STATUSES.includes(row.status)) return row.status;
-  return row.loan_application_status;
+export const CLOSED_STATUSES = ["Approved", "Rejected", "Cancelled"];
+
+export const displayStatus = (row: { status: string; workflow_state?: string | null }) => row.workflow_state || row.status;
+
+function WorkflowMenu({
+  row,
+  onSelect,
+  onViewDetails,
+}: {
+  row: LoanApplicationRow;
+  onSelect: (action: string, actions: WorkflowAction[]) => void;
+  onViewDetails: () => void;
+}) {
+  const [opened, setOpened] = useState(false);
+  const { data, isFetching } = useQuery({
+    queryKey: ["los-workflow-actions", row.name],
+    queryFn: () => getWorkflowActions(LoanApplicationApi.LOAN_APPLICATION_DOCTYPE, row.name),
+    enabled: opened,
+    staleTime: 0,
+  });
+  const actions = data?.allowed_actions ?? [];
+  return (
+    <Menu shadow="md" width={200} position="bottom-end" opened={opened} onChange={setOpened}>
+      <Menu.Target>
+        <ActionIcon size="sm" variant="subtle" color="gray">
+          <IconDotsVertical size={14} />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item
+          onClick={() => {
+            setOpened(false);
+            onViewDetails();
+          }}
+        >
+          View details
+        </Menu.Item>
+        <Menu.Divider />
+        {isFetching && !data ? (
+          <Menu.Item disabled leftSection={<Loader size={12} />}>
+            Loading actions…
+          </Menu.Item>
+        ) : actions.length === 0 ? (
+          <Menu.Item disabled>No actions available</Menu.Item>
+        ) : (
+          actions.map((wf) => (
+            <Menu.Item
+              key={wf.action}
+              onClick={() => {
+                setOpened(false);
+                onSelect(wf.action, actions);
+              }}
+            >
+              {wf.action}
+            </Menu.Item>
+          ))
+        )}
+      </Menu.Dropdown>
+    </Menu>
+  );
 }
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
-  const color = sorted
-    ? "var(--mantine-color-brand-6)"
-    : "var(--mantine-color-slate-4)";
+  const color = sorted ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-4)";
   if (sorted === "asc") return <IconChevronUp size={12} color={color} />;
   if (sorted === "desc") return <IconChevronDown size={12} color={color} />;
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
-}
-
-function getAssignedUsers(row: LoanApplicationRow): string[] {
-  if (!row._assign) return [];
-  try {
-    return JSON.parse(row._assign);
-  } catch {
-    return [];
-  }
-}
-
-function isAssignedToUser(row: LoanApplicationRow, email?: string | null) {
-  if (!email) return false;
-  return getAssignedUsers(row).includes(email);
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -239,194 +194,71 @@ function ApplicationIdCell({ name }: { name: string }) {
       >
         <IconClipboardList size={14} color="var(--mantine-color-brand-6)" />
       </Box>
-      <Text
-        fz={11}
-        fw={700}
-        c="slate.8"
-        style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
-      >
+      <Text fz={11} fw={700} c="slate.8" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
         {name}
       </Text>
     </Group>
   );
 }
 
-function getApplicantDisplayName(row: LoanApplicationRow) {
-  if (row.application_type === "Business Loan") {
-    return row.company_name || "—";
-  }
-  const fullName = [row.first_name, row.last_name].filter(Boolean).join(" ");
-  return fullName || "—";
-}
-
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-export function LoanApplication() {
-  const [bookingOpened, { open: openBooking, close: closeBooking }] =
-    useDisclosure(false);
-  const [workflowOpened, { open: openWorkflow, close: closeWorkflow }] =
-    useDisclosure(false);
-
-  const [bookingApplicationId, setBookingApplicationId] = useState<string | null>(null);
-  /** Application targeted by the WorkflowActionModal */
-  const [workflowTargetId, setWorkflowTargetId] = useState<string | null>(null);
-  /** The specific action pre-selected when the user clicks a named menu item */
-  const [workflowPreAction, setWorkflowPreAction] = useState<string | undefined>(undefined);
-
+export function LoanApplication({ stage = "application" }: { stage?: OriginationStageKey }) {
+  const stageConfig = ORIGINATION_STAGES[stage];
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
-  const companyName = useCompanyStore((state) => state.companyName);
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
-  const currencySymbol = getSymbol(companyCurrency);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const email = useUserStore((s) => s.user?.email);
-  const firstName = useUserStore((s) => s.user?.firstName);
+  const { modal: workflowModal, openAction } = useApplicationWorkflow();
 
   const [viewingApplicationId, setViewingApplicationId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [company, setCompany] = useState<string | null>(null);
-  const [applicationType, setApplicationType] = useState<string | null>(null);
-  const [status, setStatus] = useState("all");
-
-  const [sorting, setSorting] = useState([{ id: "application_date", desc: true }]);
+  const [debouncedSearch] = useDebouncedValue(search.trim(), 300);
+  const [applicantType, setApplicantType] = useState<ApplicantType | null>(null);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
 
-  const showSuccess = (heading: string, body: string) => {
-    openCommonModal({
-      heading,
-      subtitle: "",
-      body,
-      color: "green",
-      buttons: [{ label: "Close", color: "green" }],
-    });
-  };
-
-  const statusMutation = useMutation({
-    mutationFn: ({
-      id,
-      status,
-      loan_application_status,
-    }: {
-      id: string;
-      status: string;
-      loan_application_status: string;
-    }) => updateLoanApplicationStatus({ id, status, loan_application_status }),
-
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
-      showSuccess(
-        "Status Updated",
-        `Loan Application ${variables.id} was ${variables.loan_application_status} successfully.`,
-      );
-    },
-    onError: (error: any) => {
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-        buttons: [{ label: "Close", color: "red" }],
-      });
-    },
-  });
-
-  /** Single generic mutation for ALL workflow transitions — backend-driven. */
-  const workflowMutation = useMutation({
-    mutationFn: (payload: {
-      docname: string;
-      action: string;
-      comment?: string;
-      assign_to_user?: string;
-    }) => applyWorkflowAction(payload),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
-      queryClient.invalidateQueries({ queryKey: ["loan-application-detail", variables.docname] });
-      closeWorkflow();
-      showSuccess(
-        "Action Applied",
-        `Workflow action '${variables.action}' applied to ${variables.docname} successfully.`,
-      );
-    },
-    onError: (error: any) => {
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-        buttons: [{ label: "Close", color: "red" }],
-      });
-    },
-  });
-
-  const convertToLoanMutation = useMutation({
-    mutationFn: ({ id, loan_product }: { id: string; loan_product: string }) =>
-      convertCustomLoanApplicationToLoan({ id, loan_product }),
-
-    onSuccess: async (data, variables) => {
-      try {
-        await updateLoanApplicationStatus({
-          id: variables.id,
-          status: "Submitted",
-          loan_application_status: "Created",
-        });
-      } catch (error) {
-        console.error("Failed to update application status to Created", error);
-      }
-      queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
-      closeBooking();
-      showSuccess(
-        "Loan Created",
-        `Application ${variables.id} was successfully converted to a loan.`,
-      );
-
-      const newLoanId = data?.message?.data?.name;
-      if (newLoanId) {
-        loanAccountModal.open({ loanId: newLoanId });
-      }
-    },
-    onError: (error: any) => {
-      openCommonModal({
-        heading: "Action Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
-      });
-    },
-  });
+  const listParams = useMemo(
+    () => ({
+      page: pagination.pageIndex + 1,
+      page_size: pagination.pageSize,
+      ...(debouncedSearch && { search: debouncedSearch }),
+      ...(applicantType && { applicant_type: applicantType }),
+      workflow_state: stageConfig.workflowState,
+      ...(sorting[0] && {
+        sort_by: SORTABLE_COLUMNS[sorting[0].id],
+        sort_order: sorting[0].desc ? ("desc" as const) : ("asc" as const),
+      }),
+    }),
+    [pagination, debouncedSearch, applicantType, sorting, stageConfig.workflowState],
+  );
 
   const {
     data: applicationsResponse,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ["loan-applications"],
-    queryFn: getAllLoanApplications,
-    // refetchInterval: 2000,
-    refetchIntervalInBackground: false,
+    queryKey: ["los-loan-applications", listParams],
+    queryFn: () => LoanApplicationApi.getAll(listParams),
+    placeholderData: keepPreviousData,
+    staleTime: 0,
     refetchOnWindowFocus: true,
   });
 
-  const data: LoanApplicationRow[] = useMemo(
-    () => applicationsResponse?.data ?? [],
-    [applicationsResponse],
-  );
+  const data = useMemo(() => applicationsResponse?.data ?? [], [applicationsResponse]);
+  const totalRows = applicationsResponse?.pagination?.total ?? 0;
+  const pageCount = Math.max(1, applicationsResponse?.pagination?.total_pages ?? 1);
 
   const deleteMutation = useMutation({
-    mutationFn: deleteLoanApplication,
-    // onSuccess: () => {
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["loan-applications"] });
-      showSuccess(
-        "Application Deleted",
-        `Loan Application ${variables} deleted successfully.`,
-      );
+    mutationFn: LoanApplicationApi.remove,
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["los-loan-applications"] });
+      openCommonModal({
+        heading: "Application Deleted",
+        subtitle: "",
+        body: `Loan application ${id} was deleted.`,
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
     },
     onError: (error: any) => {
       openCommonModal({
@@ -434,124 +266,20 @@ export function LoanApplication() {
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(error),
         color: "red",
-
-        buttons: [
-          {
-            label: "Close",
-            color: "red",
-          },
-        ],
+        buttons: [{ label: "Close", color: "red" }],
       });
     },
   });
 
-  const applicationTypeOptions = useMemo(
-    () =>
-      Array.from(new Set(data.map((d) => d.application_type).filter(Boolean))),
-    [data],
-  );
+  const resetPage = () => setPagination((p) => ({ ...p, pageIndex: 0 }));
 
-  const filteredData = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return data.filter((a) => {
-      const applicantName = getApplicantDisplayName(a).toLowerCase();
-      const matchesSearch =
-        !q ||
-        a.name.toLowerCase().includes(q) ||
-        applicantName.includes(q) ||
-        (a.customer ?? "").toLowerCase().includes(q) ||
-        (a.application_type ?? "").toLowerCase().includes(q);
-      const matchesType =
-        !applicationType || a.application_type === applicationType;
-      // const matchesStatus = status === 'all' || a.status === status;
-      const matchesStatus =
-        status === "all" || a.loan_application_status === status;
-      return matchesSearch && matchesType && matchesStatus;
-    });
-  }, [data, search, company, applicationType, status]);
+  const handleAdd = () => loanApplicationModal.open({ loanApplicationId: null });
 
-  useEffect(() => {
-    if (
-      viewingApplicationId !== null &&
-      !data.some((a) => a.name === viewingApplicationId)
-    ) {
-      setViewingApplicationId(null);
-    }
-  }, [viewingApplicationId, data]);
+  const handleOpen = (id: string, readOnly: boolean) => stageConfig.openModal(id, readOnly);
 
-  const handleAdd = () => {
-    loanApplicationModal.open({ loanApplicationId: null });
-  };
-
-  const handleEdit = (id: string) => {
-    loanApplicationModal.open({ loanApplicationId: id });
-  };
-
-  const handleView = (id: string) => {
-    queryClient.invalidateQueries({
-      queryKey: ["loan-application-detail", id],
-    });
+  const handleViewDetails = (id: string) => {
+    queryClient.invalidateQueries({ queryKey: ["los-loan-application", id] });
     setViewingApplicationId(id);
-  };
-
-  const confirmApprove = (id: string) => {
-    openCommonModal({
-      heading: "Approve Loan Application",
-      subtitle: "Please confirm this action before continuing.",
-      body: (
-        <>
-          Are you sure you want to approve loan application{" "}
-          <Text span fw={600}>
-            {id}
-          </Text>
-          ?
-        </>
-      ),
-      color: "green",
-      buttons: [
-        { label: "Cancel", variant: "default" },
-        {
-          label: "Approve",
-          color: "green",
-          onClick: () =>
-            statusMutation.mutate({
-              id,
-              status: "Submitted", // Updates system state
-              loan_application_status: "Approved", // Updates your custom state
-            }),
-        },
-      ],
-    });
-  };
-
-  const confirmReject = (id: string) => {
-    openCommonModal({
-      heading: "Reject Loan Application",
-      subtitle: "This action cannot be undone.",
-      body: (
-        <>
-          Are you sure you want to reject loan application{" "}
-          <Text span fw={600}>
-            {id}
-          </Text>
-          ?
-        </>
-      ),
-      color: "red",
-      buttons: [
-        { label: "Cancel", variant: "default" },
-        {
-          label: "Reject",
-          color: "red",
-          onClick: () =>
-            statusMutation.mutate({
-              id,
-              status: "Cancelled", // Updates system state
-              loan_application_status: "Rejected", // Updates your custom state
-            }),
-        },
-      ],
-    });
   };
 
   const confirmDelete = (id: string) => {
@@ -570,46 +298,8 @@ export function LoanApplication() {
       color: "red",
       buttons: [
         { label: "Cancel", variant: "default" },
-        {
-          label: "Delete",
-          color: "red",
-          onClick: () => deleteMutation.mutate(id),
-        },
+        { label: "Delete", color: "red", onClick: () => deleteMutation.mutate(id) },
       ],
-    });
-  };
-
-  const bookingApplications = data.find((a) => a.name === bookingApplicationId);
-  const bookingApplicantName = bookingApplications
-    ? getApplicantDisplayName(bookingApplications)
-    : null;
-
-  const confirmCreateLoanBooking = (id: string) => {
-    setBookingApplicationId(id);
-    openBooking();
-  };
-
-  /** Opens the WorkflowActionModal for a specific application, optionally pre-seeding a single action. */
-  const openWorkflowModal = (id: string, preAction?: string) => {
-    setWorkflowTargetId(id);
-    setWorkflowPreAction(preAction);
-    openWorkflow();
-  };
-
-  const handleConfirmWorkflow = (payload: {
-    action: string;
-    comment?: string;
-    assign_to_user?: string;
-  }) => {
-    if (!workflowTargetId) return;
-    workflowMutation.mutate({ docname: workflowTargetId, ...payload });
-  };
-
-  const handleConfirmCreateBooking = (loanProduct: string) => {
-    if (!bookingApplicationId) return;
-    convertToLoanMutation.mutate({
-      id: bookingApplicationId,
-      loan_product: loanProduct,
     });
   };
 
@@ -619,25 +309,19 @@ export function LoanApplication() {
         header: "Application",
         cell: (info) => <ApplicationIdCell name={info.getValue()} />,
       }),
-      columnHelper.display({
-        id: "applicant",
+      columnHelper.accessor("applicant_name", {
         header: "Applicant",
+        enableSorting: false,
         cell: (info) => (
-          <Text
-            fz={11}
-            fw={600}
-            c="slate.7"
-            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
-          >
-            {getApplicantDisplayName(info.row.original)}
+          <Text fz={11} fw={600} c="slate.7" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
+            {info.getValue() || "—"}
           </Text>
         ),
       }),
-      columnHelper.accessor("amount", {
+      columnHelper.accessor("requested_amount", {
         header: "Amount",
         cell: (info) => {
           const value = info.getValue();
-
           if (value === null || value === undefined) {
             return (
               <Text fz={11} c="slate.6">
@@ -645,24 +329,16 @@ export function LoanApplication() {
               </Text>
             );
           }
-
-          const formattedWithSymbol = formatAmount(companyCurrency, value, {
-      withSymbol: true,
-    });
           return (
-            <Text
-              fz={11}
-              c="slate.8"
-              fw={600}
-              style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
-            >
-             {formattedWithSymbol}
+            <Text fz={11} c="slate.8" fw={600} style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
+              {formatAmount(companyCurrency, value, { withSymbol: true })}
             </Text>
           );
         },
       }),
-      columnHelper.accessor("application_type", {
+      columnHelper.accessor("applicant_type", {
         header: "Type",
+        enableSorting: false,
         cell: (info) => (
           <Badge
             variant="light"
@@ -675,30 +351,30 @@ export function LoanApplication() {
           </Badge>
         ),
       }),
-      columnHelper.accessor("customer", {
+      columnHelper.accessor("customer_name", {
         header: "Customer",
+        enableSorting: false,
         cell: (info) => (
-          <Text
-            fz={11}
-            c="slate.6"
-            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
-          >
-            {info.getValue() || "—"}
+          <Text fz={11} c="slate.6" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
+            {info.getValue() || info.row.original.customer || "—"}
           </Text>
         ),
       }),
-      
- columnHelper.accessor("loan_application_status", {
-  header: "Status",
-  cell: (info) => (
-    <Group gap={4} wrap="nowrap">
-      <StatusBadge status={getEffectiveStatus(info.row.original)} />
-      <CommentsPopover row={info.row.original} />
-    </Group>
-  ),
-}),
-
- columnHelper.display({
+      columnHelper.accessor("status", {
+        header: "Status",
+        enableSorting: false,
+        cell: (info) => (
+          <Group gap={6} wrap="nowrap">
+            <StatusBadge status={displayStatus(info.row.original)} />
+            {info.row.original.custom_status && info.row.original.custom_status !== displayStatus(info.row.original) && (
+              <Text fz={10.5} c="slate.6" fw={600}>
+                {info.row.original.custom_status}
+              </Text>
+            )}
+          </Group>
+        ),
+      }),
+      columnHelper.display({
         id: "actions",
         header: () => (
           <Text fz={11} fw={600} ta="right" w="100%">
@@ -707,144 +383,79 @@ export function LoanApplication() {
         ),
         cell: (info) => {
           const row = info.row.original;
-          const currentStatus = row.loan_application_status;
-          const isPending = currentStatus === "Pending";
-          const isApproved = currentStatus === "Approved";
-          const isCreated = currentStatus === "Created";
-          const isRejected = currentStatus === "Rejected";
-
-          /**
-           * Backend-driven workflow actions — already filtered to this user's roles.
-           * No hardcoded role/status checks needed here.
-           */
-          const workflowActions = row.allowed_workflow_actions ?? [];
-          const hasWorkflowActions = workflowActions.length > 0;
-
+          const isDraft = row.status === "Draft";
+          const canEdit = !CLOSED_STATUSES.includes(row.status);
           return (
-            <Group
-              justify="flex-end"
-              gap={6}
-              wrap="nowrap"
-              className="lms-row-actions"
-            >
+            <Group justify="flex-end" gap={6} wrap="nowrap" className="lms-row-actions">
               <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="gray"
-                  onClick={() => handleView(row.name)}
-                >
+                <ActionIcon size="sm" variant="subtle" color="gray" onClick={() => handleOpen(row.name, true)}>
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
-
-              <Tooltip
-                label={isPending ? "Edit" : "Only Pending applications can be edited"}
-                withArrow
-              >
+              <Tooltip label={canEdit ? "Edit" : "Closed applications cannot be edited"} withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color={isPending ? "brand" : "gray"}
-                  disabled={!isPending}
-                  onClick={() => handleEdit(row.name)}
+                  color={canEdit ? "brand" : "gray"}
+                  disabled={!canEdit}
+                  onClick={() => handleOpen(row.name, false)}
                 >
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
-
-              <Tooltip
-                label={
-                  isPending || isRejected
-                    ? "Delete"
-                    : "Only Pending/Rejected applications can be deleted"
-                }
-                withArrow
-              >
+              <Tooltip label={isDraft ? "Delete" : "Only draft applications can be deleted"} withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color={isPending || isRejected ? "danger" : "gray"}
-                  disabled={(!isPending && !isRejected) || deleteMutation.isPending}
+                  color={isDraft ? "danger" : "gray"}
+                  disabled={!isDraft || deleteMutation.isPending}
                   onClick={() => confirmDelete(row.name)}
                 >
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-
-              {/* Dynamic workflow action menu + static Create Loan action */}
-              <Menu shadow="md" width={200} position="bottom-end" disabled={!(hasWorkflowActions || isApproved)}>
-                <Menu.Target>
-                  <ActionIcon
-                    size="sm"
-                    variant="subtle"
-                    color="gray"
-                    disabled={!(hasWorkflowActions || isApproved)}
-                  >
-                    <IconDotsVertical size={14} />
-                  </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  {workflowActions.map((wf) => (
-                    <Menu.Item
-                      key={wf.action}
-                      onClick={() => openWorkflowModal(row.name, wf.action)}
-                    >
-                      {wf.action}
-                    </Menu.Item>
-                  ))}
-                  
-                  {isApproved && (
-                    <Menu.Item
-                      onClick={() => confirmCreateLoanBooking(row.name)}
-                    >
-                      Create Loan
-                    </Menu.Item>
-                  )}
-                </Menu.Dropdown>
-              </Menu>
+              <WorkflowMenu
+                row={row}
+                onViewDetails={() => handleViewDetails(row.name)}
+                onSelect={(action, actions) =>
+                  openAction({ id: row.name, applicantName: row.applicant_name, actions, preselectedAction: action })
+                }
+              />
             </Group>
           );
         },
       }),
     ],
-    [
-      email,
-      companyCurrency,
-      deleteMutation.isPending,
-      openWorkflowModal,
-      confirmCreateLoanBooking,
-      confirmDelete,
-      handleEdit,
-      handleView,
-    ],
+    [companyCurrency, deleteMutation.isPending, openAction, stageConfig],
   );
 
   const table = useReactTable({
-    data: filteredData,
+    data,
     columns,
     state: { sorting, pagination },
-    onSortingChange: setSorting,
+    onSortingChange: (updater) => {
+      setSorting(updater);
+      resetPage();
+    },
     onPaginationChange: setPagination,
+    manualPagination: true,
+    manualSorting: true,
+    pageCount,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const rows = table.getRowModel().rows;
-  const totalRows = filteredData.length;
   const { pageIndex, pageSize } = pagination;
   const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
-  const lastRow = Math.min(totalRows, (pageIndex + 1) * pageSize);
+  const lastRow = Math.min(totalRows, pageIndex * pageSize + rows.length);
 
   const resetFilters = () => {
     setSearch("");
-    setCompany(null);
-    setApplicationType(null);
-    setStatus("all");
+    setApplicantType(null);
+    setSorting([]);
+    resetPage();
   };
 
-  // --- View swap: same pattern as Customer.tsx / Borrower360 ---
   if (viewingApplicationId !== null) {
     const application = data.find((a) => a.name === viewingApplicationId);
     if (application) {
@@ -855,45 +466,17 @@ export function LoanApplication() {
             onBack={() => setViewingApplicationId(null)}
             onEdit={() => {
               setViewingApplicationId(null);
-              loanApplicationModal.open({
-                loanApplicationId: application.name,
-              });
+              handleOpen(application.name, false);
             }}
           />
         </Box>
       );
     }
-    return null;
   }
 
   return (
     <Stack gap="lg" p="lg">
-      <CreateLoanBookingModal
-        opened={bookingOpened}
-        applicationId={bookingApplicationId}
-        customerName={bookingApplicantName}
-        onClose={closeBooking}
-        onConfirm={handleConfirmCreateBooking}
-        isSubmitting={convertToLoanMutation.isPending}
-      />
-      {/* Generic workflow action modal — driven by backend allowed_workflow_actions */}
-      <WorkflowActionModal
-        opened={workflowOpened}
-        applicationId={workflowTargetId}
-        applicantName={
-          data.find((a) => a.name === workflowTargetId)
-            ? getApplicantDisplayName(data.find((a) => a.name === workflowTargetId)!)
-            : null
-        }
-        allowedActions={
-          data.find((a) => a.name === workflowTargetId)?.allowed_workflow_actions ?? []
-        }
-        preselectedAction={workflowPreAction}
-        currentUserEmail={email}
-        onClose={closeWorkflow}
-        onConfirm={handleConfirmWorkflow}
-        isSubmitting={workflowMutation.isPending}
-      />
+      {workflowModal}
       <style>{`
   .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
   .lms-row-actions { opacity: 1; }
@@ -904,7 +487,6 @@ export function LoanApplication() {
   .lms-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
 `}</style>
 
-      {/* Header */}
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
         <Group gap="sm" align="center">
           <Box
@@ -919,24 +501,19 @@ export function LoanApplication() {
               justifyContent: "center",
             }}
           >
-            <IconClipboardList
-              size={20}
-              color="var(--mantine-color-white)"
-              stroke={1.8}
-            />
+            <IconClipboardList size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
-              Loan Applications
+              {stageConfig.title}
             </Title>
             <Text fz="sm" c="slate.5">
-              Track and manage loan applications
+              {stageConfig.subtitle}
             </Text>
           </Stack>
         </Group>
       </Group>
 
-      {/* Toolbar */}
       <Paper
         radius="xl"
         p="xs"
@@ -950,59 +527,36 @@ export function LoanApplication() {
             className="lms-search"
             size="sm"
             radius="xl"
-            placeholder="Application / Applicant / Type / Customer"
+            placeholder="Application / Applicant / Company / NRC / Phone"
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 260 }}
-            styles={{
-              input: { border: "1px solid var(--mantine-color-slate-2)" },
-            }}
+            styles={{ input: { border: "1px solid var(--mantine-color-slate-2)" } }}
             value={search}
             onChange={(e) => {
               setSearch(e.currentTarget.value);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
+              resetPage();
             }}
           />
           <Select
             size="sm"
             radius="xl"
             placeholder="All Types"
-            data={applicationTypeOptions}
+            data={APPLICANT_TYPES}
             w={166}
-            searchable
             clearable
             rightSection={chevronDown}
-            value={applicationType}
+            value={applicantType}
             onChange={(v) => {
-              setApplicationType(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
+              setApplicantType(v as ApplicantType | null);
+              resetPage();
             }}
-          />
-
-          <SegmentedControl
-            size="xs"
-            radius="xl"
-            color="brand"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-            data={[
-              { label: "All", value: "all" },
-              ...STATUS_OPTIONS.map((s) => ({ label: s, value: s })),
-            ]}
           />
 
           <Group gap="xs" ml="auto">
-            <Button
-              size="sm"
-              radius="xl"
-              variant="default"
-              px="md"
-              onClick={resetFilters}
-            >
+            <Button size="sm" radius="xl" variant="default" px="md" onClick={resetFilters}>
               Reset
             </Button>
+            {stageConfig.canCreate && (
             <Button
               size="sm"
               radius="xl"
@@ -1016,11 +570,11 @@ export function LoanApplication() {
             >
               New Application
             </Button>
+            )}
           </Group>
         </Group>
       </Paper>
 
-      {/* Data Table */}
       <Paper
         radius="lg"
         p="sm"
@@ -1038,10 +592,7 @@ export function LoanApplication() {
           </Stack>
         ) : isError ? (
           <Stack align="center" gap="xs" py="xl">
-            <IconAlertTriangle
-              size={26}
-              color="var(--mantine-color-danger-5)"
-            />
+            <IconAlertTriangle size={26} color="var(--mantine-color-danger-5)" />
             <Text ta="center" c="danger.6" fz={11}>
               Couldn't load loan applications. Please try again.
             </Text>
@@ -1065,7 +616,7 @@ export function LoanApplication() {
                   {table.getHeaderGroups().map((headerGroup) => (
                     <Table.Tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => {
-                        const canSort = header.column.getCanSort();
+                        const canSort = header.column.getCanSort() && header.column.id in SORTABLE_COLUMNS;
                         return (
                           <Table.Th
                             key={header.id}
@@ -1081,26 +632,11 @@ export function LoanApplication() {
                               letterSpacing: "0.04em",
                               border: "none",
                             }}
-                            onClick={header.column.getToggleSortingHandler()}
+                            onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                           >
-                            <Group
-                              gap="xs"
-                              wrap="nowrap"
-                              justify={
-                                header.id === "actions"
-                                  ? "flex-end"
-                                  : "flex-start"
-                              }
-                            >
-                              {flexRender(
-                                header.column.columnDef.header,
-                                header.getContext(),
-                              )}
-                              {canSort && (
-                                <SortIcon
-                                  sorted={header.column.getIsSorted()}
-                                />
-                              )}
+                            <Group gap="xs" wrap="nowrap" justify={header.id === "actions" ? "flex-end" : "flex-start"}>
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              {canSort && <SortIcon sorted={header.column.getIsSorted()} />}
                             </Group>
                           </Table.Th>
                         );
@@ -1111,10 +647,7 @@ export function LoanApplication() {
                 <Table.Tbody>
                   {rows.length === 0 ? (
                     <Table.Tr>
-                      <Table.Td
-                        colSpan={columns.length}
-                        style={{ border: "none" }}
-                      >
+                      <Table.Td colSpan={columns.length} style={{ border: "none" }}>
                         <Stack align="center" gap="xs" py="xl">
                           <Box
                             style={{
@@ -1128,10 +661,7 @@ export function LoanApplication() {
                               border: "1px solid var(--mantine-color-slate-2)",
                             }}
                           >
-                            <IconClipboardList
-                              size={26}
-                              color="var(--mantine-color-slate-4)"
-                            />
+                            <IconClipboardList size={26} color="var(--mantine-color-slate-4)" />
                           </Box>
                           <Text ta="center" c="slate.5" fz={11}>
                             No loan applications match your filters.
@@ -1141,33 +671,25 @@ export function LoanApplication() {
                     </Table.Tr>
                   ) : (
                     rows.map((row) => {
-                      //  const scale = STATUS_COLOR[row.original.loan_application_status] ?? "slate";
-                      const scale = STATUS_COLOR[getEffectiveStatus(row.original)] ?? "slate";
-                      const cells = row.getVisibleCells();
+                      const scale = STATUS_COLOR[displayStatus(row.original)] ?? "slate";
                       return (
                         <Table.Tr
                           key={row.id}
                           className="lms-row"
-                          onDoubleClick={() => handleView(row.original.name)}
+                          onDoubleClick={() => handleOpen(row.original.name, true)}
                           style={{ cursor: "pointer" }}
                         >
-                          {cells.map((cell, idx) => (
+                          {row.getVisibleCells().map((cell, idx) => (
                             <Table.Td
                               key={cell.id}
                               style={{
                                 padding: "8px 12px",
                                 border: "none",
                                 boxShadow: "var(--mantine-shadow-xs)",
-                                borderLeft:
-                                  idx === 0
-                                    ? `3px solid var(--mantine-color-${scale}-4)`
-                                    : undefined,
+                                borderLeft: idx === 0 ? `3px solid var(--mantine-color-${scale}-4)` : undefined,
                               }}
                             >
-                              {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext(),
-                              )}
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </Table.Td>
                           ))}
                         </Table.Tr>
@@ -1177,26 +699,15 @@ export function LoanApplication() {
                 </Table.Tbody>
               </Table>
             </Box>
-            {/* Pagination Footer */}
             <Group justify="space-between" px="sm" pt="xs">
-              <Group
-                gap="sm"
-                c="slate.6"
-                style={{ fontSize: "var(--mantine-font-size-xs)" }}
-              >
-                <span>
-                  {totalRows === 0
-                    ? "Showing 0 of 0"
-                    : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
-                </span>
+              <Group gap="sm" c="slate.6" style={{ fontSize: "var(--mantine-font-size-xs)" }}>
+                <span>{totalRows === 0 ? "Showing 0 of 0" : `Showing ${firstRow}-${lastRow} of ${totalRows}`}</span>
                 <Group gap="xs">
-                  <span>Rows:</span>                  
+                  <span>Rows:</span>
                   <Select
                     data={["10", "20", "50"]}
                     value={String(pageSize)}
-                    onChange={(v) =>
-                      setPagination({ pageIndex: 0, pageSize: Number(v) || 10 })
-                    }
+                    onChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) || 20 })}
                     rightSection={chevronDown}
                     size="xs"
                     radius="xl"
@@ -1205,11 +716,9 @@ export function LoanApplication() {
                 </Group>
               </Group>
               <Pagination
-                total={table.getPageCount() || 1}
+                total={pageCount}
                 value={pageIndex + 1}
-                onChange={(p) =>
-                  setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
-                }
+                onChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
                 color="brand"
                 size="xs"
                 radius="xl"

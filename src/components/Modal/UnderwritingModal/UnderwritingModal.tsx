@@ -1,6 +1,6 @@
 import { LegalVerification } from "./LegalVerification";
 import { AssetValuation, zmw, STATUS_COLORS, DECISION_LABEL, REJECT_REASONS, requiredDocsVerified, missingRequiredDocs, DecisionButton, SectionLabel } from "./AssetValuation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Modal, Box, Group, Text, Badge, ThemeIcon, UnstyledButton, Stack, SimpleGrid, Paper, TextInput, Select,
   Checkbox, Textarea, Button, ActionIcon, Avatar, Divider, Tooltip,
@@ -12,14 +12,12 @@ import {
   IconCertificate,
 } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
-import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
 import { PreScreeningModal } from "../PreScreeningModal/PreScreeningModal";
 import { LeftNav, ContextHeader } from "../PreScreeningModal/PreScreeningShared";
 import { EnrichmentModal } from "../Enrichment/EnrichmentModal";
-import {
-  DUMMY_PERSONAL_LOAN_APPLICATION, DUMMY_PRESCREENING_CONTEXT, DUMMY_PRESCREENING_DATA, DUMMY_ENRICHMENT_TERMS,
-  DUMMY_ASSET_TYPES, DUMMY_SEED_ASSET_BASE, getApplicableChecks, type DummyAssetBase,
-} from "../PreScreeningModal/Dummyloanapplicationdata";
+import { DUMMY_ASSET_TYPES, getApplicableChecks, type DummyAssetBase } from "../PreScreeningModal/Dummyloanapplicationdata";
+import type { ApplicationCollateral, LoanApplication, StagePayload } from "../../../api/LosConfiguration/LoanApplicationApi";
+import { StageLoading, uploadStageFile, useStageApplication } from "../stageData";
 
 interface UnderwritingModalProps {
   opened: boolean;
@@ -27,27 +25,14 @@ interface UnderwritingModalProps {
   onMinimize: () => void;
   embedded?: boolean; tab?: any; onTabChange?: (t: any) => void;
   readOnly?: boolean;
-  applicationValues?: LoanApplicationValues;
+  loanApplicationId?: string | null;
+  application?: LoanApplication;
 }
 
-const POLICY: Record<"personal" | "business" | "mortgage", { minCreditScore: number; maxDTI: number; productMax: number }> = {
-  personal: { minCreditScore: 650, maxDTI: 50, productMax: 100000 },
-  business: { minCreditScore: 620, maxDTI: 55, productMax: 500000 },
-  mortgage: { minCreditScore: 680, maxDTI: 45, productMax: 2000000 },
-};
-
-function calcEligibility(p: { income: number; obligations: number; maxDTI: number; annualRate: number; tenureMonths: number; productMax: number; creditScore: number; minCreditScore: number }) {
-  const dti = p.income > 0 ? (p.obligations / p.income) * 100 : 100;
-  const ok = p.creditScore >= p.minCreditScore && dti <= p.maxDTI;
-  const capacity = Math.max(0, p.income * (p.maxDTI / 100) - p.obligations);
-  const r = p.annualRate / 100 / 12;
-  const afford = r > 0 ? capacity * ((1 - Math.pow(1 + r, -p.tenureMonths)) / r) : capacity * p.tenureMonths;
-  return { eligibleAmount: ok ? Math.min(afford, p.productMax) : 0 };
+export interface UnderwritingResult {
+  ready: boolean;
+  buildPayload: (submit: boolean) => Promise<StagePayload>;
 }
-
-// ---------------------------------------------------------------------------
-// Shared bits (exported — other files import these)
-// ---------------------------------------------------------------------------
 
 export function ReadRow({ label, value, span }: { label: string; value: React.ReactNode; span?: number }) {
   return (
@@ -107,7 +92,7 @@ export const TAB_ITEMS: { id: TabId; label: string; icon: React.FC<any>; entrySt
 export interface AssetDoc {
   name: string; tier: "required" | "optional"; status: string; uploadedDate: string; uploadedBy: string;
   validUntil: string; fileMeta: string; comment: string;
-  fileUrl?: string; fileType?: string;
+  fileUrl?: string; fileType?: string; file?: File;
 }
 export interface TitleChecklistItem { id: string; label: string; status: string; comment: string }
 export interface LegalCheck { id: string; name: string; status: string; finding: string; why: string; action: string; comment: string }
@@ -116,9 +101,13 @@ export interface Condition { condition: string; responsible: string; dueBefore: 
 
 export interface Asset {
   id: string;
+  rowId?: string;
+  securityType: string | null;
+  estimatedValue: number | "";
+  ownershipDate?: string | null;
   source: "application" | "manual";
   base: DummyAssetBase;
-  valuation: { amount: string; valuationAmount: string; currency: string; method: string; marketValue: string; forcedSaleValue: string; notes: string };
+  valuation: { valuationAmount: string; currency: string; method: string; marketValue: string; forcedSaleValue: string; notes: string };
   valuer: { name: string; company: string; license: string; contact: string; verified: boolean };
   valuationDate: string;
   expiryDays: number;
@@ -148,11 +137,11 @@ const todayISO = () => {
 let assetSeq = 1;
 function makeAsset(source: "application" | "manual", base: DummyAssetBase): Asset {
   return {
-    id: "asset-" + assetSeq++, source, base,
-    valuation: { amount: "", valuationAmount: "", currency: "ZMW", method: "Market comparison", marketValue: "", forcedSaleValue: "", notes: "" },
+    id: "asset-" + assetSeq++, source, base, securityType: null, estimatedValue: "", ownershipDate: null,
+    valuation: { valuationAmount: "", currency: "ZMW", method: "Market comparison", marketValue: "", forcedSaleValue: "", notes: "" },
     valuer: { name: "", company: "", license: "", contact: "", verified: false },
     valuationDate: todayISO(), expiryDays: 180, status: "Pending", reason: "",
-    docs: [emptyDoc("Valuation report", "required"), emptyDoc("Asset photos", "required"), emptyDoc("Ownership document", "required")],
+    docs: [emptyDoc("Valuation report", "required")],
     title: { titleNumber: "", propertyRef: base?.assetId || "", propertyType: base?.type || "", location: base?.location || "", registrationInfo: "", registeredOwner: base?.owner || "" },
     legalVerifier: { name: "", company: "", role: "", license: "", contact: "" },
     titleChecklist: [
@@ -164,7 +153,7 @@ function makeAsset(source: "application" | "manual", base: DummyAssetBase): Asse
     ],
     titleDocs: [emptyDoc("Title deed / ownership document", "required"), emptyDoc("Search report", "required"), emptyDoc("Legal opinion", "optional")],
     legalChecks: (getApplicableChecks(base?.type || "") || []).map((c) => ({
-      id: c?.id ?? Math.random().toString(36).slice(2), name: c?.name ?? "Legal check", status: c?.defaultStatus ?? "Pending",
+      id: c?.id ?? Math.random().toString(36).slice(2), name: c?.name ?? "Legal check", status: "Pending",
       finding: c?.finding ?? "", why: c?.why || "", action: c?.action || "", comment: "",
     })),
     legalRemarks: "",
@@ -172,26 +161,124 @@ function makeAsset(source: "application" | "manual", base: DummyAssetBase): Asse
   };
 }
 
-function makeSeedAsset(): Asset {
-  const a = makeAsset("application", DUMMY_SEED_ASSET_BASE);
-  const done = (name: string, tier: "required" | "optional", by: string, date: string, meta: string, until = ""): AssetDoc =>
-    ({ name, tier, status: "Verified", uploadedDate: date, uploadedBy: by, validUntil: until, fileMeta: meta, comment: "" });
-  a.docs = [
-    emptyDoc("Valuation report", "required"),
-    done("Asset photos", "required", "Field valuer", "3 Sep 2026", "photos_03sep2026.zip (4.8 MB)"),
-    emptyDoc("Ownership document", "required"),
-  ];
-  a.valuation = { ...a.valuation, marketValue: "", forcedSaleValue: "", amount: "" };
-  a.valuationDate = todayISO();
-  a.valuer = { name: "", company: "", license: "", contact: "", verified: false };
-  a.status = "Pending";
-  a.titleChecklist = a.titleChecklist.map((i) => ({ ...i, status: i.id === "encumbrances" ? "Exception" : "Passed" }));
-  a.titleDocs = [
-    done("Title deed / ownership document", "required", "Legal officer", "4 Sep 2026", "title_deed.pdf (1.1 MB)"),
-    done("Search report", "required", "Legal officer", "4 Sep 2026", "search_report.pdf (0.8 MB)"),
-    emptyDoc("Legal opinion", "optional"),
-  ];
-  return a;
+const ASSET_DETAIL_KEYS = [
+  "valuer", "valuationDate", "expiryDays", "reason", "docs", "title", "legalVerifier", "titleChecklist", "titleDocs",
+  "legalChecks", "legalRemarks", "assetOverallAssessment", "assetRemarks", "assetAssignee", "assetDecisionStatus",
+] as const;
+
+const DECISION_CAPTION: Record<Exclude<Decision, null>, string> = {
+  approve: "All assets reviewed and cleared", conditions: "Proceed once listed conditions are met",
+  refer: "Send back for more information", reject: "Decline the application",
+};
+const DECISION_COLOR: Record<Exclude<Decision, null>, string> = { approve: "green", conditions: "teal", refer: "orange", reject: "red" };
+const DECISION_ICON: Record<Exclude<Decision, null>, React.FC<any>> = {
+  approve: IconCircleCheck, conditions: IconCheck, refer: IconInfoCircle, reject: IconCircleX,
+};
+
+const DECISION_TO_STATUS: Record<Exclude<Decision, null>, string> = {
+  approve: "Approved", conditions: "Approved with Conditions", refer: "Referred", reject: "Rejected",
+};
+const STATUS_TO_DECISION = Object.fromEntries(Object.entries(DECISION_TO_STATUS).map(([k, v]) => [v, k])) as Record<string, Decision>;
+
+function assetCategory(securityType: string | null | undefined) {
+  const name = (securityType || "").toLowerCase();
+  if (name.includes("vehicle") || name.includes("car") || name.includes("truck")) return "Motor vehicle";
+  if (name.includes("land") || name.includes("property") || name.includes("house") || name.includes("building")) return "Landed property";
+  if (name.includes("equipment") || name.includes("machine")) return "Equipment";
+  if (name.includes("deposit")) return "Fixed deposit";
+  return "Other";
+}
+
+function assetFromCollateral(c: ApplicationCollateral, owner: string): Asset {
+  const d = (c.valuation_details ?? {}) as Record<string, any>;
+  const base: DummyAssetBase = {
+    type: d.asset_type || assetCategory(c.collateral_type),
+    description: c.description ?? "",
+    assetId: d.asset_id ?? "",
+    location: d.location ?? "",
+    owner: d.owner ?? owner,
+    acquisition: d.acquisition ?? "",
+  };
+  const asset = makeAsset(d.source === "manual" ? "manual" : "application", base);
+  ASSET_DETAIL_KEYS.forEach((key) => {
+    if (d[key] !== undefined) (asset as any)[key] = d[key];
+  });
+  return {
+    ...asset,
+    id: c.row_id || asset.id,
+    rowId: c.row_id,
+    securityType: c.collateral_type || null,
+    estimatedValue: c.estimated_value ?? "",
+    ownershipDate: c.ownership_date ?? null,
+    status: ["Failed", "Exception"].includes(c.valuation_status ?? "") ? (c.valuation_status as string) : asset.status,
+    valuation: {
+      ...asset.valuation,
+      ...(d.valuation ?? {}),
+      valuationAmount: c.valuation_amount ? String(c.valuation_amount) : d.valuation?.valuationAmount ?? "",
+      forcedSaleValue: c.forced_sale_value ? String(c.forced_sale_value) : d.valuation?.forcedSaleValue ?? "",
+    },
+  };
+}
+
+function valuationStatus(a: Asset) {
+  if (["Failed", "Exception"].includes(a.status)) return a.status;
+  return Number(a.valuation.valuationAmount) > 0 && missingRequiredDocs(a.docs).length === 0 ? "Passed" : "Pending";
+}
+
+function legalStatus(a: Asset) {
+  const issues = assetIssues(a);
+  if (a.legalChecks.some((c) => ["Failed", "Exception"].includes(c.status)) && !a.legalRemarks.trim()) return "Unresolved";
+  if (issues.legalOpen.length === 0 && missingRequiredDocs(a.titleDocs).length === 0) return "Passed";
+  return "Pending";
+}
+
+const uploads = new WeakMap<File, Promise<string>>();
+
+function uploadOnce(file: File) {
+  if (!uploads.has(file)) {
+    uploads.set(
+      file,
+      uploadStageFile(file).catch((error) => {
+        uploads.delete(file);
+        throw error;
+      }),
+    );
+  }
+  return uploads.get(file)!;
+}
+
+async function uploadDocs(docs: AssetDoc[]) {
+  return Promise.all(
+    docs.map(async ({ file, ...doc }) => (file ? { ...doc, fileUrl: await uploadOnce(file) } : doc)),
+  );
+}
+
+async function collateralFromAsset(a: Asset): Promise<ApplicationCollateral> {
+  const [docs, titleDocs] = await Promise.all([uploadDocs(a.docs), uploadDocs(a.titleDocs)]);
+  const details: Record<string, any> = Object.fromEntries(ASSET_DETAIL_KEYS.map((key) => [key, (a as any)[key]]));
+  return {
+    row_id: a.rowId,
+    collateral_type: a.securityType ?? "",
+    estimated_value: Number(a.estimatedValue) || 0,
+    ownership_date: a.ownershipDate || null,
+    description: a.base.description || null,
+    valuation_amount: Number(a.valuation.valuationAmount) || null,
+    forced_sale_value: Number(a.valuation.forcedSaleValue) || null,
+    valuation_status: valuationStatus(a),
+    legal_status: legalStatus(a),
+    valuation_details: {
+      ...details,
+      docs,
+      titleDocs,
+      source: a.source,
+      asset_type: a.base.type,
+      asset_id: a.base.assetId,
+      location: a.base.location,
+      owner: a.base.owner,
+      acquisition: a.base.acquisition,
+      valuation: a.valuation,
+    },
+  };
 }
 
 // requiredDocsVerified, missingRequiredDocs, CompactCheckRow, DocumentsTable,
@@ -203,17 +290,16 @@ function makeSeedAsset(): Asset {
 // ticks, the list rows and the overall readiness gate.
 function assetIssues(a: Asset) {
   const docsMissing = [...missingRequiredDocs(a.docs), ...missingRequiredDocs(a.titleDocs)];
-  const valuationOk = a.status === "Passed" || (["Failed", "Exception"].includes(a.status) && !!a.reason.trim());
-  const titleOpen = a.titleChecklist.filter((i) => ["Pending", "In Progress"].includes(i.status) || (["Failed", "Exception"].includes(i.status) && !i.comment.trim()));
-  const legalOpen = a.legalRemarks.trim() ? [] : a.legalChecks.filter((c) => ["Failed", "Exception"].includes(c.status));
-  return { docsMissing, valuationOk, titleOpen, legalOpen };
+  const valuationOk = valuationStatus(a) === "Passed" || (["Failed", "Exception"].includes(a.status) && !!a.reason.trim());
+  const legalOpen = a.legalChecks.filter((c) => c.status === "Pending" || (["Failed", "Exception"].includes(c.status) && !a.legalRemarks.trim()));
+  return { docsMissing, valuationOk, legalOpen };
 }
 
 function stepDone(a: Asset, id: PanelId): boolean {
   const i = assetIssues(a);
   if (id === "assetDetails") return !!a.base.description?.trim();
   if (id === "valuation") return i.valuationOk;
-  if (id === "legal") return i.titleOpen.length === 0 && i.legalOpen.length === 0;
+  if (id === "legal") return i.legalOpen.length === 0 && missingRequiredDocs(a.titleDocs).length === 0;
   return false;
 }
 
@@ -251,29 +337,34 @@ function TopBar({ onMinimize, onClose }: { onMinimize: () => void; onClose: () =
 // ---------------------------------------------------------------------------
 
 function UnderwritingWorkspace({
-  finalAmount, onSubmitReady, tab: tabProp, onTabChange,
+  application, onChange, tab: tabProp, onTabChange, readOnly = false,
 }: {
-  finalAmount: number;
-  onSubmitReady?: (can: boolean, submit: () => void) => void;
+  application: LoanApplication;
+  readOnly?: boolean;
+  onChange?: (result: UnderwritingResult) => void;
   tab?: TabId;
   onTabChange?: (t: TabId) => void;
 }) {
+  const finalAmount = Number(application.approved_amount) || Number(application.requested_amount) || 0;
+  const saved = (application.underwriting_data ?? {}) as Record<string, any>;
   const [internalTab, setInternalTab] = useState<TabId>("asset");
   const tab = tabProp ?? internalTab;
   const setTab = onTabChange ?? setInternalTab;
   const isControlled = !!tabProp;
 
-  const [assets, setAssets] = useState<Asset[]>(() => [makeSeedAsset()]);
+  const [assets, setAssets] = useState<Asset[]>(() =>
+    (application.collaterals ?? []).map((c) => assetFromCollateral(c, application.applicant_name || "")),
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panel, setPanel] = useState<PanelId>("assetDetails");
 
-  const [assignee, setAssignee] = useState("Internal team");
-  const [decision, setDecision] = useState<Decision>(null);
-  const [conditions, setConditions] = useState<Condition[]>([]);
-  const [reasonCategory, setReasonCategory] = useState("");
-  const [reasonDetail, setReasonDetail] = useState("");
+  const [assignee] = useState<string>(saved.assignee ?? "Internal team");
+  const [decision, setDecision] = useState<Decision>(STATUS_TO_DECISION[application.underwriting_decision ?? ""] ?? null);
+  const [conditions, setConditions] = useState<Condition[]>(saved.conditions ?? []);
+  const [reasonCategory, setReasonCategory] = useState<string>(saved.reason_category ?? "");
+  const [reasonDetail, setReasonDetail] = useState<string>(saved.reason_detail ?? "");
   const [completed, setCompleted] = useState(false);
-  const [globalNotes, setGlobalNotes] = useState("");
+  const [globalNotes, setGlobalNotes] = useState<string>(saved.notes ?? "");
 
   useEffect(() => {
     if (selectedId) setPanel(TAB_ITEMS.find((t) => t.id === tab)!.entryStep);
@@ -295,7 +386,7 @@ function UnderwritingWorkspace({
   };
   const removeAsset = (id: string) => { setAssets((p) => p.filter((a) => a.id !== id)); if (selectedId === id) setSelectedId(null); };
 
-  const totalValue = assets.reduce((s, a) => s + (Number(a.valuation.amount) || 0), 0);
+  const totalValue = assets.reduce((s, a) => s + (Number(a.valuation.valuationAmount) || 0), 0);
   const coverage = totalValue ? Math.round((totalValue / finalAmount) * 100) : null;
 
   const readiness = useMemo(() => {
@@ -303,10 +394,9 @@ function UnderwritingWorkspace({
     assets.forEach((a, i) => {
       const l = `Asset ${i + 1}`;
       const s = assetIssues(a);
-      if (s.docsMissing.length) blockers.push(`${l}: required documents not verified — ${s.docsMissing.map((d) => d.name).join(", ")}.`);
+      if (s.docsMissing.length) blockers.push(`${l}: required documents missing — ${s.docsMissing.map((d) => d.name).join(", ")}.`);
       if (!s.valuationOk) blockers.push(`${l}: valuation not confirmed.`);
-      if (s.titleOpen.length) blockers.push(`${l}: unresolved title items — ${s.titleOpen.map((t) => t.label).join(", ")}.`);
-      if (s.legalOpen.length) blockers.push(`${l}: legal exceptions need a legal remark — ${s.legalOpen.map((c) => c.name).join(", ")}.`);
+      if (s.legalOpen.length) blockers.push(`${l}: legal checks open — ${s.legalOpen.map((c) => c.name).join(", ")}.`);
     });
     return { ready: blockers.length === 0, blockers };
   }, [assets]);
@@ -316,7 +406,26 @@ function UnderwritingWorkspace({
     (decision === "conditions" && conditions.length > 0 && conditions.every((c) => c.condition.trim())) ||
     ((decision === "refer" || decision === "reject") && !!reasonCategory);
 
-  useEffect(() => { onSubmitReady?.(completed, () => {}); }, [completed]);
+  const assetsComplete = assets.every((a) => a.securityType && Number(a.estimatedValue) > 0);
+
+  useEffect(() => {
+    onChange?.({
+      ready: decisionReady && assetsComplete,
+      buildPayload: async (submit) => ({
+        custom_status: submit && decision ? DECISION_TO_STATUS[decision] : "Pending",
+        underwriting_decision: decision ? DECISION_TO_STATUS[decision] : null,
+        final_amount: finalAmount || null,
+        underwriting_data: {
+          notes: globalNotes,
+          assignee,
+          conditions: decision === "conditions" ? conditions : [],
+          reason_category: decision === "refer" || decision === "reject" ? reasonCategory || null : null,
+          reason_detail: decision === "refer" || decision === "reject" ? reasonDetail || null : null,
+        },
+        collaterals: await Promise.all(assets.map(collateralFromAsset)),
+      }),
+    });
+  }, [assets, decision, conditions, reasonCategory, reasonDetail, globalNotes, assignee, decisionReady, assetsComplete]);
 
   const panelItems = useMemo(() => {
     if (tab === "asset") {
@@ -383,6 +492,7 @@ function UnderwritingWorkspace({
         </Paper>
 
         <Paper withBorder className="ps-surface" radius="lg" bg="white" style={{ overflow: "hidden" }}>
+          <Box component="fieldset" disabled={readOnly} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
           {(panel === "assetDetails" || panel === "valuation" || panel === "documents") && (
             <AssetValuation asset={selected} finalAmount={finalAmount} panel={panel} notes={notes} setNotes={setNotes} onUpdate={onUpdate} />
           )}
@@ -405,6 +515,7 @@ function UnderwritingWorkspace({
               <Text fz={11.5} c="dimmed" mt={8}>Shared across all assets and tabs, and included in the underwriting audit trail.</Text>
             </Box>
           )}
+          </Box>
 
           <Group justify="space-between" px={16} py={12} bg="gray.0" style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}>
             <Text fz={11} c="dimmed">Step {idx + 1} of {steps.length}</Text>
@@ -434,7 +545,7 @@ function UnderwritingWorkspace({
             {tab === "legal" ? "Legal Verification" : "Asset Valuation"} <Text span c="dimmed" fw={600}>({assets.length})</Text>
           </Text>
         </Group>
-        <Button radius="xl" leftSection={<IconPlus size={14} />} onClick={addAsset}>Add asset</Button>
+        <Button radius="xl" leftSection={<IconPlus size={14} />} onClick={addAsset} disabled={readOnly}>Add asset</Button>
       </Group>
 
       {!isControlled && (
@@ -475,8 +586,8 @@ function UnderwritingWorkspace({
                     </Box>
                   </Group>
                   <Group gap={10} wrap="nowrap">
-                    <StatusBadge status={a.status} />
-                    <ActionIcon variant="subtle" color="red" size="sm" title="Remove" onClick={(e) => { e.stopPropagation(); removeAsset(a.id); }}><IconTrash size={15} /></ActionIcon>
+                    <StatusBadge status={valuationStatus(a)} />
+                    <ActionIcon variant="subtle" color="red" size="sm" title="Remove" disabled={readOnly} onClick={(e) => { e.stopPropagation(); removeAsset(a.id); }}><IconTrash size={15} /></ActionIcon>
                     <IconChevronRight size={16} color="var(--mantine-color-gray-4)" />
                   </Group>
                 </Group>
@@ -486,7 +597,71 @@ function UnderwritingWorkspace({
         </Paper>
       )}
 
+      <Box component="fieldset" disabled={readOnly} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+      <Paper withBorder radius="lg" p="md" bg="white">
+        <SectionLabel>Underwriting decision</SectionLabel>
+        <SimpleGrid cols={{ base: 1, md: 4 }} spacing={10} mt={8}>
+          {(["approve", "conditions", "refer", "reject"] as const).map((d) => (
+            <Box key={d} style={{ borderRadius: "var(--mantine-radius-md)", outline: decision === d ? "2px solid var(--mantine-color-brand-5)" : "none" }}>
+              <DecisionButton
+                label={DECISION_LABEL[d]}
+                caption={DECISION_CAPTION[d]}
+                color={DECISION_COLOR[d]}
+                icon={DECISION_ICON[d]}
+                onClick={() => setDecision(d)}
+              />
+            </Box>
+          ))}
+        </SimpleGrid>
 
+        {decision === "approve" && !readiness.ready && (
+          <Stack gap={4} mt={10}>
+            {readiness.blockers.map((b) => (
+              <Group key={b} gap={6} wrap="nowrap">
+                <IconAlertTriangle size={13} color="var(--mantine-color-orange-6)" />
+                <Text fz={12} c="orange.8">{b}</Text>
+              </Group>
+            ))}
+          </Stack>
+        )}
+
+        {decision === "conditions" && (
+          <Stack gap={8} mt={12}>
+            {conditions.map((c, i) => (
+              <Group key={i} gap={8} wrap="nowrap" align="flex-end">
+                <TextInput
+                  size="xs" radius="md" label={i === 0 ? "Condition" : undefined} style={{ flex: 1 }}
+                  value={c.condition} error={c.condition.trim() ? undefined : "Required"}
+                  onChange={(e) => setConditions(conditions.map((x, idx) => (idx === i ? { ...x, condition: e.currentTarget.value } : x)))}
+                />
+                <Select
+                  size="xs" radius="md" label={i === 0 ? "Responsible" : undefined} w={140} data={["Customer", "Bank"]} allowDeselect={false}
+                  value={c.responsible} onChange={(v) => setConditions(conditions.map((x, idx) => (idx === i ? { ...x, responsible: v ?? "Customer" } : x)))}
+                />
+                <Select
+                  size="xs" radius="md" label={i === 0 ? "Due before" : undefined} w={160} data={["Offer signing", "Disbursement", "First repayment"]} allowDeselect={false}
+                  value={c.dueBefore} onChange={(v) => setConditions(conditions.map((x, idx) => (idx === i ? { ...x, dueBefore: v ?? "Disbursement" } : x)))}
+                />
+                <ActionIcon variant="subtle" color="red" size="md" onClick={() => setConditions(conditions.filter((_, idx) => idx !== i))}><IconX size={15} /></ActionIcon>
+              </Group>
+            ))}
+            <Button variant="subtle" size="compact-sm" radius="xl" leftSection={<IconPlus size={13} />} w="fit-content"
+              onClick={() => setConditions([...conditions, { condition: "", responsible: "Customer", dueBefore: "Disbursement" }])}>
+              Add condition
+            </Button>
+          </Stack>
+        )}
+
+        {(decision === "refer" || decision === "reject") && (
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing={10} mt={12}>
+            <Select size="xs" radius="md" label="Reason" data={REJECT_REASONS} value={reasonCategory || null}
+              onChange={(v) => setReasonCategory(v ?? "")} error={reasonCategory ? undefined : "Required"} />
+            <Textarea size="xs" radius="md" label="Details" autosize minRows={1} value={reasonDetail}
+              onChange={(e) => setReasonDetail(e.currentTarget.value)} />
+          </SimpleGrid>
+        )}
+      </Paper>
+      </Box>
     </Box>
   );
 }
@@ -495,29 +670,33 @@ function UnderwritingWorkspace({
 // Main modal
 // ---------------------------------------------------------------------------
 
-export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_PERSONAL_LOAN_APPLICATION, onMinimize, embedded, tab: externalTab, onTabChange: setExternalTab }: UnderwritingModalProps) {
+export function UnderwritingModal({ opened, onClose, loanApplicationId, application: embeddedApplication, onMinimize, embedded, readOnly, tab: externalTab, onTabChange: setExternalTab }: UnderwritingModalProps) {
   const [section, setSection] = useState<Section>("underwriting");
   const [internalTab, setInternalTab] = useState<TabId>("asset"); const tab = externalTab || internalTab; const setTab = setExternalTab || setInternalTab;
-  const policy = POLICY[DUMMY_PRESCREENING_CONTEXT.loanTypeId];
-  const calc = calcEligibility({
-    income: DUMMY_PRESCREENING_DATA.income.value,
-    obligations: DUMMY_PRESCREENING_DATA.liabilities.obligations,
-    maxDTI: policy.maxDTI,
-    annualRate: DUMMY_PRESCREENING_CONTEXT.loanRate,
-    tenureMonths: Number(applicationValues.tenureMonths) || 0,
-    productMax: policy.productMax,
-    creditScore: DUMMY_PRESCREENING_DATA.credit.value,
-    minCreditScore: policy.minCreditScore,
-  });
-  const finalAmount = DUMMY_ENRICHMENT_TERMS.amount || Math.round(calc.eligibleAmount);
+  const [result, setResult] = useState<UnderwritingResult | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const stage = useStageApplication(embedded ? null : loanApplicationId);
 
-  const [canSubmit, setCanSubmit] = useState(false);
-  const submitRef = useRef<() => void>(() => {});
-  const handleSubmitReady = (ready: boolean, submit: () => void) => { setCanSubmit(ready); submitRef.current = submit; };
+  if (embedded) {
+    if (!embeddedApplication) return null;
+    return (
+      <UnderwritingWorkspace application={embeddedApplication} readOnly={readOnly} tab={tab} onTabChange={setTab} />
+    );
+  }
 
-  if (embedded) return <UnderwritingWorkspace finalAmount={finalAmount} onSubmitReady={handleSubmitReady} tab={tab} onTabChange={setTab} />;
-
+  const { application, values } = stage;
   const noop = () => {};
+
+  const handleSubmit = async () => {
+    if (!result) return;
+    setPreparing(true);
+    try {
+      if (await stage.save(await result.buildPayload(true))) onClose();
+    } finally {
+      setPreparing(false);
+    }
+  };
+
   return (
     <Modal
       opened={opened} onClose={onClose} size={1400} closeOnClickOutside={false} closeOnEscape={false} padding={0} lockScroll
@@ -548,49 +727,53 @@ export function UnderwritingModal({ opened, onClose, applicationValues = DUMMY_P
           </Group>
         </Group>
 
-        <ContextHeader values={applicationValues} applicationId={DUMMY_PRESCREENING_CONTEXT.applicationId} />
-        <Box style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
-          <LeftNav activeSubItem={tab} onSubItemClick={(sub) => { setTab(sub as TabId); setSection("underwriting"); }} section={section} 
-  setSection={setSection} 
-  stageIndex={4}
-  items={[
-    { id: "application", label: "Loan application", hint: "Submitted", icon: IconFileText, done: true },
-    { id: "prescreening", label: "Prescreening", hint: "Passed", icon: IconGauge, done: true },
-    { id: "appraisal", label: "Loan Appraisal", hint: "Passed", icon: IconBuildingBank, done: true },
-    { id: "underwriting", label: "Underwriting", hint: "In progress", icon: IconScale, done: false, subItems: [
-        { id: "asset", label: "Asset Valuation", icon: IconCircleCheck },
-        { id: "legal", label: "Legal Verification", icon: IconShieldCheck }
-      ] },
-  ]}
-/>
-          <Box style={{ flex: 1, minWidth: 0, overflowY: "auto", background: "linear-gradient(180deg, #F5F4FF 0%, var(--mantine-color-gray-0) 320px)" }}>
-            {section === "application" && (
-              <Box style={{ height: "100%" }}>
-                <Group gap={10} m="md" p="sm" bg="brand.0" style={{ border: "1px solid var(--mantine-color-brand-2)", borderRadius: "var(--mantine-radius-md)" }}>
-                  <IconInfoCircle size={14} color="var(--mantine-color-brand-6)" />
-                  <Text fz={12.5} c="brand.9">Submitted application data — read-only at this stage.</Text>
-                </Group>
-                <Box style={{ height: "calc(100% - 70px)" }}>
-                  <LoanApplicationModal embedded readOnly initialValues={applicationValues} opened={false} onClose={noop} onMinimize={noop} />
-                </Box>
+        {!application || !values ? (
+          <StageLoading error={stage.error} />
+        ) : (
+          <>
+            <ContextHeader values={values} applicationId={application.name} loanTypeName={application.loan_type_name} stageIndex={4} />
+            <Box style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+              <LeftNav activeSubItem={tab} onSubItemClick={(sub) => { setTab(sub as TabId); setSection("underwriting"); }} section={section}
+                setSection={setSection}
+                stageIndex={4}
+                items={[
+                  { id: "application", label: "Loan application", hint: "Submitted", icon: IconFileText, done: true },
+                  { id: "prescreening", label: "Prescreening", hint: "Passed", icon: IconGauge, done: true },
+                  { id: "appraisal", label: "Loan Appraisal", hint: "Passed", icon: IconBuildingBank, done: true },
+                  { id: "underwriting", label: "Underwriting", hint: "In progress", icon: IconScale, done: false, subItems: [
+                      { id: "asset", label: "Asset Valuation", icon: IconCircleCheck },
+                      { id: "legal", label: "Legal Verification", icon: IconShieldCheck }
+                    ] },
+                ]}
+              />
+              <Box style={{ flex: 1, minWidth: 0, overflowY: "auto", background: "linear-gradient(180deg, #F5F4FF 0%, var(--mantine-color-gray-0) 320px)" }}>
+                {section === "application" && (
+                  <Box style={{ height: "100%" }}>
+                    <Group gap={10} m="md" p="sm" bg="brand.0" style={{ border: "1px solid var(--mantine-color-brand-2)", borderRadius: "var(--mantine-radius-md)" }}>
+                      <IconInfoCircle size={14} color="var(--mantine-color-brand-6)" />
+                      <Text fz={12.5} c="brand.9">Submitted application data — read-only at this stage.</Text>
+                    </Group>
+                    <Box style={{ height: "calc(100% - 70px)" }}>
+                      <LoanApplicationModal embedded readOnly initialValues={values} opened={false} onClose={noop} onMinimize={noop} />
+                    </Box>
+                  </Box>
+                )}
+                {section === "prescreening" && <PreScreeningModal embedded readOnly application={application} opened={false} onClose={noop} onMinimize={noop} />}
+                {section === "appraisal" && <EnrichmentModal embedded readOnly application={application} opened={false} onClose={noop} onMinimize={noop} />}
+                {section === "underwriting" && (
+                  <UnderwritingWorkspace application={application} readOnly={readOnly} onChange={setResult} tab={tab} onTabChange={setTab} />
+                )}
               </Box>
+            </Box>
+            {!readOnly && (
+              <Group justify="space-between" px="xl" py="md" bg="white" style={{ borderTop: "1px solid var(--mantine-color-gray-2)", flexShrink: 0 }}>
+                <Button variant="default" radius="md" onClick={onClose}>Cancel</Button>
+                <Button radius="md" onClick={handleSubmit} disabled={!result?.ready} loading={stage.saving || preparing} rightSection={<IconArrowRight size={16} />}>Submit</Button>
+              </Group>
             )}
-            {section === "prescreening" && <PreScreeningModal embedded readOnly applicationValues={applicationValues} opened={false} onClose={noop} onMinimize={noop} />}
-            {section === "appraisal" && <EnrichmentModal embedded readOnly applicationValues={applicationValues} opened={false} onClose={noop} onMinimize={noop} />}
-            {section === "underwriting" && <UnderwritingWorkspace finalAmount={finalAmount} onSubmitReady={handleSubmitReady} tab={tab} onTabChange={setTab} />}
-          </Box>
-        </Box>
-        <Group justify="space-between" px="xl" py="md" bg="white" style={{ borderTop: "1px solid var(--mantine-color-gray-2)", flexShrink: 0 }}>
-          <Button variant="default" radius="md" onClick={onClose}>Cancel</Button>
-          <Button radius="md" onClick={() => submitRef.current()} disabled={!canSubmit} rightSection={<IconArrowRight size={16} />}>Submit</Button>
-        </Group>
+          </>
+        )}
       </Box>
     </Modal>
   );
 }
-
-
-
-
-
-

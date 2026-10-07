@@ -1,27 +1,16 @@
-import { useMemo } from "react";
-import { SimpleGrid, TextInput, Select, Box, Text, Group, Checkbox, Stack } from "@mantine/core";
+import { SimpleGrid, TextInput, Select, Stack } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
-import { useQuery } from "@tanstack/react-query";
 import type { UseFormReturnType } from "@mantine/form";
-import { getAllCountries } from "../../../api/loanApplicationApi"; 
+import { GENDERS, MARITAL_STATUSES, cleanPhone, type LoanApplicationValues } from "./form";
+import { useCountryOptions } from "./lookups";
+import { AddressPanels } from "./ResidenceEmploymentStep";
 
 interface ApplicantProps {
-  form: UseFormReturnType<any>;
+  form: UseFormReturnType<LoanApplicationValues>;
   readOnly?: boolean;
 }
 
-const GENDERS = ["Male", "Female", "Other"];
-const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed", "Separated"];
-
-function Label({
-  text,
-  required,
-  optional,
-}: {
-  text: string;
-  required?: boolean;
-  optional?: boolean;
-}) {
+function Label({ text, required, optional }: { text: string; required?: boolean; optional?: boolean }) {
   return (
     <span className="text-sm font-semibold text-slate-800">
       {text}
@@ -32,81 +21,69 @@ function Label({
 }
 
 export function Applicant({ form, readOnly = false }: ApplicantProps) {
-  const { data: countryResponse, isLoading: isCountriesLoading } = useQuery({
-    queryKey: ["countries"],
-    queryFn: getAllCountries,
-  });
-
-  const countryOptions = useMemo(() => {
-    const countries = countryResponse?.message?.data || [];
-    return countries.map((c: any) => ({ value: c.value, label: c.label }));
-  }, [countryResponse]);
+  const { options: countryOptions, isLoading: isCountriesLoading } = useCountryOptions();
 
   return (
     <Stack gap="xl">
-      {/* Personal Details */}
       <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" verticalSpacing="md">
         <TextInput
+          maxLength={140}
           radius="md"
           label={<Label text="First name" required />}
           placeholder="e.g. John"
-          {...form.getInputProps("applicantFirstName")}
+          {...form.getInputProps("first_name")}
           readOnly={readOnly}
         />
         <TextInput
+          maxLength={140}
           radius="md"
           label={<Label text="Middle name" optional />}
           placeholder="e.g. K."
-          {...form.getInputProps("applicantMiddleName")}
+          {...form.getInputProps("middle_name")}
           readOnly={readOnly}
         />
         <TextInput
+          maxLength={140}
           radius="md"
           label={<Label text="Last name" required />}
           placeholder="e.g. Doe"
-          {...form.getInputProps("applicantLastName")}
+          {...form.getInputProps("last_name")}
           readOnly={readOnly}
         />
-
         <TextInput
+          maxLength={140}
           radius="md"
           type="tel"
           label={<Label text="Phone" required />}
           placeholder="e.g. 0971234567"
-          value={form.values.applicantPhone}
-          onChange={(e) =>
-            form.setFieldValue("applicantPhone", e.currentTarget.value.replace(/\D/g, ""))
-          }
-          error={form.errors.applicantPhone}
+          value={form.values.phone}
+          onChange={(e) => form.setFieldValue("phone", cleanPhone(e.currentTarget.value))}
+          error={form.errors.phone}
           readOnly={readOnly}
         />
         <TextInput
+          maxLength={140}
           radius="md"
           type="email"
           label={<Label text="Email" required />}
           placeholder="e.g. john.doe@example.com"
-          value={form.values.applicantEmail}
-          onChange={(e) => {
-            form.setFieldValue("applicantEmail", e.currentTarget.value);
-            form.validateField("applicantEmail");
-          }}
-          error={form.errors.applicantEmail}
+          {...form.getInputProps("email")}
           readOnly={readOnly}
         />
         <TextInput
+          maxLength={140}
           radius="md"
           label={<Label text="NRC" required />}
           placeholder="e.g. 123456/78/1"
-          {...form.getInputProps("applicantNrc")}
+          {...form.getInputProps("nrc")}
           readOnly={readOnly}
         />
-
         <Select
           radius="md"
           label={<Label text="Gender" required />}
           placeholder="Select"
           data={GENDERS}
-          {...form.getInputProps("applicantGender")}
+          {...form.getInputProps("gender")}
           disabled={readOnly}
         />
         <Select
@@ -114,7 +91,7 @@ export function Applicant({ form, readOnly = false }: ApplicantProps) {
           label={<Label text="Marital status" required />}
           placeholder="Select"
           data={MARITAL_STATUSES}
-          {...form.getInputProps("applicantMaritalStatus")}
+          {...form.getInputProps("marital_status")}
           disabled={readOnly}
         />
         <DateInput
@@ -122,22 +99,20 @@ export function Applicant({ form, readOnly = false }: ApplicantProps) {
           label={<Label text="Birth date" required />}
           valueFormat="DD-MMM-YYYY"
           placeholder="DD-MMM-YYYY"
-          value={form.values.applicantBirthDate ? new Date(form.values.applicantBirthDate) : null}
+          maxDate={new Date()}
+          value={form.values.date_of_birth || null}
           onChange={(date) =>
-            form.setFieldValue(
-              "applicantBirthDate",
-              date ? new Date(date).toISOString().slice(0, 10) : ""
-            )
+            form.setFieldValue("date_of_birth", date ? new Date(date).toISOString().slice(0, 10) : "")
           }
-          error={form.errors.applicantBirthDate}
+          error={form.errors.date_of_birth}
           readOnly={readOnly}
         />
-
         <TextInput
+          maxLength={140}
           radius="md"
           label={<Label text="Applicant position" required />}
           placeholder="e.g. Managing Director"
-          {...form.getInputProps("applicantPosition")}
+          {...form.getInputProps("position")}
           readOnly={readOnly}
         />
         <Select
@@ -147,46 +122,12 @@ export function Applicant({ form, readOnly = false }: ApplicantProps) {
           searchable
           clearable
           data={countryOptions}
+          {...form.getInputProps("nationality")}
           disabled={isCountriesLoading || readOnly}
-          {...form.getInputProps("applicantNationality")}
         />
       </SimpleGrid>
 
-      {/* Address Details */}
-      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-        {/* Present / Residential Address */}
-        <Box p="md" bd="1px solid var(--mantine-color-slate-3)" style={{ borderRadius: "var(--mantine-radius-md)" }}>
-          <Text fw={600} mb="md">Residential Address</Text>
-          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" verticalSpacing="sm">
-            <div style={{ display: "flex", gap: "16px", gridColumn: "1 / -1" }}>
-              <TextInput radius="md" label={<Label text="Address Line 1" required />} placeholder="Plot / street, area" readOnly={readOnly} style={{ flex: 1 }} />
-              <TextInput radius="md" label={<Label text="Address Line 2" />} placeholder="Apartment, suite, etc." readOnly={readOnly} style={{ flex: 1 }} />
-            </div>
-            <TextInput radius="md" label={<Label text="City / Town" required />} placeholder="e.g. Lusaka" readOnly={readOnly} />
-            <Select radius="md" searchable label={<Label text="State / Province" />} placeholder="Select" disabled={readOnly} data={["Lusaka", "Copperbelt", "Southern", "Eastern", "Northern"]} />
-            <Select radius="md" searchable label={<Label text="Country" required />} placeholder={isCountriesLoading ? "Loading..." : "Select"} disabled={isCountriesLoading || readOnly} data={countryOptions} />
-            <TextInput radius="md" label={<Label text="Postal Code" />} placeholder="e.g. 10101" readOnly={readOnly} />
-          </SimpleGrid>
-        </Box>
-
-        {/* Permanent / Mailing Address */}
-        <Box p="md" bd="1px solid var(--mantine-color-slate-3)" style={{ borderRadius: "var(--mantine-radius-md)" }}>
-          <Group justify="space-between" mb="md">
-            <Text fw={600}>Permanent Address</Text>
-            <Checkbox label="Same as residential" size="sm" />
-          </Group>
-          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" verticalSpacing="sm">
-            <div style={{ display: "flex", gap: "16px", gridColumn: "1 / -1" }}>
-              <TextInput radius="md" label={<Label text="Address Line 1" required />} placeholder="Plot / street, area" readOnly={readOnly} style={{ flex: 1 }} />
-              <TextInput radius="md" label={<Label text="Address Line 2" />} placeholder="Apartment, suite, etc." readOnly={readOnly} style={{ flex: 1 }} />
-            </div>
-            <TextInput radius="md" label={<Label text="City / Town" required />} placeholder="e.g. Lusaka" readOnly={readOnly} />
-            <Select radius="md" searchable label={<Label text="State / Province" />} placeholder="Select" disabled={readOnly} data={["Lusaka", "Copperbelt", "Southern", "Eastern", "Northern"]} />
-            <Select radius="md" searchable label={<Label text="Country" required />} placeholder={isCountriesLoading ? "Loading..." : "Select"} disabled={isCountriesLoading || readOnly} data={countryOptions} />
-            <TextInput radius="md" label={<Label text="Postal Code" />} placeholder="e.g. 10101" readOnly={readOnly} />
-          </SimpleGrid>
-        </Box>
-      </SimpleGrid>
+      <AddressPanels form={form} currentRequired={false} readOnly={readOnly} />
     </Stack>
   );
 }

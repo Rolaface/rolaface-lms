@@ -525,7 +525,18 @@ losDocumentSetup: {
     delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.delete_investor_flow`,
     updateStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.update_investor_flow_status`,
     getSchedule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_schedules`,
-  }
+  },
+
+  losLoanApplication: {
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_application.api.create_loan_application`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_application.api.update_loan_application`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_application.api.get_loan_application_by_id`,
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_application.api.get_loan_applications`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_application.api.delete_loan_application`,
+    getLoanTypes: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.get_loan_types`,
+    getSubTypes: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.get_sub_types`,
+    getPurposes: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.get_purposes`,
+  },
 } as const;
 
 export default API;

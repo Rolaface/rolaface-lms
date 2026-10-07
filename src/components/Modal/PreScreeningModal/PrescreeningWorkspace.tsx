@@ -36,12 +36,8 @@ import {
   IconBuildingBank,
   IconGauge as IconGaugeTab,
 } from "@tabler/icons-react";
-import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
-import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
-import {
-  DUMMY_PERSONAL_LOAN_APPLICATION,
-  DUMMY_PRESCREENING_CONTEXT,
-} from "./Dummyloanapplicationdata";
+import type { LoanApplication, StagePayload } from "../../../api/LosConfiguration/LoanApplicationApi";
+import { stagePolicy, sumAmounts } from "../stageData";
 
 import type {
   PreScreeningModalProps,
@@ -50,9 +46,6 @@ import type {
   PrescreeningState
 } from './PreScreeningShared';
 import {
-  POLICY,
-  SCENARIOS,
-  DEFAULT_SCENARIO,
   zmw,
   calcEligibility,
   calcRiskScore,
@@ -60,7 +53,6 @@ import {
   SourceBadge,
   ContextHeader,
   LeftNav,
-  buildInitialState,
   CreditGaugeVisual,
   CompactRow,
   StatMini,
@@ -721,7 +713,7 @@ function PrescreeningOverview({
                 <Text fz={13} c="slate.4" fw={500}>
                   Fetching…
                 </Text>
-              ) : liab.manual && liab.obligations == null && additionalTotal === 0 ? (
+              ) : liab.manual && additionalTotal === 0 && !readOnly ? (
                 <TextInput
                   radius="md"
                   size="xs"
@@ -1061,24 +1053,83 @@ function TopTabs({ tab, setTab }: { tab: TopTab; setTab: (t: TopTab) => void }) 
   );
 }
 
-export function PrescreeningWorkspace({
-  values,
-  readOnly = false,
-  onSubmitReady,
-}: {
-  values: LoanApplicationValues;
-  readOnly?: boolean;
-  onSubmitReady?: (canSubmit: boolean, submit: () => void) => void;
-}) {
-  const loanTypeId = DUMMY_PRESCREENING_CONTEXT.loanTypeId;
-  const policy = POLICY[loanTypeId];
-  const rate = DUMMY_PRESCREENING_CONTEXT.loanRate;
-  const tenure = Number(values.tenureMonths) || 0;
+export interface PrescreeningResult {
+  ready: boolean;
+  payload: StagePayload;
+}
 
-  const [state, setState] = useState<PrescreeningState>(() =>
-    buildInitialState(DEFAULT_SCENARIO),
+function applicationCredit(application: LoanApplication): PrescreeningState["credit"] {
+  return {
+    value: application.credit_score || null,
+    source: application.credit_score ? "application" : "unavailable",
+    status: "idle",
+    manual: false,
+    reason: "",
+    riskBand: null,
+    activeAccounts: null,
+    delinquentAccounts: null,
+    recentEnquiries: null,
+  };
+}
+
+function initialState(application: LoanApplication): PrescreeningState {
+  const saved = application.prescreening_data as Partial<PrescreeningState> | null | undefined;
+  if (saved?.liabilities && saved.income) {
+    return {
+      credit: applicationCredit(application),
+      liabilities: { ...saved.liabilities, status: "idle" },
+      income: { ...saved.income, status: "idle" },
+    };
+  }
+  const income = application.financials?.income ?? [];
+  const obligations = application.financials?.obligations ?? [];
+  return {
+    credit: applicationCredit(application),
+    liabilities: {
+      obligations: obligations.length ? sumAmounts(obligations) : null,
+      activeLoans: obligations.length || null,
+      outstanding: null,
+      source: obligations.length ? "application" : "unavailable",
+      status: "idle",
+      manual: !obligations.length,
+      reason: "",
+      records: [],
+      additionalRecords: [],
+    },
+    income: {
+      value: income.length ? sumAmounts(income) : null,
+      source: income.length ? "application" : "none",
+      status: "idle",
+      manual: !income.length,
+      reason: "",
+      additionalIncome: [],
+    },
+  };
+}
+
+function stageStatus(calc: EligibilityCalc | null, requested: number) {
+  if (!calc) return "Pending";
+  if (!calc.mandatoryPassed) return "Fail";
+  return calc.eligibleAmount >= requested ? "Pass" : "Review";
+}
+
+export function PrescreeningWorkspace({
+  application,
+  readOnly = false,
+  onChange,
+}: {
+  application: LoanApplication;
+  readOnly?: boolean;
+  onChange?: (result: PrescreeningResult) => void;
+}) {
+  const policy = stagePolicy(application);
+  const rate = policy.rate;
+  const tenure = Number(application.tenure_months) || 0;
+
+  const [state, setState] = useState<PrescreeningState>(() => initialState(application));
+  const [requested, setRequested] = useState(
+    Number(application.prescreening_data?.confirmed_amount) || Number(application.requested_amount) || 0,
   );
-  const [requested, setRequested] = useState(values.loanAmount);
   const [confirm, setConfirm] = useState(false);
   const [continued, setContinued] = useState(false);
   const [liabOpen, setLiabOpen] = useState(false);
@@ -1098,61 +1149,56 @@ export function PrescreeningWorkspace({
   }
 
   useEffect(() => {
-    if (state.credit.status === "loading") {
-      const t = setTimeout(() => {
-        const s = SCENARIOS[DEFAULT_SCENARIO];
-        dispatch({
-          type: "resolveCreditFetch",
-          value: s.credit,
-          source: s.creditSource,
-          riskBand: s.riskBand ?? null,
-          activeAccounts: s.activeAccounts ?? null,
-          delinquentAccounts: s.delinquentAccounts ?? null,
-          recentEnquiries: s.recentEnquiries ?? null,
-        });
-      }, 700);
-      return () => clearTimeout(t);
-    }
+    if (state.credit.status !== "loading") return;
+    const t = setTimeout(() => {
+      const credit = applicationCredit(application);
+      dispatch({ type: "resolveCreditFetch", value: credit.value, source: credit.source });
+    }, 400);
+    return () => clearTimeout(t);
   }, [state.credit.status]);
 
   useEffect(() => {
-    if (state.liabilities.status === "loading") {
-      const t = setTimeout(() => {
-        const s = SCENARIOS[DEFAULT_SCENARIO];
-        const records = s.liabilities ?? [];
-        dispatch({
-          type: "resolveLiabFetch",
-          obligations: s.obligations,
-          activeLoans: records.length || (s.obligations != null ? 2 : null),
-          outstanding: s.obligations != null ? Math.round(s.obligations * 10) : null,
-          source: s.obligationsSource,
-          records,
-        });
-      }, 700);
-      return () => clearTimeout(t);
-    }
+    if (state.liabilities.status !== "loading") return;
+    const t = setTimeout(() => {
+      const items = application.financials?.obligations ?? [];
+      dispatch({
+        type: "resolveLiabFetch",
+        obligations: items.length ? sumAmounts(items) : state.liabilities.obligations,
+        activeLoans: items.length || state.liabilities.activeLoans,
+        outstanding: state.liabilities.outstanding,
+        source: items.length ? "application" : state.liabilities.source,
+        records: state.liabilities.records,
+      });
+    }, 400);
+    return () => clearTimeout(t);
   }, [state.liabilities.status]);
 
   useEffect(() => {
-    if (state.income.status === "loading") {
-      const t = setTimeout(() => {
-        const s = SCENARIOS[DEFAULT_SCENARIO];
-        dispatch({ type: "resolveIncomeFetch", value: s.income, source: s.incomeSource });
-      }, 700);
-      return () => clearTimeout(t);
-    }
+    if (state.income.status !== "loading") return;
+    const t = setTimeout(() => {
+      const items = application.financials?.income ?? [];
+      dispatch({
+        type: "resolveIncomeFetch",
+        value: items.length ? sumAmounts(items) : state.income.value,
+        source: items.length ? "application" : state.income.source,
+      });
+    }, 400);
+    return () => clearTimeout(t);
   }, [state.income.status]);
+
+  const creditScore =
+    state.credit.value != null && state.credit.value >= 300 && state.credit.value <= 850 ? state.credit.value : null;
 
   const riskScore = useMemo(
     () =>
       calcRiskScore({
-        creditScore: state.credit.value,
+        creditScore,
         delinquentAccounts: state.credit.delinquentAccounts,
         recentEnquiries: state.credit.recentEnquiries,
         liabilityRecords: state.liabilities.records,
       }),
     [
-      state.credit.value,
+      creditScore,
       state.credit.delinquentAccounts,
       state.credit.recentEnquiries,
       state.liabilities.records,
@@ -1185,11 +1231,11 @@ export function PrescreeningWorkspace({
       annualRate: rate,
       tenureMonths: tenure,
       productMax: policy.productMax,
-      creditScore: state.credit.value,
+      creditScore,
       minCreditScore: policy.minCreditScore,
     });
   }, [
-    state.credit.value,
+    creditScore,
     totalObligations,
     totalIncome,
     policy,
@@ -1218,8 +1264,29 @@ export function PrescreeningWorkspace({
   const isEligible = !!calc && calc.mandatoryPassed && calc.eligibleAmount >= requested;
 
   useEffect(() => {
-    onSubmitReady?.(isEligible, () => setContinued(true));
-  }, [isEligible]);
+    if (!onChange) return;
+    const strip = <T extends { status: string }>(value: T) => ({ ...value, status: "idle" as const });
+    onChange({
+      ready: isEligible,
+      payload: {
+        custom_status: stageStatus(calc, requested),
+        monthly_income: totalIncome,
+        monthly_obligations: totalObligations,
+        eligible_amount: calc ? Math.round(calc.eligibleAmount) : null,
+        prescreening_data: {
+          credit: strip(state.credit),
+          liabilities: strip(state.liabilities),
+          income: strip(state.income),
+          confirmed_amount: requested,
+          result: stageStatus(calc, requested),
+          policy: { min_credit_score: policy.minCreditScore, max_dti: policy.maxDTI, product_max: policy.productMax, rate },
+          dti: calc ? Math.round(calc.customerDTI * 10) / 10 : null,
+          risk_score: riskScore?.score ?? null,
+          risk_band: riskScore?.band ?? null,
+        },
+      },
+    });
+  }, [state, requested, calc, riskScore, totalIncome, totalObligations, isEligible]);
 
   if (continued) {
     return (
@@ -1274,7 +1341,7 @@ export function PrescreeningWorkspace({
   );
 
   const missing: string[] = [];
-  if (state.credit.value == null) missing.push("Credit score");
+  if (creditScore == null) missing.push("Credit score");
   if (totalObligations == null) missing.push("Liability information");
   if (totalIncome == null) missing.push("Income");
 

@@ -1,29 +1,28 @@
 import { Box, Text, Progress, Divider } from "@mantine/core";
-import type { LoanApplicationValues } from "./LoanApplicationModal";
+import { DOCUMENT_KEYS, OPTIONAL_DOCUMENTS, applicantName, type LoanApplicationValues } from "./form";
+import { labelOf, useLoanTypeOptions } from "./lookups";
 
 interface Props {
   values: LoanApplicationValues;
   totalRepayable: number;
   monthlyRepayment: number;
   activeStep: number;
+  totalSteps: number;
 }
 
-export function ApplicationSummary({ values, totalRepayable, monthlyRepayment, activeStep }: Props) {
-  const isPersonal = values.loanType === "Personal";
+export function ApplicationSummary({ values, totalRepayable, monthlyRepayment, activeStep, totalSteps }: Props) {
+  const isIndividual = values.applicant_type === "Individual";
+  const { options: loanTypes } = useLoanTypeOptions(values.applicant_type);
 
-  const applicantName = isPersonal
-    ? [values.firstName, values.surname].filter(Boolean).join(" ")
-    : [values.applicantFirstName, values.applicantLastName].filter(Boolean).join(" ");
-
-  const docFields = isPersonal
-    ? [values.payslips, values.bankStatementsPersonal, values.nrcCopy, values.passportPhotoPersonal, values.tpinCertificate]
-    : [values.pacraCertificate, values.form2, values.taxClearanceCertificate, values.taxComplianceReturn, values.bankStatementsBusiness, values.applicantPassportPhoto, values.boardResolution];
-
-  const uploadedCount = docFields.filter(Boolean).length;
-  const totalDocs = docFields.length;
+  const requiredDocs = DOCUMENT_KEYS[values.applicant_type].filter((key) => !OPTIONAL_DOCUMENTS.includes(key));
+  const uploadedCount = requiredDocs.filter((key) => values.documents[key]).length;
+  const totalDocs = requiredDocs.length;
   const pending = totalDocs - uploadedCount;
 
-  const progressPct = Math.round(((activeStep + 1) / 4) * 100);
+  const progressPct = Math.round(((activeStep + 1) / totalSteps) * 100);
+  const name = isIndividual
+    ? applicantName(values)
+    : [values.first_name, values.last_name].filter(Boolean).join(" ");
 
   return (
     <Box
@@ -41,44 +40,40 @@ export function ApplicationSummary({ values, totalRepayable, monthlyRepayment, a
         Application Summary
       </Text>
 
-      {/* Applicant */}
       <Text fz="xxs" fw={700} c="slate.4" mb={2} tt="uppercase" style={{ letterSpacing: "0.03em" }}>
         Applicant
       </Text>
       <Text fz="sm" fw={700} c="brand.7" mb={1} lineClamp={1}>
-        {applicantName || "—"}
+        {name || "—"}
       </Text>
       <Text fz="xs" c="slate.5" mb="sm">
-        {isPersonal ? values.nrc : values.applicantNrc}
+        {isIndividual ? values.nrc : values.company_name}
       </Text>
 
       <Divider color="slate.2" mb="sm" />
 
-      {/* Loan */}
       <Text fz="xxs" fw={700} c="slate.4" mb={2} tt="uppercase" style={{ letterSpacing: "0.03em" }}>
         Loan
       </Text>
       <Text fz="sm" fw={700} c="slate.8" mb={1}>
-        {isPersonal ? "Personal Loan" : "Business Loan"}
+        {labelOf(loanTypes, values.loan_type) || `${values.applicant_type} loan`}
       </Text>
       <Text fz="xs" c="slate.5" mb="sm">
-        K {values.loanAmount.toLocaleString()} • {values.tenureMonths || 0} months
+        K {(Number(values.requested_amount) || 0).toLocaleString()} • {values.tenure_months || 0} months
       </Text>
 
       <Divider color="slate.2" mb="sm" />
 
-      {/* Financial */}
       <Text fz="xxs" fw={700} c="slate.4" mb={2} tt="uppercase" style={{ letterSpacing: "0.03em" }}>
         Financial
       </Text>
       <Text fz="sm" fw={700} c="slate.8" mb={1}>
-        K {monthlyRepayment.toLocaleString()} / month
+        K {monthlyRepayment.toLocaleString()} / {values.repayment_frequency === "Bi-weekly" ? "fortnight" : "month"}
       </Text>
       <Text fz="xs" c="slate.5" mb="sm">
         Total repayable: K {totalRepayable.toLocaleString()}
       </Text>
 
-      {/* Status */}
       <Box
         p="sm"
         mb="sm"
@@ -99,7 +94,6 @@ export function ApplicationSummary({ values, totalRepayable, monthlyRepayment, a
         </Text>
       </Box>
 
-      {/* Documents */}
       <Text fz="xxs" fw={700} c="slate.4" mb={2} tt="uppercase" style={{ letterSpacing: "0.03em" }}>
         Documents
       </Text>
