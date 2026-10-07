@@ -26,6 +26,8 @@ export interface CustomerRaw {
   mobile_no: string;
   status: string;
   is_investor?: boolean;
+  /** Receivable Account from the customer's Accounts table for the default company. */
+  account?: string | null;
 }
 
 export interface CustomerPagination {
@@ -180,6 +182,8 @@ export interface CustomerDetailRaw {
   primary_address: string | null;
   addresses: CustomerAddress[];
   contacts: CustomerContact[];
+  /** Receivable Account from the customer's Accounts table for the default company. */
+  account?: string | null;
 
   relationship_manager: string | null;
   relationship_manager_name: string | null;

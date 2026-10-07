@@ -1,6 +1,14 @@
 import { jsPDF } from "jspdf";
+import { useCompanyStore } from "../../../store/companyStore";
 import type { MantineTheme } from "@mantine/core";
-import { fmtDate, type ScheduleRow } from "./InvestorModalShared";
+import {
+  fmtDate,
+  stateCustomer,
+  stateProduct,
+  type ModalState,
+  type Schedule,
+  type ScheduleRow,
+} from "./InvestorModalShared";
 
 /* ------------------------------ Palette ------------------------------ */
 type RGB = [number, number, number];
@@ -247,6 +255,7 @@ export interface PdfCustomer {
 
 export interface ContractPdfData {
   contractNo: string;
+  companyName: string;
   issuedOn: Date;
   status: string;
   signMethod: string;
@@ -277,12 +286,11 @@ export function buildContractPdf(d: ContractPdfData, p: PdfPalette): jsPDF {
   // Parties
   y = sectionTitle(ctx, y, "Parties");
   const cardW = (CW - 6) / 2;
-  const h1 = infoCard(ctx, M, y, cardW, "The Company", "The Company (NBFC)", [
+  const h1 = infoCard(ctx, M, y, cardW, "The Company", d.companyName || "The Company", [
     `Product: ${d.productName}`,
   ]);
   const h2 = infoCard(ctx, M + cardW + 6, y, cardW, "The Investor", d.customer.name, [
     `Customer ID: ${d.customer.id}`,
-    `Payout bank: ${d.customer.bank}`,
     `Email: ${d.customer.email}`,
   ]);
   y += Math.max(h1, h2) + 8;
@@ -342,7 +350,7 @@ export function buildContractPdf(d: ContractPdfData, p: PdfPalette): jsPDF {
   ink(ctx, p.ink);
   font(ctx, "normal", 9);
   const terms = [
-    "Principal is returned on the maturity date together with the final interest payment.",
+    "Principal and interest are paid in equal instalments on each payout date; the last instalment settles any rounding difference.",
     d.penaltyApplicable
       ? `Delayed payouts attract a penalty of ${d.penaltyRate}% p.a.`
       : "Penalty: not applicable.",
@@ -361,7 +369,7 @@ export function buildContractPdf(d: ContractPdfData, p: PdfPalette): jsPDF {
   const executed = d.status === "Executed";
   [
     { x: M, label: `Investor - ${d.customer.name}` },
-    { x: M + sigW + 12, label: "For the Company (NBFC)" },
+    { x: M + sigW + 12, label: `For ${d.companyName || "the Company"}` },
   ].forEach((s, idx) => {
     draw(ctx, p.mute);
     doc.line(s.x, y + 22, s.x + sigW, y + 22);
@@ -462,4 +470,39 @@ export function buildStatementPdf(d: StatementPdfData, p: PdfPalette): jsPDF {
 
   addFooters(ctx, `Investment Statement | ${d.contractNo} | ${d.statementLabel}`);
   return doc;
+}
+
+export const contractPdfName = (state: ModalState) => `${state.contractNo}.pdf`;
+
+/** The contract PDF for the current terms (null until customer, product and schedule exist). */
+export function buildContractPdfFromState(
+  state: ModalState,
+  schedule: Schedule | null,
+  theme: MantineTheme,
+) {
+  const customer = stateCustomer(state);
+  const product = stateProduct(state);
+  if (!schedule || !customer || !product) return null;
+  return buildContractPdf(
+    {
+      contractNo: state.contractNo,
+      companyName: useCompanyStore.getState().companyName,
+      issuedOn: new Date(),
+      status: state.contractStatus,
+      signMethod: state.signMethod,
+      customer: { ...customer, bank: customer.bank || "—" },
+      productName: product.name,
+      amount: state.amount,
+      rate: state.rate,
+      frequency: state.frequency,
+      firstRepayment: state.firstRepayment,
+      maturity: state.maturity,
+      penaltyApplicable: state.penaltyApplicable,
+      penaltyRate: state.penaltyRate,
+      totalMonths: schedule.totalMonths,
+      totalInterest: schedule.totalInterest,
+      rows: schedule.rows,
+    },
+    getPdfPalette(theme),
+  );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ActionIcon,
   Box,
@@ -6,6 +6,7 @@ import {
   Group,
   Loader,
   Modal,
+  NumberInput,
   Paper,
   Select,
   Text,
@@ -13,27 +14,28 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import { IconArrowRight, IconCash, IconX } from "@tabler/icons-react";
-import { CUSTOMERS, inr, toIso, type ModalState } from "./InvestorModalShared";
-
-export interface ReceivePaymentResult {
-  paymentEntry: string;
-  referenceNo: string;
-}
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  getInvestorBankAccounts,
+  receiveInvestorFlowPayment,
+} from "../../../api/Investor/investorFlowApi";
+import { fetchLedgerAccountOptions } from "../../../api/utils/frappeUtilsApi";
+import {
+  INVESTOR_FLOW_PAYMENT_MODES,
+  type InvestorFlowPaymentMode,
+  type InvestorFlowReceivePaymentResult,
+} from "../../../types/Investor/investorFlow";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+import { openCommonModal } from "../AlertModal";
+import { inr, stateCustomer, toIso, type ModalState } from "./InvestorModalShared";
 
 interface ReceivePaymentModalProps {
   opened: boolean;
   onClose: () => void;
+  /** Investor Flow ID. */
+  investorFlowId: string;
   state: ModalState;
-  onReceived: (result: ReceivePaymentResult) => void;
-}
-
-export interface AccountOption {
-  name: string;
-  company: string;
-  /** GL account linked to the bank account (shown read-only). */
-  account?: string;
-  /** Currency of the bank account (shown read-only). */
-  currency?: string;
+  onReceived: (result: InvestorFlowReceivePaymentResult) => void;
 }
 
 // Same field look as the other modals: bold label, white input, slate border.
@@ -63,73 +65,166 @@ function LockedField({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Read-only input with the same look as the modal fields. */
+export function LockedInput({
+  label,
+  value,
+  mt,
+}: {
+  label: string;
+  value: string;
+  mt?: string;
+}) {
+  return (
+    <TextInput label={label} size="sm" radius="md" mt={mt} disabled styles={FIELD_STYLES} value={value} />
+  );
+}
+
+/** Two panels, "Paid From" → "Paid To", used by Receive Payment and the saved payment details. */
+export function PaidFromToPanel({ from, to }: { from: ReactNode; to: ReactNode }) {
+  return (
+    <Paper
+      radius="md"
+      mt="md"
+      pos="relative"
+      style={{
+        background: "var(--mantine-color-white)",
+        border: "1px solid var(--mantine-color-slate-2)",
+        overflow: "hidden",
+      }}
+    >
+      <Box
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          background: "var(--mantine-color-slate-0)",
+          borderBottom: "1px solid var(--mantine-color-slate-2)",
+        }}
+      >
+        <Text fw={700} fz="sm" c="slate.8" px="md" py="sm">
+          Paid From
+        </Text>
+        <Text
+          fw={700}
+          fz="sm"
+          c="slate.8"
+          px="md"
+          py="sm"
+          style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
+        >
+          Paid To
+        </Text>
+      </Box>
+
+      <Box style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+        <Box p="md">{from}</Box>
+        <Box p="md" style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}>
+          {to}
+        </Box>
+      </Box>
+
+      {/* Arrow between the two panels */}
+      <Box
+        style={{
+          position: "absolute",
+          top: 76,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 32,
+          height: 32,
+          borderRadius: "50%",
+          background: "var(--mantine-color-white)",
+          border: "1px solid var(--mantine-color-slate-2)",
+          boxShadow: "var(--mantine-shadow-xs)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <IconArrowRight size={16} color="var(--mantine-color-brand-6)" />
+      </Box>
+    </Paper>
+  );
+}
+
 export function ReceivePaymentModal({
   opened,
   onClose,
+  investorFlowId,
   state,
   onReceived,
 }: ReceivePaymentModalProps) {
   const theme = useMantineTheme();
-  const customer = CUSTOMERS[state.customerIndex];
-  const today = toIso(new Date());
+  const customer = stateCustomer(state);
 
-  const [postingDate, setPostingDate] = useState(today);
-  const [modeOfPayment, setModeOfPayment] = useState<string | null>(null);
-  const [referenceNo, setReferenceNo] = useState("");
-  const [referenceDate, setReferenceDate] = useState(today);
-  const [paidTo, setPaidTo] = useState<AccountOption | null>(null);
-  const [accountSearch, setAccountSearch] = useState("");
-  const [paidFromBank, setPaidFromBank] = useState<string | null>(null);
+  const [paymentDate, setPaymentDate] = useState(toIso(new Date()));
+  const [paymentMode, setPaymentMode] = useState<InvestorFlowPaymentMode | null>(null);
+  const [refNo, setRefNo] = useState("");
+  const [amountPaid, setAmountPaid] = useState<number>(state.amount);
+  const [paidTo, setPaidTo] = useState<string | null>(null);
 
-  // Local state to mock submitting behavior
-  const [submitting, setSubmitting] = useState(false);
+  /* Paid To: ledger accounts (frappeUtilsAPI.getaccounts) */
+  const { data: accounts = [], isLoading: accountsLoading } = useQuery({
+    queryKey: ["ledgerAccountOptions"],
+    queryFn: fetchLedgerAccountOptions,
+    enabled: opened,
+  });
+  const paidToAccount = accounts.find((a) => a.name === paidTo) ?? null;
 
-  /* ---------------------- Mocked Data Variables ---------------------- */
-  const modesLoading = false;
-  const modes = ["Wire Transfer", "Cheque", "Cash", "Bank Draft"];
+  /* Paid From: the investor's Bank Accounts (Party = the customer) */
+  const { data: bankAccounts = [], isLoading: bankAccountsLoading } = useQuery({
+    queryKey: ["investorBankAccounts", state.customerId],
+    queryFn: () => getInvestorBankAccounts(state.customerId as string),
+    enabled: opened && !!state.customerId,
+  });
+  const [paidFromChoice, setPaidFromChoice] = useState<string | null>(null);
+  // The investor's default bank account until the user picks one.
+  const paidFromAccount =
+    bankAccounts.find((b) => b.name === paidFromChoice) ??
+    (paidFromChoice === null ? bankAccounts.find((b) => b.is_default) : undefined) ??
+    null;
+  const paidFrom = paidFromAccount?.name ?? "";
+  /** Bank Account's Company Account: credited in the Journal Entry. */
+  /** Credited in the Journal Entry: the Bank Account's Company Account. */
+  const creditAccount = paidFromAccount?.account ?? "";
 
-  const accountsLoading = false;
-  // MOCK values for the GL account and currency; replace with the Frappe data.
-  const accounts: AccountOption[] = [
-    { name: "HDFC Bank - Current", company: "Default Company", account: "Bank - HDFC", currency: "INR" },
-    { name: "ICICI Bank - Escrow", company: "Default Company", account: "Bank - ICICI", currency: "INR" },
-  ];
-
-  const paidFromLoading = false;
-  const paidFromFailed = false;
-  const paidFromCurrency = "INR"; // MOCK, replace with the customer account's currency
-  const paidFromBankOptions = customer ? [{ value: customer.bank, label: customer.bank }] : [];
-  const paidFrom = customer ? `Debtors - ${customer.name}` : "";
-  /* ------------------------------------------------------------------- */
-
-  // Keep the chosen account in the list while the user types a new search.
-  const accountOptions = (
-    paidTo && !accounts.some((a) => a.name === paidTo.name)
-      ? [paidTo, ...accounts]
-      : accounts
-  ).map((a) => ({ value: a.name, label: a.name }));
+  const paymentMutation = useMutation({
+    mutationFn: receiveInvestorFlowPayment,
+    onSuccess: onReceived,
+    onError: (error: any) =>
+      openCommonModal({
+        heading: "Payment Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      }),
+  });
+  const submitting = paymentMutation.isPending;
 
   const canSubmit =
-    !!customer &&
-    !!postingDate &&
-    !!modeOfPayment &&
-    referenceNo.trim().length > 0 &&
-    !!referenceDate &&
+    !!paymentDate &&
+    !!paymentMode &&
+    refNo.trim().length > 0 &&
+    Number.isInteger(amountPaid) &&
+    amountPaid > 0 &&
     !!paidTo &&
     !!paidFrom &&
-    !paidFromLoading &&
-    state.amount > 0;
+    !submitting;
 
   const handleSubmit = () => {
-    if (!canSubmit || !customer || !paidTo || !paidFrom || !modeOfPayment) return;
-
-    setSubmitting(true);
-
-    // Simulate network delay to maintain the UI loading experience
-    setTimeout(() => {
-      setSubmitting(false);
-      onReceived({ paymentEntry: "PAY-MOCK-0001", referenceNo: referenceNo.trim() });
-    }, 600);
+    if (!canSubmit || !paymentMode || !paidTo) return;
+    paymentMutation.mutate({
+      id: investorFlowId,
+      payload: {
+        payment_date: paymentDate,
+        ref_no: refNo.trim(),
+        payment_mode: paymentMode,
+        amount_paid: amountPaid,
+        paid_from: paidFrom,
+        paid_to: paidTo,
+      },
+    });
   };
 
   return (
@@ -172,7 +267,7 @@ export function ReceivePaymentModal({
             Receive Payment
           </Text>
           <Text fz="xs" c="white" style={{ opacity: 0.85 }}>
-            Records the investor's funds as a Payment Entry in accounting.
+            Records the investor's funds as a Journal Entry in accounting.
           </Text>
         </Box>
         <ActionIcon
@@ -213,7 +308,7 @@ export function ReceivePaymentModal({
             <LockedField label="Payment type" value="Receive" />
             <LockedField label="Party type" value="Customer" />
             <LockedField label="Investor" value={customer ? customer.name : "—"} />
-            <LockedField label="Amount" value={inr(state.amount)} />
+            <LockedField label="Investment amount" value={inr(state.amount)} />
           </Box>
         </Paper>
 
@@ -221,210 +316,121 @@ export function ReceivePaymentModal({
         <Box style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <TextInput
             type="date"
-            label="Date"
+            label="Payment date"
             size="sm"
             radius="md"
             required
             styles={FIELD_STYLES}
-            value={postingDate}
-            onChange={(e) => setPostingDate(e.currentTarget.value)}
+            value={paymentDate}
+            onChange={(e) => setPaymentDate(e.currentTarget.value)}
           />
           <Select
             label="Mode of payment"
-            placeholder={modesLoading ? "Loading…" : "Select"}
+            placeholder="Select"
             size="sm"
             radius="md"
             required
-            searchable
             styles={FIELD_STYLES}
-            data={modes}
-            value={modeOfPayment}
-            onChange={setModeOfPayment}
-            rightSection={modesLoading ? <Loader size={14} /> : undefined}
-            nothingFoundMessage="No mode of payment found"
+            data={[...INVESTOR_FLOW_PAYMENT_MODES]}
+            value={paymentMode}
+            onChange={(v) => setPaymentMode(v as InvestorFlowPaymentMode | null)}
           />
           <TextInput
-            label="Cheque / reference no."
+            label="Reference no."
             placeholder="Enter reference"
             size="sm"
             radius="md"
             required
             styles={FIELD_STYLES}
-            value={referenceNo}
-            onChange={(e) => setReferenceNo(e.currentTarget.value)}
+            value={refNo}
+            onChange={(e) => setRefNo(e.currentTarget.value)}
           />
-          <TextInput
-            type="date"
-            label="Cheque / reference date"
+          <NumberInput
+            label="Amount paid"
             size="sm"
             radius="md"
             required
+            min={1}
+            allowDecimal={false}
+            thousandSeparator=","
             styles={FIELD_STYLES}
-            value={referenceDate}
-            onChange={(e) => setReferenceDate(e.currentTarget.value)}
+            value={amountPaid}
+            onChange={(v) => setAmountPaid(Number(v) || 0)}
           />
         </Box>
 
         {/* Paid From / Paid To */}
-        <Paper
-          radius="md"
-          mt="md"
-          pos="relative"
-          style={{
-            background: "var(--mantine-color-white)",
-            border: "1px solid var(--mantine-color-slate-2)",
-            overflow: "hidden",
-          }}
-        >
-          <Box
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              background: "var(--mantine-color-slate-0)",
-              borderBottom: "1px solid var(--mantine-color-slate-2)",
-            }}
-          >
-            <Text fw={700} fz="sm" c="slate.8" px="md" py="sm">
-              Paid From
-            </Text>
-            <Text
-              fw={700}
-              fz="sm"
-              c="slate.8"
-              px="md"
-              py="sm"
-              style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}
-            >
-              Paid To
-            </Text>
-          </Box>
-
-          <Box style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-            {/* Paid from */}
-            <Box p="md">
+        <PaidFromToPanel
+          from={
+            <>
               <Select
                 label="Bank Account"
-                placeholder="Type to search…"
+                placeholder="Select"
                 size="sm"
                 radius="md"
+                required
                 searchable
-                clearable
                 styles={FIELD_STYLES}
-                data={paidFromBankOptions}
-                value={paidFromBank}
-                onChange={setPaidFromBank}
+                data={bankAccounts.map((b) => ({ value: b.name, label: b.name }))}
+                value={paidFrom || null}
+                onChange={(v) => setPaidFromChoice(v ?? "")}
+                rightSection={bankAccountsLoading ? <Loader size={14} /> : undefined}
                 nothingFoundMessage="No bank account found"
+                error={
+                  !bankAccountsLoading && bankAccounts.length === 0
+                    ? "This investor has no bank account."
+                    : undefined
+                }
               />
-              <Group gap="sm" mt="md" wrap="nowrap" align="flex-start">
-                <TextInput
-                  label="Account (GL)"
-                  size="sm"
-                  radius="md"
-                  disabled
-                  style={{ flex: 1 }}
-                  styles={FIELD_STYLES}
-                  value={!paidFromLoading ? (paidFrom ?? "") : ""}
-                  rightSection={paidFromLoading ? <Loader size={14} /> : undefined}
-                  error={
-                    paidTo && paidFromFailed
-                      ? "Could not find this customer's account in Frappe."
-                      : undefined
-                  }
-                />
-                <TextInput
-                  label="Currency"
-                  size="sm"
-                  radius="md"
-                  disabled
-                  w={90}
-                  styles={FIELD_STYLES}
-                  value={paidFromCurrency}
-                />
-              </Group>
-            </Box>
-
-            {/* Paid to */}
-            <Box p="md" style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}>
+              <LockedInput
+                label="Account (GL)"
+                value={creditAccount}
+                mt="md"
+              />
+              {paidFromAccount?.account_currency && (
+                <Text fz="xs" c="slate.5" mt={6}>
+                  Currency: {paidFromAccount.account_currency}
+                </Text>
+              )}
+            </>
+          }
+          to={
+            <>
               <Select
-                label="Bank Account"
+                label="Account"
                 placeholder="Type to search…"
                 size="sm"
                 radius="md"
                 required
                 searchable
                 styles={FIELD_STYLES}
-                data={accountOptions}
-                filter={({ options }) => options}
-                value={paidTo ? paidTo.name : null}
-                onChange={(value) =>
-                  setPaidTo(
-                    value
-                      ? (accounts.find((a) => a.name === value) ??
-                        (paidTo && paidTo.name === value ? paidTo : null))
-                      : null,
-                  )
-                }
-                searchValue={accountSearch}
-                onSearchChange={setAccountSearch}
+                data={accounts.map((a) => ({ value: a.name, label: a.name }))}
+                value={paidTo}
+                onChange={setPaidTo}
                 rightSection={accountsLoading ? <Loader size={14} /> : undefined}
-                nothingFoundMessage={accountsLoading ? "Searching…" : "No account found"}
+                nothingFoundMessage={accountsLoading ? "Loading…" : "No account found"}
               />
-              <Group gap="sm" mt="md" wrap="nowrap" align="flex-start">
-                <TextInput
-                  label="Account (GL)"
-                  size="sm"
-                  radius="md"
-                  disabled
-                  style={{ flex: 1 }}
-                  styles={FIELD_STYLES}
-                  value={paidTo?.account ?? ""}
-                />
-                <TextInput
-                  label="Currency"
-                  size="sm"
-                  radius="md"
-                  disabled
-                  w={90}
-                  styles={FIELD_STYLES}
-                  value={paidTo?.currency ?? ""}
-                />
-              </Group>
-            </Box>
-          </Box>
+              <LockedInput label="Account (GL)" value={paidTo ?? ""} mt="md" />
+              {paidToAccount?.account_currency && (
+                <Text fz="xs" c="slate.5" mt={6}>
+                  Currency: {paidToAccount.account_currency}
+                </Text>
+              )}
+            </>
+          }
+        />
 
-          {/* Arrow between the two panels */}
-          <Box
-            style={{
-              position: "absolute",
-              top: 76,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: "var(--mantine-color-white)",
-              border: "1px solid var(--mantine-color-slate-2)",
-              boxShadow: "var(--mantine-shadow-xs)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <IconArrowRight size={16} color="var(--mantine-color-brand-6)" />
-          </Box>
-        </Paper>
-
-        {paidTo && paidFrom && !paidFromLoading && (
+        {paidTo && creditAccount && amountPaid > 0 && (
           <Text fz="xs" c="slate.5" mt="sm">
             Accounting entry: debit{" "}
             <Text span fw={700} c="slate.8">
-              {paidTo.name}
+              {paidTo}
             </Text>
             , credit{" "}
             <Text span fw={700} c="slate.8">
-              {paidFrom}
+              {creditAccount}
             </Text>{" "}
-            for {inr(state.amount)}.
+            for {inr(amountPaid)}.
           </Text>
         )}
       </Box>
@@ -455,7 +461,6 @@ export function ReceivePaymentModal({
           disabled={!canSubmit}
           loading={submitting}
           onClick={handleSubmit}
-          // The gradient is only applied when enabled, so the disabled look still shows.
           style={
             canSubmit
               ? {

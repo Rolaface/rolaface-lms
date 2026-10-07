@@ -1,25 +1,30 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Affix, Box, Button, Group, Loader, Paper, Text, UnstyledButton } from "@mantine/core";
+import {
+  Box,
+  Button,
+  Group,
+  Loader,
+  Text,
+  UnstyledButton,
+} from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createInvestorFlow,
-  getInvestorFlowById,
   getInvestorFlowSchedule,
+  saveContract,
   updateInvestorFlow,
 } from "../../../api/Investor/investorFlowApi";
-import { getInvestmentProductById } from "../../../api/Investor/productApi";
-import { getCustomerById } from "../../../api/Customer/customerApi";
 import { openCommonModal } from "../AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import {
   STEP_NAMES,
-  apiProductFields,
+  buildNumber,
   createInitialState,
+  loadInvestorFlowState,
   payloadFromState,
   scheduleFromApi,
   stateCustomer,
-  stateFromRecord,
   stateProduct,
   termsFromState,
   validateTerms,
@@ -114,11 +119,12 @@ function ProcessingTopNav({
 function ProcessingTab({
   step,
   tabProps,
-  existingCount,
+  investorFlowId = null,
 }: {
   step: number;
   tabProps: TabProps;
   existingCount: number;
+  investorFlowId?: string | null;
 }) {
   switch (step) {
     case 0:
@@ -126,7 +132,7 @@ function ProcessingTab({
     case 1:
       return <TermsSchedule {...tabProps} />;
     case 2:
-      return <ContractGeneration {...tabProps} existingCount={existingCount} />;
+      return <ContractGeneration {...tabProps} investorFlowId={investorFlowId} />;
     default:
       return null;
   }
@@ -158,7 +164,7 @@ export function ProcessingReadOnlyView({
         <ReadOnlyFrame key={viewStep}>
           <ProcessingTab
             step={viewStep}
-            tabProps={{ state, update: noop, schedule, onToast: noop }}
+            tabProps={{ state, update: noop, schedule }}
             existingCount={existingCount}
           />
         </ReadOnlyFrame>
@@ -168,26 +174,6 @@ export function ProcessingReadOnlyView({
 }
 
 /* ------------------------------- Modal ------------------------------- */
-
-/** Loads an Investor Flow with the customer and product names for the modal. */
-async function loadInvestorFlowState(id: string): Promise<ModalState> {
-  const record = await getInvestorFlowById(id);
-  const state = stateFromRecord(record);
-
-  const [customer, product] = await Promise.allSettled([
-    getCustomerById(record.investor),
-    getInvestmentProductById(record.investment_product),
-  ]);
-
-  if (customer.status === "fulfilled" && customer.value) {
-    state.customerName = customer.value.customer_name || record.investor;
-    state.customerEmail = customer.value.email_id || "";
-  }
-  const productItem = product.status === "fulfilled" ? product.value?.message?.data : null;
-  if (productItem) Object.assign(state, apiProductFields(productItem));
-
-  return state;
-}
 
 export function InvestorModal({
   opened,
@@ -199,24 +185,8 @@ export function InvestorModal({
 }: InvestorModalProps) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<ModalState>(createInitialState);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<number | null>(null);
-
-  useEffect(
-    () => () => {
-      if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    },
-    [],
-  );
-
   const update = (patch: Partial<ModalState>) =>
     setState((prev) => ({ ...prev, ...patch }));
-
-  const showToast = (message: string) => {
-    setToast(message);
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 2600);
-  };
 
   const showError = (heading: string, error: any) => {
     openCommonModal({
@@ -282,7 +252,7 @@ export function InvestorModal({
   const scheduleError =
     scheduleIsCurrent && scheduleQuery.error ? parseFrappeError(scheduleQuery.error) : undefined;
 
-  const tabProps: TabProps = { state, update, schedule, scheduleError, onToast: showToast };
+  const tabProps: TabProps = { state, update, schedule, scheduleError };
 
   /* ------------------------------- Save -------------------------------- */
   const handleSaved = (heading: string, body: string) => {
@@ -292,21 +262,41 @@ export function InvestorModal({
     onSaved();
   };
 
-  const createMutation = useMutation({
-    mutationFn: createInvestorFlow,
+  /** ID of the flow created by Submit in this modal, so a retry does not create it again. */
+  const createdIdRef = useRef<string | null>(null);
+
+  /** Creates / updates the Investor Flow, then saves the contract if it was sent here. */
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload = payloadFromState(state);
+      // If an earlier Submit already created the flow (and a later step failed), update it.
+      const existingId = editId ?? createdIdRef.current;
+      const record = existingId
+        ? await updateInvestorFlow({ id: existingId, payload })
+        : await createInvestorFlow(payload);
+      createdIdRef.current = record.name;
+
+      // The contract PDF was uploaded and emailed with Send; attach it and mark the contract Sent.
+      if (state.contractMailSent && state.contractFileId) {
+        await saveContract({
+          id: record.name,
+          payload: {
+            to: state.mailTo.trim(),
+            subject: state.mailSubject.trim(),
+            file_id: state.contractFileId,
+          },
+        });
+      }
+      return record;
+    },
     onSuccess: () =>
-      handleSaved("Investment Created", "Investment saved as Draft."),
-    onError: (error: any) => showError("Create Failed", error),
+      editId
+        ? handleSaved("Investment Updated", "Investment updated successfully.")
+        : handleSaved("Investment Created", "Investment saved as Draft."),
+    onError: (error: any) => showError(editId ? "Update Failed" : "Create Failed", error),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: updateInvestorFlow,
-    onSuccess: () =>
-      handleSaved("Investment Updated", "Investment updated successfully."),
-    onError: (error: any) => showError("Update Failed", error),
-  });
-
-  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const isSaving = saveMutation.isPending;
   const isLastStep = state.step === LAST_PROCESSING_STEP;
 
   const canNext = () => {
@@ -316,7 +306,7 @@ export function InvestorModal({
       case 1:
         return !termsError && !!schedule;
       case 2:
-        return state.contractStatus === "Executed" && !!schedule;
+        return !!schedule;
       default:
         return false;
     }
@@ -325,15 +315,18 @@ export function InvestorModal({
   /** Next inside the steps; on Contract Generation it saves the Investor Flow. */
   const handleNext = () => {
     if (!isLastStep) {
-      update({ step: state.step + 1 });
+      const next = state.step + 1;
+      update({
+        step: next,
+        // Contract Generation: contract number for a new flow, To = the customer's email.
+        ...(next === LAST_PROCESSING_STEP && {
+          contractNo: state.contractNo || buildNumber("CON", existingCount),
+          mailTo: state.mailTo || stateCustomer(state)?.email || "",
+        }),
+      });
       return;
     }
-    const payload = payloadFromState(state);
-    if (editId) {
-      updateMutation.mutate({ id: editId, payload });
-    } else {
-      createMutation.mutate(payload);
-    }
+    saveMutation.mutate();
   };
 
   const title = editId ? (isView ? "View Investment" : "Edit Investment") : "New Investment";
@@ -369,6 +362,7 @@ export function InvestorModal({
             step={state.step}
             tabProps={tabProps}
             existingCount={existingCount}
+            investorFlowId={editId}
           />
         </section>
       </>
@@ -414,24 +408,6 @@ export function InvestorModal({
         {body}
       </StageShell>
 
-      {toast && (
-        <Affix position={{ bottom: 20, left: 0, right: 0 }} zIndex={1000}>
-          <Box style={{ display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-            <Paper
-              radius="md"
-              px={18}
-              py={10}
-              fw={600}
-              style={{
-                background: "var(--mantine-color-success-6)",
-                color: "var(--mantine-color-white)",
-              }}
-            >
-              {toast}
-            </Paper>
-          </Box>
-        </Affix>
-      )}
     </>
   );
 }

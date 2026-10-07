@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useDebouncedValue } from "@mantine/hooks";
 import {
-  Affix,
+  ActionIcon,
   Box,
   Button,
   TextInput,
   Group,
+  Loader,
+  Pagination,
   Paper,
+  Select,
   Table,
   Badge,
   Text,
   Title,
+  Tooltip,
   Stack,
   useMantineTheme,
 } from "@mantine/core";
@@ -19,6 +24,8 @@ import {
   IconSelector,
   IconSearch,
   IconFileText,
+  IconEye,
+  IconPencil,
 } from "@tabler/icons-react";
 import {
   useReactTable,
@@ -27,75 +34,16 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
+import { useQuery } from "@tanstack/react-query";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
-import {
-  CUSTOMERS,
-  PRODUCTS,
-  calcSchedule,
-  createInitialState,
-  productPatch,
-  toIso,
-  type ModalState,
-} from "../../components/Modal/Investor/InvestorModalShared";
-import { ProcessingReadOnlyView } from "../../components/Modal/Investor/InvestorModal";
+import { getInvestorEarnings } from "../../api/Investor/investorFlowApi";
+import { getEveryInvestmentProduct } from "../../api/Investor/productApi";
+import type { InvestorEarningListItem } from "../../types/Investor/investorFlow";
+import { formatAmount } from "../../store/currencyStore";
+import { useCompanyStore } from "../../store/companyStore";
 import { EarningsStatementsModal } from "../../components/Modal/Investor/EarningsStatementModal";
 
-function buildDummyInvestment(
-  seq: number,
-  customerIndex: number,
-  productIndex: number,
-  amount: number,
-): ModalState {
-  const year = new Date().getFullYear();
-  const no = String(seq).padStart(4, "0");
-  return {
-    ...createInitialState(),
-    ...productPatch(productIndex),
-    customerIndex,
-    amount,
-    step: 4,
-    contractStatus: "Executed",
-    contractNo: `CON-${year}-${no}`,
-    investmentNo: `INV-${year}-${no}`,
-    utr: `UTR${year}${no}`,
-    funded: true,
-    startDate: new Date(),
-  };
-}
-
-const buildDummyInvestments = (): ModalState[] => [
-  buildDummyInvestment(4, 2, 0, 50000), // John Doe — Steady Income NCD
-  buildDummyInvestment(3, 2, 0, 200000), // John Doe — Steady Income NCD
-  buildDummyInvestment(1, 0, 1, 100000), // Arjun Mehta — Quarterly Yield NCD
-];
-
-interface InvestmentRow {
-  id: string;
-  investmentNo: string;
-  customer: string;
-  product: string;
-  amount: number;
-  rate: number;
-  startDate: string; // ISO date
-  status: string;
-}
-
-const toRow = (s: ModalState): InvestmentRow => ({
-  id: s.investmentNo,
-  investmentNo: s.investmentNo,
-  customer: CUSTOMERS[s.customerIndex].name,
-  product: PRODUCTS[s.productIndex].name,
-  amount: s.amount,
-  rate: s.rate,
-  startDate: s.startDate ? toIso(s.startDate) : "",
-  status: "Active",
-});
-
-const STATUS_META: Record<string, { label: string; color: string }> = {
-  Active: { label: "Active", color: "brand" },
-};
-
-const columnHelper = createColumnHelper<InvestmentRow>();
+const columnHelper = createColumnHelper<InvestorEarningListItem>();
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   const color = sorted
@@ -106,30 +54,7 @@ function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-function StatusBadge({ label, color }: { label: string; color: string }) {
-  return (
-    <Badge
-      variant="light"
-      color={color}
-      radius="xl"
-      size="sm"
-      styles={{
-        root: {
-          textTransform: "none",
-          fontWeight: 700,
-          letterSpacing: 0.2,
-          paddingLeft: 8,
-          paddingRight: 10,
-          border: `1px solid var(--mantine-color-${color}-2)`,
-        },
-      }}
-    >
-      {label}
-    </Badge>
-  );
-}
-
-const fmtDate = (iso: string) =>
+const fmtDate = (iso: string | null) =>
   iso
     ? new Date(iso).toLocaleDateString("en-GB", {
         day: "2-digit",
@@ -138,78 +63,73 @@ const fmtDate = (iso: string) =>
       })
     : "-";
 
-const fmtAmount = (value: number) => `₹${value.toLocaleString("en-IN")}`;
+const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
+
+const RIGHT_ALIGNED = ["amount_invested", "rate_of_interest", "actions"];
 
 export function EarningsStatements() {
   const theme = useMantineTheme();
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
 
   const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch] = useDebouncedValue(searchInput, 400);
   const [productFilter, setProductFilter] = useState<string[]>([]);
-  const [sorting, setSorting] = useState([{ id: "investmentNo", desc: true }]);
-  const [investments, setInvestments] = useState<ModalState[]>(buildDummyInvestments);
+  const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, productFilter]);
+
+  /* ------------------------------- Data ------------------------------- */
+  const { data: earningsResponse, isLoading, isFetching } = useQuery({
+    queryKey: ["investorEarnings", debouncedSearch, productFilter, page, pageSize],
+    queryFn: () =>
+      getInvestorEarnings({
+        search: debouncedSearch.trim() || undefined,
+        investment_product: productFilter,
+        page,
+        page_size: pageSize,
+      }),
+    placeholderData: (prev) => prev,
+  });
+
+  const { data: products = [] } = useQuery({
+    queryKey: ["investmentProducts", "all"],
+    queryFn: getEveryInvestmentProduct,
+  });
+
+  const earnings = earningsResponse?.data ?? [];
+  const totalRows = earningsResponse?.pagination?.total ?? 0;
+  const totalPages = earningsResponse?.pagination?.total_pages ?? 1;
+  const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastRow = Math.min(totalRows, page * pageSize);
 
   /* ----------------------------- Modal ----------------------------- */
-  const [selectedNo, setSelectedNo] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [modalReadOnly, setModalReadOnly] = useState(true);
   const [modalOpened, setModalOpened] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<number | null>(null);
-
-  useEffect(
-    () => () => {
-      if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    },
-    [],
-  );
-
-  const showToast = (message: string) => {
-    setToast(message);
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 2600);
-  };
-
-  const selected = investments.find((i) => i.investmentNo === selectedNo) ?? null;
-  const selectedSchedule = selected ? calcSchedule(selected) : null;
-
-  const openModal = (investmentNo: string) => {
-    setSelectedNo(investmentNo);
+  const [modalKey, setModalKey] = useState(0);
+  const openModal = (id: string, readOnly: boolean) => {
+    setSelectedId(id);
+    setModalReadOnly(readOnly);
+    setModalKey((k) => k + 1); // fresh modal state on every open
     setModalOpened(true);
-  };
-
-  /** Same "patch the state" contract the tabs already use, applied to the open investment. */
-  const updateSelected = (patch: Partial<ModalState>) =>
-    setInvestments((prev) =>
-      prev.map((i) => (i.investmentNo === selectedNo ? { ...i, ...patch } : i)),
-    );
-
-  const handleSubmit = () => {
-    if (!selected) return;
-    showToast("Earnings & Statements submitted for " + selected.investmentNo);
-    setModalOpened(false);
   };
 
   /* ----------------------------- Table ----------------------------- */
   const productOptions = useMemo(
-    () => PRODUCTS.map((p) => ({ value: p.name, label: p.name })),
-    [],
+    () => products.map((p) => ({ value: p.name, label: p.product_name })),
+    [products],
   );
-
-  const filteredData = useMemo(() => {
-    const q = searchInput.trim().toLowerCase();
-    return investments.map(toRow).filter((row) => {
-      const matchesSearch =
-        !q ||
-        row.investmentNo.toLowerCase().includes(q) ||
-        row.customer.toLowerCase().includes(q);
-      const matchesProduct =
-        productFilter.length === 0 || productFilter.includes(row.product);
-      return matchesSearch && matchesProduct;
-    });
-  }, [investments, searchInput, productFilter]);
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("investmentNo", {
-        header: "Investment No.",
+      columnHelper.accessor("name", {
+        header: "Investment ID",
         cell: (info) => (
           <Text
             fz="sm"
@@ -221,7 +141,7 @@ export function EarningsStatements() {
           </Text>
         ),
       }),
-      columnHelper.accessor("customer", {
+      columnHelper.accessor("investor", {
         header: "Customer",
         cell: (info) => (
           <Text fz="sm" fw={600} c="slate.8">
@@ -229,7 +149,7 @@ export function EarningsStatements() {
           </Text>
         ),
       }),
-      columnHelper.accessor("product", {
+      columnHelper.accessor("investment_product_name", {
         header: "Product",
         cell: (info) => (
           <Badge
@@ -243,7 +163,7 @@ export function EarningsStatements() {
           </Badge>
         ),
       }),
-      columnHelper.accessor("amount", {
+      columnHelper.accessor("amount_invested", {
         header: "Amount",
         cell: (info) => (
           <Text
@@ -255,12 +175,12 @@ export function EarningsStatements() {
               fontVariantNumeric: "tabular-nums",
             }}
           >
-            {fmtAmount(info.getValue())}
+            {fmtAmount(Number(info.getValue()) || 0)}
           </Text>
         ),
         sortingFn: "basic",
       }),
-      columnHelper.accessor("rate", {
+      columnHelper.accessor("rate_of_interest", {
         header: "Rate",
         cell: (info) => (
           <Text fz="xs" c="slate.6" ta="right">
@@ -269,8 +189,16 @@ export function EarningsStatements() {
         ),
         sortingFn: "basic",
       }),
-      columnHelper.accessor("startDate", {
-        header: "Start",
+      columnHelper.accessor("frequency", {
+        header: "Frequency",
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {info.getValue() || "-"}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor("first_repay_date", {
+        header: "First Repay",
         cell: (info) => (
           <Text fz="xs" c="slate.6">
             {fmtDate(info.getValue())}
@@ -278,38 +206,59 @@ export function EarningsStatements() {
         ),
         sortingFn: "basic",
       }),
-      columnHelper.accessor("status", {
-        header: "Status",
-        cell: (info) => {
-          const meta = STATUS_META[info.getValue()] || {
-            label: info.getValue(),
-            color: "gray",
-          };
-          return <StatusBadge label={meta.label} color={meta.color} />;
-        },
+      columnHelper.accessor("mat_date", {
+        header: "Maturity",
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {fmtDate(info.getValue())}
+          </Text>
+        ),
+        sortingFn: "basic",
       }),
       columnHelper.display({
-        id: "action",
-        header: "",
-        cell: (info) => (
-          <Group justify="flex-end">
-            <Button
-              size="compact-xs"
-              radius="xl"
-              variant="default"
-              onClick={() => openModal(info.row.original.investmentNo)}
-            >
-              Open
-            </Button>
-          </Group>
+        id: "actions",
+        header: () => (
+          <Text fz="xs" fw={600} ta="right" w="100%">
+            Actions
+          </Text>
         ),
+        cell: (info) => {
+          const row = info.row.original;
+          return (
+            <Group justify="flex-end" gap={4} wrap="nowrap">
+              <Tooltip label="View" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="slate"
+                  radius="md"
+                  onClick={() => openModal(row.name, true)}
+                >
+                  <IconEye size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Edit" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="brand"
+                  radius="md"
+                  onClick={() => openModal(row.name, false)}
+                >
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
+          );
+        },
       }),
     ],
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [companyCurrency],
   );
 
   const table = useReactTable({
-    data: filteredData,
+    data: earnings,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -357,7 +306,7 @@ export function EarningsStatements() {
               Earnings & Statements
             </Title>
             <Text fz="sm" c="slate.5">
-              Track interest earned and send monthly statements
+              View and edit the earning schedule of received investments
             </Text>
           </Stack>
         </Group>
@@ -377,7 +326,7 @@ export function EarningsStatements() {
             className="lms-search"
             size="sm"
             radius="xl"
-            placeholder="Investment No. / Customer"
+            placeholder="Investment ID / Customer"
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
             styles={{
@@ -418,159 +367,172 @@ export function EarningsStatements() {
           border: "1px solid var(--mantine-color-slate-2)",
         }}
       >
-        <Box
-          style={{
-            height: "clamp(320px, calc(100vh - 280px), 720px)",
-            overflowY: "auto",
-          }}
-        >
-          <Table
-            verticalSpacing="sm"
-            horizontalSpacing="sm"
-            fz="xs"
-            w="100%"
-            style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
-          >
-            <Table.Thead>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <Table.Tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    const canSort = header.column.getCanSort();
-                    const rightAligned =
-                      header.id === "amount" || header.id === "rate";
-                    return (
-                      <Table.Th
-                        key={header.id}
-                        className="lms-thead-cell"
-                        c="slate.5"
-                        fw={700}
-                        style={{
-                          fontSize: "var(--mantine-font-size-xs)",
-                          padding: "0 10px 6px",
-                          userSelect: "none",
-                          cursor: canSort ? "pointer" : "default",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.04em",
-                          border: "none",
-                        }}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        <Group
-                          gap="xs"
-                          wrap="nowrap"
-                          justify={rightAligned ? "flex-end" : "flex-start"}
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                          {canSort && (
-                            <SortIcon sorted={header.column.getIsSorted()} />
-                          )}
-                        </Group>
-                      </Table.Th>
-                    );
-                  })}
-                </Table.Tr>
-              ))}
-            </Table.Thead>
-
-            <Table.Tbody>
-              {rows.length === 0 ? (
-                <Table.Tr>
-                  <Table.Td colSpan={columns.length} style={{ border: "none" }}>
-                    <Stack align="center" gap="xs" py="xl">
-                      <Box
-                        style={{
-                          width: 52,
-                          height: 52,
-                          borderRadius: "50%",
-                          background: "var(--mantine-color-white)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          border: "1px solid var(--mantine-color-slate-2)",
-                        }}
-                      >
-                        <IconFileText size={24} color="var(--mantine-color-slate-4)" />
-                      </Box>
-                      <Text ta="center" c="slate.5" fz="xs">
-                        No investments match your filters.
-                      </Text>
-                    </Stack>
-                  </Table.Td>
-                </Table.Tr>
-              ) : (
-                rows.map((row) => {
-                  const rowMeta = STATUS_META[row.original.status] || {
-                    label: row.original.status,
-                    color: "gray",
-                  };
-                  return (
-                    <Table.Tr key={row.id} className="lms-row">
-                      {row.getVisibleCells().map((cell, idx) => (
-                        <Table.Td
-                          key={cell.id}
-                          style={{
-                            padding: "10px 10px",
-                            border: "none",
-                            boxShadow: "var(--mantine-shadow-xs)",
-                            borderLeft:
-                              idx === 0
-                                ? `3px solid var(--mantine-color-${rowMeta.color}-4)`
-                                : undefined,
-                          }}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </Table.Td>
-                      ))}
+        {isLoading ? (
+          <Group justify="center" py="xl">
+            <Loader size="sm" color="brand" />
+          </Group>
+        ) : (
+          <>
+            <Box
+              style={{
+                height: "clamp(320px, calc(100vh - 330px), 720px)",
+                overflowY: "auto",
+                opacity: isFetching ? 0.6 : 1,
+              }}
+            >
+              <Table
+                verticalSpacing="sm"
+                horizontalSpacing="sm"
+                fz="xs"
+                w="100%"
+                style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+              >
+                <Table.Thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <Table.Tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        const canSort = header.column.getCanSort();
+                        const rightAligned = RIGHT_ALIGNED.includes(header.id);
+                        return (
+                          <Table.Th
+                            key={header.id}
+                            className="lms-thead-cell"
+                            c="slate.5"
+                            fw={700}
+                            style={{
+                              fontSize: "var(--mantine-font-size-xs)",
+                              padding: "0 10px 6px",
+                              userSelect: "none",
+                              cursor: canSort ? "pointer" : "default",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                              border: "none",
+                            }}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            <Group
+                              gap="xs"
+                              wrap="nowrap"
+                              justify={rightAligned ? "flex-end" : "flex-start"}
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                              {canSort && (
+                                <SortIcon sorted={header.column.getIsSorted()} />
+                              )}
+                            </Group>
+                          </Table.Th>
+                        );
+                      })}
                     </Table.Tr>
-                  );
-                })
-              )}
-            </Table.Tbody>
-          </Table>
-        </Box>
+                  ))}
+                </Table.Thead>
+
+                <Table.Tbody>
+                  {rows.length === 0 ? (
+                    <Table.Tr>
+                      <Table.Td colSpan={columns.length} style={{ border: "none" }}>
+                        <Stack align="center" gap="xs" py="xl">
+                          <Box
+                            style={{
+                              width: 52,
+                              height: 52,
+                              borderRadius: "50%",
+                              background: "var(--mantine-color-white)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              border: "1px solid var(--mantine-color-slate-2)",
+                            }}
+                          >
+                            <IconFileText size={24} color="var(--mantine-color-slate-4)" />
+                          </Box>
+                          <Text ta="center" c="slate.5" fz="xs">
+                            No received investments match your filters.
+                          </Text>
+                        </Stack>
+                      </Table.Td>
+                    </Table.Tr>
+                  ) : (
+                    rows.map((row) => (
+                      <Table.Tr key={row.id} className="lms-row">
+                        {row.getVisibleCells().map((cell, idx) => (
+                          <Table.Td
+                            key={cell.id}
+                            style={{
+                              padding: "10px 10px",
+                              border: "none",
+                              boxShadow: "var(--mantine-shadow-xs)",
+                              borderLeft:
+                                idx === 0
+                                  ? "3px solid var(--mantine-color-info-4)"
+                                  : undefined,
+                            }}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </Table.Td>
+                        ))}
+                      </Table.Tr>
+                    ))
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Box>
+
+            {/* Pagination Footer */}
+            <Group justify="space-between" px="sm" pt="xs">
+              <Group
+                gap="sm"
+                c="slate.6"
+                style={{ fontSize: "var(--mantine-font-size-xs)" }}
+              >
+                <span>
+                  {totalRows === 0
+                    ? "Showing 0 of 0"
+                    : `Showing ${firstRow}-${lastRow} of ${totalRows}`}
+                </span>
+                <Group gap="xs">
+                  <span>Rows:</span>
+                  <Select
+                    data={["10", "20", "50"]}
+                    value={String(pageSize)}
+                    onChange={(v) => {
+                      setPageSize(Number(v) || 10);
+                      setPage(1);
+                    }}
+                    rightSection={chevronDown}
+                    size="xs"
+                    radius="xl"
+                    w={60}
+                  />
+                </Group>
+              </Group>
+              <Pagination
+                total={totalPages}
+                value={page}
+                onChange={(p) => setPage(p)}
+                color="brand"
+                size="xs"
+                radius="xl"
+                disabled={totalRows === 0}
+              />
+            </Group>
+          </>
+        )}
       </Paper>
 
-      {selected && (
+      {selectedId && (
         <EarningsStatementsModal
-          key={selected.investmentNo}
+          key={modalKey}
           opened={modalOpened}
           onClose={() => setModalOpened(false)}
-          state={selected}
-          update={updateSelected}
-          schedule={selectedSchedule}
-          onToast={showToast}
-          processingView={
-            <ProcessingReadOnlyView
-              state={selected}
-              schedule={selectedSchedule}
-              existingCount={investments.length}
-            />
-          }
-          onSubmit={handleSubmit}
+          investorFlowId={selectedId}
+          readOnly={modalReadOnly}
         />
       )}
 
-      {toast && (
-        <Affix position={{ bottom: 20, left: 0, right: 0 }} zIndex={1000}>
-          <Box style={{ display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-            <Paper
-              radius="md"
-              px={18}
-              py={10}
-              fw={600}
-              style={{
-                background: "var(--mantine-color-success-6)",
-                color: "var(--mantine-color-white)",
-              }}
-            >
-              {toast}
-            </Paper>
-          </Box>
-        </Affix>
-      )}
     </Stack>
   );
 }

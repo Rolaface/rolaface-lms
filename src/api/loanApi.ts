@@ -19,6 +19,8 @@ formData.append("file", file, customFileName || file.name);
   });
 
   return {
+    /** File ID (name of the File doc). */
+    name: data.message.name as string,
     file_name: data.message.file_name as string,
     file_url: data.message.file_url as string,
   };

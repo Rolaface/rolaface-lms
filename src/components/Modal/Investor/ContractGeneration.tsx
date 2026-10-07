@@ -1,66 +1,78 @@
-import { Alert, Button, Group, Select, Text, useMantineTheme } from "@mantine/core";
-import { IconDownload, IconEye } from "@tabler/icons-react";
+import {
+  Alert,
+  Badge,
+  Box,
+  Button,
+  Group,
+  SimpleGrid,
+  Text,
+  TextInput,
+  Textarea,
+  ThemeIcon,
+  useMantineTheme,
+} from "@mantine/core";
+import { IconDownload, IconEye, IconFileText, IconMail, IconSend } from "@tabler/icons-react";
+import { useMutation } from "@tanstack/react-query";
 import { usePdfPreview } from "./PdfPreviewModal";
-import { buildContractPdf, getPdfPalette } from "./Investmentpdf";
+import { buildContractPdfFromState, contractPdfName } from "./Investmentpdf";
+import { sendEmail } from "../../../api/Investor/investorFlowApi";
+import { uploadFile } from "../../../api/loanApi";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+import { openCommonModal } from "../AlertModal";
+import { LockedInput, PaidFromToPanel } from "./ReceivePaymentModal";
+import { useCompanyStore } from "../../../store/companyStore";
 import {
   DocumentPaper,
   KeyValueList,
   KpiGrid,
   SectionBox,
   Tag,
-  buildNumber,
   fmtDate,
   inr,
   stateCustomer,
   stateProduct,
-  type SignMethod,
+  type ModalState,
   type TabProps,
 } from "./InvestorModalShared";
 
 interface ContractGenerationProps extends TabProps {
-  existingCount: number;
+  /** Investor Flow ID when it already exists (used as the email's reference document). */
+  investorFlowId?: string | null;
 }
+
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** The plain-text message as the HTML content of the email. */
+const messageToHtml = (text: string) =>
+  text
+    .split(/\n{2,}/)
+    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+
+const CONTRACT_STATUS_COLOR: Record<ModalState["contractStatus"], string> = {
+  Pending: "warning",
+  Sent: "brand",
+  Paid: "success",
+};
 
 export function ContractGeneration({
   state,
   update,
   schedule,
-  existingCount,
+  investorFlowId = null,
 }: ContractGenerationProps) {
   const customer = stateCustomer(state);
   const product = stateProduct(state);
   const status = state.contractStatus;
-  const statusColor =
-    status === "Executed" ? "success" : status === "Not generated" ? "brand" : "warning";
+  const showPayment = status === "Paid" && state.flowStatus === "Received" && !!state.payment;
 
   const theme = useMantineTheme();
+  const companyName = useCompanyStore((s) => s.companyName);
   const pdfPreview = usePdfPreview();
-  const pdfName = `${state.contractNo}.pdf`;
+  const pdfName = contractPdfName(state);
 
-  const buildPdf = () => {
-    if (!schedule || !customer || !product) return null;
-    return buildContractPdf(
-      {
-        contractNo: state.contractNo,
-        issuedOn: new Date(),
-        status: state.contractStatus,
-        signMethod: state.signMethod,
-        customer: { ...customer, bank: customer.bank || "—" },
-        productName: product.name,
-        amount: state.amount,
-        rate: state.rate,
-        frequency: state.frequency,
-        firstRepayment: state.firstRepayment,
-        maturity: state.maturity,
-        penaltyApplicable: state.penaltyApplicable,
-        penaltyRate: state.penaltyRate,
-        totalMonths: schedule.totalMonths,
-        totalInterest: schedule.totalInterest,
-        rows: schedule.rows,
-      },
-      getPdfPalette(theme),
-    );
-  };
+  const buildPdf = () => buildContractPdfFromState(state, schedule, theme);
 
   const handleViewPdf = () => {
     const doc = buildPdf();
@@ -69,16 +81,66 @@ export function ContractGeneration({
 
   const handleDownloadPdf = () => buildPdf()?.save(pdfName);
 
+  const sendMutation = useMutation({
+    /** Uploads the contract PDF to Frappe, then emails it as an attachment. */
+    mutationFn: async (pdf: Blob) => {
+      const file = await uploadFile(
+        new File([pdf], pdfName, { type: "application/pdf" }),
+        1,
+        pdfName,
+      );
+      await sendEmail({
+        recipients: state.mailTo.trim(),
+        subject: state.mailSubject.trim(),
+        content: messageToHtml(state.mailMessage),
+        send_me_a_copy: "0",
+        ...(investorFlowId && { doctype: "Custom Investor Flow", name: investorFlowId }),
+        attachmentNames: [file.name],
+      });
+      return file.name;
+    },
+    onSuccess: (fileId) => {
+      update({ contractStatus: "Sent", contractMailSent: true, contractFileId: fileId });
+      openCommonModal({
+        heading: "Contract Sent",
+        subtitle: "",
+        body: `Contract sent to ${state.mailTo.trim()} successfully.`,
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
+    },
+    onError: (error: any) =>
+      openCommonModal({
+        heading: "Send Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      }),
+  });
+
+  const canSend =
+    status !== "Paid" &&
+    !!state.mailTo.trim() &&
+    !!state.mailSubject.trim() &&
+    !!state.mailMessage.trim() &&
+    !!schedule &&
+    !!customer &&
+    !!product;
+
+  const handleSend = () => {
+    const doc = buildPdf();
+    if (!doc || !canSend) return;
+    sendMutation.mutate(doc.output("blob"));
+  };
+
   return (
     <>
       {schedule && (
         <KpiGrid
           items={[
             {
-              label:
-                state.frequency === "At maturity"
-                  ? "Interest payout"
-                  : "Payout per instalment (interest)",
+              label: "Interest per instalment",
               value: inr(schedule.perPayment),
               color: "info",
             },
@@ -94,72 +156,104 @@ export function ContractGeneration({
       )}
 
       <SectionBox
-        title="Investment agreement"
-        titleAddon={<Tag label={status} color={statusColor} />}
+        title="Contract email"
+        titleAddon={<Tag label={status} color={CONTRACT_STATUS_COLOR[status]} />}
         actions={
-          <>
-            {status !== "Not generated" && status !== "Executed" && (
-              <Select
-                size="sm"
-                radius="md"
-                w={170}
-                allowDeselect={false}
-                data={["E-signature", "Physical signature"]}
-                value={state.signMethod}
-                onChange={(v) => v && update({ signMethod: v as SignMethod })}
-              />
-            )}
-            {status === "Not generated" && (
-              <Button
-                size="sm"
-                radius="xl"
-                color="brand"
-                onClick={() =>
-                  update({
-                    contractNo: buildNumber("CON", existingCount),
-                    contractStatus: "Generated",
-                  })
-                }
-              >
-                Generate contract
-              </Button>
-            )}
-            {status === "Generated" && (
-              <Button
-                size="sm"
-                radius="xl"
-                color="brand"
-                onClick={() => update({ contractStatus: "Signing in progress" })}
-              >
-                Send for signing
-              </Button>
-            )}
-            {status === "Signing in progress" && (
-              <Button
-                size="sm"
-                radius="xl"
-                color="success"
-                onClick={() => update({ contractStatus: "Executed" })}
-              >
-                Mark as executed
-              </Button>
-            )}
-            {status === "Executed" && <Tag label={state.signMethod} color="success" />}
-          </>
+          status !== "Paid" && (
+            <Button
+              size="sm"
+              radius="xl"
+              color="brand"
+              leftSection={<IconSend size={14} />}
+              disabled={!canSend}
+              loading={sendMutation.isPending}
+              onClick={handleSend}
+            >
+              {status === "Sent" ? "Send again" : "Send"}
+            </Button>
+          )
         }
-      />
+      >
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <TextInput
+            label="To"
+            size="sm"
+            radius="md"
+            readOnly
+            leftSection={<IconMail size={14} />}
+            value={state.mailTo}
+            error={customer && !state.mailTo ? "This customer has no email." : undefined}
+          />
+          <TextInput
+            label="Subject"
+            size="sm"
+            radius="md"
+            required={status !== "Paid"}
+            readOnly={status === "Paid"}
+            value={state.mailSubject}
+            onChange={(e) => update({ mailSubject: e.currentTarget.value })}
+          />
+        </SimpleGrid>
+        {status !== "Paid" && (
+          <Textarea
+            label="Message"
+            size="sm"
+            radius="md"
+            mt="sm"
+            required
+            autosize
+            minRows={3}
+            value={state.mailMessage}
+            onChange={(e) => update({ mailMessage: e.currentTarget.value })}
+          />
+        )}
+        {status === "Sent" && !state.contractMailSent && (
+          <Text fz="xs" c="slate.5" mt="xs">
+            The contract was already sent to this address.
+          </Text>
+        )}
+        {state.contractMailSent && (
+          <Alert variant="light" color="brand" radius="md" mt="sm">
+            Contract sent. It is saved with the investment when you submit.
+          </Alert>
+        )}
+      </SectionBox>
 
-      {status === "Not generated" ? (
-        <Alert variant="light" color="brand" radius="md">
-          Generate the contract from the approved terms. The investor’s signature is
-          needed before funds are accepted.
-        </Alert>
-      ) : (
-        schedule &&
-        customer &&
-        product && (
-          <>
-            <Group justify="flex-end" gap="xs" mb="sm">
+      {showPayment && state.payment && (
+        <SectionBox title="Payment details">
+          <Box style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <LockedInput label="Payment date" value={fmtDate(state.payment.payment_date)} />
+            <LockedInput label="Mode of payment" value={state.payment.payment_mode} />
+            <LockedInput label="Reference no." value={state.payment.ref_no} />
+            <LockedInput label="Amount paid" value={inr(state.payment.amount_paid)} />
+          </Box>
+          <PaidFromToPanel
+            from={
+              <>
+                <LockedInput label="Bank Account" value={state.payment.paid_from} />
+                <LockedInput label="Account (GL)" value={state.payment.paid_gl} mt="md" />
+              </>
+            }
+            to={
+              <>
+                <LockedInput label="Account" value={state.payment.paid_to} />
+                <LockedInput label="Account (GL)" value={state.payment.to_gl} mt="md" />
+              </>
+            }
+          />
+        </SectionBox>
+      )}
+
+      {schedule && customer && product && (
+        <SectionBox
+          title="Investment agreement"
+          titleAddon={
+            <Badge variant="light" color="slate" radius="sm" size="sm">
+              {state.contractNo}
+            </Badge>
+          }
+          actions={
+            <>
               <Button
                 size="sm"
                 radius="xl"
@@ -178,33 +272,47 @@ export function ContractGeneration({
               >
                 Download PDF
               </Button>
+            </>
+          }
+        >
+          <DocumentPaper>
+            <Group gap="sm" wrap="nowrap" mb="md">
+              <ThemeIcon size={36} radius="md" variant="light" color="brand">
+                <IconFileText size={18} />
+              </ThemeIcon>
+              <Box>
+                <Text fw={700} fz="md" c="slate.8">
+                  Investment Agreement
+                </Text>
+                <Text fz="xs" c="slate.5">
+                  Contract No. {state.contractNo} · {fmtDate(new Date())}
+                </Text>
+              </Box>
             </Group>
-            <DocumentPaper>
-            <Text ta="center" fw={700} fz="md" c="slate.8">
-              Investment Agreement
-            </Text>
-            <Text ta="center" fz="sm" c="slate.5" mb="md">
-              Contract No. {state.contractNo} · {fmtDate(new Date())}
-            </Text>
-            <Text fz="sm" c="slate.8" mb="sm">
-              Between the Company (NBFC) and{" "}
-              <Text span fw={700}>
+            <Text fz="sm" c="slate.7" mb="md">
+              Between{" "}
+              <Text span fw={700} c="slate.8">
+                {companyName || "the Company"}
+              </Text>{" "}
+              and{" "}
+              <Text span fw={700} c="slate.8">
                 {customer.name}
               </Text>{" "}
               ({customer.id}), the Investor, for the product{" "}
-              <Text span fw={700}>
+              <Text span fw={700} c="slate.8">
                 {product.name}
               </Text>
               .
             </Text>
             <KeyValueList
+              cols={2}
               rows={[
                 { label: "Investment amount", value: inr(state.amount) },
                 { label: "Interest rate", value: `${state.rate}% p.a.` },
                 { label: "Repayment frequency", value: state.frequency },
+                { label: "Number of payments", value: schedule.count },
                 { label: "First repayment date", value: fmtDate(state.firstRepayment) },
                 { label: "Maturity date", value: fmtDate(state.maturity) },
-                { label: "Number of payments", value: schedule.count },
                 {
                   label: "Total repayment",
                   value: inr(state.amount + schedule.totalInterest),
@@ -217,13 +325,12 @@ export function ContractGeneration({
                 },
               ]}
             />
-            <Text fz="sm" c="slate.5" mt="md">
-              Principal is returned on the maturity date together with the final
-              interest payment.
+            <Text fz="xs" c="slate.5" mt="md">
+              Principal and interest are paid in equal instalments on each payout date; the
+              last instalment settles any rounding difference.
             </Text>
           </DocumentPaper>
-          </>
-        )
+        </SectionBox>
       )}
 
       {pdfPreview.modal}

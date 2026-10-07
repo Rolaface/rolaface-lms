@@ -1,10 +1,18 @@
 import type { ReactNode } from "react";
-import { Badge, Box, Group, Paper, Text } from "@mantine/core";
-import type { InvestmentProductListItem } from "../../../api/Investor/productApi";
+import { Badge, Box, Group, Paper, SimpleGrid, Text } from "@mantine/core";
+import {
+  getInvestmentProductById,
+  type InvestmentProductListItem,
+} from "../../../api/Investor/productApi";
+import { getInvestorFlowById } from "../../../api/Investor/investorFlowApi";
+import { getCustomerById } from "../../../api/Customer/customerApi";
 import {
   REPAYMENT_FREQUENCIES,
+  type InvestorFlowContractStatus,
   type InvestorFlowPayload,
+  type InvestorFlowPayment,
   type InvestorFlowRecord,
+  type InvestorFlowStatus,
   type InvestorFlowSchedule,
   type InvestorFlowTerms,
   type RepaymentFrequency,
@@ -13,11 +21,8 @@ import {
 /* ------------------------------ Types ------------------------------ */
 /** The Investor Flow frequencies, plus "At maturity" used by the Earnings / Maturity mock data. */
 export type Frequency = RepaymentFrequency | "At maturity";
-export type ContractStatus =
-  | "Not generated"
-  | "Generated"
-  | "Signing in progress"
-  | "Executed";
+/** Contract Status of the Custom Investor Flow doctype. */
+export type ContractStatus = InvestorFlowContractStatus;
 export type SignMethod = "E-signature" | "Physical signature";
 export type PaymentMode = "NEFT" | "RTGS" | "IMPS";
 export type Decision = "redeem" | "renew" | null;
@@ -72,6 +77,18 @@ export interface ModalState {
   penaltyApplicable: boolean;
   penaltyRate: number;
   contractStatus: ContractStatus;
+  /** Investor Flow Status (Draft / Approved / Received / Cancelled). */
+  flowStatus: InvestorFlowStatus;
+  /** Contract email fields (To = the customer's email). */
+  mailTo: string;
+  mailSubject: string;
+  mailMessage: string;
+  /** True once the contract email was sent in this modal; it is saved on submit. */
+  contractMailSent: boolean;
+  /** File ID of the contract PDF that was emailed. */
+  contractFileId: string | null;
+  /** Saved payment details (shown once Contract Status is Paid and Status is Received). */
+  payment: InvestorFlowPayment | null;
   contractNo: string;
   signMethod: SignMethod;
   paymentMode: PaymentMode;
@@ -104,7 +121,6 @@ export interface TabProps {
   schedule: Schedule | null;
   /** Error from the schedule API for the current terms. */
   scheduleError?: string;
-  onToast: (message: string) => void;
 }
 
 /* ----------------------------- Constants ----------------------------- */
@@ -192,7 +208,14 @@ export function createInitialState(): ModalState {
     maturity: "",
     penaltyApplicable: false,
     penaltyRate: 2,
-    contractStatus: "Not generated",
+    contractStatus: "Pending",
+    flowStatus: "Draft",
+    mailTo: "",
+    mailSubject: "",
+    mailMessage: "",
+    contractMailSent: false,
+    contractFileId: null,
+    payment: null,
     contractNo: "",
     signMethod: "E-signature",
     paymentMode: "NEFT",
@@ -285,8 +308,6 @@ export function validateTerms(s: ModalState): string {
     return "Minimum investment for " + product.name + " is " + inr(product.minAmount) + ".";
   if (!Number.isInteger(s.amount))
     return "Investment amount must be a whole number.";
-  if (!(s.rate > 0 && s.rate <= 24))
-    return "Interest rate must be between 0 and 24%.";
   if (!isRepaymentFrequency(s.frequency)) return "Select the repayment frequency.";
   if (!s.firstRepayment) return "Enter the first repayment date.";
   if (!s.maturity) return "Enter the maturity date.";
@@ -408,7 +429,46 @@ export function stateFromRecord(r: InvestorFlowRecord): ModalState {
     maturity: r.maturity_date,
     penaltyApplicable: penalty > 0,
     penaltyRate: penalty > 0 ? penalty : createInitialState().penaltyRate,
+    contractNo: r.name,
+    contractStatus: r.contract_status || "Pending",
+    flowStatus: r.status,
+    mailTo: r.mail_sent || "",
+    mailSubject: r.subject || "",
+    payment:
+      r.contract_status === "Paid"
+        ? {
+            payment_date: String(r.payment_date ?? ""),
+            ref_no: String(r.ref_no ?? ""),
+            payment_mode: r.payment_mode as InvestorFlowPayment["payment_mode"],
+            amount_paid: Number(r.amount_paid) || 0,
+            paid_from: String(r.paid_from ?? ""),
+            paid_to: String(r.paid_to ?? ""),
+            paid_gl: String(r.paid_gl ?? ""),
+            to_gl: String(r.to_gl ?? ""),
+          }
+        : null,
   };
+}
+
+/** Loads an Investor Flow with the customer and product names for the modal. */
+export async function loadInvestorFlowState(id: string): Promise<ModalState> {
+  const record = await getInvestorFlowById(id);
+  const state = stateFromRecord(record);
+
+  const [customer, product] = await Promise.allSettled([
+    getCustomerById(record.investor),
+    getInvestmentProductById(record.investment_product),
+  ]);
+
+  if (customer.status === "fulfilled" && customer.value) {
+    state.customerName = customer.value.customer_name || record.investor;
+    state.customerEmail = customer.value.email_id || "";
+    if (!state.mailTo) state.mailTo = state.customerEmail;
+  }
+  const productItem = product.status === "fulfilled" ? product.value?.message?.data : null;
+  if (productItem) Object.assign(state, apiProductFields(productItem));
+
+  return state;
 }
 
 export function scheduleFromApi(res: InvestorFlowSchedule): Schedule {
@@ -503,9 +563,37 @@ export function SectionBox({
 
 export function KeyValueList({
   rows,
+  cols = 1,
 }: {
   rows: { label: string; value: ReactNode }[];
+  /** 2 = two label / value pairs per row. */
+  cols?: 1 | 2;
 }) {
+  if (cols === 2) {
+    return (
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" verticalSpacing="sm">
+        {rows.map((r) => (
+          <Paper
+            key={r.label}
+            radius="md"
+            px="md"
+            py="xs"
+            style={{
+              background: "var(--mantine-color-white)",
+              border: "1px solid var(--mantine-color-slate-2)",
+            }}
+          >
+            <Text fz="xs" c="slate.5">
+              {r.label}
+            </Text>
+            <Text fz="sm" fw={700} c="slate.8">
+              {r.value}
+            </Text>
+          </Paper>
+        ))}
+      </SimpleGrid>
+    );
+  }
   return (
     <Box>
       {rows.map((r, i) => (

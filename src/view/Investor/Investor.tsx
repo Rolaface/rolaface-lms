@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebouncedValue } from "@mantine/hooks";
 import {
   ActionIcon,
-  Affix,
   Box,
   Button,
   TextInput,
@@ -47,7 +46,10 @@ import {
   updateInvestorFlowStatus,
 } from "../../api/Investor/investorFlowApi";
 import { getEveryInvestmentProduct } from "../../api/Investor/productApi";
-import type { InvestorFlowStatusAction } from "../../types/Investor/investorFlow";
+import type {
+  InvestorFlowReceivePaymentResult,
+  InvestorFlowStatusAction,
+} from "../../types/Investor/investorFlow";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
@@ -67,16 +69,14 @@ import {
   InvestorModal,
   ProcessingReadOnlyView,
 } from "../../components/Modal/Investor/InvestorModal";
-import {
-  ReceivePaymentModal,
-  type ReceivePaymentValues,
-} from "../../components/Modal/Investor/ReceivePaymentModal";
+import { ReceivePaymentModal } from "../../components/Modal/Investor/ReceivePaymentModal";
 import { EarningsStatementsModal } from "../../components/Modal/Investor/EarningsStatementModal";
 import { MaturityModal } from "../../components/Modal/Investor/MaturityModal";
 
 interface InvestmentRow {
   id: string;
   customer: string;
+  customerId: string;
   productId: string;
   product: string;
   amount: number;
@@ -201,6 +201,7 @@ export function Investor() {
       (flowsResponse?.data ?? []).map((item) => ({
         id: item.name,
         customer: item.investor,
+        customerId: item.investor_id,
         productId: item.investment_product,
         product:
           productNames.get(item.investment_product) ?? item.investment_product,
@@ -232,23 +233,24 @@ export function Investor() {
     setModalOpened(true);
   };
 
-  /* ------------------------------ Toast ----------------------------- */
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<number | null>(null);
+  /* ------------------------------ Alerts ---------------------------- */
   const closeTimer = useRef<number | null>(null);
 
   useEffect(
     () => () => {
-      if (toastTimer.current) window.clearTimeout(toastTimer.current);
       if (closeTimer.current) window.clearTimeout(closeTimer.current);
     },
     [],
   );
 
-  const showToast = (message: string) => {
-    setToast(message);
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 2600);
+  const showSuccess = (heading: string, body: string) => {
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
   };
 
   const showError = (heading: string, error: any) => {
@@ -273,7 +275,10 @@ export function Investor() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
       queryClient.invalidateQueries({ queryKey: ["investorFlow", result.id] });
-      showToast(`Investment ${result.status.toLowerCase()}`);
+      showSuccess(
+        `Investment ${result.status}`,
+        `Investment has been ${result.status.toLowerCase()} successfully.`,
+      );
     },
     onError: (error: any) => showError("Status Update Failed", error),
   });
@@ -282,7 +287,7 @@ export function Investor() {
     mutationFn: (id: string) => deleteInvestorFlow(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
-      showToast("Investment deleted");
+      showSuccess("Investment Deleted", "Investment has been deleted successfully.");
     },
     onError: (error: any) => showError("Delete Failed", error),
   });
@@ -349,9 +354,11 @@ export function Investor() {
           ...productPatch(productIndex),
           customerIndex,
           productIndex,
+          customerId: row.customerId,
+          customerName: row.customer,
           amount: row.amount,
           rate: row.rate,
-          contractStatus: "Executed",
+          contractStatus: "Paid",
           contractNo: buildNumber("CON", Object.keys(prev).length),
           step: 2,
         },
@@ -361,8 +368,10 @@ export function Investor() {
     setPaymentOpened(true);
   };
 
-  const handleReceivePayment = ({ paymentMode, utr }: ReceivePaymentValues) => {
+  const handleReceivePayment = (result: InvestorFlowReceivePaymentResult) => {
     if (!activeId || !activeState) return;
+    queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
+    queryClient.invalidateQueries({ queryKey: ["investorFlow", result.id] });
 
     const startDate = new Date();
     const investmentNo = buildNumber(
@@ -371,15 +380,14 @@ export function Investor() {
     );
 
     updateActive({
-      paymentMode,
-      utr,
+      utr: result.ref_no,
       funded: true,
       startDate,
       investmentNo,
       step: 4, // Earnings & Statements
     });
     setPaymentOpened(false);
-    showToast("Payment received for " + investmentNo);
+    showSuccess("Payment Received", `Payment for investment ${result.id} has been received successfully.`);
     setStageOpened(true); // only now the Earnings & Statements modal opens
   };
 
@@ -453,7 +461,7 @@ export function Investor() {
     if (!activeState || !activeState.decision) return;
     // Status stays "Received": only Draft / Approved / Received / Cancelled exist.
     updateActive({ completed: true });
-    showToast("Workflow completed for " + activeState.investmentNo);
+    showSuccess("Workflow Completed", "The investment workflow has been completed successfully.");
     closeTimer.current = window.setTimeout(() => setStageOpened(false), 900);
   };
 
@@ -1009,8 +1017,9 @@ export function Investor() {
             key={`pay-${activeId}`}
             opened={paymentOpened}
             onClose={() => setPaymentOpened(false)}
+            investorFlowId={activeId as string}
             state={activeState}
-            onSubmit={handleReceivePayment}
+            onReceived={handleReceivePayment}
           />
 
           {/* Earnings & Statements — opens only after the payment is received */}
@@ -1018,29 +1027,18 @@ export function Investor() {
             key={`earn-${activeId}`}
             opened={stageOpened && activeState.funded && activeState.step === 4}
             onClose={() => setStageOpened(false)}
-            state={activeState}
-            update={updateActive}
-            schedule={activeSchedule}
-            onToast={showToast}
-            processingView={
-              <ProcessingReadOnlyView
-                state={activeState}
-                schedule={activeSchedule}
-                existingCount={totalRows}
-              />
-            }
-            onSubmit={() => updateActive({ step: 5 })}
+            investorFlowId={activeId as string}
           />
 
           {/* Maturity — opens when Earnings & Statements is submitted */}
           <MaturityModal
             key={`mat-${activeId}`}
+            investorFlowId={activeId}
             opened={stageOpened && activeState.funded && activeState.step === 5}
             onClose={() => setStageOpened(false)}
             state={activeState}
             update={updateActive}
             schedule={activeSchedule}
-            onToast={showToast}
             processingView={
               <ProcessingReadOnlyView
                 state={activeState}
@@ -1053,30 +1051,6 @@ export function Investor() {
         </>
       )}
 
-      {toast && (
-        <Affix position={{ bottom: 20, left: 0, right: 0 }} zIndex={1000}>
-          <Box
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              pointerEvents: "none",
-            }}
-          >
-            <Paper
-              radius="md"
-              px={18}
-              py={10}
-              fw={600}
-              style={{
-                background: "var(--mantine-color-success-6)",
-                color: "var(--mantine-color-white)",
-              }}
-            >
-              {toast}
-            </Paper>
-          </Box>
-        </Affix>
-      )}
     </Stack>
   );
 }
