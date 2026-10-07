@@ -52,7 +52,7 @@ export const remove = async (id: string): Promise<any> => {
 export interface UpdateRuleSetPayload {
   ruleset_name?: string;
   description?: string;
-  effective_from?: string;
+  effective_from?: string | null;
   effective_to?: string;
   groups?: any[];
 }

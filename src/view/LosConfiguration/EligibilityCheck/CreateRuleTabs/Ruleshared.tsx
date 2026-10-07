@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Box, Group, Text } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
-import type { Tone } from "./shared";
 
 /* ── tiny reusable helpers ─────────────────────────────────── */
 export function Field({
@@ -142,17 +141,84 @@ export const MULTIPLE_BASIS_OPTIONS = [
   "Gross Income",
   "Total Income",
 ];
-export const DECISION_TONE: Record<string, Tone> = {
-  Eligible: "low",
-  Conditional: "medium",
-  "Manual Review": "medium",
-  Decline: "high",
+export const DECISION_COLOR: Record<string, string> = {
+  Eligible: "success",
+  Conditional: "info",
+  "Manual Review": "warning",
+  Decline: "danger",
 };
-export const DECISION_DOT: Record<string, string> = {
-  low: "green",
-  medium: "yellow",
-  high: "red",
+
+export interface BandScale {
+  min: number;
+  max: number;
+  strict?: boolean;
+}
+
+export const CREDIT_SCORE_SCALE: BandScale = { min: 300, max: 900 };
+export const INTERNAL_SCORE_SCALE: BandScale = { min: 0, max: 100, strict: true };
+
+export const isFilled = (v: number | string | null | undefined) =>
+  v !== "" && v !== null && v !== undefined && !Number.isNaN(Number(v));
+
+export const newBand = (prefix: string): CreditBand => ({
+  id: `${prefix}${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
+  grade: "",
+  min: "",
+  multiple: "",
+  basis: "",
+  decision: "",
+});
+
+export const sortBands = (bands: CreditBand[]): CreditBand[] =>
+  [...bands].sort((a, b) => {
+    if (!isFilled(a.min)) return isFilled(b.min) ? 1 : 0;
+    if (!isFilled(b.min)) return -1;
+    return Number(b.min) - Number(a.min);
+  });
+
+const bandUpperBound = (band: CreditBand, bands: CreditBand[], scale: BandScale): number | null => {
+  if (!isFilled(band.min)) return null;
+  const min = Number(band.min);
+  const above = bands.filter((b) => b.id !== band.id && isFilled(b.min) && Number(b.min) > min).map((b) => Number(b.min));
+  return above.length ? Math.min(...above) - 1 : scale.strict ? scale.max : null;
 };
+
+export const bandRangeLabel = (band: CreditBand, bands: CreditBand[], scale: BandScale): string => {
+  if (!isFilled(band.min)) return "—";
+  const min = Number(band.min);
+  const upper = bandUpperBound(band, bands, scale);
+  if (upper === null) return `${min}+`;
+  return upper <= min ? `${min}` : `${min} – ${upper}`;
+};
+
+export const bandNeedsLimit = (band: CreditBand) => band.decision !== "Decline";
+
+export const bandIsIncomplete = (band: CreditBand) =>
+  !band.grade.trim() ||
+  !isFilled(band.min) ||
+  !band.decision ||
+  (bandNeedsLimit(band) && (!isFilled(band.multiple) || Number(band.multiple) <= 0 || !band.basis));
+
+export const bandConflicts = (band: CreditBand, bands: CreditBand[], scale: BandScale): string[] => {
+  const conflicts: string[] = [];
+  const grade = band.grade.trim().toLowerCase();
+  if (grade && bands.some((b) => b.id !== band.id && b.grade.trim().toLowerCase() === grade)) {
+    conflicts.push(`Grade "${band.grade.trim()}" is used by another band`);
+  }
+  if (isFilled(band.min)) {
+    const min = Number(band.min);
+    if (bands.some((b) => b.id !== band.id && isFilled(b.min) && Number(b.min) === min)) {
+      conflicts.push(`Another band also starts at ${min}`);
+    }
+    if (scale.strict && (min < scale.min || min > scale.max)) {
+      conflicts.push(`Score must be between ${scale.min} and ${scale.max}`);
+    }
+  }
+  return conflicts;
+};
+
+export const bandsReady = (bands: CreditBand[], scale: BandScale) =>
+  bands.every((b) => !bandIsIncomplete(b) && bandConflicts(b, bands, scale).length === 0);
 
 export const DEFAULT_CREDIT_BANDS: CreditBand[] = [
   {
@@ -198,9 +264,9 @@ export const DEFAULT_CREDIT_BANDS: CreditBand[] = [
 ];
 
 export function creditBandFor(score: number, bands: CreditBand[]): CreditBand {
-  const sorted = [...bands].sort((a, b) => b.min - a.min);
+  const sorted = sortBands(bands.filter((b) => isFilled(b.min)));
   return (
-    sorted.find((b) => score >= b.min) ||
+    sorted.find((b) => score >= Number(b.min)) ||
     sorted[sorted.length - 1] ||
     DEFAULT_CREDIT_BANDS[DEFAULT_CREDIT_BANDS.length - 1]
   );

@@ -1,0 +1,576 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Affix,
+  Box,
+  Button,
+  TextInput,
+  Group,
+  Paper,
+  Table,
+  Badge,
+  Text,
+  Title,
+  Stack,
+  useMantineTheme,
+} from "@mantine/core";
+import {
+  IconChevronUp,
+  IconChevronDown,
+  IconSelector,
+  IconSearch,
+  IconFileText,
+} from "@tabler/icons-react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  createColumnHelper,
+} from "@tanstack/react-table";
+import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
+import {
+  CUSTOMERS,
+  PRODUCTS,
+  calcSchedule,
+  createInitialState,
+  productPatch,
+  toIso,
+  type ModalState,
+} from "../../components/Modal/Investor/InvestorModalShared";
+import { ProcessingReadOnlyView } from "../../components/Modal/Investor/InvestorModal";
+import { EarningsStatementsModal } from "../../components/Modal/Investor/EarningsStatementModal";
+
+function buildDummyInvestment(
+  seq: number,
+  customerIndex: number,
+  productIndex: number,
+  amount: number,
+): ModalState {
+  const year = new Date().getFullYear();
+  const no = String(seq).padStart(4, "0");
+  return {
+    ...createInitialState(),
+    ...productPatch(productIndex),
+    customerIndex,
+    amount,
+    step: 4,
+    contractStatus: "Executed",
+    contractNo: `CON-${year}-${no}`,
+    investmentNo: `INV-${year}-${no}`,
+    utr: `UTR${year}${no}`,
+    funded: true,
+    startDate: new Date(),
+  };
+}
+
+const buildDummyInvestments = (): ModalState[] => [
+  buildDummyInvestment(4, 2, 0, 50000), // John Doe — Steady Income NCD
+  buildDummyInvestment(3, 2, 0, 200000), // John Doe — Steady Income NCD
+  buildDummyInvestment(1, 0, 1, 100000), // Arjun Mehta — Quarterly Yield NCD
+];
+
+interface InvestmentRow {
+  id: string;
+  investmentNo: string;
+  customer: string;
+  product: string;
+  amount: number;
+  rate: number;
+  startDate: string; // ISO date
+  status: string;
+}
+
+const toRow = (s: ModalState): InvestmentRow => ({
+  id: s.investmentNo,
+  investmentNo: s.investmentNo,
+  customer: CUSTOMERS[s.customerIndex].name,
+  product: PRODUCTS[s.productIndex].name,
+  amount: s.amount,
+  rate: s.rate,
+  startDate: s.startDate ? toIso(s.startDate) : "",
+  status: "Active",
+});
+
+const STATUS_META: Record<string, { label: string; color: string }> = {
+  Active: { label: "Active", color: "brand" },
+};
+
+const columnHelper = createColumnHelper<InvestmentRow>();
+
+function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
+  const color = sorted
+    ? "var(--mantine-color-brand-6)"
+    : "var(--mantine-color-slate-4)";
+  if (sorted === "asc") return <IconChevronUp size={12} color={color} />;
+  if (sorted === "desc") return <IconChevronDown size={12} color={color} />;
+  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
+}
+
+function StatusBadge({ label, color }: { label: string; color: string }) {
+  return (
+    <Badge
+      variant="light"
+      color={color}
+      radius="xl"
+      size="sm"
+      styles={{
+        root: {
+          textTransform: "none",
+          fontWeight: 700,
+          letterSpacing: 0.2,
+          paddingLeft: 8,
+          paddingRight: 10,
+          border: `1px solid var(--mantine-color-${color}-2)`,
+        },
+      }}
+    >
+      {label}
+    </Badge>
+  );
+}
+
+const fmtDate = (iso: string) =>
+  iso
+    ? new Date(iso).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "-";
+
+const fmtAmount = (value: number) => `₹${value.toLocaleString("en-IN")}`;
+
+export function EarningsStatements() {
+  const theme = useMantineTheme();
+
+  const [searchInput, setSearchInput] = useState("");
+  const [productFilter, setProductFilter] = useState<string[]>([]);
+  const [sorting, setSorting] = useState([{ id: "investmentNo", desc: true }]);
+  const [investments, setInvestments] = useState<ModalState[]>(buildDummyInvestments);
+
+  /* ----------------------------- Modal ----------------------------- */
+  const [selectedNo, setSelectedNo] = useState<string | null>(null);
+  const [modalOpened, setModalOpened] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    },
+    [],
+  );
+
+  const showToast = (message: string) => {
+    setToast(message);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 2600);
+  };
+
+  const selected = investments.find((i) => i.investmentNo === selectedNo) ?? null;
+  const selectedSchedule = selected ? calcSchedule(selected) : null;
+
+  const openModal = (investmentNo: string) => {
+    setSelectedNo(investmentNo);
+    setModalOpened(true);
+  };
+
+  /** Same "patch the state" contract the tabs already use, applied to the open investment. */
+  const updateSelected = (patch: Partial<ModalState>) =>
+    setInvestments((prev) =>
+      prev.map((i) => (i.investmentNo === selectedNo ? { ...i, ...patch } : i)),
+    );
+
+  const handleSubmit = () => {
+    if (!selected) return;
+    showToast("Earnings & Statements submitted for " + selected.investmentNo);
+    setModalOpened(false);
+  };
+
+  /* ----------------------------- Table ----------------------------- */
+  const productOptions = useMemo(
+    () => PRODUCTS.map((p) => ({ value: p.name, label: p.name })),
+    [],
+  );
+
+  const filteredData = useMemo(() => {
+    const q = searchInput.trim().toLowerCase();
+    return investments.map(toRow).filter((row) => {
+      const matchesSearch =
+        !q ||
+        row.investmentNo.toLowerCase().includes(q) ||
+        row.customer.toLowerCase().includes(q);
+      const matchesProduct =
+        productFilter.length === 0 || productFilter.includes(row.product);
+      return matchesSearch && matchesProduct;
+    });
+  }, [investments, searchInput, productFilter]);
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("investmentNo", {
+        header: "Investment No.",
+        cell: (info) => (
+          <Text
+            fz="sm"
+            fw={700}
+            c="slate.8"
+            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+          >
+            {info.getValue()}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor("customer", {
+        header: "Customer",
+        cell: (info) => (
+          <Text fz="sm" fw={600} c="slate.8">
+            {info.getValue()}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor("product", {
+        header: "Product",
+        cell: (info) => (
+          <Badge
+            variant="light"
+            size="sm"
+            radius="sm"
+            color="brand"
+            styles={{ root: { fontSize: 10, padding: "0 8px" } }}
+          >
+            {info.getValue()}
+          </Badge>
+        ),
+      }),
+      columnHelper.accessor("amount", {
+        header: "Amount",
+        cell: (info) => (
+          <Text
+            fz="xs"
+            c="slate.6"
+            ta="right"
+            style={{
+              fontFamily: "var(--mantine-font-family-monospace)",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {fmtAmount(info.getValue())}
+          </Text>
+        ),
+        sortingFn: "basic",
+      }),
+      columnHelper.accessor("rate", {
+        header: "Rate",
+        cell: (info) => (
+          <Text fz="xs" c="slate.6" ta="right">
+            {`${info.getValue()}%`}
+          </Text>
+        ),
+        sortingFn: "basic",
+      }),
+      columnHelper.accessor("startDate", {
+        header: "Start",
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {fmtDate(info.getValue())}
+          </Text>
+        ),
+        sortingFn: "basic",
+      }),
+      columnHelper.accessor("status", {
+        header: "Status",
+        cell: (info) => {
+          const meta = STATUS_META[info.getValue()] || {
+            label: info.getValue(),
+            color: "gray",
+          };
+          return <StatusBadge label={meta.label} color={meta.color} />;
+        },
+      }),
+      columnHelper.display({
+        id: "action",
+        header: "",
+        cell: (info) => (
+          <Group justify="flex-end">
+            <Button
+              size="compact-xs"
+              radius="xl"
+              variant="default"
+              onClick={() => openModal(info.row.original.investmentNo)}
+            >
+              Open
+            </Button>
+          </Group>
+        ),
+      }),
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data: filteredData,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
+  const rows = table.getRowModel().rows;
+
+  const resetFilters = () => {
+    setSearchInput("");
+    setProductFilter([]);
+  };
+
+  return (
+    <Stack gap="lg" p="lg">
+      <style>{`
+        .lms-search:focus-within { box-shadow: ${theme.other.searchFocusRing}; }
+        .lms-row td { background: var(--mantine-color-white); transition: background-color 150ms ease; }
+        .lms-row:hover td { background: ${theme.other.rowHoverBg} !important; }
+        .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
+        .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
+        .lms-thead-cell { position: sticky; top: 0; z-index: 2; background: var(--mantine-color-slate-0); }
+      `}</style>
+
+      {/* Header */}
+      <Group justify="space-between" align="center" wrap="wrap" gap="md">
+        <Group gap="sm" align="center">
+          <Box
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "var(--mantine-radius-md)",
+              background: theme.other.brandGradient,
+              boxShadow: theme.other.brandGlowShadow,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <IconFileText size={20} color="var(--mantine-color-white)" stroke={1.8} />
+          </Box>
+          <Stack gap={2}>
+            <Title order={2} c="slate.8" fw={700}>
+              Earnings & Statements
+            </Title>
+            <Text fz="sm" c="slate.5">
+              Track interest earned and send monthly statements
+            </Text>
+          </Stack>
+        </Group>
+      </Group>
+
+      {/* Filter bar */}
+      <Paper
+        radius="xl"
+        p="xs"
+        style={{
+          background: "var(--mantine-color-slate-0)",
+          border: "1px solid var(--mantine-color-slate-2)",
+        }}
+      >
+        <Group gap="xs" wrap="nowrap" align="center">
+          <TextInput
+            className="lms-search"
+            size="sm"
+            radius="xl"
+            placeholder="Investment No. / Customer"
+            leftSection={<IconSearch size={14} />}
+            style={{ flex: 1, minWidth: 220 }}
+            styles={{
+              input: { border: "1px solid var(--mantine-color-slate-2)" },
+            }}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.currentTarget.value)}
+          />
+
+          <FilterMultiSelect
+            placeholder="All Products"
+            data={productOptions}
+            value={productFilter}
+            onChange={setProductFilter}
+            width={140}
+          />
+
+          <Button
+            size="sm"
+            radius="xl"
+            variant="default"
+            px="sm"
+            style={{ flexShrink: 0 }}
+            onClick={resetFilters}
+          >
+            Reset
+          </Button>
+        </Group>
+      </Paper>
+
+      {/* Table */}
+      <Paper
+        radius="lg"
+        p="sm"
+        pos="relative"
+        style={{
+          background: "var(--mantine-color-slate-0)",
+          border: "1px solid var(--mantine-color-slate-2)",
+        }}
+      >
+        <Box
+          style={{
+            height: "clamp(320px, calc(100vh - 280px), 720px)",
+            overflowY: "auto",
+          }}
+        >
+          <Table
+            verticalSpacing="sm"
+            horizontalSpacing="sm"
+            fz="xs"
+            w="100%"
+            style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
+          >
+            <Table.Thead>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <Table.Tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    const canSort = header.column.getCanSort();
+                    const rightAligned =
+                      header.id === "amount" || header.id === "rate";
+                    return (
+                      <Table.Th
+                        key={header.id}
+                        className="lms-thead-cell"
+                        c="slate.5"
+                        fw={700}
+                        style={{
+                          fontSize: "var(--mantine-font-size-xs)",
+                          padding: "0 10px 6px",
+                          userSelect: "none",
+                          cursor: canSort ? "pointer" : "default",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                          border: "none",
+                        }}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <Group
+                          gap="xs"
+                          wrap="nowrap"
+                          justify={rightAligned ? "flex-end" : "flex-start"}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                          {canSort && (
+                            <SortIcon sorted={header.column.getIsSorted()} />
+                          )}
+                        </Group>
+                      </Table.Th>
+                    );
+                  })}
+                </Table.Tr>
+              ))}
+            </Table.Thead>
+
+            <Table.Tbody>
+              {rows.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={columns.length} style={{ border: "none" }}>
+                    <Stack align="center" gap="xs" py="xl">
+                      <Box
+                        style={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: "50%",
+                          background: "var(--mantine-color-white)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          border: "1px solid var(--mantine-color-slate-2)",
+                        }}
+                      >
+                        <IconFileText size={24} color="var(--mantine-color-slate-4)" />
+                      </Box>
+                      <Text ta="center" c="slate.5" fz="xs">
+                        No investments match your filters.
+                      </Text>
+                    </Stack>
+                  </Table.Td>
+                </Table.Tr>
+              ) : (
+                rows.map((row) => {
+                  const rowMeta = STATUS_META[row.original.status] || {
+                    label: row.original.status,
+                    color: "gray",
+                  };
+                  return (
+                    <Table.Tr key={row.id} className="lms-row">
+                      {row.getVisibleCells().map((cell, idx) => (
+                        <Table.Td
+                          key={cell.id}
+                          style={{
+                            padding: "10px 10px",
+                            border: "none",
+                            boxShadow: "var(--mantine-shadow-xs)",
+                            borderLeft:
+                              idx === 0
+                                ? `3px solid var(--mantine-color-${rowMeta.color}-4)`
+                                : undefined,
+                          }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </Table.Td>
+                      ))}
+                    </Table.Tr>
+                  );
+                })
+              )}
+            </Table.Tbody>
+          </Table>
+        </Box>
+      </Paper>
+
+      {selected && (
+        <EarningsStatementsModal
+          key={selected.investmentNo}
+          opened={modalOpened}
+          onClose={() => setModalOpened(false)}
+          state={selected}
+          update={updateSelected}
+          schedule={selectedSchedule}
+          onToast={showToast}
+          processingView={
+            <ProcessingReadOnlyView
+              state={selected}
+              schedule={selectedSchedule}
+              existingCount={investments.length}
+            />
+          }
+          onSubmit={handleSubmit}
+        />
+      )}
+
+      {toast && (
+        <Affix position={{ bottom: 20, left: 0, right: 0 }} zIndex={1000}>
+          <Box style={{ display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+            <Paper
+              radius="md"
+              px={18}
+              py={10}
+              fw={600}
+              style={{
+                background: "var(--mantine-color-success-6)",
+                color: "var(--mantine-color-white)",
+              }}
+            >
+              {toast}
+            </Paper>
+          </Box>
+        </Affix>
+      )}
+    </Stack>
+  );
+}

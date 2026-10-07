@@ -3,7 +3,7 @@ import apiClient from "../../config/axios";
 import { type CreateEligibilityRulePayload, type GetEligibilityRuleByIdResponse } from "../../types/OriginationSetup/createRuleForm";
 
 export async function createEligibilityRule(payload: CreateEligibilityRulePayload) {
-  const { data } = await apiClient.post(
+  const { data } = await apiClient.post<GetEligibilityRuleByIdResponse>(
     API.createEligibilityRule.createEligibilityRule,
     payload,
   );
@@ -24,7 +24,7 @@ export async function getEligibilityRules(){
 }
 
 export async function updateEligibilityRule(id: string, payload: Partial<CreateEligibilityRulePayload>) {
-  const { data } = await apiClient.put<CreateEligibilityRulePayload>(
+  const { data } = await apiClient.put<GetEligibilityRuleByIdResponse>(
     API.createEligibilityRule.updateEligibilityRule,
     payload,
     { params: { id } },
@@ -35,6 +35,15 @@ export async function updateEligibilityRule(id: string, payload: Partial<CreateE
 export async function deleteEligibilityRule(id: string) {
   const { data } = await apiClient.delete(
     API.createEligibilityRule.deleteEligibilityRule,
+    { params: { id } },
+  );
+  return data;
+}
+
+export async function setEligibilityRuleStatus(id: string, status: "Active" | "Inactive") {
+  const { data } = await apiClient.put<GetEligibilityRuleByIdResponse>(
+    API.createEligibilityRule.setEligibilityRuleStatus,
+    { status },
     { params: { id } },
   );
   return data;

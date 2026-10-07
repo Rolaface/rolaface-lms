@@ -83,7 +83,10 @@ import { OfferIssuanceStage } from "../view/Origination/OfferIssuanceStage/Offer
 import { LoanTypeSetup } from "../view/LosConfiguration/LoanTpeSetup/Loantypesetup";
 import { DocumentSetup } from "../view/LosConfiguration/DocumentSetup/DocumentSetup";
 import { SourceMaintenance } from "../view/LosConfiguration/SourceMaintenance/SourceMaintenance";
-
+import { Investor } from "../view/Investor/Investor";
+import { InvestmentProduct } from "../view/Investor/Product/InvestmentProduct";
+import { EarningsStatements } from "../view/Investor/EarningsStatements";
+import { Maturity } from "../view/Investor/Maturity";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -502,6 +505,31 @@ const reportsPortfolioRoute = createRoute({
   path: "/portfolio",
   component: LoanPortfolioReport,
 });
+const investorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/investor",
+  component: Outlet,
+});
+const investmentProductRoute = createRoute({
+  getParentRoute: () => investorRoute,
+  path: "/product",
+  component: InvestmentProduct,
+});
+const investmentRoute = createRoute({
+  getParentRoute: () => investorRoute,
+  path: "/investments",
+  component: Investor,
+});
+const earningRoute = createRoute({
+  getParentRoute: () => investorRoute,
+  path: "/earnings",
+  component: EarningsStatements,
+});
+const maturityRoute = createRoute({
+  getParentRoute: () => investorRoute,
+  path: "/maturity",
+  component: Maturity,
+});
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
@@ -588,6 +616,7 @@ const routeTree = rootRoute.addChildren([
   // originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, tempProductAssignmentRoute, originationWorkflowConfigurationRoute]),
   originationSetupRoute.addChildren([preScreeningRoute, loanEligibilityCheckRoute, loanProductAssignmentRoute, originationWorkflowConfigurationRoute, originationLoanTypeSetupRoute, originationDocumentSetupRoute, originationSourceMaintenanceRoute]),
   reportsRoute.addChildren([reportsStatementRoute, reportsArrearsRoute, reportsScheduleRoute, reportsDisbursementRoute, reportsPortfolioRoute]),
+  investorRoute.addChildren([investmentProductRoute, investmentRoute, earningRoute, maturityRoute]),
   settingsRoute.addChildren([
     emailTemplateRoute,
     schedulerRoute,

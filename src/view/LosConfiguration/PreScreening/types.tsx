@@ -42,11 +42,14 @@ export interface RuleGroup {
 }
 
 export interface VersionEntry {
+  name: string;
   version: string;
   status: string;
-  effective: string;
-  by: string;
-  note: string;
+  effective_from?: string | null;
+  effective_to?: string | null;
+  published_by?: string | null;
+  published_on?: string | null;
+  rules_count?: number;
 }
 
 export interface AuditEntry {
@@ -61,6 +64,8 @@ export interface RuleSet {
   name: string;
   description: string;
   product: string;
+  productName: string;
+  draftId?: string | null;
   status: string;
   version: string;
   effectiveFrom: string;
@@ -79,7 +84,9 @@ export interface RuleSet {
 
 export interface RuleSetSummary {
   id: string;
+  draftId: string | null;
   name: string;
+  productCode: string;
   product: string;
   status: string;
   version: string;
@@ -119,6 +126,35 @@ const SEVERITY_STYLE: Record<string, { color: string; wash: string }> = {
 const FALLBACK_STYLE = { color: "#475569", wash: "#F1F5F9" };
 
 const humanize = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const OPERATOR_LABELS: Record<string, string> = {
+  equals: "is",
+  not_equals: "is not",
+  greater_than: "is greater than",
+  greater_than_or_equal: "is at least",
+  less_than: "is less than",
+  less_than_or_equal: "is at most",
+  between: "is between",
+  in: "is one of",
+  not_in: "is not one of",
+  contains: "contains",
+  starts_with: "starts with",
+  before: "is before",
+  after: "is after",
+  older_than: "is older than",
+};
+
+export const formatDate = (d?: string | null) => {
+  if (!d) return "";
+  const dt = new Date(String(d).replace(" ", "T").slice(0, 19));
+  return isNaN(dt.getTime()) ? d : dt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+};
+
+export const formatDay = (d?: string | null) => {
+  if (!d) return "";
+  const dt = new Date(`${String(d).slice(0, 10)}T00:00:00`);
+  return isNaN(dt.getTime()) ? d : dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+};
 
 const pickId = (x: any): string =>
   typeof x === "string"
@@ -166,7 +202,7 @@ export function setPrescreeningConfig(payload: any) {
   const addOp = (type: string, o: any) => {
     const id = pickId(o);
     if (!id) return;
-    (ops[type] = ops[type] || []).push({ id, label: pickLabel(o, id).toLowerCase() });
+    (ops[type] = ops[type] || []).push({ id, label: OPERATOR_LABELS[id] ?? pickLabel(o, id).toLowerCase() });
   };
   if (Array.isArray(rawOps)) {
     rawOps.forEach((o: any) => addOp(String(o?.type ?? o?.field_type ?? ""), o));
@@ -225,6 +261,7 @@ const OP_ALIASES: Record<string, OpCat> = {
   contains: "contains",
   startswith: "startswith",
   relative: "relative",
+  olderthan: "relative",
   before: "before",
   after: "after",
 };

@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Badge,
   Box,
   Button,
   Group,
+  Menu,
   Paper,
-  SimpleGrid,
   Table,
   Text,
   TextInput,
@@ -14,20 +15,16 @@ import {
 } from "@mantine/core";
 import {
   IconPlus,
-  IconFlask,
-  IconUpload,
-  IconDownload,
   IconSearch,
   IconEye,
-  IconFileText,
-  IconCopy,
-  IconHistory,
-  IconPlayerPause,
   IconPencil,
   IconTrash,
+  IconDotsVertical,
+  IconPlayerPlay,
+  IconPlayerPause,
 } from "@tabler/icons-react";
 import { Pill } from "./shared";
-import { getEligibilityRules, deleteEligibilityRule } from "../../../api/OriginationSetupAPi/createRuleApi"; 
+import { getEligibilityRules, deleteEligibilityRule, setEligibilityRuleStatus } from "../../../api/OriginationSetupAPi/createRuleApi";
 import { CreateRule } from "../EligibilityCheck/CreateRuleTabs/CreateRule";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { openCommonModal } from "../../../components/Modal/AlertModal";
@@ -97,7 +94,7 @@ const closeModal = () => {
   setSelectedRuleId(null);
   setViewOnly(false);
 };
-  const { data: response, isLoading, isError } = useQuery<GetEligibilityRulesResponse>({
+  const { data: response, isPending: isLoading, isError } = useQuery<GetEligibilityRulesResponse>({
     queryKey: ["eligibility-rules"],
     queryFn: getEligibilityRules,
   });
@@ -114,12 +111,12 @@ const closeModal = () => {
     });
   };
   const deleteMutation = useMutation({
-  mutationFn: deleteEligibilityRule,
-  onSuccess: (_, variables) => {
+  mutationFn: (rule: EligibilityRuleListItem) => deleteEligibilityRule(rule.name),
+  onSuccess: (_, rule) => {
     queryClient.invalidateQueries({ queryKey: ["eligibility-rules"] });
     showSuccess(
       "Rule Deleted",
-      `Eligibility rule ${variables} deleted successfully.`,
+      `Eligibility rule "${rule.rule_name}" deleted successfully.`,
     );
   },
   onError: (error: any) => {
@@ -133,7 +130,7 @@ const closeModal = () => {
   },
 });
 
-const confirmDelete = (id: string) => {
+const confirmDelete = (rule: EligibilityRuleListItem) => {
   openCommonModal({
     heading: "Delete Eligibility Rule",
     subtitle: "This action cannot be undone.",
@@ -141,9 +138,9 @@ const confirmDelete = (id: string) => {
       <>
         Are you sure you want to delete{" "}
         <Text span fw={600}>
-          {id}
-        </Text>
-        ?
+          {rule.rule_name}
+        </Text>{" "}
+        ({formatVersion(rule.version)})?
       </>
     ),
     color: "red",
@@ -152,7 +149,66 @@ const confirmDelete = (id: string) => {
       {
         label: "Delete",
         color: "red",
-        onClick: () => deleteMutation.mutate(id),
+        onClick: () => deleteMutation.mutate(rule),
+      },
+    ],
+  });
+};
+
+const statusMutation = useMutation({
+  mutationFn: ({ id, status }: { rule: EligibilityRuleListItem; id: string; status: "Active" | "Inactive" }) =>
+    setEligibilityRuleStatus(id, status),
+  onSuccess: (_, { rule, status }) => {
+    queryClient.invalidateQueries({ queryKey: ["eligibility-rules"] });
+    showSuccess(
+      status === "Active" ? "Rule Activated" : "Rule Deactivated",
+      `Eligibility rule "${rule.rule_name}" is now ${status === "Active" ? "active" : "inactive"}.`,
+    );
+  },
+  onError: (error: any) => {
+    openCommonModal({
+      heading: "Action Failed",
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  },
+});
+
+const confirmStatus = (rule: EligibilityRuleListItem, status: "Active" | "Inactive") => {
+  const activating = status === "Active";
+  const target = activating ? rule.draft_id ?? rule.name : rule.name;
+  const product = rule.product_name || rule.loan_product;
+  openCommonModal({
+    heading: activating ? (rule.draft_id ? "Activate Draft" : "Activate Rule") : "Deactivate Rule",
+    subtitle: "",
+    body: activating ? (
+      <>
+        Activate{" "}
+        <Text span fw={600}>
+          {rule.rule_name}
+        </Text>
+        {rule.draft_id ? " (latest draft)" : ` (${formatVersion(rule.version)})`}? Applications for {product} will be
+        checked against it, and any previously live version is archived.
+      </>
+    ) : (
+      <>
+        Deactivate{" "}
+        <Text span fw={600}>
+          {rule.rule_name}
+        </Text>{" "}
+        ({formatVersion(rule.version)})? Applications for {product} will have no active eligibility rule until one is
+        activated.
+      </>
+    ),
+    color: activating ? "blue" : "orange",
+    buttons: [
+      { label: "Cancel", variant: "default" },
+      {
+        label: activating ? "Activate" : "Deactivate",
+        color: activating ? "blue" : "orange",
+        onClick: () => statusMutation.mutate({ rule, id: target, status }),
       },
     ],
   });
@@ -162,65 +218,30 @@ const confirmDelete = (id: string) => {
     (r.rule_name || "").toLowerCase().includes(query.toLowerCase()),
   );
 
-  const statCards = useMemo(() => {
-    const active = rules.filter((r) => r.status?.toLowerCase() === "active").length;
-    const draft = rules.filter((r) => r.status?.toLowerCase() === "draft").length;
-    const latest = [...rules].sort((a, b) => (b.modified || "").localeCompare(a.modified || ""))[0];
-    return [
-      { label: "Active Rules", value: String(active), color: "var(--mantine-color-green-7)" },
-      { label: "Draft Rules", value: String(draft), color: "var(--mantine-color-yellow-7)" },
-      { label: "High-Risk Rules", value: "—", color: "var(--mantine-color-red-7)" },
-      { label: "Last Updated", value: formatDate(latest?.modified), color: "var(--mantine-color-slate-8)" },
-      { label: "Current Rule Version", value: formatVersion(latest?.version), color: "var(--mantine-color-slate-8)" },
-    ];
-  }, [rules]);
-
   return (
     <Box style={{ margin: "0 auto" }}>
-      <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
-        <Box>
-          <Text fz="md" fw={600} c="slate.8">Configured Eligibility Rules</Text>
-          <Text fz="xs" mt={2} maw={520} c="slate.5">
-            Rules used to determine customer eligibility, risk category, maximum loan amount and pre-approved loan amount.
-          </Text>
-        </Box>
-        <Group gap={6} wrap="wrap">
-          <Button size="xs" radius="sm" variant="default" leftSection={<IconUpload size={14} />} style={{ height: 26 }}>Import Rules</Button>
-          <Button size="xs" radius="sm" variant="default" leftSection={<IconDownload size={14} />} style={{ height: 26 }}>Export Rules</Button>
+      <Group justify="space-between" align="center" wrap="wrap" gap="sm" mb="sm">
+        <Group gap={8} align="center">
+          <Text fz="sm" fw={600} c="slate.8">Configured rules</Text>
+          {!isLoading && !isError && (
+            <Badge size="sm" radius="sm" variant="light" color="slate">{rules.length}</Badge>
+          )}
         </Group>
-       <Button
-  size="xs"
-  radius="sm"
-  color="brand"
-  leftSection={<IconPlus size={14} />}
-  style={{ height: 26 }}
-  onClick={openCreate}
->
-  Create Rule
-</Button>
-      </Group>
-
-      <SimpleGrid cols={{ base: 2, md: 5 }} spacing="sm" mt="md">
-        {statCards.map((c) => (
-          <Paper key={c.label} radius="sm" p={10} style={{ border: "1px solid var(--mantine-color-slate-2)" }}>
-            <Text fz={10} fw={600} c="slate.5" tt="uppercase" style={{ letterSpacing: '0.04em' }}>{c.label}</Text>
-            <Text fz="md" fw={700} mt={4} style={{ color: c.color }}>{c.value}</Text>
-          </Paper>
-        ))}
-      </SimpleGrid>
-
-      <Group justify="space-between" mt="lg" mb="sm">
-        <Text fz="sm" fw={600} c="slate.8">Configured rules</Text>
-        <TextInput
-          value={query}
-          onChange={(e) => setQuery(e.currentTarget.value)}
-          placeholder="Search rules"
-          leftSection={<IconSearch size={12} />}
-          size="xs"
-          radius="sm"
-          w={220}
-          styles={{ input: { height: 26, minHeight: 26, fontSize: 11 } }}
-        />
+        <Group gap={8} wrap="nowrap">
+          <TextInput
+            value={query}
+            onChange={(e) => setQuery(e.currentTarget.value)}
+            placeholder="Search rules"
+            leftSection={<IconSearch size={12} />}
+            size="xs"
+            radius="sm"
+            w={220}
+            styles={{ input: { height: 28, minHeight: 28, fontSize: 11 } }}
+          />
+          <Button size="xs" radius="sm" color="brand" leftSection={<IconPlus size={14} />} style={{ height: 28 }} onClick={openCreate}>
+            Create Rule
+          </Button>
+        </Group>
       </Group>
 
       <Paper radius="lg" p="sm" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}>
@@ -231,7 +252,7 @@ const confirmDelete = (id: string) => {
         <Table verticalSpacing={6} horizontalSpacing="sm" fz={11} w="100%" style={{ borderCollapse: "separate", borderSpacing: "0 6px" }}>
           <Table.Thead>
             <Table.Tr>
-              {["Rule Name", "Loan Product", "Customer Type", "Risk", "Priority", "Status", "Version", "Updated", "By", ""].map((h) => (
+              {["Rule Name", "Loan Product", "Status", "Version", "Updated", "By", ""].map((h) => (
                 <Table.Th key={h} c="slate.5" fw={700} style={{ fontSize: 10, padding: "0 12px 4px", textTransform: "uppercase", letterSpacing: "0.04em", border: "none", whiteSpace: "nowrap" }}>{h}</Table.Th>
               ))}
             </Table.Tr>
@@ -239,17 +260,17 @@ const confirmDelete = (id: string) => {
           <Table.Tbody>
             {isLoading && (
               <Table.Tr>
-                <Table.Td colSpan={10} c="slate.5" ta="center" style={{ border: "none" }}>Loading rules...</Table.Td>
+                <Table.Td colSpan={7} c="slate.5" ta="center" style={{ border: "none" }}>Loading rules...</Table.Td>
               </Table.Tr>
             )}
             {isError && (
               <Table.Tr>
-                <Table.Td colSpan={10} c="red.7" ta="center" style={{ border: "none" }}>Failed to load eligibility rules.</Table.Td>
+                <Table.Td colSpan={7} c="red.7" ta="center" style={{ border: "none" }}>Failed to load eligibility rules.</Table.Td>
               </Table.Tr>
             )}
             {!isLoading && !isError && filtered.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={10} c="slate.5" ta="center" style={{ border: "none" }}>No eligibility rules found.</Table.Td>
+                <Table.Td colSpan={7} c="slate.5" ta="center" style={{ border: "none" }}>No eligibility rules found.</Table.Td>
               </Table.Tr>
             )}
             {filtered.map((r) => {
@@ -258,21 +279,66 @@ const confirmDelete = (id: string) => {
                 <Table.Tr key={r.name} className="lms-row">
                   <Table.Td fw={600} c="slate.8" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", borderTopLeftRadius: "var(--mantine-radius-md)", borderBottomLeftRadius: "var(--mantine-radius-md)", padding: "8px 12px", borderLeft: status === "active" ? "3px solid var(--mantine-color-green-4)" : status === "draft" ? "3px solid var(--mantine-color-yellow-4)" : "3px solid var(--mantine-color-slate-3)" }}>{r.rule_name}</Table.Td>
                   <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.product_name || r.loan_product}</Table.Td>
-                  <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>—</Table.Td>
-                  <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>—</Table.Td>
-                  <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>—</Table.Td>
                   <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}><Pill tone={status}>{r.status}</Pill></Table.Td>
                   <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{formatVersion(r.version)}</Table.Td>
                   <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", whiteSpace: "nowrap", padding: "8px 12px" }}>{formatDate(r.modified)}</Table.Td>
                   <Table.Td c="slate.6" style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", padding: "8px 12px" }}>{r.modified_by}</Table.Td>
                   <Table.Td style={{ border: "none", boxShadow: "var(--mantine-shadow-xs)", borderTopRightRadius: "var(--mantine-radius-md)", borderBottomRightRadius: "var(--mantine-radius-md)", padding: "8px 12px" }}>
                     <Group gap={2} wrap="nowrap" justify="flex-end">
-                      <Tooltip label="View" withArrow><ActionIcon size="sm" variant="subtle" color="slate" onClick={() => openRule(r.name, true)}><IconEye size={14} /></ActionIcon></Tooltip>
-                      <Tooltip label="Edit" withArrow><ActionIcon size="sm" variant="subtle" color="slate" onClick={() => openRule(r.name, false)}><IconPencil size={14} /></ActionIcon></Tooltip>
-                      <Tooltip label="Delete" withArrow><ActionIcon size="sm" variant="subtle" color="danger" onClick={() => confirmDelete(r.name)}><IconTrash size={14} /></ActionIcon></Tooltip>
-                      <Tooltip label="Duplicate" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconCopy size={14} /></ActionIcon></Tooltip>
-                      <Tooltip label="Version history" withArrow><ActionIcon size="sm" variant="subtle" color="slate"><IconHistory size={14} /></ActionIcon></Tooltip>
-                      <Tooltip label="Disable" withArrow><ActionIcon size="sm" variant="subtle" color="orange"><IconPlayerPause size={14} /></ActionIcon></Tooltip>
+                      <Tooltip label="View" withArrow>
+                        <ActionIcon size="sm" variant="subtle" color="gray" onClick={() => openRule(r.name, true)}>
+                          <IconEye size={14} />
+                        </ActionIcon>
+                      </Tooltip>
+                      <Tooltip label="Edit" withArrow>
+                        <ActionIcon size="sm" variant="subtle" color="blue" onClick={() => openRule(r.draft_id ?? r.name, false)}>
+                          <IconPencil size={14} />
+                        </ActionIcon>
+                      </Tooltip>
+                      <Tooltip label={status === "draft" ? "Delete" : "Only drafts can be deleted"} withArrow>
+                        <ActionIcon
+                          size="sm"
+                          variant="subtle"
+                          color="red"
+                          disabled={status !== "draft"}
+                          loading={deleteMutation.isPending && deleteMutation.variables?.name === r.name}
+                          onClick={() => confirmDelete(r)}
+                        >
+                          <IconTrash size={14} />
+                        </ActionIcon>
+                      </Tooltip>
+                      <Menu shadow="md" width={190} position="bottom-end" withinPortal>
+                        <Menu.Target>
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            color="gray"
+                            loading={statusMutation.isPending && statusMutation.variables?.rule.name === r.name}
+                            aria-label="More actions"
+                          >
+                            <IconDotsVertical size={14} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          {(status !== "active" || r.draft_id) && (
+                            <Menu.Item
+                              leftSection={<IconPlayerPlay size={14} />}
+                              onClick={() => confirmStatus(r, "Active")}
+                            >
+                              {r.draft_id ? "Activate draft" : "Activate"}
+                            </Menu.Item>
+                          )}
+                          {status === "active" && (
+                            <Menu.Item
+                              color="orange"
+                              leftSection={<IconPlayerPause size={14} />}
+                              onClick={() => confirmStatus(r, "Inactive")}
+                            >
+                              Deactivate
+                            </Menu.Item>
+                          )}
+                        </Menu.Dropdown>
+                      </Menu>
                     </Group>
                   </Table.Td>
                 </Table.Tr>

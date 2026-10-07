@@ -272,6 +272,8 @@ export const API = {
     getProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_rules`,
     getProductAssignmentById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_rule_by_id`,
     deleteProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.delete_rule`,
+    getSettings: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_settings`,
+    updateSettings: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.update_settings`,
   },
 
   createEligibilityRule: {
@@ -280,6 +282,7 @@ export const API = {
      getEligibilityRuleById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.get_eligibility_rule`,
      updateEligibilityRule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.update_eligibility_rule`,
      deleteEligibilityRule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.delete_eligibility_rule`,
+     setEligibilityRuleStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.eligibility.api.set_eligibility_rule_status`,
     },
 
   // =========================
@@ -503,6 +506,26 @@ losDocumentSetup: {
     setStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.set_ruleset_status`,
     test: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.prescreening.api.test_ruleset`,
   },
+
+  investmentProduct:{
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.get_investment_product`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.get_investment_product_by_id`,
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.create_investment_product`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.update_investment_product`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.delete_investment_product`,
+    enable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.enable_investment_product`,
+    disable: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investmentProduct.api.disable_investment_product`,
+  },
+
+  investorFlow: {
+    getAll: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investor_flow`,
+    getById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investor_flow_by_id`,
+    create: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.create_investor_flow`,
+    update: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.update_investor_flow`,
+    delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.delete_investor_flow`,
+    updateStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.update_investor_flow_status`,
+    getSchedule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_schedules`,
+  }
 } as const;
 
 export default API;

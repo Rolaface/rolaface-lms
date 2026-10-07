@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { getLoanProducts } from "../../../api/LoanProduct/LoanProductAPi";
 import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { create, getAll, remove, update, getById, setStatus, getFields } from "../../../api/LosConfiguration/PreScreeningApi";
+import { useLoanProductOptions } from "../../../components/Modal/OriginationSetup/LoanProductAssignmentModal";
 import {
+  Badge,
   Box,
   Button,
   Group,
@@ -19,11 +20,13 @@ import {
   Textarea,
   Select,
   ActionIcon,
+  Loader,
+  Menu,
+  Tooltip,
 } from "@mantine/core";
 import {
   IconPlus,
   IconChevronLeft,
-  IconChevronRight,
   IconListCheck,
   IconTestPipe,
   IconHistory,
@@ -31,6 +34,11 @@ import {
   IconDeviceDesktopCog,
   IconX,
   IconTrash,
+  IconPencil,
+  IconEye,
+  IconDotsVertical,
+  IconPlayerPlay,
+  IconPlayerPause,
 } from "@tabler/icons-react";
 import {
   computeValidation,
@@ -38,6 +46,7 @@ import {
   isListOp,
   isBetweenOp,
   isRelativeOp,
+  formatDate,
   type Rule,
   type RuleSet,
   type RuleSetSummary,
@@ -58,7 +67,7 @@ const getSafeErrorMessage = (err: any): string => {
     if (typeof msg === "string") return msg;
     if (typeof msg === "object") return JSON.stringify(msg);
     return String(msg);
-  } catch (e) {
+  } catch {
     return "An unknown error occurred.";
   }
 };
@@ -85,14 +94,6 @@ const showSuccess = (heading: string, body: string) => {
 
 const unwrap = (res: any) => res?.data ?? res?.message?.data ?? res?.message ?? null;
 
-const formatDate = (d?: string) => {
-  if (!d) return "";
-  const dt = new Date(String(d).replace(" ", "T").slice(0, 19));
-  return isNaN(dt.getTime())
-    ? d
-    : dt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-};
-
 /* ============================================================
    PAYLOAD BUILDERS
    ============================================================ */
@@ -104,13 +105,13 @@ const buildRulePayload = (r: any) => {
     action: r.action,
   };
   if (isListOp(r.operator)) {
-    base.value = r.values ?? [];
+    base.values = r.values ?? [];
   } else if (isBetweenOp(r.operator)) {
     base.value = r.value;
     base.value2 = r.value2;
   } else if (isRelativeOp(r.operator)) {
     base.value = r.value;
-    base.date_unit = r.dateUnit;
+    base.date_unit = r.dateUnit || "months";
   } else {
     base.value = r.value;
   }
@@ -120,7 +121,7 @@ const buildRulePayload = (r: any) => {
 const buildGroupsPayload = (rs: RuleSet) => ({
   ruleset_name: rs.name,
   description: rs.description,
-  effective_from: rs.effectiveFrom || undefined,
+  effective_from: rs.effectiveFrom || null,
   groups: rs.groups.map((g: any) => ({
     name: g.name,
     logic: g.logic,
@@ -128,16 +129,45 @@ const buildGroupsPayload = (rs: RuleSet) => ({
   })),
 });
 
-const mapRuleFromApi = (r: any) => {
+const snapshotOf = (rs: RuleSet) => JSON.stringify(buildGroupsPayload(rs));
+
+const mapRuleFromApi = (r: any, fallbackId: string) => {
   const list = isListOp(r.operator);
   return {
     ...r,
+    id: r.id || fallbackId,
     fieldId: r.field || r.fieldId || r.field_id,
-    values: list ? (Array.isArray(r.value) ? r.value : r.values ?? []) : r.values,
+    values: list ? (Array.isArray(r.values) ? r.values : Array.isArray(r.value) ? r.value : []) : r.values,
     value: list ? undefined : r.value,
     dateUnit: r.date_unit ?? r.dateUnit,
   };
 };
+
+const toRuleSet = (item: any, id: string): RuleSet =>
+  ({
+    id: item.name ?? id,
+    name: item.ruleset_name,
+    product: item.loan_product,
+    productName: item.product_name || item.loan_product,
+    draftId: item.draft_id ?? null,
+    description: item.description ?? "",
+    status: item.status,
+    version: String(item.version ?? "1.0"),
+    effectiveFrom: item.effective_from ?? "",
+    effectiveTo: item.effective_to ?? "",
+    createdBy: item.owner ?? "",
+    modifiedDate: item.modified,
+    modifiedBy: item.modified_by,
+    groups: Array.isArray(item.groups)
+      ? item.groups.map((g: any, gi: number) => ({
+          ...g,
+          id: g.id || `g${gi}`,
+          rules: Array.isArray(g.rules) ? g.rules.map((r: any, ri: number) => mapRuleFromApi(r, `r${gi}-${ri}`)) : [],
+        }))
+      : [],
+    versions: [],
+    audit: [],
+  }) as unknown as RuleSet;
 
 /* ============================================================
    TABLE STYLES
@@ -163,84 +193,159 @@ const cellStyle = {
 };
 
 /* ============================================================
+   STATUS CHANGE (shared by list and detail)
+   ============================================================ */
+const confirmStatusChange = ({
+  name,
+  versionLabel,
+  product,
+  activating,
+  onConfirm,
+}: {
+  name: string;
+  versionLabel: string;
+  product: string;
+  activating: boolean;
+  onConfirm: () => void;
+}) =>
+  openCommonModal({
+    heading: activating ? "Activate Rule Set" : "Deactivate Rule Set",
+    subtitle: "",
+    body: activating ? (
+      <>
+        Activate{" "}
+        <Text span fw={600}>
+          {name}
+        </Text>{" "}
+        ({versionLabel})? New {product} applications will be screened with it, and any previously live version is
+        archived.
+      </>
+    ) : (
+      <>
+        Deactivate{" "}
+        <Text span fw={600}>
+          {name}
+        </Text>{" "}
+        ({versionLabel})? New {product} applications will not be pre-screened until a rule set is activated.
+      </>
+    ),
+    color: activating ? "blue" : "orange",
+    buttons: [
+      { label: "Cancel", variant: "default" },
+      { label: activating ? "Activate" : "Deactivate", color: activating ? "blue" : "orange", onClick: onConfirm },
+    ],
+  });
+
+/* ============================================================
    RULE SET LIST
    ============================================================ */
 function RuleSetList({
   onOpen,
   onCreate,
-  showEmpty,
-  setShowEmpty,
+  onLoaded,
   refreshKey,
 }: {
-  onOpen: (id: string) => void;
+  onOpen: (id: string, viewOnly?: boolean) => void;
   onCreate: () => void;
-  showEmpty: boolean;
-  setShowEmpty: (v: boolean) => void;
+  onLoaded: (productCodes: string[]) => void;
   refreshKey: number;
 }) {
   const theme = useMantineTheme();
   const [rows, setRows] = useState<RuleSetSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<any>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const fetchRuleSets = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const response = await getAll({ page: 1, page_size: 50 });
+      const response = await getAll({ page: 1, page_size: 100 });
       const list = unwrap(response);
-      if (Array.isArray(list)) {
-        const apiRows = list.map((item: any) => ({
-          id: item.name,
-          name: item.ruleset_name,
-          product: item.product_name || item.loan_product,
-          status: item.status,
-          version: item.version,
-          rulesCount: item.rules_count || 0,
-          modifiedDate: item.modified,
-          modifiedBy: item.modified_by,
-        }));
-        setRows(apiRows);
-      }
+      const apiRows: RuleSetSummary[] = (Array.isArray(list) ? list : []).map((item: any) => ({
+        id: item.name,
+        draftId: item.draft_id ?? null,
+        name: item.ruleset_name,
+        productCode: item.loan_product,
+        product: item.product_name || item.loan_product,
+        status: item.status,
+        version: item.version,
+        rulesCount: item.rules_count || 0,
+        modifiedDate: item.modified,
+        modifiedBy: item.modified_by,
+      }));
+      setRows(apiRows);
+      onLoaded(apiRows.map((r) => r.productCode));
     } catch (err) {
-      console.error("Failed to fetch rule sets", err);
+      setLoadError(err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!showEmpty) {
-      fetchRuleSets();
-    } else {
-      setRows([]);
-      setLoading(false);
-    }
-  }, [showEmpty, refreshKey]);
+    fetchRuleSets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
-  const handleDelete = (e: React.MouseEvent, r: any) => {
-    e.stopPropagation();
+  const handleDelete = (r: RuleSetSummary, draftOnly = false) => {
+    const target = draftOnly ? (r.draftId as string) : r.id;
     openCommonModal({
-      heading: "Delete Rule Set",
+      heading: draftOnly ? "Discard Draft" : "Delete Rule Set",
       subtitle: "This action cannot be undone.",
-      body: `Are you sure you want to delete rule set "${r.name}"?`,
+      body: draftOnly
+        ? `Discard the unpublished draft of "${r.name}"? The v${r.version} version is kept.`
+        : `Are you sure you want to delete the draft rule set "${r.name}"?`,
       color: "red",
       buttons: [
         { label: "Cancel", variant: "default" },
         {
-          label: "Delete",
+          label: draftOnly ? "Discard" : "Delete",
           color: "red",
           onClick: async () => {
+            setBusyId(r.id);
             try {
-              await remove(r.id);
-              showSuccess("Rule Set Deleted", "Rule set deleted successfully.");
+              await remove(target);
+              showSuccess(
+                draftOnly ? "Draft Discarded" : "Rule Set Deleted",
+                draftOnly ? `The draft of "${r.name}" was discarded.` : `Rule set "${r.name}" deleted successfully.`,
+              );
               fetchRuleSets();
             } catch (err: any) {
               showError("Delete Failed", err);
+            } finally {
+              setBusyId(null);
             }
           },
         },
       ],
     });
   };
+
+  const changeStatus = (r: RuleSetSummary, activating: boolean) =>
+    confirmStatusChange({
+      name: r.name,
+      versionLabel: activating && r.draftId ? "latest draft" : `v${r.version}`,
+      product: r.product,
+      activating,
+      onConfirm: async () => {
+        setBusyId(r.id);
+        try {
+          await setStatus(activating ? r.draftId ?? r.id : r.id, activating ? "Active" : "Inactive");
+          showSuccess(
+            activating ? "Rule Set Activated" : "Rule Set Deactivated",
+            `Rule set "${r.name}" is now ${activating ? "active" : "inactive"}.`,
+          );
+          fetchRuleSets();
+        } catch (err: any) {
+          showError(activating ? "Activation Failed" : "Deactivation Failed", err);
+        } finally {
+          setBusyId(null);
+        }
+      },
+    });
+
+  const panel = { background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)", textAlign: "center" as const, padding: "72px 40px" };
 
   return (
     <Stack gap="lg" p="lg" style={{ margin: "0 auto" }}>
@@ -265,26 +370,29 @@ function RuleSetList({
             <Text fz="sm" c="slate.5">Define the eligibility policy applicants must meet before applications proceed to credit assessment.</Text>
           </Stack>
         </Group>
-        <Group gap={8}>
-          <Button size="sm" radius="xl" variant="default" onClick={() => setShowEmpty(!showEmpty)}>{showEmpty ? "Show rule sets" : "Preview empty state"}</Button>
-          <Button
-            size="sm"
-            radius="xl"
-            leftSection={<IconPlus size={14} />}
-            style={{ background: theme.other?.brandGradient || "var(--mantine-color-brand-6)" }}
-            onClick={onCreate}
-          >
-            New Rule Set
-          </Button>
-        </Group>
+        <Button
+          size="sm"
+          radius="xl"
+          leftSection={<IconPlus size={14} />}
+          style={{ background: theme.other?.brandGradient || "var(--mantine-color-brand-6)" }}
+          onClick={onCreate}
+        >
+          New Rule Set
+        </Button>
       </Group>
 
       {loading ? (
-        <Paper radius="lg" p="xl" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)", textAlign: "center", padding: "72px 40px" }}>
-          <Text c="slate.5">Loading rule sets...</Text>
+        <Paper radius="lg" p="xl" style={panel}>
+          <Loader size="sm" color="brand" />
+        </Paper>
+      ) : loadError ? (
+        <Paper radius="lg" p="xl" style={panel}>
+          <Text fw={600} c="slate.8" mb={6}>Rule sets could not be loaded.</Text>
+          <Text fz="sm" c="slate.5" mb={16}>{getSafeErrorMessage(loadError)}</Text>
+          <Button radius="xl" variant="default" onClick={fetchRuleSets}>Retry</Button>
         </Paper>
       ) : rows.length === 0 ? (
-        <Paper radius="lg" p="xl" style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)", textAlign: "center", padding: "72px 40px" }}>
+        <Paper radius="lg" p="xl" style={panel}>
           <Box
             style={{
               width: 52,
@@ -302,7 +410,7 @@ function RuleSetList({
           </Box>
           <Title order={3} fz={19} mb={8}>No pre-screening rules configured</Title>
           <Text c="slate.5" fz={13.5} maw={380} mx="auto" mb={22}>Define eligibility criteria that applicants must meet before continuing with the loan application.</Text>
-          <Button radius="xl" mx="auto" leftSection={<IconPlus size={14} />} style={{ background: theme.other?.brandGradient || "var(--mantine-color-brand-6)" }} onClick={onCreate}>Create First Rule</Button>
+          <Button radius="xl" mx="auto" leftSection={<IconPlus size={14} />} style={{ background: theme.other?.brandGradient || "var(--mantine-color-brand-6)" }} onClick={onCreate}>Create First Rule Set</Button>
         </Paper>
       ) : (
         <Paper
@@ -310,6 +418,7 @@ function RuleSetList({
           p="sm"
           style={{ background: "var(--mantine-color-slate-0)", border: "1px solid var(--mantine-color-slate-2)" }}
         >
+          <Table.ScrollContainer minWidth={860}>
           <Table verticalSpacing={5} horizontalSpacing="sm" fz={12.5} w="100%" style={{ borderCollapse: "separate", borderSpacing: "0 5px" }}>
             <Table.Thead>
               <Table.Tr>
@@ -321,30 +430,81 @@ function RuleSetList({
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {rows.map((r) => (
-                <Table.Tr key={r.id} onClick={() => onOpen(r.id)} style={{ cursor: "pointer" }}>
-                  <Table.Td style={{ ...cellStyle, borderLeft: "3px solid var(--mantine-color-brand-4)", borderTopLeftRadius: "var(--mantine-radius-md)", borderBottomLeftRadius: "var(--mantine-radius-md)" }}>
-                    <Group gap={6} wrap="nowrap">
-                      <Text fz={12.5} fw={600} c="slate.8">{r.name}</Text>
-                      <StatusBadge status={r.status} />
-                    </Group>
-                  </Table.Td>
-                  <Table.Td style={cellStyle}><Text fz={11.5} c="slate.6">{r.product}</Text></Table.Td>
-                  <Table.Td style={cellStyle}><Text fz={11.5} c="slate.6">{r.rulesCount}</Text></Table.Td>
-                  <Table.Td style={cellStyle}><Text fz={11.5} c="slate.6">v{r.version}</Text></Table.Td>
-                  <Table.Td style={cellStyle}><Text fz={11.5} c="slate.6">{formatDate(r.modifiedDate)} · {r.modifiedBy}</Text></Table.Td>
-                  <Table.Td style={{ ...cellStyle, borderTopRightRadius: "var(--mantine-radius-md)", borderBottomRightRadius: "var(--mantine-radius-md)", textAlign: "right" }}>
-                    <Group gap={8} justify="flex-end" wrap="nowrap">
-                      <ActionIcon variant="subtle" color="red" onClick={(e) => handleDelete(e, r)}>
-                        <IconTrash size={14} />
-                      </ActionIcon>
-                      <IconChevronRight size={14} color="var(--mantine-color-slate-4)" />
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
+              {rows.map((r) => {
+                const editId = r.draftId ?? r.id;
+                return (
+                  <Table.Tr key={r.id} onClick={() => onOpen(r.id, true)} style={{ cursor: "pointer" }}>
+                    <Table.Td style={{ ...cellStyle, borderLeft: "3px solid var(--mantine-color-brand-4)", borderTopLeftRadius: "var(--mantine-radius-md)", borderBottomLeftRadius: "var(--mantine-radius-md)" }}>
+                      <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+                        <Tooltip label={r.name} withArrow openDelay={400}>
+                          <Text fz={12.5} fw={600} c="slate.8" truncate maw={280}>{r.name}</Text>
+                        </Tooltip>
+                        <Box style={{ flexShrink: 0 }}>
+                          <StatusBadge status={r.status} />
+                        </Box>
+                        {r.draftId && r.draftId !== r.id && (
+                          <Box style={{ flexShrink: 0 }}>
+                            <StatusBadge status="Draft" />
+                          </Box>
+                        )}
+                      </Group>
+                    </Table.Td>
+                    <Table.Td style={cellStyle}><Text fz={11.5} c="slate.6">{r.product}</Text></Table.Td>
+                    <Table.Td style={cellStyle}><Text fz={11.5} c="slate.6">{r.rulesCount}</Text></Table.Td>
+                    <Table.Td style={cellStyle}><Text fz={11.5} c="slate.6">v{r.version}</Text></Table.Td>
+                    <Table.Td style={{ ...cellStyle, whiteSpace: "nowrap" }}><Text fz={11.5} c="slate.6">{formatDate(r.modifiedDate)} · {r.modifiedBy}</Text></Table.Td>
+                    <Table.Td
+                      style={{ ...cellStyle, borderTopRightRadius: "var(--mantine-radius-md)", borderBottomRightRadius: "var(--mantine-radius-md)", textAlign: "right" }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Group gap={4} justify="flex-end" wrap="nowrap">
+                        <Tooltip label="View" withArrow>
+                          <ActionIcon size="sm" variant="subtle" color="gray" onClick={() => onOpen(r.id, true)}>
+                            <IconEye size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip label={r.draftId && r.draftId !== r.id ? "Edit draft" : "Edit"} withArrow>
+                          <ActionIcon size="sm" variant="subtle" color="blue" onClick={() => onOpen(editId)}>
+                            <IconPencil size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip label={r.status === "Draft" ? "Delete" : "Only drafts can be deleted"} withArrow>
+                          <ActionIcon size="sm" variant="subtle" color="red" disabled={r.status !== "Draft"} onClick={() => handleDelete(r)}>
+                            <IconTrash size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Menu shadow="md" width={180} position="bottom-end" withinPortal>
+                          <Menu.Target>
+                            <ActionIcon size="sm" variant="subtle" color="gray" loading={busyId === r.id} aria-label="More actions">
+                              <IconDotsVertical size={14} />
+                            </ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            {(r.status !== "Active" || (r.draftId && r.draftId !== r.id)) && (
+                              <Menu.Item leftSection={<IconPlayerPlay size={14} />} onClick={() => changeStatus(r, true)}>
+                                {r.draftId && r.draftId !== r.id ? "Activate draft" : "Activate"}
+                              </Menu.Item>
+                            )}
+                            {r.status === "Active" && (
+                              <Menu.Item color="orange" leftSection={<IconPlayerPause size={14} />} onClick={() => changeStatus(r, false)}>
+                                Deactivate
+                              </Menu.Item>
+                            )}
+                            {r.draftId && r.draftId !== r.id && (
+                              <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => handleDelete(r, true)}>
+                                Discard draft
+                              </Menu.Item>
+                            )}
+                          </Menu.Dropdown>
+                        </Menu>
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
             </Table.Tbody>
           </Table>
+          </Table.ScrollContainer>
         </Paper>
       )}
     </Stack>
@@ -355,46 +515,39 @@ function RuleSetList({
    CREATE RULE SET MODAL
    ============================================================ */
 function CreateRuleSetModal({
+  existingProducts,
   onClose,
   onCreate,
 }: {
+  existingProducts: string[];
   onClose: () => void;
-  onCreate: (v: { name: string; product: string; desc: string; effectiveDate: string | null }) => void;
+  onCreate: (v: { name: string; product: string; desc: string; effectiveDate: string | null }) => Promise<void>;
 }) {
   const theme = useMantineTheme();
   const [name, setName] = useState("");
   const [product, setProduct] = useState<string | null>(null);
   const [desc, setDesc] = useState("");
   const [effectiveDate, setEffectiveDate] = useState<string | null>(null);
-  const [loadingProducts, setLoadingProducts] = useState(false);
-  const [productOptions, setProductOptions] = useState<{ value: string; label: string }[]>([]);
+  const [creating, setCreating] = useState(false);
+  const { options } = useLoanProductOptions();
+  const productOptions = options.map((o) => ({
+    ...o,
+    disabled: existingProducts.includes(o.value),
+  }));
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoadingProducts(true);
-      try {
-        const response = await getLoanProducts({ disabled: 0 });
-        const dataArray = Array.isArray(response?.data) ? response.data : [];
-        if (dataArray.length > 0) {
-          const options = dataArray.map((p: any) => ({
-            value: p.name || p.product_name || "Unknown",
-            label: p.product_name || p.name || "Unknown",
-          }));
-          setProductOptions(options);
-        }
-      } catch (err) {
-        console.error("Failed to fetch loan products", err);
-      } finally {
-        setLoadingProducts(false);
-      }
-    };
-    fetchProducts();
-  }, []);
+  const submit = async () => {
+    setCreating(true);
+    try {
+      await onCreate({ name: name.trim(), product: product as string, desc: desc.trim(), effectiveDate });
+    } finally {
+      setCreating(false);
+    }
+  };
 
   return (
     <Modal
       opened
-      onClose={onClose}
+      onClose={() => !creating && onClose()}
       centered
       withCloseButton={false}
       size="md"
@@ -420,6 +573,7 @@ function CreateRuleSetModal({
             color="gray"
             radius="xl"
             onClick={onClose}
+            disabled={creating}
             style={{ position: "absolute", top: 16, right: 16 }}
             aria-label="Close"
           >
@@ -452,57 +606,54 @@ function CreateRuleSetModal({
             </Text>
           </Stack>
 
-          <DateInput
-            w="100%"
-            radius="md"
-            label="Effective Date"
-            valueFormat="DD-MMM-YYYY"
-            placeholder="DD-MMM-YYYY"
-            value={effectiveDate}
-            onChange={setEffectiveDate}
-          />
-
           <TextInput
             w="100%"
             radius="md"
             label="Rule Set Name"
+            withAsterisk
             placeholder="e.g. Personal Loan — Pre-Screening Rules"
+            maxLength={140}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => setName(e.currentTarget.value)}
           />
 
           <Select
             w="100%"
             radius="md"
             label="Loan Product"
-            value={product ?? null}
+            withAsterisk
+            description="Each product can have one rule set."
+            value={product}
             onChange={setProduct}
-            data={[{ value: "HEADER", label: "HEADER", disabled: true }, ...productOptions]}
-            disabled={loadingProducts}
-            placeholder={loadingProducts ? "Loading..." : "Select product"}
-            leftSection={product ? <span style={{ fontSize: 11, fontWeight: 700, color: "var(--mantine-color-brand-7)", fontFamily: "var(--mantine-font-family-monospace)", display: "inline-block", marginLeft: 8 }}>{product}</span> : undefined}
-            leftSectionWidth={product ? 70 : 30}
-            renderOption={({ option, checked }) => {
-              if (option.value === "HEADER") {
-                return (
-                  <Group wrap="nowrap" gap="xl" py={4} style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
-                    <Text fz={10} fw={700} c="slate.5" miw={60}>CODE</Text>
-                    <Text fz={10} fw={700} c="slate.5">PRODUCT NAME</Text>
-                  </Group>
-                );
-              }
+            data={productOptions}
+            searchable
+            nothingFoundMessage="No products found"
+            placeholder="Select product"
+            renderOption={({ option }) => (
+              <Group wrap="nowrap" gap="md" py={2} style={{ flex: 1 }}>
+                <Text fz={12} fw={600} c="brand.7" miw={60} style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
+                  {option.value}
+                </Text>
+                <Text size="sm" fw={500} c="slate.8" style={{ flex: 1 }}>
+                  {option.label}
+                </Text>
+                {existingProducts.includes(option.value) && (
+                  <Text fz={10.5} c="slate.5">Has a rule set</Text>
+                )}
+              </Group>
+            )}
+          />
 
-              return (
-                <Group wrap="nowrap" gap="xl" py={2} style={{ flex: 1 }}>
-                  <Text fz={12} fw={600} c="brand.7" miw={60} style={{ fontFamily: "var(--mantine-font-family-monospace)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {option.value}
-                  </Text>
-                  <Text size="sm" fw={500} c="slate.8">
-                    {option.label}
-                  </Text>
-                </Group>
-              );
-            }}
+          <DateInput
+            w="100%"
+            radius="md"
+            label="Effective From"
+            description="Leave empty to take effect when activated."
+            valueFormat="DD-MMM-YYYY"
+            placeholder="DD-MMM-YYYY"
+            clearable
+            value={effectiveDate}
+            onChange={setEffectiveDate}
           />
 
           <Textarea
@@ -512,17 +663,12 @@ function CreateRuleSetModal({
             rows={3}
             placeholder="What is this rule set checking for?"
             value={desc}
-            onChange={(e) => setDesc(e.target.value)}
+            onChange={(e) => setDesc(e.currentTarget.value)}
           />
 
           <Group justify="flex-end" gap={8} w="100%">
-            <Button variant="default" radius="xl" onClick={onClose}>Cancel</Button>
-            <Button
-              color="brand"
-              radius="xl"
-              disabled={!name.trim() || !product}
-              onClick={() => onCreate({ name, product: product as string, desc, effectiveDate })}
-            >
+            <Button variant="default" radius="xl" onClick={onClose} disabled={creating}>Cancel</Button>
+            <Button color="brand" radius="xl" loading={creating} disabled={!name.trim() || !product} onClick={submit}>
               Create Rule Set
             </Button>
           </Group>
@@ -545,45 +691,39 @@ const TAB_ITEMS = [
 function RuleSetDetail({
   ruleSet,
   setRuleSet,
+  dirty,
+  viewOnly,
   onBack,
   onReload,
+  onEdit,
   toast,
 }: {
   ruleSet: RuleSet;
   setRuleSet: (rs: RuleSet) => void;
+  dirty: boolean;
+  viewOnly: boolean;
   onBack: () => void;
   onReload: (id: string) => Promise<void>;
+  onEdit: () => void;
   toast: (m: string) => void;
 }) {
   const theme = useMantineTheme();
   const [tab, setTab] = useState<string>("builder");
-  const [activating, setActivating] = useState(false);
-  const [showActivateConfirm, setShowActivateConfirm] = useState(false);
+  const [busy, setBusy] = useState<"save" | "status" | null>(null);
 
   const v = computeValidation(ruleSet);
-
-  const [saving, setSaving] = useState(false);
+  const isLive = ruleSet.status === "Active" && !dirty;
 
   const handleSaveDraft = async () => {
-    if (!ruleSet.id) {
-      showError("Load Failed", { message: "Rule set ID missing hai" });
-      return;
-    }
-    setSaving(true);
+    setBusy("save");
     try {
-      const payload = buildGroupsPayload(ruleSet);
-      console.log("update ->", ruleSet.id, payload);
-      const res = await update(ruleSet.id, payload);
-      console.log("update response:", res);
-      showSuccess("Draft Saved", "Draft saved successfully!");
-      const saved = unwrap(res);
-      const nextId = typeof saved?.name === "string" ? saved.name : ruleSet.id;
-      await onReload(nextId);
+      const saved = unwrap(await update(ruleSet.id, buildGroupsPayload(ruleSet)));
+      showSuccess("Draft Saved", `Saved as draft version ${saved?.version ?? ruleSet.version}.`);
+      await onReload(typeof saved?.name === "string" ? saved.name : ruleSet.id);
     } catch (err: any) {
-      console.error("update failed:", err?.response ?? err);
       showError("Save Failed", err);
     } finally {
-      setSaving(false);
+      setBusy(null);
     }
   };
 
@@ -624,34 +764,44 @@ function RuleSetDetail({
     toast("Rule removed");
   };
 
-  const doActivate = async () => {
-    setActivating(true);
-    try {
-      const saveRes = await update(ruleSet.id, buildGroupsPayload(ruleSet));
-      const saved = unwrap(saveRes);
-      const idToActivate = typeof saved?.name === "string" ? saved.name : ruleSet.id;
-
-      await setStatus(idToActivate, "Active");
-      setShowActivateConfirm(false);
-      showSuccess("Rule Set Activated", "Rule set activated successfully.");
-      await onReload(idToActivate);
-    } catch (err: any) {
-      console.error("setStatus failed:", err?.response ?? err);
-      showError("Activation Failed", err);
-    } finally {
-      setActivating(false);
-    }
-  };
+  const changeStatus = (activating: boolean) =>
+    confirmStatusChange({
+      name: ruleSet.name,
+      versionLabel: dirty ? "with your changes, as a new version" : `v${ruleSet.version}`,
+      product: ruleSet.productName,
+      activating,
+      onConfirm: async () => {
+        setBusy("status");
+        try {
+          let id = ruleSet.id;
+          if (activating && dirty) {
+            const saved = unwrap(await update(ruleSet.id, buildGroupsPayload(ruleSet)));
+            if (typeof saved?.name === "string") id = saved.name;
+          }
+          const result = unwrap(await setStatus(id, activating ? "Active" : "Inactive"));
+          showSuccess(
+            activating ? "Rule Set Activated" : "Rule Set Deactivated",
+            activating
+              ? `Version ${result?.version ?? ""} of "${ruleSet.name}" is now active.`
+              : `"${ruleSet.name}" is now inactive.`,
+          );
+          await onReload(id);
+        } catch (err: any) {
+          showError(activating ? "Activation Failed" : "Deactivation Failed", err);
+        } finally {
+          setBusy(null);
+        }
+      },
+    });
 
   return (
     <div>
-      {/* header */}
       <div style={{ borderBottom: "1px solid var(--mantine-color-slate-2)", background: "var(--mantine-color-white)", position: "sticky", top: 0, zIndex: 20 }}>
         <div style={{ margin: "0 auto", padding: "16px 32px 0" }}>
           <Button variant="subtle" color="slate" size="xs" pl={0} mb={10} leftSection={<IconChevronLeft size={14} />} onClick={onBack}>Rule Sets</Button>
 
-          <Group justify="space-between" align="flex-start" mb={16}>
-            <Group gap="sm" align="flex-start">
+          <Group justify="space-between" align="flex-start" mb={16} wrap="nowrap">
+            <Group gap="sm" align="flex-start" wrap="nowrap" style={{ minWidth: 0 }}>
               <Box
                 style={{
                   width: 40,
@@ -667,27 +817,54 @@ function RuleSetDetail({
               >
                 <IconDeviceDesktopCog size={20} color="var(--mantine-color-white)" stroke={1.8} />
               </Box>
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <Group gap={10} mb={4}>
                   <Title order={2} c="slate.8" fw={700} fz={20}>{ruleSet.name}</Title>
                   <StatusBadge status={ruleSet.status} />
                   <Text fz={12.5} c="slate.5" fw={600}>v{ruleSet.version}</Text>
+                  {viewOnly && <Badge size="sm" radius="sm" variant="light" color="gray">View only</Badge>}
+                  {dirty && <Text fz={12} c="orange.7" fw={600}>Unsaved changes</Text>}
                 </Group>
-                <Text fz={13.5} c="slate.5" m={0} maw={620}>{ruleSet.description}</Text>
+                {ruleSet.description && <Text fz={13.5} c="slate.5" m={0} maw={620}>{ruleSet.description}</Text>}
               </div>
             </Group>
-            <Group gap={8} style={{ flexShrink: 0 }}>
-              <Button variant="default" radius="xl" loading={saving} onClick={handleSaveDraft}>Save Draft</Button>
-              <Button
-                radius="xl"
-                leftSection={<IconDeviceDesktopCog size={14} />}
-                disabled={!v.ok}
-                style={{ background: v.ok ? (theme.other?.brandGradient || "var(--mantine-color-brand-6)") : undefined }}
-                onClick={() => setShowActivateConfirm(true)}
-              >
-                Activate Rule Set
+            {viewOnly ? (
+              <Button radius="xl" variant="light" color="blue" leftSection={<IconPencil size={14} />} style={{ flexShrink: 0 }} onClick={onEdit}>
+                {ruleSet.draftId && ruleSet.draftId !== ruleSet.id ? "Edit draft" : "Edit"}
               </Button>
+            ) : (
+            <Group gap={8} style={{ flexShrink: 0 }}>
+              <Button variant="default" radius="xl" loading={busy === "save"} disabled={!dirty || busy !== null} onClick={handleSaveDraft}>
+                Save Draft
+              </Button>
+              {isLive ? (
+                <Button
+                  radius="xl"
+                  variant="light"
+                  color="orange"
+                  leftSection={<IconPlayerPause size={14} />}
+                  loading={busy === "status"}
+                  disabled={busy !== null}
+                  onClick={() => changeStatus(false)}
+                >
+                  Deactivate
+                </Button>
+              ) : (
+                <Tooltip label={v.ok ? "" : "Complete the items under “Before you activate” first"} disabled={v.ok} withArrow>
+                  <Button
+                    radius="xl"
+                    leftSection={<IconPlayerPlay size={14} />}
+                    loading={busy === "status"}
+                    disabled={!v.ok || busy !== null}
+                    style={{ background: v.ok ? (theme.other?.brandGradient || "var(--mantine-color-brand-6)") : undefined }}
+                    onClick={() => changeStatus(true)}
+                  >
+                    Activate Rule Set
+                  </Button>
+                </Tooltip>
+              )}
             </Group>
+            )}
           </Group>
 
           <Tabs value={tab} onChange={(val) => val && setTab(val)} color="brand" variant="default">
@@ -722,6 +899,8 @@ function RuleSetDetail({
         {tab === "builder" && (
           <BuilderTab
             ruleSet={ruleSet}
+            readOnly={viewOnly}
+            onSetEffectiveFrom={(effectiveFrom) => setRuleSet({ ...ruleSet, effectiveFrom })}
             onAddGroup={addGroup}
             onRenameGroup={renameGroup}
             onSetLogic={setLogic}
@@ -732,25 +911,10 @@ function RuleSetDetail({
             onDeleteRule={deleteRule}
           />
         )}
-        {tab === "test" && <TestTab ruleSet={ruleSet} />}
+        {tab === "test" && <TestTab ruleSet={ruleSet} dirty={dirty} />}
         {tab === "versions" && <VersionsTab ruleSet={ruleSet} />}
         {tab === "audit" && <AuditTab ruleSet={ruleSet} />}
       </div>
-
-      {showActivateConfirm && (
-        <Modal opened onClose={() => !activating && setShowActivateConfirm(false)} title="Activate Rule Set" radius="lg" centered size="md">
-          <Text fz={13} c="slate.6" mb={18} mt={8}>This publishes a new version and applies it to new applications immediately.</Text>
-          <div style={{ fontSize: 13.5, marginBottom: 18 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid var(--mantine-color-slate-2)" }}><span style={{ color: "var(--mantine-color-slate-6)" }}>Current version</span><span style={{ fontWeight: 600 }}>v{ruleSet.version}</span></div>
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid var(--mantine-color-slate-2)" }}><span style={{ color: "var(--mantine-color-slate-6)" }}>New version</span><span style={{ fontWeight: 600 }}>v{(parseFloat(String(ruleSet.version)) + 0.1).toFixed(1)}</span></div>
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid var(--mantine-color-slate-2)", borderBottom: "1px solid var(--mantine-color-slate-2)" }}><span style={{ color: "var(--mantine-color-slate-6)" }}>Effective from</span><span style={{ fontWeight: 600 }}>Immediately</span></div>
-          </div>
-          <Group justify="flex-end" gap={8}>
-            <Button variant="default" radius="xl" disabled={activating} onClick={() => setShowActivateConfirm(false)}>Cancel</Button>
-            <Button color="brand" radius="xl" disabled={activating} onClick={doActivate}>{activating ? "Activating…" : "Confirm & Activate"}</Button>
-          </Group>
-        </Modal>
-      )}
     </div>
   );
 }
@@ -766,100 +930,98 @@ export default function LOSPreScreening() {
     getFields()
       .then((res) => {
         const payload = unwrap(res);
-        console.log("prescreening_fields payload:", payload);
         const cfg = Array.isArray(payload) ? { fields: payload } : payload;
         if (!cfg || !Array.isArray(cfg.fields) || cfg.fields.length === 0) {
-          throw new Error("get_prescreening_fields returned no fields.");
+          throw new Error("No pre-screening fields were returned.");
         }
         setPrescreeningConfig(cfg);
       })
-      .catch((e) => {
-        console.error("Error loading pre-screening config", e);
-        setConfigError(e);
-      })
+      .catch((e) => setConfigError(e))
       .finally(() => setFieldsLoaded(true));
   }, []);
 
   const [screen, setScreen] = useState<"list" | "detail">("list");
   const [ruleSet, setRuleSet] = useState<RuleSet | null>(null);
-  const [showEmpty, setShowEmpty] = useState(false);
+  const [savedSnapshot, setSavedSnapshot] = useState("");
+  const [viewOnly, setViewOnly] = useState(false);
+  const [existingProducts, setExistingProducts] = useState<string[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const dirty = !!ruleSet && snapshotOf(ruleSet) !== savedSnapshot;
 
   const toast = (m: string) => {
     setToastMsg(m);
     setTimeout(() => setToastMsg(""), 2600);
   };
 
-  const openRuleSet = async (id: string) => {
+  const openRuleSet = async (id: string, readOnly = false) => {
     try {
-      const response = await getById(id);
-      console.log("getById response:", response);
-
-      const item = unwrap(response);
+      const item = unwrap(await getById(id));
       if (!item || typeof item !== "object") {
-        showError("Load Failed", { message: "Rule set data nahi mila" });
+        showError("Load Failed", { message: "The rule set could not be found." });
         return;
       }
-
-      setRuleSet({
-        id: item.name ?? id,
-        name: item.ruleset_name,
-        product: item.loan_product,
-        description: item.description ?? "",
-        status: item.status,
-        version: String(item.version ?? "1.0"),
-        effectiveFrom: item.effective_from,
-        modifiedDate: item.modified,
-        modifiedBy: item.modified_by,
-        groups: Array.isArray(item.groups)
-          ? item.groups.map((g: any) => ({
-              ...g,
-              rules: Array.isArray(g.rules) ? g.rules.map(mapRuleFromApi) : [],
-            }))
-          : [],
-        versions: Array.isArray(item.versions) ? item.versions : [],
-        audit: Array.isArray(item.audit) ? item.audit : [],
-      } as RuleSet);
+      const loaded = toRuleSet(item, id);
+      setRuleSet(loaded);
+      setSavedSnapshot(snapshotOf(loaded));
+      setViewOnly(readOnly);
       setScreen("detail");
     } catch (e: any) {
-      console.error("getById failed:", e?.response ?? e);
       showError("Load Failed", e);
     }
   };
 
+  const backToList = () => {
+    const leave = () => {
+      setScreen("list");
+      setRuleSet(null);
+      setRefreshKey((k) => k + 1);
+    };
+    if (!dirty) return leave();
+    openCommonModal({
+      heading: "Discard changes?",
+      subtitle: "",
+      body: "You have unsaved changes to this rule set. Leave without saving?",
+      color: "red",
+      buttons: [
+        { label: "Keep editing", variant: "default" },
+        { label: "Discard", color: "red", onClick: leave },
+      ],
+    });
+  };
+
   const handleCreate = async ({ name, product, desc, effectiveDate }: { name: string; product: string; desc: string; effectiveDate: string | null }) => {
     try {
-      const payload = {
-        ruleset_name: name || "Untitled Rule Set",
-        loan_product: product,
-        description: desc || "Newly created rule set.",
-        effective_from: effectiveDate ? new Date(effectiveDate).toISOString().split("T")[0] : undefined,
-        groups: [],
-      };
-      const res = await create(payload);
-      console.log("create response:", res);
-
-      const created = unwrap(res);
-      const newId = created?.name ?? created?.id;
-
+      const created = unwrap(
+        await create({
+          ruleset_name: name,
+          loan_product: product,
+          description: desc || undefined,
+          effective_from: effectiveDate ? String(effectiveDate).slice(0, 10) : undefined,
+          groups: [],
+        }),
+      );
       setShowCreate(false);
       setRefreshKey((k) => k + 1);
-
+      const newId = created?.name ?? created?.id;
       if (newId) {
-        showSuccess("Rule Set Created", "Rule set created successfully!");
+        toast("Rule set created");
         await openRuleSet(newId);
-      } else {
-        showSuccess("Rule Set Created", "Rule set created successfully, but ID was missing.");
       }
     } catch (err: any) {
       showError("Creation Failed", err);
-      console.error(err);
     }
   };
 
-  if (!fieldsLoaded) return null;
+  if (!fieldsLoaded) {
+    return (
+      <Stack align="center" justify="center" p="xl" mih={240}>
+        <Loader size="sm" color="brand" />
+      </Stack>
+    );
+  }
   if (configError) {
     return (
       <Stack align="center" p="xl" gap="sm">
@@ -875,8 +1037,7 @@ export default function LOSPreScreening() {
         <RuleSetList
           onOpen={openRuleSet}
           onCreate={() => setShowCreate(true)}
-          showEmpty={showEmpty}
-          setShowEmpty={setShowEmpty}
+          onLoaded={setExistingProducts}
           refreshKey={refreshKey}
         />
       )}
@@ -884,15 +1045,17 @@ export default function LOSPreScreening() {
         <RuleSetDetail
           ruleSet={ruleSet}
           setRuleSet={setRuleSet}
-          onBack={() => {
-            setScreen("list");
-            setRefreshKey((k) => k + 1);
-          }}
-          onReload={openRuleSet}
+          dirty={dirty}
+          viewOnly={viewOnly}
+          onBack={backToList}
+          onReload={(id) => openRuleSet(id)}
+          onEdit={() => openRuleSet(ruleSet.draftId ?? ruleSet.id)}
           toast={toast}
         />
       )}
-      {showCreate && <CreateRuleSetModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
+      {showCreate && (
+        <CreateRuleSetModal existingProducts={existingProducts} onClose={() => setShowCreate(false)} onCreate={handleCreate} />
+      )}
       <Toast message={toastMsg} />
     </div>
   );

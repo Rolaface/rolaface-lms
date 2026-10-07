@@ -9,6 +9,7 @@ interface IdentityState {
   customerGroup: string | null;
   isStaffCustomer: boolean;
   staffId: string | null;
+  isInvestor: boolean;
   firstName: string;
   lastName: string;
   gender: string | null;
@@ -278,6 +279,7 @@ export function buildCustomerPayload(
           nationality: identity.nationality,
           is_staff_customer: identity.isStaffCustomer ? 1 : 0,
           staff_id: identity.isStaffCustomer ? identity.staffId : null,
+          is_investor: identity.isInvestor ? 1 : 0,
           occupation: identity.occupation,
           education_level: financial.educationLevel,
           employment_type: financial.employmentType,

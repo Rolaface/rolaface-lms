@@ -305,6 +305,18 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     ],
   },
   {
+    path: "/investor",
+    label: "Investor",
+    icon: IconUsers,
+    matchPrefix: true,
+     subItems: [
+      { path: "/investor/product", label: "Product", icon: IconBuildingBank, modules: ["Loan"] },
+      { path: "/investor/investments", label: "Investments", icon: IconReportAnalytics, modules: ["Loan"] },
+      { path: "/investor/earnings", label: "Earnings & Statement", icon: IconReportAnalytics, modules: ["Loan"] },
+      { path: "/investor/maturity", label: "Maturity", icon: IconReportAnalytics, modules: ["Loan"] },
+     ],
+   },
+  {
     path: "/settings",
     label: "Settings",
     icon: IconTool,
@@ -575,7 +587,7 @@ export function Sidebar({
 
 
   const HIDDEN_IN_LENDING_MODE = ["/origination", "/origination-setup"];
-  const HIDDEN_IN_LOS_MODE = ["/setup", "/operations", "/reports"];
+  const HIDDEN_IN_LOS_MODE = ["/setup", "/operations", "/reports", "/investor"];
 
   const navItemsForSubscription = React.useMemo(
     () =>

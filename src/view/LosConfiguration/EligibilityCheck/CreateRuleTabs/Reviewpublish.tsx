@@ -32,19 +32,16 @@ interface ReviewPublishProps {
   reviewIssues: { label: string; ok: boolean }[];
   ruleName: string;
   loanProduct: string | null;
-  riskCategory: string | null;
   ruleStatus: string | null;
   incomeSources: IncomeSourceTuple[];
   obligationSources: ObligationDef[];
   formulaParams: FormulaParams;
   creditBands: CreditBand[];
-  totalWeight: number;
   collateralItems: CollateralItem[];
   totalCollateralLimit: number;
   hardStops: HardStop[];
   formulaPreview: ReturnType<typeof computeFormulaPreview>;
   preApprovedPreview: number;
-  persistRule: (status: "Draft" | "Active") => void;
 }
 
 export function ReviewPublish({
@@ -52,25 +49,22 @@ export function ReviewPublish({
   reviewIssues,
   ruleName,
   loanProduct,
-  riskCategory,
   ruleStatus,
   incomeSources,
   obligationSources,
   formulaParams,
   creditBands,
-  totalWeight,
   collateralItems,
   totalCollateralLimit,
   hardStops,
   formulaPreview,
   preApprovedPreview,
-  persistRule,
 }: ReviewPublishProps) {
   return (
     <Box>
       <SectionHead
         title="Review & Publish"
-        description="Confirm the configuration below. You can simulate the rule with dynamic inputs or publish it as a new version."
+        description="Confirm the configuration below. You can simulate the rule with dynamic inputs before saving."
       />
 
       <Tabs defaultValue="summary" color="brand">
@@ -132,7 +126,6 @@ export function ReviewPublish({
                 rows: [
                   ["Rule Name", ruleName || "—"],
                   ["Loan Product", loanProduct || "—"],
-                  ["Risk Category", riskCategory || "—"],
                   ["Status", ruleStatus || "—"],
                 ] as [string, ReactNode][],
               },
@@ -145,7 +138,7 @@ export function ReviewPublish({
                   ],
                   [
                     "Obligation Types Tracked",
-                    `${obligationSources.filter((s) => s[2]).length} configured`,
+                    `${obligationSources.filter((s) => s.inc).length} configured`,
                   ],
                   ["Max EMI-to-Income Ratio", `${formulaParams.maxEmiRatio}%`],
                 ] as [string, ReactNode][],
@@ -154,17 +147,6 @@ export function ReviewPublish({
                 title: "Credit & Risk Scoring",
                 rows: [
                   ["Credit Bands", `${creditBands.length} configured`],
-                  [
-                    "Risk Weight Total",
-                    <Text
-                      span
-                      fz="xs"
-                      fw={700}
-                      c={totalWeight === 100 ? "green.7" : "red.6"}
-                    >
-                      {totalWeight}%
-                    </Text>,
-                  ],
                   ["Income Multiple", `${formulaParams.salaryMultiple}x`],
                   [
                     "Affordability Buffer",
@@ -230,7 +212,7 @@ export function ReviewPublish({
           </SimpleGrid>
           {!readyToPublish && (
             <Text fz={11} c="orange.7" mt={6}>
-              Resolve the items above to enable publishing.
+              Resolve the items above before activating this rule.
             </Text>
           )}
         </Tabs.Panel>

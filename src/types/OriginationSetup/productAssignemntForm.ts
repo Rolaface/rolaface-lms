@@ -13,8 +13,9 @@ loan_types: ("koua9dcaoi" | "en1hmqos06" | (string & {}))[];
       clauses: {
         id?: string | null;
         variable: string;
-        operator?: "=" | "<>" | ">" | ">=" | "<" | "<=";
+        operator?: "=" | "<>" | ">" | ">=" | "<" | "<=" | "between";
         value: string | number;
+        value2?: string | number;
       }[];
     }[];
   } | null;
@@ -43,8 +44,9 @@ export interface CreateProductAssignmentResponse {
           clauses: {
             id: string | null;
             variable: string;
-            operator: "=" | "<>" | ">" | ">=" | "<" | "<=";
+            operator: "=" | "<>" | ">" | ">=" | "<" | "<=" | "between";
             value: string;
+            value2?: string;
           }[];
         }[];
       } | null;
@@ -76,4 +78,10 @@ export interface GetProductAssignmentsParams {
   to_date?: string;
   sort_by?: string;
   sort_order?: "asc" | "desc";
+}
+
+export interface ProductAssignmentSettings {
+  several_match: "First match" | "Manual Review";
+  no_match: "Manual Review" | "Default Product";
+  default_product: Record<string, string>;
 }

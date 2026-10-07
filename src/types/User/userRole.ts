@@ -16,6 +16,7 @@ export const LMS_MODULES = [
   "Loan Application",
   "Account",
   "Journal Entry",
+  "Investor",
 ] as const;
 
 export type LmsModule = (typeof LMS_MODULES)[number];

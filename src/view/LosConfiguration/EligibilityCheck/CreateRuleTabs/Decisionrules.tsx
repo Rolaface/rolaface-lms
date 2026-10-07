@@ -60,8 +60,8 @@ export function DecisionRules({
           background: "var(--mantine-color-red-0)",
         }}
       >
-        <Group justify="space-between" mb="md" align="center">
-          <Group gap="sm" align="center">
+        <Group justify="space-between" mb="md" align="center" wrap="nowrap">
+          <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
             <Badge
               color="red.7"
               variant="outline"
@@ -85,11 +85,11 @@ export function DecisionRules({
             >
               HARD STOP RULES
             </Badge>
-            <Text fz={12} c="slate.7">
+            <Text fz={12} c="slate.7" truncate>
               Conditions that stop automatic approval outright.
             </Text>
           </Group>
-          <Group gap="sm" align="center">
+          <Group gap="sm" align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
             <Badge
               color="red.7"
               variant="outline"
@@ -234,8 +234,8 @@ export function DecisionRules({
           background: "var(--mantine-color-orange-0)",
         }}
       >
-        <Group justify="space-between" mb="md" align="center">
-          <Group gap="sm" align="center">
+        <Group justify="space-between" mb="md" align="center" wrap="nowrap">
+          <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
             <Badge
               color="orange.8"
               variant="outline"
@@ -259,11 +259,11 @@ export function DecisionRules({
             >
               MANUAL REVIEW RULES
             </Badge>
-            <Text fz={12} c="slate.7">
-              Conditions routed to a human decision instead of an automatic one.
+            <Text fz={12} c="slate.7" truncate>
+              Conditions that need a human decision.
             </Text>
           </Group>
-          <Group gap="sm" align="center">
+          <Group gap="sm" align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
             <Badge
               color="orange.8"
               variant="outline"
@@ -332,7 +332,7 @@ export function DecisionRules({
                   size="xs"
                   value={mr.operator}
                   onChange={(v) =>
-                    v && updateManualReview(mr.id, { operator: v })
+                    v && updateManualReview(mr.id, v === "Between" ? { operator: v } : { operator: v, value2: "" })
                   }
                   data={RULE_OPERATORS}
                   style={{ flex: 1 }}

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
   Alert,
@@ -22,7 +22,6 @@ import {
   IconAdjustmentsHorizontal,
   IconChevronDown,
   IconEye,
-  IconGripVertical,
   IconPencil,
   IconPlus,
   IconShieldCog,
@@ -31,18 +30,18 @@ import {
 } from "@tabler/icons-react";
 
 import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
- import { getAllProductAssignments, deleteProductAssignments } from "../../../api/OriginationSetupAPi/productAssignmentApi";
+ import {
+  getAllProductAssignments,
+  deleteProductAssignments,
+  getProductAssignmentSettings,
+  updateProductAssignmentSettings,
+} from "../../../api/OriginationSetupAPi/productAssignmentApi";
   import { getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
 import {
   FALLBACKS,
-  LOAN_TYPES,
   MATCH_MODES,
-  SOURCES,
   conditionText,
   hasCondition,
-  isShadowed,
-  productByCode,
-  productsFor,
   rowError,
   uid,
   type AssignmentRow,
@@ -59,12 +58,15 @@ import {
   LoanProductAssignmentModal,
   OptionMark,
   codeBadge,
+  useLoanProductOptions,
+  useSourceOptions,
   type EditingState,
   type PickerOption,
 } from "../../../components/Modal/OriginationSetup/LoanProductAssignmentModal";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
+import type { ProductAssignmentSettings } from "../../../types/OriginationSetup/productAssignemntForm";
 
 interface ApiCondition {
   join: "AND" | "OR";
@@ -72,7 +74,7 @@ interface ApiCondition {
     id: string | null;
     name: string;
     join: "AND" | "OR";
-    clauses: { id: string | null; variable: string; operator: string; value: string | number }[];
+    clauses: { id: string | null; variable: string; operator: string; value: string | number; value2?: string | number }[];
   }[];
 }
 interface ApiRule {
@@ -119,6 +121,7 @@ const toRow = (r: Pick<ApiRule, "name" | "sources" | "loan_types" | "condition" 
         variable: cl.variable,
         operator: cl.operator as Operator,
         value: String(cl.value),
+        ...(cl.value2 !== undefined && { value2: String(cl.value2) }),
       })),
     })
   ),
@@ -132,6 +135,28 @@ interface Config {
 }
 
 const EMPTY: Config = { rows: [], matchMode: "first", fallback: "default", defaultByLoanType: {} };
+
+type MatchSettings = Pick<Config, "matchMode" | "fallback" | "defaultByLoanType">;
+
+const fromApiSettings = (s: ProductAssignmentSettings): MatchSettings => ({
+  matchMode: s.several_match === "Manual Review" ? "manual" : "first",
+  fallback: s.no_match === "Manual Review" ? "manual" : "default",
+  defaultByLoanType: s.default_product ?? {},
+});
+
+const toApiSettings = (s: MatchSettings): ProductAssignmentSettings => ({
+  several_match: s.matchMode === "manual" ? "Manual Review" : "First match",
+  no_match: s.fallback === "manual" ? "Manual Review" : "Default Product",
+  default_product: s.defaultByLoanType,
+});
+
+const matchSettingsOf = ({ matchMode, fallback, defaultByLoanType }: Config): MatchSettings => ({ matchMode, fallback, defaultByLoanType });
+
+interface LoanTypeOption {
+  id: string;
+  name: string;
+  applicantType: string;
+}
 
 type RowKind = "all" | "conditional" | "direct";
 
@@ -170,9 +195,9 @@ function ConditionSummary({ row }: { row: AssignmentRow }) {
 
 const MANUAL = "manual";
 
-function LoanTypeDefault({ loanType, value, onChange, first }: { loanType: string; value: string; onChange: (code: string) => void; first: boolean }) {
-  const product = productByCode(value);
-  const tone = LOAN_TONE[loanType] ?? "slate";
+function LoanTypeDefault({ loanType, products, value, onChange, first }: { loanType: LoanTypeOption; products: PickerOption[]; value: string; onChange: (code: string) => void; first: boolean }) {
+  const product = value ? products.find((p) => p.value === value) ?? { value, label: value } : undefined;
+  const tone = LOAN_TONE[loanType.name] ?? "slate";
 
   return (
     <Group
@@ -182,20 +207,26 @@ function LoanTypeDefault({ loanType, value, onChange, first }: { loanType: strin
       py={6}
       style={{ borderTop: first ? undefined : "1px solid var(--mantine-color-slate-2)", borderLeft: `3px solid var(--mantine-color-${product ? tone : "slate"}-${product ? 4 : 2})` }}
     >
-      <Group gap={7} wrap="nowrap" w={92} style={{ flexShrink: 0 }}>
-        <OptionMark kind="loanType" value={loanType} />
-        <Text fz={12.5} fw={600} c="slate.8" truncate>
-          {loanType}
-        </Text>
+      <Group gap={7} wrap="nowrap" w={112} style={{ flexShrink: 0 }}>
+        <OptionMark kind="loanType" value={loanType.id} label={loanType.name} />
+        <Box style={{ minWidth: 0 }}>
+          <Text fz={12.5} fw={600} c="slate.8" truncate>
+            {loanType.name}
+          </Text>
+          <Text fz={10} c="slate.5" truncate>
+            {loanType.applicantType}
+          </Text>
+        </Box>
       </Group>
       <Select
-        aria-label={`Default product for ${loanType}`}
-        data={[{ value: MANUAL, label: "Manual review" }, ...productsFor([loanType]).map((p) => ({ value: p.code, label: p.name }))]}
-        value={product ? product.code : MANUAL}
+        aria-label={`Default product for ${loanType.name}`}
+        data={[{ value: MANUAL, label: "Manual review" }, ...products]}
+        value={product ? product.value : MANUAL}
+        searchable
         onChange={(v) => onChange(v && v !== MANUAL ? v : "")}
         allowDeselect={false}
         comboboxProps={{ withinPortal: false }}
-        leftSection={product ? <span style={codeBadge}>{product.code}</span> : <IconUserSearch size={14} />}
+        leftSection={product ? <span style={codeBadge}>{product.value}</span> : <IconUserSearch size={14} />}
         leftSectionWidth={product ? 70 : 30}
         leftSectionPointerEvents="none"
         renderOption={({ option, checked }) => (
@@ -243,9 +274,6 @@ export function LoanProductAssignment() {
   const [kind, setKind] = useState<RowKind>("all");
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
   const [editing, setEditing] = useState<EditingState | null>(null);
-  const [dragArmed, setDragArmed] = useState<string | null>(null);
-  const [dragging, setDragging] = useState<string | null>(null);
-  const [dragOver, setDragOver] = useState<string | null>(null);
   const [productNames, setProductNames] = useState<Record<string, string>>({});
 
   const showSuccess = (heading: string, body: string) => {
@@ -313,6 +341,52 @@ useEffect(() => {
         : [],
     [loanTypesRes],
   );
+
+  const loanTypesByApplicant = useMemo<LoanTypeOption[]>(
+    () =>
+      loanTypesRes
+        ? Object.entries(loanTypesRes.message.data.setup).flatMap(([applicantType, list]) =>
+            list.map((lt) => ({ id: lt.id, name: lt.name, applicantType })),
+          )
+        : [],
+    [loanTypesRes],
+  );
+
+  const { options: productOptions } = useLoanProductOptions();
+  const { all: sourceOptions } = useSourceOptions();
+
+  const { data: settingsRes } = useQuery({
+    queryKey: ["product-assignment-settings"],
+    queryFn: getProductAssignmentSettings,
+  });
+
+  const applySettings = (settings: ProductAssignmentSettings) => {
+    const matching = fromApiSettings(settings);
+    setSaved((s) => ({ ...s, ...matching }));
+    setDraft((d) => ({ ...d, ...matching }));
+  };
+
+  useEffect(() => {
+    if (settingsRes) applySettings(settingsRes.message.data);
+  }, [settingsRes]);
+
+  const settingsMutation = useMutation({
+    mutationFn: updateProductAssignmentSettings,
+    onSuccess: (res) => {
+      applySettings(res.message.data);
+      queryClient.setQueryData(["product-assignment-settings"], res);
+      showSuccess("Matching Saved", "Matching settings saved successfully.");
+    },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      });
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: deleteProductAssignments,
@@ -385,8 +459,8 @@ const firstRow = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
 const lastRow = Math.min(totalRows, pageIndex * pageSize + pageRows.length);
   const resetPage = () => setPagination((p) => ({ ...p, pageIndex: 0 }));
 
-  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
-  const defaultCount = LOAN_TYPES.filter((lt) => productByCode(draft.defaultByLoanType[lt] ?? "")).length;
+  const settingsDirty = JSON.stringify(matchSettingsOf(draft)) !== JSON.stringify(matchSettingsOf(saved));
+  const defaultCount = loanTypesByApplicant.filter((lt) => draft.defaultByLoanType[lt.id]).length;
   const defaultMissing = draft.fallback === "default" && defaultCount === 0;
   const setLoanTypeDefault = (loanType: string, code: string) =>
     setDraft((d) => {
@@ -425,25 +499,6 @@ const onSaved = (mode: "add" | "edit") => {
   const changeLoanTypes = (loanTypes: string[]) =>
     setEditing((e) => e && { ...e, row: { ...e.row, loanTypes, productCode: fitsProduct(loanTypes, e.row.productCode) } });
 
-  const moveRow = (fromId: string, toId: string) => {
-    if (fromId === toId) return;
-    setDraft((d) => {
-      const from = d.rows.findIndex((r) => r.id === fromId);
-      const to = d.rows.findIndex((r) => r.id === toId);
-      const next = [...d.rows];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return { ...d, rows: next };
-    });
-  };
-
-  const endDrag = () => {
-    if (dragging && dragOver) moveRow(dragging, dragOver);
-    setDragging(null);
-    setDragOver(null);
-    setDragArmed(null);
-  };
-
   return (
     <Stack gap="md" p="lg">
       <style>{`
@@ -451,8 +506,6 @@ const onSaved = (mode: "add" | "edit") => {
         .lms-row:hover td { background: ${theme.other?.rowHoverBg} !important; }
         .lms-row td:first-child { border-top-left-radius: var(--mantine-radius-md); border-bottom-left-radius: var(--mantine-radius-md); }
         .lms-row td:last-child { border-top-right-radius: var(--mantine-radius-md); border-bottom-right-radius: var(--mantine-radius-md); }
-        .lms-row .pa-grip { opacity: 0.3; transition: opacity 120ms ease; }
-        .lms-row:hover .pa-grip { opacity: 0.9; }
         .pa-cell { position: relative; display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; min-height: 30px; padding: 3px 6px; border-radius: 8px; transition: background-color 120ms ease, box-shadow 120ms ease; }
         .pa-cell .pa-chev { position: absolute; right: 6px; top: 50%; margin-top: -6.5px; padding: 1px; border-radius: 4px; background: var(--mantine-color-white); opacity: 0; color: var(--mantine-color-slate-5); transition: opacity 120ms ease; }
         .pa-cell:hover, .pa-cell[aria-expanded="true"] { background: var(--mantine-color-white); box-shadow: 0 0 0 1px var(--mantine-color-slate-2); }
@@ -495,7 +548,7 @@ const onSaved = (mode: "add" | "edit") => {
               Loan Product Auto Assignment
             </Title>
             <Text fz="sm" c="slate.5">
-              Rules are checked from the top. Drag a rule by its handle to change priority.
+              One rule per loan product. Applications get the product whose rule matches.
             </Text>
           </Stack>
         </Group>
@@ -553,13 +606,26 @@ const onSaved = (mode: "add" | "edit") => {
                         Default product per loan type
                       </Text>
                       <Text fz={11} fw={600} c={defaultMissing ? "danger.6" : "brand.6"}>
-                        {defaultCount} of {LOAN_TYPES.length} set
+                        {defaultCount} of {loanTypesByApplicant.length} set
                       </Text>
                     </Group>
                     <Box style={{ borderRadius: 10, border: `1px solid var(--mantine-color-${defaultMissing ? "danger-3" : "slate-2"})`, background: "var(--mantine-color-slate-0)" }}>
-                      {LOAN_TYPES.map((lt, i) => (
-                        <LoanTypeDefault key={lt} loanType={lt} first={i === 0} value={draft.defaultByLoanType[lt] ?? ""} onChange={(code) => setLoanTypeDefault(lt, code)} />
-                      ))}
+                      {loanTypesByApplicant.length === 0 ? (
+                        <Text fz={11.5} c="slate.5" px={10} py={8}>
+                          No active loan types. Add them in Loan Type Setup.
+                        </Text>
+                      ) : (
+                        loanTypesByApplicant.map((lt, i) => (
+                          <LoanTypeDefault
+                            key={lt.id}
+                            loanType={lt}
+                            products={productOptions}
+                            first={i === 0}
+                            value={draft.defaultByLoanType[lt.id] ?? ""}
+                            onChange={(code) => setLoanTypeDefault(lt.id, code)}
+                          />
+                        ))
+                      )}
                     </Box>
                     <Text fz={11} c={defaultMissing ? "danger.6" : "slate.5"} mt={6}>
                       {defaultMissing ? "Choose a default product for at least one loan type." : "Loan types left on manual review go to a reviewer."}
@@ -573,17 +639,31 @@ const onSaved = (mode: "add" | "edit") => {
                     </Text>
                   </Group>
                 )}
+                <Group justify="flex-end" gap={8}>
+                  <Button
+                    size="xs"
+                    variant="default"
+                    disabled={!settingsDirty || settingsMutation.isPending}
+                    onClick={() => setDraft((d) => ({ ...d, ...matchSettingsOf(saved) }))}
+                  >
+                    Discard
+                  </Button>
+                  <Button
+                    size="xs"
+                    color="brand"
+                    disabled={!settingsDirty || defaultMissing}
+                    loading={settingsMutation.isPending}
+                    onClick={() => settingsMutation.mutate(toApiSettings(matchSettingsOf(draft)))}
+                  >
+                    Save
+                  </Button>
+                </Group>
               </Stack>
             </Popover.Dropdown>
           </Popover>
           <Button size="sm" radius="xl" variant="default" leftSection={<IconPlus size={14} />} onClick={openAdd}>
             Add rule
           </Button>
-          {dirty && (
-            <Button size="sm" radius="xl" variant="default" onClick={() => setDraft(saved)}>
-              Discard
-            </Button>
-          )}
         </Group>
       </Group>
 
@@ -602,10 +682,10 @@ const onSaved = (mode: "add" | "edit") => {
         <Group gap="sm" wrap="wrap" align="center">
           <FilterMultiSelect
             placeholder="All sources"
-            data={SOURCES.map((v) => ({ value: v, label: v }))}
+            data={sourceOptions}
             value={sourceFilter}
             onChange={(v) => {
-              setSourceFilter(SOURCES.filter((o) => v.includes(o)));
+              setSourceFilter(sourceOptions.map((o) => o.value).filter((o) => v.includes(o)));
               resetPage();
             }}
             withSelectAll
@@ -701,13 +781,11 @@ const onSaved = (mode: "add" | "edit") => {
               ) : (
                 pageRows.map((row) => {
                   const error = rowError(row);
-                  const shadow = !error && draft.matchMode === "first" && isShadowed(rows, rows.indexOf(row));
-                  const stripe = error ? "danger" : shadow ? "orange" : !hasCondition(row) ? "success" : "brand";
-                  const isDropTarget = dragOver === row.id && dragging !== null && dragging !== row.id;
+                  const stripe = error ? "danger" : !hasCondition(row) ? "success" : "brand";
                   const cell = {
                     padding: "7px 10px",
                     border: "none",
-                    boxShadow: isDropTarget ? "inset 0 2px 0 var(--mantine-color-brand-5), var(--mantine-shadow-xs)" : "var(--mantine-shadow-xs)",
+                    boxShadow: "var(--mantine-shadow-xs)",
                     verticalAlign: "middle" as const,
                   };
                   const open = () => openView(row);
@@ -716,15 +794,7 @@ const onSaved = (mode: "add" | "edit") => {
                       key={row.id}
                       className="lms-row"
                       onClick={open}
-                      draggable={dragArmed === row.id}
-                      onDragStart={(e) => {
-                        e.dataTransfer.effectAllowed = "move";
-                        setDragging(row.id);
-                      }}
-                      onDragEnter={() => dragging && setDragOver(row.id)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDragEnd={endDrag}
-                      style={{ cursor: "pointer", opacity: dragging === row.id ? 0.35 : shadow ? 0.7 : 1, transition: "opacity 120ms ease" }}
+                      style={{ cursor: "pointer" }}
                     >
                       <Table.Td style={{ ...cell, borderLeft: `3px solid var(--mantine-color-${stripe}-4)`, paddingLeft: 4 }}>
                         <Group gap={4} wrap="nowrap">
@@ -744,9 +814,9 @@ const onSaved = (mode: "add" | "edit") => {
                         <Tooltip label={conditionText(row)} disabled={!hasCondition(row)} multiline w={380} openDelay={250} position="top-start" withinPortal>
                           <Box>
                             <ConditionSummary row={row} />
-                            {(error || shadow) && (
-                              <Text fz={10} c={error ? "danger.7" : "orange.8"} mt={2} truncate>
-                                {error ?? "Never used: a rule above has no condition and already covers these applications."}
+                            {error && (
+                              <Text fz={10} c="danger.7" mt={2} truncate>
+                                {error}
                               </Text>
                             )}
                           </Box>

@@ -1,22 +1,12 @@
+interface LoanTypeSetupItem {
+  id?: string;
+  name: string;
+}
+
 export interface CreateLoanTypePayload {
-  Individual?: {
-    name: string;
-    subTypes: {
-      name: string;
-      purposes: {
-        name: string;
-      }[];
-    }[];
-  }[];
-  Business?: {
-    name: string;
-    subTypes: {
-      name: string;
-      purposes: {
-        name: string;
-      }[];
-    }[];
-  }[];
+  Individual?: (LoanTypeSetupItem & { subTypes: (LoanTypeSetupItem & { purposes: LoanTypeSetupItem[] })[] })[];
+  Business?: (LoanTypeSetupItem & { subTypes: (LoanTypeSetupItem & { purposes: LoanTypeSetupItem[] })[] })[];
+  version?: string;
 }
 
 export interface CreateLoantypeResponse {
@@ -58,12 +48,12 @@ export interface CreateLoantypeResponse {
         }[];
       };
       version: string;
-      summary: {
+      summary?: {
         created: number;
         renamed: number;
         reactivated: number;
         deleted: number;
-        deactivated: any[];
+        deactivated: { id: string; name: string; level: number }[];
       };
     };
   };
