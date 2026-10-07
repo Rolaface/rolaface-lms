@@ -283,6 +283,7 @@ export function InvestorModal({
           payload: {
             to: state.mailTo.trim(),
             subject: state.mailSubject.trim(),
+            message: state.mailMessage,
             file_id: state.contractFileId,
           },
         });

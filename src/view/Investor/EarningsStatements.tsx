@@ -237,12 +237,16 @@ export function EarningsStatements() {
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label="Edit" withArrow>
+              <Tooltip
+                label={row.status === "Received" ? "Edit" : `${row.status}: view only`}
+                withArrow
+              >
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color="brand"
+                  color={row.status === "Received" ? "brand" : "slate"}
                   radius="md"
+                  disabled={row.status !== "Received"}
                   onClick={() => openModal(row.name, false)}
                 >
                   <IconPencil size={14} />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDebouncedValue } from "@mantine/hooks";
 import {
   ActionIcon,
@@ -56,19 +56,11 @@ import { useCompanyStore } from "../../store/companyStore";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
 import { openCommonModal } from "../../components/Modal/AlertModal";
 import {
-  CUSTOMERS,
-  PRODUCTS,
-  buildNumber,
-  calcSchedule,
   createInitialState,
-  productPatch,
   type Frequency,
   type ModalState,
 } from "../../components/Modal/Investor/InvestorModalShared";
-import {
-  InvestorModal,
-  ProcessingReadOnlyView,
-} from "../../components/Modal/Investor/InvestorModal";
+import { InvestorModal } from "../../components/Modal/Investor/InvestorModal";
 import { ReceivePaymentModal } from "../../components/Modal/Investor/ReceivePaymentModal";
 import { EarningsStatementsModal } from "../../components/Modal/Investor/EarningsStatementModal";
 import { MaturityModal } from "../../components/Modal/Investor/MaturityModal";
@@ -78,6 +70,7 @@ interface InvestmentRow {
   customer: string;
   customerId: string;
   productId: string;
+  renewedFrom: string | null;
   product: string;
   amount: number;
   rate: number;
@@ -92,6 +85,8 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   Approved: { label: "Approved", color: "warning" },
   Received: { label: "Received", color: "info" },
   Cancelled: { label: "Cancelled", color: "danger" },
+  Matured: { label: "Matured", color: "success" },
+  Renewed: { label: "Renewed", color: "brand" },
 };
 
 const columnHelper = createColumnHelper<InvestmentRow>();
@@ -202,6 +197,7 @@ export function Investor() {
         id: item.name,
         customer: item.investor,
         customerId: item.investor_id,
+        renewedFrom: item.renewed_from ?? null,
         productId: item.investment_product,
         product:
           productNames.get(item.investment_product) ?? item.investment_product,
@@ -234,15 +230,6 @@ export function Investor() {
   };
 
   /* ------------------------------ Alerts ---------------------------- */
-  const closeTimer = useRef<number | null>(null);
-
-  useEffect(
-    () => () => {
-      if (closeTimer.current) window.clearTimeout(closeTimer.current);
-    },
-    [],
-  );
-
   const showSuccess = (heading: string, body: string) => {
     openCommonModal({
       heading,
@@ -292,26 +279,36 @@ export function Investor() {
     onError: (error: any) => showError("Delete Failed", error),
   });
 
-  /* ---- Receive Payment / Earnings / Maturity (mock, no API yet) ---- */
-  /** Modal state for these stages, by Investor Flow ID (kept in memory only). */
-  const [stageStates, setStageStates] = useState<Record<string, ModalState>>(
-    {},
-  );
-  const [activeId, setActiveId] = useState<string | null>(null);
+  /* ------------------ Receive Payment / Earnings / Maturity ------------------ */
+  const [paymentRow, setPaymentRow] = useState<InvestmentRow | null>(null);
   const [paymentOpened, setPaymentOpened] = useState(false);
-  /** Earnings & Statements / Maturity modal for the active row. */
-  const [stageOpened, setStageOpened] = useState(false);
+  const [earningsId, setEarningsId] = useState<string | null>(null);
+  const [earningsOpened, setEarningsOpened] = useState(false);
+  const [maturityId, setMaturityId] = useState<string | null>(null);
+  const [maturityOpened, setMaturityOpened] = useState(false);
+  const [stageKey, setStageKey] = useState(0);
 
-  const activeState = activeId ? (stageStates[activeId] ?? null) : null;
-  const activeSchedule = activeState ? calcSchedule(activeState) : null;
+  /** What the Receive Payment modal shows for the row. */
+  const paymentState: ModalState | null = paymentRow
+    ? {
+        ...createInitialState(),
+        customerId: paymentRow.customerId,
+        customerName: paymentRow.customer,
+        amount: paymentRow.amount,
+      }
+    : null;
 
-  /** Same "patch the state" contract the tabs use, applied to the active row. */
-  const updateActive = (patch: Partial<ModalState>) =>
-    setStageStates((prev) =>
-      activeId && prev[activeId]
-        ? { ...prev, [activeId]: { ...prev[activeId], ...patch } }
-        : prev,
-    );
+  const openEarnings = (id: string) => {
+    setEarningsId(id);
+    setStageKey((k) => k + 1);
+    setEarningsOpened(true);
+  };
+
+  const openMaturity = (id: string) => {
+    setMaturityId(id);
+    setStageKey((k) => k + 1);
+    setMaturityOpened(true);
+  };
 
   /* Approve (Draft) -> Approved */
   const confirmApprove = (row: InvestmentRow) => {
@@ -344,51 +341,22 @@ export function Investor() {
   };
 
   const openReceivePayment = (row: InvestmentRow) => {
-    if (!stageStates[row.id]) {
-      const customerIndex = CUSTOMERS.findIndex((c) => c.name === row.customer);
-      const productIndex = PRODUCTS.findIndex((p) => p.name === row.product);
-      setStageStates((prev) => ({
-        ...prev,
-        [row.id]: {
-          ...createInitialState(),
-          ...productPatch(productIndex),
-          customerIndex,
-          productIndex,
-          customerId: row.customerId,
-          customerName: row.customer,
-          amount: row.amount,
-          rate: row.rate,
-          contractStatus: "Paid",
-          contractNo: buildNumber("CON", Object.keys(prev).length),
-          step: 2,
-        },
-      }));
-    }
-    setActiveId(row.id);
+    setPaymentRow(row);
+    setStageKey((k) => k + 1);
     setPaymentOpened(true);
   };
 
   const handleReceivePayment = (result: InvestorFlowReceivePaymentResult) => {
-    if (!activeId || !activeState) return;
     queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
     queryClient.invalidateQueries({ queryKey: ["investorFlow", result.id] });
-
-    const startDate = new Date();
-    const investmentNo = buildNumber(
-      "INV",
-      Object.values(stageStates).filter((st) => st.investmentNo).length,
-    );
-
-    updateActive({
-      utr: result.ref_no,
-      funded: true,
-      startDate,
-      investmentNo,
-      step: 4, // Earnings & Statements
-    });
     setPaymentOpened(false);
-    showSuccess("Payment Received", `Payment for investment ${result.id} has been received successfully.`);
-    setStageOpened(true); // only now the Earnings & Statements modal opens
+    showSuccess(
+      "Payment Received",
+      paymentRow?.renewedFrom
+        ? `Renewed investment ${result.id} has started; no money was received.`
+        : `Payment for investment ${result.id} has been received successfully.`,
+    );
+    openEarnings(result.id); // the earning schedule is ready now
   };
 
   /* Cancel (Approved) -> Cancelled */
@@ -449,20 +417,6 @@ export function Investor() {
         },
       ],
     });
-  };
-
-  /* Earnings & Statements / Maturity (only for Received rows) */
-  const openStage = (row: InvestmentRow) => {
-    setActiveId(row.id);
-    setStageOpened(true);
-  };
-
-  const handleComplete = () => {
-    if (!activeState || !activeState.decision) return;
-    // Status stays "Received": only Draft / Approved / Received / Cancelled exist.
-    updateActive({ completed: true });
-    showSuccess("Workflow Completed", "The investment workflow has been completed successfully.");
-    closeTimer.current = window.setTimeout(() => setStageOpened(false), 900);
   };
 
   /* ------------------------------ Table ----------------------------- */
@@ -576,12 +530,10 @@ export function Investor() {
         ),
         cell: (info) => {
           const row = info.row.original;
-          const stageState = stageStates[row.id];
           const isDraft = row.status === "Draft";
           const isApproved = row.status === "Approved";
-          const isReceived = row.status === "Received";
-          const hasActions =
-            isDraft || isApproved || (!!stageState && isReceived);
+          const hasEarnings = ["Received", "Matured", "Renewed"].includes(row.status);
+          const hasActions = isDraft || isApproved || hasEarnings;
 
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap">
@@ -614,15 +566,21 @@ export function Investor() {
               </Tooltip>
 
               <Tooltip
-                label={isDraft ? "Delete" : "Only Drafts can be deleted"}
+                label={
+                  row.renewedFrom
+                    ? "A renewed investment cannot be deleted"
+                    : isDraft
+                      ? "Delete"
+                      : "Only Drafts can be deleted"
+                }
                 withArrow
               >
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color={isDraft ? "danger" : "slate"}
+                  color={isDraft && !row.renewedFrom ? "danger" : "slate"}
                   radius="md"
-                  disabled={!isDraft}
+                  disabled={!isDraft || !!row.renewedFrom}
                   onClick={() => confirmDelete(row)}
                 >
                   <IconTrash size={14} />
@@ -657,10 +615,10 @@ export function Investor() {
                   )}
                   {isApproved && (
                     <Menu.Item onClick={() => openReceivePayment(row)}>
-                      Receive Payment
+                      {row.renewedFrom ? "Start Renewed Investment" : "Receive Payment"}
                     </Menu.Item>
                   )}
-                  {isApproved && (
+                  {isApproved && !row.renewedFrom && (
                     <Menu.Item
                       color="danger"
                       onClick={() => confirmCancel(row)}
@@ -668,11 +626,14 @@ export function Investor() {
                       Cancel
                     </Menu.Item>
                   )}
-                  {isReceived && stageState && (
-                    <Menu.Item onClick={() => openStage(row)}>
-                      {stageState.step >= 5
-                        ? "Maturity"
-                        : "Earnings & Statements"}
+                  {hasEarnings && (
+                    <Menu.Item onClick={() => openEarnings(row.id)}>
+                      Earnings & Statements
+                    </Menu.Item>
+                  )}
+                  {hasEarnings && (
+                    <Menu.Item onClick={() => openMaturity(row.id)}>
+                      Maturity
                     </Menu.Item>
                   )}
                 </Menu.Dropdown>
@@ -683,7 +644,7 @@ export function Investor() {
       }),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stageStates, companyCurrency],
+    [companyCurrency],
   );
 
   const table = useReactTable({
@@ -1010,45 +971,34 @@ export function Investor() {
         onSaved={() => setModalOpened(false)}
       />
 
-      {activeState && (
-        <>
-          {/* Receive Payment (Approved rows) */}
-          <ReceivePaymentModal
-            key={`pay-${activeId}`}
-            opened={paymentOpened}
-            onClose={() => setPaymentOpened(false)}
-            investorFlowId={activeId as string}
-            state={activeState}
-            onReceived={handleReceivePayment}
-          />
+      {paymentRow && paymentState && (
+        <ReceivePaymentModal
+          key={`pay-${stageKey}`}
+          opened={paymentOpened}
+          onClose={() => setPaymentOpened(false)}
+          investorFlowId={paymentRow.id}
+          renewedFrom={paymentRow.renewedFrom}
+          state={paymentState}
+          onReceived={handleReceivePayment}
+        />
+      )}
 
-          {/* Earnings & Statements — opens only after the payment is received */}
-          <EarningsStatementsModal
-            key={`earn-${activeId}`}
-            opened={stageOpened && activeState.funded && activeState.step === 4}
-            onClose={() => setStageOpened(false)}
-            investorFlowId={activeId as string}
-          />
+      {earningsId && (
+        <EarningsStatementsModal
+          key={`earn-${stageKey}`}
+          opened={earningsOpened}
+          onClose={() => setEarningsOpened(false)}
+          investorFlowId={earningsId}
+        />
+      )}
 
-          {/* Maturity — opens when Earnings & Statements is submitted */}
-          <MaturityModal
-            key={`mat-${activeId}`}
-            investorFlowId={activeId}
-            opened={stageOpened && activeState.funded && activeState.step === 5}
-            onClose={() => setStageOpened(false)}
-            state={activeState}
-            update={updateActive}
-            schedule={activeSchedule}
-            processingView={
-              <ProcessingReadOnlyView
-                state={activeState}
-                schedule={activeSchedule}
-                existingCount={totalRows}
-              />
-            }
-            onComplete={handleComplete}
-          />
-        </>
+      {maturityId && (
+        <MaturityModal
+          key={`mat-${stageKey}`}
+          opened={maturityOpened}
+          onClose={() => setMaturityOpened(false)}
+          investorFlowId={maturityId}
+        />
       )}
 
     </Stack>

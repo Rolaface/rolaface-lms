@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Group,
@@ -14,13 +15,16 @@ import {
 } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  closeInvestorFlow,
   getInvestorEarningById,
+  payInvestorEarningRow,
   updateInvestorEarning,
 } from "../../../api/Investor/investorFlowApi";
 import {
   REPAYMENT_FREQUENCIES,
   type InvestorEarning,
   type InvestorEarningDetails,
+  type InvestorEarningRowStatus,
   type InvestorEarningScheduleRow,
   type RepaymentFrequency,
 } from "../../../types/Investor/investorFlow";
@@ -28,14 +32,14 @@ import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { openCommonModal } from "../AlertModal";
 import {
   KpiGrid,
-  MS_PER_MONTH,
   SectionBox,
   TH_STYLE,
   createInitialState,
   inr,
   loadInvestorFlowState,
+  scheduleFromEarning,
+  toIso,
   type ModalState,
-  type Schedule,
 } from "./InvestorModalShared";
 import { STAGES, StageShell, StageSideNav, type StageId } from "./StageShell";
 import { ProcessingReadOnlyView } from "./InvestorModal";
@@ -47,6 +51,15 @@ type ScheduleAmountField =
   | "interest_amount"
   | "penalty_amount"
   | "total_payment";
+
+const ROW_STATUS_COLOR: Record<InvestorEarningRowStatus, string> = {
+  Pending: "slate",
+  Accrued: "warning",
+  Paid: "success",
+};
+
+/** Accrued rows keep their date, principal and interest; only penalty / total can change. */
+const ACCRUED_LOCKED_FIELDS = new Set(["payment_date", "principal_amount", "interest_amount"]);
 
 /** Details and schedule rows being viewed / edited. */
 interface EarningDraft {
@@ -65,25 +78,6 @@ const draftFromEarning = (e: InvestorEarning): EarningDraft => ({
   },
   rows: e.schedule.map((r) => ({ ...r })),
 });
-
-/** Schedule for the read-only Investor Processing view, from the saved earning rows. */
-function scheduleFromEarning(e: InvestorEarning): Schedule | null {
-  if (!e.schedule.length) return null;
-  const totalInterest = e.schedule.reduce((a, r) => a + (Number(r.interest_amount) || 0), 0);
-  const start = new Date(e.payment_date || e.schedule[0].payment_date);
-  const end = new Date(e.mat_date || e.schedule[e.schedule.length - 1].payment_date);
-  return {
-    totalMonths: Math.max(1, Math.round((end.getTime() - start.getTime()) / MS_PER_MONTH)),
-    totalInterest,
-    perPayment: totalInterest / e.schedule.length,
-    count: e.schedule.length,
-    rows: e.schedule.map((r) => ({
-      date: new Date(r.payment_date),
-      principal: Number(r.principal_amount) || 0,
-      interest: Number(r.interest_amount) || 0,
-    })),
-  };
-}
 
 /** First problem in the draft, or "" when it can be saved. */
 function validateDraft({ details, rows }: EarningDraft): string {
@@ -114,9 +108,21 @@ interface EarningsStatementsProps {
   draft: EarningDraft;
   /** Omitted when read-only. */
   onChange?: (draft: EarningDraft) => void;
+  /** Pays one schedule row; omitted when read-only. */
+  onPay?: (row: InvestorEarningScheduleRow) => void;
+  /** Why Pay is disabled (e.g. unsaved changes), or "". */
+  payDisabledReason?: string;
+  /** Row being paid. */
+  payingRow?: string | null;
 }
 
-function EarningsStatements({ draft, onChange }: EarningsStatementsProps) {
+function EarningsStatements({
+  draft,
+  onChange,
+  onPay,
+  payDisabledReason = "",
+  payingRow = null,
+}: EarningsStatementsProps) {
   const [page, setPage] = useState(1);
   const { details, rows } = draft;
   const editable = !!onChange;
@@ -137,8 +143,14 @@ function EarningsStatements({ draft, onChange }: EarningsStatementsProps) {
       rows: rows.map((r) => (r.name === name ? { ...r, ...patch } : r)),
     });
 
+  /** Paid rows are locked; Accrued rows lock date, principal and interest. */
+  const cellEditable = (row: InvestorEarningScheduleRow, field: string) =>
+    editable &&
+    row.status !== "Paid" &&
+    !(row.status === "Accrued" && ACCRUED_LOCKED_FIELDS.has(field));
+
   const amountCell = (row: InvestorEarningScheduleRow, field: ScheduleAmountField) =>
-    editable ? (
+    cellEditable(row, field) ? (
       <NumberInput
         size="xs"
         radius="md"
@@ -254,6 +266,8 @@ function EarningsStatements({ draft, onChange }: EarningsStatementsProps) {
                     <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Interest</Table.Th>
                     <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Penalty</Table.Th>
                     <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Total payment</Table.Th>
+                    <Table.Th style={TH_STYLE}>Status</Table.Th>
+                    {onPay && <Table.Th />}
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -261,7 +275,7 @@ function EarningsStatements({ draft, onChange }: EarningsStatementsProps) {
                     <Table.Tr key={row.name}>
                       <Table.Td>{row.idx}</Table.Td>
                       <Table.Td miw={140}>
-                        {editable ? (
+                        {cellEditable(row, "payment_date") ? (
                           <TextInput
                             type="date"
                             size="xs"
@@ -279,6 +293,33 @@ function EarningsStatements({ draft, onChange }: EarningsStatementsProps) {
                       <Table.Td miw={110}>{amountCell(row, "interest_amount")}</Table.Td>
                       <Table.Td miw={110}>{amountCell(row, "penalty_amount")}</Table.Td>
                       <Table.Td miw={120}>{amountCell(row, "total_payment")}</Table.Td>
+                      <Table.Td>
+                        <Badge
+                          variant="light"
+                          radius="sm"
+                          size="sm"
+                          color={ROW_STATUS_COLOR[row.status ?? "Pending"]}
+                        >
+                          {row.status ?? "Pending"}
+                        </Badge>
+                      </Table.Td>
+                      {onPay && (
+                        <Table.Td ta="right">
+                          {row.status !== "Paid" && (
+                            <Button
+                              size="compact-xs"
+                              radius="xl"
+                              color="brand"
+                              disabled={!!payDisabledReason || (!!payingRow && payingRow !== row.name)}
+                              loading={payingRow === row.name}
+                              title={payDisabledReason || undefined}
+                              onClick={() => onPay(row)}
+                            >
+                              Pay
+                            </Button>
+                          )}
+                        </Table.Td>
+                      )}
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
@@ -286,7 +327,9 @@ function EarningsStatements({ draft, onChange }: EarningsStatementsProps) {
             </Box>
             <Group justify="space-between" mt="sm">
               <Text fz="xs" c="slate.5">
-                {rows.length} payouts · Total {inr(totalPayment)}
+                {rows.length} payouts · {rows.filter((r) => r.status === "Paid").length} paid ·
+                Total {inr(totalPayment)}
+                {payDisabledReason && onPay ? ` · ${payDisabledReason}` : ""}
               </Text>
               <Pagination
                 total={totalPages}
@@ -422,7 +465,83 @@ function EarningsStage({
   const [draft, setDraft] = useState<EarningDraft>(() => draftFromEarning(earning));
   const viewingEarlier = section !== "earnings";
   const processingSchedule = scheduleFromEarning(earning);
-  const draftError = readOnly ? "" : validateDraft(draft);
+  // Only a Received investment can be edited / paid / closed.
+  const editable = !readOnly && earning.status === "Received";
+  const draftError = editable ? validateDraft(draft) : "";
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(draftFromEarning(earning));
+  const allPaid = earning.schedule.length > 0 && earning.schedule.every((r) => r.status === "Paid");
+
+  const refreshEarning = () => {
+    queryClient.invalidateQueries({ queryKey: ["investorEarning", investorFlowId] });
+    queryClient.invalidateQueries({ queryKey: ["investorEarnings"] });
+    queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
+    queryClient.invalidateQueries({ queryKey: ["investorFlow", investorFlowId] });
+  };
+
+  const showFailure = (heading: string, error: any) =>
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+
+  const payMutation = useMutation({
+    mutationFn: (row: InvestorEarningScheduleRow) =>
+      payInvestorEarningRow({ id: investorFlowId, row: row.name, paymentDate: toIso(new Date()) }),
+    onSuccess: (_data, row) => {
+      refreshEarning();
+      openCommonModal({
+        heading: "Payout Posted",
+        subtitle: "",
+        body: `Payout of ${inr(Number(row.total_payment) || 0)} for row ${row.idx} has been posted successfully.`,
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
+    },
+    onError: (error: any) => showFailure("Payout Failed", error),
+  });
+
+  const confirmPay = (row: InvestorEarningScheduleRow) =>
+    openCommonModal({
+      heading: "Pay Schedule Row",
+      subtitle: "Please confirm this action before continuing.",
+      body: `Pay ${inr(Number(row.total_payment) || 0)} for row ${row.idx} (due ${row.payment_date}) from the Company Bank Account, dated today?`,
+      color: "green",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        { label: "Pay", color: "green", onClick: () => payMutation.mutate(row) },
+      ],
+    });
+
+  const closeMutation = useMutation({
+    mutationFn: () => closeInvestorFlow(investorFlowId),
+    onSuccess: () => {
+      refreshEarning();
+      onClose();
+      openCommonModal({
+        heading: "Investment Closed",
+        subtitle: "",
+        body: "All payouts are done. The investment has been marked Matured.",
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
+    },
+    onError: (error: any) => showFailure("Close Failed", error),
+  });
+
+  const confirmClose = () =>
+    openCommonModal({
+      heading: "Close Investment",
+      subtitle: "Please confirm this action before continuing.",
+      body: "Every payout has been made. Mark this investment as Matured?",
+      color: "green",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        { label: "Close investment", color: "green", onClick: () => closeMutation.mutate() },
+      ],
+    });
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -441,8 +560,7 @@ function EarningsStage({
         },
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["investorEarning", investorFlowId] });
-      queryClient.invalidateQueries({ queryKey: ["investorEarnings"] });
+      refreshEarning();
       onClose();
       openCommonModal({
         heading: "Earnings Updated",
@@ -453,14 +571,7 @@ function EarningsStage({
       });
       onSaved?.();
     },
-    onError: (error: any) =>
-      openCommonModal({
-        heading: "Update Failed",
-        subtitle: "We couldn't complete your request.",
-        body: parseFrappeError(error),
-        color: "red",
-        buttons: [{ label: "Close", color: "red" }],
-      }),
+    onError: (error: any) => showFailure("Update Failed", error),
   });
 
   let footer;
@@ -476,7 +587,7 @@ function EarningsStage({
         Return to {STAGES[STAGE_INDEX].label}
       </Button>
     );
-  } else if (!readOnly) {
+  } else if (editable) {
     footer = (
       <>
         {draftError && (
@@ -484,11 +595,24 @@ function EarningsStage({
             {draftError}
           </Text>
         )}
+        {allPaid && (
+          <Button
+            size="sm"
+            radius="xl"
+            variant="light"
+            color="success"
+            disabled={isDirty}
+            loading={closeMutation.isPending}
+            onClick={confirmClose}
+          >
+            Close investment
+          </Button>
+        )}
         <Button
           size="sm"
           radius="xl"
           color="brand"
-          disabled={!!draftError}
+          disabled={!!draftError || !isDirty}
           loading={saveMutation.isPending}
           onClick={() => saveMutation.mutate()}
         >
@@ -504,7 +628,7 @@ function EarningsStage({
       onClose={onClose}
       stageIndex={STAGE_INDEX}
       state={flowState}
-      title={readOnly ? "View Earnings" : "Edit Earnings"}
+      title={editable ? "Edit Earnings" : "View Earnings"}
       sideNav={
         <StageSideNav stageIndex={STAGE_INDEX} section={section} onSelect={setSection} />
       }
@@ -518,7 +642,13 @@ function EarningsStage({
         />
       ) : (
         <section className="inv-content">
-          <EarningsStatements draft={draft} onChange={readOnly ? undefined : setDraft} />
+          <EarningsStatements
+            draft={draft}
+            onChange={editable ? setDraft : undefined}
+            onPay={editable ? confirmPay : undefined}
+            payDisabledReason={isDirty ? "Save your changes before paying" : ""}
+            payingRow={payMutation.isPending ? (payMutation.variables?.name ?? null) : null}
+          />
         </section>
       )}
     </StageShell>
