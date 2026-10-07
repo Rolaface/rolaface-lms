@@ -8,6 +8,7 @@ import { getInvestorFlowById } from "../../../api/Investor/investorFlowApi";
 import { getCustomerById } from "../../../api/Customer/customerApi";
 import {
   REPAYMENT_FREQUENCIES,
+  type InvestorEarning,
   type InvestorFlowContractStatus,
   type InvestorFlowPayload,
   type InvestorFlowPayment,
@@ -434,6 +435,7 @@ export function stateFromRecord(r: InvestorFlowRecord): ModalState {
     flowStatus: r.status,
     mailTo: r.mail_sent || "",
     mailSubject: r.subject || "",
+    mailMessage: r.message || "",
     payment:
       r.contract_status === "Paid"
         ? {
@@ -469,6 +471,25 @@ export async function loadInvestorFlowState(id: string): Promise<ModalState> {
   if (productItem) Object.assign(state, apiProductFields(productItem));
 
   return state;
+}
+
+/** Schedule for the read-only Investor Processing view, from the saved earning rows. */
+export function scheduleFromEarning(e: InvestorEarning): Schedule | null {
+  if (!e.schedule.length) return null;
+  const totalInterest = e.schedule.reduce((a, r) => a + (Number(r.interest_amount) || 0), 0);
+  const start = new Date(e.payment_date || e.schedule[0].payment_date);
+  const end = new Date(e.mat_date || e.schedule[e.schedule.length - 1].payment_date);
+  return {
+    totalMonths: Math.max(1, Math.round((end.getTime() - start.getTime()) / MS_PER_MONTH)),
+    totalInterest,
+    perPayment: totalInterest / e.schedule.length,
+    count: e.schedule.length,
+    rows: e.schedule.map((r) => ({
+      date: new Date(r.payment_date),
+      principal: Number(r.principal_amount) || 0,
+      interest: Number(r.interest_amount) || 0,
+    })),
+  };
 }
 
 export function scheduleFromApi(res: InvestorFlowSchedule): Schedule {

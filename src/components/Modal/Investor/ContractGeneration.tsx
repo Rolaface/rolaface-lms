@@ -194,19 +194,18 @@ export function ContractGeneration({
             onChange={(e) => update({ mailSubject: e.currentTarget.value })}
           />
         </SimpleGrid>
-        {status !== "Paid" && (
-          <Textarea
-            label="Message"
-            size="sm"
-            radius="md"
-            mt="sm"
-            required
-            autosize
-            minRows={3}
-            value={state.mailMessage}
-            onChange={(e) => update({ mailMessage: e.currentTarget.value })}
-          />
-        )}
+        <Textarea
+          label="Message"
+          size="sm"
+          radius="md"
+          mt="sm"
+          required={status !== "Paid"}
+          readOnly={status === "Paid"}
+          autosize
+          minRows={3}
+          value={state.mailMessage}
+          onChange={(e) => update({ mailMessage: e.currentTarget.value })}
+        />
         {status === "Sent" && !state.contractMailSent && (
           <Text fz="xs" c="slate.5" mt="xs">
             The contract was already sent to this address.

@@ -1,6 +1,14 @@
 import API from "../../config/api";
 import apiClient from "../../config/axios";
 import type {
+  InvestorAccountingSettings,
+  InvestorFlowRenewalReceivePayload,
+  InvestorMaturity,
+  InvestorMaturityListParams,
+  InvestorMaturityListResponse,
+  InvestorRenewalTerms,
+  InvestorSettings,
+  InvestorSettingsAccounts,
   InvestorBankAccount,
   InvestorEarning,
   InvestorEarningListParams,
@@ -16,6 +24,7 @@ import type {
   InvestorFlowSaveContractPayload,
   InvestorFlowSaveContractResult,
   InvestorFlowSchedule,
+  InvestorFlowStatus,
   InvestorFlowStatusAction,
   InvestorFlowStatusResult,
   InvestorFlowTerms,
@@ -163,7 +172,7 @@ export async function receiveInvestorFlowPayment({
   payload,
 }: {
   id: string;
-  payload: InvestorFlowPaymentPayload;
+  payload: InvestorFlowPaymentPayload | InvestorFlowRenewalReceivePayload;
 }) {
   const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorFlowReceivePaymentResult>>(
     API.investorFlow.receivePayment,
@@ -218,6 +227,102 @@ export async function updateInvestorEarning({
   const { data } = await apiClient.put<InvestorFlowEnvelope<InvestorEarning>>(
     API.investorFlow.updateEarning,
     payload,
+    { params: { id } },
+  );
+  return data.message.data;
+}
+
+/** Company Bank Account (Paid To) and Investor Deposit Account from Custom Investor Settings. */
+export async function getInvestorAccountingSettings() {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestorAccountingSettings>>(
+    API.investorFlow.getAccountingSettings,
+  );
+  return data.message.data;
+}
+
+/** Pays one schedule row (posts the payout Journal Entry) and returns the updated earning. */
+export async function payInvestorEarningRow({
+  id,
+  row,
+  paymentDate,
+}: {
+  id: string;
+  row: string;
+  paymentDate?: string;
+}) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorEarning>>(
+    API.investorFlow.payEarningRow,
+    { row, ...(paymentDate && { payment_date: paymentDate }) },
+    { params: { id } },
+  );
+  return data.message.data;
+}
+
+/** Maturity: all rows Paid -> Status Matured. */
+export async function closeInvestorFlow(id: string) {
+  const { data } = await apiClient.post<
+    InvestorFlowEnvelope<{ id: string; status: InvestorFlowStatus }>
+  >(API.investorFlow.close, {}, { params: { id } });
+  return data.message.data;
+}
+
+/* ------------------------- Custom Investor Settings ------------------------- */
+
+export async function getInvestorSettings() {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestorSettings>>(
+    API.investorFlow.getSettings,
+  );
+  return data.message.data;
+}
+
+export async function updateInvestorSettings(payload: InvestorSettingsAccounts) {
+  const { data } = await apiClient.put<InvestorFlowEnvelope<InvestorSettings>>(
+    API.investorFlow.updateSettings,
+    payload,
+  );
+  return data.message.data;
+}
+
+/* --------------------------------- Maturity --------------------------------- */
+
+export async function getInvestorMaturities(params: InvestorMaturityListParams) {
+  const query: Record<string, string | number> = { view: params.view };
+  if (params.search) query.search = params.search;
+  if (params.investment_product?.length) {
+    query.investment_product = JSON.stringify(params.investment_product);
+  }
+  if (params.page) query.page = params.page;
+  if (params.page_size) query.page_size = params.page_size;
+
+  const { data } = await apiClient.get<InvestorMaturityListResponse>(API.investorFlow.getMaturities, {
+    params: query,
+  });
+  return data;
+}
+
+export async function getInvestorMaturityById(id: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestorMaturity>>(
+    API.investorFlow.getMaturityById,
+    { params: { id } },
+  );
+  return data.message.data;
+}
+
+/** Pays everything still owed and closes the investment as Matured. */
+export async function redeemInvestorFlow(id: string) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorMaturity>>(
+    API.investorFlow.redeem,
+    {},
+    { params: { id } },
+  );
+  return data.message.data;
+}
+
+/** Pays the interest owed and carries the principal into a new Draft investment. */
+export async function renewInvestorFlow({ id, terms }: { id: string; terms: InvestorRenewalTerms }) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorMaturity>>(
+    API.investorFlow.renew,
+    terms,
     { params: { id } },
   );
   return data.message.data;

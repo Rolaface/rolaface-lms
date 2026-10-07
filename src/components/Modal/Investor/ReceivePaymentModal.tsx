@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import {
   ActionIcon,
+  Alert,
   Box,
   Button,
   Group,
@@ -16,10 +17,10 @@ import {
 import { IconArrowRight, IconCash, IconX } from "@tabler/icons-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
+  getInvestorAccountingSettings,
   getInvestorBankAccounts,
   receiveInvestorFlowPayment,
 } from "../../../api/Investor/investorFlowApi";
-import { fetchLedgerAccountOptions } from "../../../api/utils/frappeUtilsApi";
 import {
   INVESTOR_FLOW_PAYMENT_MODES,
   type InvestorFlowPaymentMode,
@@ -34,6 +35,8 @@ interface ReceivePaymentModalProps {
   onClose: () => void;
   /** Investor Flow ID. */
   investorFlowId: string;
+  /** Set for a renewed investment: no money arrives, only the start date is needed. */
+  renewedFrom?: string | null;
   state: ModalState;
   onReceived: (result: InvestorFlowReceivePaymentResult) => void;
 }
@@ -151,25 +154,31 @@ export function ReceivePaymentModal({
   opened,
   onClose,
   investorFlowId,
+  renewedFrom = null,
   state,
   onReceived,
 }: ReceivePaymentModalProps) {
   const theme = useMantineTheme();
+  const isRenewal = !!renewedFrom;
   const customer = stateCustomer(state);
 
   const [paymentDate, setPaymentDate] = useState(toIso(new Date()));
   const [paymentMode, setPaymentMode] = useState<InvestorFlowPaymentMode | null>(null);
   const [refNo, setRefNo] = useState("");
   const [amountPaid, setAmountPaid] = useState<number>(state.amount);
-  const [paidTo, setPaidTo] = useState<string | null>(null);
 
-  /* Paid To: ledger accounts (frappeUtilsAPI.getaccounts) */
-  const { data: accounts = [], isLoading: accountsLoading } = useQuery({
-    queryKey: ["ledgerAccountOptions"],
-    queryFn: fetchLedgerAccountOptions,
+  /* Paid To: the Company Bank Account set once in Custom Investor Settings */
+  const {
+    data: settings,
+    isLoading: settingsLoading,
+    error: settingsError,
+  } = useQuery({
+    queryKey: ["investorAccountingSettings"],
+    queryFn: getInvestorAccountingSettings,
     enabled: opened,
+    retry: false,
   });
-  const paidToAccount = accounts.find((a) => a.name === paidTo) ?? null;
+  const paidTo = settings?.company_bank_account ?? "";
 
   /* Paid From: the investor's Bank Accounts (Party = the customer) */
   const { data: bankAccounts = [], isLoading: bankAccountsLoading } = useQuery({
@@ -184,9 +193,8 @@ export function ReceivePaymentModal({
     (paidFromChoice === null ? bankAccounts.find((b) => b.is_default) : undefined) ??
     null;
   const paidFrom = paidFromAccount?.name ?? "";
-  /** Bank Account's Company Account: credited in the Journal Entry. */
-  /** Credited in the Journal Entry: the Bank Account's Company Account. */
-  const creditAccount = paidFromAccount?.account ?? "";
+  /** The investor bank account's Company Account (saved as Paid GL, for reference). */
+  const paidFromGl = paidFromAccount?.account ?? "";
 
   const paymentMutation = useMutation({
     mutationFn: receiveInvestorFlowPayment,
@@ -202,8 +210,9 @@ export function ReceivePaymentModal({
   });
   const submitting = paymentMutation.isPending;
 
-  const canSubmit =
-    !!paymentDate &&
+  const canSubmit = isRenewal
+    ? !!paymentDate && !submitting
+    : !!paymentDate &&
     !!paymentMode &&
     refNo.trim().length > 0 &&
     Number.isInteger(amountPaid) &&
@@ -213,7 +222,11 @@ export function ReceivePaymentModal({
     !submitting;
 
   const handleSubmit = () => {
-    if (!canSubmit || !paymentMode || !paidTo) return;
+    if (isRenewal) {
+      if (canSubmit) paymentMutation.mutate({ id: investorFlowId, payload: { payment_date: paymentDate } });
+      return;
+    }
+    if (!canSubmit || !paymentMode) return;
     paymentMutation.mutate({
       id: investorFlowId,
       payload: {
@@ -222,7 +235,6 @@ export function ReceivePaymentModal({
         payment_mode: paymentMode,
         amount_paid: amountPaid,
         paid_from: paidFrom,
-        paid_to: paidTo,
       },
     });
   };
@@ -267,7 +279,9 @@ export function ReceivePaymentModal({
             Receive Payment
           </Text>
           <Text fz="xs" c="white" style={{ opacity: 0.85 }}>
-            Records the investor's funds as a Journal Entry in accounting.
+            {isRenewal
+              ? "Starts the renewed investment. No money is received, so no Journal Entry is posted."
+              : "Records the investor's funds as a Journal Entry in accounting."}
           </Text>
         </Box>
         <ActionIcon
@@ -305,13 +319,36 @@ export function ReceivePaymentModal({
               gap: 12,
             }}
           >
-            <LockedField label="Payment type" value="Receive" />
+            <LockedField label="Payment type" value={isRenewal ? "Renewal" : "Receive"} />
             <LockedField label="Party type" value="Customer" />
             <LockedField label="Investor" value={customer ? customer.name : "—"} />
             <LockedField label="Investment amount" value={inr(state.amount)} />
           </Box>
         </Paper>
 
+        {isRenewal ? (
+          <>
+            <Alert variant="light" color="brand" radius="md" mb="md">
+              The principal of {inr(state.amount)} was carried over from investment{" "}
+              <Text span fw={700}>
+                {renewedFrom}
+              </Text>{" "}
+              and is already held in Investor Deposits. Choose the date the renewed investment starts.
+            </Alert>
+            <TextInput
+              type="date"
+              label="Start date"
+              size="sm"
+              radius="md"
+              required
+              maw={320}
+              styles={FIELD_STYLES}
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.currentTarget.value)}
+            />
+          </>
+        ) : (
+          <>
         {/* User inputs */}
         <Box style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <TextInput
@@ -382,11 +419,7 @@ export function ReceivePaymentModal({
                     : undefined
                 }
               />
-              <LockedInput
-                label="Account (GL)"
-                value={creditAccount}
-                mt="md"
-              />
+              <LockedInput label="Account (GL)" value={paidFromGl} mt="md" />
               {paidFromAccount?.account_currency && (
                 <Text fz="xs" c="slate.5" mt={6}>
                   Currency: {paidFromAccount.account_currency}
@@ -396,42 +429,37 @@ export function ReceivePaymentModal({
           }
           to={
             <>
-              <Select
-                label="Account"
-                placeholder="Type to search…"
-                size="sm"
-                radius="md"
-                required
-                searchable
-                styles={FIELD_STYLES}
-                data={accounts.map((a) => ({ value: a.name, label: a.name }))}
-                value={paidTo}
-                onChange={setPaidTo}
-                rightSection={accountsLoading ? <Loader size={14} /> : undefined}
-                nothingFoundMessage={accountsLoading ? "Loading…" : "No account found"}
-              />
-              <LockedInput label="Account (GL)" value={paidTo ?? ""} mt="md" />
-              {paidToAccount?.account_currency && (
+              <LockedInput label="Company Bank Account" value={paidTo} />
+              <LockedInput label="Account (GL)" value={paidTo} mt="md" />
+              {settingsLoading && <Loader size={14} mt={6} />}
+              {settingsError && (
+                <Text fz="xs" c="red" mt={6}>
+                  {parseFrappeError(settingsError)}
+                </Text>
+              )}
+              {settings?.company_bank_currency && (
                 <Text fz="xs" c="slate.5" mt={6}>
-                  Currency: {paidToAccount.account_currency}
+                  Currency: {settings.company_bank_currency}
                 </Text>
               )}
             </>
           }
         />
 
-        {paidTo && creditAccount && amountPaid > 0 && (
+        {settings && amountPaid > 0 && (
           <Text fz="xs" c="slate.5" mt="sm">
             Accounting entry: debit{" "}
             <Text span fw={700} c="slate.8">
-              {paidTo}
+              {settings.company_bank_account}
             </Text>
             , credit{" "}
             <Text span fw={700} c="slate.8">
-              {creditAccount}
+              {settings.investor_deposit_account}
             </Text>{" "}
-            for {inr(amountPaid)}.
+            (investor: {customer?.name ?? state.customerId}) for {inr(amountPaid)}.
           </Text>
+        )}
+          </>
         )}
       </Box>
 
