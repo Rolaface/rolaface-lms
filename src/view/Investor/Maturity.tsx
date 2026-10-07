@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Affix,
   Box,
   Button,
   TextInput,
@@ -38,6 +37,7 @@ import {
   type ModalState,
 } from "../../components/Modal/Investor/InvestorModalShared";
 import { ProcessingReadOnlyView } from "../../components/Modal/Investor/InvestorModal";
+import { openCommonModal } from "../../components/Modal/AlertModal";
 import { MaturityModal } from "../../components/Modal/Investor/MaturityModal";
 
 function buildDummyInvestment(
@@ -54,7 +54,7 @@ function buildDummyInvestment(
     customerIndex,
     amount,
     step: 5,
-    contractStatus: "Executed",
+    contractStatus: "Paid",
     contractNo: `CON-${year}-${no}`,
     investmentNo: `INV-${year}-${no}`,
     utr: `UTR${year}${no}`,
@@ -158,23 +158,14 @@ export function Maturity() {
   /* ----------------------------- Modal ----------------------------- */
   const [selectedNo, setSelectedNo] = useState<string | null>(null);
   const [modalOpened, setModalOpened] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<number | null>(null);
   const closeTimer = useRef<number | null>(null);
 
   useEffect(
     () => () => {
-      if (toastTimer.current) window.clearTimeout(toastTimer.current);
       if (closeTimer.current) window.clearTimeout(closeTimer.current);
     },
     [],
   );
-
-  const showToast = (message: string) => {
-    setToast(message);
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 2600);
-  };
 
   const selected = investments.find((i) => i.investmentNo === selectedNo) ?? null;
   const selectedSchedule = selected ? calcSchedule(selected) : null;
@@ -194,7 +185,13 @@ export function Maturity() {
   const handleComplete = () => {
     if (!selected || !selected.decision) return;
     updateSelected({ completed: true });
-    showToast("Workflow completed for " + selected.investmentNo);
+    openCommonModal({
+      heading: "Workflow Completed",
+      subtitle: "",
+      body: "The investment workflow has been completed successfully.",
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
     closeTimer.current = window.setTimeout(() => setModalOpened(false), 900);
   };
 
@@ -552,7 +549,6 @@ export function Maturity() {
           state={selected}
           update={updateSelected}
           schedule={selectedSchedule}
-          onToast={showToast}
           processingView={
             <ProcessingReadOnlyView
               state={selected}
@@ -564,24 +560,6 @@ export function Maturity() {
         />
       )}
 
-      {toast && (
-        <Affix position={{ bottom: 20, left: 0, right: 0 }} zIndex={1000}>
-          <Box style={{ display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-            <Paper
-              radius="md"
-              px={18}
-              py={10}
-              fw={600}
-              style={{
-                background: "var(--mantine-color-success-6)",
-                color: "var(--mantine-color-white)",
-              }}
-            >
-              {toast}
-            </Paper>
-          </Box>
-        </Affix>
-      )}
     </Stack>
   );
 }

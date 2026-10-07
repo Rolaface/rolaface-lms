@@ -525,6 +525,15 @@ losDocumentSetup: {
     delete: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.delete_investor_flow`,
     updateStatus: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.update_investor_flow_status`,
     getSchedule: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_schedules`,
+    saveContract: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.save_contract`,
+    receivePayment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.receive_payment`,
+    getInvestorBankAccounts: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investor_bank_accounts`,
+    getEarnings: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investor_earnings`,
+    getEarningById: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investor_earning_by_id`,
+    updateEarning: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.update_investor_earning`,
+  },
+  Email: {
+    send_email: `${ERP_BASE}/api/method/frappe.core.doctype.communication.email.make`,
   }
 } as const;
 

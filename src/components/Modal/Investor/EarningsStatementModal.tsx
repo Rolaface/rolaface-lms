@@ -1,363 +1,524 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import {
-  ActionIcon,
   Alert,
   Box,
   Button,
   Group,
-  Progress,
+  Loader,
+  NumberInput,
+  Pagination,
+  Select,
   Table,
   Text,
-  Tooltip,
-  useMantineTheme,
+  TextInput,
 } from "@mantine/core";
-import { IconDownload, IconEye } from "@tabler/icons-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  CUSTOMERS,
-  PRODUCTS,
+  getInvestorEarningById,
+  updateInvestorEarning,
+} from "../../../api/Investor/investorFlowApi";
+import {
+  REPAYMENT_FREQUENCIES,
+  type InvestorEarning,
+  type InvestorEarningDetails,
+  type InvestorEarningScheduleRow,
+  type RepaymentFrequency,
+} from "../../../types/Investor/investorFlow";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+import { openCommonModal } from "../AlertModal";
+import {
   KpiGrid,
+  MS_PER_MONTH,
   SectionBox,
   TH_STYLE,
-  Tag,
-  addMonths,
-  fmtMonthYear,
+  createInitialState,
   inr,
-  type TabProps,
+  loadInvestorFlowState,
+  type ModalState,
+  type Schedule,
 } from "./InvestorModalShared";
-import {
-  STAGES,
-  StageShell,
-  StageSideNav,
-  type StageId,
-} from "./StageShell";
-import { usePdfPreview } from "./PdfPreviewModal";
-import { buildStatementPdf, getPdfPalette } from "./Investmentpdf";
+import { STAGES, StageShell, StageSideNav, type StageId } from "./StageShell";
+import { ProcessingReadOnlyView } from "./InvestorModal";
 
-interface EarningsStatementsProps extends TabProps {
-  readOnly?: boolean;
+const ROWS_PER_PAGE = 10;
+
+type ScheduleAmountField =
+  | "principal_amount"
+  | "interest_amount"
+  | "penalty_amount"
+  | "total_payment";
+
+/** Details and schedule rows being viewed / edited. */
+interface EarningDraft {
+  details: InvestorEarningDetails;
+  rows: InvestorEarningScheduleRow[];
 }
 
-export function EarningsStatements({
-  state,
-  update,
-  schedule,
-  onToast,
-  readOnly = false,
-}: EarningsStatementsProps) {
-  const theme = useMantineTheme();
-  const pdfPreview = usePdfPreview();
-  const customer = CUSTOMERS[state.customerIndex];
-  if (!schedule || !state.startDate || !customer) return null;
+const draftFromEarning = (e: InvestorEarning): EarningDraft => ({
+  details: {
+    amount_invested: Number(e.amount_invested) || 0,
+    frequency: e.frequency,
+    mat_date: e.mat_date,
+    rate_of_interest: Number(e.rate_of_interest) || 0,
+    first_repay_date: e.first_repay_date,
+    rate_of_penalty: e.rate_of_penalty,
+  },
+  rows: e.schedule.map((r) => ({ ...r })),
+});
 
-  const startDate = state.startDate;
-  const { rows, totalMonths } = schedule;
-  const payoutRows = rows.slice(0, rows.length - 1);
-  const simulatedDate = addMonths(startDate, state.monthsElapsed);
-  const interestPaid = payoutRows
-    .filter((r) => r.date.getTime() <= simulatedDate.getTime())
-    .reduce((a, r) => a + r.interest, 0);
-  const monthlyInterest = (state.amount * state.rate) / 1200;
-  const months = Array.from({ length: state.monthsElapsed }, (_, i) => i + 1);
-  const pendingCount = months.filter((i) => !state.sentStatements[i]).length;
-
-  const windowFor = (i: number) => {
-    const from = addMonths(startDate, i - 1);
-    const to = addMonths(startDate, i);
-    return {
-      from,
-      to,
-      label: fmtMonthYear(to),
-      paidOut: payoutRows
-        .filter(
-          (r) => r.date.getTime() > from.getTime() && r.date.getTime() <= to.getTime(),
-        )
-        .reduce((x, r) => x + r.interest, 0),
-    };
+/** Schedule for the read-only Investor Processing view, from the saved earning rows. */
+function scheduleFromEarning(e: InvestorEarning): Schedule | null {
+  if (!e.schedule.length) return null;
+  const totalInterest = e.schedule.reduce((a, r) => a + (Number(r.interest_amount) || 0), 0);
+  const start = new Date(e.payment_date || e.schedule[0].payment_date);
+  const end = new Date(e.mat_date || e.schedule[e.schedule.length - 1].payment_date);
+  return {
+    totalMonths: Math.max(1, Math.round((end.getTime() - start.getTime()) / MS_PER_MONTH)),
+    totalInterest,
+    perPayment: totalInterest / e.schedule.length,
+    count: e.schedule.length,
+    rows: e.schedule.map((r) => ({
+      date: new Date(r.payment_date),
+      principal: Number(r.principal_amount) || 0,
+      interest: Number(r.interest_amount) || 0,
+    })),
   };
+}
 
-  const viewed =
-    state.viewMonth && state.viewMonth <= state.monthsElapsed
-      ? windowFor(state.viewMonth)
-      : null;
+/** First problem in the draft, or "" when it can be saved. */
+function validateDraft({ details, rows }: EarningDraft): string {
+  if (!Number.isInteger(details.amount_invested) || details.amount_invested <= 0)
+    return "Amount invested must be a whole number greater than 0.";
+  if (!details.frequency) return "Select the frequency.";
+  if (!details.first_repay_date) return "Enter the first repay date.";
+  if (!details.mat_date) return "Enter the maturity date.";
+  if (new Date(details.mat_date).getTime() <= new Date(details.first_repay_date).getTime())
+    return "Maturity date must be after the first repay date.";
+  if (!(details.rate_of_interest >= 0 && details.rate_of_interest <= 100))
+    return "Rate of interest must be between 0 and 100.";
+  const penalty = details.rate_of_penalty ?? 0;
+  if (!(penalty >= 0 && penalty <= 100)) return "Rate of penalty must be between 0 and 100.";
+  for (const r of rows) {
+    if (!r.payment_date) return `Row ${r.idx}: enter the payment date.`;
+    const amounts = [r.principal_amount, r.interest_amount, r.penalty_amount, r.total_payment];
+    if (amounts.some((v) => !(Number(v) >= 0))) return `Row ${r.idx}: amounts cannot be negative.`;
+  }
+  return "";
+}
 
-  const statementPdf = (i: number) => {
-    const w = windowFor(i);
-    return {
-      doc: buildStatementPdf(
-        {
-          contractNo: state.contractNo,
-          statementLabel: w.label,
-          periodFrom: w.from,
-          periodTo: w.to,
-          monthNo: i,
-          totalMonths,
-          customer,
-          productName: PRODUCTS[state.productIndex].name,
-          principal: state.amount,
-          rate: state.rate,
-          interestEarned: monthlyInterest,
-          paidOut: w.paidOut,
-          earnedToDate: monthlyInterest * i,
-        },
-        getPdfPalette(theme),
-      ),
-      title: `Investment Statement - ${w.label}`,
-      fileName: `Statement-${state.contractNo}-${w.label.replace(" ", "-")}.pdf`,
-    };
-  };
+/* ------------------------------------------------------------------ */
+/* Earning & Settlement content                                        */
+/* ------------------------------------------------------------------ */
 
-  const viewStatementPdf = (i: number) => {
-    const s = statementPdf(i);
-    pdfPreview.open(s.doc, s.title, s.fileName);
-  };
+interface EarningsStatementsProps {
+  draft: EarningDraft;
+  /** Omitted when read-only. */
+  onChange?: (draft: EarningDraft) => void;
+}
 
-  const downloadStatementPdf = (i: number) => {
-    const s = statementPdf(i);
-    s.doc.save(s.fileName);
-  };
+function EarningsStatements({ draft, onChange }: EarningsStatementsProps) {
+  const [page, setPage] = useState(1);
+  const { details, rows } = draft;
+  const editable = !!onChange;
 
-  const sendStatement = (i: number) => {
-    update({ sentStatements: { ...state.sentStatements, [i]: true } });
-    onToast("Statement sent to " + customer.email);
-  };
+  const totalPages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = rows.slice((currentPage - 1) * ROWS_PER_PAGE, currentPage * ROWS_PER_PAGE);
 
-  const sendAllPending = () => {
-    const sent = { ...state.sentStatements };
-    months.forEach((j) => {
-      sent[j] = true;
+  const totalInterest = rows.reduce((a, r) => a + (Number(r.interest_amount) || 0), 0);
+  const totalPayment = rows.reduce((a, r) => a + (Number(r.total_payment) || 0), 0);
+
+  const setDetail = (patch: Partial<InvestorEarningDetails>) =>
+    onChange?.({ ...draft, details: { ...details, ...patch } });
+
+  const setRow = (name: string, patch: Partial<InvestorEarningScheduleRow>) =>
+    onChange?.({
+      ...draft,
+      rows: rows.map((r) => (r.name === name ? { ...r, ...patch } : r)),
     });
-    update({ sentStatements: sent });
-    onToast("All pending statements sent");
-  };
+
+  const amountCell = (row: InvestorEarningScheduleRow, field: ScheduleAmountField) =>
+    editable ? (
+      <NumberInput
+        size="xs"
+        radius="md"
+        min={0}
+        decimalScale={2}
+        thousandSeparator=","
+        hideControls
+        value={row[field]}
+        onChange={(v) => setRow(row.name, { [field]: Number(v) || 0 })}
+      />
+    ) : (
+      <Text fz="xs" ta="right">
+        {inr(Number(row[field]) || 0)}
+      </Text>
+    );
 
   return (
     <>
       <KpiGrid
         items={[
-          { label: "Invested", value: inr(state.amount), color: "info" },
-          {
-            label: "Interest earned",
-            value: inr(monthlyInterest * state.monthsElapsed),
-            color: "success",
-          },
-          { label: "Interest paid out", value: inr(interestPaid), color: "brand" },
-          {
-            label: "Months completed",
-            value: `${state.monthsElapsed} / ${totalMonths}`,
-            color: "warning",
-          },
+          { label: "Amount invested", value: inr(details.amount_invested), color: "info" },
+          { label: "Rate of interest", value: `${details.rate_of_interest}% p.a.`, color: "warning" },
+          { label: "Total interest", value: inr(totalInterest), color: "success" },
+          { label: "Payouts", value: String(rows.length), color: "brand" },
         ]}
       />
 
-      <Progress
-        value={(state.monthsElapsed / totalMonths) * 100}
-        color="success"
-        size={8}
-        radius="xl"
-        mb="md"
-      />
+      <SectionBox title="Details">
+        <Box style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <NumberInput
+            label="Amount invested"
+            size="sm"
+            radius="md"
+            required={editable}
+            readOnly={!editable}
+            min={1}
+            allowDecimal={false}
+            thousandSeparator=","
+            value={details.amount_invested}
+            onChange={(v) => setDetail({ amount_invested: Number(v) || 0 })}
+          />
+          <NumberInput
+            label="Rate of interest (%)"
+            size="sm"
+            radius="md"
+            required={editable}
+            readOnly={!editable}
+            min={0}
+            max={100}
+            decimalScale={2}
+            value={details.rate_of_interest}
+            onChange={(v) => setDetail({ rate_of_interest: Number(v) || 0 })}
+          />
+          <Select
+            label="Frequency"
+            size="sm"
+            radius="md"
+            required={editable}
+            readOnly={!editable}
+            allowDeselect={false}
+            data={[...REPAYMENT_FREQUENCIES]}
+            value={details.frequency}
+            onChange={(v) => v && setDetail({ frequency: v as RepaymentFrequency })}
+          />
+          <TextInput
+            type="date"
+            label="First repay date"
+            size="sm"
+            radius="md"
+            required={editable}
+            readOnly={!editable}
+            value={details.first_repay_date ?? ""}
+            onChange={(e) => setDetail({ first_repay_date: e.currentTarget.value || null })}
+          />
+          <TextInput
+            type="date"
+            label="Maturity date"
+            size="sm"
+            radius="md"
+            required={editable}
+            readOnly={!editable}
+            value={details.mat_date ?? ""}
+            onChange={(e) => setDetail({ mat_date: e.currentTarget.value || null })}
+          />
+          <NumberInput
+            label="Rate of penalty (%)"
+            size="sm"
+            radius="md"
+            readOnly={!editable}
+            min={0}
+            max={100}
+            decimalScale={2}
+            value={details.rate_of_penalty ?? ""}
+            onChange={(v) => setDetail({ rate_of_penalty: v === "" ? null : Number(v) })}
+          />
+        </Box>
+      </SectionBox>
 
-      <SectionBox
-        title="Monthly statements"
-        actions={
-          readOnly ? undefined : (
-            <>
-              <Button
-                size="xs"
-                radius="xl"
-                variant="default"
-                disabled={pendingCount === 0}
-                onClick={sendAllPending}
-              >
-                Send all pending ({pendingCount})
-              </Button>
-              <Button
-                size="xs"
-                radius="xl"
-                color="brand"
-                disabled={state.monthsElapsed >= totalMonths}
-                onClick={() => update({ monthsElapsed: state.monthsElapsed + 1 })}
-              >
-                Advance one month
-              </Button>
-            </>
-          )
-        }
-      >
-        {!readOnly && (
-          <Text fz="xs" c="slate.5">
-            “Advance one month” simulates month-end. A statement is created for each
-            month and sent to {customer.email}.
-          </Text>
-        )}
-
-        {state.monthsElapsed > 0 ? (
-          <Box mt={readOnly ? 0 : "sm"} style={{ maxHeight: 240, overflow: "auto" }}>
-            <Table stickyHeader verticalSpacing={6} horizontalSpacing="sm" fz="xs">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th style={TH_STYLE}>Statement month</Table.Th>
-                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Interest earned</Table.Th>
-                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Paid out</Table.Th>
-                  <Table.Th style={TH_STYLE}>Status</Table.Th>
-                  <Table.Th />
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {[...months].reverse().map((i) => {
-                  const w = windowFor(i);
-                  const sent = !!state.sentStatements[i];
-                  return (
-                    <Table.Tr key={i}>
-                      <Table.Td>{w.label}</Table.Td>
-                      <Table.Td ta="right">{inr(monthlyInterest)}</Table.Td>
-                      <Table.Td ta="right">{inr(w.paidOut)}</Table.Td>
-                      <Table.Td>
-                        <Tag
-                          label={sent ? "Sent" : "Pending"}
-                          color={sent ? "success" : "warning"}
-                        />
-                      </Table.Td>
-                      <Table.Td ta="right">
-                        <Group gap={6} justify="flex-end" wrap="nowrap">
-                          <Tooltip label="View PDF" withArrow>
-                            <ActionIcon
-                              size="sm"
-                              variant="subtle"
-                              color="slate"
-                              radius="md"
-                              onClick={() => viewStatementPdf(i)}
-                            >
-                              <IconEye size={14} />
-                            </ActionIcon>
-                          </Tooltip>
-                          <Tooltip label="Download PDF" withArrow>
-                            <ActionIcon
-                              size="sm"
-                              variant="subtle"
-                              color="brand"
-                              radius="md"
-                              onClick={() => downloadStatementPdf(i)}
-                            >
-                              <IconDownload size={14} />
-                            </ActionIcon>
-                          </Tooltip>
-                          {/* <Button
-                            size="compact-xs"
-                            radius="xl"
-                            variant="default"
-                            onClick={() => update({ viewMonth: i })}
-                          >
-                            View
-                          </Button> */}
-                          {!readOnly && (
-                            <Button
-                              size="compact-xs"
-                              radius="xl"
-                              variant="default"
-                              disabled={sent}
-                              onClick={() => sendStatement(i)}
-                            >
-                              Send
-                            </Button>
-                          )}
-                        </Group>
-                      </Table.Td>
-                    </Table.Tr>
-                  );
-                })}
-              </Table.Tbody>
-            </Table>
-          </Box>
-        ) : (
-          <Alert variant="light" color="brand" radius="md" mt="sm">
-            No statements yet. Advance a month to generate the first one.
+      <SectionBox title="Investor schedule">
+        {rows.length === 0 ? (
+          <Alert variant="light" color="brand" radius="md">
+            No schedule saved for this investment.
           </Alert>
+        ) : (
+          <>
+            <Box style={{ overflowX: "auto" }}>
+              <Table verticalSpacing={6} horizontalSpacing="sm" fz="xs">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th style={TH_STYLE}>#</Table.Th>
+                    <Table.Th style={TH_STYLE}>Payment date</Table.Th>
+                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Principal</Table.Th>
+                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Interest</Table.Th>
+                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Penalty</Table.Th>
+                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Total payment</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {pageRows.map((row) => (
+                    <Table.Tr key={row.name}>
+                      <Table.Td>{row.idx}</Table.Td>
+                      <Table.Td miw={140}>
+                        {editable ? (
+                          <TextInput
+                            type="date"
+                            size="xs"
+                            radius="md"
+                            value={row.payment_date ?? ""}
+                            onChange={(e) =>
+                              setRow(row.name, { payment_date: e.currentTarget.value })
+                            }
+                          />
+                        ) : (
+                          row.payment_date
+                        )}
+                      </Table.Td>
+                      <Table.Td miw={110}>{amountCell(row, "principal_amount")}</Table.Td>
+                      <Table.Td miw={110}>{amountCell(row, "interest_amount")}</Table.Td>
+                      <Table.Td miw={110}>{amountCell(row, "penalty_amount")}</Table.Td>
+                      <Table.Td miw={120}>{amountCell(row, "total_payment")}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Box>
+            <Group justify="space-between" mt="sm">
+              <Text fz="xs" c="slate.5">
+                {rows.length} payouts · Total {inr(totalPayment)}
+              </Text>
+              <Pagination
+                total={totalPages}
+                value={currentPage}
+                onChange={setPage}
+                color="brand"
+                size="xs"
+                radius="xl"
+              />
+            </Group>
+          </>
         )}
       </SectionBox>
-      {pdfPreview.modal}
     </>
   );
+}
+
+/** Read-only Earning & Settlement of an Investor Flow (loads it by ID). */
+export function EarningsStatementsView({ investorFlowId }: { investorFlowId: string }) {
+  const { data: earning, isLoading, error } = useQuery({
+    queryKey: ["investorEarning", investorFlowId],
+    queryFn: () => getInvestorEarningById(investorFlowId),
+  });
+
+  if (isLoading) {
+    return (
+      <Group justify="center" py="xl">
+        <Loader size="sm" color="brand" />
+      </Group>
+    );
+  }
+  if (error || !earning) {
+    return (
+      <Alert variant="light" color="red" radius="md">
+        {error ? parseFrappeError(error) : "The earnings could not be loaded."}
+      </Alert>
+    );
+  }
+  return <EarningsStatements draft={draftFromEarning(earning)} />;
 }
 
 /* ------------------------------------------------------------------ */
 /* Modal                                                               */
 /* ------------------------------------------------------------------ */
 
-interface EarningsStatementsModalProps extends TabProps {
+interface EarningsStatementsModalProps {
   opened: boolean;
   onClose: () => void;
-  /** Investor Processing (the four steps) rendered view-only by InvestorModal. */
-  processingView: ReactNode;
-  /** Called on Submit; InvestorModal then pops the Maturity modal. */
-  onSubmit: () => void;
+  /** Investor Flow ID (Status Received). */
+  investorFlowId: string;
+  /** View (Eye) when true, edit (Pencil) when false. */
+  readOnly?: boolean;
+  /** Called after the edits are saved. */
+  onSaved?: () => void;
 }
 
 const STAGE_INDEX = 1;
 
 /**
  * Stage 2 — Earnings & Statements.
- * Side nav: Investor Processing (view only) and Earnings & Statements (working).
+ * Side nav: Investor Processing (view only) and Earnings & Statements.
  */
 export function EarningsStatementsModal({
   opened,
   onClose,
-  state,
-  update,
-  schedule,
-  onToast,
-  processingView,
-  onSubmit,
+  investorFlowId,
+  readOnly = false,
+  onSaved,
 }: EarningsStatementsModalProps) {
-  const [section, setSection] = useState<StageId>("earnings");
-  const viewingEarlier = section !== "earnings";
+  const earningQuery = useQuery({
+    queryKey: ["investorEarning", investorFlowId],
+    queryFn: () => getInvestorEarningById(investorFlowId),
+    enabled: opened,
+  });
+  const flowQuery = useQuery({
+    queryKey: ["investorFlow", investorFlowId],
+    queryFn: () => loadInvestorFlowState(investorFlowId),
+    enabled: opened,
+  });
 
-  // Same rule the old single modal used for leaving this step.
-  const canSubmit = !!schedule && state.monthsElapsed >= schedule.totalMonths;
+  if (earningQuery.data && flowQuery.data) {
+    return (
+      <EarningsStage
+        key={earningQuery.dataUpdatedAt}
+        opened={opened}
+        onClose={onClose}
+        investorFlowId={investorFlowId}
+        readOnly={readOnly}
+        onSaved={onSaved}
+        earning={earningQuery.data}
+        flowState={flowQuery.data}
+      />
+    );
+  }
+
+  const error = earningQuery.error || flowQuery.error;
+  return (
+    <StageShell
+      opened={opened}
+      onClose={onClose}
+      stageIndex={STAGE_INDEX}
+      state={createInitialState()}
+      title={readOnly ? "View Earnings" : "Edit Earnings"}
+    >
+      <Group justify="center" py="xl">
+        {error ? (
+          <Text fz="sm" c="red">
+            {parseFrappeError(error)}
+          </Text>
+        ) : (
+          <Loader size="sm" color="brand" />
+        )}
+      </Group>
+    </StageShell>
+  );
+}
+
+function EarningsStage({
+  opened,
+  onClose,
+  investorFlowId,
+  readOnly,
+  onSaved,
+  earning,
+  flowState,
+}: Omit<EarningsStatementsModalProps, "readOnly"> & {
+  readOnly: boolean;
+  earning: InvestorEarning;
+  flowState: ModalState;
+}) {
+  const queryClient = useQueryClient();
+  const [section, setSection] = useState<StageId>("earnings");
+  const [draft, setDraft] = useState<EarningDraft>(() => draftFromEarning(earning));
+  const viewingEarlier = section !== "earnings";
+  const processingSchedule = scheduleFromEarning(earning);
+  const draftError = readOnly ? "" : validateDraft(draft);
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      updateInvestorEarning({
+        id: investorFlowId,
+        payload: {
+          ...draft.details,
+          schedule: draft.rows.map((row) => ({
+            name: row.name,
+            payment_date: row.payment_date,
+            principal_amount: row.principal_amount,
+            interest_amount: row.interest_amount,
+            penalty_amount: row.penalty_amount,
+            total_payment: row.total_payment,
+          })),
+        },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["investorEarning", investorFlowId] });
+      queryClient.invalidateQueries({ queryKey: ["investorEarnings"] });
+      onClose();
+      openCommonModal({
+        heading: "Earnings Updated",
+        subtitle: "",
+        body: "Earnings have been updated successfully.",
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
+      onSaved?.();
+    },
+    onError: (error: any) =>
+      openCommonModal({
+        heading: "Update Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      }),
+  });
+
+  let footer;
+  if (viewingEarlier) {
+    footer = (
+      <Button
+        size="sm"
+        radius="xl"
+        variant="light"
+        color="brand"
+        onClick={() => setSection("earnings")}
+      >
+        Return to {STAGES[STAGE_INDEX].label}
+      </Button>
+    );
+  } else if (!readOnly) {
+    footer = (
+      <>
+        {draftError && (
+          <Text fz="xs" c="red" mr="auto">
+            {draftError}
+          </Text>
+        )}
+        <Button
+          size="sm"
+          radius="xl"
+          color="brand"
+          disabled={!!draftError}
+          loading={saveMutation.isPending}
+          onClick={() => saveMutation.mutate()}
+        >
+          Save
+        </Button>
+      </>
+    );
+  }
 
   return (
     <StageShell
       opened={opened}
       onClose={onClose}
       stageIndex={STAGE_INDEX}
-      state={state}
+      state={flowState}
+      title={readOnly ? "View Earnings" : "Edit Earnings"}
       sideNav={
         <StageSideNav stageIndex={STAGE_INDEX} section={section} onSelect={setSection} />
       }
-      footer={
-        viewingEarlier ? (
-          <Button
-            size="sm"
-            radius="xl"
-            variant="light"
-            color="brand"
-            onClick={() => setSection("earnings")}
-          >
-            Return to {STAGES[STAGE_INDEX].label}
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            radius="xl"
-            color="brand"
-            disabled={!canSubmit}
-            onClick={onSubmit}
-          >
-            Submit
-          </Button>
-        )
-      }
+      footer={footer}
     >
       {section === "processing" ? (
-        processingView
+        <ProcessingReadOnlyView
+          state={flowState}
+          schedule={processingSchedule}
+          existingCount={0}
+        />
       ) : (
         <section className="inv-content">
-          <EarningsStatements
-            state={state}
-            update={update}
-            schedule={schedule}
-            onToast={onToast}
-          />
+          <EarningsStatements draft={draft} onChange={readOnly ? undefined : setDraft} />
         </section>
       )}
     </StageShell>

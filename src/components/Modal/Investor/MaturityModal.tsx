@@ -16,7 +16,7 @@ import {
   ViewOnlyBar,
   type StageId,
 } from "./StageShell";
-import { EarningsStatements } from "./EarningsStatementModal";
+import { EarningsStatementsView } from "./EarningsStatementModal";
 
 function MaturityScreen({ state, update, schedule }: TabProps) {
   const customer = CUSTOMERS[state.customerIndex];
@@ -101,11 +101,12 @@ interface MaturityModalProps extends TabProps {
   processingView: ReactNode;
   /** Called on "Complete workflow". */
   onComplete: () => void;
+  /** Investor Flow ID whose saved earnings are shown (view only). */
+  investorFlowId?: string | null;
 }
 
 const STAGE_INDEX = 2;
 
-const noop = () => {};
 
 /**
  * Stage 3 — Maturity.
@@ -118,9 +119,9 @@ export function MaturityModal({
   state,
   update,
   schedule,
-  onToast,
   processingView,
   onComplete,
+  investorFlowId = null,
 }: MaturityModalProps) {
   const [section, setSection] = useState<StageId>("maturity");
   const viewingEarlier = section !== "maturity";
@@ -164,13 +165,13 @@ export function MaturityModal({
         <>
           <ViewOnlyBar label={STAGES[1].label} />
           <section className="inv-content">
-            <EarningsStatements
-              readOnly
-              state={state}
-              update={noop}
-              schedule={schedule}
-              onToast={noop}
-            />
+            {investorFlowId ? (
+              <EarningsStatementsView investorFlowId={investorFlowId} />
+            ) : (
+              <Text fz="sm" c="slate.5">
+                No saved earnings for this investment.
+              </Text>
+            )}
           </section>
         </>
       )}
@@ -181,7 +182,6 @@ export function MaturityModal({
             state={state}
             update={update}
             schedule={schedule}
-            onToast={onToast}
           />
         </section>
       )}
