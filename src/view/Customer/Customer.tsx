@@ -65,7 +65,7 @@ onSuccess: () => {
         color: "green",
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "green",
           },
         ],
@@ -80,7 +80,7 @@ onSuccess: () => {
         color: "red",
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "red",
           },
         ],

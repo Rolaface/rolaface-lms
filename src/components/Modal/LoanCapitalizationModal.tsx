@@ -376,7 +376,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
       subtitle: "We couldn't complete your request.",
       body: typeof error === 'string' ? error : 'Something went wrong. Please try again.',
       color: 'red',
-      buttons: [{ label: 'Close', color: 'red' }],
+      buttons: [{ label: 'OK', color: 'red' }],
     });
   };
 
@@ -386,7 +386,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
       subtitle: '',
       body,
       color: 'green',
-      buttons: [{ label: 'Close', color: 'green' }],
+      buttons: [{ label: 'OK', color: 'green' }],
     });
   };
 
@@ -396,7 +396,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
       subtitle: '',
       body,
       color: 'red',
-      buttons: [{ label: 'Close', color: 'red' }],
+      buttons: [{ label: 'OK', color: 'red' }],
     });
   };
 

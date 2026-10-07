@@ -18,7 +18,7 @@ export function notifyError(err: unknown, heading = 'Something went wrong') {
     color: 'danger',
     icon: <IconAlertCircle size={36} />,
     body: parseFrappeError(err),
-    buttons: [{ label: 'Close', variant: 'light', color: 'slate' }],
+    buttons: [{ label: 'OK', variant: 'light', color: 'slate' }],
   });
 }
 
@@ -29,6 +29,6 @@ export function notifyValidationError(message: string, heading = 'Missing inform
     color: 'warning',
     icon: <IconAlertCircle size={36} />,
     body: message,
-    buttons: [{ label: 'Close', variant: 'light', color: 'slate' }],
+    buttons: [{ label: 'OK', variant: 'light', color: 'slate' }],
   });
 }

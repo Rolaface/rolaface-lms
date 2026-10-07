@@ -630,7 +630,7 @@ export function Sidebar({
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(err),
         color: "red",
-        buttons: [{ label: "Close", color: "red" }],
+        buttons: [{ label: "OK", color: "red" }],
       });
     } finally {
       setLoggingOut(false);

@@ -118,7 +118,7 @@ export function SourceModal({ opened, onClose, onMinimize, editId, isView }: Sou
         color: "green",
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "green",
             variant: "filled",
             onClick: () => handleClose(),
@@ -133,7 +133,7 @@ export function SourceModal({ opened, onClose, onMinimize, editId, isView }: Sou
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(error) || "Failed to save source",
         color: "red",
-        buttons: [{ label: "Close", color: "red", variant: "filled" }],
+        buttons: [{ label: "OK", color: "red", variant: "filled" }],
       });
     },
   });

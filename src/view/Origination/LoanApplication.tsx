@@ -297,7 +297,7 @@ export function LoanApplication() {
       subtitle: "",
       body,
       color: "green",
-      buttons: [{ label: "Close", color: "green" }],
+      buttons: [{ label: "OK", color: "green" }],
     });
   };
 
@@ -325,7 +325,7 @@ export function LoanApplication() {
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(error),
         color: "red",
-        buttons: [{ label: "Close", color: "red" }],
+        buttons: [{ label: "OK", color: "red" }],
       });
     },
   });
@@ -353,7 +353,7 @@ export function LoanApplication() {
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(error),
         color: "red",
-        buttons: [{ label: "Close", color: "red" }],
+        buttons: [{ label: "OK", color: "red" }],
       });
     },
   });
@@ -393,7 +393,7 @@ export function LoanApplication() {
 
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "red",
           },
         ],
@@ -437,7 +437,7 @@ export function LoanApplication() {
 
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "red",
           },
         ],

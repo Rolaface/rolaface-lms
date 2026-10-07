@@ -114,7 +114,7 @@ export function SchedulerModal({
                 subtitle: "",
                 body: "Scheduler Name is required",
                 color: "red",
-                buttons: [{ label: "Close", color: "red" }],
+                buttons: [{ label: "OK", color: "red" }],
             });
             return;
         }
@@ -124,7 +124,7 @@ export function SchedulerModal({
                 subtitle: "",
                 body: "Frequency is required",
                 color: "red",
-                buttons: [{ label: "Close", color: "red" }],
+                buttons: [{ label: "OK", color: "red" }],
             });
             return;
         }

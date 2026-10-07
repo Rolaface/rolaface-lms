@@ -446,7 +446,7 @@ if (idDocs.length > 0) {
         subtitle: "Validation error",
         body: "Please fill in all required fields before submitting.",
         color: "warning",
-        buttons: [{ label: "Close", color: "teal" }],
+        buttons: [{ label: "OK", color: "teal" }],
       });
       return;
     }
@@ -476,7 +476,7 @@ if (idDocs.length > 0) {
             subtitle: "Customer saved, document upload failed",
             body: "The customer record was saved, but one or more documents could not be uploaded. You can retry uploading them from the Documents step.",
             color: "warning",
-            buttons: [{ label: "Close", color: "teal" }],
+            buttons: [{ label: "OK", color: "teal" }],
           });
         }
       }
@@ -490,7 +490,7 @@ if (idDocs.length > 0) {
         color: "success",
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "teal",
             onClick: () => handleModalClose(),
           },
@@ -507,7 +507,7 @@ if (idDocs.length > 0) {
         color: "danger",
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "red",
           },
         ],
@@ -546,7 +546,7 @@ if (idDocs.length > 0) {
         subtitle: "Validation error",
         body: "Please fill in all required fields before continuing.",
         color: "warning",
-        buttons: [{ label: "Close", color: "teal" }],
+        buttons: [{ label: "OK", color: "teal" }],
       });
       return;
     }

@@ -99,7 +99,7 @@ export function FeeAndCharges() {
       subtitle: "We couldn't complete your request.",
       body: parseFrappeError(error),
       color: 'red',
-      buttons: [{ label: 'Close', color: 'red' }],
+      buttons: [{ label: 'OK', color: 'red' }],
     });
   };
 
@@ -109,7 +109,7 @@ export function FeeAndCharges() {
       subtitle: '',
       body,
       color: 'green',
-      buttons: [{ label: 'Close', color: 'green' }],
+      buttons: [{ label: 'OK', color: 'green' }],
     });
   };
 

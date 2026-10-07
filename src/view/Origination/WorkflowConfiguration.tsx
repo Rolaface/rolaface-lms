@@ -175,7 +175,7 @@ export function WorkflowConfiguration() {
         subtitle: "",
         body: "Workflow configuration updated.",
         color: "success",
-        buttons: [{ label: "Close", color: "success" }],
+        buttons: [{ label: "OK", color: "success" }],
       });
     },
     onError: (err: any) => {
@@ -184,7 +184,7 @@ export function WorkflowConfiguration() {
         subtitle: "",
         body: err.message || "An error occurred while saving.",
         color: "danger",
-        buttons: [{ label: "Close", color: "danger" }],
+        buttons: [{ label: "OK", color: "danger" }],
       });
     },
   });
@@ -196,7 +196,7 @@ export function WorkflowConfiguration() {
         subtitle: "",
         body: "All states must have a name.",
         color: "warning",
-        buttons: [{ label: "Close", color: "warning" }],
+        buttons: [{ label: "OK", color: "warning" }],
       });
       return;
     }

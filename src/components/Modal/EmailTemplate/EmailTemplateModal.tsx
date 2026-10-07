@@ -150,7 +150,7 @@ export function EmailTemplateModal({
             subtitle: '',
             body,
             color: 'green',
-            buttons: [{ label: 'Close', color: 'green' }],
+            buttons: [{ label: 'OK', color: 'green' }],
           });
         };
     const queryClient = useQueryClient();
@@ -169,7 +169,7 @@ export function EmailTemplateModal({
                 subtitle: "We couldn't complete your request.",
                 body: parseFrappeError(error),
                 color: "red",
-                buttons: [{ label: "Close", color: "red" }],
+                buttons: [{ label: "OK", color: "red" }],
             });
         },
     });
@@ -189,7 +189,7 @@ export function EmailTemplateModal({
                 subtitle: "We couldn't complete your request.",
                 body: parseFrappeError(error),
                 color: "red",
-                buttons: [{ label: "Close", color: "red" }],
+                buttons: [{ label: "OK", color: "red" }],
             });
         },
     });
@@ -282,7 +282,7 @@ export function EmailTemplateModal({
                 subtitle: "",
                 body: "Subject is required",
                 color: "red",
-                buttons: [{ label: "Close", color: "red" }],
+                buttons: [{ label: "OK", color: "red" }],
             });
             return;
         }
@@ -292,7 +292,7 @@ export function EmailTemplateModal({
                 subtitle: "",
                 body: "Response (message) is required",
                 color: "red",
-                buttons: [{ label: "Close", color: "red" }],
+                buttons: [{ label: "OK", color: "red" }],
             });
             return;
         }
@@ -302,7 +302,7 @@ export function EmailTemplateModal({
                 subtitle: "",
                 body: "Template category is required",
                 color: "red",
-                buttons: [{ label: "Close", color: "red" }],
+                buttons: [{ label: "OK", color: "red" }],
             });
             return;
         }

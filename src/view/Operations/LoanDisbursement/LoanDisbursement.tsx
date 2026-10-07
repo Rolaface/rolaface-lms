@@ -172,7 +172,7 @@ export function LoanDisbursement() {
       subtitle: "We couldn't complete your request.",
       body: errorMessage,
       color: 'red',
-      buttons: [{ label: 'Close', color: 'red' }],
+      buttons: [{ label: 'OK', color: 'red' }],
     });
   };
 
@@ -182,7 +182,7 @@ export function LoanDisbursement() {
       subtitle: '',
       body,
       color: 'green',
-      buttons: [{ label: 'Close', color: 'green' }],
+      buttons: [{ label: 'OK', color: 'green' }],
     });
   };
 

@@ -205,7 +205,7 @@ export function LoanDisbursementModal({
           ? `Loan disbursement ${newId} has been created successfully.`
           : "Loan disbursement has been created successfully.",
         color: "green",
-        buttons: [{ label: "Close", color: "green" }],
+        buttons: [{ label: "OK", color: "green" }],
       });
     },
     onError: (error: any) => {
@@ -217,7 +217,7 @@ export function LoanDisbursementModal({
 
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "red",
           },
         ],
@@ -240,7 +240,7 @@ export function LoanDisbursementModal({
           ? `Loan disbursement ${editId} has been updated successfully.`
           : "Loan disbursement has been updated successfully.",
         color: "green",
-        buttons: [{ label: "Close", color: "green" }],
+        buttons: [{ label: "OK", color: "green" }],
       });
     },
     onError: (error: any) => {
@@ -252,7 +252,7 @@ export function LoanDisbursementModal({
 
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "red",
           },
         ],

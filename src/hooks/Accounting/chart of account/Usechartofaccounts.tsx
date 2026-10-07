@@ -97,7 +97,7 @@ const showError = (heading: string, body: string) => {
     subtitle: "We couldn't complete your request.",
     body,
     color: 'red',
-    buttons: [{ label: 'Close', color: 'red' }],
+    buttons: [{ label: 'OK', color: 'red' }],
   });
 };
 
@@ -107,7 +107,7 @@ const showSuccessModal = (heading: string, body: string) => {
     subtitle: '',
     body,
     color: 'green',
-    buttons: [{ label: 'Close', color: 'green' }],
+    buttons: [{ label: 'OK', color: 'green' }],
   });
 };
   const [searchTerm, setSearchTerm] = useState("");

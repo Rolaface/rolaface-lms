@@ -199,7 +199,7 @@ export function LoanAccount() {
       subtitle: '',
       body,
       color: 'green',
-      buttons: [{ label: 'Close', color: 'green' }],
+      buttons: [{ label: 'OK', color: 'green' }],
     });
   };
 
@@ -218,7 +218,7 @@ export function LoanAccount() {
 
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "red",
           },
         ],
@@ -267,7 +267,7 @@ export function LoanAccount() {
         subtitle: "We couldn't complete your request.",
         body: parseFrappeError(error),
         color: "red",
-        buttons: [{ label: "Close", color: "red" }],
+        buttons: [{ label: "OK", color: "red" }],
       });
     },
   });

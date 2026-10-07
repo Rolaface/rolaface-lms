@@ -200,7 +200,7 @@ export function SourceMaintenance() {
       subtitle: "We couldn't complete your request.",
       body: parseFrappeError(error),
       color: 'red',
-      buttons: [{ label: 'Close', color: 'red' }],
+      buttons: [{ label: 'OK', color: 'red' }],
     });
   };
 
@@ -210,7 +210,7 @@ export function SourceMaintenance() {
       subtitle: '',
       body,
       color: 'green',
-      buttons: [{ label: 'Close', color: 'green' }],
+      buttons: [{ label: 'OK', color: 'green' }],
     });
   };
 

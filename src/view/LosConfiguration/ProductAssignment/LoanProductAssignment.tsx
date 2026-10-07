@@ -254,7 +254,7 @@ export function LoanProductAssignment() {
       subtitle: "",
       body,
       color: "green",
-      buttons: [{ label: "Close", color: "green" }],
+      buttons: [{ label: "OK", color: "green" }],
     });
   };
 const listParams = useMemo(
@@ -333,7 +333,7 @@ useEffect(() => {
         color: "red",
         buttons: [
           {
-            label: "Close",
+            label: "OK",
             color: "red",
           },
         ],

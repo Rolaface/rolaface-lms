@@ -92,7 +92,7 @@ export function LoanCollectionSequenceOrderModal({
       subtitle: "We couldn't complete your request.",
       body,
       color: "red",
-      buttons: [{ label: "Close", color: "red" }],
+      buttons: [{ label: "OK", color: "red" }],
     });
   };
 
