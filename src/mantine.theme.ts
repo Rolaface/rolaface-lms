@@ -409,7 +409,11 @@ export const mantineTheme = createTheme({
     },
 
     NumberInput: {
-      defaultProps: { radius: "lg", size: "xs" },
+      defaultProps: {
+        radius: "lg",
+        size: "xs",
+        allowedDecimalSeparators: ["."],
+      },
       styles: {
         input: {
           borderColor: "var(--mantine-color-slate-3)",
