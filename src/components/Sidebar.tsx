@@ -22,6 +22,7 @@ import {
   IconTrendingUp,
   IconFileOff,
   IconExchange,
+  IconMoneybagPlus,
   
 } from "@tabler/icons-react";
 import {
@@ -61,6 +62,9 @@ import {
   IconCreditCardRefund,
   IconCreditCardPay,
   IconChartLine,
+  IconPackage,
+  IconCircleDot,
+  IconHourglass,
 } from "@tabler/icons-react";
 import type { PermissionAction } from "../store/Permissionstore";
 import { usePermission } from "../hooks/Usepermission";
@@ -315,10 +319,10 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconUsers,
     matchPrefix: true,
      subItems: [
-      { path: "/investor/product", label: "Product", icon: IconBuildingBank, modules: ["Loan"] },
-      { path: "/investor/investments", label: "Investments", icon: IconReportAnalytics, modules: ["Loan"] },
-      { path: "/investor/earnings", label: "Earnings & Statement", icon: IconReportAnalytics, modules: ["Loan"] },
-      { path: "/investor/maturity", label: "Maturity", icon: IconReportAnalytics, modules: ["Loan"] },
+      { path: "/investor/product", label: "Product", icon: IconPackage, modules: ["Loan"] },
+      { path: "/investor/investments", label: "Investments", icon: IconCircleDot, modules: ["Loan"] },
+      { path: "/investor/earnings", label: "Earnings & Statement", icon: IconMoneybagPlus, modules: ["Loan"] },
+      { path: "/investor/maturity", label: "Maturity", icon: IconHourglass, modules: ["Loan"] },
       { path: "/investor/settings", label: "Settings", icon: IconSettings, modules: ["Loan"] },
      ],
    },

@@ -19,6 +19,7 @@ import {
   IconPercentage,
   IconChevronDown,
   IconMinus,
+  IconCircleDot,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@mantine/form";
@@ -258,7 +259,7 @@ export function InvestmentProductModal({
                 color: "var(--mantine-color-white)",
               }}
             >
-              <IconPackage size={19} />
+              <IconCircleDot size={19} />
             </ThemeIcon>
             <div className="min-w-0">
               <Text size="md" fw={700} c="white" className="leading-tight truncate">
