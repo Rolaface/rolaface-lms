@@ -21,6 +21,7 @@ import {
   IconPercentage,
   IconChevronDown,
   IconMinus,
+  IconCoins,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@mantine/form";
@@ -238,7 +239,7 @@ const headerTitle = editId ? (isView ? "View Collateral" : "Edit Collateral") : 
                 color: "var(--mantine-color-white)",
               }}
             >
-              <IconShieldLock size={19} />
+              <IconCoins size={19} />
             </ThemeIcon>
             <div className="min-w-0">
               <Text size="md" fw={700} c="white" className="leading-tight truncate">
