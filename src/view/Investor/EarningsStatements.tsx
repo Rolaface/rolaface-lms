@@ -26,6 +26,7 @@ import {
   IconFileText,
   IconEye,
   IconPencil,
+  IconMoneybagPlus,
 } from "@tabler/icons-react";
 import {
   useReactTable,
@@ -303,7 +304,7 @@ export function EarningsStatements() {
               justifyContent: "center",
             }}
           >
-            <IconFileText size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconMoneybagPlus size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>

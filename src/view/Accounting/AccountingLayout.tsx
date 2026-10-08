@@ -11,6 +11,7 @@ import {
   IconChartLine,
   IconScale,
   IconArrowsExchange,
+  IconMoneybag,
 } from "@tabler/icons-react";
 
 type AccountingTabConfig = RouteTabItem & {
@@ -32,7 +33,7 @@ const ACCOUNTING_TABS: AccountingTabConfig[] = [
   {
     path: "/accounting/trial-balance",
     label: "Trial Balance",
-    icon: IconReportAnalytics,
+    icon: IconScale,
     matchPrefix: true,
     moduleChecks: [{ module: "Account", action: "report" }],
   },
@@ -60,14 +61,14 @@ const ACCOUNTING_TABS: AccountingTabConfig[] = [
   {
     path: "/accounting/balance-sheet",
     label: "Balance Sheet",
-    icon: IconScale,
+    icon: IconReportAnalytics,
     matchPrefix: true,
     moduleChecks: [{ module: "Account", action: "report" }],
   },
   {
     path: "/accounting/cash-flow",
     label: "Cash Flow",
-    icon: IconArrowsExchange,
+    icon: IconMoneybag,
     matchPrefix: true,
     moduleChecks: [{ module: "Account", action: "report" }],
   },

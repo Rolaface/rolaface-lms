@@ -7,7 +7,8 @@ import {
   IconX, IconRestore, IconSearch, IconCalendarDue, IconCar, IconClipboardList,
   IconChevronDown, IconUserSearch, IconBuildingBank, IconMinus,
   IconChevronRight,
-  IconChevronLeft
+  IconChevronLeft,
+  IconExchange
 } from "@tabler/icons-react";
 import { DateInput } from "@mantine/dates";
 import { Modal } from "@mantine/core";
@@ -134,7 +135,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
         >
           <Group gap="sm">
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
-              <IconRestore size={16} />
+              <IconExchange size={16} />
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>

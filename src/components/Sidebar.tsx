@@ -20,7 +20,10 @@ import {
   IconReportMoney,
   IconCertificate,
   IconTrendingUp,
+  IconFileOff,
   IconExchange,
+  IconMoneybagPlus,
+  
 } from "@tabler/icons-react";
 import {
   Box,
@@ -55,7 +58,16 @@ import {
   IconArrowsExchange,
   IconReceipt,
   IconBox,
-  IconCoins, IconBrandProducthunt
+  IconCoins, IconBrandProducthunt,
+  IconCreditCardRefund,
+  IconCreditCardPay,
+  IconChartLine,
+  IconPackage,
+  IconCircleDot,
+  IconHourglass,
+  IconCategory,
+  IconMinus,
+  IconListNumbers,
 } from "@tabler/icons-react";
 import type { PermissionAction } from "../store/Permissionstore";
 import { usePermission } from "../hooks/Usepermission";
@@ -112,11 +124,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconSettings,
     matchPrefix: true,
     subItems: [
-      { path: "/setup/category", label: "Loan Category", icon: IconListDetails, modules: ["Loan Category"] },
-      { path: "/setup/classification", label: "Loan Classification", icon: IconFileText, modules: ["Loan Classification"] },
-      { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails, modules: ["Loan Demand Offset Order"] },
+      { path: "/setup/category", label: "Loan Category", icon: IconCategory, modules: ["Loan Category"] },
+      { path: "/setup/classification", label: "Loan Classification", icon: IconLayersLinked, modules: ["Loan Classification"] },
+      { path: "/setup/collection", label: "Collection Sequence", icon: IconListNumbers, modules: ["Loan Demand Offset Order"] },
       { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt, modules: ["Item"] },
-      { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank, modules: ["Loan Product"] },
+      { path: "/setup/product", label: "Loan Product", icon: IconBriefcase, modules: ["Loan Product"] },
       { path: "/setup/contract-templates", label: "Contract Templates", icon: IconFileText },
       { path: "/setup/map-products", label: "Map Loan Products", icon: IconLayersLinked },
       { path: "/setup/lending-configuration", label: "Lending Configuration", icon: IconSettings },
@@ -209,8 +221,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/operations/waiver", label: "Loan Waiver", icon: IconDiscount2, modules: ["Loan Repayment"] },
       { path: "/operations/capitalization", label: "Loan Capitalization", icon: IconTrendingUp, modules: ["Loan Repayment"] },
       { path: "/operations/restructure", label: "Loan Restructure", icon: IconExchange, modules: ["Loan Restructure"] },
-      { path: "/operations/writeoff", label: "Loan Write-Off", icon: IconFileText, modules: ["Loan Write Off"] },
-      { path: "/operations/transfer", label: "Loan Transfer", icon: IconBuildingBank, modules: ["Loan Transfer"] },
+      { path: "/operations/writeoff", label: "Loan Write-Off", icon: IconFileOff, modules: ["Loan Write Off"] },
+      { path: "/operations/transfer", label: "Loan Transfer", icon: IconArrowsExchange, modules: ["Loan Transfer"] },
     ],
   },
   {
@@ -257,21 +269,21 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       {
         path: "/accounting/receivable",
         label: "Receivable",
-        icon: IconUsers,
+        icon: IconCreditCardRefund,
         modules: ["Account"],
         action: "report",
       },
       {
         path: "/accounting/payable",
         label: "Payable",
-        icon: IconBuildingBank,
+        icon: IconCreditCardPay,
         modules: ["Account"],
         action: "report",
       },
       {
         path: "/accounting/profit-loss",
         label: "Profit & Loss",
-        icon: IconChartBar,
+        icon: IconChartLine,
         modules: ["Account"],
         action: "report",
       },
@@ -285,7 +297,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       {
         path: "/accounting/cash-flow",
         label: "Cash Flow",
-        icon: IconArrowsExchange,
+        icon: IconMoneybag,
         modules: ["Account"],
         action: "report",
       },
@@ -300,8 +312,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/reports/statement", label: "Loan Statement", icon: IconFileText, modules: ["Loan"] },
       { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics, modules: ["Loan"] },
       { path: "/reports/schedule", label: "Repayment Schedule", icon: IconFileText, modules: ["Loan"] },
-      { path: "/reports/disbursement", label: "Disbursement Report", icon: IconFileText, modules: ["Loan"] },
-      { path: "/reports/portfolio", label: "Loan Portfolio Report", icon: IconFileText, modules: ["Loan"] },
+      { path: "/reports/disbursement", label: "Disbursements", icon: IconFileText, modules: ["Loan"] },
+      { path: "/reports/portfolio", label: "Loan Portfolio", icon: IconFileText, modules: ["Loan"] },
     ],
   },
   {
@@ -310,10 +322,10 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconUsers,
     matchPrefix: true,
      subItems: [
-      { path: "/investor/product", label: "Product", icon: IconBuildingBank, modules: ["Loan"] },
-      { path: "/investor/investments", label: "Investments", icon: IconReportAnalytics, modules: ["Loan"] },
-      { path: "/investor/earnings", label: "Earnings & Statement", icon: IconReportAnalytics, modules: ["Loan"] },
-      { path: "/investor/maturity", label: "Maturity", icon: IconReportAnalytics, modules: ["Loan"] },
+      { path: "/investor/product", label: "Product", icon: IconPackage, modules: ["Loan"] },
+      { path: "/investor/investments", label: "Investments", icon: IconCircleDot, modules: ["Loan"] },
+      { path: "/investor/earnings", label: "Earnings & Statement", icon: IconMoneybagPlus, modules: ["Loan"] },
+      { path: "/investor/maturity", label: "Maturity", icon: IconHourglass, modules: ["Loan"] },
       { path: "/investor/settings", label: "Settings", icon: IconSettings, modules: ["Loan"] },
      ],
    },

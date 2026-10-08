@@ -654,7 +654,7 @@ export function LoanDisbursementModal({
                   color: "var(--mantine-color-white)",
                 }}
               >
-                <IconNote size={19} />
+                <IconCreditCard size={19} />
               </ThemeIcon>
               <div className="min-w-0">
                 <Text size="md" fw={700} c="white" className="leading-tight truncate">

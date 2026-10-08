@@ -24,6 +24,7 @@ import {
   IconChevronLeft,
   IconArrowRight,
   IconWallet,
+  IconTrendingUp,
   IconCalendarDue,
   IconChecklist,
   IconNotes,
@@ -546,7 +547,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
         >
           <Group gap="sm">
             <ThemeIcon radius="md" size={34} variant="white" color="brand">
-              <IconWallet size={16} />
+              <IconTrendingUp size={16} />
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white">
