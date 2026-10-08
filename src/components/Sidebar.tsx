@@ -22,6 +22,7 @@ import {
   IconTrendingUp,
   IconFileOff,
   IconExchange,
+  
 } from "@tabler/icons-react";
 import {
   Box,
@@ -211,7 +212,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/operations/capitalization", label: "Loan Capitalization", icon: IconTrendingUp, modules: ["Loan Repayment"] },
       { path: "/operations/restructure", label: "Loan Restructure", icon: IconExchange, modules: ["Loan Restructure"] },
       { path: "/operations/writeoff", label: "Loan Write-Off", icon: IconFileOff, modules: ["Loan Write Off"] },
-      { path: "/operations/transfer", label: "Loan Transfer", icon: IconBuildingBank, modules: ["Loan Transfer"] },
+      { path: "/operations/transfer", label: "Loan Transfer", icon: IconArrowsExchange, modules: ["Loan Transfer"] },
     ],
   },
   {
