@@ -65,6 +65,9 @@ import {
   IconPackage,
   IconCircleDot,
   IconHourglass,
+  IconCategory,
+  IconMinus,
+  IconListNumbers,
 } from "@tabler/icons-react";
 import type { PermissionAction } from "../store/Permissionstore";
 import { usePermission } from "../hooks/Usepermission";
@@ -121,11 +124,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
     icon: IconSettings,
     matchPrefix: true,
     subItems: [
-      { path: "/setup/category", label: "Loan Category", icon: IconListDetails, modules: ["Loan Category"] },
-      { path: "/setup/classification", label: "Loan Classification", icon: IconFileText, modules: ["Loan Classification"] },
-      { path: "/setup/collection", label: "Collection Sequence", icon: IconListDetails, modules: ["Loan Demand Offset Order"] },
+      { path: "/setup/category", label: "Loan Category", icon: IconCategory, modules: ["Loan Category"] },
+      { path: "/setup/classification", label: "Loan Classification", icon: IconLayersLinked, modules: ["Loan Classification"] },
+      { path: "/setup/collection", label: "Collection Sequence", icon: IconListNumbers, modules: ["Loan Demand Offset Order"] },
       { path: "/setup/fees", label: "Fee and Charges", icon: IconReceipt, modules: ["Item"] },
-      { path: "/setup/product", label: "Loan Product", icon: IconBuildingBank, modules: ["Loan Product"] },
+      { path: "/setup/product", label: "Loan Product", icon: IconBriefcase, modules: ["Loan Product"] },
       { path: "/setup/contract-templates", label: "Contract Templates", icon: IconFileText },
       { path: "/setup/map-products", label: "Map Loan Products", icon: IconLayersLinked },
       { path: "/setup/lending-configuration", label: "Lending Configuration", icon: IconSettings },
@@ -309,8 +312,8 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/reports/statement", label: "Loan Statement", icon: IconFileText, modules: ["Loan"] },
       { path: "/reports/arrears", label: "Arrear Reports", icon: IconReportAnalytics, modules: ["Loan"] },
       { path: "/reports/schedule", label: "Repayment Schedule", icon: IconFileText, modules: ["Loan"] },
-      { path: "/reports/disbursement", label: "Disbursement Report", icon: IconFileText, modules: ["Loan"] },
-      { path: "/reports/portfolio", label: "Loan Portfolio Report", icon: IconFileText, modules: ["Loan"] },
+      { path: "/reports/disbursement", label: "Disbursements", icon: IconFileText, modules: ["Loan"] },
+      { path: "/reports/portfolio", label: "Loan Portfolio", icon: IconFileText, modules: ["Loan"] },
     ],
   },
   {
