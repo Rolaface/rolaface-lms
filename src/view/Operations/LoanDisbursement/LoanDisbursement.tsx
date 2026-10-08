@@ -26,6 +26,7 @@ import {
   IconCashBanknote,
   IconTrash,
   IconDotsVertical,
+  IconCreditCard,
 } from '@tabler/icons-react';
 import { usePermission } from '../../../hooks/Usepermission';
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
@@ -542,7 +543,7 @@ export function LoanDisbursement() {
               justifyContent: 'center',
             }}
           >
-            <IconCashBanknote size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconCreditCard size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
