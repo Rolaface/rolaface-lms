@@ -38,15 +38,22 @@ import {
 // If you have a Modal component, import it here:
 // import { LoanDemandOffsetModal } from '../../../components/Modal/LoanDemandOffsetModal';
 
-const DUMMY_OFFSETS = [
+export interface OffsetRow {
+  id: number;
+  name: string;
+  components: string;
+  status: string;
+}
+
+const DUMMY_OFFSETS: OffsetRow[] = [
   { id: 1, name: 'Standard Collection', components: 'Principal, Interest', status: 'ACTIVE' },
   { id: 2, name: 'Penalty First Offset', components: 'Penalty, Interest, Principal', status: 'ACTIVE' },
   { id: 3, name: 'NPA Recovery Offset', components: 'Charges, Principal', status: 'INACTIVE' },
 ];
 
-const columnHelper = createColumnHelper();
+const columnHelper = createColumnHelper<OffsetRow>();
 
-function SortIcon({ sorted }) {
+function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   if (sorted === 'asc') return <IconChevronUp size={12} />;
   if (sorted === 'desc') return <IconChevronDown size={12} />;
   return <IconSelector size={12} className="opacity-40" />;
@@ -63,13 +70,13 @@ export function LoanDemandOffset() {
   const [status, setStatus] = useState('all');
 
   // table state
-  const [sorting, setSorting] = useState([{ id: 'name', desc: false }]);
+  const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([{ id: 'name', desc: false }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
   // local status map so the switch can optimistically update without a backend
-  const [statusOverrides, setStatusOverrides] = useState({});
+  const [statusOverrides, setStatusOverrides] = useState<Record<number, string>>({});
 
-  const data = useMemo(
+  const data = useMemo<OffsetRow[]>(
     () =>
       DUMMY_OFFSETS.map((o) => ({
         ...o,
@@ -91,7 +98,7 @@ export function LoanDemandOffset() {
     });
   }, [data, search, status]);
 
-  const toggleStatus = (id, currentStatus) => {
+  const toggleStatus = (id: number, currentStatus: string) => {
     setStatusOverrides((prev) => ({
       ...prev,
       [id]: currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
@@ -151,7 +158,7 @@ export function LoanDemandOffset() {
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} withArrow>
+              <Tooltip label={row.status === 'ACTIVE' ? 'Mark as Inactive' : 'Mark as Active'} withArrow>
                 <Switch
                   size="xs"
                   color="green"

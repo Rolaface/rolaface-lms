@@ -226,8 +226,8 @@ const categoryOptions = useMemo(() => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanProducts"] });
       showSuccess(
-        "Product Deactivated",
-        "Loan product has been deactivated successfully.",
+        "Product Marked Inactive",
+        "Loan product has been marked inactive successfully.",
       );
     },
     onError: (error: any) => showError("Status Update Failed", error),
@@ -257,15 +257,15 @@ const categoryOptions = useMemo(() => {
   }, [productsResponse]);
 
   const toggleStatus = (row: NormalizedProduct) => {
-    const willDeactivate = row.status === "ACTIVE";
+    const willMakeInactive = row.status === "ACTIVE";
     openCommonModal({
-      heading: willDeactivate
-        ? "Deactivate Loan Product"
+      heading: willMakeInactive
+        ? "Mark Loan Product Inactive"
         : "Activate Loan Product",
       subtitle: "Please confirm this action before continuing.",
       body: (
         <>
-          Are you sure you want to {willDeactivate ? "deactivate" : "activate"}{" "}
+          Are you sure you want to {willMakeInactive ? "mark inactive" : "activate"}{" "}
           loan product{" "}
           <Text span fw={600}>
             {row.name}
@@ -273,14 +273,14 @@ const categoryOptions = useMemo(() => {
           ?
         </>
       ),
-      color: willDeactivate ? "red" : "green",
+      color: willMakeInactive ? "red" : "green",
       buttons: [
         { label: "Cancel", variant: "default" },
         {
-          label: willDeactivate ? "Deactivate" : "Activate",
-          color: willDeactivate ? "red" : "green",
+          label: willMakeInactive ? "Mark Inactive" : "Activate",
+          color: willMakeInactive ? "red" : "green",
           onClick: () =>
-            willDeactivate ? disableItem(row.id) : enableItem(row.id),
+            willMakeInactive ? disableItem(row.id) : enableItem(row.id),
         },
       ],
     });
@@ -425,7 +425,7 @@ const categoryOptions = useMemo(() => {
               )}
               {canWriteLoan && (
                 <Tooltip
-                  label={row.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                  label={row.status === "ACTIVE" ? "Mark as Inactive" : "Activate"}
                   withArrow
                 >
                   <Switch
