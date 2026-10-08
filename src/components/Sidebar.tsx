@@ -57,7 +57,10 @@ import {
   IconArrowsExchange,
   IconReceipt,
   IconBox,
-  IconCoins, IconBrandProducthunt
+  IconCoins, IconBrandProducthunt,
+  IconCreditCardRefund,
+  IconCreditCardPay,
+  IconChartLine,
 } from "@tabler/icons-react";
 import type { PermissionAction } from "../store/Permissionstore";
 import { usePermission } from "../hooks/Usepermission";
@@ -259,21 +262,21 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       {
         path: "/accounting/receivable",
         label: "Receivable",
-        icon: IconUsers,
+        icon: IconCreditCardRefund,
         modules: ["Account"],
         action: "report",
       },
       {
         path: "/accounting/payable",
         label: "Payable",
-        icon: IconBuildingBank,
+        icon: IconCreditCardPay,
         modules: ["Account"],
         action: "report",
       },
       {
         path: "/accounting/profit-loss",
         label: "Profit & Loss",
-        icon: IconChartBar,
+        icon: IconChartLine,
         modules: ["Account"],
         action: "report",
       },
@@ -287,7 +290,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       {
         path: "/accounting/cash-flow",
         label: "Cash Flow",
-        icon: IconArrowsExchange,
+        icon: IconMoneybag,
         modules: ["Account"],
         action: "report",
       },
