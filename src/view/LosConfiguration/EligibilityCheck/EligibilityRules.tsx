@@ -161,7 +161,7 @@ const statusMutation = useMutation({
   onSuccess: (_, { rule, status }) => {
     queryClient.invalidateQueries({ queryKey: ["eligibility-rules"] });
     showSuccess(
-      status === "Active" ? "Rule Activated" : "Rule Deactivated",
+      status === "Active" ? "Rule Activated" : "Rule Marked Inactive",
       `Eligibility rule "${rule.rule_name}" is now ${status === "Active" ? "active" : "inactive"}.`,
     );
   },
@@ -181,7 +181,7 @@ const confirmStatus = (rule: EligibilityRuleListItem, status: "Active" | "Inacti
   const target = activating ? rule.draft_id ?? rule.name : rule.name;
   const product = rule.product_name || rule.loan_product;
   openCommonModal({
-    heading: activating ? (rule.draft_id ? "Activate Draft" : "Activate Rule") : "Deactivate Rule",
+    heading: activating ? (rule.draft_id ? "Activate Draft" : "Activate Rule") : "Mark Rule as Inactive",
     subtitle: "",
     body: activating ? (
       <>
@@ -194,11 +194,11 @@ const confirmStatus = (rule: EligibilityRuleListItem, status: "Active" | "Inacti
       </>
     ) : (
       <>
-        Deactivate{" "}
+        Mark{" "}
         <Text span fw={600}>
           {rule.rule_name}
         </Text>{" "}
-        ({formatVersion(rule.version)})? Applications for {product} will have no active eligibility rule until one is
+        ({formatVersion(rule.version)}) as inactive? Applications for {product} will have no active eligibility rule until one is
         activated.
       </>
     ),
@@ -206,7 +206,7 @@ const confirmStatus = (rule: EligibilityRuleListItem, status: "Active" | "Inacti
     buttons: [
       { label: "Cancel", variant: "default" },
       {
-        label: activating ? "Activate" : "Deactivate",
+        label: activating ? "Activate" : "Mark as Inactive",
         color: activating ? "blue" : "orange",
         onClick: () => statusMutation.mutate({ rule, id: target, status }),
       },
@@ -334,7 +334,7 @@ const confirmStatus = (rule: EligibilityRuleListItem, status: "Active" | "Inacti
                               leftSection={<IconPlayerPause size={14} />}
                               onClick={() => confirmStatus(r, "Inactive")}
                             >
-                              Deactivate
+                              Mark as Inactive
                             </Menu.Item>
                           )}
                         </Menu.Dropdown>

@@ -212,8 +212,8 @@ export function LoanCategory() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['loanCategories'] });
       showSuccess(
-        variables.disabled === 1 ? 'Category Deactivated' : 'Category Activated',
-        `Loan category has been ${variables.disabled === 1 ? 'deactivated' : 'activated'} successfully.`
+        variables.disabled === 1 ? 'Category Marked Inactive' : 'Category Activated',
+        `Loan category has been ${variables.disabled === 1 ? 'marked inactive' : 'activated'} successfully.`
       );
     },
     onError: (error: any) => showError('Status Update Failed', error),
@@ -236,11 +236,11 @@ export function LoanCategory() {
   const toggleStatus = (row: LoanCategoryRow) => {
     const nextDisabled = row.status === 'ACTIVE' ? 1 : 0;
     openCommonModal({
-      heading: nextDisabled === 1 ? 'Deactivate Loan Category' : 'Activate Loan Category',
+      heading: nextDisabled === 1 ? 'Mark Loan Category Inactive' : 'Activate Loan Category',
       subtitle: 'Please confirm this action before continuing.',
       body: (
         <>
-          Are you sure you want to {nextDisabled === 1 ? 'deactivate' : 'activate'} loan category{' '}
+          Are you sure you want to {nextDisabled === 1 ? 'mark inactive' : 'activate'} loan category{' '}
           <Text span fw={600}>
             {row.name}
           </Text>
@@ -251,7 +251,7 @@ export function LoanCategory() {
       buttons: [
         { label: 'Cancel', variant: 'default' },
         {
-          label: nextDisabled === 1 ? 'Deactivate' : 'Activate',
+          label: nextDisabled === 1 ? 'Mark Inactive' : 'Activate',
           color: nextDisabled === 1 ? 'red' : 'green',
           onClick: () => {
             enableDisableMutation.mutate({ name: row.id, disabled: nextDisabled });
@@ -371,7 +371,7 @@ export function LoanCategory() {
                 </Tooltip>
               )}
               {canWriteLoan && (
-                <Tooltip label={row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} withArrow>
+                <Tooltip label={row.status === 'ACTIVE' ? 'Mark as Inactive' : 'Mark as Active'} withArrow>
                   <Switch
                     size="xs"
                     color="success"

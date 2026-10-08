@@ -209,7 +209,7 @@ const confirmStatusChange = ({
   onConfirm: () => void;
 }) =>
   openCommonModal({
-    heading: activating ? "Activate Rule Set" : "Deactivate Rule Set",
+    heading: activating ? "Activate Rule Set" : "Mark Rule Set as Inactive",
     subtitle: "",
     body: activating ? (
       <>
@@ -222,17 +222,17 @@ const confirmStatusChange = ({
       </>
     ) : (
       <>
-        Deactivate{" "}
+        Mark{" "}
         <Text span fw={600}>
           {name}
         </Text>{" "}
-        ({versionLabel})? New {product} applications will not be pre-screened until a rule set is activated.
+        ({versionLabel}) as inactive? New {product} applications will not be pre-screened until a rule set is activated.
       </>
     ),
     color: activating ? "blue" : "orange",
     buttons: [
       { label: "Cancel", variant: "default" },
-      { label: activating ? "Activate" : "Deactivate", color: activating ? "blue" : "orange", onClick: onConfirm },
+      { label: activating ? "Activate" : "Mark as Inactive", color: activating ? "blue" : "orange", onClick: onConfirm },
     ],
   });
 
@@ -333,12 +333,12 @@ function RuleSetList({
         try {
           await setStatus(activating ? r.draftId ?? r.id : r.id, activating ? "Active" : "Inactive");
           showSuccess(
-            activating ? "Rule Set Activated" : "Rule Set Deactivated",
+            activating ? "Rule Set Activated" : "Rule Set Marked Inactive",
             `Rule set "${r.name}" is now ${activating ? "active" : "inactive"}.`,
           );
           fetchRuleSets();
         } catch (err: any) {
-          showError(activating ? "Activation Failed" : "Deactivation Failed", err);
+          showError(activating ? "Activation Failed" : "Action Failed", err);
         } finally {
           setBusyId(null);
         }
@@ -487,7 +487,7 @@ function RuleSetList({
                             )}
                             {r.status === "Active" && (
                               <Menu.Item color="orange" leftSection={<IconPlayerPause size={14} />} onClick={() => changeStatus(r, false)}>
-                                Deactivate
+                                Mark as Inactive
                               </Menu.Item>
                             )}
                             {r.draftId && r.draftId !== r.id && (
@@ -780,14 +780,14 @@ function RuleSetDetail({
           }
           const result = unwrap(await setStatus(id, activating ? "Active" : "Inactive"));
           showSuccess(
-            activating ? "Rule Set Activated" : "Rule Set Deactivated",
+            activating ? "Rule Set Activated" : "Rule Set Marked Inactive",
             activating
               ? `Version ${result?.version ?? ""} of "${ruleSet.name}" is now active.`
               : `"${ruleSet.name}" is now inactive.`,
           );
           await onReload(id);
         } catch (err: any) {
-          showError(activating ? "Activation Failed" : "Deactivation Failed", err);
+          showError(activating ? "Activation Failed" : "Action Failed", err);
         } finally {
           setBusy(null);
         }
@@ -847,7 +847,7 @@ function RuleSetDetail({
                   disabled={busy !== null}
                   onClick={() => changeStatus(false)}
                 >
-                  Deactivate
+                  Mark as Inactive
                 </Button>
               ) : (
                 <Tooltip label={v.ok ? "" : "Complete the items under “Before you activate” first"} disabled={v.ok} withArrow>
