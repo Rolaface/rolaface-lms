@@ -315,13 +315,13 @@ export function Dashboard() {
         </SimpleGrid>
 
         {/* Main Analytics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.1fr_1.1fr_2.4fr_1.6fr] gap-3.5 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.25fr_1.25fr_2.1fr_1.4fr] gap-3.5 items-stretch">
           {/* Card 1: Collection Efficiency Rate */}
           <PanelCard title="Collection Efficiency" info loading={status.loadingCharts}>
-            <div className="flex-1 flex flex-col justify-between py-1">
-              <div className="flex flex-col items-center justify-center my-auto py-2">
+            <div className="flex-1 flex flex-col justify-between h-full min-h-0 py-1">
+              <div className="flex-1 flex flex-col items-center justify-center my-auto py-2">
                 <RingProgress
-                  size={145}
+                  size={140}
                   thickness={12}
                   roundCaps
                   sections={[{ value: Math.min(100, eff?.rate_pct || 0), color: "brand.6" }]}
@@ -330,7 +330,7 @@ export function Dashboard() {
                       <Text fw={800} size="xl" className="text-slate-900 leading-tight">
                         {(eff?.rate_pct || 0).toFixed(2)}%
                       </Text>
-                      <Text size="10px" c="dimmed" fw={600} tt="uppercase" mt={2}>
+                      <Text size="10px" c="dimmed" fw={600} tt="uppercase" mt={1}>
                         Efficiency
                       </Text>
                     </div>
@@ -339,30 +339,29 @@ export function Dashboard() {
               </div>
 
               <div className="w-full flex flex-col gap-2 pt-3 border-t border-slate-100 mt-auto">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-emerald-50/70 rounded-lg p-2.5 border border-emerald-100/80">
-                    <Text size="10px" fw={700} c="green.8" tt="uppercase" className="tracking-wide">
-                      Collected
-                    </Text>
-                    <Text fw={800} size="xs" className="text-slate-900 mt-1 truncate">
-                      {renderSmartCurrency(eff?.collected || 0)}
-                    </Text>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-200/70">
-                    <Text size="10px" fw={700} c="dimmed" tt="uppercase" className="tracking-wide">
-                      Demand
-                    </Text>
-                    <Text fw={800} size="xs" className="text-slate-800 mt-1 truncate">
-                      {renderSmartCurrency(eff?.demand || 0)}
-                    </Text>
-                  </div>
+                <div className="bg-emerald-50/70 rounded-lg px-3 py-2 border border-emerald-100/80 flex justify-between items-center">
+                  <Text size="11px" fw={600} c="green.8">
+                    Collected
+                  </Text>
+                  <Text size="12px" fw={700} className="text-emerald-950 font-mono whitespace-nowrap">
+                    {renderSmartCurrency(eff?.collected || 0)}
+                  </Text>
                 </div>
 
-                <div className="bg-amber-50/60 rounded-lg px-2.5 py-1.5 border border-amber-100/70 flex justify-between items-center">
-                  <Text size="10.5px" fw={600} c="gold.8">
+                <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200/70 flex justify-between items-center">
+                  <Text size="11px" fw={600} c="dimmed">
+                    Demand
+                  </Text>
+                  <Text size="12px" fw={700} className="text-slate-800 font-mono whitespace-nowrap">
+                    {renderSmartCurrency(eff?.demand || 0)}
+                  </Text>
+                </div>
+
+                <div className="bg-amber-50/60 rounded-lg px-3 py-2 border border-amber-100/70 flex justify-between items-center">
+                  <Text size="11px" fw={600} c="gold.8">
                     Outstanding
                   </Text>
-                  <Text size="11.5px" fw={700} className="text-amber-900 font-mono">
+                  <Text size="12px" fw={700} className="text-amber-900 font-mono whitespace-nowrap">
                     {renderSmartCurrency(eff?.outstanding || 0)}
                   </Text>
                 </div>
@@ -372,23 +371,23 @@ export function Dashboard() {
 
           {/* Card 2: NPA (Non-Performing Assets) */}
           <PanelCard title="Non-Performing Assets" info loading={status.loadingCharts}>
-            <div className="flex-1 flex flex-col justify-between gap-3 py-1">
+            <div className="flex-1 flex flex-col justify-between gap-3 h-full min-h-0 py-1">
               {/* Gross NPA Box */}
-              <div className="flex-1 bg-rose-50/50 rounded-xl p-3 border border-rose-100 flex flex-col justify-between">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <Text size="10.5px" fw={700} c="danger.8" tt="uppercase" className="tracking-wider">
+              <div className="flex-1 bg-rose-50/50 rounded-xl p-3 border border-rose-100 flex flex-col justify-between min-h-0">
+                <div>
+                  <div className="flex justify-between items-center">
+                    <Text size="11px" fw={700} c="danger.8" tt="uppercase" className="tracking-wider">
                       Gross NPA
                     </Text>
-                    <Text fw={800} size="xl" className="text-slate-900 leading-tight mt-0.5">
-                      {(npa?.gross_npa_pct || 0).toFixed(2)}%
-                    </Text>
+                    <span className="text-[11.5px] font-bold font-mono text-rose-800 bg-rose-100/80 px-2.5 py-0.5 rounded leading-none whitespace-nowrap">
+                      {renderSmartCurrency(npa?.gross_npa_amount || 0)}
+                    </span>
                   </div>
-                  <Badge size="sm" variant="light" color="danger" radius="sm">
-                    {renderSmartCurrency(npa?.gross_npa_amount || 0)}
-                  </Badge>
+                  <Text fw={800} size="xl" className="text-slate-900 leading-tight mt-1.5">
+                    {(npa?.gross_npa_pct || 0).toFixed(2)}%
+                  </Text>
                 </div>
-                <div className="w-full h-11 mt-2">
+                <div className="w-full flex-1 min-h-[46px] mt-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={GROSS_NPA_TREND}>
                       <defs>
@@ -404,21 +403,21 @@ export function Dashboard() {
               </div>
 
               {/* Net NPA Box */}
-              <div className="flex-1 bg-amber-50/50 rounded-xl p-3 border border-amber-100 flex flex-col justify-between">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <Text size="10.5px" fw={700} c="gold.8" tt="uppercase" className="tracking-wider">
+              <div className="flex-1 bg-amber-50/50 rounded-xl p-3 border border-amber-100 flex flex-col justify-between min-h-0">
+                <div>
+                  <div className="flex justify-between items-center">
+                    <Text size="11px" fw={700} c="gold.8" tt="uppercase" className="tracking-wider">
                       Net NPA
                     </Text>
-                    <Text fw={800} size="xl" className="text-slate-900 leading-tight mt-0.5">
-                      {(npa?.net_npa_pct || 0).toFixed(2)}%
-                    </Text>
+                    <span className="text-[11.5px] font-bold font-mono text-amber-900 bg-amber-100/80 px-2.5 py-0.5 rounded leading-none whitespace-nowrap">
+                      {renderSmartCurrency(npa?.net_npa_amount || 0)}
+                    </span>
                   </div>
-                  <Badge size="sm" variant="light" color="gold" radius="sm">
-                    {renderSmartCurrency(npa?.net_npa_amount || 0)}
-                  </Badge>
+                  <Text fw={800} size="xl" className="text-slate-900 leading-tight mt-1.5">
+                    {(npa?.net_npa_pct || 0).toFixed(2)}%
+                  </Text>
                 </div>
-                <div className="w-full h-11 mt-2">
+                <div className="w-full flex-1 min-h-[46px] mt-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={NET_NPA_TREND}>
                       <defs>
@@ -453,7 +452,7 @@ export function Dashboard() {
             <div className="relative flex-1 min-h-[260px] w-full">
               <div className="absolute inset-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={TREND} margin={{ top: 10, right: 15, left: 15, bottom: 5 }}>
+                  <AreaChart data={TREND} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
                     <defs>
                       <linearGradient id="disbGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={cv("brand", 6)} stopOpacity={0.22} />
@@ -473,11 +472,31 @@ export function Dashboard() {
                       dy={5}
                     />
                     <YAxis
-                      tickFormatter={(v) => renderSmartCurrency(v)}
-                      tick={{ fontSize: 10.5, fill: "#64748B" }}
+                      tick={(props: any) => {
+                        const { x, y, payload } = props;
+                        const num = Number(payload.value);
+                        let text = `${currencyCode} 0`;
+                        if (num > 0) {
+                          const m = Math.round(num / 1_000_000);
+                          text = `${currencyCode} ${m.toLocaleString()}M`;
+                        }
+                        return (
+                          <text
+                            x={x}
+                            y={y}
+                            dy={3}
+                            textAnchor="end"
+                            fontSize={10}
+                            fill="#64748B"
+                            fontWeight={500}
+                          >
+                            {text}
+                          </text>
+                        );
+                      }}
                       axisLine={false}
                       tickLine={false}
-                      width={88}
+                      width={86}
                     />
                     <RTooltip
                       formatter={(v: number, name: string) => [
