@@ -133,14 +133,14 @@ function PanelCard({
       withBorder
       radius="lg"
       p="md"
-      className="bg-white border-slate-200/90 shadow-[0_1px_3px_rgba(15,23,42,0.04)] relative overflow-hidden flex flex-col justify-between"
+      className="bg-white border-slate-200/90 shadow-[0_1px_3px_rgba(15,23,42,0.04)] relative overflow-hidden flex flex-col h-full"
     >
       {loading && (
         <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center rounded-lg">
           <Loader size="sm" color="brand" />
         </div>
       )}
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex justify-between items-center mb-2.5">
         <Group gap={6}>
           <Text size="13.5px" fw={700} className="text-slate-800 tracking-tight">
             {title}
@@ -153,7 +153,9 @@ function PanelCard({
         </Group>
         {rightSection}
       </div>
-      {children}
+      <div className="flex-1 flex flex-col min-h-0">
+        {children}
+      </div>
     </Paper>
   );
 }
@@ -318,19 +320,19 @@ export function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.25fr_1.25fr_2.1fr_1.4fr] gap-3.5 items-stretch">
           {/* Card 1: Collection Efficiency Rate */}
           <PanelCard title="Collection Efficiency" info loading={status.loadingCharts}>
-            <div className="flex flex-col justify-between flex-1 gap-2">
-              <div className="flex flex-col items-center justify-center py-1">
+            <div className="flex-1 flex flex-col justify-between">
+              <div className="flex flex-col items-center justify-center py-0.5">
                 <RingProgress
-                  size={118}
-                  thickness={10}
+                  size={102}
+                  thickness={9}
                   roundCaps
                   sections={[{ value: Math.min(100, eff?.rate_pct || 0), color: "brand.6" }]}
                   label={
                     <div className="text-center">
-                      <Text fw={800} size="md" className="text-slate-900 leading-tight">
+                      <Text fw={800} size="sm" className="text-slate-900 leading-tight">
                         {(eff?.rate_pct || 0).toFixed(2)}%
                       </Text>
-                      <Text size="9px" c="dimmed" fw={600} tt="uppercase" mt={1}>
+                      <Text size="8.5px" c="dimmed" fw={600} tt="uppercase" mt={0.5}>
                         Efficiency
                       </Text>
                     </div>
@@ -338,30 +340,30 @@ export function Dashboard() {
                 />
               </div>
 
-              <div className="w-full flex flex-col gap-1.5 pt-1.5 border-t border-slate-100">
-                <div className="bg-emerald-50/70 rounded-lg px-2.5 py-1.5 border border-emerald-100/80 flex justify-between items-center">
+              <div className="w-full flex flex-col gap-1.5 pt-1.5 border-t border-slate-100 mt-auto">
+                <div className="bg-emerald-50/70 rounded-lg px-2.5 py-1 border border-emerald-100/80 flex justify-between items-center">
                   <Text size="10.5px" fw={600} c="green.8">
                     Collected
                   </Text>
-                  <Text size="11.5px" fw={700} className="text-emerald-950 font-mono whitespace-nowrap">
+                  <Text size="11px" fw={700} className="text-emerald-950 font-mono whitespace-nowrap">
                     {renderSmartCurrency(eff?.collected || 0)}
                   </Text>
                 </div>
 
-                <div className="bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-200/70 flex justify-between items-center">
+                <div className="bg-slate-50 rounded-lg px-2.5 py-1 border border-slate-200/70 flex justify-between items-center">
                   <Text size="10.5px" fw={600} c="dimmed">
                     Demand
                   </Text>
-                  <Text size="11.5px" fw={700} className="text-slate-800 font-mono whitespace-nowrap">
+                  <Text size="11px" fw={700} className="text-slate-800 font-mono whitespace-nowrap">
                     {renderSmartCurrency(eff?.demand || 0)}
                   </Text>
                 </div>
 
-                <div className="bg-amber-50/60 rounded-lg px-2.5 py-1.5 border border-amber-100/70 flex justify-between items-center">
+                <div className="bg-amber-50/60 rounded-lg px-2.5 py-1 border border-amber-100/70 flex justify-between items-center">
                   <Text size="10.5px" fw={600} c="gold.8">
                     Outstanding
                   </Text>
-                  <Text size="11.5px" fw={700} className="text-amber-900 font-mono whitespace-nowrap">
+                  <Text size="11px" fw={700} className="text-amber-900 font-mono whitespace-nowrap">
                     {renderSmartCurrency(eff?.outstanding || 0)}
                   </Text>
                 </div>
@@ -371,9 +373,9 @@ export function Dashboard() {
 
           {/* Card 2: NPA (Non-Performing Assets) */}
           <PanelCard title="Non-Performing Assets" info loading={status.loadingCharts}>
-            <div className="flex flex-col justify-between flex-1 gap-2">
+            <div className="flex-1 flex flex-col justify-between gap-2.5">
               {/* Gross NPA Box */}
-              <div className="bg-rose-50/50 rounded-xl p-2.5 border border-rose-100 flex flex-col justify-between">
+              <div className="flex-1 bg-rose-50/50 rounded-xl px-2.5 py-2 border border-rose-100 flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-center">
                     <Text size="10.5px" fw={700} c="danger.8" tt="uppercase" className="tracking-wider">
@@ -383,11 +385,11 @@ export function Dashboard() {
                       {renderSmartCurrency(npa?.gross_npa_amount || 0)}
                     </span>
                   </div>
-                  <Text fw={800} size="md" className="text-slate-900 leading-tight mt-0.5">
+                  <Text fw={800} size="sm" className="text-slate-900 leading-tight mt-0.5">
                     {(npa?.gross_npa_pct || 0).toFixed(2)}%
                   </Text>
                 </div>
-                <div className="w-full h-8 mt-1">
+                <div className="w-full h-7 mt-0.5">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={GROSS_NPA_TREND}>
                       <defs>
@@ -403,7 +405,7 @@ export function Dashboard() {
               </div>
 
               {/* Net NPA Box */}
-              <div className="bg-amber-50/50 rounded-xl p-2.5 border border-amber-100 flex flex-col justify-between">
+              <div className="flex-1 bg-amber-50/50 rounded-xl px-2.5 py-2 border border-amber-100 flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-center">
                     <Text size="10.5px" fw={700} c="gold.8" tt="uppercase" className="tracking-wider">
@@ -413,11 +415,11 @@ export function Dashboard() {
                       {renderSmartCurrency(npa?.net_npa_amount || 0)}
                     </span>
                   </div>
-                  <Text fw={800} size="md" className="text-slate-900 leading-tight mt-0.5">
+                  <Text fw={800} size="sm" className="text-slate-900 leading-tight mt-0.5">
                     {(npa?.net_npa_pct || 0).toFixed(2)}%
                   </Text>
                 </div>
-                <div className="w-full h-8 mt-1">
+                <div className="w-full h-7 mt-0.5">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={NET_NPA_TREND}>
                       <defs>
@@ -449,9 +451,9 @@ export function Dashboard() {
               </div>
             }
           >
-            <div className="w-full h-[215px]">
+            <div className="w-full h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={TREND} margin={{ top: 10, right: 10, left: 0, bottom: 15 }}>
+                <AreaChart data={TREND} margin={{ top: 8, right: 10, left: 0, bottom: 8 }}>
                   <defs>
                     <linearGradient id="disbGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor={cv("brand", 6)} stopOpacity={0.22} />
@@ -550,7 +552,7 @@ export function Dashboard() {
               </Text>
             }
           >
-            <div className="flex flex-col justify-between flex-1">
+            <div className="flex-1 flex flex-col justify-between">
               <div className="flex flex-col gap-1.5">
                 {classifications.length === 0 ? (
                   <Text size="xs" c="dimmed" ta="center" py="md">
@@ -592,11 +594,11 @@ export function Dashboard() {
               </div>
 
               {/* Total Portfolio Footer */}
-              <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center">
+              <div className="mt-auto pt-2 border-t border-slate-100 flex justify-between items-center">
                 <Text size="10.5px" fw={700} c="dimmed" tt="uppercase">
                   Total Portfolio
                 </Text>
-                <Text size="12.5px" fw={800} className="text-slate-900 font-mono">
+                <Text size="12px" fw={800} className="text-slate-900 font-mono">
                   {renderSmartCurrency(totalPortfolio)}
                 </Text>
               </div>
