@@ -71,7 +71,11 @@ export async function getAllLoanRepayment(params: GetAllLoanRepaymentParams = {}
 }
 
 export async function updateLoanRepayment({ id, payload }: { id: string; payload: Partial<LoanRepaymentPayload> }) {
-  const { data } = await apiClient.put(API.loanRepayment.updateLoanRepay, { ...payload, id });
+  const { data } = await apiClient.put(
+    API.loanRepayment.updateLoanRepay,
+    { ...payload, id, name: id },
+    { params: { id, name: id } }
+  );
   return data;
 }
 

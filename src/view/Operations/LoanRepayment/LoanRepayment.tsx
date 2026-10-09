@@ -198,6 +198,7 @@ export function LoanRepayment() {
     mutationFn: (id: string) => deleteLoanRepayment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+      queryClient.refetchQueries({ queryKey: ['loanRepayments'] });
       showSuccess('Repayment Deleted', 'Loan repayment deleted successfully.');
     },
     onError: (error: any) => showError('Delete Failed', error),
@@ -208,6 +209,7 @@ export function LoanRepayment() {
       changeLoanRepaymentStatus(id, action),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['loanRepayments'] });
+      queryClient.refetchQueries({ queryKey: ['loanRepayments'] });
       const message =
         variables.action === 'approved'
           ? 'Loan repayment approved successfully.'

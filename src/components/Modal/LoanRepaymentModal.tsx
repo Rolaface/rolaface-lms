@@ -153,11 +153,19 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
     },
   });
 
-  const { data: editDetailsResponse, isLoading: isEditLoading } = useQuery({
+  const { data: editDetailsResponse, isLoading: isEditLoading, refetch } = useQuery({
     queryKey: ["loanRepayment", editId],
     queryFn: () => getLoanRepaymentById(editId as string),
     enabled: opened && !!editId,
+    refetchOnMount: "always",
+    staleTime: 0,
   });
+
+  useEffect(() => {
+    if (editId && opened) {
+      refetch();
+    }
+  }, [editId, opened, refetch]);
 
   // ---------- ALERT HELPERS ----------
   const showError = (heading: string, error: any) => {
@@ -184,6 +192,8 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
     mutationFn: updateLoanRepayment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
+      queryClient.invalidateQueries({ queryKey: ["loanRepayment", editId] });
+      queryClient.refetchQueries({ queryKey: ["loanRepayments"] });
       showSuccess("Repayment Updated", "Loan repayment updated successfully.");
       handleReset();
       onClose();
@@ -256,14 +266,14 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
   const dues = duesResponse?.message;
 
   useEffect(() => {
-    if (!dues) return;
+    if (!dues || editId) return;
     if (
       form.values.natureOfPayment === "PAY_DUES" ||
       form.values.natureOfPayment === "FULL_SETTLEMENT"
     ) {
       form.setFieldValue("amountToPay", dues.payable_amount);
     }
-  }, [dues, form.values.natureOfPayment]);
+  }, [dues, form.values.natureOfPayment, editId]);
 
   const selectedLoan =
     selectedBorrower?.loans.find((l) => l.id === selectedLoanId) ?? null;
@@ -305,6 +315,7 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
     mutationFn: createLoanRepayment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
+      queryClient.refetchQueries({ queryKey: ["loanRepayments"] });
       showSuccess(
         "Repayment Processed",
         "Loan repayment processed successfully.",
