@@ -202,12 +202,21 @@ export interface InvestorEarningScheduleRow {
   status: InvestorEarningRowStatus | null;
   accrual_entry: string | null;
   payout_entry: string | null;
+  /** Schedule version this row belongs to (1, 2, …). */
+  version: number;
+}
+
+/** An earlier version of the repayment schedule (before an edit). */
+export interface InvestorScheduleVersion {
+  version: number;
+  rows: InvestorEarningScheduleRow[];
 }
 
 /** get_investor_earning_by_id data. */
 export interface InvestorEarning extends InvestorEarningDetails {
   id: string;
   status: InvestorFlowStatus;
+  fund_status: InvestorFundStatus;
   investor_id: string;
   /** Customer name. */
   investor: string;
@@ -217,14 +226,19 @@ export interface InvestorEarning extends InvestorEarningDetails {
   receive_entry: string | null;
   renewed_to: string | null;
   renewed_from: string | null;
+  /** Version of the current schedule (the highest one). */
+  schedule_version: number;
+  /** The current schedule (rows of the highest version). */
   schedule: InvestorEarningScheduleRow[];
+  /** Earlier versions, newest first. */
+  schedule_history: InvestorScheduleVersion[];
 }
 
 /** Body of update_investor_earning: details and existing rows (by name) only. */
 export interface InvestorEarningUpdatePayload extends Partial<InvestorEarningDetails> {
   schedule: Omit<
     InvestorEarningScheduleRow,
-    "idx" | "status" | "accrual_entry" | "payout_entry"
+    "idx" | "status" | "accrual_entry" | "payout_entry" | "version"
   >[];
 }
 
