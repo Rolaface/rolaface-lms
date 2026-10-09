@@ -133,7 +133,7 @@ function PanelCard({
       withBorder
       radius="lg"
       p="md"
-      className="bg-white border-slate-200/90 shadow-[0_1px_3px_rgba(15,23,42,0.04)] relative overflow-hidden flex flex-col h-full"
+      className="bg-white border-slate-200/90 shadow-[0_1px_3px_rgba(15,23,42,0.04)] relative overflow-hidden flex flex-col justify-between"
     >
       {loading && (
         <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center rounded-lg">
@@ -318,19 +318,19 @@ export function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.25fr_1.25fr_2.1fr_1.4fr] gap-3.5 items-stretch">
           {/* Card 1: Collection Efficiency Rate */}
           <PanelCard title="Collection Efficiency" info loading={status.loadingCharts}>
-            <div className="flex-1 flex flex-col justify-between min-h-0 pt-1.5">
-              <div className="flex-1 flex flex-col items-center justify-center py-1">
+            <div className="flex flex-col justify-between flex-1 gap-2">
+              <div className="flex flex-col items-center justify-center py-1">
                 <RingProgress
-                  size={130}
-                  thickness={11}
+                  size={118}
+                  thickness={10}
                   roundCaps
                   sections={[{ value: Math.min(100, eff?.rate_pct || 0), color: "brand.6" }]}
                   label={
                     <div className="text-center">
-                      <Text fw={800} size="lg" className="text-slate-900 leading-tight">
+                      <Text fw={800} size="md" className="text-slate-900 leading-tight">
                         {(eff?.rate_pct || 0).toFixed(2)}%
                       </Text>
-                      <Text size="9.5px" c="dimmed" fw={600} tt="uppercase" mt={1}>
+                      <Text size="9px" c="dimmed" fw={600} tt="uppercase" mt={1}>
                         Efficiency
                       </Text>
                     </div>
@@ -338,7 +338,7 @@ export function Dashboard() {
                 />
               </div>
 
-              <div className="w-full flex flex-col gap-1.5 pt-2 border-t border-slate-100">
+              <div className="w-full flex flex-col gap-1.5 pt-1.5 border-t border-slate-100">
                 <div className="bg-emerald-50/70 rounded-lg px-2.5 py-1.5 border border-emerald-100/80 flex justify-between items-center">
                   <Text size="10.5px" fw={600} c="green.8">
                     Collected
@@ -371,9 +371,9 @@ export function Dashboard() {
 
           {/* Card 2: NPA (Non-Performing Assets) */}
           <PanelCard title="Non-Performing Assets" info loading={status.loadingCharts}>
-            <div className="flex-1 flex flex-col justify-between gap-2.5 min-h-0 pt-1.5">
+            <div className="flex flex-col justify-between flex-1 gap-2">
               {/* Gross NPA Box */}
-              <div className="flex-1 bg-rose-50/50 rounded-xl p-2.5 border border-rose-100 flex flex-col justify-between min-h-0">
+              <div className="bg-rose-50/50 rounded-xl p-2.5 border border-rose-100 flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-center">
                     <Text size="10.5px" fw={700} c="danger.8" tt="uppercase" className="tracking-wider">
@@ -383,11 +383,11 @@ export function Dashboard() {
                       {renderSmartCurrency(npa?.gross_npa_amount || 0)}
                     </span>
                   </div>
-                  <Text fw={800} size="xl" className="text-slate-900 leading-tight mt-0.5">
+                  <Text fw={800} size="md" className="text-slate-900 leading-tight mt-0.5">
                     {(npa?.gross_npa_pct || 0).toFixed(2)}%
                   </Text>
                 </div>
-                <div className="w-full h-10 mt-1">
+                <div className="w-full h-8 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={GROSS_NPA_TREND}>
                       <defs>
@@ -403,7 +403,7 @@ export function Dashboard() {
               </div>
 
               {/* Net NPA Box */}
-              <div className="flex-1 bg-amber-50/50 rounded-xl p-2.5 border border-amber-100 flex flex-col justify-between min-h-0">
+              <div className="bg-amber-50/50 rounded-xl p-2.5 border border-amber-100 flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-center">
                     <Text size="10.5px" fw={700} c="gold.8" tt="uppercase" className="tracking-wider">
@@ -413,11 +413,11 @@ export function Dashboard() {
                       {renderSmartCurrency(npa?.net_npa_amount || 0)}
                     </span>
                   </div>
-                  <Text fw={800} size="xl" className="text-slate-900 leading-tight mt-0.5">
+                  <Text fw={800} size="md" className="text-slate-900 leading-tight mt-0.5">
                     {(npa?.net_npa_pct || 0).toFixed(2)}%
                   </Text>
                 </div>
-                <div className="w-full h-10 mt-1">
+                <div className="w-full h-8 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={NET_NPA_TREND}>
                       <defs>
@@ -449,90 +449,88 @@ export function Dashboard() {
               </div>
             }
           >
-            <div className="relative flex-1 w-full min-h-[250px] pt-1">
-              <div className="absolute inset-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={TREND} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                    <defs>
-                      <linearGradient id="disbGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={cv("brand", 6)} stopOpacity={0.22} />
-                        <stop offset="95%" stopColor={cv("brand", 6)} stopOpacity={0.0} />
-                      </linearGradient>
-                      <linearGradient id="collGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={cv("green", 6)} stopOpacity={0.22} />
-                        <stop offset="95%" stopColor={cv("green", 6)} stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid vertical={false} stroke="#F1F5F9" strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="period"
-                      tick={{ fontSize: 11, fill: "#64748B", fontWeight: 500 }}
-                      axisLine={{ stroke: "#E2E8F0" }}
-                      tickLine={false}
-                      dy={5}
-                    />
-                    <YAxis
-                      tick={(props: any) => {
-                        const { x, y, payload } = props;
-                        const num = Number(payload.value);
-                        let text = `${currencyCode} 0`;
-                        if (num > 0) {
-                          const m = Math.round(num / 1_000_000);
-                          text = `${currencyCode} ${m.toLocaleString()}M`;
-                        }
-                        return (
-                          <text
-                            x={x}
-                            y={y}
-                            dy={3}
-                            textAnchor="end"
-                            fontSize={10}
-                            fill="#64748B"
-                            fontWeight={500}
-                          >
-                            {text}
-                          </text>
-                        );
-                      }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={86}
-                    />
-                    <RTooltip
-                      formatter={(v: number, name: string) => [
-                        renderSmartCurrency(v),
-                        name === "disbursement" ? "Disbursement" : "Collection",
-                      ]}
-                      contentStyle={{
-                        backgroundColor: "#FFFFFF",
-                        borderRadius: 10,
-                        border: "1px solid #E2E8F0",
-                        boxShadow: "0 6px 18px rgba(15,23,42,0.08)",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="disbursement"
-                      stroke={cv("brand", 6)}
-                      strokeWidth={2.2}
-                      fill="url(#disbGrad)"
-                      dot={{ r: 2.5, fill: cv("brand", 6) }}
-                      activeDot={{ r: 5 }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="collection"
-                      stroke={cv("green", 6)}
-                      strokeWidth={2.2}
-                      fill="url(#collGrad)"
-                      dot={{ r: 2.5, fill: cv("green", 6) }}
-                      activeDot={{ r: 5 }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+            <div className="w-full h-[215px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={TREND} margin={{ top: 10, right: 10, left: 0, bottom: 15 }}>
+                  <defs>
+                    <linearGradient id="disbGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={cv("brand", 6)} stopOpacity={0.22} />
+                      <stop offset="95%" stopColor={cv("brand", 6)} stopOpacity={0.0} />
+                    </linearGradient>
+                    <linearGradient id="collGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={cv("green", 6)} stopOpacity={0.22} />
+                      <stop offset="95%" stopColor={cv("green", 6)} stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} stroke="#F1F5F9" strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="period"
+                    tick={{ fontSize: 10.5, fill: "#64748B", fontWeight: 500 }}
+                    axisLine={{ stroke: "#E2E8F0" }}
+                    tickLine={false}
+                    dy={3}
+                  />
+                  <YAxis
+                    tick={(props: any) => {
+                      const { x, y, payload } = props;
+                      const num = Number(payload.value);
+                      let text = `${currencyCode} 0`;
+                      if (num > 0) {
+                        const m = Math.round(num / 1_000_000);
+                        text = `${currencyCode} ${m.toLocaleString()}M`;
+                      }
+                      return (
+                        <text
+                          x={x}
+                          y={y}
+                          dy={3}
+                          textAnchor="end"
+                          fontSize={10}
+                          fill="#64748B"
+                          fontWeight={500}
+                        >
+                          {text}
+                        </text>
+                      );
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={86}
+                  />
+                  <RTooltip
+                    formatter={(v: number, name: string) => [
+                      renderSmartCurrency(v),
+                      name === "disbursement" ? "Disbursement" : "Collection",
+                    ]}
+                    contentStyle={{
+                      backgroundColor: "#FFFFFF",
+                      borderRadius: 10,
+                      border: "1px solid #E2E8F0",
+                      boxShadow: "0 6px 18px rgba(15,23,42,0.08)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="disbursement"
+                    stroke={cv("brand", 6)}
+                    strokeWidth={2.2}
+                    fill="url(#disbGrad)"
+                    dot={{ r: 2.5, fill: cv("brand", 6) }}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="collection"
+                    stroke={cv("green", 6)}
+                    strokeWidth={2.2}
+                    fill="url(#collGrad)"
+                    dot={{ r: 2.5, fill: cv("green", 6) }}
+                    activeDot={{ r: 5 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </PanelCard>
 
@@ -552,42 +550,40 @@ export function Dashboard() {
               </Text>
             }
           >
-            <div className="flex-1 flex flex-col justify-between">
-              <div className="flex flex-col gap-2">
+            <div className="flex flex-col justify-between flex-1">
+              <div className="flex flex-col gap-1.5">
                 {classifications.length === 0 ? (
                   <Text size="xs" c="dimmed" ta="center" py="md">
                     No classification data available.
                   </Text>
                 ) : (
                   <>
-                    {classifications.slice(0, 4).map((r) => {
+                    {classifications.slice(0, 3).map((r) => {
                       const { bg, color } = getRiskGradeColors(r.code);
-                      const pctVal = Number(r.pct) || 0;
                       return (
                         <div
                           key={r.code}
-                          className="rounded-lg p-2.5 transition-all border border-transparent hover:border-slate-200"
+                          className="rounded-lg px-2.5 py-1.5 transition-all border border-transparent hover:border-slate-200"
                           style={{ backgroundColor: bg }}
                         >
-                          <div className="flex justify-between items-start mb-1.5">
+                          <div className="flex justify-between items-center">
                             <div className="min-w-0 pr-2">
-                              <Text size="11.5px" fw={700} style={{ color }} className="truncate">
+                              <Text size="11px" fw={700} style={{ color }} className="truncate">
                                 {r.label}
                               </Text>
-                              <Text size="10px" c="dimmed" mt={1}>
-                                Provision: {renderSmartCurrency(r.provision_amount)}
+                              <Text size="9.5px" c="dimmed">
+                                Prov: {renderSmartCurrency(r.provision_amount)}
                               </Text>
                             </div>
                             <div className="flex flex-col items-end shrink-0">
-                              <Text size="12px" fw={800} className="text-slate-800">
+                              <Text size="11.5px" fw={800} className="text-slate-800 font-mono">
                                 {renderSmartCurrency(r.amount)}
                               </Text>
-                              <Text size="10px" fw={600} style={{ color }}>
+                              <Text size="9.5px" fw={600} style={{ color }}>
                                 {r.pct}%
                               </Text>
                             </div>
                           </div>
-                          <Progress value={pctVal} size={4} radius="xl" color={pctVal > 50 ? "brand" : "slate"} />
                         </div>
                       );
                     })}
@@ -596,15 +592,13 @@ export function Dashboard() {
               </div>
 
               {/* Total Portfolio Footer */}
-              <div className="mt-3 pt-3 border-t border-slate-100">
-                <div className="bg-slate-50/80 rounded-lg p-2.5 flex justify-between items-center border border-slate-200/70">
-                  <Text size="11.5px" fw={600} c="dimmed">
-                    Total Portfolio
-                  </Text>
-                  <Text size="13.5px" fw={800} className="text-slate-900 tracking-tight">
-                    {renderSmartCurrency(totalPortfolio)}
-                  </Text>
-                </div>
+              <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center">
+                <Text size="10.5px" fw={700} c="dimmed" tt="uppercase">
+                  Total Portfolio
+                </Text>
+                <Text size="12.5px" fw={800} className="text-slate-900 font-mono">
+                  {renderSmartCurrency(totalPortfolio)}
+                </Text>
               </div>
             </div>
           </PanelCard>
