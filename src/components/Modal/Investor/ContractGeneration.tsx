@@ -19,7 +19,6 @@ import { sendEmail } from "../../../api/Investor/investorFlowApi";
 import { uploadFile } from "../../../api/loanApi";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { openCommonModal } from "../AlertModal";
-import { LockedInput, PaidFromToPanel } from "./ReceivePaymentModal";
 import { useCompanyStore } from "../../../store/companyStore";
 import {
   DocumentPaper,
@@ -65,10 +64,10 @@ export function ContractGeneration({
   const customer = stateCustomer(state);
   const product = stateProduct(state);
   const status = state.contractStatus;
-  const showPayment = status === "Paid" && state.flowStatus === "Received" && !!state.payment;
 
   const theme = useMantineTheme();
   const companyName = useCompanyStore((s) => s.companyName);
+
   const pdfPreview = usePdfPreview();
   const pdfName = contractPdfName(state);
 
@@ -217,31 +216,6 @@ export function ContractGeneration({
           </Alert>
         )}
       </SectionBox>
-
-      {showPayment && state.payment && (
-        <SectionBox title="Payment details">
-          <Box style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <LockedInput label="Payment date" value={fmtDate(state.payment.payment_date)} />
-            <LockedInput label="Mode of payment" value={state.payment.payment_mode} />
-            <LockedInput label="Reference no." value={state.payment.ref_no} />
-            <LockedInput label="Amount paid" value={inr(state.payment.amount_paid)} />
-          </Box>
-          <PaidFromToPanel
-            from={
-              <>
-                <LockedInput label="Bank Account" value={state.payment.paid_from} />
-                <LockedInput label="Account (GL)" value={state.payment.paid_gl} mt="md" />
-              </>
-            }
-            to={
-              <>
-                <LockedInput label="Account" value={state.payment.paid_to} />
-                <LockedInput label="Account (GL)" value={state.payment.to_gl} mt="md" />
-              </>
-            }
-          />
-        </SectionBox>
-      )}
 
       {schedule && customer && product && (
         <SectionBox

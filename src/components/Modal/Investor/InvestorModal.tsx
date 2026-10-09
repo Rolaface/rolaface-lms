@@ -51,6 +51,8 @@ interface InvestorModalProps {
   isView?: boolean;
   /** Called after the Investor Flow is created or updated. */
   onSaved: () => void;
+  /** Minimizes the modal to the dock. */
+  onMinimize: () => void;
 }
 
 const PROCESSING_STEPS = STEP_NAMES.slice(0, 3);
@@ -182,6 +184,7 @@ export function InvestorModal({
   editId = null,
   isView = false,
   onSaved,
+  onMinimize,
 }: InvestorModalProps) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<ModalState>(createInitialState);
@@ -375,6 +378,7 @@ export function InvestorModal({
       <StageShell
         opened={opened}
         onClose={onClose}
+        onMinimize={onMinimize}
         stageIndex={0}
         state={state}
         title={title}

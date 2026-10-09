@@ -21,3 +21,8 @@ import '../../components/Modal/User/Rolemodalstore';
 import '../../components/Modal/createTemplateModalStore';
 import '../../components/Modal/documentSetupModalStore';
 import '../../components/Modal/sourceModalStore';
+import '../../components/Modal/Investor/Product/investmentProductModalStore';
+import '../../components/Modal/Investor/investorModalStore';
+import '../../components/Modal/Investor/recordFundModalStore';
+import '../../components/Modal/Investor/earningsStatementsModalStore';
+import '../../components/Modal/Investor/maturityModalStore';

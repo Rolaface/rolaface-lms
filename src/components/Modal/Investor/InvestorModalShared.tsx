@@ -11,7 +11,6 @@ import {
   type InvestorEarning,
   type InvestorFlowContractStatus,
   type InvestorFlowPayload,
-  type InvestorFlowPayment,
   type InvestorFlowRecord,
   type InvestorFlowStatus,
   type InvestorFlowSchedule,
@@ -88,8 +87,6 @@ export interface ModalState {
   contractMailSent: boolean;
   /** File ID of the contract PDF that was emailed. */
   contractFileId: string | null;
-  /** Saved payment details (shown once Contract Status is Paid and Status is Received). */
-  payment: InvestorFlowPayment | null;
   contractNo: string;
   signMethod: SignMethod;
   paymentMode: PaymentMode;
@@ -216,7 +213,6 @@ export function createInitialState(): ModalState {
     mailMessage: "",
     contractMailSent: false,
     contractFileId: null,
-    payment: null,
     contractNo: "",
     signMethod: "E-signature",
     paymentMode: "NEFT",
@@ -436,19 +432,6 @@ export function stateFromRecord(r: InvestorFlowRecord): ModalState {
     mailTo: r.mail_sent || "",
     mailSubject: r.subject || "",
     mailMessage: r.message || "",
-    payment:
-      r.contract_status === "Paid"
-        ? {
-            payment_date: String(r.payment_date ?? ""),
-            ref_no: String(r.ref_no ?? ""),
-            payment_mode: r.payment_mode as InvestorFlowPayment["payment_mode"],
-            amount_paid: Number(r.amount_paid) || 0,
-            paid_from: String(r.paid_from ?? ""),
-            paid_to: String(r.paid_to ?? ""),
-            paid_gl: String(r.paid_gl ?? ""),
-            to_gl: String(r.to_gl ?? ""),
-          }
-        : null,
   };
 }
 

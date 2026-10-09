@@ -13,8 +13,10 @@ export type RepaymentFrequency = (typeof REPAYMENT_FREQUENCIES)[number];
 export type InvestorFlowStatus =
   | "Draft"
   | "Approved"
-  | "Received"
   | "Cancelled"
+  | "Paid"
+  // Earlier statuses still used by the Earnings / Maturity screens (reworked later).
+  | "Received"
   | "Matured"
   | "Renewed";
 
@@ -69,35 +71,6 @@ export interface InvestorFlowListItem {
   renewed_from: string | null;
 }
 
-/** Body of receive_payment. */
-export interface InvestorFlowPaymentPayload {
-  payment_date: string; // YYYY-MM-DD
-  ref_no: string;
-  payment_mode: InvestorFlowPaymentMode;
-  amount_paid: number;
-  paid_from: string; // Bank Account ID of the investor (reference only)
-}
-
-/** Body of receive_payment for a renewed investment: no money arrives, only the start date. */
-export interface InvestorFlowRenewalReceivePayload {
-  payment_date: string; // YYYY-MM-DD
-}
-
-/** Payment saved on the Investor Flow. */
-export interface InvestorFlowPayment extends InvestorFlowPaymentPayload {
-  paid_to: string; // Company Bank Account (Custom Investor Settings)
-  paid_gl: string; // Company Account of the Paid From Bank Account
-  to_gl: string; // GL Account (same as paid_to)
-}
-
-/** get_investor_accounting_settings data. */
-export interface InvestorAccountingSettings {
-  company: string;
-  company_bank_account: string;
-  company_bank_currency: string | null;
-  investor_deposit_account: string;
-}
-
 /** Status of a schedule row. */
 export type InvestorEarningRowStatus = "Pending" | "Accrued" | "Paid";
 
@@ -116,9 +89,7 @@ export interface InvestorBankAccount {
 }
 
 /** get_investor_flow_by_id data ("investor" is the Customer ID here). */
-export interface InvestorFlowRecord
-  extends Omit<InvestorFlowListItem, "investor_id">,
-    Partial<Record<keyof InvestorFlowPayment, string | number | null>> {
+export interface InvestorFlowRecord extends Omit<InvestorFlowListItem, "investor_id"> {
   mail_sent: string | null;
   subject: string | null;
   message: string | null;
@@ -144,13 +115,6 @@ export interface InvestorFlowSaveContractResult {
   message: string;
   file_id: string;
   file_url: string;
-}
-
-export interface InvestorFlowReceivePaymentResult extends InvestorFlowPayment {
-  id: string;
-  status: InvestorFlowStatus;
-  contract_status: InvestorFlowContractStatus;
-  journal_entry: string;
 }
 
 export interface InvestorFlowListParams {
@@ -296,8 +260,12 @@ export type InvestorEarningListResponse = Omit<InvestorFlowListResponse, "data">
 
 /** The five GL accounts of Custom Investor Settings. */
 export interface InvestorSettingsAccounts {
+  investor_creditor_account: string;
+  investor_cash_account: string;
+  cheque_account: string;
+  bank_draft_account: string;
+  wire_transfer_account: string;
   company_bank_account: string;
-  investor_deposit_account: string;
   interest_payable_account: string;
   interest_expense_account: string;
   penalty_expense_account: string;
@@ -310,10 +278,8 @@ export interface InvestorSettings {
   company: string | null;
   accounts: Record<InvestorSettingsField, string | null>;
   labels: Record<InvestorSettingsField, string>;
-  /** What kind of account each field accepts. */
-  rules: Record<InvestorSettingsField, string>;
-  /** Accounts each field accepts, in the user's default company. */
-  options: Record<InvestorSettingsField, string[]>;
+  /** Fields that must be set to save. */
+  required: InvestorSettingsField[];
 }
 
 /* --------------------------------- Maturity --------------------------------- */
@@ -390,4 +356,121 @@ export interface InvestorMaturity extends InvestorMaturityOutstanding {
   /** Renew: interest (and the paise of principal) paid out in cash. */
   renewal_cash_payout: number;
   renewal_defaults: InvestorRenewalTerms | null;
+}
+
+/* -------------------------------- Record Fund -------------------------------- */
+
+/** Fund Status of the Custom Investor Flow doctype. */
+export type InvestorFundStatus = "Pending" | "Partial" | "Paid";
+
+/** Record Status of a fund record: Draft (no accounting) -> Approved (Journal Entry posted) / Cancelled. */
+export type FundRecordStatus = "Draft" | "Approved" | "Cancelled";
+
+/** A row of the Record Fund table (Custom Investor Record Fund). */
+export interface InvestorFundRow {
+  name: string;
+  idx: number;
+  investment_id: string;
+  record_status: FundRecordStatus;
+  /** Journal Entry posted on approval. */
+  journal_entry: string | null;
+  amount_paid: number;
+  mode_of_payment: InvestorFlowPaymentMode;
+  reference_number: string | null;
+  /** Paid to: the GL the money landed in. */
+  debit_gl: string;
+  debit_gl_description: string;
+  /** Paid from: the Investor Creditor GL (party = the investor). */
+  credit_gl: string;
+  credit_gl_description: string;
+  paid_date: string;
+}
+
+interface InvestorFundSummary {
+  investment_amount: number;
+  /** Approved records. */
+  fund_received: number;
+  remaining_fund: number;
+  /** Draft records (not yet approved). */
+  draft_amount: number;
+  /** What a new record can still be for (drafts included). */
+  available_to_record: number;
+  fund_status: InvestorFundStatus;
+  last_paid_date: string | null;
+  last_mode_of_payment: InvestorFlowPaymentMode | null;
+}
+
+/** A row of get_investor_funds. */
+export interface InvestorFundListItem extends InvestorFundSummary {
+  name: string;
+  /** Investor name. */
+  investor: string;
+  investor_id: string;
+  status: InvestorFlowStatus;
+}
+
+/** get_investor_fund_by_id / record_fund data. */
+export interface InvestorFund extends InvestorFundSummary {
+  id: string;
+  investor: string;
+  investor_id: string;
+  status: InvestorFlowStatus;
+  funds: InvestorFundRow[];
+}
+
+export interface InvestorFundListParams {
+  search?: string;
+  status?: InvestorFlowStatus[];
+  fund_status?: InvestorFundStatus[];
+  page?: number;
+  page_size?: number;
+}
+
+export type InvestorFundListResponse = Omit<InvestorFlowListResponse, "data"> & {
+  data: InvestorFundListItem[];
+};
+
+/** A row of get_fund_records (one per receipt). */
+export interface FundRecordListItem extends InvestorFundRow {
+  investor: string;
+  investor_id: string;
+  investment_amount: number;
+  /** Of the investment, after the approved records. */
+  remaining_fund: number;
+  investment_status: InvestorFlowStatus | null;
+  fund_status: InvestorFundStatus;
+}
+
+export interface FundRecordListParams {
+  search?: string;
+  record_status?: FundRecordStatus[];
+  page?: number;
+  page_size?: number;
+}
+
+export type FundRecordListResponse = Omit<InvestorFlowListResponse, "data"> & {
+  data: FundRecordListItem[];
+};
+
+/** Body of add_fund_record / update_fund_record. */
+export interface RecordFundPayload {
+  paid_date: string; // YYYY-MM-DD
+  mode_of_payment: InvestorFlowPaymentMode;
+  reference_number: string;
+  amount: number;
+}
+
+interface RecordFundAccount {
+  account: string;
+  description: string;
+  currency: string | null;
+}
+
+/** get_record_fund_accounts data (from Investor Settings). */
+export interface RecordFundAccounts {
+  company: string | null;
+  /** Paid from: Investor Creditor GL. */
+  credit: RecordFundAccount;
+  /** Paid to, per Mode of Payment (null when its GL is not set). */
+  debit_by_mode: Record<InvestorFlowPaymentMode, RecordFundAccount | null>;
 }

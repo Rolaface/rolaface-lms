@@ -75,6 +75,21 @@ export async function fetchLedgerAccountOptions(): Promise<AccountOption[]> {
   return response.data.data ?? [];
 }
 
+/** Ledger (non-group) accounts whose name matches the search, for a searchable dropdown. */
+export async function searchLedgerAccounts(search = "", limit = 20): Promise<AccountOption[]> {
+  const filters: (string | number)[][] = [["is_group", "=", 0]];
+  if (search.trim()) filters.push(["name", "like", `%${search.trim()}%`]);
+  const response: AxiosResponse<RawAccountOptionsResponse> = await api.get(API.frappeUtilsAPI.getaccounts, {
+    params: {
+      fields: JSON.stringify(["name", "account_currency", "account_number", "account_name", "account_type"]),
+      filters: JSON.stringify(filters),
+      limit_page_length: limit,
+      order_by: "name asc",
+    },
+  });
+  return response.data.data ?? [];
+}
+
 
 export async function fetchRelationshipManagers(
   query?: string,
