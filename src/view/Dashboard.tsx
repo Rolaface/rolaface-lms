@@ -318,7 +318,7 @@ export function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.25fr_1.25fr_2.1fr_1.4fr] gap-3.5 items-stretch">
           {/* Card 1: Collection Efficiency Rate */}
           <PanelCard title="Collection Efficiency" info loading={status.loadingCharts}>
-            <div className="flex-1 flex flex-col justify-between min-h-0">
+            <div className="flex-1 flex flex-col justify-between min-h-0 pt-1.5">
               <div className="flex-1 flex flex-col items-center justify-center py-1">
                 <RingProgress
                   size={130}
@@ -371,7 +371,7 @@ export function Dashboard() {
 
           {/* Card 2: NPA (Non-Performing Assets) */}
           <PanelCard title="Non-Performing Assets" info loading={status.loadingCharts}>
-            <div className="flex-1 flex flex-col justify-between gap-2.5 min-h-0">
+            <div className="flex-1 flex flex-col justify-between gap-2.5 min-h-0 pt-1.5">
               {/* Gross NPA Box */}
               <div className="flex-1 bg-rose-50/50 rounded-xl p-2.5 border border-rose-100 flex flex-col justify-between min-h-0">
                 <div>
@@ -449,7 +449,7 @@ export function Dashboard() {
               </div>
             }
           >
-            <div className="relative flex-1 w-full min-h-0">
+            <div className="relative flex-1 w-full min-h-[250px] pt-1">
               <div className="absolute inset-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={TREND} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
