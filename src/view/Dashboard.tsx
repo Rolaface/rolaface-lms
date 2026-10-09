@@ -318,19 +318,19 @@ export function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.25fr_1.25fr_2.1fr_1.4fr] gap-3.5 items-stretch">
           {/* Card 1: Collection Efficiency Rate */}
           <PanelCard title="Collection Efficiency" info loading={status.loadingCharts}>
-            <div className="flex-1 flex flex-col justify-between h-full min-h-0 py-1">
-              <div className="flex-1 flex flex-col items-center justify-center my-auto py-2">
+            <div className="flex-1 flex flex-col justify-between min-h-0">
+              <div className="flex-1 flex flex-col items-center justify-center py-1">
                 <RingProgress
-                  size={140}
-                  thickness={12}
+                  size={130}
+                  thickness={11}
                   roundCaps
                   sections={[{ value: Math.min(100, eff?.rate_pct || 0), color: "brand.6" }]}
                   label={
                     <div className="text-center">
-                      <Text fw={800} size="xl" className="text-slate-900 leading-tight">
+                      <Text fw={800} size="lg" className="text-slate-900 leading-tight">
                         {(eff?.rate_pct || 0).toFixed(2)}%
                       </Text>
-                      <Text size="10px" c="dimmed" fw={600} tt="uppercase" mt={1}>
+                      <Text size="9.5px" c="dimmed" fw={600} tt="uppercase" mt={1}>
                         Efficiency
                       </Text>
                     </div>
@@ -338,30 +338,30 @@ export function Dashboard() {
                 />
               </div>
 
-              <div className="w-full flex flex-col gap-2 pt-3 border-t border-slate-100 mt-auto">
-                <div className="bg-emerald-50/70 rounded-lg px-3 py-2 border border-emerald-100/80 flex justify-between items-center">
-                  <Text size="11px" fw={600} c="green.8">
+              <div className="w-full flex flex-col gap-1.5 pt-2 border-t border-slate-100">
+                <div className="bg-emerald-50/70 rounded-lg px-2.5 py-1.5 border border-emerald-100/80 flex justify-between items-center">
+                  <Text size="10.5px" fw={600} c="green.8">
                     Collected
                   </Text>
-                  <Text size="12px" fw={700} className="text-emerald-950 font-mono whitespace-nowrap">
+                  <Text size="11.5px" fw={700} className="text-emerald-950 font-mono whitespace-nowrap">
                     {renderSmartCurrency(eff?.collected || 0)}
                   </Text>
                 </div>
 
-                <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200/70 flex justify-between items-center">
-                  <Text size="11px" fw={600} c="dimmed">
+                <div className="bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-200/70 flex justify-between items-center">
+                  <Text size="10.5px" fw={600} c="dimmed">
                     Demand
                   </Text>
-                  <Text size="12px" fw={700} className="text-slate-800 font-mono whitespace-nowrap">
+                  <Text size="11.5px" fw={700} className="text-slate-800 font-mono whitespace-nowrap">
                     {renderSmartCurrency(eff?.demand || 0)}
                   </Text>
                 </div>
 
-                <div className="bg-amber-50/60 rounded-lg px-3 py-2 border border-amber-100/70 flex justify-between items-center">
-                  <Text size="11px" fw={600} c="gold.8">
+                <div className="bg-amber-50/60 rounded-lg px-2.5 py-1.5 border border-amber-100/70 flex justify-between items-center">
+                  <Text size="10.5px" fw={600} c="gold.8">
                     Outstanding
                   </Text>
-                  <Text size="12px" fw={700} className="text-amber-900 font-mono whitespace-nowrap">
+                  <Text size="11.5px" fw={700} className="text-amber-900 font-mono whitespace-nowrap">
                     {renderSmartCurrency(eff?.outstanding || 0)}
                   </Text>
                 </div>
@@ -371,23 +371,23 @@ export function Dashboard() {
 
           {/* Card 2: NPA (Non-Performing Assets) */}
           <PanelCard title="Non-Performing Assets" info loading={status.loadingCharts}>
-            <div className="flex-1 flex flex-col justify-between gap-3 h-full min-h-0 py-1">
+            <div className="flex-1 flex flex-col justify-between gap-2.5 min-h-0">
               {/* Gross NPA Box */}
-              <div className="flex-1 bg-rose-50/50 rounded-xl p-3 border border-rose-100 flex flex-col justify-between min-h-0">
+              <div className="flex-1 bg-rose-50/50 rounded-xl p-2.5 border border-rose-100 flex flex-col justify-between min-h-0">
                 <div>
                   <div className="flex justify-between items-center">
-                    <Text size="11px" fw={700} c="danger.8" tt="uppercase" className="tracking-wider">
+                    <Text size="10.5px" fw={700} c="danger.8" tt="uppercase" className="tracking-wider">
                       Gross NPA
                     </Text>
-                    <span className="text-[11.5px] font-bold font-mono text-rose-800 bg-rose-100/80 px-2.5 py-0.5 rounded leading-none whitespace-nowrap">
+                    <span className="text-[11px] font-bold font-mono text-rose-800 bg-rose-100/80 px-2 py-0.5 rounded leading-none whitespace-nowrap">
                       {renderSmartCurrency(npa?.gross_npa_amount || 0)}
                     </span>
                   </div>
-                  <Text fw={800} size="xl" className="text-slate-900 leading-tight mt-1.5">
+                  <Text fw={800} size="xl" className="text-slate-900 leading-tight mt-0.5">
                     {(npa?.gross_npa_pct || 0).toFixed(2)}%
                   </Text>
                 </div>
-                <div className="w-full flex-1 min-h-[46px] mt-2">
+                <div className="w-full h-10 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={GROSS_NPA_TREND}>
                       <defs>
@@ -403,21 +403,21 @@ export function Dashboard() {
               </div>
 
               {/* Net NPA Box */}
-              <div className="flex-1 bg-amber-50/50 rounded-xl p-3 border border-amber-100 flex flex-col justify-between min-h-0">
+              <div className="flex-1 bg-amber-50/50 rounded-xl p-2.5 border border-amber-100 flex flex-col justify-between min-h-0">
                 <div>
                   <div className="flex justify-between items-center">
-                    <Text size="11px" fw={700} c="gold.8" tt="uppercase" className="tracking-wider">
+                    <Text size="10.5px" fw={700} c="gold.8" tt="uppercase" className="tracking-wider">
                       Net NPA
                     </Text>
-                    <span className="text-[11.5px] font-bold font-mono text-amber-900 bg-amber-100/80 px-2.5 py-0.5 rounded leading-none whitespace-nowrap">
+                    <span className="text-[11px] font-bold font-mono text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded leading-none whitespace-nowrap">
                       {renderSmartCurrency(npa?.net_npa_amount || 0)}
                     </span>
                   </div>
-                  <Text fw={800} size="xl" className="text-slate-900 leading-tight mt-1.5">
+                  <Text fw={800} size="xl" className="text-slate-900 leading-tight mt-0.5">
                     {(npa?.net_npa_pct || 0).toFixed(2)}%
                   </Text>
                 </div>
-                <div className="w-full flex-1 min-h-[46px] mt-2">
+                <div className="w-full h-10 mt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={NET_NPA_TREND}>
                       <defs>
@@ -449,10 +449,10 @@ export function Dashboard() {
               </div>
             }
           >
-            <div className="relative flex-1 min-h-[260px] w-full">
+            <div className="relative flex-1 w-full min-h-0">
               <div className="absolute inset-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={TREND} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                  <AreaChart data={TREND} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                     <defs>
                       <linearGradient id="disbGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={cv("brand", 6)} stopOpacity={0.22} />
