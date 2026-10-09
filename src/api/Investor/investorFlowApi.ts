@@ -1,6 +1,10 @@
 import API from "../../config/api";
 import apiClient from "../../config/axios";
 import type {
+  InvestmentDetail,
+  InvestorPortfolio,
+  InvestorStatement,
+  JournalEntryDetail,
   FundRecordListParams,
   FundRecordListResponse,
   InvestorFundRow,
@@ -406,4 +410,36 @@ export async function getFundRecords(params: FundRecordListParams = {}) {
     params: query,
   });
   return data;
+}
+
+/* ---------------------------- Investor 360 view ---------------------------- */
+
+export async function getInvestorPortfolio(investor: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestorPortfolio>>(API.investorFlow.getPortfolio, {
+    params: { investor },
+  });
+  return data.message.data;
+}
+
+export async function getInvestmentDetail(id: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestmentDetail>>(
+    API.investorFlow.getInvestmentDetail,
+    { params: { id } },
+  );
+  return data.message.data;
+}
+
+export async function getInvestorStatement(investor: string, investment?: string | null) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestorStatement>>(API.investorFlow.getStatement, {
+    params: { investor, ...(investment ? { investment } : {}) },
+  });
+  return data.message.data;
+}
+
+export async function getJournalEntryDetail(name: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<JournalEntryDetail>>(
+    API.investorFlow.getJournalEntryDetail,
+    { params: { name } },
+  );
+  return data.message.data;
 }

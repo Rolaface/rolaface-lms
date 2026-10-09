@@ -50,6 +50,7 @@ import type { InvestorFlowStatusAction } from "../../types/Investor/investorFlow
 import { parseFrappeError } from "../../utils/parseFrappeError";
 import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
+import { InvestorView } from "./InvestorView/InvestorView";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
 import { openCommonModal } from "../../components/Modal/AlertModal";
 import type { Frequency } from "../../components/Modal/Investor/InvestorModalShared";
@@ -139,6 +140,8 @@ export function Investor() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([]);
   const [page, setPage] = useState(1);
+  // Investor 360 view: opened by the Eye button or a row double-click.
+  const [viewing, setViewing] = useState<{ investorId: string; investmentId: string } | null>(null);
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
@@ -469,14 +472,15 @@ export function Investor() {
           const hasActions = isDraft || (isApproved && !row.renewedFrom);
 
           return (
-            <Group justify="flex-end" gap={4} wrap="nowrap">
+            // Double-clicking an action button must not also open the Investor 360 view.
+            <Group justify="flex-end" gap={4} wrap="nowrap" onDoubleClick={(e) => e.stopPropagation()}>
               <Tooltip label="View" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => openModal(row.id, true)}
+                  onClick={() => setViewing({ investorId: row.customerId, investmentId: row.id })}
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -583,6 +587,16 @@ export function Investor() {
     setStatusFilter([]);
     setPage(1);
   };
+
+  if (viewing) {
+    return (
+      <InvestorView
+        investorId={viewing.investorId}
+        initialInvestment={viewing.investmentId}
+        onBack={() => setViewing(null)}
+      />
+    );
+  }
 
   return (
     <Stack gap="lg" p="lg">
@@ -810,7 +824,17 @@ export function Investor() {
                         color: "gray",
                       };
                       return (
-                        <Table.Tr key={row.id} className="lms-row">
+                        <Table.Tr
+                          key={row.id}
+                          className="lms-row"
+                          style={{ cursor: "pointer" }}
+                          onDoubleClick={() =>
+                            setViewing({
+                              investorId: row.original.customerId,
+                              investmentId: row.original.id,
+                            })
+                          }
+                        >
                           {row.getVisibleCells().map((cell, idx) => (
                             <Table.Td
                               key={cell.id}
