@@ -67,8 +67,15 @@ export interface ModalState {
   customerEmail: string;
   productId: string | null;
   productName: string;
+  /** Chosen product's Default Tenure (months). */
   productTenureMonths: number;
+  /** Chosen product's limits: every investment must stay within them. */
   productMinAmount: number;
+  productMaxAmount: number;
+  productMinRate: number;
+  productMaxRate: number;
+  productMinTenure: number;
+  productMaxTenure: number;
   amount: number;
   rate: number;
   frequency: Frequency;
@@ -130,16 +137,54 @@ export const FREQUENCY_MONTHS: Partial<Record<Frequency, number>> = {
 };
 
 export const CUSTOMERS: CustomerOption[] = [
-  { name: "Arjun Mehta", id: "CUS-0001", bank: "HDFC ****4471", email: "arjun.mehta@example.com" },
-  { name: "Kavita Ramachandran", id: "CUS-0002", bank: "Kotak ****1129", email: "kavita.r@example.com" },
-  { name: "John Doe", id: "CUS-0003", bank: "SBI ****2204", email: "john.doe@example.com" },
-  { name: "Abhishek", id: "CUS-0004", bank: "ICICI ****8830", email: "abhishek@example.com" },
+  {
+    name: "Arjun Mehta",
+    id: "CUS-0001",
+    bank: "HDFC ****4471",
+    email: "arjun.mehta@example.com",
+  },
+  {
+    name: "Kavita Ramachandran",
+    id: "CUS-0002",
+    bank: "Kotak ****1129",
+    email: "kavita.r@example.com",
+  },
+  {
+    name: "John Doe",
+    id: "CUS-0003",
+    bank: "SBI ****2204",
+    email: "john.doe@example.com",
+  },
+  {
+    name: "Abhishek",
+    id: "CUS-0004",
+    bank: "ICICI ****8830",
+    email: "abhishek@example.com",
+  },
 ];
 
 export const PRODUCTS: ProductOption[] = [
-  { name: "Steady Income NCD", rate: 10.5, tenureMonths: 12, frequency: "Monthly", minAmount: 50000 },
-  { name: "Quarterly Yield NCD", rate: 11.75, tenureMonths: 24, frequency: "Quarterly", minAmount: 100000 },
-  { name: "Growth NCD", rate: 12.5, tenureMonths: 36, frequency: "At maturity", minAmount: 100000 },
+  {
+    name: "Steady Income NCD",
+    rate: 10.5,
+    tenureMonths: 12,
+    frequency: "Monthly",
+    minAmount: 50000,
+  },
+  {
+    name: "Quarterly Yield NCD",
+    rate: 11.75,
+    tenureMonths: 24,
+    frequency: "Quarterly",
+    minAmount: 100000,
+  },
+  {
+    name: "Growth NCD",
+    rate: 12.5,
+    tenureMonths: 36,
+    frequency: "At maturity",
+    minAmount: 100000,
+  },
 ];
 
 export const STEP_NAMES = [
@@ -154,8 +199,6 @@ export const STEP_NAMES = [
 export const MS_PER_MONTH = 2629800000;
 
 /* ------------------------------ Helpers ------------------------------ */
-export const inr = (n: number) =>
-  "₹" + Math.round(n).toLocaleString("en-IN");
 
 export const fmtDate = (d: Date | string) =>
   new Date(d).toLocaleDateString("en-IN", {
@@ -199,6 +242,11 @@ export function createInitialState(): ModalState {
     productName: "",
     productTenureMonths: 0,
     productMinAmount: 0,
+    productMaxAmount: 0,
+    productMinRate: 0,
+    productMaxRate: 0,
+    productMinTenure: 0,
+    productMaxTenure: 0,
     amount: 0,
     rate: 0,
     frequency: "Monthly",
@@ -251,16 +299,14 @@ export function calcSchedule(s: ModalState): Schedule | null {
   const mat = new Date(s.maturity);
   const now = new Date();
 
-  if (
-    !(
-      s.amount > 0 &&
-      s.rate > 0 &&
-      s.firstRepayment &&
-      s.maturity &&
-      first.getTime() > now.getTime() &&
-      mat.getTime() > first.getTime()
-    )
-  ) {
+  if (!(
+    s.amount > 0 &&
+    s.rate > 0 &&
+    s.firstRepayment &&
+    s.maturity &&
+    first.getTime() > now.getTime() &&
+    mat.getTime() > first.getTime()
+  )) {
     return null;
   }
 
@@ -268,7 +314,7 @@ export function calcSchedule(s: ModalState): Schedule | null {
     1,
     Math.round((mat.getTime() - now.getTime()) / MS_PER_MONTH),
   );
-  const totalInterest = (s.amount * s.rate) / 1200 * totalMonths;
+  const totalInterest = ((s.amount * s.rate) / 1200) * totalMonths;
 
   const dates: Date[] = [];
   if (!k) {
@@ -298,14 +344,25 @@ export function calcSchedule(s: ModalState): Schedule | null {
   };
 }
 
-export function validateTerms(s: ModalState): string {
+/** fmtAmount formats an amount in the company currency (callers pass their own). */
+export function validateTerms(
+  s: ModalState,
+  fmtAmount: (value: number) => string,
+): string {
   const product = stateProduct(s);
   if (!stateCustomer(s) || !product) return "";
   if (!(s.amount >= product.minAmount))
-    return "Minimum investment for " + product.name + " is " + inr(product.minAmount) + ".";
+    return (
+      "Minimum investment for " +
+      product.name +
+      " is " +
+      fmtAmount(product.minAmount) +
+      "."
+    );
   if (!Number.isInteger(s.amount))
     return "Investment amount must be a whole number.";
-  if (!isRepaymentFrequency(s.frequency)) return "Select the repayment frequency.";
+  if (!isRepaymentFrequency(s.frequency))
+    return "Select the repayment frequency.";
   if (!s.firstRepayment) return "Enter the first repayment date.";
   if (!s.maturity) return "Enter the maturity date.";
   if (new Date(s.firstRepayment).getTime() <= Date.now())
@@ -314,16 +371,59 @@ export function validateTerms(s: ModalState): string {
     return "Maturity date must be after the first repayment date.";
   if (s.penaltyApplicable && !(s.penaltyRate > 0))
     return "Enter the penalty rate.";
+  return productLimitError(s, fmtAmount);
+}
+
+/** Months from today to the date; leftover days count as a fraction (same as the backend). */
+function monthsFromToday(iso: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(iso);
+  let months =
+    (end.getFullYear() - today.getFullYear()) * 12 +
+    (end.getMonth() - today.getMonth());
+  let anchor = addMonths(today, months);
+  if (anchor.getTime() > end.getTime()) {
+    months -= 1;
+    anchor = addMonths(today, months);
+  }
+  return months + (end.getTime() - anchor.getTime()) / 86_400_000 / 30.4375;
+}
+
+/** The chosen API product's limits (the backend checks the same on save). */
+function productLimitError(
+  s: ModalState,
+  fmtAmount: (value: number) => string,
+): string {
+  if (!s.productId) return "";
+  const name = s.productName || s.productId;
+  if (s.productMaxAmount && s.amount > s.productMaxAmount)
+    return `Maximum investment for ${name} is ${fmtAmount(s.productMaxAmount)}.`;
+  if (
+    s.productMaxRate &&
+    (s.rate < s.productMinRate || s.rate > s.productMaxRate)
+  )
+    return `Interest rate for ${name} must be between ${s.productMinRate}% and ${s.productMaxRate}%.`;
+  if (s.productMaxTenure && s.maturity) {
+    const months = monthsFromToday(s.maturity);
+    if (months < s.productMinTenure || months > s.productMaxTenure)
+      return `Tenure for ${name} must be between ${s.productMinTenure} and ${s.productMaxTenure} months (maturity date is ${months.toFixed(1)} months away).`;
+  }
   return "";
 }
 
 /* ------------------------- Investor Flow API ------------------------- */
-export function isRepaymentFrequency(value: string): value is RepaymentFrequency {
+export function isRepaymentFrequency(
+  value: string,
+): value is RepaymentFrequency {
   return (REPAYMENT_FREQUENCIES as readonly string[]).includes(value);
 }
 
 /** Same gaps between payouts as the backend schedule (SCHEDULE_FREQUENCY_STEP). */
-export function nextPayoutDate(from: Date, frequency: RepaymentFrequency): Date {
+export function nextPayoutDate(
+  from: Date,
+  frequency: RepaymentFrequency,
+): Date {
   const x = new Date(from);
   switch (frequency) {
     case "Weekly":
@@ -344,7 +444,12 @@ export function nextPayoutDate(from: Date, frequency: RepaymentFrequency): Date 
 /** The customer chosen in the modal: the API customer, else the mock one. */
 export function stateCustomer(s: ModalState): CustomerOption | null {
   if (s.customerId) {
-    return { id: s.customerId, name: s.customerName || s.customerId, email: s.customerEmail, bank: "" };
+    return {
+      id: s.customerId,
+      name: s.customerName || s.customerId,
+      email: s.customerEmail,
+      bank: "",
+    };
   }
   return CUSTOMERS[s.customerIndex] ?? null;
 }
@@ -364,27 +469,50 @@ export function stateProduct(s: ModalState): ProductOption | null {
 }
 
 /** Product details only (used when an existing Investor Flow is loaded). */
-export function apiProductFields(p: InvestmentProductListItem): Partial<ModalState> {
+export function apiProductFields(
+  p: InvestmentProductListItem,
+): Partial<ModalState> {
   return {
     productId: p.name,
     productName: p.product_name,
-    productTenureMonths: Number(p.tenure) || 0,
+    productTenureMonths: Number(p.default_tenure) || 0,
     productMinAmount: Number(p.minimum_investment) || 0,
+    productMaxAmount: Number(p.maximum_investment) || 0,
+    productMinRate: Number(p.min_interest_rate) || 0,
+    productMaxRate: Number(p.maximum_interest_rate) || 0,
+    productMinTenure: Number(p.minimum_tenure) || 0,
+    productMaxTenure: Number(p.maximum_tenure) || 0,
   };
 }
 
 /** Product details plus the terms copied from it (when a product is picked). */
-export function apiProductPatch(p: InvestmentProductListItem | null): Partial<ModalState> {
+export function apiProductPatch(
+  p: InvestmentProductListItem | null,
+): Partial<ModalState> {
   if (!p) {
-    return { productId: null, productName: "", productTenureMonths: 0, productMinAmount: 0 };
+    return {
+      productId: null,
+      productName: "",
+      productTenureMonths: 0,
+      productMinAmount: 0,
+      productMaxAmount: 0,
+      productMinRate: 0,
+      productMaxRate: 0,
+      productMinTenure: 0,
+      productMaxTenure: 0,
+    };
   }
   const today = new Date();
-  const tenure = Number(p.tenure) || 0;
+  // New investments start with the product's defaults.
+  const tenure = Number(p.default_tenure) || 0;
+  const penalty = Number(p.default_penalty_rate) || 0;
   const patch: Partial<ModalState> = {
     ...apiProductFields(p),
     amount: Number(p.minimum_investment) || 0,
-    rate: Number(p.interest_rate) || 0,
+    rate: Number(p.default_interest_rate) || 0,
     maturity: toIso(addMonths(today, tenure)),
+    penaltyApplicable: penalty > 0,
+    penaltyRate: penalty > 0 ? penalty : createInitialState().penaltyRate,
   };
   if (isRepaymentFrequency(p.payout_frequency)) {
     patch.frequency = p.payout_frequency;
@@ -450,7 +578,8 @@ export async function loadInvestorFlowState(id: string): Promise<ModalState> {
     state.customerEmail = customer.value.email_id || "";
     if (!state.mailTo) state.mailTo = state.customerEmail;
   }
-  const productItem = product.status === "fulfilled" ? product.value?.message?.data : null;
+  const productItem =
+    product.status === "fulfilled" ? product.value?.message?.data : null;
   if (productItem) Object.assign(state, apiProductFields(productItem));
 
   return state;
@@ -459,11 +588,19 @@ export async function loadInvestorFlowState(id: string): Promise<ModalState> {
 /** Schedule for the read-only Investor Processing view, from the saved earning rows. */
 export function scheduleFromEarning(e: InvestorEarning): Schedule | null {
   if (!e.schedule.length) return null;
-  const totalInterest = e.schedule.reduce((a, r) => a + (Number(r.interest_amount) || 0), 0);
+  const totalInterest = e.schedule.reduce(
+    (a, r) => a + (Number(r.interest_amount) || 0),
+    0,
+  );
   const start = new Date(e.payment_date || e.schedule[0].payment_date);
-  const end = new Date(e.mat_date || e.schedule[e.schedule.length - 1].payment_date);
+  const end = new Date(
+    e.mat_date || e.schedule[e.schedule.length - 1].payment_date,
+  );
   return {
-    totalMonths: Math.max(1, Math.round((end.getTime() - start.getTime()) / MS_PER_MONTH)),
+    totalMonths: Math.max(
+      1,
+      Math.round((end.getTime() - start.getTime()) / MS_PER_MONTH),
+    ),
     totalInterest,
     perPayment: totalInterest / e.schedule.length,
     count: e.schedule.length,
@@ -544,7 +681,13 @@ export function SectionBox({
       style={{ border: "1px solid var(--mantine-color-slate-2)" }}
     >
       {(title || actions) && (
-        <Group justify="space-between" align="center" wrap="wrap" gap="xs" mb={children ? "sm" : 0}>
+        <Group
+          justify="space-between"
+          align="center"
+          wrap="wrap"
+          gap="xs"
+          mb={children ? "sm" : 0}
+        >
           <Group gap="xs" align="center">
             {title && (
               <Text fw={700} fz="sm" c="slate.8">

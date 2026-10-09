@@ -46,14 +46,15 @@ export function InvestorView({ investorId, initialInvestment, onBack }: Props) {
   );
   const [journalEntry, setJournalEntry] = useState<string | null>(null);
 
-  const { data: portfolio, isLoading, error } = useQuery({
+  const { data: portfolio, isError, error } = useQuery({
     queryKey: ["investorPortfolio", investorId],
     queryFn: () => getInvestorPortfolio(investorId),
     retry: false,
   });
 
-  if (isLoading) return <LoadingBlock />;
-  if (error || !portfolio) {
+  // Only a failed request shows the error; anything else without data is still loading.
+  if (!isError && !portfolio) return <LoadingBlock />;
+  if (isError || !portfolio) {
     return (
       <Box p="lg">
         <Button variant="subtle" color="slate" leftSection={<IconArrowLeft size={14} />} onClick={onBack} mb="md">
@@ -72,7 +73,14 @@ export function InvestorView({ investorId, initialInvestment, onBack }: Props) {
       );
       break;
     case "investment":
-      panel = <InvestmentDetailPanel key={selected.id} investmentId={selected.id} onOpenEntry={setJournalEntry} />;
+      panel = (
+        <InvestmentDetailPanel
+          key={selected.id}
+          investmentId={selected.id}
+          investorName={portfolio.investor.name}
+          onOpenEntry={setJournalEntry}
+        />
+      );
       break;
     case "statement":
       panel = <StatementPanel portfolio={portfolio} onOpenEntry={setJournalEntry} />;

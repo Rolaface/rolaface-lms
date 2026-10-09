@@ -11,7 +11,13 @@ import {
   ThemeIcon,
   useMantineTheme,
 } from "@mantine/core";
-import { IconDownload, IconEye, IconFileText, IconMail, IconSend } from "@tabler/icons-react";
+import {
+  IconDownload,
+  IconEye,
+  IconFileText,
+  IconMail,
+  IconSend,
+} from "@tabler/icons-react";
 import { useMutation } from "@tanstack/react-query";
 import { usePdfPreview } from "./PdfPreviewModal";
 import { buildContractPdfFromState, contractPdfName } from "./Investmentpdf";
@@ -27,12 +33,12 @@ import {
   SectionBox,
   Tag,
   fmtDate,
-  inr,
   stateCustomer,
   stateProduct,
   type ModalState,
   type TabProps,
 } from "./InvestorModalShared";
+import { formatAmount } from "../../../store/currencyStore";
 
 interface ContractGenerationProps extends TabProps {
   /** Investor Flow ID when it already exists (used as the email's reference document). */
@@ -61,6 +67,9 @@ export function ContractGeneration({
   schedule,
   investorFlowId = null,
 }: ContractGenerationProps) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   const customer = stateCustomer(state);
   const product = stateProduct(state);
   const status = state.contractStatus;
@@ -71,11 +80,16 @@ export function ContractGeneration({
   const pdfPreview = usePdfPreview();
   const pdfName = contractPdfName(state);
 
-  const buildPdf = () => buildContractPdfFromState(state, schedule, theme);
+  const buildPdf = () => buildContractPdfFromState(state, schedule, theme, companyCurrency);
 
   const handleViewPdf = () => {
     const doc = buildPdf();
-    if (doc) pdfPreview.open(doc, `Investment Agreement - ${state.contractNo}`, pdfName);
+    if (doc)
+      pdfPreview.open(
+        doc,
+        `Investment Agreement - ${state.contractNo}`,
+        pdfName,
+      );
   };
 
   const handleDownloadPdf = () => buildPdf()?.save(pdfName);
@@ -93,13 +107,20 @@ export function ContractGeneration({
         subject: state.mailSubject.trim(),
         content: messageToHtml(state.mailMessage),
         send_me_a_copy: "0",
-        ...(investorFlowId && { doctype: "Custom Investor Flow", name: investorFlowId }),
+        ...(investorFlowId && {
+          doctype: "Custom Investor Flow",
+          name: investorFlowId,
+        }),
         attachmentNames: [file.name],
       });
       return file.name;
     },
     onSuccess: (fileId) => {
-      update({ contractStatus: "Sent", contractMailSent: true, contractFileId: fileId });
+      update({
+        contractStatus: "Sent",
+        contractMailSent: true,
+        contractFileId: fileId,
+      });
       openCommonModal({
         heading: "Contract Sent",
         subtitle: "",
@@ -140,14 +161,22 @@ export function ContractGeneration({
           items={[
             {
               label: "Interest per instalment",
-              value: inr(schedule.perPayment),
+              value: fmtAmount(schedule.perPayment),
               color: "info",
             },
-            { label: "Interest rate", value: `${state.rate}% p.a.`, color: "warning" },
-            { label: "Tenure", value: `${schedule.totalMonths} months`, color: "brand" },
+            {
+              label: "Interest rate",
+              value: `${state.rate}% p.a.`,
+              color: "warning",
+            },
+            {
+              label: "Tenure",
+              value: `${schedule.totalMonths} months`,
+              color: "brand",
+            },
             {
               label: "Total repayment",
-              value: inr(state.amount + schedule.totalInterest),
+              value: fmtAmount(state.amount + schedule.totalInterest),
               color: "success",
             },
           ]}
@@ -156,7 +185,9 @@ export function ContractGeneration({
 
       <SectionBox
         title="Contract email"
-        titleAddon={<Tag label={status} color={CONTRACT_STATUS_COLOR[status]} />}
+        titleAddon={
+          <Tag label={status} color={CONTRACT_STATUS_COLOR[status]} />
+        }
         actions={
           status !== "Paid" && (
             <Button
@@ -181,7 +212,11 @@ export function ContractGeneration({
             readOnly
             leftSection={<IconMail size={14} />}
             value={state.mailTo}
-            error={customer && !state.mailTo ? "This customer has no email." : undefined}
+            error={
+              customer && !state.mailTo
+                ? "This customer has no email."
+                : undefined
+            }
           />
           <TextInput
             label="Subject"
@@ -280,15 +315,18 @@ export function ContractGeneration({
             <KeyValueList
               cols={2}
               rows={[
-                { label: "Investment amount", value: inr(state.amount) },
+                { label: "Investment amount", value: fmtAmount(state.amount) },
                 { label: "Interest rate", value: `${state.rate}% p.a.` },
                 { label: "Repayment frequency", value: state.frequency },
                 { label: "Number of payments", value: schedule.count },
-                { label: "First repayment date", value: fmtDate(state.firstRepayment) },
+                {
+                  label: "First repayment date",
+                  value: fmtDate(state.firstRepayment),
+                },
                 { label: "Maturity date", value: fmtDate(state.maturity) },
                 {
                   label: "Total repayment",
-                  value: inr(state.amount + schedule.totalInterest),
+                  value: fmtAmount(state.amount + schedule.totalInterest),
                 },
                 {
                   label: "Penalty",
@@ -299,8 +337,8 @@ export function ContractGeneration({
               ]}
             />
             <Text fz="xs" c="slate.5" mt="md">
-              Principal and interest are paid in equal instalments on each payout date; the
-              last instalment settles any rounding difference.
+              Principal and interest are paid in equal instalments on each
+              payout date; the last instalment settles any rounding difference.
             </Text>
           </DocumentPaper>
         </SectionBox>

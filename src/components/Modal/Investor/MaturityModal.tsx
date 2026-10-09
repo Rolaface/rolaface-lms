@@ -15,7 +15,11 @@ import {
   ThemeIcon,
   UnstyledButton,
 } from "@mantine/core";
-import { IconArrowBackUp, IconCircleCheck, IconRefresh } from "@tabler/icons-react";
+import {
+  IconArrowBackUp,
+  IconCircleCheck,
+  IconRefresh,
+} from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getInvestorEarningById,
@@ -39,14 +43,21 @@ import {
   Tag,
   createInitialState,
   fmtDate,
-  inr,
   loadInvestorFlowState,
   scheduleFromEarning,
   type ModalState,
 } from "./InvestorModalShared";
-import { STAGES, StageShell, StageSideNav, ViewOnlyBar, type StageId } from "./StageShell";
+import {
+  STAGES,
+  StageShell,
+  StageSideNav,
+  ViewOnlyBar,
+  type StageId,
+} from "./StageShell";
 import { EarningsStatementsView } from "./EarningsStatementModal";
 import { ProcessingReadOnlyView } from "./InvestorModal";
+import { formatAmount } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
 type Decision = "redeem" | "renew";
 
@@ -81,20 +92,33 @@ function DecisionCard({
   onClick: () => void;
 }) {
   return (
-    <UnstyledButton onClick={onClick} disabled={disabled} style={{ opacity: disabled ? 0.6 : 1 }}>
+    <UnstyledButton
+      onClick={onClick}
+      disabled={disabled}
+      style={{ opacity: disabled ? 0.6 : 1 }}
+    >
       <Paper
         radius="md"
         p="md"
         h="100%"
         style={{
           border: `1px solid ${
-            selected ? "var(--mantine-color-brand-6)" : "var(--mantine-color-slate-2)"
+            selected
+              ? "var(--mantine-color-brand-6)"
+              : "var(--mantine-color-slate-2)"
           }`,
-          background: selected ? "var(--mantine-color-brand-light)" : "var(--mantine-color-white)",
+          background: selected
+            ? "var(--mantine-color-brand-light)"
+            : "var(--mantine-color-white)",
         }}
       >
         <Group gap="sm" wrap="nowrap" align="flex-start">
-          <ThemeIcon size={34} radius="md" variant="light" color={selected ? "brand" : "slate"}>
+          <ThemeIcon
+            size={34}
+            radius="md"
+            variant="light"
+            color={selected ? "brand" : "slate"}
+          >
             <Icon size={18} />
           </ThemeIcon>
           <Box>
@@ -128,30 +152,56 @@ function MaturityContent({
   onTerms: (patch: Partial<InvestorRenewalTerms>) => void;
   productOptions: { value: string; label: string }[];
 }) {
-  const owedTotal = maturity.outstanding_principal + maturity.outstanding_interest;
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
+  const owedTotal =
+    maturity.outstanding_principal + maturity.outstanding_interest;
 
   return (
     <>
       <KpiGrid
         items={[
-          { label: "Amount invested", value: inr(maturity.amount_invested), color: "info" },
+          {
+            label: "Amount invested",
+            value: fmtAmount(maturity.amount_invested),
+            color: "info",
+          },
           {
             label: "Payouts made",
             value: `${maturity.rows_paid} / ${maturity.rows_total}`,
             color: "brand",
           },
-          { label: "Principal owed", value: inr(maturity.outstanding_principal), color: "warning" },
-          { label: "Interest owed", value: inr(maturity.outstanding_interest), color: "success" },
+          {
+            label: "Principal owed",
+            value: fmtAmount(maturity.outstanding_principal),
+            color: "warning",
+          },
+          {
+            label: "Interest owed",
+            value: fmtAmount(maturity.outstanding_interest),
+            color: "success",
+          },
         ]}
       />
 
       {maturity.status === "Matured" && (
-        <Alert variant="light" color="green" radius="md" icon={<IconCircleCheck size={18} />}>
+        <Alert
+          variant="light"
+          color="green"
+          radius="md"
+          icon={<IconCircleCheck size={18} />}
+        >
           This investment was redeemed and is closed (Matured).
         </Alert>
       )}
       {maturity.status === "Renewed" && (
-        <Alert variant="light" color="brand" radius="md" icon={<IconRefresh size={18} />}>
+        <Alert
+          variant="light"
+          color="brand"
+          radius="md"
+          icon={<IconRefresh size={18} />}
+        >
           This investment was renewed. Its principal now continues in investment{" "}
           <Text span fw={700}>
             {maturity.renewed_to}
@@ -174,8 +224,14 @@ function MaturityContent({
             <KeyValueList
               cols={2}
               rows={[
-                { label: "Maturity date", value: maturity.mat_date ? fmtDate(maturity.mat_date) : "—" },
-                { label: "Still owed to investor", value: inr(owedTotal) },
+                {
+                  label: "Maturity date",
+                  value: maturity.mat_date ? fmtDate(maturity.mat_date) : "—",
+                },
+                {
+                  label: "Still owed to investor",
+                  value: fmtAmount(owedTotal),
+                },
               ]}
             />
             {!maturity.is_due && (
@@ -193,7 +249,7 @@ function MaturityContent({
                   disabled={false}
                   icon={IconArrowBackUp}
                   title="Redeem"
-                  text={`Pay ${inr(owedTotal)} (principal + interest) from the Company Bank and close the investment.`}
+                  text={`Pay ${fmtAmount(owedTotal)} (principal + interest) from the Company Bank and close the investment.`}
                   onClick={() => onDecision("redeem")}
                 />
                 <DecisionCard
@@ -203,7 +259,7 @@ function MaturityContent({
                   title="Renew"
                   text={
                     maturity.renewal_carry_amount > 0
-                      ? `Pay ${inr(maturity.renewal_cash_payout)} interest now and reinvest ${inr(maturity.renewal_carry_amount)} as a new investment.`
+                      ? `Pay ${fmtAmount(maturity.renewal_cash_payout)} interest now and reinvest ${fmtAmount(maturity.renewal_carry_amount)} as a new investment.`
                       : "No principal is left to reinvest."
                   }
                   onClick={() => onDecision("renew")}
@@ -214,7 +270,8 @@ function MaturityContent({
                 <SectionBox title="New investment terms">
                   <Text fz="xs" c="slate.5" mb="sm">
                     Pre-filled from this investment. A new Draft is created for{" "}
-                    {inr(maturity.renewal_carry_amount)}; it then goes through Approve and Contract.
+                    {fmtAmount(maturity.renewal_carry_amount)}; it then goes
+                    through Approve and Contract.
                   </Text>
                   <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                     <Select
@@ -236,7 +293,9 @@ function MaturityContent({
                       max={100}
                       decimalScale={2}
                       value={terms.interest_rate}
-                      onChange={(v) => onTerms({ interest_rate: Number(v) || 0 })}
+                      onChange={(v) =>
+                        onTerms({ interest_rate: Number(v) || 0 })
+                      }
                     />
                     <Select
                       label="Repayment frequency"
@@ -246,7 +305,12 @@ function MaturityContent({
                       allowDeselect={false}
                       data={[...REPAYMENT_FREQUENCIES]}
                       value={terms.repayment_frequency}
-                      onChange={(v) => v && onTerms({ repayment_frequency: v as RepaymentFrequency })}
+                      onChange={(v) =>
+                        v &&
+                        onTerms({
+                          repayment_frequency: v as RepaymentFrequency,
+                        })
+                      }
                     />
                     <NumberInput
                       label="Penalty rate (% p.a.)"
@@ -256,7 +320,9 @@ function MaturityContent({
                       max={100}
                       decimalScale={2}
                       value={terms.penalty_rate}
-                      onChange={(v) => onTerms({ penalty_rate: Number(v) || 0 })}
+                      onChange={(v) =>
+                        onTerms({ penalty_rate: Number(v) || 0 })
+                      }
                     />
                     <TextInput
                       type="date"
@@ -265,7 +331,9 @@ function MaturityContent({
                       radius="md"
                       required
                       value={terms.first_repayment_date}
-                      onChange={(e) => onTerms({ first_repayment_date: e.currentTarget.value })}
+                      onChange={(e) =>
+                        onTerms({ first_repayment_date: e.currentTarget.value })
+                      }
                     />
                     <TextInput
                       type="date"
@@ -274,7 +342,9 @@ function MaturityContent({
                       radius="md"
                       required
                       value={terms.maturity_date}
-                      onChange={(e) => onTerms({ maturity_date: e.currentTarget.value })}
+                      onChange={(e) =>
+                        onTerms({ maturity_date: e.currentTarget.value })
+                      }
                     />
                   </SimpleGrid>
                 </SectionBox>
@@ -375,12 +445,18 @@ function MaturityStage({
   maturity: InvestorMaturity;
   flowState: ModalState;
 }) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   const queryClient = useQueryClient();
   const [section, setSection] = useState<StageId>("maturity");
   const [decision, setDecision] = useState<Decision | null>(null);
-  const [terms, setTerms] = useState<InvestorRenewalTerms | null>(maturity.renewal_defaults);
+  const [terms, setTerms] = useState<InvestorRenewalTerms | null>(
+    maturity.renewal_defaults,
+  );
   const viewingEarlier = section !== "maturity";
-  const editable = !readOnly && maturity.status === "Received" && maturity.is_due;
+  const editable =
+    !readOnly && maturity.status === "Received" && maturity.is_due;
 
   const { data: earning } = useQuery({
     queryKey: ["investorEarning", investorFlowId],
@@ -393,15 +469,24 @@ function MaturityStage({
     queryFn: getEveryInvestmentProduct,
     enabled: editable,
   });
-  const productOptions = products.map((p) => ({ value: p.name, label: p.product_name }));
+  const productOptions = products.map((p) => ({
+    value: p.name,
+    label: p.product_name,
+  }));
 
   const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["investorMaturity", investorFlowId] });
+    queryClient.invalidateQueries({
+      queryKey: ["investorMaturity", investorFlowId],
+    });
     queryClient.invalidateQueries({ queryKey: ["investorMaturities"] });
-    queryClient.invalidateQueries({ queryKey: ["investorEarning", investorFlowId] });
+    queryClient.invalidateQueries({
+      queryKey: ["investorEarning", investorFlowId],
+    });
     queryClient.invalidateQueries({ queryKey: ["investorEarnings"] });
     queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
-    queryClient.invalidateQueries({ queryKey: ["investorFlow", investorFlowId] });
+    queryClient.invalidateQueries({
+      queryKey: ["investorFlow", investorFlowId],
+    });
   };
 
   const redeemMutation = useMutation({
@@ -421,7 +506,8 @@ function MaturityStage({
   });
 
   const renewMutation = useMutation({
-    mutationFn: (t: InvestorRenewalTerms) => renewInvestorFlow({ id: investorFlowId, terms: t }),
+    mutationFn: (t: InvestorRenewalTerms) =>
+      renewInvestorFlow({ id: investorFlowId, terms: t }),
     onSuccess: (result) => {
       refresh();
       onClose();
@@ -441,7 +527,10 @@ function MaturityStage({
     if (!terms.investment_product) return "Select the investment product.";
     if (!terms.first_repayment_date) return "Enter the first repayment date.";
     if (!terms.maturity_date) return "Enter the maturity date.";
-    if (new Date(terms.maturity_date).getTime() <= new Date(terms.first_repayment_date).getTime())
+    if (
+      new Date(terms.maturity_date).getTime() <=
+      new Date(terms.first_repayment_date).getTime()
+    )
       return "Maturity date must be after the first repayment date.";
     if (!(terms.interest_rate > 0 && terms.interest_rate <= 100))
       return "Interest rate must be between 0 and 100.";
@@ -454,22 +543,30 @@ function MaturityStage({
       openCommonModal({
         heading: "Redeem Investment",
         subtitle: "Please confirm this action before continuing.",
-        body: `Pay ${inr(owed)} to ${maturity.investor} from the Company Bank (dated today) and close investment ${maturity.id}?`,
+        body: `Pay ${fmtAmount(owed)} to ${maturity.investor} from the Company Bank (dated today) and close investment ${maturity.id}?`,
         color: "green",
         buttons: [
           { label: "Cancel", variant: "default" },
-          { label: "Redeem", color: "green", onClick: () => redeemMutation.mutate() },
+          {
+            label: "Redeem",
+            color: "green",
+            onClick: () => redeemMutation.mutate(),
+          },
         ],
       });
     } else if (decision === "renew" && terms) {
       openCommonModal({
         heading: "Renew Investment",
         subtitle: "Please confirm this action before continuing.",
-        body: `Pay ${inr(maturity.renewal_cash_payout)} interest to ${maturity.investor} now and reinvest ${inr(maturity.renewal_carry_amount)} as a new Draft investment?`,
+        body: `Pay ${fmtAmount(maturity.renewal_cash_payout)} interest to ${maturity.investor} now and reinvest ${fmtAmount(maturity.renewal_carry_amount)} as a new Draft investment?`,
         color: "green",
         buttons: [
           { label: "Cancel", variant: "default" },
-          { label: "Renew", color: "green", onClick: () => renewMutation.mutate(terms) },
+          {
+            label: "Renew",
+            color: "green",
+            onClick: () => renewMutation.mutate(terms),
+          },
         ],
       });
     }
@@ -478,7 +575,13 @@ function MaturityStage({
   let footer;
   if (viewingEarlier) {
     footer = (
-      <Button size="sm" radius="xl" variant="light" color="brand" onClick={() => setSection("maturity")}>
+      <Button
+        size="sm"
+        radius="xl"
+        variant="light"
+        color="brand"
+        onClick={() => setSection("maturity")}
+      >
         Return to {STAGES[STAGE_INDEX].label}
       </Button>
     );
@@ -512,11 +615,21 @@ function MaturityStage({
       stageIndex={STAGE_INDEX}
       state={flowState}
       title="Maturity"
-      sideNav={<StageSideNav stageIndex={STAGE_INDEX} section={section} onSelect={setSection} />}
+      sideNav={
+        <StageSideNav
+          stageIndex={STAGE_INDEX}
+          section={section}
+          onSelect={setSection}
+        />
+      }
       footer={footer}
     >
       {section === "processing" && (
-        <ProcessingReadOnlyView state={flowState} schedule={processingSchedule} existingCount={0} />
+        <ProcessingReadOnlyView
+          state={flowState}
+          schedule={processingSchedule}
+          existingCount={0}
+        />
       )}
 
       {section === "earnings" && (
@@ -537,7 +650,9 @@ function MaturityStage({
               decision={decision}
               onDecision={setDecision}
               terms={terms}
-              onTerms={(patch) => setTerms((prev) => (prev ? { ...prev, ...patch } : prev))}
+              onTerms={(patch) =>
+                setTerms((prev) => (prev ? { ...prev, ...patch } : prev))
+              }
               productOptions={productOptions}
             />
           </Stack>

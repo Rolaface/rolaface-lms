@@ -1,6 +1,10 @@
 import API from "../../config/api";
 import apiClient from "../../config/axios";
-import type { CreateInvestmentProductPayload, CreateInvestmentProductResponse } from "../../types/Investor/investmentProductForm";
+import type {
+  CreateInvestmentProductPayload,
+  CreateInvestmentProductResponse,
+  InvestmentProductRecord,
+} from "../../types/Investor/investmentProductForm";
 
 
 export async function createInvestmentProduct(payload: CreateInvestmentProductPayload) {
@@ -35,16 +39,8 @@ export async function getAllInvestmentProduct(params?: InvestmentProductListPara
   return data;
 }
 
-/** A row of get_investment_product (tenure / rate / minimum are stored as text). */
-export interface InvestmentProductListItem {
-  name: string;
-  product_name: string;
-  tenure: string;
-  minimum_investment: string;
-  interest_rate: string;
-  payout_frequency: string;
-  disabled: 0 | 1;
-}
+/** A row of get_investment_product. */
+export type InvestmentProductListItem = InvestmentProductRecord;
 
 const ALL_PRODUCTS_PAGE_SIZE = 50;
 

@@ -57,10 +57,16 @@ import { useCompanyStore } from "../../../store/companyStore";
 interface ProductRow {
   id: string;
   name: string;
+  code: string;
   rate: number;
   tenureMonths: number;
   frequency: string;
+  minRate: number;
+  maxRate: number;
   minAmount: number;
+  maxAmount: number;
+  minTenure: number;
+  maxTenure: number;
   active: boolean;
 }
 
@@ -109,7 +115,7 @@ function StatusBadge({ active }: { active: boolean }) {
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
  
-const RIGHT_ALIGNED = ["rate", "tenureMonths", "minAmount", "actions"];
+const RIGHT_ALIGNED = ["rate", "tenureMonths", "rateRange", "amountRange", "tenureRange", "actions"];
 
  function statusToDisabledParam(status: string): 0 | 1 | undefined {
   if (status === "active") return 0;
@@ -270,10 +276,16 @@ const currencyReady = useCurrencyReady();
     return list.map((item: any) => ({
       id: item.name,
       name: item.product_name,
-      rate: Number(item.interest_rate) || 0,
-      tenureMonths: Number(item.tenure) || 0,
+      code: item.product_code || "",
+      rate: Number(item.default_interest_rate) || 0,
+      tenureMonths: Number(item.default_tenure) || 0,
       frequency: item.payout_frequency,
+      minRate: Number(item.min_interest_rate) || 0,
+      maxRate: Number(item.maximum_interest_rate) || 0,
       minAmount: Number(item.minimum_investment) || 0,
+      maxAmount: Number(item.maximum_investment) || 0,
+      minTenure: Number(item.minimum_tenure) || 0,
+      maxTenure: Number(item.maximum_tenure) || 0,
       active: item.disabled !== 1,
     }));
   }, [productsResponse]);
@@ -286,15 +298,20 @@ const currencyReady = useCurrencyReady();
   const columns = useMemo(
     () => [
       columnHelper.accessor("name", {
-        header: "Product Name",
+        header: "Product",
         cell: (info) => (
-          <Text fz="sm" fw={700} c="slate.8">
-            {info.getValue()}
-          </Text>
+          <Box>
+            <Text fz="sm" fw={700} c="slate.8">
+              {info.getValue()}
+            </Text>
+            <Text fz={11} c="slate.5" ff="monospace">
+              {info.row.original.code || "-"}
+            </Text>
+          </Box>
         ),
       }),
       columnHelper.accessor("rate", {
-        header: "Interest Rate",
+        header: "Default Rate",
         cell: (info) => (
           <Text fz="xs" c="slate.6" ta="right">
             {`${info.getValue()}% p.a.`}
@@ -303,7 +320,7 @@ const currencyReady = useCurrencyReady();
         sortingFn: "basic",
       }),
       columnHelper.accessor("tenureMonths", {
-        header: "Tenure",
+        header: "Default Tenure",
         cell: (info) => (
           <Text fz="xs" c="slate.6" ta="right">
             {`${info.getValue()} months`}
@@ -319,8 +336,18 @@ const currencyReady = useCurrencyReady();
           </Text>
         ),
       }),
-      columnHelper.accessor("minAmount", {
-        header: "Minimum Investment",
+      columnHelper.display({
+        id: "rateRange",
+        header: "Interest Range",
+        cell: (info) => (
+          <Text fz="xs" c="slate.6" ta="right">
+            {`${info.row.original.minRate}% – ${info.row.original.maxRate}%`}
+          </Text>
+        ),
+      }),
+      columnHelper.display({
+        id: "amountRange",
+        header: "Investment Range",
         cell: (info) => (
           <Text
             fz="xs"
@@ -329,12 +356,22 @@ const currencyReady = useCurrencyReady();
             style={{
               fontFamily: "var(--mantine-font-family-monospace)",
               fontVariantNumeric: "tabular-nums",
+              whiteSpace: "nowrap",
             }}
           >
-           {formatAmount(companyCurrency, info.getValue(), { withSymbol: true })}
+            {formatAmount(companyCurrency, info.row.original.minAmount, { withSymbol: true })} –{" "}
+            {formatAmount(companyCurrency, info.row.original.maxAmount, { withSymbol: true })}
           </Text>
         ),
-        sortingFn: "basic",
+      }),
+      columnHelper.display({
+        id: "tenureRange",
+        header: "Tenure Range",
+        cell: (info) => (
+          <Text fz="xs" c="slate.6" ta="right" style={{ whiteSpace: "nowrap" }}>
+            {`${info.row.original.minTenure} – ${info.row.original.maxTenure} months`}
+          </Text>
+        ),
       }),
       columnHelper.accessor("active", {
         header: "Status",
@@ -470,7 +507,7 @@ const currencyReady = useCurrencyReady();
               Investment Products
             </Title>
             <Text fz="sm" c="slate.5">
-              Define the rate, tenure and payout
+              Defaults new investments start with, and the limits they must stay within
             </Text>
           </Stack>
         </Group>
@@ -490,7 +527,7 @@ const currencyReady = useCurrencyReady();
             className="lms-search"
             size="sm"
             radius="xl"
-            placeholder="Product name"
+            placeholder="Product name or code"
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
             styles={{
@@ -571,6 +608,7 @@ const currencyReady = useCurrencyReady();
               style={{
                 height: "clamp(320px, calc(100vh - 280px), 720px)",
                 overflowY: "auto",
+                overflowX: "auto",
                 opacity: isFetching ? 0.6 : 1,
                 transition: "opacity 120ms ease",
               }}
