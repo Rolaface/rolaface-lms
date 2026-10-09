@@ -147,7 +147,7 @@ export const STEP_NAMES = [
   "Terms & Schedule",
   "Contract Generation",
   "Funding & Allotment",
-  "Earnings & Statements",
+  "Repayment Record",
   "Maturity",
 ];
 

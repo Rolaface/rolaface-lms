@@ -285,6 +285,8 @@ export function RecordFund() {
           const row = info.row.original;
           const isDraft = row.record_status === "Draft";
           const isApproved = row.record_status === "Approved";
+          // Draft: Approve / Edit / Delete. Approved: Cancel. Cancelled: Delete.
+          const canDelete = isDraft || row.record_status === "Cancelled";
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap">
               <Tooltip label="View" withArrow>
@@ -305,18 +307,21 @@ export function RecordFund() {
                   <IconPencil size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={isDraft ? "Delete" : "Only Draft records can be deleted"} withArrow>
+              <Tooltip
+                label={canDelete ? "Delete" : "Only Draft or Cancelled records can be deleted"}
+                withArrow
+              >
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color={isDraft ? "danger" : "slate"}
+                  color={canDelete ? "danger" : "slate"}
                   radius="md"
-                  disabled={!isDraft}
-                  style={isDraft ? undefined : { opacity: 0.35 }}
+                  disabled={!canDelete}
+                  style={canDelete ? undefined : { opacity: 0.35 }}
                   onClick={() =>
                     confirm(
                       "Delete Fund Record",
-                      `Delete the draft record of ${fmtAmount(row.amount_paid)} from ${row.investor}?`,
+                      `Delete the ${row.record_status.toLowerCase()} record of ${fmtAmount(row.amount_paid)} from ${row.investor}?`,
                       "Delete",
                       "red",
                       () => deleteMutation.mutate(row),
@@ -356,22 +361,22 @@ export function RecordFund() {
                       Approve
                     </Menu.Item>
                   )}
-                  <Menu.Item
-                    color="danger"
-                    onClick={() =>
-                      confirm(
-                        "Cancel Fund",
-                        isApproved
-                          ? `Cancel the approved record of ${fmtAmount(row.amount_paid)}? Its Journal Entry ${row.journal_entry ?? ""} will be cancelled too.`
-                          : `Cancel the draft record of ${fmtAmount(row.amount_paid)}?`,
-                        "Cancel Record",
-                        "red",
-                        () => cancelMutation.mutate(row),
-                      )
-                    }
-                  >
-                    Cancel
-                  </Menu.Item>
+                  {isApproved && (
+                    <Menu.Item
+                      color="danger"
+                      onClick={() =>
+                        confirm(
+                          "Cancel Fund",
+                          `Cancel the approved record of ${fmtAmount(row.amount_paid)}? Its Journal Entry ${row.journal_entry ?? ""} will be cancelled and the repayment schedule recalculated.`,
+                          "Cancel Record",
+                          "red",
+                          () => cancelMutation.mutate(row),
+                        )
+                      }
+                    >
+                      Cancel
+                    </Menu.Item>
+                  )}
                 </Menu.Dropdown>
               </Menu>
             </Group>

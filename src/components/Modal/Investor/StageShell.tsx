@@ -260,9 +260,9 @@ export function StageShell({
           <Text fw={700} c="white">
             {title}
           </Text>
-          <Text fz="xs" c="white" style={{ opacity: 0.85 }}>
+          {/* <Text fz="xs" c="white" style={{ opacity: 0.85 }}>
             Stage {stageIndex + 1} of {STAGES.length} — {STAGES[stageIndex].label}
-          </Text>
+          </Text> */}
         </Box>
         <Group gap={4} ml="auto" wrap="nowrap">
           {onMinimize && (
