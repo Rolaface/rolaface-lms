@@ -5,12 +5,13 @@ import {
   SectionBox,
   Tag,
   buildNumber,
-  inr,
   toIso,
   type FundedInvestment,
   type PaymentMode,
   type TabProps,
 } from "./InvestorModalShared";
+import { formatAmount } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
 interface FundingAllotmentProps extends TabProps {
   existingCount: number;
@@ -23,6 +24,9 @@ export function FundingAllotment({
   existingCount,
   onFunded,
 }: FundingAllotmentProps) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   const customer = CUSTOMERS[state.customerIndex];
   const product = PRODUCTS[state.productIndex];
 
@@ -34,7 +38,8 @@ export function FundingAllotment({
           Investment {state.investmentNo} is active
         </Text>
         <Text fz="sm" c="slate.5">
-          {inr(state.amount)} received via {state.paymentMode} · Ref {state.utr}
+          {fmtAmount(state.amount)} received via {state.paymentMode} · Ref{" "}
+          {state.utr}
         </Text>
       </Stack>
     );
@@ -60,7 +65,7 @@ export function FundingAllotment({
       <Text fz="sm" c="slate.8" mb="sm">
         Expected amount:{" "}
         <Text span fw={700}>
-          {inr(state.amount)}
+          {fmtAmount(state.amount)}
         </Text>{" "}
         from{" "}
         <Text span fw={700}>

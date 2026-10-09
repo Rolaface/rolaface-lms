@@ -9,14 +9,18 @@ import {
   KeyValueList,
   SectionBox,
   apiProductPatch,
-  inr,
   stateCustomer,
   type TabProps,
 } from "./InvestorModalShared";
+import { formatAmount } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
 const CUSTOMER_SEARCH_PAGE_SIZE = 50;
 
 export function InvestorProduct({ state, update }: TabProps) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   const customer = stateCustomer(state);
 
   /* ----------------------------- Customers ----------------------------- */
@@ -41,7 +45,10 @@ export function InvestorProduct({ state, update }: TabProps) {
 
   // Keep the chosen customer in the list while the user types a new search.
   const customerOptions = useMemo(() => {
-    const options = investors.map((c) => ({ value: c.name, label: c.customer_name || c.name }));
+    const options = investors.map((c) => ({
+      value: c.name,
+      label: c.customer_name || c.name,
+    }));
     if (customer && !options.some((o) => o.value === customer.id)) {
       options.unshift({ value: customer.id, label: customer.name });
     }
@@ -88,8 +95,8 @@ export function InvestorProduct({ state, update }: TabProps) {
   // Details of the product itself (not the terms, which can be changed on the next step).
   const productDetails = selectedProduct
     ? {
-        rate: Number(selectedProduct.interest_rate) || 0,
-        tenureMonths: Number(selectedProduct.tenure) || 0,
+        rate: Number(selectedProduct.default_interest_rate) || 0,
+        tenureMonths: Number(selectedProduct.default_tenure) || 0,
         frequency: selectedProduct.payout_frequency,
         minAmount: Number(selectedProduct.minimum_investment) || 0,
       }
@@ -112,14 +119,18 @@ export function InvestorProduct({ state, update }: TabProps) {
           value={customer ? customer.id : null}
           onChange={handleCustomerChange}
           rightSection={customersLoading ? <Loader size={14} /> : undefined}
-          nothingFoundMessage={customersLoading ? "Searching…" : "No investor found"}
+          nothingFoundMessage={
+            customersLoading ? "Searching…" : "No investor found"
+          }
         />
         {customer && (
           <Box mt="md">
             <KeyValueList
               rows={[
                 { label: "Customer ID", value: customer.id },
-                ...(customer.bank ? [{ label: "Payout bank", value: customer.bank }] : []),
+                ...(customer.bank
+                  ? [{ label: "Payout bank", value: customer.bank }]
+                  : []),
                 { label: "Email (statements)", value: customer.email || "—" },
               ]}
             />
@@ -138,7 +149,11 @@ export function InvestorProduct({ state, update }: TabProps) {
           data={productOptions}
           value={state.productId}
           onChange={(v) =>
-            update(apiProductPatch(v ? (products.find((p) => p.name === v) ?? null) : null))
+            update(
+              apiProductPatch(
+                v ? (products.find((p) => p.name === v) ?? null) : null,
+              ),
+            )
           }
           rightSection={productsLoading ? <Loader size={14} /> : undefined}
           nothingFoundMessage="No product found"
@@ -146,12 +161,55 @@ export function InvestorProduct({ state, update }: TabProps) {
         {productDetails && (
           <Box mt="md">
             <KeyValueList
-              rows={[
-                { label: "Interest rate", value: `${productDetails.rate}% p.a.` },
-                { label: "Tenure", value: `${productDetails.tenureMonths} months` },
-                { label: "Repayment frequency", value: productDetails.frequency },
-                { label: "Minimum investment", value: inr(productDetails.minAmount) },
-              ]}
+              rows={
+                selectedProduct
+                  ? [
+                      {
+                        label: "Default interest rate",
+                        value: `${productDetails.rate}% p.a.`,
+                      },
+                      {
+                        label: "Default tenure",
+                        value: `${productDetails.tenureMonths} months`,
+                      },
+                      {
+                        label: "Default payout frequency",
+                        value: productDetails.frequency,
+                      },
+                      {
+                        label: "Interest rate range",
+                        value: `${selectedProduct.min_interest_rate}% – ${selectedProduct.maximum_interest_rate}%`,
+                      },
+                      {
+                        label: "Investment range",
+                        value: `${fmtAmount(Number(selectedProduct.minimum_investment) || 0)} – ${fmtAmount(
+                          Number(selectedProduct.maximum_investment) || 0,
+                        )}`,
+                      },
+                      {
+                        label: "Tenure range",
+                        value: `${selectedProduct.minimum_tenure} – ${selectedProduct.maximum_tenure} months`,
+                      },
+                    ]
+                  : [
+                      {
+                        label: "Interest rate",
+                        value: `${productDetails.rate}% p.a.`,
+                      },
+                      {
+                        label: "Tenure",
+                        value: `${productDetails.tenureMonths} months`,
+                      },
+                      {
+                        label: "Repayment frequency",
+                        value: productDetails.frequency,
+                      },
+                      {
+                        label: "Minimum investment",
+                        value: fmtAmount(productDetails.minAmount),
+                      },
+                    ]
+              }
             />
           </Box>
         )}

@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { useCompanyStore } from "../../../store/companyStore";
+import { formatAmount } from "../../../store/currencyStore";
 import type { MantineTheme } from "@mantine/core";
 import {
   fmtDate,
@@ -53,12 +54,16 @@ const M = 15;
 const CW = PAGE_W - M * 2;
 const BOTTOM = PAGE_H - 22;
 
-// jsPDF's built-in fonts have no rupee glyph, so amounts print as "Rs."
-const money = (n: number) => "Rs. " + Math.round(n).toLocaleString("en-IN");
+// jsPDF's built-in fonts can't draw currency symbols such as the rupee sign, so amounts print
+// with the company currency code instead (e.g. "INR 9,00,000.00"), in that currency's number format.
+const money = (ctx: Ctx, n: number) =>
+  `${ctx.currency} ${formatAmount(ctx.currency, n)}`.trim();
 
 interface Ctx {
   doc: jsPDF;
   p: PdfPalette;
+  /** Company currency code (baseCurrency of the company store). */
+  currency: string;
 }
 
 const fill = ({ doc }: Ctx, c: RGB) => doc.setFillColor(c[0], c[1], c[2]);
@@ -115,7 +120,11 @@ function sectionTitle(ctx: Ctx, y: number, text: string) {
   return y + 6;
 }
 
-function kpiTiles(ctx: Ctx, y: number, items: { label: string; value: string }[]) {
+function kpiTiles(
+  ctx: Ctx,
+  y: number,
+  items: { label: string; value: string }[],
+) {
   const { doc, p } = ctx;
   const gap = 4;
   const w = (CW - gap * (items.length - 1)) / items.length;
@@ -198,7 +207,10 @@ function table(
     font(ctx, "bold", 7.5);
     let x = M;
     cols.forEach((c) => {
-      if (c.align === "right") doc.text(c.header.toUpperCase(), x + c.w - 3, yy + 5.3, { align: "right" });
+      if (c.align === "right")
+        doc.text(c.header.toUpperCase(), x + c.w - 3, yy + 5.3, {
+          align: "right",
+        });
       else doc.text(c.header.toUpperCase(), x + 3, yy + 5.3);
       x += c.w;
     });
@@ -218,7 +230,8 @@ function table(
     font(ctx, "normal", 8.5);
     let x = M;
     cols.forEach((c, ci) => {
-      if (c.align === "right") doc.text(r[ci], x + c.w - 3, cy + 3, { align: "right" });
+      if (c.align === "right")
+        doc.text(r[ci], x + c.w - 3, cy + 3, { align: "right" });
       else doc.text(r[ci], x + 3, cy + 3);
       x += c.w;
     });
@@ -273,9 +286,13 @@ export interface ContractPdfData {
   rows: ScheduleRow[];
 }
 
-export function buildContractPdf(d: ContractPdfData, p: PdfPalette): jsPDF {
+export function buildContractPdf(
+  d: ContractPdfData,
+  p: PdfPalette,
+  currency: string,
+): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const ctx: Ctx = { doc, p };
+  const ctx: Ctx = { doc, p, currency };
 
   let y = drawHeader(ctx, "INVESTMENT AGREEMENT", d.productName, [
     { label: "Contract No.", value: d.contractNo },
@@ -286,34 +303,45 @@ export function buildContractPdf(d: ContractPdfData, p: PdfPalette): jsPDF {
   // Parties
   y = sectionTitle(ctx, y, "Parties");
   const cardW = (CW - 6) / 2;
-  const h1 = infoCard(ctx, M, y, cardW, "The Company", d.companyName || "The Company", [
-    `Product: ${d.productName}`,
-  ]);
-  const h2 = infoCard(ctx, M + cardW + 6, y, cardW, "The Investor", d.customer.name, [
-    `Customer ID: ${d.customer.id}`,
-    `Email: ${d.customer.email}`,
-  ]);
+  const h1 = infoCard(
+    ctx,
+    M,
+    y,
+    cardW,
+    "The Company",
+    d.companyName || "The Company",
+    [`Product: ${d.productName}`],
+  );
+  const h2 = infoCard(
+    ctx,
+    M + cardW + 6,
+    y,
+    cardW,
+    "The Investor",
+    d.customer.name,
+    [`Customer ID: ${d.customer.id}`, `Email: ${d.customer.email}`],
+  );
   y += Math.max(h1, h2) + 8;
 
   // Summary
   y = sectionTitle(ctx, y, "Investment summary");
   y = kpiTiles(ctx, y, [
-    { label: "Investment amount", value: money(d.amount) },
+    { label: "Investment amount", value: money(ctx, d.amount) },
     { label: "Interest rate", value: `${d.rate}% p.a.` },
     { label: "Tenure", value: `${d.totalMonths} months` },
-    { label: "Total repayment", value: money(d.amount + d.totalInterest) },
+    { label: "Total repayment", value: money(ctx, d.amount + d.totalInterest) },
   ]);
 
   // Key terms
   y = sectionTitle(ctx, y, "Key terms");
   y = keyValueRows(ctx, y, [
-    ["Investment amount", money(d.amount)],
+    ["Investment amount", money(ctx, d.amount)],
     ["Interest rate", `${d.rate}% p.a.`],
     ["Repayment frequency", d.frequency],
     ["First repayment date", fmtDate(d.firstRepayment)],
     ["Maturity date", fmtDate(d.maturity)],
     ["Number of payments", String(d.rows.length)],
-    ["Total repayment", money(d.amount + d.totalInterest)],
+    ["Total repayment", money(ctx, d.amount + d.totalInterest)],
     [
       "Penalty",
       d.penaltyApplicable
@@ -338,9 +366,9 @@ export function buildContractPdf(d: ContractPdfData, p: PdfPalette): jsPDF {
     d.rows.map((r, i) => [
       String(i + 1),
       fmtDate(r.date),
-      money(r.principal),
-      money(r.interest),
-      money(r.principal + r.interest),
+      money(ctx, r.principal),
+      money(ctx, r.interest),
+      money(ctx, r.principal + r.interest),
     ]),
   );
 
@@ -409,13 +437,20 @@ export interface StatementPdfData {
   earnedToDate: number;
 }
 
-export function buildStatementPdf(d: StatementPdfData, p: PdfPalette): jsPDF {
+export function buildStatementPdf(
+  d: StatementPdfData,
+  p: PdfPalette,
+  currency: string,
+): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const ctx: Ctx = { doc, p };
+  const ctx: Ctx = { doc, p, currency };
 
   let y = drawHeader(ctx, "INVESTMENT STATEMENT", d.statementLabel, [
     { label: "Contract No.", value: d.contractNo },
-    { label: "Statement period", value: `${fmtDate(d.periodFrom)} - ${fmtDate(d.periodTo)}` },
+    {
+      label: "Statement period",
+      value: `${fmtDate(d.periodFrom)} - ${fmtDate(d.periodTo)}`,
+    },
     { label: "Month", value: `${d.monthNo} of ${d.totalMonths}` },
   ]);
 
@@ -425,28 +460,33 @@ export function buildStatementPdf(d: StatementPdfData, p: PdfPalette): jsPDF {
     `Customer ID: ${d.customer.id}`,
     `Email: ${d.customer.email}`,
   ]);
-  const h2 = infoCard(ctx, M + cardW + 6, y, cardW, "Investment", d.productName, [
-    `Contract No.: ${d.contractNo}`,
-    `Payout bank: ${d.customer.bank}`,
-  ]);
+  const h2 = infoCard(
+    ctx,
+    M + cardW + 6,
+    y,
+    cardW,
+    "Investment",
+    d.productName,
+    [`Contract No.: ${d.contractNo}`, `Payout bank: ${d.customer.bank}`],
+  );
   y += Math.max(h1, h2) + 8;
 
   y = sectionTitle(ctx, y, "This month at a glance");
   y = kpiTiles(ctx, y, [
-    { label: "Principal", value: money(d.principal) },
+    { label: "Principal", value: money(ctx, d.principal) },
     { label: "Interest rate", value: `${d.rate}% p.a.` },
-    { label: "Earned this month", value: money(d.interestEarned) },
-    { label: "Paid out this month", value: money(d.paidOut) },
+    { label: "Earned this month", value: money(ctx, d.interestEarned) },
+    { label: "Paid out this month", value: money(ctx, d.paidOut) },
   ]);
 
   y = sectionTitle(ctx, y, "Statement details");
   y = keyValueRows(ctx, y, [
     ["Contract No.", d.contractNo],
-    ["Principal", money(d.principal)],
+    ["Principal", money(ctx, d.principal)],
     ["Interest rate", `${d.rate}% p.a.`],
-    ["Interest earned this month", money(d.interestEarned)],
-    ["Paid out this month", money(d.paidOut)],
-    ["Total interest earned to date", money(d.earnedToDate)],
+    ["Interest earned this month", money(ctx, d.interestEarned)],
+    ["Paid out this month", money(ctx, d.paidOut)],
+    ["Total interest earned to date", money(ctx, d.earnedToDate)],
   ]);
 
   // Progress
@@ -454,7 +494,15 @@ export function buildStatementPdf(d: StatementPdfData, p: PdfPalette): jsPDF {
   fill(ctx, p.line);
   doc.roundedRect(M, y, CW, 4, 2, 2, "F");
   fill(ctx, p.success);
-  doc.roundedRect(M, y, Math.max(4, CW * (d.monthNo / d.totalMonths)), 4, 2, 2, "F");
+  doc.roundedRect(
+    M,
+    y,
+    Math.max(4, CW * (d.monthNo / d.totalMonths)),
+    4,
+    2,
+    2,
+    "F",
+  );
   ink(ctx, p.mute);
   font(ctx, "normal", 8.5);
   doc.text(`${d.monthNo} of ${d.totalMonths} months completed`, M, y + 10);
@@ -468,7 +516,10 @@ export function buildStatementPdf(d: StatementPdfData, p: PdfPalette): jsPDF {
     y,
   );
 
-  addFooters(ctx, `Investment Statement | ${d.contractNo} | ${d.statementLabel}`);
+  addFooters(
+    ctx,
+    `Investment Statement | ${d.contractNo} | ${d.statementLabel}`,
+  );
   return doc;
 }
 
@@ -479,6 +530,7 @@ export function buildContractPdfFromState(
   state: ModalState,
   schedule: Schedule | null,
   theme: MantineTheme,
+  currency: string,
 ) {
   const customer = stateCustomer(state);
   const product = stateProduct(state);
@@ -504,12 +556,18 @@ export function buildContractPdfFromState(
       rows: schedule.rows,
     },
     getPdfPalette(theme),
+    currency,
   );
 }
 
 /* -------------------------- Investor statement -------------------------- */
 export interface InvestorStatementPdfData {
-  investor: { id: string; name: string; email: string | null; mobile: string | null };
+  investor: {
+    id: string;
+    name: string;
+    email: string | null;
+    mobile: string | null;
+  };
   /** Investment the statement is limited to, or null for all investments. */
   investment: string | null;
   entries: {
@@ -522,22 +580,37 @@ export interface InvestorStatementPdfData {
     interest_paid: number;
     balance: number;
   }[];
-  totals: { paid_in: number; principal_returned: number; interest_paid: number; closing_balance: number };
+  totals: {
+    paid_in: number;
+    principal_returned: number;
+    interest_paid: number;
+    closing_balance: number;
+  };
 }
 
 /** Every fund paid in and every payout received, with the principal balance after each entry. */
-export function buildInvestorStatementPdf(d: InvestorStatementPdfData, p: PdfPalette): jsPDF {
+export function buildInvestorStatementPdf(
+  d: InvestorStatementPdfData,
+  p: PdfPalette,
+  currency: string,
+): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const ctx: Ctx = { doc, p };
+  const ctx: Ctx = { doc, p, currency };
   const first = d.entries[0]?.date;
   const last = d.entries[d.entries.length - 1]?.date;
-  const period = first && last ? `${fmtDate(first)} - ${fmtDate(last)}` : "No entries";
+  const period =
+    first && last ? `${fmtDate(first)} - ${fmtDate(last)}` : "No entries";
 
-  let y = drawHeader(ctx, "INVESTOR STATEMENT", d.investment ? `Investment ${d.investment}` : "All investments", [
-    { label: "Investor", value: d.investor.id },
-    { label: "Period", value: period },
-    { label: "Generated on", value: fmtDate(new Date()) },
-  ]);
+  let y = drawHeader(
+    ctx,
+    "INVESTOR STATEMENT",
+    d.investment ? `Investment ${d.investment}` : "All investments",
+    [
+      { label: "Investor", value: d.investor.id },
+      { label: "Period", value: period },
+      { label: "Generated on", value: fmtDate(new Date()) },
+    ],
+  );
 
   y = sectionTitle(ctx, y, "Investor");
   const cardW = (CW - 6) / 2;
@@ -545,23 +618,31 @@ export function buildInvestorStatementPdf(d: InvestorStatementPdfData, p: PdfPal
     `Investor ID: ${d.investor.id}`,
     `Email: ${d.investor.email || "-"}`,
   ]);
-  const h2 = infoCard(ctx, M + cardW + 6, y, cardW, "Covers", d.investment || "All investments", [
-    `Entries: ${d.entries.length}`,
-    `Mobile: ${d.investor.mobile || "-"}`,
-  ]);
+  const h2 = infoCard(
+    ctx,
+    M + cardW + 6,
+    y,
+    cardW,
+    "Covers",
+    d.investment || "All investments",
+    [`Entries: ${d.entries.length}`, `Mobile: ${d.investor.mobile || "-"}`],
+  );
   y += Math.max(h1, h2) + 8;
 
   y = sectionTitle(ctx, y, "Summary");
   y = kpiTiles(ctx, y, [
-    { label: "Paid in", value: money(d.totals.paid_in) },
-    { label: "Principal returned", value: money(d.totals.principal_returned) },
-    { label: "Interest paid", value: money(d.totals.interest_paid) },
-    { label: "Principal held", value: money(d.totals.closing_balance) },
+    { label: "Paid in", value: money(ctx, d.totals.paid_in) },
+    {
+      label: "Principal returned",
+      value: money(ctx, d.totals.principal_returned),
+    },
+    { label: "Interest paid", value: money(ctx, d.totals.interest_paid) },
+    { label: "Principal held", value: money(ctx, d.totals.closing_balance) },
   ]);
 
   y = ensure(ctx, y, 30);
   y = sectionTitle(ctx, y, "Transactions");
-  const amount = (n: number) => (n ? money(n) : "-");
+  const amount = (n: number) => (n ? money(ctx, n) : "-");
   y = table(
     ctx,
     y,
@@ -581,7 +662,7 @@ export function buildInvestorStatementPdf(d: InvestorStatementPdfData, p: PdfPal
       amount(e.paid_in),
       amount(e.principal_returned),
       amount(e.interest_paid),
-      money(e.balance),
+      money(ctx, e.balance),
     ]),
   );
 
@@ -596,6 +677,9 @@ export function buildInvestorStatementPdf(d: InvestorStatementPdfData, p: PdfPal
     { maxWidth: CW },
   );
 
-  addFooters(ctx, `Investor Statement | ${d.investor.id}${d.investment ? ` | ${d.investment}` : ""}`);
+  addFooters(
+    ctx,
+    `Investor Statement | ${d.investor.id}${d.investment ? ` | ${d.investment}` : ""}`,
+  );
   return doc;
 }

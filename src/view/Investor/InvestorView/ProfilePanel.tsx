@@ -7,15 +7,15 @@ import { getInvestorBankAccounts } from "../../../api/Investor/investorFlowApi";
 import { Card, CardTitle, ErrorBlock, Field, LoadingBlock } from "./ui";
 
 export function ProfilePanel({ investorId }: { investorId: string }) {
-  const { data: raw, isLoading, error } = useCustomerById(investorId);
+  const { data: raw, isError, error } = useCustomerById(investorId);
   const { data: banks = [], isLoading: banksLoading } = useQuery({
     queryKey: ["investorBankAccounts", investorId],
     queryFn: () => getInvestorBankAccounts(investorId),
     retry: false,
   });
 
-  if (isLoading) return <LoadingBlock />;
-  if (error || !raw) return <ErrorBlock error={error} fallback="The investor profile could not be loaded." />;
+  if (isError) return <ErrorBlock error={error} fallback="The investor profile could not be loaded." />;
+  if (!raw) return <LoadingBlock />;
 
   const p = mapCustomerDetailToBorrowerProfile(raw);
   const isBusiness = p.type === "Company";

@@ -17,7 +17,12 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
-import { IconArrowRight, IconCash, IconMinus, IconX } from "@tabler/icons-react";
+import {
+  IconArrowRight,
+  IconCash,
+  IconMinus,
+  IconX,
+} from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addFundRecord,
@@ -36,7 +41,9 @@ import {
 } from "../../../types/Investor/investorFlow";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { openCommonModal } from "../AlertModal";
-import { fmtDate, inr, toIso } from "./InvestorModalShared";
+import { fmtDate, toIso } from "./InvestorModalShared";
+import { formatAmount } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
 export type RecordFundMode = "add" | "edit" | "view";
 
@@ -110,6 +117,9 @@ function GlSide({
   amount: number;
   emptyText: string;
 }) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   return (
     <Box p="md">
       <Text fw={700} fz="sm" c="slate.8" mb={6}>
@@ -124,7 +134,7 @@ function GlSide({
             {description}
           </Text>
           <Text fz="sm" fw={700} c="slate.8" mt={6}>
-            {inr(amount)}
+            {fmtAmount(amount)}
           </Text>
         </>
       ) : (
@@ -148,7 +158,12 @@ function PaidFromToPanel({
   debitEmptyText: string;
 }) {
   return (
-    <Paper radius="md" mt="md" pos="relative" style={{ ...PANEL_STYLE, overflow: "hidden" }}>
+    <Paper
+      radius="md"
+      mt="md"
+      pos="relative"
+      style={{ ...PANEL_STYLE, overflow: "hidden" }}
+    >
       <Box style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
         <GlSide
           title="Paid from"
@@ -190,7 +205,16 @@ function PaidFromToPanel({
 }
 
 /** Every fund record of the investment, with its Record Status. */
-function FundsRecordedTable({ funds, highlight }: { funds: InvestorFundRow[]; highlight?: string | null }) {
+function FundsRecordedTable({
+  funds,
+  highlight,
+}: {
+  funds: InvestorFundRow[];
+  highlight?: string | null;
+}) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   return (
     <Paper radius="md" mt="md" style={{ ...PANEL_STYLE, overflow: "hidden" }}>
       <Group
@@ -228,14 +252,18 @@ function FundsRecordedTable({ funds, highlight }: { funds: InvestorFundRow[]; hi
               {funds.map((r) => (
                 <Table.Tr
                   key={r.name}
-                  bg={r.name === highlight ? "var(--mantine-color-brand-0)" : undefined}
+                  bg={
+                    r.name === highlight
+                      ? "var(--mantine-color-brand-0)"
+                      : undefined
+                  }
                 >
                   <Table.Td>{fmtDate(r.paid_date)}</Table.Td>
                   <Table.Td>{r.mode_of_payment}</Table.Td>
                   <Table.Td>{r.reference_number || "—"}</Table.Td>
                   <Table.Td>{r.debit_gl_description}</Table.Td>
                   <Table.Td ta="right" fw={600}>
-                    {inr(r.amount_paid)}
+                    {fmtAmount(r.amount_paid)}
                   </Table.Td>
                   <Table.Td>
                     <Badge
@@ -269,24 +297,33 @@ export function RecordFundModal({
   investorFlowId = null,
   recordName = null,
 }: RecordFundModalProps) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
 
   /* Add: choose the investment (Approved, with an amount still to record) */
-  const [chosenFlowId, setChosenFlowId] = useState<string | null>(investorFlowId);
+  const [chosenFlowId, setChosenFlowId] = useState<string | null>(
+    investorFlowId,
+  );
   const [investmentSearch, setInvestmentSearch] = useState("");
   const [debouncedSearch] = useDebouncedValue(investmentSearch, 300);
   const investmentsQuery = useQuery({
     queryKey: ["investorFunds", "pick", debouncedSearch],
     queryFn: () =>
-      getInvestorFunds({ status: ["Approved"], search: debouncedSearch.trim() || undefined, page_size: 20 }),
+      getInvestorFunds({
+        status: ["Approved"],
+        search: debouncedSearch.trim() || undefined,
+        page_size: 20,
+      }),
     enabled: opened && mode === "add",
   });
   const investmentOptions = (investmentsQuery.data?.data ?? [])
     .filter((i) => i.available_to_record > 0 || i.name === chosenFlowId)
     .map((i) => ({
       value: i.name,
-      label: `${i.investor} · ${inr(i.investment_amount)} · remaining ${inr(i.remaining_fund)}`,
+      label: `${i.investor} · ${fmtAmount(i.investment_amount)} · remaining ${fmtAmount(i.remaining_fund)}`,
     }));
 
   const flowId = mode === "add" ? chosenFlowId : investorFlowId;
@@ -303,7 +340,9 @@ export function RecordFundModal({
   });
 
   const fund = fundQuery.data ?? null;
-  const record = recordName ? (fund?.funds.find((r) => r.name === recordName) ?? null) : null;
+  const record = recordName
+    ? (fund?.funds.find((r) => r.name === recordName) ?? null)
+    : null;
 
   const [saving, setSaving] = useState(false);
 
@@ -346,8 +385,12 @@ export function RecordFundModal({
             searchValue={investmentSearch}
             onSearchChange={setInvestmentSearch}
             filter={({ options }) => options}
-            rightSection={investmentsQuery.isFetching ? <Loader size={14} /> : undefined}
-            nothingFoundMessage={investmentsQuery.isFetching ? "Searching…" : "No investment found"}
+            rightSection={
+              investmentsQuery.isFetching ? <Loader size={14} /> : undefined
+            }
+            nothingFoundMessage={
+              investmentsQuery.isFetching ? "Searching…" : "No investment found"
+            }
           />
         )}
 
@@ -369,10 +412,22 @@ export function RecordFundModal({
                 }}
               >
                 <LockedField label="Investor" value={fund.investor} />
-                <LockedField label="Investment amount" value={inr(fund.investment_amount)} />
-                <LockedField label="Fund received (approved)" value={inr(fund.fund_received)} />
-                <LockedField label="Draft (not approved)" value={inr(fund.draft_amount)} />
-                <LockedField label="Remaining fund" value={inr(fund.remaining_fund)} />
+                <LockedField
+                  label="Investment amount"
+                  value={fmtAmount(fund.investment_amount)}
+                />
+                <LockedField
+                  label="Fund received (approved)"
+                  value={fmtAmount(fund.fund_received)}
+                />
+                <LockedField
+                  label="Draft (not approved)"
+                  value={fmtAmount(fund.draft_amount)}
+                />
+                <LockedField
+                  label="Remaining fund"
+                  value={fmtAmount(fund.remaining_fund)}
+                />
               </Box>
             </Paper>
 
@@ -382,14 +437,27 @@ export function RecordFundModal({
                   <Box
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(150px, 1fr))",
                       gap: 12,
                     }}
                   >
-                    <LockedField label="Paid date" value={fmtDate(record.paid_date)} />
-                    <LockedField label="Mode of payment" value={record.mode_of_payment} />
-                    <LockedField label="Reference no." value={record.reference_number || "—"} />
-                    <LockedField label="Amount" value={inr(record.amount_paid)} />
+                    <LockedField
+                      label="Paid date"
+                      value={fmtDate(record.paid_date)}
+                    />
+                    <LockedField
+                      label="Mode of payment"
+                      value={record.mode_of_payment}
+                    />
+                    <LockedField
+                      label="Reference no."
+                      value={record.reference_number || "—"}
+                    />
+                    <LockedField
+                      label="Amount"
+                      value={fmtAmount(record.amount_paid)}
+                    />
                     <LockedField
                       label="Record status"
                       value={
@@ -397,18 +465,29 @@ export function RecordFundModal({
                           variant="light"
                           radius="sm"
                           size="sm"
-                          color={RECORD_STATUS_COLOR[record.record_status] ?? "slate"}
+                          color={
+                            RECORD_STATUS_COLOR[record.record_status] ?? "slate"
+                          }
                         >
                           {record.record_status}
                         </Badge>
                       }
                     />
-                    <LockedField label="Journal Entry" value={record.journal_entry || "Not posted"} />
+                    <LockedField
+                      label="Journal Entry"
+                      value={record.journal_entry || "Not posted"}
+                    />
                   </Box>
                 </Paper>
                 <PaidFromToPanel
-                  credit={{ account: record.credit_gl, description: record.credit_gl_description }}
-                  debit={{ account: record.debit_gl, description: record.debit_gl_description }}
+                  credit={{
+                    account: record.credit_gl,
+                    description: record.credit_gl_description,
+                  }}
+                  debit={{
+                    account: record.debit_gl,
+                    description: record.debit_gl_description,
+                  }}
                   amount={Number(record.amount_paid) || 0}
                   debitEmptyText="—"
                 />
@@ -423,14 +502,19 @@ export function RecordFundModal({
                 accountsError={accountsQuery.error}
                 onSavingChange={setSaving}
                 onSaved={(saved) => {
-                  queryClient.invalidateQueries({ queryKey: ["investorFund", fund.id] });
-                  queryClient.invalidateQueries({ queryKey: ["investorFunds"] });
+                  queryClient.invalidateQueries({
+                    queryKey: ["investorFund", fund.id],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["investorFunds"],
+                  });
                   queryClient.invalidateQueries({ queryKey: ["fundRecords"] });
                   onClose();
                   openCommonModal({
-                    heading: mode === "add" ? "Fund Saved as Draft" : "Fund Updated",
+                    heading:
+                      mode === "add" ? "Fund Saved as Draft" : "Fund Updated",
                     subtitle: "",
-                    body: `${inr(Number(saved.amount_paid) || 0)} for ${fund.investor} is saved as Draft. Approve it from the Record Fund list to post the Journal Entry.`,
+                    body: `${fmtAmount(Number(saved.amount_paid) || 0)} for ${fund.investor} is saved as Draft. Approve it from the Record Fund list to post the Journal Entry.`,
                     color: "green",
                     buttons: [{ label: "Close", color: "green" }],
                   });
@@ -506,10 +590,22 @@ export function RecordFundModal({
           </Text>
         </Box>
         <Group gap={4} ml="auto" wrap="nowrap">
-          <ActionIcon variant="subtle" color="white" aria-label="Minimize" disabled={saving} onClick={onMinimize}>
+          <ActionIcon
+            variant="subtle"
+            color="white"
+            aria-label="Minimize"
+            disabled={saving}
+            onClick={onMinimize}
+          >
             <IconMinus size={18} />
           </ActionIcon>
-          <ActionIcon variant="subtle" color="white" aria-label="Close" disabled={saving} onClick={onClose}>
+          <ActionIcon
+            variant="subtle"
+            color="white"
+            aria-label="Close"
+            disabled={saving}
+            onClick={onClose}
+          >
             <IconX size={18} />
           </ActionIcon>
         </Group>
@@ -519,7 +615,12 @@ export function RecordFundModal({
       <Box
         px="xl"
         py="xl"
-        style={{ flex: 1, minHeight: 0, overflowY: "auto", background: "var(--mantine-color-slate-0)" }}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          background: "var(--mantine-color-slate-0)",
+        }}
       >
         {body}
       </Box>
@@ -535,7 +636,13 @@ export function RecordFundModal({
           borderTop: "1px solid var(--mantine-color-slate-2)",
         }}
       >
-        <Button variant="subtle" color="slate" radius="md" disabled={saving} onClick={onClose}>
+        <Button
+          variant="subtle"
+          color="slate"
+          radius="md"
+          disabled={saving}
+          onClick={onClose}
+        >
           {mode === "view" ? "Close" : "Cancel"}
         </Button>
         {mode !== "view" && (
@@ -577,17 +684,27 @@ function FundForm({
   onSavingChange: (saving: boolean) => void;
   onSaved: (saved: InvestorFundRow) => void;
 }) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   // What this record can be for: what is still free, plus its own amount when editing.
-  const maxAmount = fund.available_to_record + (record ? Number(record.amount_paid) || 0 : 0);
+  const maxAmount =
+    fund.available_to_record + (record ? Number(record.amount_paid) || 0 : 0);
 
-  const [paidDate, setPaidDate] = useState(record?.paid_date ?? toIso(new Date()));
-  const [paymentMode, setPaymentMode] = useState<InvestorFlowPaymentMode | null>(
-    record?.mode_of_payment ?? null,
+  const [paidDate, setPaidDate] = useState(
+    record?.paid_date ?? toIso(new Date()),
   );
-  const [referenceNo, setReferenceNo] = useState(record?.reference_number ?? "");
-  const [amount, setAmount] = useState<number>(record ? Number(record.amount_paid) || 0 : maxAmount);
+  const [paymentMode, setPaymentMode] =
+    useState<InvestorFlowPaymentMode | null>(record?.mode_of_payment ?? null);
+  const [referenceNo, setReferenceNo] = useState(
+    record?.reference_number ?? "",
+  );
+  const [amount, setAmount] = useState<number>(
+    record ? Number(record.amount_paid) || 0 : maxAmount,
+  );
 
-  const debit = paymentMode && accounts ? accounts.debit_by_mode[paymentMode] : null;
+  const debit =
+    paymentMode && accounts ? accounts.debit_by_mode[paymentMode] : null;
   const credit = accounts?.credit ?? null;
 
   const saveMutation = useMutation({
@@ -625,9 +742,18 @@ function FundForm({
     );
   }
 
-  const amountError = amount > maxAmount ? `Cannot be more than ${inr(maxAmount)}.` : undefined;
+  const amountError =
+    amount > maxAmount
+      ? `Cannot be more than ${fmtAmount(maxAmount)}.`
+      : undefined;
   const canSave =
-    !!paidDate && !!paymentMode && !!debit && !!credit && referenceNo.trim().length > 0 && amount > 0 && !amountError;
+    !!paidDate &&
+    !!paymentMode &&
+    !!debit &&
+    !!credit &&
+    referenceNo.trim().length > 0 &&
+    amount > 0 &&
+    !amountError;
 
   return (
     <form
@@ -671,7 +797,7 @@ function FundForm({
         />
         <NumberInput
           label="Amount"
-          description={`At most ${inr(maxAmount)}`}
+          description={`At most ${fmtAmount(maxAmount)}`}
           size="sm"
           radius="md"
           required
@@ -696,7 +822,9 @@ function FundForm({
           debit={debit}
           amount={amount}
           debitEmptyText={
-            paymentMode ? `Set the ${paymentMode} GL in Investor Settings to use this mode.` : "Select the mode of payment."
+            paymentMode
+              ? `Set the ${paymentMode} GL in Investor Settings to use this mode.`
+              : "Select the mode of payment."
           }
         />
       )}

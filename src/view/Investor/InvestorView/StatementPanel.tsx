@@ -1,11 +1,34 @@
 /* Statement: every fund paid in and every payout received, with the principal balance; downloadable as PDF. */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ActionIcon, Badge, Button, Group, Select, SimpleGrid, Stack, Table, Text, Tooltip, useMantineTheme } from "@mantine/core";
-import { IconArrowBackUp, IconCash, IconDownload, IconLock, IconPercentage, IconReceipt2 } from "@tabler/icons-react";
+import {
+  ActionIcon,
+  Badge,
+  Button,
+  Group,
+  Select,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  Tooltip,
+  useMantineTheme,
+} from "@mantine/core";
+import {
+  IconArrowBackUp,
+  IconCash,
+  IconDownload,
+  IconLock,
+  IconPercentage,
+  IconReceipt2,
+} from "@tabler/icons-react";
+import { useCompanyStore } from "../../../store/companyStore";
 import { getInvestorStatement } from "../../../api/Investor/investorFlowApi";
 import type { InvestorPortfolio } from "../../../types/Investor/investorFlow";
-import { buildInvestorStatementPdf, getPdfPalette } from "../../../components/Modal/Investor/Investmentpdf";
+import {
+  buildInvestorStatementPdf,
+  getPdfPalette,
+} from "../../../components/Modal/Investor/Investmentpdf";
 import { Card, CardTitle, ErrorBlock, KpiTile, LoadingBlock } from "./ui";
 import { fmtDate, useMoney } from "./format";
 
@@ -19,11 +42,12 @@ const ALL = "__all__";
 export function StatementPanel({ portfolio, onOpenEntry }: Props) {
   const theme = useMantineTheme();
   const money = useMoney();
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const investorId = portfolio.investor.id;
   const [investment, setInvestment] = useState<string>(ALL);
   const investmentFilter = investment === ALL ? null : investment;
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isError, error } = useQuery({
     queryKey: ["investorStatement", investorId, investmentFilter],
     queryFn: () => getInvestorStatement(investorId, investmentFilter),
     retry: false,
@@ -31,15 +55,24 @@ export function StatementPanel({ portfolio, onOpenEntry }: Props) {
 
   const downloadPdf = () => {
     if (!data) return;
-    const doc = buildInvestorStatementPdf(data, getPdfPalette(theme));
-    doc.save(`Statement-${investorId}${investmentFilter ? `-${investmentFilter}` : ""}.pdf`);
+    const doc = buildInvestorStatementPdf(
+      data,
+      getPdfPalette(theme),
+      companyCurrency,
+    );
+    doc.save(
+      `Statement-${investorId}${investmentFilter ? `-${investmentFilter}` : ""}.pdf`,
+    );
   };
 
   return (
     <Stack gap="md">
       <Card>
         <Group justify="space-between" align="flex-end" wrap="wrap" gap="sm">
-          <CardTitle title="Statement" subtitle="Money paid in by the investor and money paid back, by date" />
+          <CardTitle
+            title="Statement"
+            subtitle="Money paid in by the investor and money paid back, by date"
+          />
           <Group gap="sm" align="flex-end">
             <Select
               size="sm"
@@ -70,14 +103,22 @@ export function StatementPanel({ portfolio, onOpenEntry }: Props) {
         </Group>
       </Card>
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorBlock
+          error={error}
+          fallback="The statement could not be loaded."
+        />
+      ) : !data ? (
         <LoadingBlock />
-      ) : error || !data ? (
-        <ErrorBlock error={error} fallback="The statement could not be loaded." />
       ) : (
         <>
           <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="md">
-            <KpiTile icon={<IconCash size={18} />} color="info" label="Paid in" value={money(data.totals.paid_in)} />
+            <KpiTile
+              icon={<IconCash size={18} />}
+              color="info"
+              label="Paid in"
+              value={money(data.totals.paid_in)}
+            />
             <KpiTile
               icon={<IconArrowBackUp size={18} />}
               color="success"
@@ -101,7 +142,13 @@ export function StatementPanel({ portfolio, onOpenEntry }: Props) {
 
           <Card>
             <Table.ScrollContainer minWidth={960}>
-              <Table verticalSpacing="sm" horizontalSpacing="sm" fz="xs" highlightOnHover striped>
+              <Table
+                verticalSpacing="sm"
+                horizontalSpacing="sm"
+                fz="xs"
+                highlightOnHover
+                striped
+              >
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Date</Table.Th>
@@ -135,10 +182,18 @@ export function StatementPanel({ portfolio, onOpenEntry }: Props) {
                       <Table.Td ta="right" c={e.paid_in ? "info.7" : "slate.4"}>
                         {e.paid_in ? money(e.paid_in) : "-"}
                       </Table.Td>
-                      <Table.Td ta="right" c={e.principal_returned ? "success.7" : "slate.4"}>
-                        {e.principal_returned ? money(e.principal_returned) : "-"}
+                      <Table.Td
+                        ta="right"
+                        c={e.principal_returned ? "success.7" : "slate.4"}
+                      >
+                        {e.principal_returned
+                          ? money(e.principal_returned)
+                          : "-"}
                       </Table.Td>
-                      <Table.Td ta="right" c={e.interest_paid ? "success.7" : "slate.4"}>
+                      <Table.Td
+                        ta="right"
+                        c={e.interest_paid ? "success.7" : "slate.4"}
+                      >
                         {e.interest_paid ? money(e.interest_paid) : "-"}
                       </Table.Td>
                       <Table.Td ta="right" fw={700}>
@@ -175,7 +230,9 @@ export function StatementPanel({ portfolio, onOpenEntry }: Props) {
                 </Table.Tbody>
                 {data.entries.length > 0 && (
                   <Table.Tfoot>
-                    <Table.Tr style={{ background: "var(--mantine-color-slate-0)" }}>
+                    <Table.Tr
+                      style={{ background: "var(--mantine-color-slate-0)" }}
+                    >
                       <Table.Td colSpan={4} fw={700}>
                         Total
                       </Table.Td>

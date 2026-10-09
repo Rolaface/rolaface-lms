@@ -45,20 +45,18 @@ import {
   TH_STYLE,
   createInitialState,
   fmtDate,
-  inr,
   loadInvestorFlowState,
   toIso,
   type ModalState,
 } from "./InvestorModalShared";
 import { StageShell } from "./StageShell";
+import { formatAmount } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
 const ROWS_PER_PAGE = 10;
 
 type ScheduleAmountField =
-  | "principal_amount"
-  | "interest_amount"
-  | "penalty_amount"
-  | "total_payment";
+  "principal_amount" | "interest_amount" | "penalty_amount" | "total_payment";
 
 const ROW_STATUS_COLOR: Record<InvestorEarningRowStatus, string> = {
   Pending: "slate",
@@ -67,7 +65,11 @@ const ROW_STATUS_COLOR: Record<InvestorEarningRowStatus, string> = {
 };
 
 /** Accrued rows keep their date, principal and interest; only penalty / total can change. */
-const ACCRUED_LOCKED_FIELDS = new Set(["payment_date", "principal_amount", "interest_amount"]);
+const ACCRUED_LOCKED_FIELDS = new Set([
+  "payment_date",
+  "principal_amount",
+  "interest_amount",
+]);
 
 /** Details and schedule rows being viewed / edited. */
 interface EarningDraft {
@@ -91,8 +93,14 @@ const draftFromEarning = (e: InvestorEarning): EarningDraft => ({
 function validateDraft({ rows }: EarningDraft): string {
   for (const r of rows) {
     if (!r.payment_date) return `Row ${r.idx}: enter the payment date.`;
-    const amounts = [r.principal_amount, r.interest_amount, r.penalty_amount, r.total_payment];
-    if (amounts.some((v) => !(Number(v) >= 0))) return `Row ${r.idx}: amounts cannot be negative.`;
+    const amounts = [
+      r.principal_amount,
+      r.interest_amount,
+      r.penalty_amount,
+      r.total_payment,
+    ];
+    if (amounts.some((v) => !(Number(v) >= 0)))
+      return `Row ${r.idx}: amounts cannot be negative.`;
   }
   return "";
 }
@@ -119,7 +127,12 @@ interface EarningsStatementsProps {
   currentRows?: InvestorEarningScheduleRow[];
 }
 
-type CompareField = "payment_date" | "principal_amount" | "interest_amount" | "penalty_amount" | "total_payment";
+type CompareField =
+  | "payment_date"
+  | "principal_amount"
+  | "interest_amount"
+  | "penalty_amount"
+  | "total_payment";
 const COMPARE_FIELDS: CompareField[] = [
   "payment_date",
   "principal_amount",
@@ -137,7 +150,9 @@ interface VersionEntry {
 }
 
 const sameValue = (field: CompareField, a: unknown, b: unknown) =>
-  field === "payment_date" ? String(a ?? "") === String(b ?? "") : Number(a || 0) === Number(b || 0);
+  field === "payment_date"
+    ? String(a ?? "") === String(b ?? "")
+    : Number(a || 0) === Number(b || 0);
 
 /** Fields of each row (by position) that differ in the newer version; null when there is no newer version. */
 function changesAgainst(
@@ -149,7 +164,9 @@ function changesAgainst(
   rows.forEach((row, i) => {
     const next = newer[i];
     const fields = new Set<CompareField>(
-      next ? COMPARE_FIELDS.filter((f) => !sameValue(f, row[f], next[f])) : COMPARE_FIELDS,
+      next
+        ? COMPARE_FIELDS.filter((f) => !sameValue(f, row[f], next[f]))
+        : COMPARE_FIELDS,
     );
     if (fields.size) changes.set(i, fields);
   });
@@ -173,16 +190,28 @@ function ScheduleHistoryModal({
   currentRows: InvestorEarningScheduleRow[];
   history: InvestorScheduleVersion[];
 }) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   const versions: VersionEntry[] = [
     { version, current: true, rows: currentRows },
-    ...history.map((h) => ({ version: h.version, current: false, rows: h.rows })),
+    ...history.map((h) => ({
+      version: h.version,
+      current: false,
+      rows: h.rows,
+    })),
   ];
-  const [selected, setSelected] = useState<number>(history[0]?.version ?? version);
+  const [selected, setSelected] = useState<number>(
+    history[0]?.version ?? version,
+  );
   const [versionPage, setVersionPage] = useState(1);
   const [rowPage, setRowPage] = useState(1);
   const [onlyChanged, setOnlyChanged] = useState(false);
 
-  const index = Math.max(0, versions.findIndex((v) => v.version === selected));
+  const index = Math.max(
+    0,
+    versions.findIndex((v) => v.version === selected),
+  );
   const entry = versions[index];
   // The version that replaced this one (the one just above it in the list).
   const newer = index > 0 ? versions[index - 1] : null;
@@ -191,28 +220,51 @@ function ScheduleHistoryModal({
   const visibleRows = entry.rows
     .map((row, i) => ({ row, i, newerRow: newer?.rows[i] }))
     .filter(({ i }) => !onlyChanged || !!changes?.has(i));
-  const rowPages = Math.max(1, Math.ceil(visibleRows.length / HISTORY_ROWS_PER_PAGE));
+  const rowPages = Math.max(
+    1,
+    Math.ceil(visibleRows.length / HISTORY_ROWS_PER_PAGE),
+  );
   const currentRowPage = Math.min(rowPage, rowPages);
   const pageRows = visibleRows.slice(
     (currentRowPage - 1) * HISTORY_ROWS_PER_PAGE,
     currentRowPage * HISTORY_ROWS_PER_PAGE,
   );
 
-  const versionPages = Math.max(1, Math.ceil(versions.length / VERSIONS_PER_PAGE));
-  const pageVersions = versions.slice((versionPage - 1) * VERSIONS_PER_PAGE, versionPage * VERSIONS_PER_PAGE);
+  const versionPages = Math.max(
+    1,
+    Math.ceil(versions.length / VERSIONS_PER_PAGE),
+  );
+  const pageVersions = versions.slice(
+    (versionPage - 1) * VERSIONS_PER_PAGE,
+    versionPage * VERSIONS_PER_PAGE,
+  );
 
   const select = (v: number) => {
     setSelected(v);
     setRowPage(1);
   };
 
-  const cell = (row: InvestorEarningScheduleRow, field: CompareField, newerRow?: InvestorEarningScheduleRow) => {
-    const value = field === "payment_date" ? fmtDate(row[field]) : inr(Number(row[field]) || 0);
-    const changedField = !!newerRow && !sameValue(field, row[field], newerRow[field]);
+  const cell = (
+    row: InvestorEarningScheduleRow,
+    field: CompareField,
+    newerRow?: InvestorEarningScheduleRow,
+  ) => {
+    const value =
+      field === "payment_date"
+        ? fmtDate(row[field])
+        : fmtAmount(Number(row[field]) || 0);
+    const changedField =
+      !!newerRow && !sameValue(field, row[field], newerRow[field]);
     if (!changedField || !newerRow) return value;
-    const next = field === "payment_date" ? fmtDate(newerRow[field]) : inr(Number(newerRow[field]) || 0);
+    const next =
+      field === "payment_date"
+        ? fmtDate(newerRow[field])
+        : fmtAmount(Number(newerRow[field]) || 0);
     return (
-      <Tooltip label={`Changed in version ${newer?.version} to ${next}`} withArrow>
+      <Tooltip
+        label={`Changed in version ${newer?.version} to ${next}`}
+        withArrow
+      >
         <Box
           component="span"
           px={6}
@@ -247,7 +299,12 @@ function ScheduleHistoryModal({
       styles={{ content: { overflow: "hidden" } }}
     >
       {/* Header */}
-      <Group justify="space-between" px="lg" py="md" style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}>
+      <Group
+        justify="space-between"
+        px="lg"
+        py="md"
+        style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
+      >
         <Group gap="sm">
           <ThemeIcon size={36} radius="md" variant="light" color="brand">
             <IconHistory size={18} />
@@ -257,28 +314,45 @@ function ScheduleHistoryModal({
               Schedule history
             </Text>
             <Text fz="xs" c="slate.5">
-              {versions.length} versions · every saved change kept as its own version
+              {versions.length} versions · every saved change kept as its own
+              version
             </Text>
           </Box>
         </Group>
         <CloseButton onClick={onClose} aria-label="Close" />
       </Group>
 
-      <Box style={{ display: "grid", gridTemplateColumns: "260px 1fr", minHeight: 460 }}>
+      <Box
+        style={{
+          display: "grid",
+          gridTemplateColumns: "260px 1fr",
+          minHeight: 460,
+        }}
+      >
         {/* Versions */}
         <Box
           p="md"
-          style={{ borderRight: "1px solid var(--mantine-color-slate-2)", background: "var(--mantine-color-slate-0)" }}
+          style={{
+            borderRight: "1px solid var(--mantine-color-slate-2)",
+            background: "var(--mantine-color-slate-0)",
+          }}
         >
           <Timeline active={-1} bulletSize={22} lineWidth={2}>
             {pageVersions.map((v) => {
               const i = versions.indexOf(v);
-              const changed = i > 0 ? changesAgainst(v.rows, versions[i - 1].rows)?.size ?? 0 : null;
+              const changed =
+                i > 0
+                  ? (changesAgainst(v.rows, versions[i - 1].rows)?.size ?? 0)
+                  : null;
               const active = v.version === selected;
               return (
                 <Timeline.Item
                   key={v.version}
-                  bullet={<Text fz={10} fw={700}>{v.version}</Text>}
+                  bullet={
+                    <Text fz={10} fw={700}>
+                      {v.version}
+                    </Text>
+                  }
                   color={v.current ? "success" : active ? "brand" : "slate"}
                 >
                   <UnstyledButton
@@ -287,8 +361,12 @@ function ScheduleHistoryModal({
                     p={8}
                     style={{
                       borderRadius: "var(--mantine-radius-md)",
-                      background: active ? "var(--mantine-color-white)" : undefined,
-                      boxShadow: active ? "0 0 0 1px var(--mantine-color-brand-3)" : undefined,
+                      background: active
+                        ? "var(--mantine-color-white)"
+                        : undefined,
+                      boxShadow: active
+                        ? "0 0 0 1px var(--mantine-color-brand-3)"
+                        : undefined,
                     }}
                   >
                     <Group gap={6}>
@@ -296,17 +374,25 @@ function ScheduleHistoryModal({
                         Version {v.version}
                       </Text>
                       {v.current && (
-                        <Badge variant="light" color="success" radius="sm" size="xs">
+                        <Badge
+                          variant="light"
+                          color="success"
+                          radius="sm"
+                          size="xs"
+                        >
                           Current
                         </Badge>
                       )}
                     </Group>
                     <Text fz="xs" c="slate.5">
-                      {v.rows.length} payouts · {inr(totalOf(v.rows, "total_payment"))}
+                      {v.rows.length} payouts ·{" "}
+                      {fmtAmount(totalOf(v.rows, "total_payment"))}
                     </Text>
                     {changed !== null && (
                       <Text fz="xs" c={changed ? "warning.8" : "slate.5"}>
-                        {changed ? `${changed} row${changed > 1 ? "s" : ""} changed in v${versions[i - 1].version}` : "No row changes"}
+                        {changed
+                          ? `${changed} row${changed > 1 ? "s" : ""} changed in v${versions[i - 1].version}`
+                          : "No row changes"}
                       </Text>
                     )}
                   </UnstyledButton>
@@ -316,7 +402,14 @@ function ScheduleHistoryModal({
           </Timeline>
           {versionPages > 1 && (
             <Group justify="center" mt="md">
-              <Pagination total={versionPages} value={versionPage} onChange={setVersionPage} size="xs" radius="xl" color="brand" />
+              <Pagination
+                total={versionPages}
+                value={versionPage}
+                onChange={setVersionPage}
+                size="xs"
+                radius="xl"
+                color="brand"
+              />
             </Group>
           )}
         </Box>
@@ -328,8 +421,15 @@ function ScheduleHistoryModal({
               <Text fw={700} c="slate.8">
                 Version {entry.version}
               </Text>
-              <Badge variant="light" color={entry.current ? "success" : "slate"} radius="sm" size="sm">
-                {entry.current ? "Current schedule" : `Replaced by version ${newer?.version}`}
+              <Badge
+                variant="light"
+                color={entry.current ? "success" : "slate"}
+                radius="sm"
+                size="sm"
+              >
+                {entry.current
+                  ? "Current schedule"
+                  : `Replaced by version ${newer?.version}`}
               </Badge>
             </Group>
             {!entry.current && (
@@ -363,12 +463,12 @@ function ScheduleHistoryModal({
                     {label}
                   </Text>
                   <Text fw={700} fz="sm" c="slate.8">
-                    {inr(value)}
+                    {fmtAmount(value)}
                   </Text>
                   {!!newer && Math.abs(diff) >= 0.01 && (
                     <Text fz={10} c={diff > 0 ? "success.7" : "danger.7"}>
                       {diff > 0 ? "+" : "−"}
-                      {inr(Math.abs(diff))} in v{newer.version}
+                      {fmtAmount(Math.abs(diff))} in v{newer.version}
                     </Text>
                   )}
                 </Paper>
@@ -383,15 +483,29 @@ function ScheduleHistoryModal({
           )}
 
           <Table.ScrollContainer minWidth={640}>
-            <Table verticalSpacing={6} horizontalSpacing="sm" fz="xs" striped highlightOnHover>
+            <Table
+              verticalSpacing={6}
+              horizontalSpacing="sm"
+              fz="xs"
+              striped
+              highlightOnHover
+            >
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th style={TH_STYLE}>#</Table.Th>
                   <Table.Th style={TH_STYLE}>Payment date</Table.Th>
-                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Principal</Table.Th>
-                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Interest</Table.Th>
-                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Penalty</Table.Th>
-                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Total payment</Table.Th>
+                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                    Principal
+                  </Table.Th>
+                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                    Interest
+                  </Table.Th>
+                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                    Penalty
+                  </Table.Th>
+                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                    Total payment
+                  </Table.Th>
                   <Table.Th style={TH_STYLE}>Status</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -400,12 +514,25 @@ function ScheduleHistoryModal({
                   <Table.Tr key={row.name}>
                     <Table.Td>{i + 1}</Table.Td>
                     <Table.Td>{cell(row, "payment_date", newerRow)}</Table.Td>
-                    <Table.Td ta="right">{cell(row, "principal_amount", newerRow)}</Table.Td>
-                    <Table.Td ta="right">{cell(row, "interest_amount", newerRow)}</Table.Td>
-                    <Table.Td ta="right">{cell(row, "penalty_amount", newerRow)}</Table.Td>
-                    <Table.Td ta="right">{cell(row, "total_payment", newerRow)}</Table.Td>
+                    <Table.Td ta="right">
+                      {cell(row, "principal_amount", newerRow)}
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      {cell(row, "interest_amount", newerRow)}
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      {cell(row, "penalty_amount", newerRow)}
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      {cell(row, "total_payment", newerRow)}
+                    </Table.Td>
                     <Table.Td>
-                      <Badge variant="light" radius="sm" size="sm" color={ROW_STATUS_COLOR[row.status ?? "Pending"]}>
+                      <Badge
+                        variant="light"
+                        radius="sm"
+                        size="sm"
+                        color={ROW_STATUS_COLOR[row.status ?? "Pending"]}
+                      >
                         {row.status ?? "Pending"}
                       </Badge>
                     </Table.Td>
@@ -418,7 +545,14 @@ function ScheduleHistoryModal({
             <Text fz="xs" c="slate.5">
               {visibleRows.length} of {entry.rows.length} rows
             </Text>
-            <Pagination total={rowPages} value={currentRowPage} onChange={setRowPage} size="xs" radius="xl" color="brand" />
+            <Pagination
+              total={rowPages}
+              value={currentRowPage}
+              onChange={setRowPage}
+              size="xs"
+              radius="xl"
+              color="brand"
+            />
           </Group>
         </Box>
       </Box>
@@ -436,6 +570,9 @@ function EarningsStatements({
   history = [],
   currentRows = [],
 }: EarningsStatementsProps) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   const [historyOpened, setHistoryOpened] = useState(false);
   const [page, setPage] = useState(1);
   const { details, rows } = draft;
@@ -443,10 +580,19 @@ function EarningsStatements({
 
   const totalPages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = rows.slice((currentPage - 1) * ROWS_PER_PAGE, currentPage * ROWS_PER_PAGE);
+  const pageRows = rows.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE,
+  );
 
-  const totalInterest = rows.reduce((a, r) => a + (Number(r.interest_amount) || 0), 0);
-  const totalPayment = rows.reduce((a, r) => a + (Number(r.total_payment) || 0), 0);
+  const totalInterest = rows.reduce(
+    (a, r) => a + (Number(r.interest_amount) || 0),
+    0,
+  );
+  const totalPayment = rows.reduce(
+    (a, r) => a + (Number(r.total_payment) || 0),
+    0,
+  );
 
   const setRow = (name: string, patch: Partial<InvestorEarningScheduleRow>) =>
     onChange?.({
@@ -455,7 +601,11 @@ function EarningsStatements({
         if (r.name !== name) return r;
         const next = { ...r, ...patch };
         // Principal / Interest / Penalty changed: refill Total Payment (it stays editable).
-        if ("principal_amount" in patch || "interest_amount" in patch || "penalty_amount" in patch) {
+        if (
+          "principal_amount" in patch ||
+          "interest_amount" in patch ||
+          "penalty_amount" in patch
+        ) {
           next.total_payment =
             Math.round(
               ((Number(next.principal_amount) || 0) +
@@ -474,7 +624,10 @@ function EarningsStatements({
     row.status !== "Paid" &&
     !(row.status === "Accrued" && ACCRUED_LOCKED_FIELDS.has(field));
 
-  const amountCell = (row: InvestorEarningScheduleRow, field: ScheduleAmountField) =>
+  const amountCell = (
+    row: InvestorEarningScheduleRow,
+    field: ScheduleAmountField,
+  ) =>
     cellEditable(row, field) ? (
       <NumberInput
         size="xs"
@@ -488,7 +641,7 @@ function EarningsStatements({
       />
     ) : (
       <Text fz="xs" ta="right">
-        {inr(Number(row[field]) || 0)}
+        {fmtAmount(Number(row[field]) || 0)}
       </Text>
     );
 
@@ -496,9 +649,21 @@ function EarningsStatements({
     <>
       <KpiGrid
         items={[
-          { label: "Amount invested", value: inr(details.amount_invested), color: "info" },
-          { label: "Rate of interest", value: `${details.rate_of_interest}% p.a.`, color: "warning" },
-          { label: "Total interest", value: inr(totalInterest), color: "success" },
+          {
+            label: "Amount invested",
+            value: fmtAmount(details.amount_invested),
+            color: "info",
+          },
+          {
+            label: "Rate of interest",
+            value: `${details.rate_of_interest}% p.a.`,
+            color: "warning",
+          },
+          {
+            label: "Total interest",
+            value: fmtAmount(totalInterest),
+            color: "success",
+          },
           { label: "Payouts", value: String(rows.length), color: "brand" },
         ]}
       />
@@ -507,17 +672,31 @@ function EarningsStatements({
         <KeyValueList
           cols={2}
           rows={[
-            { label: "Amount invested", value: inr(details.amount_invested) },
-            { label: "Rate of interest", value: `${details.rate_of_interest}% p.a.` },
+            {
+              label: "Amount invested",
+              value: fmtAmount(details.amount_invested),
+            },
+            {
+              label: "Rate of interest",
+              value: `${details.rate_of_interest}% p.a.`,
+            },
             { label: "Frequency", value: details.frequency || "—" },
             {
               label: "First repay date",
-              value: details.first_repay_date ? fmtDate(details.first_repay_date) : "—",
+              value: details.first_repay_date
+                ? fmtDate(details.first_repay_date)
+                : "—",
             },
-            { label: "Maturity date", value: details.mat_date ? fmtDate(details.mat_date) : "—" },
+            {
+              label: "Maturity date",
+              value: details.mat_date ? fmtDate(details.mat_date) : "—",
+            },
             {
               label: "Rate of penalty",
-              value: details.rate_of_penalty != null ? `${details.rate_of_penalty}% p.a.` : "—",
+              value:
+                details.rate_of_penalty != null
+                  ? `${details.rate_of_penalty}% p.a.`
+                  : "—",
             },
           ]}
         />
@@ -555,10 +734,18 @@ function EarningsStatements({
                   <Table.Tr>
                     <Table.Th style={TH_STYLE}>#</Table.Th>
                     <Table.Th style={TH_STYLE}>Payment date</Table.Th>
-                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Principal</Table.Th>
-                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Interest</Table.Th>
-                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Penalty</Table.Th>
-                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Total payment</Table.Th>
+                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                      Principal
+                    </Table.Th>
+                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                      Interest
+                    </Table.Th>
+                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                      Penalty
+                    </Table.Th>
+                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                      Total payment
+                    </Table.Th>
                     <Table.Th style={TH_STYLE}>Status</Table.Th>
                     {onPay && <Table.Th />}
                   </Table.Tr>
@@ -575,17 +762,27 @@ function EarningsStatements({
                             radius="md"
                             value={row.payment_date ?? ""}
                             onChange={(e) =>
-                              setRow(row.name, { payment_date: e.currentTarget.value })
+                              setRow(row.name, {
+                                payment_date: e.currentTarget.value,
+                              })
                             }
                           />
                         ) : (
                           row.payment_date
                         )}
                       </Table.Td>
-                      <Table.Td miw={110}>{amountCell(row, "principal_amount")}</Table.Td>
-                      <Table.Td miw={110}>{amountCell(row, "interest_amount")}</Table.Td>
-                      <Table.Td miw={110}>{amountCell(row, "penalty_amount")}</Table.Td>
-                      <Table.Td miw={120}>{amountCell(row, "total_payment")}</Table.Td>
+                      <Table.Td miw={110}>
+                        {amountCell(row, "principal_amount")}
+                      </Table.Td>
+                      <Table.Td miw={110}>
+                        {amountCell(row, "interest_amount")}
+                      </Table.Td>
+                      <Table.Td miw={110}>
+                        {amountCell(row, "penalty_amount")}
+                      </Table.Td>
+                      <Table.Td miw={120}>
+                        {amountCell(row, "total_payment")}
+                      </Table.Td>
                       <Table.Td>
                         <Badge
                           variant="light"
@@ -603,7 +800,10 @@ function EarningsStatements({
                               size="compact-xs"
                               radius="xl"
                               color="brand"
-                              disabled={!!payDisabledReason || (!!payingRow && payingRow !== row.name)}
+                              disabled={
+                                !!payDisabledReason ||
+                                (!!payingRow && payingRow !== row.name)
+                              }
                               loading={payingRow === row.name}
                               title={payDisabledReason || undefined}
                               onClick={() => onPay(row)}
@@ -620,8 +820,9 @@ function EarningsStatements({
             </Box>
             <Group justify="space-between" mt="sm">
               <Text fz="xs" c="slate.5">
-                {rows.length} payouts · {rows.filter((r) => r.status === "Paid").length} paid ·
-                Total {inr(totalPayment)}
+                {rows.length} payouts ·{" "}
+                {rows.filter((r) => r.status === "Paid").length} paid · Total{" "}
+                {fmtAmount(totalPayment)}
                 {payDisabledReason && onPay ? ` · ${payDisabledReason}` : ""}
               </Text>
               <Pagination
@@ -650,8 +851,16 @@ function EarningsStatements({
 }
 
 /** Read-only Earning & Settlement of an Investor Flow (loads it by ID). */
-export function EarningsStatementsView({ investorFlowId }: { investorFlowId: string }) {
-  const { data: earning, isLoading, error } = useQuery({
+export function EarningsStatementsView({
+  investorFlowId,
+}: {
+  investorFlowId: string;
+}) {
+  const {
+    data: earning,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["investorEarning", investorFlowId],
     queryFn: () => getInvestorEarningById(investorFlowId),
   });
@@ -666,7 +875,9 @@ export function EarningsStatementsView({ investorFlowId }: { investorFlowId: str
   if (error || !earning) {
     return (
       <Alert variant="light" color="red" radius="md">
-        {error ? parseFrappeError(error) : "The repayment record could not be loaded."}
+        {error
+          ? parseFrappeError(error)
+          : "The repayment record could not be loaded."}
       </Alert>
     );
   }
@@ -772,21 +983,35 @@ function EarningsStage({
   earning: InvestorEarning;
   flowState: ModalState;
 }) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   const queryClient = useQueryClient();
-  const [draft, setDraft] = useState<EarningDraft>(() => draftFromEarning(earning));
+  const [draft, setDraft] = useState<EarningDraft>(() =>
+    draftFromEarning(earning),
+  );
   // Only a Received investment can be edited / paid / closed.
   // Editable once funds are approved (Fund Status Partial / Paid), unless the investment is Cancelled.
   const editable =
-    !readOnly && ["Partial", "Paid"].includes(earning.fund_status) && earning.status !== "Cancelled";
+    !readOnly &&
+    ["Partial", "Paid"].includes(earning.fund_status) &&
+    earning.status !== "Cancelled";
   const draftError = editable ? validateDraft(draft) : "";
-  const isDirty = JSON.stringify(draft) !== JSON.stringify(draftFromEarning(earning));
-  const allPaid = earning.schedule.length > 0 && earning.schedule.every((r) => r.status === "Paid");
+  const isDirty =
+    JSON.stringify(draft) !== JSON.stringify(draftFromEarning(earning));
+  const allPaid =
+    earning.schedule.length > 0 &&
+    earning.schedule.every((r) => r.status === "Paid");
 
   const refreshEarning = () => {
-    queryClient.invalidateQueries({ queryKey: ["investorEarning", investorFlowId] });
+    queryClient.invalidateQueries({
+      queryKey: ["investorEarning", investorFlowId],
+    });
     queryClient.invalidateQueries({ queryKey: ["investorEarnings"] });
     queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
-    queryClient.invalidateQueries({ queryKey: ["investorFlow", investorFlowId] });
+    queryClient.invalidateQueries({
+      queryKey: ["investorFlow", investorFlowId],
+    });
   };
 
   const showFailure = (heading: string, error: any) =>
@@ -800,13 +1025,17 @@ function EarningsStage({
 
   const payMutation = useMutation({
     mutationFn: (row: InvestorEarningScheduleRow) =>
-      payInvestorEarningRow({ id: investorFlowId, row: row.name, paymentDate: toIso(new Date()) }),
+      payInvestorEarningRow({
+        id: investorFlowId,
+        row: row.name,
+        paymentDate: toIso(new Date()),
+      }),
     onSuccess: (_data, row) => {
       refreshEarning();
       openCommonModal({
         heading: "Payout Posted",
         subtitle: "",
-        body: `Payout of ${inr(Number(row.total_payment) || 0)} for row ${row.idx} has been posted successfully.`,
+        body: `Payout of ${fmtAmount(Number(row.total_payment) || 0)} for row ${row.idx} has been posted successfully.`,
         color: "green",
         buttons: [{ label: "Close", color: "green" }],
       });
@@ -818,11 +1047,15 @@ function EarningsStage({
     openCommonModal({
       heading: "Pay Schedule Row",
       subtitle: "Please confirm this action before continuing.",
-      body: `Pay ${inr(Number(row.total_payment) || 0)} for row ${row.idx} (due ${row.payment_date}) from the Company Bank Account, dated today?`,
+      body: `Pay ${fmtAmount(Number(row.total_payment) || 0)} for row ${row.idx} (due ${row.payment_date}) from the Company Bank Account, dated today?`,
       color: "green",
       buttons: [
         { label: "Cancel", variant: "default" },
-        { label: "Pay", color: "green", onClick: () => payMutation.mutate(row) },
+        {
+          label: "Pay",
+          color: "green",
+          onClick: () => payMutation.mutate(row),
+        },
       ],
     });
 
@@ -850,7 +1083,11 @@ function EarningsStage({
       color: "green",
       buttons: [
         { label: "Cancel", variant: "default" },
-        { label: "Close investment", color: "green", onClick: () => closeMutation.mutate() },
+        {
+          label: "Close investment",
+          color: "green",
+          onClick: () => closeMutation.mutate(),
+        },
       ],
     });
 
@@ -939,7 +1176,9 @@ function EarningsStage({
           onChange={editable ? setDraft : undefined}
           onPay={editable ? confirmPay : undefined}
           payDisabledReason={isDirty ? "Save your changes before paying" : ""}
-          payingRow={payMutation.isPending ? (payMutation.variables?.name ?? null) : null}
+          payingRow={
+            payMutation.isPending ? (payMutation.variables?.name ?? null) : null
+          }
         />
       </section>
     </StageShell>

@@ -1,9 +1,10 @@
 /* One investment: the contract agreed to, funds paid in, the repayment schedule and the money trail. */
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ActionIcon,
   Box,
+  Collapse,
   Group,
   Progress,
   SimpleGrid,
@@ -19,6 +20,7 @@ import {
   IconArrowBackUp,
   IconArrowRight,
   IconCash,
+  IconChevronDown,
   IconCoins,
   IconFileCertificate,
   IconListDetails,
@@ -28,42 +30,97 @@ import {
 } from "@tabler/icons-react";
 import { getInvestmentDetail } from "../../../api/Investor/investorFlowApi";
 import type { InvestmentDetail } from "../../../types/Investor/investorFlow";
-import { Card, ErrorBlock, Field, KpiTile, LoadingBlock, StatusBadge } from "./ui";
+import { JournalEntryLines } from "./JournalEntryDrawer";
+import {
+  Card,
+  ErrorBlock,
+  Field,
+  KpiTile,
+  LoadingBlock,
+  StatusBadge,
+} from "./ui";
 import { fmtDate, useMoney } from "./format";
 
 interface Props {
   investmentId: string;
+  /** Investor's name, shown on the Repayments summary line. */
+  investorName: string;
   onOpenEntry: (journalEntry: string) => void;
 }
 
 /** Small button that opens the accounting (Journal Entry) of a row. */
-function EntryButton({ entry, label, onOpen }: { entry: string | null; label: string; onOpen: (je: string) => void }) {
+function EntryButton({
+  entry,
+  label,
+  onOpen,
+}: {
+  entry: string | null;
+  label: string;
+  onOpen: (je: string) => void;
+}) {
   if (!entry) return null;
   return (
     <Tooltip label={`${label}: ${entry}`} withArrow>
-      <ActionIcon size="sm" variant="light" color="brand" radius="md" onClick={() => onOpen(entry)}>
+      <ActionIcon
+        size="sm"
+        variant="light"
+        color="brand"
+        radius="md"
+        onClick={(e) => {
+          // Opens the drawer only; must not also toggle the row it sits in.
+          e.stopPropagation();
+          onOpen(entry);
+        }}
+      >
         <IconReceipt2 size={14} />
       </ActionIcon>
     </Tooltip>
   );
 }
 
-export function InvestmentDetailPanel({ investmentId, onOpenEntry }: Props) {
-  const { data, isLoading, error } = useQuery({
+export function InvestmentDetailPanel({
+  investmentId,
+  investorName,
+  onOpenEntry,
+}: Props) {
+  const { data, isError, error } = useQuery({
     queryKey: ["investorInvestmentDetail", investmentId],
     queryFn: () => getInvestmentDetail(investmentId),
     retry: false,
   });
 
-  if (isLoading) return <LoadingBlock />;
-  if (error || !data) return <ErrorBlock error={error} fallback="The investment could not be loaded." />;
-  return <InvestmentDetailBody detail={data} onOpenEntry={onOpenEntry} />;
+  // Only a failed request shows the error; anything else without data is still loading.
+  if (isError)
+    return (
+      <ErrorBlock
+        error={error}
+        fallback="The investment could not be loaded."
+      />
+    );
+  if (!data) return <LoadingBlock />;
+  return (
+    <InvestmentDetailBody
+      detail={data}
+      investorName={investorName}
+      onOpenEntry={onOpenEntry}
+    />
+  );
 }
 
-function InvestmentDetailBody({ detail, onOpenEntry }: { detail: InvestmentDetail; onOpenEntry: (je: string) => void }) {
+function InvestmentDetailBody({
+  detail,
+  investorName,
+  onOpenEntry,
+}: {
+  detail: InvestmentDetail;
+  investorName: string;
+  onOpenEntry: (je: string) => void;
+}) {
   const money = useMoney();
   const [tab, setTab] = useState<string | null>("funds");
-  const paidInPct = detail.investment_amount ? (detail.fund_paid_in / detail.investment_amount) * 100 : 0;
+  const paidInPct = detail.investment_amount
+    ? (detail.fund_paid_in / detail.investment_amount) * 100
+    : 0;
 
   return (
     <Stack gap="md">
@@ -76,10 +133,14 @@ function InvestmentDetailBody({ detail, onOpenEntry }: { detail: InvestmentDetai
             </ThemeIcon>
             <Box>
               <Text fw={800} fz="lg" c="slate.9">
+                {investorName}
+              </Text>
+              <Text fz="xs" fw={600} c="slate.6">
                 {detail.name}
               </Text>
               <Text fz="xs" c="slate.5">
-                {detail.investment_product_name} · created {fmtDate(detail.creation)}
+                {detail.investment_product_name} · created{" "}
+                {fmtDate(detail.creation)}
               </Text>
             </Box>
           </Group>
@@ -95,11 +156,26 @@ function InvestmentDetailBody({ detail, onOpenEntry }: { detail: InvestmentDetai
           </Group>
         </Group>
         <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
-          <Field label="Investment amount" value={money(detail.investment_amount)} />
-          <Field label="Interest rate" value={`${detail.interest_rate}% p.a.`} />
-          <Field label="Repayment frequency" value={detail.repayment_frequency} />
-          <Field label="Penalty rate" value={detail.penalty_rate ? `${detail.penalty_rate}% p.a.` : "-"} />
-          <Field label="First repayment" value={fmtDate(detail.first_repayment_date)} />
+          <Field
+            label="Investment amount"
+            value={money(detail.investment_amount)}
+          />
+          <Field
+            label="Interest rate"
+            value={`${detail.interest_rate}% p.a.`}
+          />
+          <Field
+            label="Repayment frequency"
+            value={detail.repayment_frequency}
+          />
+          <Field
+            label="Penalty rate"
+            value={detail.penalty_rate ? `${detail.penalty_rate}% p.a.` : "-"}
+          />
+          <Field
+            label="First repayment"
+            value={fmtDate(detail.first_repayment_date)}
+          />
           <Field label="Maturity date" value={fmtDate(detail.maturity_date)} />
           <Field label="Contract status" value={detail.contract_status} />
           <Field label="Contract sent to" value={detail.mail_sent} />
@@ -107,7 +183,8 @@ function InvestmentDetailBody({ detail, onOpenEntry }: { detail: InvestmentDetai
         <Box mt="md">
           <Group justify="space-between" mb={4}>
             <Text fz="xs" c="slate.6">
-              Paid in {money(detail.fund_paid_in)} of {money(detail.investment_amount)}
+              Paid in {money(detail.fund_paid_in)} of{" "}
+              {money(detail.investment_amount)}
             </Text>
             {detail.fund_pending_approval > 0 && (
               <Text fz="xs" c="warning.7">
@@ -125,7 +202,11 @@ function InvestmentDetailBody({ detail, onOpenEntry }: { detail: InvestmentDetai
           color="info"
           label="Paid in"
           value={money(detail.fund_paid_in)}
-          hint={detail.fund_remaining ? `${money(detail.fund_remaining)} still to be paid` : "Fully paid"}
+          hint={
+            detail.fund_remaining
+              ? `${money(detail.fund_remaining)} still to be paid`
+              : "Fully paid"
+          }
         />
         <KpiTile
           icon={<IconArrowBackUp size={18} />}
@@ -160,7 +241,10 @@ function InvestmentDetailBody({ detail, onOpenEntry }: { detail: InvestmentDetai
             <Tabs.Tab value="funds" leftSection={<IconCash size={14} />}>
               Funds paid ({detail.funds.length})
             </Tabs.Tab>
-            <Tabs.Tab value="schedule" leftSection={<IconListDetails size={14} />}>
+            <Tabs.Tab
+              value="schedule"
+              leftSection={<IconListDetails size={14} />}
+            >
               Repayments ({detail.schedule.length})
             </Tabs.Tab>
             <Tabs.Tab value="trail" leftSection={<IconRoute size={14} />}>
@@ -172,7 +256,11 @@ function InvestmentDetailBody({ detail, onOpenEntry }: { detail: InvestmentDetai
             <FundsTable detail={detail} onOpenEntry={onOpenEntry} />
           </Tabs.Panel>
           <Tabs.Panel value="schedule">
-            <ScheduleTable detail={detail} onOpenEntry={onOpenEntry} />
+            <RepaymentRecord
+              detail={detail}
+              investorName={investorName}
+              onOpenEntry={onOpenEntry}
+            />
           </Tabs.Panel>
           <Tabs.Panel value="trail">
             <MoneyTrail detail={detail} onOpenEntry={onOpenEntry} />
@@ -183,13 +271,27 @@ function InvestmentDetailBody({ detail, onOpenEntry }: { detail: InvestmentDetai
   );
 }
 
-function FundsTable({ detail, onOpenEntry }: { detail: InvestmentDetail; onOpenEntry: (je: string) => void }) {
+function FundsTable({
+  detail,
+  onOpenEntry,
+}: {
+  detail: InvestmentDetail;
+  onOpenEntry: (je: string) => void;
+}) {
   const money = useMoney();
+  // Fund row whose Journal Entry is dropped down under it (click a row to open / close).
+  const [expanded, setExpanded] = useState<string | null>(null);
   return (
     <Table.ScrollContainer minWidth={860}>
-      <Table verticalSpacing="sm" horizontalSpacing="sm" fz="xs" highlightOnHover>
+      <Table
+        verticalSpacing="sm"
+        horizontalSpacing="sm"
+        fz="xs"
+        highlightOnHover
+      >
         <Table.Thead>
           <Table.Tr>
+            <Table.Th w={36} />
             <Table.Th>Paid date</Table.Th>
             <Table.Th ta="right">Amount</Table.Th>
             <Table.Th>Mode</Table.Th>
@@ -201,37 +303,80 @@ function FundsTable({ detail, onOpenEntry }: { detail: InvestmentDetail; onOpenE
         </Table.Thead>
         <Table.Tbody>
           {detail.funds.map((f) => (
-            <Table.Tr key={f.name}>
-              <Table.Td>{fmtDate(f.paid_date)}</Table.Td>
-              <Table.Td ta="right" fw={700}>
-                {money(f.amount)}
-              </Table.Td>
-              <Table.Td>{f.mode_of_payment}</Table.Td>
-              <Table.Td>{f.reference_number || "-"}</Table.Td>
-              <Table.Td>
-                <Group gap={6} wrap="nowrap">
-                  <Text fz="xs" truncate maw={180}>
-                    {f.paid_from_description || f.paid_from || "-"}
-                  </Text>
-                  <IconArrowRight size={12} color="var(--mantine-color-slate-4)" />
-                  <Text fz="xs" truncate maw={180}>
-                    {f.paid_to_description || f.paid_to || "-"}
-                  </Text>
-                </Group>
-              </Table.Td>
-              <Table.Td>
-                <StatusBadge status={f.record_status} size="xs" />
-              </Table.Td>
-              <Table.Td>
-                <Group justify="flex-end">
-                  <EntryButton entry={f.journal_entry} label="Fund entry" onOpen={onOpenEntry} />
-                </Group>
-              </Table.Td>
-            </Table.Tr>
+            <Fragment key={f.name}>
+              <Table.Tr
+                onClick={() =>
+                  f.journal_entry &&
+                  setExpanded((e) => (e === f.name ? null : f.name))
+                }
+                style={{
+                  cursor: f.journal_entry ? "pointer" : undefined,
+                  background:
+                    expanded === f.name
+                      ? "var(--mantine-color-brand-0)"
+                      : undefined,
+                }}
+              >
+                <Table.Td>
+                  {f.journal_entry && (
+                    <IconChevronDown
+                      size={14}
+                      style={{
+                        transform:
+                          expanded === f.name ? "rotate(180deg)" : undefined,
+                        transition: "transform 150ms ease",
+                      }}
+                    />
+                  )}
+                </Table.Td>
+                <Table.Td>{fmtDate(f.paid_date)}</Table.Td>
+                <Table.Td ta="right" fw={700}>
+                  {money(f.amount)}
+                </Table.Td>
+                <Table.Td>{f.mode_of_payment}</Table.Td>
+                <Table.Td>{f.reference_number || "-"}</Table.Td>
+                <Table.Td>
+                  <Group gap={6} wrap="nowrap">
+                    <Text fz="xs" truncate maw={180}>
+                      {f.paid_from_description || f.paid_from || "-"}
+                    </Text>
+                    <IconArrowRight
+                      size={12}
+                      color="var(--mantine-color-slate-4)"
+                    />
+                    <Text fz="xs" truncate maw={180}>
+                      {f.paid_to_description || f.paid_to || "-"}
+                    </Text>
+                  </Group>
+                </Table.Td>
+                <Table.Td>
+                  <StatusBadge status={f.record_status} size="xs" />
+                </Table.Td>
+                <Table.Td>
+                  <Group justify="flex-end">
+                    <EntryButton
+                      entry={f.journal_entry}
+                      label="Fund entry"
+                      onOpen={onOpenEntry}
+                    />
+                  </Group>
+                </Table.Td>
+              </Table.Tr>
+              {expanded === f.name && f.journal_entry && (
+                <Table.Tr>
+                  <Table.Td
+                    colSpan={8}
+                    style={{ background: "var(--mantine-color-slate-0)" }}
+                  >
+                    <JournalEntryLines name={f.journal_entry} />
+                  </Table.Td>
+                </Table.Tr>
+              )}
+            </Fragment>
           ))}
           {detail.funds.length === 0 && (
             <Table.Tr>
-              <Table.Td colSpan={7}>
+              <Table.Td colSpan={8}>
                 <Text fz="xs" c="dimmed" ta="center" py="md">
                   No fund has been recorded for this investment yet.
                 </Text>
@@ -244,11 +389,89 @@ function FundsTable({ detail, onOpenEntry }: { detail: InvestmentDetail; onOpenE
   );
 }
 
-function ScheduleTable({ detail, onOpenEntry }: { detail: InvestmentDetail; onOpenEntry: (je: string) => void }) {
+/** One line like the Repayment Record list; clicking it opens the schedule below it. */
+function RepaymentRecord({
+  detail,
+  investorName,
+  onOpenEntry,
+}: {
+  detail: InvestmentDetail;
+  investorName: string;
+  onOpenEntry: (je: string) => void;
+}) {
   const money = useMoney();
+  const [open, setOpen] = useState(false);
+  return (
+    <Stack gap="sm">
+      <Table.ScrollContainer minWidth={860}>
+        <Table verticalSpacing="sm" horizontalSpacing="sm" fz="xs">
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th w={36} />
+              <Table.Th>Investor</Table.Th>
+              <Table.Th>Product</Table.Th>
+              <Table.Th ta="right">Amount</Table.Th>
+              <Table.Th ta="right">Rate</Table.Th>
+              <Table.Th>Frequency</Table.Th>
+              <Table.Th>First Repay</Table.Th>
+              <Table.Th>Maturity</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            <Table.Tr
+              onClick={() => setOpen((o) => !o)}
+              style={{
+                cursor: "pointer",
+                background: open ? "var(--mantine-color-brand-0)" : undefined,
+              }}
+            >
+              <Table.Td>
+                <IconChevronDown
+                  size={14}
+                  style={{
+                    transform: open ? "rotate(180deg)" : undefined,
+                    transition: "transform 150ms ease",
+                  }}
+                />
+              </Table.Td>
+              <Table.Td fw={600}>{investorName}</Table.Td>
+              <Table.Td>{detail.investment_product_name}</Table.Td>
+              <Table.Td ta="right" fw={700}>
+                {money(detail.investment_amount)}
+              </Table.Td>
+              <Table.Td ta="right">{detail.interest_rate}%</Table.Td>
+              <Table.Td>{detail.repayment_frequency}</Table.Td>
+              <Table.Td>{fmtDate(detail.first_repayment_date)}</Table.Td>
+              <Table.Td>{fmtDate(detail.maturity_date)}</Table.Td>
+            </Table.Tr>
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+      <Collapse expanded={open}>
+        <ScheduleTable detail={detail} onOpenEntry={onOpenEntry} />
+      </Collapse>
+    </Stack>
+  );
+}
+
+/** Paid instalments of the schedule. */
+function ScheduleTable({
+  detail,
+  onOpenEntry,
+}: {
+  detail: InvestmentDetail;
+  onOpenEntry: (je: string) => void;
+}) {
+  const money = useMoney();
+  const paidRows = detail.schedule.filter((r) => r.status === "Paid");
   return (
     <Table.ScrollContainer minWidth={900}>
-      <Table verticalSpacing="sm" horizontalSpacing="sm" fz="xs" highlightOnHover>
+      <Table
+        verticalSpacing="sm"
+        horizontalSpacing="sm"
+        fz="xs"
+        highlightOnHover
+      >
         <Table.Thead>
           <Table.Tr>
             <Table.Th>#</Table.Th>
@@ -263,13 +486,15 @@ function ScheduleTable({ detail, onOpenEntry }: { detail: InvestmentDetail; onOp
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {detail.schedule.map((r) => (
+          {paidRows.map((r) => (
             <Table.Tr key={r.name}>
               <Table.Td c="slate.5">{r.number}</Table.Td>
               <Table.Td>{fmtDate(r.payment_date)}</Table.Td>
               <Table.Td ta="right">{money(r.principal)}</Table.Td>
               <Table.Td ta="right">{money(r.interest)}</Table.Td>
-              <Table.Td ta="right">{r.penalty ? money(r.penalty) : "-"}</Table.Td>
+              <Table.Td ta="right">
+                {r.penalty ? money(r.penalty) : "-"}
+              </Table.Td>
               <Table.Td ta="right" fw={700}>
                 {money(r.total)}
               </Table.Td>
@@ -279,17 +504,25 @@ function ScheduleTable({ detail, onOpenEntry }: { detail: InvestmentDetail; onOp
               <Table.Td>{fmtDate(r.paid_on)}</Table.Td>
               <Table.Td>
                 <Group justify="flex-end" gap={4}>
-                  <EntryButton entry={r.accrual_entry} label="Interest accrual" onOpen={onOpenEntry} />
-                  <EntryButton entry={r.payout_entry} label="Payout" onOpen={onOpenEntry} />
+                  <EntryButton
+                    entry={r.accrual_entry}
+                    label="Interest accrual"
+                    onOpen={onOpenEntry}
+                  />
+                  <EntryButton
+                    entry={r.payout_entry}
+                    label="Payout"
+                    onOpen={onOpenEntry}
+                  />
                 </Group>
               </Table.Td>
             </Table.Tr>
           ))}
-          {detail.schedule.length === 0 && (
+          {paidRows.length === 0 && (
             <Table.Tr>
               <Table.Td colSpan={9}>
                 <Text fz="xs" c="dimmed" ta="center" py="md">
-                  The repayment schedule is created once a fund is approved.
+                  No instalment has been paid yet.
                 </Text>
               </Table.Td>
             </Table.Tr>
@@ -301,7 +534,13 @@ function ScheduleTable({ detail, onOpenEntry }: { detail: InvestmentDetail; onOp
 }
 
 /** Everything that happened to the investor's money on this investment, oldest first. */
-function MoneyTrail({ detail, onOpenEntry }: { detail: InvestmentDetail; onOpenEntry: (je: string) => void }) {
+function MoneyTrail({
+  detail,
+  onOpenEntry,
+}: {
+  detail: InvestmentDetail;
+  onOpenEntry: (je: string) => void;
+}) {
   const money = useMoney();
   type TrailEvent = {
     date: string;
@@ -371,7 +610,11 @@ function MoneyTrail({ detail, onOpenEntry }: { detail: InvestmentDetail; onOpenE
               <Text fz="sm" fw={700} c="slate.8">
                 {e.title}
               </Text>
-              <EntryButton entry={e.entry} label="Accounting" onOpen={onOpenEntry} />
+              <EntryButton
+                entry={e.entry}
+                label="Accounting"
+                onOpen={onOpenEntry}
+              />
             </Group>
           }
         >
