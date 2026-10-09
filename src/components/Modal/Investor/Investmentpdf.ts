@@ -506,3 +506,96 @@ export function buildContractPdfFromState(
     getPdfPalette(theme),
   );
 }
+
+/* -------------------------- Investor statement -------------------------- */
+export interface InvestorStatementPdfData {
+  investor: { id: string; name: string; email: string | null; mobile: string | null };
+  /** Investment the statement is limited to, or null for all investments. */
+  investment: string | null;
+  entries: {
+    date: string;
+    investment: string;
+    type: string;
+    description: string;
+    paid_in: number;
+    principal_returned: number;
+    interest_paid: number;
+    balance: number;
+  }[];
+  totals: { paid_in: number; principal_returned: number; interest_paid: number; closing_balance: number };
+}
+
+/** Every fund paid in and every payout received, with the principal balance after each entry. */
+export function buildInvestorStatementPdf(d: InvestorStatementPdfData, p: PdfPalette): jsPDF {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const ctx: Ctx = { doc, p };
+  const first = d.entries[0]?.date;
+  const last = d.entries[d.entries.length - 1]?.date;
+  const period = first && last ? `${fmtDate(first)} - ${fmtDate(last)}` : "No entries";
+
+  let y = drawHeader(ctx, "INVESTOR STATEMENT", d.investment ? `Investment ${d.investment}` : "All investments", [
+    { label: "Investor", value: d.investor.id },
+    { label: "Period", value: period },
+    { label: "Generated on", value: fmtDate(new Date()) },
+  ]);
+
+  y = sectionTitle(ctx, y, "Investor");
+  const cardW = (CW - 6) / 2;
+  const h1 = infoCard(ctx, M, y, cardW, "Statement for", d.investor.name, [
+    `Investor ID: ${d.investor.id}`,
+    `Email: ${d.investor.email || "-"}`,
+  ]);
+  const h2 = infoCard(ctx, M + cardW + 6, y, cardW, "Covers", d.investment || "All investments", [
+    `Entries: ${d.entries.length}`,
+    `Mobile: ${d.investor.mobile || "-"}`,
+  ]);
+  y += Math.max(h1, h2) + 8;
+
+  y = sectionTitle(ctx, y, "Summary");
+  y = kpiTiles(ctx, y, [
+    { label: "Paid in", value: money(d.totals.paid_in) },
+    { label: "Principal returned", value: money(d.totals.principal_returned) },
+    { label: "Interest paid", value: money(d.totals.interest_paid) },
+    { label: "Principal held", value: money(d.totals.closing_balance) },
+  ]);
+
+  y = ensure(ctx, y, 30);
+  y = sectionTitle(ctx, y, "Transactions");
+  const amount = (n: number) => (n ? money(n) : "-");
+  y = table(
+    ctx,
+    y,
+    [
+      { header: "Date", w: 22, align: "left" },
+      { header: "Investment", w: 30, align: "left" },
+      { header: "Details", w: 40, align: "left" },
+      { header: "Paid in", w: 22, align: "right" },
+      { header: "Principal", w: 22, align: "right" },
+      { header: "Interest", w: 20, align: "right" },
+      { header: "Balance", w: 24, align: "right" },
+    ],
+    d.entries.map((e) => [
+      fmtDate(e.date),
+      e.investment,
+      doc.splitTextToSize(`${e.type}: ${e.description}`, 37)[0] as string,
+      amount(e.paid_in),
+      amount(e.principal_returned),
+      amount(e.interest_paid),
+      money(e.balance),
+    ]),
+  );
+
+  y = ensure(ctx, y, 12);
+  ink(ctx, p.mute);
+  font(ctx, "normal", 8.5);
+  doc.text(
+    "Balance is the principal held for the investor (paid in minus principal returned). " +
+      "System-generated statement; no signature required.",
+    M,
+    y,
+    { maxWidth: CW },
+  );
+
+  addFooters(ctx, `Investor Statement | ${d.investor.id}${d.investment ? ` | ${d.investment}` : ""}`);
+  return doc;
+}

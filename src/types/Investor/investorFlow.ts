@@ -488,3 +488,146 @@ export interface RecordFundAccounts {
   /** Paid to, per Mode of Payment (null when its GL is not set). */
   debit_by_mode: Record<InvestorFlowPaymentMode, RecordFundAccount | null>;
 }
+
+/* ---------------------------- Investor 360 view ---------------------------- */
+
+export interface InvestorInfo {
+  id: string;
+  name: string;
+  customer_type: string | null;
+  email: string | null;
+  mobile: string | null;
+  status: "Active" | "Inactive";
+}
+
+/** Money figures of one investment (calculated from fund records and the current schedule). */
+export interface InvestmentFigures {
+  fund_paid_in: number;
+  fund_pending_approval: number;
+  fund_remaining: number;
+  principal_returned: number;
+  interest_received: number;
+  received_back: number;
+  principal_outstanding: number;
+  interest_outstanding: number;
+  payouts_total: number;
+  payouts_done: number;
+  next_payout_date: string | null;
+  next_payout_amount: number;
+}
+
+export interface PortfolioInvestment extends InvestmentFigures {
+  name: string;
+  investor: string;
+  investment_product: string;
+  investment_product_name: string;
+  status: InvestorFlowStatus;
+  fund_status: InvestorFundStatus | null;
+  contract_status: InvestorFlowContractStatus | null;
+  investment_amount: number;
+  interest_rate: number;
+  repayment_frequency: RepaymentFrequency;
+  first_repayment_date: string;
+  maturity_date: string;
+  penalty_rate: number | null;
+  creation: string;
+}
+
+export interface InvestorPortfolio {
+  investor: InvestorInfo;
+  totals: {
+    investments: number;
+    active: number;
+    contracted: number;
+    fund_paid_in: number;
+    fund_remaining: number;
+    received_back: number;
+    principal_returned: number;
+    interest_received: number;
+    principal_outstanding: number;
+    interest_outstanding: number;
+    next_payout_date: string | null;
+    next_payout_amount: number;
+    next_payout_investment: string | null;
+  };
+  investments: PortfolioInvestment[];
+}
+
+export interface InvestmentFundEntry {
+  name: string;
+  paid_date: string;
+  amount: number;
+  mode_of_payment: InvestorFlowPaymentMode;
+  reference_number: string | null;
+  record_status: FundRecordStatus;
+  journal_entry: string | null;
+  paid_from: string;
+  paid_from_description: string;
+  paid_to: string;
+  paid_to_description: string;
+}
+
+export interface InvestmentScheduleEntry {
+  name: string;
+  number: number;
+  payment_date: string;
+  principal: number;
+  interest: number;
+  penalty: number;
+  total: number;
+  status: InvestorEarningRowStatus;
+  /** Day the payout Journal Entry was posted. */
+  paid_on: string | null;
+  payout_entry: string | null;
+  accrual_entry: string | null;
+}
+
+export interface InvestmentDetail extends PortfolioInvestment {
+  mail_sent: string | null;
+  subject: string | null;
+  funds: InvestmentFundEntry[];
+  schedule: InvestmentScheduleEntry[];
+}
+
+export interface InvestorStatementEntry {
+  date: string;
+  investment: string;
+  type: "Fund received" | "Payout";
+  description: string;
+  paid_in: number;
+  principal_returned: number;
+  interest_paid: number;
+  journal_entry: string | null;
+  /** Principal held for the investor after this entry. */
+  balance: number;
+}
+
+export interface InvestorStatement {
+  investor: InvestorInfo;
+  investment: string | null;
+  entries: InvestorStatementEntry[];
+  totals: { paid_in: number; principal_returned: number; interest_paid: number; closing_balance: number };
+}
+
+export interface JournalEntryLine {
+  account: string;
+  account_name: string;
+  account_number: string | null;
+  root_type: string;
+  party: string | null;
+  debit: number;
+  credit: number;
+  /** Plain words: "Money came in", "Amount owed to investor increased", … */
+  meaning: string;
+}
+
+export interface JournalEntryDetail {
+  name: string;
+  posting_date: string;
+  status: "Draft" | "Submitted" | "Cancelled";
+  reference_no: string | null;
+  remark: string | null;
+  total_debit: number;
+  total_credit: number;
+  lines: JournalEntryLine[];
+}
