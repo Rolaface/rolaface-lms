@@ -245,8 +245,13 @@ const headerTitle = editId ? (isView ? "View Collateral" : "Edit Collateral") : 
               <Text size="md" fw={700} c="white" className="leading-tight truncate">
                 {headerTitle}
               </Text>
+
               <Text size="xs" c="brand.1" className="leading-tight truncate">
-                Valuation, haircut & LTV details
+                {editId
+                  ? isView
+                    ? "View details and settings for this collateral category."
+                    : "Update details and settings for this collateral category"
+                  : "Add the details and information required to create a new collateral record."}
               </Text>
             </div>
           </Group>
