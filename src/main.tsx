@@ -21,7 +21,7 @@ if (sidFromUrl) {
  localStorage.setItem("lms_entry_mode", modeFromUrl === "los" ? "los" : "lending");
 }
 
-+window.history.replaceState({}, "", window.location.pathname);
+window.history.replaceState({}, "", window.location.pathname);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
