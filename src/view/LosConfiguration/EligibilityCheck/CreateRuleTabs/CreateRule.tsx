@@ -893,6 +893,7 @@ useEffect(() => {
     style={{
       background:
         "linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-5) 100%)",
+      color: "#ffffff",
     }}
   >
     Save

@@ -93,6 +93,10 @@ export function ModalFooter({
                         background: theme.other.brandGradient,
                         boxShadow: theme.other.brandGlowShadowSm,
                         border: 'none',
+                        color: '#ffffff',
+                      },
+                      label: {
+                        color: '#ffffff',
                       },
                     }}
                   >
@@ -163,7 +167,7 @@ export function ModalFooter({
                   loading={submitLoading}
                   disabled={submitDisabled}
                   rightSection={submitIcon}
-                  className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0 font-semibold px-6"
+                  className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 border-0 font-semibold px-6 text-white"
                 >
                   {submitLabel}
                 </Button>

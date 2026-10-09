@@ -124,7 +124,7 @@ export function LoanClassificationRangesModal({ opened, onClose, mode = 'add', d
           <Button 
             size="sm" 
             bg="indigoAlt.4"
-            className="bg-[#991B1B] hover:bg-red-900 transition-colors"
+            className="bg-[#991B1B] hover:bg-red-900 transition-colors text-white"
             onClick={handleModalClose}
           >
             Save
