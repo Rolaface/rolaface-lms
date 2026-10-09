@@ -176,14 +176,14 @@ export function AddLoanCategoryModal({
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
-                {isView ? "View Loan Category" : editId ? "Edit Loan Category" : "New Loan Category"}
+                {isView ? "View Loan Category" : editId ? "Edit Loan Category" : "Add Loan Category"}
               </Text>
               <Text size="xs" fw={500} c="brand.1">
                 {isView
-                  ? "Loan category details"
+                  ? "View details for this loan category."
                   : editId
-                  ? "Update the loan category name"
-                  : "Create a new loan category for your organization"}
+                  ? "Edit details for this loan category."
+                  : "Add a new category to classify loan items."}
               </Text>
             </Box>
           </Group>
@@ -248,7 +248,7 @@ export function AddLoanCategoryModal({
           isViewMode={isView}
           onClose={handleClose}
           onSubmit={handleSubmit}
-          submitLabel={editId ? "Update" : "Save"}
+          submitLabel="Submit"
           submitLoading={isPending}
         />
       </Box>

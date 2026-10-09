@@ -551,7 +551,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white">
-                Loan Capitalization
+                Process Capitalization
               </Text>
               <Text size="xs" fw={500} c="brand.1">
                 Search a borrower and process a capitalization against their loan account
@@ -1050,7 +1050,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
           variant="theme"
           isViewMode={isView}
           onClose={onClose}
-          submitLabel={editId ? 'Update' : 'Save'}
+          submitLabel={editId ? 'Update' : 'Submit'}
           submitDisabled={!selectedLoan || !hasAnyCapitalizedAmount || isPending}
           submitLoading={isPending}
           onSubmit={handleSubmit}
