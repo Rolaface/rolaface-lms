@@ -12,7 +12,7 @@ import {
   UnstyledButton,
   useMantineTheme,
 } from "@mantine/core";
-import { IconCheck, IconEye, IconPencil, IconX } from "@tabler/icons-react";
+import { IconCheck, IconEye, IconMinus, IconPencil, IconX } from "@tabler/icons-react";
 import {
   STEP_NAMES,
   inr,
@@ -165,6 +165,8 @@ export function StageSideNav({
 interface StageShellProps {
   opened: boolean;
   onClose: () => void;
+  /** Minimizes the modal to the dock (same as the other modals). */
+  onMinimize?: () => void;
   /** Index in STAGES of the stage this modal belongs to (0, 1 or 2). */
   stageIndex: number;
   state: ModalState;
@@ -181,6 +183,7 @@ interface StageShellProps {
 export function StageShell({
   opened,
   onClose,
+  onMinimize,
   stageIndex,
   state,
   title = "New Investment",
@@ -261,15 +264,16 @@ export function StageShell({
             Stage {stageIndex + 1} of {STAGES.length} — {STAGES[stageIndex].label}
           </Text>
         </Box>
-        <ActionIcon
-          variant="subtle"
-          color="white"
-          ml="auto"
-          aria-label="Close"
-          onClick={onClose}
-        >
-          <IconX size={18} />
-        </ActionIcon>
+        <Group gap={4} ml="auto" wrap="nowrap">
+          {onMinimize && (
+            <ActionIcon variant="subtle" color="white" aria-label="Minimize" onClick={onMinimize}>
+              <IconMinus size={18} />
+            </ActionIcon>
+          )}
+          <ActionIcon variant="subtle" color="white" aria-label="Close" onClick={onClose}>
+            <IconX size={18} />
+          </ActionIcon>
+        </Group>
       </Group>
 
       {/* Customer bar */}

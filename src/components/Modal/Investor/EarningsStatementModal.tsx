@@ -8,7 +8,6 @@ import {
   Loader,
   NumberInput,
   Pagination,
-  Select,
   Table,
   Text,
   TextInput,
@@ -21,20 +20,20 @@ import {
   updateInvestorEarning,
 } from "../../../api/Investor/investorFlowApi";
 import {
-  REPAYMENT_FREQUENCIES,
   type InvestorEarning,
   type InvestorEarningDetails,
   type InvestorEarningRowStatus,
   type InvestorEarningScheduleRow,
-  type RepaymentFrequency,
 } from "../../../types/Investor/investorFlow";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { openCommonModal } from "../AlertModal";
 import {
+  KeyValueList,
   KpiGrid,
   SectionBox,
   TH_STYLE,
   createInitialState,
+  fmtDate,
   inr,
   loadInvestorFlowState,
   scheduleFromEarning,
@@ -79,19 +78,8 @@ const draftFromEarning = (e: InvestorEarning): EarningDraft => ({
   rows: e.schedule.map((r) => ({ ...r })),
 });
 
-/** First problem in the draft, or "" when it can be saved. */
-function validateDraft({ details, rows }: EarningDraft): string {
-  if (!Number.isInteger(details.amount_invested) || details.amount_invested <= 0)
-    return "Amount invested must be a whole number greater than 0.";
-  if (!details.frequency) return "Select the frequency.";
-  if (!details.first_repay_date) return "Enter the first repay date.";
-  if (!details.mat_date) return "Enter the maturity date.";
-  if (new Date(details.mat_date).getTime() <= new Date(details.first_repay_date).getTime())
-    return "Maturity date must be after the first repay date.";
-  if (!(details.rate_of_interest >= 0 && details.rate_of_interest <= 100))
-    return "Rate of interest must be between 0 and 100.";
-  const penalty = details.rate_of_penalty ?? 0;
-  if (!(penalty >= 0 && penalty <= 100)) return "Rate of penalty must be between 0 and 100.";
+/** First problem in the schedule rows (the details are read-only), or "" when they can be saved. */
+function validateDraft({ rows }: EarningDraft): string {
   for (const r of rows) {
     if (!r.payment_date) return `Row ${r.idx}: enter the payment date.`;
     const amounts = [r.principal_amount, r.interest_amount, r.penalty_amount, r.total_payment];
@@ -134,13 +122,24 @@ function EarningsStatements({
   const totalInterest = rows.reduce((a, r) => a + (Number(r.interest_amount) || 0), 0);
   const totalPayment = rows.reduce((a, r) => a + (Number(r.total_payment) || 0), 0);
 
-  const setDetail = (patch: Partial<InvestorEarningDetails>) =>
-    onChange?.({ ...draft, details: { ...details, ...patch } });
-
   const setRow = (name: string, patch: Partial<InvestorEarningScheduleRow>) =>
     onChange?.({
       ...draft,
-      rows: rows.map((r) => (r.name === name ? { ...r, ...patch } : r)),
+      rows: rows.map((r) => {
+        if (r.name !== name) return r;
+        const next = { ...r, ...patch };
+        // Principal / Interest / Penalty changed: refill Total Payment (it stays editable).
+        if ("principal_amount" in patch || "interest_amount" in patch || "penalty_amount" in patch) {
+          next.total_payment =
+            Math.round(
+              ((Number(next.principal_amount) || 0) +
+                (Number(next.interest_amount) || 0) +
+                (Number(next.penalty_amount) || 0)) *
+                100,
+            ) / 100;
+        }
+        return next;
+      }),
     });
 
   /** Paid rows are locked; Accrued rows lock date, principal and interest. */
@@ -179,74 +178,23 @@ function EarningsStatements({
       />
 
       <SectionBox title="Details">
-        <Box style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <NumberInput
-            label="Amount invested"
-            size="sm"
-            radius="md"
-            required={editable}
-            readOnly={!editable}
-            min={1}
-            allowDecimal={false}
-            thousandSeparator=","
-            value={details.amount_invested}
-            onChange={(v) => setDetail({ amount_invested: Number(v) || 0 })}
-          />
-          <NumberInput
-            label="Rate of interest (%)"
-            size="sm"
-            radius="md"
-            required={editable}
-            readOnly={!editable}
-            min={0}
-            max={100}
-            decimalScale={2}
-            value={details.rate_of_interest}
-            onChange={(v) => setDetail({ rate_of_interest: Number(v) || 0 })}
-          />
-          <Select
-            label="Frequency"
-            size="sm"
-            radius="md"
-            required={editable}
-            readOnly={!editable}
-            allowDeselect={false}
-            data={[...REPAYMENT_FREQUENCIES]}
-            value={details.frequency}
-            onChange={(v) => v && setDetail({ frequency: v as RepaymentFrequency })}
-          />
-          <TextInput
-            type="date"
-            label="First repay date"
-            size="sm"
-            radius="md"
-            required={editable}
-            readOnly={!editable}
-            value={details.first_repay_date ?? ""}
-            onChange={(e) => setDetail({ first_repay_date: e.currentTarget.value || null })}
-          />
-          <TextInput
-            type="date"
-            label="Maturity date"
-            size="sm"
-            radius="md"
-            required={editable}
-            readOnly={!editable}
-            value={details.mat_date ?? ""}
-            onChange={(e) => setDetail({ mat_date: e.currentTarget.value || null })}
-          />
-          <NumberInput
-            label="Rate of penalty (%)"
-            size="sm"
-            radius="md"
-            readOnly={!editable}
-            min={0}
-            max={100}
-            decimalScale={2}
-            value={details.rate_of_penalty ?? ""}
-            onChange={(v) => setDetail({ rate_of_penalty: v === "" ? null : Number(v) })}
-          />
-        </Box>
+        <KeyValueList
+          cols={2}
+          rows={[
+            { label: "Amount invested", value: inr(details.amount_invested) },
+            { label: "Rate of interest", value: `${details.rate_of_interest}% p.a.` },
+            { label: "Frequency", value: details.frequency || "—" },
+            {
+              label: "First repay date",
+              value: details.first_repay_date ? fmtDate(details.first_repay_date) : "—",
+            },
+            { label: "Maturity date", value: details.mat_date ? fmtDate(details.mat_date) : "—" },
+            {
+              label: "Rate of penalty",
+              value: details.rate_of_penalty != null ? `${details.rate_of_penalty}% p.a.` : "—",
+            },
+          ]}
+        />
       </SectionBox>
 
       <SectionBox title="Investor schedule">
@@ -384,6 +332,8 @@ interface EarningsStatementsModalProps {
   readOnly?: boolean;
   /** Called after the edits are saved. */
   onSaved?: () => void;
+  /** Minimizes the modal to the dock. */
+  onMinimize: () => void;
 }
 
 const STAGE_INDEX = 1;
@@ -398,6 +348,7 @@ export function EarningsStatementsModal({
   investorFlowId,
   readOnly = false,
   onSaved,
+  onMinimize,
 }: EarningsStatementsModalProps) {
   const earningQuery = useQuery({
     queryKey: ["investorEarning", investorFlowId],
@@ -416,6 +367,7 @@ export function EarningsStatementsModal({
         key={earningQuery.dataUpdatedAt}
         opened={opened}
         onClose={onClose}
+        onMinimize={onMinimize}
         investorFlowId={investorFlowId}
         readOnly={readOnly}
         onSaved={onSaved}
@@ -430,6 +382,7 @@ export function EarningsStatementsModal({
     <StageShell
       opened={opened}
       onClose={onClose}
+      onMinimize={onMinimize}
       stageIndex={STAGE_INDEX}
       state={createInitialState()}
       title={readOnly ? "View Earnings" : "Edit Earnings"}
@@ -450,6 +403,7 @@ export function EarningsStatementsModal({
 function EarningsStage({
   opened,
   onClose,
+  onMinimize,
   investorFlowId,
   readOnly,
   onSaved,
@@ -548,7 +502,6 @@ function EarningsStage({
       updateInvestorEarning({
         id: investorFlowId,
         payload: {
-          ...draft.details,
           schedule: draft.rows.map((row) => ({
             name: row.name,
             payment_date: row.payment_date,
@@ -626,6 +579,7 @@ function EarningsStage({
     <StageShell
       opened={opened}
       onClose={onClose}
+      onMinimize={onMinimize}
       stageIndex={STAGE_INDEX}
       state={flowState}
       title={editable ? "Edit Earnings" : "View Earnings"}

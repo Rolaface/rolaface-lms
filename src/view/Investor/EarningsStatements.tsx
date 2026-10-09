@@ -42,7 +42,7 @@ import { getEveryInvestmentProduct } from "../../api/Investor/productApi";
 import type { InvestorEarningListItem } from "../../types/Investor/investorFlow";
 import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
-import { EarningsStatementsModal } from "../../components/Modal/Investor/EarningsStatementModal";
+import { earningsStatementsModal } from "../../components/Modal/Investor/earningsStatementsModalStore";
 
 const columnHelper = createColumnHelper<InvestorEarningListItem>();
 
@@ -110,16 +110,8 @@ export function EarningsStatements() {
   const lastRow = Math.min(totalRows, page * pageSize);
 
   /* ----------------------------- Modal ----------------------------- */
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [modalReadOnly, setModalReadOnly] = useState(true);
-  const [modalOpened, setModalOpened] = useState(false);
-  const [modalKey, setModalKey] = useState(0);
-  const openModal = (id: string, readOnly: boolean) => {
-    setSelectedId(id);
-    setModalReadOnly(readOnly);
-    setModalKey((k) => k + 1); // fresh modal state on every open
-    setModalOpened(true);
-  };
+  const openModal = (id: string, readOnly: boolean) =>
+    earningsStatementsModal.open({ investorFlowId: id, readOnly });
 
   /* ----------------------------- Table ----------------------------- */
   const productOptions = useMemo(
@@ -528,15 +520,6 @@ export function EarningsStatements() {
         )}
       </Paper>
 
-      {selectedId && (
-        <EarningsStatementsModal
-          key={modalKey}
-          opened={modalOpened}
-          onClose={() => setModalOpened(false)}
-          investorFlowId={selectedId}
-          readOnly={modalReadOnly}
-        />
-      )}
 
     </Stack>
   );

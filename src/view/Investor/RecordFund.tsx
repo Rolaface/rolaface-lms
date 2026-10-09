@@ -9,10 +9,10 @@ import {
   Loader,
   Pagination,
   Paper,
-  SegmentedControl,
   Select,
   Table,
   Badge,
+  Menu,
   Text,
   Title,
   Tooltip,
@@ -24,8 +24,12 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
-  IconHourglass,
+  IconCash,
   IconEye,
+  IconPencil,
+  IconTrash,
+  IconDotsVertical,
+  IconPlus,
 } from "@tabler/icons-react";
 import {
   useReactTable,
@@ -34,31 +38,33 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
-import { getInvestorMaturities } from "../../api/Investor/investorFlowApi";
-import { getEveryInvestmentProduct } from "../../api/Investor/productApi";
-import type {
-  InvestorMaturityListItem,
-  InvestorMaturityView,
-} from "../../types/Investor/investorFlow";
+import {
+  approveFundRecord,
+  cancelFundRecord,
+  deleteFundRecord,
+  getFundRecords,
+} from "../../api/Investor/investorFlowApi";
+import type { FundRecordListItem, FundRecordStatus } from "../../types/Investor/investorFlow";
+import { parseFrappeError } from "../../utils/parseFrappeError";
+import { openCommonModal } from "../../components/Modal/AlertModal";
 import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
-import { maturityModal } from "../../components/Modal/Investor/maturityModalStore";
+import { recordFundModal } from "../../components/Modal/Investor/recordFundModalStore";
 
-const columnHelper = createColumnHelper<InvestorMaturityListItem>();
+const columnHelper = createColumnHelper<FundRecordListItem>();
 
-const VIEWS: { value: InvestorMaturityView; label: string; empty: string }[] = [
-  { value: "due", label: "Due", empty: "No investments have reached maturity." },
-  { value: "upcoming", label: "Upcoming", empty: "No upcoming maturities." },
-  { value: "closed", label: "Closed", empty: "No redeemed or renewed investments yet." },
-];
-
-const STATUS_COLOR: Record<string, string> = {
-  Received: "warning",
-  Matured: "success",
-  Renewed: "brand",
+const RECORD_STATUS_COLOR: Record<FundRecordStatus, string> = {
+  Draft: "slate",
+  Approved: "success",
+  Cancelled: "danger",
 };
+
+const RECORD_STATUS_OPTIONS = (["Draft", "Approved", "Cancelled"] as FundRecordStatus[]).map((v) => ({
+  value: v,
+  label: v,
+}));
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   const color = sorted
@@ -80,126 +86,157 @@ const fmtDate = (iso: string | null) =>
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-const RIGHT_ALIGNED = ["amount_invested", "rate_of_interest", "outstanding", "actions"];
+const RIGHT_ALIGNED = ["amount_paid", "remaining_fund", "actions"];
 
-export function Maturity() {
+export function RecordFund() {
   const theme = useMantineTheme();
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const fmtAmount = (value: number) =>
     formatAmount(companyCurrency, value, { withSymbol: true });
 
-  const [view, setView] = useState<InvestorMaturityView>("due");
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebouncedValue(searchInput, 400);
-  const [productFilter, setProductFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     setPage(1);
-  }, [view, debouncedSearch, productFilter]);
+  }, [debouncedSearch, statusFilter]);
 
   /* ------------------------------- Data ------------------------------- */
-  const { data: maturityResponse, isLoading, isFetching } = useQuery({
-    queryKey: ["investorMaturities", view, debouncedSearch, productFilter, page, pageSize],
+  const { data: fundsResponse, isLoading, isFetching } = useQuery({
+    queryKey: ["fundRecords", debouncedSearch, statusFilter, page, pageSize],
     queryFn: () =>
-      getInvestorMaturities({
-        view,
+      getFundRecords({
         search: debouncedSearch.trim() || undefined,
-        investment_product: productFilter,
+        record_status: statusFilter as FundRecordStatus[],
         page,
         page_size: pageSize,
       }),
     placeholderData: (prev) => prev,
   });
 
-  const { data: products = [] } = useQuery({
-    queryKey: ["investmentProducts", "all"],
-    queryFn: getEveryInvestmentProduct,
-  });
-
-  const maturities = maturityResponse?.data ?? [];
-  const totalRows = maturityResponse?.pagination?.total ?? 0;
-  const totalPages = maturityResponse?.pagination?.total_pages ?? 1;
+  const records = fundsResponse?.data ?? [];
+  const totalRows = fundsResponse?.pagination?.total ?? 0;
+  const totalPages = fundsResponse?.pagination?.total_pages ?? 1;
   const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
   const lastRow = Math.min(totalRows, page * pageSize);
 
   /* ----------------------------- Modal ----------------------------- */
-  const openModal = (id: string, readOnly: boolean) =>
-    maturityModal.open({ investorFlowId: id, readOnly });
+  const openModal = (mode: "view" | "edit", row: FundRecordListItem) =>
+    recordFundModal.open({ mode, investorFlowId: row.investment_id, recordName: row.name });
 
-  /* ----------------------------- Table ----------------------------- */
-  const productOptions = useMemo(
-    () => products.map((p) => ({ value: p.name, label: p.product_name })),
-    [products],
-  );
+  /* --------------------------- Row actions --------------------------- */
+  const queryClient = useQueryClient();
+  const refresh = (investmentId: string) => {
+    queryClient.invalidateQueries({ queryKey: ["fundRecords"] });
+    queryClient.invalidateQueries({ queryKey: ["investorFunds"] });
+    queryClient.invalidateQueries({ queryKey: ["investorFund", investmentId] });
+    queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
+  };
+  const showSuccess = (heading: string, body: string) =>
+    openCommonModal({ heading, subtitle: "", body, color: "green", buttons: [{ label: "Close", color: "green" }] });
+  const showError = (heading: string, error: any) =>
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
 
-  const columns = useMemo(
+  const rowAction = (
+    fn: (args: { id: string; record: string }) => Promise<unknown>,
+    success: (row: FundRecordListItem) => [string, string],
+    failure: string,
+  ) => ({
+    mutationFn: (row: FundRecordListItem) => fn({ id: row.investment_id, record: row.name }),
+    onSuccess: (_data: unknown, row: FundRecordListItem) => {
+      refresh(row.investment_id);
+      showSuccess(...success(row));
+    },
+    onError: (error: any) => showError(failure, error),
+  });
+
+  const approveMutation = useMutation(rowAction(
+    approveFundRecord,
+    (row) => ["Fund Approved", `${fmtAmount(row.amount_paid)} from ${row.investor} is approved and its Journal Entry is posted.`],
+    "Approve Failed",
+  ));
+  const cancelMutation = useMutation(rowAction(
+    cancelFundRecord,
+    (row) => [
+      "Fund Cancelled",
+      row.record_status === "Approved"
+        ? `The record and its Journal Entry ${row.journal_entry ?? ""} are cancelled.`
+        : "The fund record is cancelled.",
+    ],
+    "Cancel Failed",
+  ));
+  const deleteMutation = useMutation(rowAction(
+    deleteFundRecord,
+    () => ["Fund Deleted", "The draft fund record has been deleted."],
+    "Delete Failed",
+  ));
+
+  const confirm = (
+    heading: string,
+    body: string,
+    label: string,
+    color: string,
+    onConfirm: () => void,
+  ) =>
+    openCommonModal({
+      heading,
+      subtitle: "Please confirm this action before continuing.",
+      body,
+      color,
+      buttons: [
+        { label: "Back", variant: "default" },
+        { label, color, onClick: onConfirm },
+      ],
+    });
+
+   const columns = useMemo(
     () => [
-      columnHelper.accessor("name", {
-        header: "Investment ID",
-        cell: (info) => (
-          <Text
-            fz="sm"
-            fw={700}
-            c="slate.8"
-            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
-          >
-            {info.getValue()}
-          </Text>
-        ),
-      }),
+      // columnHelper.accessor("investment_id", {
+      //   header: "Investment ID",
+      //   cell: (info) => (
+      //     <Text fz="sm" fw={700} c="slate.8" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
+      //       {info.getValue()}
+      //     </Text>
+      //   ),
+      // }),
       columnHelper.accessor("investor", {
-        header: "Customer",
+        header: "Investor",
         cell: (info) => (
           <Text fz="sm" fw={600} c="slate.8">
             {info.getValue()}
           </Text>
         ),
       }),
-      columnHelper.accessor("investment_product_name", {
-        header: "Product",
+      columnHelper.accessor("amount_paid", {
+        header: "Fund Received",
         cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            radius="sm"
-            color="brand"
-            styles={{ root: { fontSize: 10, padding: "0 8px" } }}
-          >
-            {info.getValue()}
-          </Badge>
-        ),
-      }),
-      columnHelper.accessor("amount_invested", {
-        header: "Amount",
-        cell: (info) => (
-          <Text
-            fz="xs"
-            c="slate.6"
-            ta="right"
-            style={{
-              fontFamily: "var(--mantine-font-family-monospace)",
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
+          <Text fz="xs" fw={600} c="slate.8" ta="right" style={{ fontVariantNumeric: "tabular-nums" }}>
             {fmtAmount(Number(info.getValue()) || 0)}
           </Text>
         ),
         sortingFn: "basic",
       }),
-      columnHelper.accessor("rate_of_interest", {
-        header: "Rate",
+      columnHelper.accessor("remaining_fund", {
+        header: "Remaining Fund",
         cell: (info) => (
-          <Text fz="xs" c="slate.6" ta="right">
-            {`${info.getValue()}%`}
+          <Text fz="xs" c="slate.7" ta="right" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {fmtAmount(Number(info.getValue()) || 0)}
           </Text>
         ),
         sortingFn: "basic",
       }),
-      columnHelper.accessor("mat_date", {
-        header: "Maturity",
+      columnHelper.accessor("paid_date", {
+        header: "Paid Date",
         cell: (info) => (
           <Text fz="xs" c="slate.6">
             {fmtDate(info.getValue())}
@@ -207,57 +244,35 @@ export function Maturity() {
         ),
         sortingFn: "basic",
       }),
-      columnHelper.display({
-        id: "payouts",
-        header: "Payouts",
+      columnHelper.accessor("mode_of_payment", {
+        header: "Mode of Payment",
         cell: (info) => (
           <Text fz="xs" c="slate.6">
-            {info.row.original.rows_paid} / {info.row.original.rows_total}
+            {info.getValue() || "-"}
           </Text>
         ),
       }),
-      columnHelper.accessor(
-        (row) => Number(row.outstanding_principal) + Number(row.outstanding_interest),
-        {
-          id: "outstanding",
-          header: "Still Owed",
-          cell: (info) => (
-            <Text
-              fz="xs"
-              fw={600}
-              c={info.getValue() > 0 ? "slate.8" : "slate.5"}
-              ta="right"
-              style={{ fontVariantNumeric: "tabular-nums" }}
-            >
-              {fmtAmount(info.getValue())}
-            </Text>
-          ),
-          sortingFn: "basic",
-        },
-      ),
-      columnHelper.accessor("status", {
-        header: "Status",
-        cell: (info) => {
-          const row = info.row.original;
-          return (
-            <Stack gap={2}>
-              <Badge
-                variant="light"
-                size="sm"
-                radius="xl"
-                color={STATUS_COLOR[row.status] ?? "slate"}
-                styles={{ root: { textTransform: "none", fontWeight: 700 } }}
-              >
-                {row.status === "Received" ? (row.is_due ? "Due" : "Active") : row.status}
-              </Badge>
-              {row.renewed_to && (
-                <Text fz={10} c="slate.5">
-                  → {row.renewed_to}
-                </Text>
-              )}
-            </Stack>
-          );
-        },
+      columnHelper.accessor("reference_number", {
+        header: "Reference No.",
+        cell: (info) => (
+          <Text fz="xs" c="slate.6">
+            {info.getValue() || "-"}
+          </Text>
+        ),
+      }),
+      columnHelper.accessor("record_status", {
+        header: "Record Status",
+        cell: (info) => (
+          <Badge
+            variant="light"
+            size="sm"
+            radius="xl"
+            color={RECORD_STATUS_COLOR[info.getValue()] ?? "slate"}
+            styles={{ root: { textTransform: "none", fontWeight: 700 } }}
+          >
+            {info.getValue()}
+          </Badge>
+        ),
       }),
       columnHelper.display({
         id: "actions",
@@ -268,30 +283,97 @@ export function Maturity() {
         ),
         cell: (info) => {
           const row = info.row.original;
-          const canSettle = row.status === "Received" && row.is_due;
+          const isDraft = row.record_status === "Draft";
+          const isApproved = row.record_status === "Approved";
           return (
-            <Group justify="flex-end" gap={6} wrap="nowrap">
+            <Group justify="flex-end" gap={4} wrap="nowrap">
               <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="slate"
-                  radius="md"
-                  onClick={() => openModal(row.name, true)}
-                >
+                <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => openModal("view", row)}>
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
-              {canSettle && (
-                <Button
-                  size="compact-xs"
-                  radius="xl"
-                  color="brand"
-                  onClick={() => openModal(row.name, false)}
+              <Tooltip label={isDraft ? "Edit" : "Only Draft records can be edited"} withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color={isDraft ? "brand" : "slate"}
+                  radius="md"
+                  disabled={!isDraft}
+                  style={isDraft ? undefined : { opacity: 0.35 }}
+                  onClick={() => openModal("edit", row)}
                 >
-                  Redeem / Renew
-                </Button>
-              )}
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label={isDraft ? "Delete" : "Only Draft records can be deleted"} withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color={isDraft ? "danger" : "slate"}
+                  radius="md"
+                  disabled={!isDraft}
+                  style={isDraft ? undefined : { opacity: 0.35 }}
+                  onClick={() =>
+                    confirm(
+                      "Delete Fund Record",
+                      `Delete the draft record of ${fmtAmount(row.amount_paid)} from ${row.investor}?`,
+                      "Delete",
+                      "red",
+                      () => deleteMutation.mutate(row),
+                    )
+                  }
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Menu shadow="md" width={170} position="bottom-end" radius="md" disabled={!isDraft && !isApproved}>
+                <Menu.Target>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="slate"
+                    radius="md"
+                    aria-label="Actions"
+                    disabled={!isDraft && !isApproved}
+                    style={isDraft || isApproved ? undefined : { opacity: 0.35 }}
+                  >
+                    <IconDotsVertical size={14} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {isDraft && (
+                    <Menu.Item
+                      onClick={() =>
+                        confirm(
+                          "Approve Fund",
+                          `Approve ${fmtAmount(row.amount_paid)} from ${row.investor}? This posts its Journal Entry (Paid from ${row.credit_gl} → Paid to ${row.debit_gl}).`,
+                          "Approve",
+                          "green",
+                          () => approveMutation.mutate(row),
+                        )
+                      }
+                    >
+                      Approve
+                    </Menu.Item>
+                  )}
+                  <Menu.Item
+                    color="danger"
+                    onClick={() =>
+                      confirm(
+                        "Cancel Fund",
+                        isApproved
+                          ? `Cancel the approved record of ${fmtAmount(row.amount_paid)}? Its Journal Entry ${row.journal_entry ?? ""} will be cancelled too.`
+                          : `Cancel the draft record of ${fmtAmount(row.amount_paid)}?`,
+                        "Cancel Record",
+                        "red",
+                        () => cancelMutation.mutate(row),
+                      )
+                    }
+                  >
+                    Cancel
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
             </Group>
           );
         },
@@ -302,7 +384,7 @@ export function Maturity() {
   );
 
   const table = useReactTable({
-    data: maturities,
+    data: records,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -314,7 +396,7 @@ export function Maturity() {
 
   const resetFilters = () => {
     setSearchInput("");
-    setProductFilter([]);
+    setStatusFilter([]);
   };
 
   return (
@@ -343,24 +425,26 @@ export function Maturity() {
               justifyContent: "center",
             }}
           >
-            <IconHourglass size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconCash size={20} color="var(--mantine-color-white)" stroke={1.8} />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
-              Maturity
+              Record Fund
             </Title>
             <Text fz="sm" c="slate.5">
-              Redeem or renew investments that have reached maturity
+              Record the funds received from investors; approving a record posts its Journal Entry
             </Text>
           </Stack>
         </Group>
-        <SegmentedControl
+        <Button
           radius="xl"
           color="brand"
-          data={VIEWS.map((v) => ({ value: v.value, label: v.label }))}
-          value={view}
-          onChange={(v) => setView(v as InvestorMaturityView)}
-        />
+          leftSection={<IconPlus size={16} />}
+          style={{ background: theme.other.brandGradient }}
+          onClick={() => recordFundModal.open({ mode: "add" })}
+        >
+          Add Fund
+        </Button>
       </Group>
 
       {/* Filter bar */}
@@ -377,7 +461,7 @@ export function Maturity() {
             className="lms-search"
             size="sm"
             radius="xl"
-            placeholder="Investment ID / Customer"
+            placeholder="Investment ID / Investor"
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
             styles={{
@@ -388,11 +472,11 @@ export function Maturity() {
           />
 
           <FilterMultiSelect
-            placeholder="All Products"
-            data={productOptions}
-            value={productFilter}
-            onChange={setProductFilter}
-            width={140}
+            placeholder="All Record Status"
+            data={RECORD_STATUS_OPTIONS}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            width={160}
           />
 
           <Button
@@ -498,10 +582,10 @@ export function Maturity() {
                               border: "1px solid var(--mantine-color-slate-2)",
                             }}
                           >
-                            <IconHourglass size={24} color="var(--mantine-color-slate-4)" />
+                            <IconCash size={24} color="var(--mantine-color-slate-4)" />
                           </Box>
                           <Text ta="center" c="slate.5" fz="xs">
-                            {VIEWS.find((v) => v.value === view)?.empty}
+                            No fund records match your filters.
                           </Text>
                         </Stack>
                       </Table.Td>
@@ -519,7 +603,7 @@ export function Maturity() {
                               borderLeft:
                                 idx === 0
                                   ? `3px solid var(--mantine-color-${
-                                      STATUS_COLOR[row.original.status] ?? "slate"
+                                      RECORD_STATUS_COLOR[row.original.record_status] ?? "slate"
                                     }-4)`
                                   : undefined,
                             }}

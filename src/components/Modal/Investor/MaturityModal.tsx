@@ -298,13 +298,21 @@ interface MaturityModalProps {
   investorFlowId: string;
   /** View only (no Redeem / Renew). */
   readOnly?: boolean;
+  /** Minimizes the modal to the dock. */
+  onMinimize: () => void;
 }
 
 /**
  * Stage 3 — Maturity.
  * Side nav: Investor Processing and Earnings & Statements (both view only) and Maturity.
  */
-export function MaturityModal({ opened, onClose, investorFlowId, readOnly = false }: MaturityModalProps) {
+export function MaturityModal({
+  opened,
+  onClose,
+  onMinimize,
+  investorFlowId,
+  readOnly = false,
+}: MaturityModalProps) {
   const maturityQuery = useQuery({
     queryKey: ["investorMaturity", investorFlowId],
     queryFn: () => getInvestorMaturityById(investorFlowId),
@@ -322,6 +330,7 @@ export function MaturityModal({ opened, onClose, investorFlowId, readOnly = fals
         key={maturityQuery.dataUpdatedAt}
         opened={opened}
         onClose={onClose}
+        onMinimize={onMinimize}
         investorFlowId={investorFlowId}
         readOnly={readOnly}
         maturity={maturityQuery.data}
@@ -335,6 +344,7 @@ export function MaturityModal({ opened, onClose, investorFlowId, readOnly = fals
     <StageShell
       opened={opened}
       onClose={onClose}
+      onMinimize={onMinimize}
       stageIndex={STAGE_INDEX}
       state={createInitialState()}
       title="Maturity"
@@ -355,11 +365,12 @@ export function MaturityModal({ opened, onClose, investorFlowId, readOnly = fals
 function MaturityStage({
   opened,
   onClose,
+  onMinimize,
   investorFlowId,
   readOnly,
   maturity,
   flowState,
-}: Required<Omit<MaturityModalProps, "readOnly">> & {
+}: Omit<MaturityModalProps, "readOnly"> & {
   readOnly: boolean;
   maturity: InvestorMaturity;
   flowState: ModalState;
@@ -497,6 +508,7 @@ function MaturityStage({
     <StageShell
       opened={opened}
       onClose={onClose}
+      onMinimize={onMinimize}
       stageIndex={STAGE_INDEX}
       state={flowState}
       title="Maturity"

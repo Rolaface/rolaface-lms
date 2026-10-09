@@ -88,6 +88,7 @@ import { InvestmentProduct } from "../view/Investor/Product/InvestmentProduct";
 import { EarningsStatements } from "../view/Investor/EarningsStatements";
 import { Maturity } from "../view/Investor/Maturity";
 import { InvestorSettings } from "../view/Investor/InvestorSettings";
+import { RecordFund } from "../view/Investor/RecordFund";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -521,6 +522,11 @@ const investmentRoute = createRoute({
   path: "/investments",
   component: Investor,
 });
+const recordFundRoute = createRoute({
+  getParentRoute: () => investorRoute,
+  path: "/record-fund",
+  component: RecordFund,
+});
 const earningRoute = createRoute({
   getParentRoute: () => investorRoute,
   path: "/earnings",
@@ -625,6 +631,7 @@ const routeTree = rootRoute.addChildren([
   investorRoute.addChildren([
     investmentProductRoute,
     investmentRoute,
+    recordFundRoute,
     earningRoute,
     maturityRoute,
     investorSettingsRoute,

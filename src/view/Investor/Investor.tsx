@@ -46,24 +46,14 @@ import {
   updateInvestorFlowStatus,
 } from "../../api/Investor/investorFlowApi";
 import { getEveryInvestmentProduct } from "../../api/Investor/productApi";
-import type {
-  InvestorFlowReceivePaymentResult,
-  InvestorFlowStatusAction,
-} from "../../types/Investor/investorFlow";
+import type { InvestorFlowStatusAction } from "../../types/Investor/investorFlow";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
 import { openCommonModal } from "../../components/Modal/AlertModal";
-import {
-  createInitialState,
-  type Frequency,
-  type ModalState,
-} from "../../components/Modal/Investor/InvestorModalShared";
-import { InvestorModal } from "../../components/Modal/Investor/InvestorModal";
-import { ReceivePaymentModal } from "../../components/Modal/Investor/ReceivePaymentModal";
-import { EarningsStatementsModal } from "../../components/Modal/Investor/EarningsStatementModal";
-import { MaturityModal } from "../../components/Modal/Investor/MaturityModal";
+import type { Frequency } from "../../components/Modal/Investor/InvestorModalShared";
+import { investorModal } from "../../components/Modal/Investor/investorModalStore";
 
 interface InvestmentRow {
   id: string;
@@ -217,17 +207,8 @@ export function Investor() {
   const lastRow = Math.min(totalRows, page * pageSize);
 
   /* --------------------- New / view / edit investment -------------------- */
-  const [modalOpened, setModalOpened] = useState(false);
-  const [modalKey, setModalKey] = useState(0);
-  const [modalEditId, setModalEditId] = useState<string | null>(null);
-  const [modalIsView, setModalIsView] = useState(false);
-
-  const openModal = (editId: string | null = null, isView = false) => {
-    setModalEditId(editId);
-    setModalIsView(isView);
-    setModalKey((k) => k + 1); // fresh modal state on every open
-    setModalOpened(true);
-  };
+  const openModal = (editId: string | null = null, isView = false) =>
+    investorModal.open({ editId, isView, existingCount: totalRows });
 
   /* ------------------------------ Alerts ---------------------------- */
   const showSuccess = (heading: string, body: string) => {
@@ -279,37 +260,6 @@ export function Investor() {
     onError: (error: any) => showError("Delete Failed", error),
   });
 
-  /* ------------------ Receive Payment / Earnings / Maturity ------------------ */
-  const [paymentRow, setPaymentRow] = useState<InvestmentRow | null>(null);
-  const [paymentOpened, setPaymentOpened] = useState(false);
-  const [earningsId, setEarningsId] = useState<string | null>(null);
-  const [earningsOpened, setEarningsOpened] = useState(false);
-  const [maturityId, setMaturityId] = useState<string | null>(null);
-  const [maturityOpened, setMaturityOpened] = useState(false);
-  const [stageKey, setStageKey] = useState(0);
-
-  /** What the Receive Payment modal shows for the row. */
-  const paymentState: ModalState | null = paymentRow
-    ? {
-        ...createInitialState(),
-        customerId: paymentRow.customerId,
-        customerName: paymentRow.customer,
-        amount: paymentRow.amount,
-      }
-    : null;
-
-  const openEarnings = (id: string) => {
-    setEarningsId(id);
-    setStageKey((k) => k + 1);
-    setEarningsOpened(true);
-  };
-
-  const openMaturity = (id: string) => {
-    setMaturityId(id);
-    setStageKey((k) => k + 1);
-    setMaturityOpened(true);
-  };
-
   /* Approve (Draft) -> Approved */
   const confirmApprove = (row: InvestmentRow) => {
     openCommonModal({
@@ -338,25 +288,6 @@ export function Investor() {
         },
       ],
     });
-  };
-
-  const openReceivePayment = (row: InvestmentRow) => {
-    setPaymentRow(row);
-    setStageKey((k) => k + 1);
-    setPaymentOpened(true);
-  };
-
-  const handleReceivePayment = (result: InvestorFlowReceivePaymentResult) => {
-    queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
-    queryClient.invalidateQueries({ queryKey: ["investorFlow", result.id] });
-    setPaymentOpened(false);
-    showSuccess(
-      "Payment Received",
-      paymentRow?.renewedFrom
-        ? `Renewed investment ${result.id} has started; no money was received.`
-        : `Payment for investment ${result.id} has been received successfully.`,
-    );
-    openEarnings(result.id); // the earning schedule is ready now
   };
 
   /* Cancel (Approved) -> Cancelled */
@@ -532,8 +463,10 @@ export function Investor() {
           const row = info.row.original;
           const isDraft = row.status === "Draft";
           const isApproved = row.status === "Approved";
-          const hasEarnings = ["Received", "Matured", "Renewed"].includes(row.status);
-          const hasActions = isDraft || isApproved || hasEarnings;
+          // Same rule as the backend: Draft or Cancelled, and not a renewed investment.
+          const canDelete =
+            (isDraft || row.status === "Cancelled") && !row.renewedFrom;
+          const hasActions = isDraft || (isApproved && !row.renewedFrom);
 
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap">
@@ -569,18 +502,19 @@ export function Investor() {
                 label={
                   row.renewedFrom
                     ? "A renewed investment cannot be deleted"
-                    : isDraft
+                    : canDelete
                       ? "Delete"
-                      : "Only Drafts can be deleted"
+                      : "Only Draft or Cancelled investments can be deleted"
                 }
                 withArrow
               >
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color={isDraft && !row.renewedFrom ? "danger" : "slate"}
+                  color={canDelete ? "danger" : "slate"}
                   radius="md"
-                  disabled={!isDraft || !!row.renewedFrom}
+                  disabled={!canDelete}
+                  style={canDelete ? undefined : { opacity: 0.35 }}
                   onClick={() => confirmDelete(row)}
                 >
                   <IconTrash size={14} />
@@ -613,27 +547,12 @@ export function Investor() {
                       Approve
                     </Menu.Item>
                   )}
-                  {isApproved && (
-                    <Menu.Item onClick={() => openReceivePayment(row)}>
-                      {row.renewedFrom ? "Start Renewed Investment" : "Receive Payment"}
-                    </Menu.Item>
-                  )}
                   {isApproved && !row.renewedFrom && (
                     <Menu.Item
                       color="danger"
                       onClick={() => confirmCancel(row)}
                     >
                       Cancel
-                    </Menu.Item>
-                  )}
-                  {hasEarnings && (
-                    <Menu.Item onClick={() => openEarnings(row.id)}>
-                      Earnings & Statements
-                    </Menu.Item>
-                  )}
-                  {hasEarnings && (
-                    <Menu.Item onClick={() => openMaturity(row.id)}>
-                      Maturity
                     </Menu.Item>
                   )}
                 </Menu.Dropdown>
@@ -722,7 +641,7 @@ export function Investor() {
             className="lms-search"
             size="sm"
             radius="xl"
-            placeholder="Investment No. / Customer"
+            placeholder="Investment No. / Investor"
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
             styles={{
@@ -960,46 +879,6 @@ export function Investor() {
           </>
         )}
       </Paper>
-
-      <InvestorModal
-        key={modalKey}
-        opened={modalOpened}
-        onClose={() => setModalOpened(false)}
-        existingCount={totalRows}
-        editId={modalEditId}
-        isView={modalIsView}
-        onSaved={() => setModalOpened(false)}
-      />
-
-      {paymentRow && paymentState && (
-        <ReceivePaymentModal
-          key={`pay-${stageKey}`}
-          opened={paymentOpened}
-          onClose={() => setPaymentOpened(false)}
-          investorFlowId={paymentRow.id}
-          renewedFrom={paymentRow.renewedFrom}
-          state={paymentState}
-          onReceived={handleReceivePayment}
-        />
-      )}
-
-      {earningsId && (
-        <EarningsStatementsModal
-          key={`earn-${stageKey}`}
-          opened={earningsOpened}
-          onClose={() => setEarningsOpened(false)}
-          investorFlowId={earningsId}
-        />
-      )}
-
-      {maturityId && (
-        <MaturityModal
-          key={`mat-${stageKey}`}
-          opened={maturityOpened}
-          onClose={() => setMaturityOpened(false)}
-          investorFlowId={maturityId}
-        />
-      )}
 
     </Stack>
   );
