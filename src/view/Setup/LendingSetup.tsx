@@ -861,6 +861,7 @@ export function LendingSetup() {
             background: `linear-gradient(135deg, ${colors.purple1}, ${colors.purple2})`,
             border: 'none',
             fontWeight: 600,
+            color: '#ffffff',
           }}
         >
           Save settings

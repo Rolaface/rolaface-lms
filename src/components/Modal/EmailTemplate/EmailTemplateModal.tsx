@@ -538,6 +538,7 @@ export function EmailTemplateModal({
                                 style={{
                                     background: theme.other.brandGradient as string,
                                     boxShadow: theme.other.brandGlowShadowSm as string,
+                                    color: "#ffffff",
                                 }}
                                 onClick={handleSubmit}
                             >

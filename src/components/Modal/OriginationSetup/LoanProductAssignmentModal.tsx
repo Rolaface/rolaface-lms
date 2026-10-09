@@ -885,7 +885,7 @@ const handleSave = () => {
         onClick={handleSave}
         style={
           editingChanged
-            ? { background: theme.other?.brandGradient, boxShadow: theme.other?.brandGlowShadowSm }
+            ? { background: theme.other?.brandGradient, boxShadow: theme.other?.brandGlowShadowSm, color: "#ffffff" }
             : { background: "var(--mantine-color-brand-1)", color: "var(--mantine-color-brand-4)" }
         }
       >
