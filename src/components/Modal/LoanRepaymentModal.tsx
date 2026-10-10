@@ -70,20 +70,20 @@ export function LoanRepaymentModal({
   initialLoanId,
   initialBorrower,
 }: LoanRepaymentModalProps) {
-   console.log("MODAL DEBUG props:", { editId, initialLoanId, initialBorrower });
+  console.log("MODAL DEBUG props:", { editId, initialLoanId, initialBorrower });
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
-const [selectedBorrower, setSelectedBorrower] = useState<Borrower | null>(
-  initialBorrower ?? null,
-);
-const [selectedLoanId, setSelectedLoanId] = useState<string | null>(
-  editId ? null : (initialLoanId ?? null),
-);
+  const [selectedBorrower, setSelectedBorrower] = useState<Borrower | null>(
+    initialBorrower ?? null,
+  );
+  const [selectedLoanId, setSelectedLoanId] = useState<string | null>(
+    editId ? null : (initialLoanId ?? null),
+  );
   const [borrowerPanelCollapsed, setBorrowerPanelCollapsed] = useState(false);
   const [paymentEffectOpened, setPaymentEffectOpened] = useState(false);
-console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
+  console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
   useEffect(() => {
     setBorrowerPanelCollapsed(!!selectedLoanId);
   }, [selectedLoanId]);
@@ -142,7 +142,7 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
       referenceNumber: "",
       referenceDate: todayIso(),
       accountNumber: "",
-            _comments: "",
+      _comments: "",
     },
     validate: {
       valueDate: (v) => (!v ? "Value Date is required" : null),
@@ -239,9 +239,9 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
         referenceNumber: item.reference_number || "",
         referenceDate: item.reference_date || "",
         accountNumber: item.account_number || "",
-                _comments: parseCommentForTextarea((item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || ""),
+        _comments: parseCommentForTextarea((item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || ""),
       });
-  } else if (!editId && !initialLoanId) {
+    } else if (!editId && !initialLoanId) {
       handleReset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -341,7 +341,7 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
       reference_number: values.referenceNumber,
       reference_date: values.referenceDate,
       account_number: values.accountNumber || undefined,
-            _comments: values._comments || undefined,
+      _comments: values._comments || undefined,
     };
 
     if (editId) {
@@ -404,12 +404,17 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
                   ? "View Loan Repayment"
                   : editId
                     ? "Edit Loan Repayment"
-                    : "Loan Repayment"}
+                    : "Process Repayment"}
               </Text>
+
               <Text size="xs" c="brand.1" className="leading-tight truncate">
-                Search a borrower and process a repayment against their loan
-                account.
+                {isView
+                  ? "View the details of the selected loan repayment."
+                  : editId
+                    ? "Edit the details of the selected loan repayment."
+                    : "Process a payment against the selected loan account."}
               </Text>
+
             </div>
           </Group>
           <Group gap="xs" className="shrink-0" wrap="nowrap">
@@ -496,7 +501,7 @@ console.log("MODAL DEBUG state:", { selectedBorrower, selectedLoanId });
           variant="theme"
           isViewMode={isView}
           onClose={onClose}
-          submitLabel={editId ? "Update" : "Save"}
+          submitLabel={editId ? "Submit" : "Submit"}
           submitLoading={isProcessing}
           submitDisabled={!selectedLoan || isProcessing}
           onSubmit={() => form.onSubmit(handleSubmit)()}

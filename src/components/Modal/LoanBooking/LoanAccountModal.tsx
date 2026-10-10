@@ -892,12 +892,14 @@ const previousScheduleErrorRef = useRef<string | null>(null);
                   {loanId
                     ? isViewMode
                       ? "View Loan Booking"
-                      : "Update Loan Booking"
-                    : "New Loan Booking"}
+                      : "Edit Loan Booking"
+                    : "Add Loan Booking"}
                 </Text>
-                <Text size="xs" c="brand.1" className="leading-tight truncate">
-                  {loanId ? ` · Account ${loanId}` : ""}
-                </Text>
+                <Text size="xs" c="brand.1" className="leading-tight">
+  {loanId
+    ? `Account ${loanId}`
+    : "Add the required information to create and finalize a new loan booking"}
+</Text>
               </div>
             </Group>
             <Group gap="xs" className="shrink-0" wrap="nowrap">
@@ -1118,7 +1120,7 @@ const previousScheduleErrorRef = useRef<string | null>(null);
               isViewMode={isViewMode}
               onClose={handleModalClose}
               // onSaveDraft={!isViewMode ? () => { } : undefined}
-              submitLabel={loanId ? "Update " : "Save"}
+              submitLabel="Submit"
               // submitLoading={createLoanMutation.isPending || updateLoanMutation.isPending || isFetchingLoan}
               submitLoading={
                 createLoanMutation.isPending ||

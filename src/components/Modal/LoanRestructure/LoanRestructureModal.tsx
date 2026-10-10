@@ -91,7 +91,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
     }
   }, [selectedLoanId]);
 
- 
+
   const scheduleLoanAmount: number | "" =
     restructureType === "TOPUP" && newPrincipalOutstanding !== ""
       ? Number(newPrincipalOutstanding)
@@ -139,11 +139,17 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
-                {viewName ? "View Loan Restructure" : editName ? "Edit Loan Restructure" : "Loan Restructure"}
+                {viewName ? "View Restructure" : editName ? "Edit Restructure" : "Restructure Loan"}
               </Text>
+
               <Text size="xs" fw={500} c="brand.1">
-                Search a borrower and restructure the terms of their loan account.
+                {viewName
+                  ? "View the loan restructure details and repayment terms."
+                  : editName
+                    ? "Edit the restructure details and revised loan terms."
+                    : "Search a borrower and restructure the terms of their loan account."}
               </Text>
+
             </Box>
           </Group>
           <Group gap="xs" wrap="nowrap">
@@ -172,17 +178,16 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
               <div className="flex h-full overflow-hidden">
                 {/* Borrower Selection */}
                 <div
-                  className={`shrink-0 flex flex-col transition-all duration-300 ${
-                    borrowerPanelCollapsed ? 'w-14' : 'w-75'
-                  }`}
+                  className={`shrink-0 flex flex-col transition-all duration-300 ${borrowerPanelCollapsed ? 'w-14' : 'w-75'
+                    }`}
                   style={{ borderRight: "1px solid var(--mantine-color-slate-2)" }}
                 >
                   {borrowerPanelCollapsed ? (
                     <div className="flex flex-col items-center p-3 gap-4">
                       <Tooltip label="Expand borrower selection" withArrow position="right">
-                        <ActionIcon 
-                          variant="light" 
-                          color="brand" 
+                        <ActionIcon
+                          variant="light"
+                          color="brand"
                           size="md"
                           onClick={() => setBorrowerPanelCollapsed(false)}
                         >
@@ -228,137 +233,137 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                           Search by A/C no, phone or name
                         </Text>
 
-                    {!selectedBorrower && !isViewMode && (
-                      <TextInput
-                        size="sm"
-                        placeholder="e.g. Yash Joshi, 9876543210..."
-                        value={search}
-                        onChange={(e) => setSearch(e.currentTarget.value)}
-                        leftSection={<IconSearch size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
-                        rightSection={searchLoading ? <Loader size={12} /> : undefined}
-                      />
-                    )}
-                  </div>
+                        {!selectedBorrower && !isViewMode && (
+                          <TextInput
+                            size="sm"
+                            placeholder="e.g. Yash Joshi, 9876543210..."
+                            value={search}
+                            onChange={(e) => setSearch(e.currentTarget.value)}
+                            leftSection={<IconSearch size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+                            rightSection={searchLoading ? <Loader size={12} /> : undefined}
+                          />
+                        )}
+                      </div>
 
-                  <ScrollArea className="flex-1 px-5 pb-5" scrollbarSize={6} type="hover">
-                    {selectedBorrower ? (
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
-                            Selected Borrower
-                          </Text>
-                          {!isViewMode && !loanLocked && (
-                            <Anchor
-                              component="button"
-                              type="button"
-                              onClick={handleClearBorrower}
-                              size="xs"
-                              fw={700}
-                              c="brand.6"
-                              underline="never"
+                      <ScrollArea className="flex-1 px-5 pb-5" scrollbarSize={6} type="hover">
+                        {selectedBorrower ? (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
+                                Selected Borrower
+                              </Text>
+                              {!isViewMode && !loanLocked && (
+                                <Anchor
+                                  component="button"
+                                  type="button"
+                                  onClick={handleClearBorrower}
+                                  size="xs"
+                                  fw={700}
+                                  c="brand.6"
+                                  underline="never"
+                                >
+                                  Change
+                                </Anchor>
+                              )}
+                            </div>
+                            <div
+                              className="text-left rounded-md"
+                              style={{
+                                border: "1px solid var(--mantine-color-brand-3)",
+                                background: "var(--mantine-color-brand-0)",
+                                paddingTop: "1rem", paddingBottom: "1rem",
+                                paddingLeft: "1.25rem", paddingRight: "1rem",
+                              }}
                             >
-                              Change
-                            </Anchor>
-                          )}
-                        </div>
-                        <div
-                          className="text-left rounded-md"
-                          style={{
-                            border: "1px solid var(--mantine-color-brand-3)",
-                            background: "var(--mantine-color-brand-0)",
-                            paddingTop: "1rem", paddingBottom: "1rem",
-                            paddingLeft: "1.25rem", paddingRight: "1rem",
-                          }}
-                        >
-                          <Text size="sm" fw={700} c="slate.8">{selectedBorrower.name}</Text>
-                          <Text size="xs" c="dimmed" className="mt-0.5">
-                            {selectedBorrower.applicantType}
-                            {selectedBorrower.phone ? ` | ${selectedBorrower.phone}` : ""}
-                          </Text>
-                        </div>
-                      </div>
-                    ) : (
-                      search.trim() && (
-                        <div className="flex flex-col gap-2">
-                          {searchLoading ? (
-                            <Text size="xs" c="dimmed" className="py-2">Searching...</Text>
-                          ) : matches.length === 0 ? (
-                            <Text size="xs" c="dimmed" className="py-2">No borrowers found.</Text>
-                          ) : (
-                            matches.map((borrower) => (
-                              <UnstyledButton
-                                key={`${borrower.applicantType}-${borrower.name}-${borrower.phone}`}
-                                type="button"
-                                onClick={() => handleSelectBorrower(borrower)}
-                                className="text-left rounded-md transition-colors w-full"
-                                style={{
-                                  border: "1px solid var(--mantine-color-slate-2)",
-                                  paddingTop: "1rem", paddingBottom: "1rem",
-                                  paddingLeft: "1.25rem", paddingRight: "1rem",
-                                }}
-                                styles={{ root: { "&:hover": { backgroundColor: "var(--mantine-color-slate-1)" } } }}
-                              >
-                                <Text size="sm" fw={700} c="slate.8">{borrower.name}</Text>
-                                <Text size="xs" c="dimmed" className="mt-0.5">
-                                  {borrower.applicantType} {borrower.phone ? `· ${borrower.phone}` : ""}
-                                </Text>
-                              </UnstyledButton>
-                            ))
-                          )}
-                        </div>
-                      )
-                    )}
+                              <Text size="sm" fw={700} c="slate.8">{selectedBorrower.name}</Text>
+                              <Text size="xs" c="dimmed" className="mt-0.5">
+                                {selectedBorrower.applicantType}
+                                {selectedBorrower.phone ? ` | ${selectedBorrower.phone}` : ""}
+                              </Text>
+                            </div>
+                          </div>
+                        ) : (
+                          search.trim() && (
+                            <div className="flex flex-col gap-2">
+                              {searchLoading ? (
+                                <Text size="xs" c="dimmed" className="py-2">Searching...</Text>
+                              ) : matches.length === 0 ? (
+                                <Text size="xs" c="dimmed" className="py-2">No borrowers found.</Text>
+                              ) : (
+                                matches.map((borrower) => (
+                                  <UnstyledButton
+                                    key={`${borrower.applicantType}-${borrower.name}-${borrower.phone}`}
+                                    type="button"
+                                    onClick={() => handleSelectBorrower(borrower)}
+                                    className="text-left rounded-md transition-colors w-full"
+                                    style={{
+                                      border: "1px solid var(--mantine-color-slate-2)",
+                                      paddingTop: "1rem", paddingBottom: "1rem",
+                                      paddingLeft: "1.25rem", paddingRight: "1rem",
+                                    }}
+                                    styles={{ root: { "&:hover": { backgroundColor: "var(--mantine-color-slate-1)" } } }}
+                                  >
+                                    <Text size="sm" fw={700} c="slate.8">{borrower.name}</Text>
+                                    <Text size="xs" c="dimmed" className="mt-0.5">
+                                      {borrower.applicantType} {borrower.phone ? `· ${borrower.phone}` : ""}
+                                    </Text>
+                                  </UnstyledButton>
+                                ))
+                              )}
+                            </div>
+                          )
+                        )}
 
-                    {selectedBorrower && (
-                      <div className="mt-5">
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <IconBuildingBank size={13} style={{ color: "var(--mantine-color-slate-4)" }} />
-                          <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
-                            {loanLocked ? "Loan Account" : "Select Active Loan Account"}
-                          </Text>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          {selectedBorrower.loans.map((loan) => {
-                            const isSelected = selectedLoanId === loan.id;
-                            return (
-                              <UnstyledButton
-                                key={loan.id}
-                                type="button"
-                                disabled={loanLocked}
-                                onClick={() => {
-                                  if (!loanLocked) {
-                                    handleSelectLoan(loan);
-                                    setBorrowerPanelCollapsed(true);
-                                  }
-                                }}
-                                className="text-left rounded-md transition-colors w-full"
-                                style={{
-                                  border: isSelected
-                                    ? "1px solid var(--mantine-color-brand-4)"
-                                    : "1px solid var(--mantine-color-slate-2)",
-                                  background: isSelected ? "var(--mantine-color-brand-0)" : "var(--mantine-color-white)",
-                                  boxShadow: isSelected ? "0 0 0 1px var(--mantine-color-brand-2)" : "none",
-                                  paddingTop: "1rem", paddingBottom: "1rem",
-                                  paddingLeft: "1.25rem", paddingRight: "1rem",
-                                  cursor: loanLocked ? "default" : "pointer",
-                                  opacity: loanLocked && !isSelected ? 0.5 : 1,
-                                }}
-                              >
-                                <Text size="sm" fw={700} c="slate.8">
-                                  {loan.type} - {loan.id}
-                                </Text>
-                                <Text size="xs" c="dimmed" className="mt-0.5">
-                                  {loan.principalOutstanding ? `Balance: ${fmt(loan.principalOutstanding)}` : ""}
-                                  {loan.maturityDate ? ` | Maturity: ${formatDate(loan.maturityDate)}` : ""}
-                                </Text>
-                              </UnstyledButton>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </ScrollArea>
-                  </>
+                        {selectedBorrower && (
+                          <div className="mt-5">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <IconBuildingBank size={13} style={{ color: "var(--mantine-color-slate-4)" }} />
+                              <Text size="xs" fw={600} c="dimmed" className="uppercase tracking-wide">
+                                {loanLocked ? "Loan Account" : "Select Active Loan Account"}
+                              </Text>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              {selectedBorrower.loans.map((loan) => {
+                                const isSelected = selectedLoanId === loan.id;
+                                return (
+                                  <UnstyledButton
+                                    key={loan.id}
+                                    type="button"
+                                    disabled={loanLocked}
+                                    onClick={() => {
+                                      if (!loanLocked) {
+                                        handleSelectLoan(loan);
+                                        setBorrowerPanelCollapsed(true);
+                                      }
+                                    }}
+                                    className="text-left rounded-md transition-colors w-full"
+                                    style={{
+                                      border: isSelected
+                                        ? "1px solid var(--mantine-color-brand-4)"
+                                        : "1px solid var(--mantine-color-slate-2)",
+                                      background: isSelected ? "var(--mantine-color-brand-0)" : "var(--mantine-color-white)",
+                                      boxShadow: isSelected ? "0 0 0 1px var(--mantine-color-brand-2)" : "none",
+                                      paddingTop: "1rem", paddingBottom: "1rem",
+                                      paddingLeft: "1.25rem", paddingRight: "1rem",
+                                      cursor: loanLocked ? "default" : "pointer",
+                                      opacity: loanLocked && !isSelected ? 0.5 : 1,
+                                    }}
+                                  >
+                                    <Text size="sm" fw={700} c="slate.8">
+                                      {loan.type} - {loan.id}
+                                    </Text>
+                                    <Text size="xs" c="dimmed" className="mt-0.5">
+                                      {loan.principalOutstanding ? `Balance: ${fmt(loan.principalOutstanding)}` : ""}
+                                      {loan.maturityDate ? ` | Maturity: ${formatDate(loan.maturityDate)}` : ""}
+                                    </Text>
+                                  </UnstyledButton>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </>
                   )}
                 </div>
 
@@ -467,8 +472,8 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
                               newMaturityDate={newMaturityDate}
                               onViewSchedule={() => setScheduleOpened(true)}
                               canPreviewSchedule={canPreviewSchedule}
-                                comment={comment}
-                                setComment={setComment}
+                              comment={comment}
+                              setComment={setComment}
                               currentInterestRate={currentInterestRate}
                               currentPenaltyRate={currentPenaltyRate}
                             />
@@ -574,7 +579,7 @@ export function LoanRestructureModal({ opened, onClose, editName, viewName, onMi
               isViewMode={isViewMode}
               onClose={handleModalClose}
               onSubmit={handleSubmit}
-              submitLabel={editName ? "Update" : "Save"}
+              submitLabel="Submit"
               submitLoading={isProcessing}
               submitDisabled={isProcessing}
             />

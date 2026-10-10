@@ -58,9 +58,12 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
   const currencyReady = useCurrencyReady();
   const isEdit = !!editData;
 
-  const title = isView ? 'View Write Off' : isEdit ? 'Update Write Off' : 'Write Off Loan';
-  const description = 'Record a principal write-off against a loan account.';
-
+  const title = isView ? 'View Write Off' : isEdit ? 'Edit Write Off' : 'Write Off Loan';
+  const description = isView
+    ? 'View the write-off details and associated loan account.'
+    : isEdit
+      ? 'Edit the write-off details and review the revised amount.'
+      : 'Record a principal write-off against a loan account.';
   const [loanAc, setLoanAc] = useState('');
   const [valueDate, setValueDate] = useState('');
   const [principalOutstanding, setPrincipalOutstanding] = useState<number | ''>('');
@@ -473,21 +476,21 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
               </div>
 
               <div className="mt-2">
-                  <Textarea
-                    size="sm"
-                    label="Comment"
-                    placeholder="Add a comment or description..."
-                    value={comment}
-                    onChange={(e) => setComment(e.currentTarget.value)}
-                    minRows={2}
-                    maxRows={4}
-                    autosize
-                    readOnly={isView}
-                    variant={isView ? 'filled' : 'default'}
-                    leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
-                    leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
-                  />
-                </div>
+                <Textarea
+                  size="sm"
+                  label="Comment"
+                  placeholder="Add a comment or description..."
+                  value={comment}
+                  onChange={(e) => setComment(e.currentTarget.value)}
+                  minRows={2}
+                  maxRows={4}
+                  autosize
+                  readOnly={isView}
+                  variant={isView ? 'filled' : 'default'}
+                  leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+                  leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+                />
+              </div>
             </Stack>
           </Box>
 
@@ -558,7 +561,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
           isViewMode={isView}
           onClose={handleModalClose}
           onSubmit={handleSubmit}
-          submitLabel={isEdit ? 'Update' : 'Save'}
+          submitLabel="Submit"
           submitLoading={saveWriteOffMutation.isPending}
         />
       </Box>
