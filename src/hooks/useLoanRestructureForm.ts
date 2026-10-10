@@ -4,6 +4,7 @@ import {
   searchLoanRepaymentAccounts, getLoanDetails,
   type LoanRestructurePayload, type LoanRestructureUpdatePayload, type LoanRestructureCharge,
 } from "../api/loanRestructureApi";
+import { getLoanOverview } from "../api/Loan/loanViewApi";
 import {
   groupAccountsByBorrower, addByFrequency, todayISO,
   type RestructureBorrower, type RestructureLoan, type RestructureType,
@@ -221,6 +222,54 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
     return () => { cancelled = true; };
   }, [selectedLoan?.id, isViewMode, isEditMode]);
 
+  // Fetch real loan booking overview (actual maturity date, interest rate, penalty rate, etc.)
+  useEffect(() => {
+    if (!selectedLoan?.id) return;
+
+    let cancelled = false;
+    getLoanOverview({ id: selectedLoan.id })
+      .then((res: any) => {
+        if (cancelled) return;
+        const overview = res?.data || res;
+        if (!overview) return;
+
+        const bookingMaturityDate = overview.maturity_date;
+
+        if (bookingMaturityDate) {
+          setSelectedBorrower((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              loans: prev.loans.map((l) =>
+                l.id === selectedLoan.id
+                  ? {
+                      ...l,
+                      maturityDate: bookingMaturityDate,
+                      ...(overview.loan_product ? { type: overview.loan_product } : {}),
+                      ...(overview.outstanding_principal != null && !isEditMode && !isViewMode
+                        ? { principalOutstanding: overview.outstanding_principal }
+                        : {}),
+                      ...(overview.days_past_due != null ? { dpd: overview.days_past_due } : {}),
+                      ...(overview.penalty_charges_rate != null ? { penaltyRate: overview.penalty_charges_rate } : {}),
+                      ...(overview.repayment_frequency ? { repaymentFrequency: overview.repayment_frequency } : {}),
+                    }
+                  : l
+              ),
+            };
+          });
+        }
+
+        if (overview.penalty_charges_rate != null) {
+          setCurrentPenaltyRate(overview.penalty_charges_rate);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to fetch loan overview for booking maturity date", err);
+      });
+
+    return () => { cancelled = true; };
+  }, [selectedLoan?.id, isEditMode, isViewMode]);
+
   // Load record for edit/view
   useEffect(() => {
     const name = editName || viewName;
@@ -296,6 +345,11 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
     if (value !== "" && topupAmount !== "") {
       setNewPrincipalOutstanding(Math.round((Number(value) + Number(topupAmount)) * 100) / 100);
     }
+  };
+
+  const handleExtendTenureByChange = (value: number | "") => {
+    setOverrideNewMaturityDate(null);
+    setExtendTenureBy(value);
   };
 
   const addChargeRow = () => {
@@ -383,7 +437,7 @@ export function useLoanRestructureForm({ opened, editName, viewName, onSaved }: 
     newInterestRate, setNewInterestRate, newPenaltyRate, setNewPenaltyRate,
     topupAmount, handleTopupAmountChange, newPrincipalOutstanding, handleNewPrincipalChange,
     currentPrincipalOutstanding, handleCurrentPrincipalChange,
-    extendTenureBy, setExtendTenureBy, newMaturityDate,
+    extendTenureBy, setExtendTenureBy: handleExtendTenureByChange, newMaturityDate,
     currentInterestRate, currentPenaltyRate, loanDetailsLoading,
     chargeRows, addChargeRow, removeChargeRow, updateChargeRow,
     canSubmit, isProcessing, handleSubmit,
