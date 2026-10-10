@@ -1,10 +1,12 @@
+import type { ReactNode } from "react";
 import {
   Alert,
   Badge,
   Box,
   Button,
   Group,
-  SimpleGrid,
+  Paper,
+  Stack,
   Text,
   TextInput,
   Textarea,
@@ -27,10 +29,7 @@ import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { openCommonModal } from "../AlertModal";
 import { useCompanyStore } from "../../../store/companyStore";
 import {
-  DocumentPaper,
   KeyValueList,
-  KpiGrid,
-  SectionBox,
   Tag,
   fmtDate,
   stateCustomer,
@@ -155,195 +154,256 @@ export function ContractGeneration({
     sendMutation.mutate(doc.output("blob"));
   };
 
+  const cardStyle = {
+    border: "1px solid var(--mantine-color-slate-2)",
+    background: "var(--mantine-color-white)",
+    display: "flex",
+    flexDirection: "column" as const,
+    overflow: "hidden",
+  };
+  const cardHeader = (title: string, addon: ReactNode, actions: ReactNode) => (
+    <Group
+      justify="space-between"
+      wrap="nowrap"
+      px="md"
+      py={10}
+      style={{
+        borderBottom: "1px solid var(--mantine-color-slate-2)",
+        flex: "none",
+      }}
+    >
+      <Group gap={8} wrap="nowrap">
+        <Text
+          fz="xs"
+          fw={800}
+          c="slate.8"
+          tt="uppercase"
+          style={{ letterSpacing: 0.5 }}
+        >
+          {title}
+        </Text>
+        {addon}
+      </Group>
+      <Group gap="xs" wrap="nowrap">
+        {actions}
+      </Group>
+    </Group>
+  );
+
   return (
     <>
-      {schedule && (
-        <KpiGrid
-          items={[
-            {
-              label: "Interest per instalment",
-              value: fmtAmount(schedule.perPayment),
-              color: "info",
-            },
-            {
-              label: "Interest rate",
-              value: `${state.rate}% p.a.`,
-              color: "warning",
-            },
-            {
-              label: "Tenure",
-              value: `${schedule.totalMonths} months`,
-              color: "brand",
-            },
-            {
-              label: "Total repayment",
-              value: fmtAmount(state.amount + schedule.totalInterest),
-              color: "success",
-            },
-          ]}
-        />
-      )}
-
-      <SectionBox
-        title="Contract email"
-        titleAddon={
-          <Tag label={status} color={CONTRACT_STATUS_COLOR[status]} />
-        }
-        actions={
-          status !== "Paid" && (
-            <Button
-              size="sm"
-              radius="xl"
-              color="brand"
-              leftSection={<IconSend size={14} />}
-              disabled={!canSend}
-              loading={sendMutation.isPending}
-              onClick={handleSend}
-            >
-              {status === "Sent" ? "Send again" : "Send"}
-            </Button>
-          )
-        }
+      <Box
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
+          gap: 16,
+          alignItems: "stretch",
+        }}
       >
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-          <TextInput
-            label="To"
-            size="sm"
-            radius="md"
-            readOnly
-            leftSection={<IconMail size={14} />}
-            value={state.mailTo}
-            error={
-              customer && !state.mailTo
-                ? "This customer has no email."
-                : undefined
-            }
-          />
-          <TextInput
-            label="Subject"
-            size="sm"
-            radius="md"
-            required={status !== "Paid"}
-            readOnly={status === "Paid"}
-            value={state.mailSubject}
-            onChange={(e) => update({ mailSubject: e.currentTarget.value })}
-          />
-        </SimpleGrid>
-        <Textarea
-          label="Message"
-          size="sm"
-          radius="md"
-          mt="sm"
-          required={status !== "Paid"}
-          readOnly={status === "Paid"}
-          autosize
-          minRows={3}
-          value={state.mailMessage}
-          onChange={(e) => update({ mailMessage: e.currentTarget.value })}
-        />
-        {status === "Sent" && !state.contractMailSent && (
-          <Text fz="xs" c="slate.5" mt="xs">
-            The contract was already sent to this address.
-          </Text>
-        )}
-        {state.contractMailSent && (
-          <Alert variant="light" color="brand" radius="md" mt="sm">
-            Contract sent. It is saved with the investment when you submit.
-          </Alert>
-        )}
-      </SectionBox>
-
-      {schedule && customer && product && (
-        <SectionBox
-          title="Investment agreement"
-          titleAddon={
-            <Badge variant="light" color="slate" radius="sm" size="sm">
+        {/* Left: the agreement */}
+        <Paper radius="md" style={cardStyle}>
+          {cardHeader(
+            "Investment agreement",
+            <Badge
+              variant="light"
+              color="slate"
+              radius="sm"
+              size="sm"
+              ff="monospace"
+              style={{ textTransform: "none" }}
+            >
               {state.contractNo}
-            </Badge>
-          }
-          actions={
+            </Badge>,
+            schedule && customer && product ? (
+              <>
+                <Button
+                  size="xs"
+                  radius="md"
+                  variant="default"
+                  leftSection={<IconEye size={14} />}
+                  onClick={handleViewPdf}
+                >
+                  View contract
+                </Button>
+                <Button
+                  size="xs"
+                  radius="md"
+                  color="brand"
+                  leftSection={<IconDownload size={14} />}
+                  onClick={handleDownloadPdf}
+                >
+                  Download PDF
+                </Button>
+              </>
+            ) : null,
+          )}
+          {schedule && customer && product ? (
             <>
-              <Button
-                size="sm"
-                radius="xl"
-                variant="default"
-                leftSection={<IconEye size={14} />}
-                onClick={handleViewPdf}
+              <Group
+                gap="sm"
+                wrap="nowrap"
+                align="flex-start"
+                px="md"
+                py="sm"
+                style={{
+                  borderBottom: "1px solid var(--mantine-color-slate-1)",
+                }}
               >
-                View contract
-              </Button>
-              <Button
-                size="sm"
-                radius="xl"
-                color="brand"
-                leftSection={<IconDownload size={14} />}
-                onClick={handleDownloadPdf}
-              >
-                Download PDF
-              </Button>
-            </>
-          }
-        >
-          <DocumentPaper>
-            <Group gap="sm" wrap="nowrap" mb="md">
-              <ThemeIcon size={36} radius="md" variant="light" color="brand">
-                <IconFileText size={18} />
-              </ThemeIcon>
-              <Box>
-                <Text fw={700} fz="md" c="slate.8">
-                  Investment Agreement
-                </Text>
-                <Text fz="xs" c="slate.5">
-                  Contract No. {state.contractNo} · {fmtDate(new Date())}
-                </Text>
+                <ThemeIcon size={32} radius="md" variant="light" color="brand">
+                  <IconFileText size={16} />
+                </ThemeIcon>
+                <Box style={{ minWidth: 0 }}>
+                  <Text fw={700} fz="sm" c="slate.8">
+                    Investment Agreement
+                  </Text>
+                  <Text fz="xs" c="slate.5">
+                    Contract No. {state.contractNo} · {fmtDate(new Date())}
+                  </Text>
+                  <Text fz="xs" c="slate.7" mt={2}>
+                    Between{" "}
+                    <Text span fw={700} c="slate.8">
+                      {companyName || "the Company"}
+                    </Text>{" "}
+                    and{" "}
+                    <Text span fw={700} c="slate.8">
+                      {customer.name}
+                    </Text>{" "}
+                    ({customer.id}), the Investor, for the product{" "}
+                    <Text span fw={700} c="slate.8">
+                      {product.name}
+                    </Text>
+                    .
+                  </Text>
+                </Box>
+              </Group>
+              <Box p="sm" bg="slate.0" style={{ flex: 1 }}>
+                <KeyValueList
+                  cols={2}
+                  rows={[
+                    {
+                      label: "Investment amount",
+                      value: fmtAmount(state.amount),
+                    },
+                    { label: "Interest rate", value: `${state.rate}% p.a.` },
+                    { label: "Repayment frequency", value: state.frequency },
+                    { label: "Number of payments", value: schedule.count },
+                    {
+                      label: "First repayment date",
+                      value: fmtDate(state.firstRepayment),
+                    },
+                    { label: "Maturity date", value: fmtDate(state.maturity) },
+                    {
+                      label: "Total repayment",
+                      value: fmtAmount(state.amount + schedule.totalInterest),
+                    },
+                    {
+                      label: "Penalty",
+                      value: state.penaltyApplicable
+                        ? `Delayed payouts attract ${state.penaltyRate}% p.a.`
+                        : "Not applicable",
+                    },
+                  ]}
+                />
               </Box>
-            </Group>
-            <Text fz="sm" c="slate.7" mb="md">
-              Between{" "}
-              <Text span fw={700} c="slate.8">
-                {companyName || "the Company"}
-              </Text>{" "}
-              and{" "}
-              <Text span fw={700} c="slate.8">
-                {customer.name}
-              </Text>{" "}
-              ({customer.id}), the Investor, for the product{" "}
-              <Text span fw={700} c="slate.8">
-                {product.name}
+              <Text
+                fz={11}
+                c="slate.5"
+                px="md"
+                py={8}
+                style={{
+                  borderTop: "1px solid var(--mantine-color-slate-2)",
+                  flex: "none",
+                }}
+              >
+                Principal and interest are paid in equal instalments on each
+                payout date; the last instalment settles any rounding
+                difference.
               </Text>
-              .
+            </>
+          ) : (
+            <Text fz="sm" c="slate.5" p="md">
+              Complete the investor, product and terms to see the agreement.
             </Text>
-            <KeyValueList
-              cols={2}
-              rows={[
-                { label: "Investment amount", value: fmtAmount(state.amount) },
-                { label: "Interest rate", value: `${state.rate}% p.a.` },
-                { label: "Repayment frequency", value: state.frequency },
-                { label: "Number of payments", value: schedule.count },
-                {
-                  label: "First repayment date",
-                  value: fmtDate(state.firstRepayment),
-                },
-                { label: "Maturity date", value: fmtDate(state.maturity) },
-                {
-                  label: "Total repayment",
-                  value: fmtAmount(state.amount + schedule.totalInterest),
-                },
-                {
-                  label: "Penalty",
-                  value: state.penaltyApplicable
-                    ? `Delayed payouts attract ${state.penaltyRate}% p.a.`
-                    : "Not applicable",
-                },
-              ]}
+          )}
+        </Paper>
+
+        {/* Right: the email */}
+        <Paper radius="md" style={cardStyle}>
+          {cardHeader(
+            "Contract email",
+            <Tag label={status} color={CONTRACT_STATUS_COLOR[status]} />,
+            status !== "Paid" && (
+              <Button
+                size="xs"
+                radius="md"
+                variant="default"
+                leftSection={<IconSend size={14} />}
+                disabled={!canSend}
+                loading={sendMutation.isPending}
+                onClick={handleSend}
+              >
+                {status === "Sent" ? "Send again" : "Send"}
+              </Button>
+            ),
+          )}
+          <Stack gap="sm" p="md" style={{ flex: 1 }}>
+            <TextInput
+              label="To"
+              size="sm"
+              radius="md"
+              readOnly
+              placeholder="Add recipient email..."
+              leftSection={<IconMail size={14} />}
+              value={state.mailTo}
+              error={
+                customer && !state.mailTo
+                  ? "This customer has no email."
+                  : undefined
+              }
             />
-            <Text fz="xs" c="slate.5" mt="md">
-              Principal and interest are paid in equal instalments on each
-              payout date; the last instalment settles any rounding difference.
-            </Text>
-          </DocumentPaper>
-        </SectionBox>
-      )}
+            <TextInput
+              label="Subject"
+              size="sm"
+              radius="md"
+              required={status !== "Paid"}
+              readOnly={status === "Paid"}
+              placeholder={`Your Investment Agreement - ${state.contractNo}`}
+              value={state.mailSubject}
+              onChange={(e) => update({ mailSubject: e.currentTarget.value })}
+            />
+            <Textarea
+              label="Message"
+              size="sm"
+              radius="md"
+              required={status !== "Paid"}
+              readOnly={status === "Paid"}
+              placeholder={
+                customer && product
+                  ? `Dear ${customer.name}, please find attached your agreement for ${product.name}...`
+                  : "Write the message to the investor..."
+              }
+              style={{ flex: 1, display: "flex", flexDirection: "column" }}
+              styles={{
+                wrapper: { flex: 1, display: "flex" },
+                input: { flex: 1, minHeight: 140 },
+              }}
+              value={state.mailMessage}
+              onChange={(e) => update({ mailMessage: e.currentTarget.value })}
+            />
+            {status === "Sent" && !state.contractMailSent && (
+              <Text fz="xs" c="slate.5">
+                The contract was already sent to this address.
+              </Text>
+            )}
+            {state.contractMailSent && (
+              <Alert variant="light" color="brand" radius="md">
+                Contract sent. It is saved with the investment when you submit.
+              </Alert>
+            )}
+          </Stack>
+        </Paper>
+      </Box>
 
       {pdfPreview.modal}
     </>
