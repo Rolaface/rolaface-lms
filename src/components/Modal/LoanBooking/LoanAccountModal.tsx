@@ -827,6 +827,7 @@ const previousScheduleErrorRef = useRef<string | null>(null);
       closeOnEscape={false}
       styles={{
         content: {
+          height: "92vh",
           maxHeight: "95vh",
           display: "flex",
           flexDirection: "column",
@@ -1025,76 +1026,73 @@ const previousScheduleErrorRef = useRef<string | null>(null);
             </ScrollArea>
           </Box>
 
-          <Box
-            component="fieldset"
-            disabled={isViewMode}
-            className="flex-1 flex flex-col min-w-0 min-h-0 border-0 p-0 m-0"
-          >
-            <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto bg-white min-w-0 min-h-0">
-              <div className="flex-1 p-3 min-w-0">
-              {activeTab === "basic" && (
-                <BasicDetailsTab
-                  form={form}
-                  // loanAcNumber={loanAcNumber}
-                  maturityDate={finalMaturityDate}
-                  repaymentAmountError={form.values.fixedRepaymentsIn === "EMI" ? scheduleError : null}
-                />
-              )}
-              {activeTab === "schedule" && (
-                <RepaymentScheduleTab
-                  repaymentSchedule={fetchedRepaymentSchedule}
-                  isFetchingSchedule={isFetchingSchedule}
-                  missingFields={scheduleMissingFields}
-                  error={scheduleError}
-                />
-              )}
-              {activeTab === "charges" && (
-                <ChargesTab
-                  charges={charges}
-                  onAdd={handleAddCharge}
-                  onUpdate={handleUpdateCharge}
-                  onRemove={handleRemoveCharge}
-                  interestRate={chargeSectionDefaults.interestRate}
-                  penaltyRate={chargeSectionDefaults.penaltyRate}
-                  gracePeriodDays={chargeSectionDefaults.gracePeriodDays}
-                  onInterestRateChange={(v) =>
-                    handleUpdateChargeSectionDefaults("interestRate", v)
-                  }
-                  onPenaltyRateChange={(v) =>
-                    handleUpdateChargeSectionDefaults("penaltyRate", v)
-                  }
-                  onGracePeriodChange={(v) =>
-                    handleUpdateChargeSectionDefaults("gracePeriodDays", v)
-                  }
-                />
-              )}
-              {activeTab === "collateral" && (
-                <CollateralTab
-                  collateral={collateral}
-                  onUpdate={handleUpdateCollateral}
-                  onAddItem={handleAddCollateralItem}
-                  onUpdateItem={handleUpdateCollateralItem}
-                  onRemoveItem={handleRemoveCollateralItem}
-                />
-              )}{" "}
-              {activeTab === "coapplicant" && (
-                <CoApplicantTab
-                  search={coApplicantSearch}
-                  onSearchChange={setCoApplicantSearch}
-                  coApplicants={coApplicants}
-                  onAdd={handleAddCoApplicant}
-                  onUpdate={handleUpdateCoApplicant}
-                  onRemove={handleRemoveCoApplicant}
-                />
-              )}
-              {activeTab === "documents" && (
-                <DocumentsTab
-                  documents={documents}
-                  onAdd={handleAddDocument}
-                  onUpdate={handleUpdateDocument}
-                  onRemove={handleRemoveDocument}
-                />
-              )}
+          <div className="flex-1 flex flex-col lg:flex-row min-w-0 min-h-0 overflow-hidden bg-white">
+            <div className="flex-1 overflow-y-auto p-3 min-w-0">
+              <fieldset disabled={isViewMode} className="border-0 p-0 m-0">
+                {activeTab === "basic" && (
+                  <BasicDetailsTab
+                    form={form}
+                    // loanAcNumber={loanAcNumber}
+                    maturityDate={finalMaturityDate}
+                    repaymentAmountError={form.values.fixedRepaymentsIn === "EMI" ? scheduleError : null}
+                  />
+                )}
+                {activeTab === "schedule" && (
+                  <RepaymentScheduleTab
+                    repaymentSchedule={fetchedRepaymentSchedule}
+                    isFetchingSchedule={isFetchingSchedule}
+                    missingFields={scheduleMissingFields}
+                    error={scheduleError}
+                  />
+                )}
+                {activeTab === "charges" && (
+                  <ChargesTab
+                    charges={charges}
+                    onAdd={handleAddCharge}
+                    onUpdate={handleUpdateCharge}
+                    onRemove={handleRemoveCharge}
+                    interestRate={chargeSectionDefaults.interestRate}
+                    penaltyRate={chargeSectionDefaults.penaltyRate}
+                    gracePeriodDays={chargeSectionDefaults.gracePeriodDays}
+                    onInterestRateChange={(v) =>
+                      handleUpdateChargeSectionDefaults("interestRate", v)
+                    }
+                    onPenaltyRateChange={(v) =>
+                      handleUpdateChargeSectionDefaults("penaltyRate", v)
+                    }
+                    onGracePeriodChange={(v) =>
+                      handleUpdateChargeSectionDefaults("gracePeriodDays", v)
+                    }
+                  />
+                )}
+                {activeTab === "collateral" && (
+                  <CollateralTab
+                    collateral={collateral}
+                    onUpdate={handleUpdateCollateral}
+                    onAddItem={handleAddCollateralItem}
+                    onUpdateItem={handleUpdateCollateralItem}
+                    onRemoveItem={handleRemoveCollateralItem}
+                  />
+                )}{" "}
+                {activeTab === "coapplicant" && (
+                  <CoApplicantTab
+                    search={coApplicantSearch}
+                    onSearchChange={setCoApplicantSearch}
+                    coApplicants={coApplicants}
+                    onAdd={handleAddCoApplicant}
+                    onUpdate={handleUpdateCoApplicant}
+                    onRemove={handleRemoveCoApplicant}
+                  />
+                )}
+                {activeTab === "documents" && (
+                  <DocumentsTab
+                    documents={documents}
+                    onAdd={handleAddDocument}
+                    onUpdate={handleUpdateDocument}
+                    onRemove={handleRemoveDocument}
+                  />
+                )}
+              </fieldset>
             </div>
 
             <LoanSummarySidebar
@@ -1111,8 +1109,7 @@ const previousScheduleErrorRef = useRef<string | null>(null);
               totalInterest={totalInterest}
               totalRepayment={totalRepayment}
             />
-            </div>
-          </Box>
+          </div>
 
           {/* Footer — shared ModalFooter, no Reset action exposed. */}
           <Box style={{ flexShrink: 0 }}>
@@ -1132,6 +1129,8 @@ const previousScheduleErrorRef = useRef<string | null>(null);
               errorMessage={
                 createLoanMutation.isError
                   ? parseFrappeError(createLoanMutation.error)
+                  : updateLoanMutation.isError
+                  ? parseFrappeError(updateLoanMutation.error)
                   : undefined
               }
               leftSlot={

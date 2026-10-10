@@ -52,15 +52,6 @@ export interface LoanWriteOffFormData {
   _comments?: string;
 }
 
-const ACCOUNT_SUMMARY = {
-  customerName: 'Rohan Mehta',
-  npa: true,
-  classification: 'Sub-Standard',
-  dpd: 132,
-  outstanding: 486250,
-};
-
-
 export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editData, isView }: LoanWriteOffModalProps) {
   const theme = useMantineTheme();
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
@@ -159,6 +150,10 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
       setWriteOffAmount(editData.write_off_amount);
       setWriteOffAccount(editData.write_off_account);
       setComment(parseCommentForTextarea((editData as any)._comments || (editData as any).comment || (editData as any).comments || (editData as any).manual_remarks || (editData as any).remarks || ""));
+      if (editData.write_off_amount) {
+        setPrincipalOutstanding(editData.write_off_amount);
+        setWriteOffPercentage(100);
+      }
     } else {
       setLoanAc('');
       setValueDate('');
@@ -377,6 +372,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
                   onSearchChange={setLoanAcSearch}
                   nothingFoundMessage={loanAccountsLoading ? 'Loading...' : 'No accounts found'}
                   error={errors.loanAc}
+                  disabled={isView}
                 />
 
                 <DateInput
@@ -436,6 +432,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
                   onSearchChange={setAccountSearch}
                   nothingFoundMessage={accountsLoading ? 'Loading...' : 'No accounts found'}
                   error={errors.writeOffAccount}
+                  disabled={isView}
                 />
 
                 <div>
@@ -449,6 +446,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
                     onChange={(v) => handleAmountChange(v as number | '')}
                     thousandSeparator=","
                     error={errors.writeOffAmount}
+                    disabled={isView}
                   />
                   <Text size="xs" c="dimmed" mt={4}>
                     Linked to percentage
@@ -466,6 +464,7 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
                     max={100}
                     min={0}
                     hideControls
+                    disabled={isView}
                   />
                   <Text size="xs" c="dimmed" mt={4}>
                     Linked to amount
@@ -504,11 +503,33 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
             <Stack gap="sm">
               <SummaryCard>
                 <Stack gap={2}>
-                  <SummaryRow label="Customer Name" value={ACCOUNT_SUMMARY.customerName} bold />
-                  <SummaryRow label="NPA" value={ACCOUNT_SUMMARY.npa ? 'Yes' : 'No'} />
-                  <SummaryRow label="Classification" value={ACCOUNT_SUMMARY.classification} />
-                  <SummaryRow label="DPD" value={`${ACCOUNT_SUMMARY.dpd} days`} />
-                  <SummaryRow label="Outstanding" value={formatAmount(companyCurrency, ACCOUNT_SUMMARY.outstanding, { withSymbol: true })} bold />
+                  <SummaryRow
+                    label="Customer Name"
+                    value={
+                      loanAccountOptions.find((a) => a.name === loanAc)?.applicant_name ||
+                      loanAccountOptions.find((a) => a.name === loanAc)?.applicant ||
+                      editData?.applicant ||
+                      '—'
+                    }
+                    bold
+                  />
+                  <SummaryRow
+                    label="NPA"
+                    value={editData?.is_npa !== undefined ? (editData.is_npa ? 'Yes' : 'No') : 'No'}
+                  />
+                  <SummaryRow
+                    label="Product"
+                    value={editData?.loan_product || loanAccountOptions.find((a) => a.name === loanAc)?.loan_product || '—'}
+                  />
+                  <SummaryRow
+                    label="Outstanding"
+                    value={formatAmount(
+                      companyCurrency,
+                      principalOutstanding !== '' ? Number(principalOutstanding) : (editData?.write_off_amount ?? 0),
+                      { withSymbol: true }
+                    )}
+                    bold
+                  />
                 </Stack>
               </SummaryCard>
 

@@ -45,6 +45,8 @@ interface LoanTransferModalProps {
   onClose: () => void;
   onMinimize?:()=> void;
   onSubmit?: (data: LoanTransferFormData) => void;
+  editData?: LoanTransferFormData | null;
+  isView?: boolean;
 }
 
 const LOAN_BOOK = [
@@ -69,7 +71,7 @@ type TransferRow = { rowId: number; loanId: string; applicant: string };
 
 const columnHelper = createColumnHelper<TransferRow>();
 
-export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: LoanTransferModalProps) {
+export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit, editData, isView }: LoanTransferModalProps) {
   const [transferDate, setTransferDate] = useState('2026-07-28');
   const [fromBranch, setFromBranch] = useState('');
   const [toBranch, setToBranch] = useState('');
@@ -79,6 +81,26 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
     { rowId: 1, loanId: 'ACC-LOAN-2026-00001', applicant: 'Mwansa Chileshe' },
   ]);
   const [rowSeq, setRowSeq] = useState(2);
+
+  useEffect(() => {
+    if (editData) {
+      setTransferDate(editData.transferDate || '');
+      setFromBranch(editData.fromBranch || '');
+      setToBranch(editData.toBranch || '');
+      setComment(editData._comments || '');
+      if (editData.loans && editData.loans.length > 0) {
+        setRows(editData.loans);
+        setRowSeq(editData.loans.length + 1);
+      }
+    } else {
+      setTransferDate('2026-07-28');
+      setFromBranch('');
+      setToBranch('');
+      setComment('');
+      setRows([{ rowId: 1, loanId: 'ACC-LOAN-2026-00001', applicant: 'Mwansa Chileshe' }]);
+      setRowSeq(2);
+    }
+  }, [editData]);
 
   // ChargesTab-style pagination (simple page state, 1-indexed)
   const [page, setPage] = useState(1);
@@ -165,6 +187,7 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
             data={getLoanOptions(row.original.loanId)}
             value={row.original.loanId || null}
             onChange={(val) => pickLoan(row.original.rowId, val)}
+            disabled={isView}
             styles={{
               input: {
                 border: '1px solid var(--mantine-color-slate-2)',
@@ -187,20 +210,22 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
         header: () => null,
         cell: ({ row }) => (
           <Group justify="flex-end">
-            <ActionIcon
-              size="sm"
-              color="slate"
-              variant="subtle"
-              onClick={() => removeRow(row.original.rowId)}
-              className="hover:text-red-500"
-            >
-              <IconTrash size={14} />
-            </ActionIcon>
+            {!isView && (
+              <ActionIcon
+                size="sm"
+                color="slate"
+                variant="subtle"
+                onClick={() => removeRow(row.original.rowId)}
+                className="hover:text-red-500"
+              >
+                <IconTrash size={14} />
+              </ActionIcon>
+            )}
           </Group>
         ),
       }),
     ],
-    [excludeIds, page]
+    [excludeIds, page, isView]
   );
 
   const table = useReactTable({
@@ -239,10 +264,10 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white" style={{ letterSpacing: '-0.01em' }}>
-                New Loan Transfer
+                {isView ? 'View Loan Transfer' : editData ? 'Update Loan Transfer' : 'New Loan Transfer'}
               </Text>
               <Text size="xs" fw={500} c="brand.1">
-                Move selected loans from one branch to another.
+                {isView ? 'View branch-to-branch loan transfer details.' : 'Move selected loans from one branch to another.'}
               </Text>
             </Box>
           </Group>
@@ -285,6 +310,7 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
                 leftSection={<IconCalendar size={13} className="text-indigo-500" />}
                 classNames={labelClass}
                 styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+                disabled={isView}
               />
               <Select
                 size="xs"
@@ -296,6 +322,7 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
                 onChange={(v) => setFromBranch(v || '')}
                 classNames={labelClass}
                 styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+                disabled={isView}
               />
               <Select
                 size="xs"
@@ -307,6 +334,7 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
                 onChange={(v) => setToBranch(v || '')}
                 classNames={labelClass}
                 styles={{ input: { border: '1px solid var(--mantine-color-slate-2)' } }}
+                disabled={isView}
               />
             </div>
 
@@ -404,9 +432,11 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
                 </div>
               </div>
 
-              <Button variant="default" size="xs" mt="sm" leftSection={<IconPlus size={13} />} onClick={addRow}>
-                Add Row
-              </Button>
+              {!isView && (
+                <Button variant="default" size="xs" mt="sm" leftSection={<IconPlus size={13} />} onClick={addRow}>
+                  Add Row
+                </Button>
+              )}
               <div className="mt-4">
                   <Textarea
                     size="sm"
@@ -417,6 +447,8 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
                     minRows={2}
                     maxRows={4}
                     autosize
+                    readOnly={isView}
+                    disabled={isView}
                     leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
                     leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
                   />
@@ -426,12 +458,12 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit }: Loa
         </Box>
 
         {/* Footer */}
-        <ModalFooter variant="theme"
-          
-          isViewMode={false}
+        <ModalFooter
+          variant="theme"
+          isViewMode={isView}
           onClose={handleModalClose}
           onSubmit={handleSubmit}
-          submitLabel="Save"
+          submitLabel={editData ? 'Update' : 'Save'}
           submitDisabled={!canSave}
         />
       </Box>

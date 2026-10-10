@@ -272,7 +272,7 @@ export function LoanAccount() {
     },
   });
 
-  const [sorting, setSorting] = useState([{ id: "id", desc: true }]);
+  const [sorting, setSorting] = useState([{ id: "appNo", desc: true }]);
 
   const data = useMemo(() => {
     if (loansResponse?.status === "success" && loansResponse.data) {
@@ -282,21 +282,34 @@ export function LoanAccount() {
         customer: item.applicant_name || item.applicant || "N/A",
         customerId: item.applicant || item.name,
         product: item.loan_product || "N/A",
-        branch: item.company || "N/A",
+        branch: item.branch || item.company || "N/A",
         amount: item.loan_amount || 0,
-        rate: 0,
+        rate: Number(item.rate_of_interest) || 0,
         status: item.status || "Draft",
-        appliedDate: item.posting_date,
+        appliedDate: item.posting_date || item.transaction_date,
       }));
     }
     return [];
   }, [loansResponse]);
 
-
   const filteredData = useMemo(() => {
-    if (!branch) return data;
-    return data.filter((a) => a.branch === branch);
-  }, [data, branch]);
+    let result = data;
+    if (debouncedSearch && debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase().trim();
+      result = result.filter((item: any) => {
+        return (
+          item.appNo?.toLowerCase().includes(q) ||
+          item.customer?.toLowerCase().includes(q) ||
+          item.product?.toLowerCase().includes(q) ||
+          item.status?.toLowerCase().includes(q)
+        );
+      });
+    }
+    if (branch) {
+      result = result.filter((a: any) => a.branch === branch);
+    }
+    return result;
+  }, [data, debouncedSearch, branch]);
 
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencyReady = useCurrencyReady();
@@ -364,21 +377,30 @@ export function LoanAccount() {
       }),
       columnHelper.accessor("rate", {
         header: "Rate",
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {info.getValue() ? `${info.getValue().toFixed(2)}%` : "-"}
-          </Text>
-        ),
+        cell: (info) => {
+          const val = info.getValue();
+          return (
+            <Text fz="xs" c="slate.6">
+              {val !== undefined && val !== null && !isNaN(val) && Number(val) > 0
+                ? `${Number(val).toFixed(2)}%`
+                : "-"}
+            </Text>
+          );
+        },
         sortingFn: "basic",
       }),
       columnHelper.accessor("appliedDate", {
-        header: "Applied On",
+        header: "Value Date",
         cell: (info) => (
           <Text fz="xs" c="slate.6">
             {fmtDate(info.getValue())}
           </Text>
         ),
-        sortingFn: "basic",
+        sortingFn: (rowA, rowB, columnId) => {
+          const dateA = new Date(rowA.getValue(columnId) || 0).getTime();
+          const dateB = new Date(rowB.getValue(columnId) || 0).getTime();
+          return dateA - dateB;
+        },
       }),
       columnHelper.accessor("status", {
         header: "Status",
@@ -684,7 +706,7 @@ export function LoanAccount() {
             className="lms-search"
             size="sm"
             radius="xl"
-            placeholder="Application No. / Customer"
+            placeholder="Account No. / Customer"
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
             styles={{
@@ -789,7 +811,7 @@ export function LoanAccount() {
                 horizontalSpacing="sm"
                 fz="xs"
                 w="100%"
-                style={{ borderCollapse: "separate", borderSpacing: "0 8px", height: "100%"}}
+                style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
               >
                 <Table.Thead>
                   {table.getHeaderGroups().map((headerGroup) => (
