@@ -48,14 +48,17 @@ export function FeeAndChargesModal({
   const isView = mode === 'view';
 
   const title =
-    mode === 'add' ? 'New Fee & Charge' :
-    mode === 'edit' ? 'Edit Fee & Charge' :
-    'View Fee and Charge';
+    mode === 'add' ? 'Add Fee & Charge' :
+      mode === 'edit' ? 'Edit Fee & Charge' :
+        'View Fee and Charge';
 
-  const description =
-    mode === 'view'
-      ? 'Viewing details for this fee/charge.'
-      : 'Define a fee or charge to apply on loan accounts.';
+const description =
+  mode === 'add'
+    ? 'Add a fee or charge to apply on loan accounts.'
+    : mode === 'edit'
+      ? 'Edit the details of this fee or charge.'
+      : 'View the details of this fee or charge.';
+
 
   const form = useForm({
     initialValues: { name: '' },
@@ -233,7 +236,7 @@ export function FeeAndChargesModal({
             variant="theme"
             isViewMode={isView}
             onClose={handleModalClose}
-            submitLabel="Save"
+            submitLabel="Submit"
             submitLoading={saveChargeMutation.isPending}
           />
         </form>

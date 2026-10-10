@@ -24,6 +24,8 @@ import {
   IconSettings,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDebouncedValue } from "@mantine/hooks";
+import { searchLedgerAccounts } from "../../api/utils/frappeUtilsApi";
 import {
   getInvestorSettings,
   updateInvestorSettings,
@@ -36,6 +38,48 @@ import type {
 import { parseFrappeError } from "../../utils/parseFrappeError";
 import { openCommonModal } from "../../components/Modal/AlertModal";
 
+/** Searchable dropdown of all ledger (non-group) accounts, via getaccounts. */
+function AccountSearchSelect({
+  label,
+  required,
+  value,
+  onChange,
+}: {
+  label: string;
+  required: boolean;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebouncedValue(search, 300);
+  const { data: options = [], isFetching } = useQuery({
+    queryKey: ["ledgerAccountSearch", debouncedSearch],
+    queryFn: () => searchLedgerAccounts(debouncedSearch),
+  });
+  // Keep the saved account in the list even when it is not in the current search results.
+  const data = Array.from(new Set([...(value ? [value] : []), ...options.map((a) => a.name)]));
+
+  return (
+    <Select
+      label={label}
+      placeholder="Search account"
+      size="sm"
+      radius="md"
+      required={required}
+      clearable={!required}
+      searchable
+      data={data}
+      value={value || null}
+      onChange={(v) => onChange(v ?? "")}
+      searchValue={search}
+      onSearchChange={setSearch}
+      filter={({ options: all }) => all}
+      rightSection={isFetching ? <Loader size={14} /> : undefined}
+      nothingFoundMessage={isFetching ? "Searching…" : "No account found"}
+    />
+  );
+}
+
 const GROUPS: {
   title: string;
   description: string;
@@ -44,31 +88,49 @@ const GROUPS: {
   fields: InvestorSettingsField[];
 }[] = [
   {
-    title: "Cash",
-    description: "Where investor money arrives and payouts leave.",
-    icon: IconBuildingBank,
-    color: "info",
-    fields: ["company_bank_account"],
-  },
-  {
-    title: "Liabilities",
-    description: "What the company owes investors. The investor is the party on these lines.",
+    title: "Fund received (Paid from)",
+    description:
+      "One liability GL for all investors. Each Record Fund credits it with the investor as the party.",
     icon: IconScale,
     color: "danger",
-    fields: ["investor_deposit_account", "interest_payable_account"],
+    fields: ["investor_creditor_account"],
   },
   {
-    title: "Expenses",
-    description: "The company's cost of interest and late-payout penalty.",
+    title: "Mode of payment (Paid to)",
+    description: "Where the money lands for each mode of payment. Record Fund debits it.",
+    icon: IconBuildingBank,
+    color: "info",
+    fields: ["investor_cash_account", "cheque_account", "bank_draft_account", "wire_transfer_account"],
+  },
+  {
+    title: "Repayments",
+    description: "Used when interest and principal are paid back to investors (later step).",
     icon: IconReceipt,
     color: "warning",
-    fields: ["interest_expense_account", "penalty_expense_account"],
+    fields: [
+      "company_bank_account",
+      "interest_payable_account",
+      "interest_expense_account",
+      "penalty_expense_account",
+    ],
   },
 ];
 
+/** Mode of payment -> its "Paid to" settings field. */
+const MODE_FIELDS: { mode: string; field: InvestorSettingsField }[] = [
+  { mode: "Cash", field: "investor_cash_account" },
+  { mode: "Cheque", field: "cheque_account" },
+  { mode: "Bank Draft", field: "bank_draft_account" },
+  { mode: "Wire Transfer", field: "wire_transfer_account" },
+];
+
 const accountsFrom = (s: InvestorSettingsData): InvestorSettingsAccounts => ({
+  investor_creditor_account: s.accounts.investor_creditor_account ?? "",
+  investor_cash_account: s.accounts.investor_cash_account ?? "",
+  cheque_account: s.accounts.cheque_account ?? "",
+  bank_draft_account: s.accounts.bank_draft_account ?? "",
+  wire_transfer_account: s.accounts.wire_transfer_account ?? "",
   company_bank_account: s.accounts.company_bank_account ?? "",
-  investor_deposit_account: s.accounts.investor_deposit_account ?? "",
   interest_payable_account: s.accounts.interest_payable_account ?? "",
   interest_expense_account: s.accounts.interest_expense_account ?? "",
   penalty_expense_account: s.accounts.penalty_expense_account ?? "",
@@ -136,8 +198,9 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
 
   const saved = accountsFrom(settings);
   const isDirty = JSON.stringify(accounts) !== JSON.stringify(saved);
-  const missing = (Object.keys(accounts) as InvestorSettingsField[]).filter((f) => !accounts[f]);
-  const isConfigured = (Object.keys(saved) as InvestorSettingsField[]).every((f) => !!saved[f]);
+  // Only the required accounts must be set to save; the others are optional.
+  const missing = settings.required.filter((f) => !accounts[f]);
+  const isConfigured = settings.required.every((f) => !!saved[f]);
 
   const saveMutation = useMutation({
     mutationFn: () => updateInvestorSettings(accounts),
@@ -189,7 +252,7 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
           <Group gap="sm">
             {missing.length > 0 && (
               <Text fz="xs" c="slate.5">
-                {missing.length} account{missing.length > 1 ? "s" : ""} left to select
+                {missing.map((f) => settings.labels[f]).join(", ")} required
               </Text>
             )}
             <Button
@@ -206,7 +269,7 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
         </Group>
       </Paper>
 
-      <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="md">
+      <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="md" style={{ alignItems: "start" }}>
         {GROUPS.map((group) => (
           <Paper
             key={group.title}
@@ -232,21 +295,12 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
             </Group>
             <Stack gap="md">
               {group.fields.map((field) => (
-                <Select
+                <AccountSearchSelect
                   key={field}
                   label={settings.labels[field]}
-                  description={`Must be ${settings.rules[field]}.`}
-                  placeholder={
-                    settings.options[field].length ? "Select account" : "No matching account"
-                  }
-                  size="sm"
-                  radius="md"
-                  required
-                  searchable
-                  data={settings.options[field]}
-                  value={accounts[field] || null}
-                  onChange={(v) => setAccounts((prev) => ({ ...prev, [field]: v ?? "" }))}
-                  nothingFoundMessage="No matching account"
+                  required={settings.required.includes(field)}
+                  value={accounts[field]}
+                  onChange={(v) => setAccounts((prev) => ({ ...prev, [field]: v }))}
                 />
               ))}
             </Stack>
@@ -263,44 +317,29 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
         }}
       >
         <Text fw={700} fz="sm" c="slate.8">
-          Entries posted with these accounts
+          Entry posted by Record Fund
         </Text>
         <Text fz="xs" c="slate.5" mb="sm">
-          Every Journal Entry in the investor flow uses only these accounts.
+          Money received from an investor: the mode of payment's GL is debited (Paid to) and the Investor
+          Creditor GL is credited (Paid from) with the investor as the party.
         </Text>
         <Table.ScrollContainer minWidth={640}>
           <Table verticalSpacing="sm" horizontalSpacing="md" fz="xs">
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>When</Table.Th>
-                <Table.Th>Debit</Table.Th>
-                <Table.Th>Credit</Table.Th>
+                <Table.Th>Mode of payment</Table.Th>
+                <Table.Th>Debit (Paid to)</Table.Th>
+                <Table.Th>Credit (Paid from)</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              <Table.Tr>
-                <Table.Td fw={600}>Receive Payment</Table.Td>
-                <Table.Td>{show("company_bank_account")}</Table.Td>
-                <Table.Td>{show("investor_deposit_account")}</Table.Td>
-              </Table.Tr>
-              <Table.Tr>
-                <Table.Td fw={600}>Schedule row due (daily job)</Table.Td>
-                <Table.Td>
-                  {show("interest_expense_account")}
-                  <br />
-                  {show("penalty_expense_account")} (penalty)
-                </Table.Td>
-                <Table.Td>{show("interest_payable_account")}</Table.Td>
-              </Table.Tr>
-              <Table.Tr>
-                <Table.Td fw={600}>Pay schedule row</Table.Td>
-                <Table.Td>
-                  {show("investor_deposit_account")} (principal)
-                  <br />
-                  {show("interest_payable_account")} (interest + penalty)
-                </Table.Td>
-                <Table.Td>{show("company_bank_account")}</Table.Td>
-              </Table.Tr>
+              {MODE_FIELDS.map(({ mode, field }) => (
+                <Table.Tr key={mode}>
+                  <Table.Td fw={600}>{mode}</Table.Td>
+                  <Table.Td>{accounts[field] || "Not set: this mode can't be used"}</Table.Td>
+                  <Table.Td>{show("investor_creditor_account")}</Table.Td>
+                </Table.Tr>
+              ))}
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>

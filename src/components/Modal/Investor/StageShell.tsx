@@ -12,15 +12,21 @@ import {
   UnstyledButton,
   useMantineTheme,
 } from "@mantine/core";
-import { IconCheck, IconEye, IconPencil, IconX } from "@tabler/icons-react";
+import {
+  IconCheck,
+  IconEye,
+  IconMinus,
+  IconPencil,
+  IconX,
+} from "@tabler/icons-react";
 import {
   STEP_NAMES,
-  inr,
   stateCustomer,
   stateProduct,
   type ModalState,
 } from "./InvestorModalShared";
-
+import { formatAmount } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
 export type StageId = "processing" | "earnings" | "maturity";
 
@@ -32,7 +38,6 @@ export const STAGES: { id: StageId; label: string }[] = [
   { id: "maturity", label: STEP_NAMES[5] },
 ];
 
- 
 export function StepDot({
   n,
   active,
@@ -79,7 +84,10 @@ export function ViewOnlyBar({ label }: { label: string }) {
       px={18}
       py={6}
       bg="slate.0"
-      style={{ flex: "none", borderBottom: "1px solid var(--mantine-color-slate-2)" }}
+      style={{
+        flex: "none",
+        borderBottom: "1px solid var(--mantine-color-slate-2)",
+      }}
     >
       <Badge
         size="sm"
@@ -139,10 +147,18 @@ export function StageSideNav({
               width: "100%",
               borderRadius: "var(--mantine-radius-md)",
               background: active ? "var(--mantine-color-white)" : undefined,
-              boxShadow: active ? "0 0 0 1px var(--mantine-color-slate-2)" : undefined,
+              boxShadow: active
+                ? "0 0 0 1px var(--mantine-color-slate-2)"
+                : undefined,
             }}
           >
-            <Group gap="sm" wrap="nowrap" px={10} py={9} style={{ whiteSpace: "nowrap" }}>
+            <Group
+              gap="sm"
+              wrap="nowrap"
+              px={10}
+              py={9}
+              style={{ whiteSpace: "nowrap" }}
+            >
               <StepDot n={i + 1} active={active && !done} done={done} />
               <Box>
                 <Text fz="sm" fw={600} c="slate.8">
@@ -165,6 +181,8 @@ export function StageSideNav({
 interface StageShellProps {
   opened: boolean;
   onClose: () => void;
+  /** Minimizes the modal to the dock (same as the other modals). */
+  onMinimize?: () => void;
   /** Index in STAGES of the stage this modal belongs to (0, 1 or 2). */
   stageIndex: number;
   state: ModalState;
@@ -181,6 +199,7 @@ interface StageShellProps {
 export function StageShell({
   opened,
   onClose,
+  onMinimize,
   stageIndex,
   state,
   title = "New Investment",
@@ -188,6 +207,9 @@ export function StageShell({
   footer,
   children,
 }: StageShellProps) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   const theme = useMantineTheme();
   const customer = stateCustomer(state);
   const product = stateProduct(state);
@@ -257,19 +279,30 @@ export function StageShell({
           <Text fw={700} c="white">
             {title}
           </Text>
-          <Text fz="xs" c="white" style={{ opacity: 0.85 }}>
+          {/* <Text fz="xs" c="white" style={{ opacity: 0.85 }}>
             Stage {stageIndex + 1} of {STAGES.length} — {STAGES[stageIndex].label}
-          </Text>
+          </Text> */}
         </Box>
-        <ActionIcon
-          variant="subtle"
-          color="white"
-          ml="auto"
-          aria-label="Close"
-          onClick={onClose}
-        >
-          <IconX size={18} />
-        </ActionIcon>
+        <Group gap={4} ml="auto" wrap="nowrap">
+          {onMinimize && (
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              aria-label="Minimize"
+              onClick={onMinimize}
+            >
+              <IconMinus size={18} />
+            </ActionIcon>
+          )}
+          <ActionIcon
+            variant="subtle"
+            color="white"
+            aria-label="Close"
+            onClick={onClose}
+          >
+            <IconX size={18} />
+          </ActionIcon>
+        </Group>
       </Group>
 
       {/* Customer bar */}
@@ -279,7 +312,10 @@ export function StageShell({
           wrap="nowrap"
           px={18}
           py={10}
-          style={{ flex: "none", borderBottom: "1px solid var(--mantine-color-slate-2)" }}
+          style={{
+            flex: "none",
+            borderBottom: "1px solid var(--mantine-color-slate-2)",
+          }}
         >
           <Avatar color="brand" variant="light" radius="xl" size={34}>
             {customer.name
@@ -302,7 +338,7 @@ export function StageShell({
                 Amount
               </Text>
               <Text fw={700} fz="sm" c="slate.8">
-                {state.amount ? inr(state.amount) : "—"}
+                {state.amount ? fmtAmount(state.amount) : "—"}
               </Text>
             </Box>
             <Box ta="right">
@@ -328,7 +364,10 @@ export function StageShell({
         gap="xs"
         px={18}
         py={12}
-        style={{ flex: "none", borderTop: "1px solid var(--mantine-color-slate-2)" }}
+        style={{
+          flex: "none",
+          borderTop: "1px solid var(--mantine-color-slate-2)",
+        }}
       >
         <Button size="sm" radius="xl" variant="default" onClick={onClose}>
           Close

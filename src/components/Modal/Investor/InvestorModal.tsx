@@ -41,6 +41,8 @@ import {
 import { InvestorProduct } from "./InvestorProduct";
 import { TermsSchedule } from "./TermsSchedule";
 import { ContractGeneration } from "./ContractGeneration";
+import { formatAmount } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
 interface InvestorModalProps {
   opened: boolean;
@@ -51,6 +53,8 @@ interface InvestorModalProps {
   isView?: boolean;
   /** Called after the Investor Flow is created or updated. */
   onSaved: () => void;
+  /** Minimizes the modal to the dock. */
+  onMinimize: () => void;
 }
 
 const PROCESSING_STEPS = STEP_NAMES.slice(0, 3);
@@ -82,7 +86,9 @@ function ProcessingTopNav({
               borderRadius: "var(--mantine-radius-md)",
               whiteSpace: "nowrap",
               background: active ? "var(--mantine-color-white)" : undefined,
-              boxShadow: active ? "0 0 0 1px var(--mantine-color-slate-2)" : undefined,
+              boxShadow: active
+                ? "0 0 0 1px var(--mantine-color-slate-2)"
+                : undefined,
             }}
           >
             <StepDot n={i + 1} active={active} done={done} />
@@ -98,12 +104,18 @@ function ProcessingTopNav({
               <UnstyledButton
                 onClick={() => onSelect(i)}
                 aria-current={active ? "step" : undefined}
-                style={{ flex: "none", borderRadius: "var(--mantine-radius-md)" }}
+                style={{
+                  flex: "none",
+                  borderRadius: "var(--mantine-radius-md)",
+                }}
               >
                 {item}
               </UnstyledButton>
             ) : (
-              <Box style={{ flex: "none" }} aria-current={active ? "step" : undefined}>
+              <Box
+                style={{ flex: "none" }}
+                aria-current={active ? "step" : undefined}
+              >
                 {item}
               </Box>
             )}
@@ -132,7 +144,9 @@ function ProcessingTab({
     case 1:
       return <TermsSchedule {...tabProps} />;
     case 2:
-      return <ContractGeneration {...tabProps} investorFlowId={investorFlowId} />;
+      return (
+        <ContractGeneration {...tabProps} investorFlowId={investorFlowId} />
+      );
     default:
       return null;
   }
@@ -182,7 +196,11 @@ export function InvestorModal({
   editId = null,
   isView = false,
   onSaved,
+  onMinimize,
 }: InvestorModalProps) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
   const queryClient = useQueryClient();
   const [state, setState] = useState<ModalState>(createInitialState);
   const update = (patch: Partial<ModalState>) =>
@@ -229,10 +247,11 @@ export function InvestorModal({
   }, [loadError]);
 
   /* ------------------------------ Schedule ----------------------------- */
-  const termsError = validateTerms(state);
+  const termsError = validateTerms(state, fmtAmount);
   const hasParties = !!stateCustomer(state) && !!stateProduct(state);
   const termsKey = useMemo(
-    () => (hasParties && !termsError ? JSON.stringify(termsFromState(state)) : ""),
+    () =>
+      hasParties && !termsError ? JSON.stringify(termsFromState(state)) : "",
     [hasParties, termsError, state],
   );
   const [debouncedTermsKey] = useDebouncedValue(termsKey, 400);
@@ -248,16 +267,21 @@ export function InvestorModal({
   const scheduleIsCurrent =
     !!termsKey && termsKey === debouncedTermsKey && !scheduleQuery.isFetching;
   const schedule =
-    scheduleIsCurrent && scheduleQuery.data ? scheduleFromApi(scheduleQuery.data) : null;
+    scheduleIsCurrent && scheduleQuery.data
+      ? scheduleFromApi(scheduleQuery.data)
+      : null;
   const scheduleError =
-    scheduleIsCurrent && scheduleQuery.error ? parseFrappeError(scheduleQuery.error) : undefined;
+    scheduleIsCurrent && scheduleQuery.error
+      ? parseFrappeError(scheduleQuery.error)
+      : undefined;
 
   const tabProps: TabProps = { state, update, schedule, scheduleError };
 
   /* ------------------------------- Save -------------------------------- */
   const handleSaved = (heading: string, body: string) => {
     queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
-    if (editId) queryClient.invalidateQueries({ queryKey: ["investorFlow", editId] });
+    if (editId)
+      queryClient.invalidateQueries({ queryKey: ["investorFlow", editId] });
     showSuccess(heading, body);
     onSaved();
   };
@@ -294,7 +318,8 @@ export function InvestorModal({
       editId
         ? handleSaved("Investment Updated", "Investment updated successfully.")
         : handleSaved("Investment Created", "Investment saved as Draft."),
-    onError: (error: any) => showError(editId ? "Update Failed" : "Create Failed", error),
+    onError: (error: any) =>
+      showError(editId ? "Update Failed" : "Create Failed", error),
   });
 
   const isSaving = saveMutation.isPending;
@@ -330,7 +355,11 @@ export function InvestorModal({
     saveMutation.mutate();
   };
 
-  const title = editId ? (isView ? "View Investment" : "Edit Investment") : "New Investment";
+  const title = editId
+    ? isView
+      ? "View Investment"
+      : "Edit Investment"
+    : "New Investment";
 
   let body;
   if (editId && (isEditLoading || !loadedState)) {
@@ -375,6 +404,7 @@ export function InvestorModal({
       <StageShell
         opened={opened}
         onClose={onClose}
+        onMinimize={onMinimize}
         stageIndex={0}
         state={state}
         title={title}
@@ -408,7 +438,6 @@ export function InvestorModal({
       >
         {body}
       </StageShell>
-
     </>
   );
 }

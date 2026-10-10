@@ -14,7 +14,6 @@ import {
   SectionBox,
   TH_STYLE,
   Tag,
-  inr,
   fmtDate,
   isRepaymentFrequency,
   nextPayoutDate,
@@ -24,10 +23,22 @@ import {
   type ModalState,
   type TabProps,
 } from "./InvestorModalShared";
+import { formatAmount, getSymbol } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
 
-export function TermsSchedule({ state, update, schedule, scheduleError }: TabProps) {
-  const error = validateTerms(state) || scheduleError || "";
-  const penaltyLabel = state.penaltyApplicable ? `${state.penaltyRate}% p.a.` : "—";
+export function TermsSchedule({
+  state,
+  update,
+  schedule,
+  scheduleError,
+}: TabProps) {
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const fmtAmount = (value: number) =>
+    formatAmount(companyCurrency, value, { withSymbol: true });
+  const error = validateTerms(state, fmtAmount) || scheduleError || "";
+  const penaltyLabel = state.penaltyApplicable
+    ? `${state.penaltyRate}% p.a.`
+    : "—";
 
   // The mock data (Earnings & Maturity view) can hold "At maturity", which is not an option here.
   const frequencyOptions: string[] = isRepaymentFrequency(state.frequency)
@@ -53,14 +64,22 @@ export function TermsSchedule({ state, update, schedule, scheduleError }: TabPro
                 state.frequency === "At maturity"
                   ? "Interest payout"
                   : "Payout per instalment (interest)",
-              value: inr(schedule.perPayment),
+              value: fmtAmount(schedule.perPayment),
               color: "info",
             },
-            { label: "Interest rate", value: `${state.rate}% p.a.`, color: "warning" },
-            { label: "Tenure", value: `${schedule.totalMonths} months`, color: "brand" },
+            {
+              label: "Interest rate",
+              value: `${state.rate}% p.a.`,
+              color: "warning",
+            },
+            {
+              label: "Tenure",
+              value: `${schedule.totalMonths} months`,
+              color: "brand",
+            },
             {
               label: "Total repayment",
-              value: inr(state.amount + schedule.totalInterest),
+              value: fmtAmount(state.amount + schedule.totalInterest),
               color: "success",
             },
           ]}
@@ -83,7 +102,7 @@ export function TermsSchedule({ state, update, schedule, scheduleError }: TabPro
         >
           <TextInput
             type="number"
-            label="Investment amount (₹)"
+            label={`Investment amount (${getSymbol(companyCurrency)})`}
             size="sm"
             radius="md"
             step={10000}
@@ -129,7 +148,9 @@ export function TermsSchedule({ state, update, schedule, scheduleError }: TabPro
               label="Penalty applicable"
               size="sm"
               checked={state.penaltyApplicable}
-              onChange={(e) => update({ penaltyApplicable: e.currentTarget.checked })}
+              onChange={(e) =>
+                update({ penaltyApplicable: e.currentTarget.checked })
+              }
             />
             {state.penaltyApplicable && (
               <TextInput
@@ -139,7 +160,9 @@ export function TermsSchedule({ state, update, schedule, scheduleError }: TabPro
                 step={0.5}
                 placeholder="Penalty % p.a."
                 value={state.penaltyRate || ""}
-                onChange={(e) => update({ penaltyRate: Number(e.currentTarget.value) })}
+                onChange={(e) =>
+                  update({ penaltyRate: Number(e.currentTarget.value) })
+                }
               />
             )}
           </Stack>
@@ -148,28 +171,41 @@ export function TermsSchedule({ state, update, schedule, scheduleError }: TabPro
 
       <SectionBox
         title="Repayment schedule"
-        titleAddon={schedule ? <Tag label={`${schedule.count} payments`} /> : undefined}
+        titleAddon={
+          schedule ? <Tag label={`${schedule.count} payments`} /> : undefined
+        }
       >
         {schedule ? (
           <Box style={{ maxHeight: 240, overflow: "auto" }}>
-            <Table stickyHeader verticalSpacing={6} horizontalSpacing="sm" fz="xs">
+            <Table
+              stickyHeader
+              verticalSpacing={6}
+              horizontalSpacing="sm"
+              fz="xs"
+            >
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th style={TH_STYLE}>Repay date</Table.Th>
-                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Principal</Table.Th>
-                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Interest rate</Table.Th>
-                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>Penalty</Table.Th>
+                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                    Principal
+                  </Table.Th>
+                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                    Interest rate
+                  </Table.Th>
+                  <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                    Penalty
+                  </Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {schedule.rows.map((r, i) => (
                   <Table.Tr key={i}>
                     <Table.Td>{fmtDate(r.date)}</Table.Td>
-                    <Table.Td ta="right">{inr(r.principal)}</Table.Td>
+                    <Table.Td ta="right">{fmtAmount(r.principal)}</Table.Td>
                     <Table.Td ta="right">
                       {state.rate}%{" "}
                       <Text span fz="xs" c="slate.5">
-                        ({inr(r.interest)})
+                        ({fmtAmount(r.interest)})
                       </Text>
                     </Table.Td>
                     <Table.Td ta="right">{penaltyLabel}</Table.Td>

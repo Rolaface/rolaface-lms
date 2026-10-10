@@ -13,8 +13,10 @@ export type RepaymentFrequency = (typeof REPAYMENT_FREQUENCIES)[number];
 export type InvestorFlowStatus =
   | "Draft"
   | "Approved"
-  | "Received"
   | "Cancelled"
+  | "Paid"
+  // Earlier statuses still used by the Earnings / Maturity screens (reworked later).
+  | "Received"
   | "Matured"
   | "Renewed";
 
@@ -69,35 +71,6 @@ export interface InvestorFlowListItem {
   renewed_from: string | null;
 }
 
-/** Body of receive_payment. */
-export interface InvestorFlowPaymentPayload {
-  payment_date: string; // YYYY-MM-DD
-  ref_no: string;
-  payment_mode: InvestorFlowPaymentMode;
-  amount_paid: number;
-  paid_from: string; // Bank Account ID of the investor (reference only)
-}
-
-/** Body of receive_payment for a renewed investment: no money arrives, only the start date. */
-export interface InvestorFlowRenewalReceivePayload {
-  payment_date: string; // YYYY-MM-DD
-}
-
-/** Payment saved on the Investor Flow. */
-export interface InvestorFlowPayment extends InvestorFlowPaymentPayload {
-  paid_to: string; // Company Bank Account (Custom Investor Settings)
-  paid_gl: string; // Company Account of the Paid From Bank Account
-  to_gl: string; // GL Account (same as paid_to)
-}
-
-/** get_investor_accounting_settings data. */
-export interface InvestorAccountingSettings {
-  company: string;
-  company_bank_account: string;
-  company_bank_currency: string | null;
-  investor_deposit_account: string;
-}
-
 /** Status of a schedule row. */
 export type InvestorEarningRowStatus = "Pending" | "Accrued" | "Paid";
 
@@ -116,9 +89,7 @@ export interface InvestorBankAccount {
 }
 
 /** get_investor_flow_by_id data ("investor" is the Customer ID here). */
-export interface InvestorFlowRecord
-  extends Omit<InvestorFlowListItem, "investor_id">,
-    Partial<Record<keyof InvestorFlowPayment, string | number | null>> {
+export interface InvestorFlowRecord extends Omit<InvestorFlowListItem, "investor_id"> {
   mail_sent: string | null;
   subject: string | null;
   message: string | null;
@@ -144,13 +115,6 @@ export interface InvestorFlowSaveContractResult {
   message: string;
   file_id: string;
   file_url: string;
-}
-
-export interface InvestorFlowReceivePaymentResult extends InvestorFlowPayment {
-  id: string;
-  status: InvestorFlowStatus;
-  contract_status: InvestorFlowContractStatus;
-  journal_entry: string;
 }
 
 export interface InvestorFlowListParams {
@@ -238,12 +202,21 @@ export interface InvestorEarningScheduleRow {
   status: InvestorEarningRowStatus | null;
   accrual_entry: string | null;
   payout_entry: string | null;
+  /** Schedule version this row belongs to (1, 2, …). */
+  version: number;
+}
+
+/** An earlier version of the repayment schedule (before an edit). */
+export interface InvestorScheduleVersion {
+  version: number;
+  rows: InvestorEarningScheduleRow[];
 }
 
 /** get_investor_earning_by_id data. */
 export interface InvestorEarning extends InvestorEarningDetails {
   id: string;
   status: InvestorFlowStatus;
+  fund_status: InvestorFundStatus;
   investor_id: string;
   /** Customer name. */
   investor: string;
@@ -253,14 +226,19 @@ export interface InvestorEarning extends InvestorEarningDetails {
   receive_entry: string | null;
   renewed_to: string | null;
   renewed_from: string | null;
+  /** Version of the current schedule (the highest one). */
+  schedule_version: number;
+  /** The current schedule (rows of the highest version). */
   schedule: InvestorEarningScheduleRow[];
+  /** Earlier versions, newest first. */
+  schedule_history: InvestorScheduleVersion[];
 }
 
 /** Body of update_investor_earning: details and existing rows (by name) only. */
 export interface InvestorEarningUpdatePayload extends Partial<InvestorEarningDetails> {
   schedule: Omit<
     InvestorEarningScheduleRow,
-    "idx" | "status" | "accrual_entry" | "payout_entry"
+    "idx" | "status" | "accrual_entry" | "payout_entry" | "version"
   >[];
 }
 
@@ -296,8 +274,12 @@ export type InvestorEarningListResponse = Omit<InvestorFlowListResponse, "data">
 
 /** The five GL accounts of Custom Investor Settings. */
 export interface InvestorSettingsAccounts {
+  investor_creditor_account: string;
+  investor_cash_account: string;
+  cheque_account: string;
+  bank_draft_account: string;
+  wire_transfer_account: string;
   company_bank_account: string;
-  investor_deposit_account: string;
   interest_payable_account: string;
   interest_expense_account: string;
   penalty_expense_account: string;
@@ -310,10 +292,8 @@ export interface InvestorSettings {
   company: string | null;
   accounts: Record<InvestorSettingsField, string | null>;
   labels: Record<InvestorSettingsField, string>;
-  /** What kind of account each field accepts. */
-  rules: Record<InvestorSettingsField, string>;
-  /** Accounts each field accepts, in the user's default company. */
-  options: Record<InvestorSettingsField, string[]>;
+  /** Fields that must be set to save. */
+  required: InvestorSettingsField[];
 }
 
 /* --------------------------------- Maturity --------------------------------- */
@@ -390,4 +370,264 @@ export interface InvestorMaturity extends InvestorMaturityOutstanding {
   /** Renew: interest (and the paise of principal) paid out in cash. */
   renewal_cash_payout: number;
   renewal_defaults: InvestorRenewalTerms | null;
+}
+
+/* -------------------------------- Record Fund -------------------------------- */
+
+/** Fund Status of the Custom Investor Flow doctype. */
+export type InvestorFundStatus = "Pending" | "Partial" | "Paid";
+
+/** Record Status of a fund record: Draft (no accounting) -> Approved (Journal Entry posted) / Cancelled. */
+export type FundRecordStatus = "Draft" | "Approved" | "Cancelled";
+
+/** A row of the Record Fund table (Custom Investor Record Fund). */
+export interface InvestorFundRow {
+  name: string;
+  idx: number;
+  investment_id: string;
+  record_status: FundRecordStatus;
+  /** Journal Entry posted on approval. */
+  journal_entry: string | null;
+  amount_paid: number;
+  mode_of_payment: InvestorFlowPaymentMode;
+  reference_number: string | null;
+  /** Paid to: the GL the money landed in. */
+  debit_gl: string;
+  debit_gl_description: string;
+  /** Paid from: the Investor Creditor GL (party = the investor). */
+  credit_gl: string;
+  credit_gl_description: string;
+  paid_date: string;
+}
+
+interface InvestorFundSummary {
+  investment_amount: number;
+  /** Approved records. */
+  fund_received: number;
+  remaining_fund: number;
+  /** Draft records (not yet approved). */
+  draft_amount: number;
+  /** What a new record can still be for (drafts included). */
+  available_to_record: number;
+  fund_status: InvestorFundStatus;
+  last_paid_date: string | null;
+  last_mode_of_payment: InvestorFlowPaymentMode | null;
+}
+
+/** A row of get_investor_funds. */
+export interface InvestorFundListItem extends InvestorFundSummary {
+  name: string;
+  /** Investor name. */
+  investor: string;
+  investor_id: string;
+  status: InvestorFlowStatus;
+}
+
+/** get_investor_fund_by_id / record_fund data. */
+export interface InvestorFund extends InvestorFundSummary {
+  id: string;
+  investor: string;
+  investor_id: string;
+  status: InvestorFlowStatus;
+  funds: InvestorFundRow[];
+}
+
+export interface InvestorFundListParams {
+  search?: string;
+  status?: InvestorFlowStatus[];
+  fund_status?: InvestorFundStatus[];
+  page?: number;
+  page_size?: number;
+}
+
+export type InvestorFundListResponse = Omit<InvestorFlowListResponse, "data"> & {
+  data: InvestorFundListItem[];
+};
+
+/** A row of get_fund_records (one per receipt). */
+export interface FundRecordListItem extends InvestorFundRow {
+  investor: string;
+  investor_id: string;
+  investment_amount: number;
+  /** Of the investment, after the approved records. */
+  remaining_fund: number;
+  investment_status: InvestorFlowStatus | null;
+  fund_status: InvestorFundStatus;
+}
+
+export interface FundRecordListParams {
+  search?: string;
+  record_status?: FundRecordStatus[];
+  page?: number;
+  page_size?: number;
+}
+
+export type FundRecordListResponse = Omit<InvestorFlowListResponse, "data"> & {
+  data: FundRecordListItem[];
+};
+
+/** Body of add_fund_record / update_fund_record. */
+export interface RecordFundPayload {
+  paid_date: string; // YYYY-MM-DD
+  mode_of_payment: InvestorFlowPaymentMode;
+  reference_number: string;
+  amount: number;
+}
+
+interface RecordFundAccount {
+  account: string;
+  description: string;
+  currency: string | null;
+}
+
+/** get_record_fund_accounts data (from Investor Settings). */
+export interface RecordFundAccounts {
+  company: string | null;
+  /** Paid from: Investor Creditor GL. */
+  credit: RecordFundAccount;
+  /** Paid to, per Mode of Payment (null when its GL is not set). */
+  debit_by_mode: Record<InvestorFlowPaymentMode, RecordFundAccount | null>;
+}
+
+/* ---------------------------- Investor 360 view ---------------------------- */
+
+export interface InvestorInfo {
+  id: string;
+  name: string;
+  customer_type: string | null;
+  email: string | null;
+  mobile: string | null;
+  status: "Active" | "Inactive";
+}
+
+/** Money figures of one investment (calculated from fund records and the current schedule). */
+export interface InvestmentFigures {
+  fund_paid_in: number;
+  fund_pending_approval: number;
+  fund_remaining: number;
+  principal_returned: number;
+  interest_received: number;
+  received_back: number;
+  principal_outstanding: number;
+  interest_outstanding: number;
+  payouts_total: number;
+  payouts_done: number;
+  next_payout_date: string | null;
+  next_payout_amount: number;
+}
+
+export interface PortfolioInvestment extends InvestmentFigures {
+  name: string;
+  investor: string;
+  investment_product: string;
+  investment_product_name: string;
+  status: InvestorFlowStatus;
+  fund_status: InvestorFundStatus | null;
+  contract_status: InvestorFlowContractStatus | null;
+  investment_amount: number;
+  interest_rate: number;
+  repayment_frequency: RepaymentFrequency;
+  first_repayment_date: string;
+  maturity_date: string;
+  penalty_rate: number | null;
+  creation: string;
+}
+
+export interface InvestorPortfolio {
+  investor: InvestorInfo;
+  totals: {
+    investments: number;
+    active: number;
+    contracted: number;
+    fund_paid_in: number;
+    fund_remaining: number;
+    received_back: number;
+    principal_returned: number;
+    interest_received: number;
+    principal_outstanding: number;
+    interest_outstanding: number;
+    next_payout_date: string | null;
+    next_payout_amount: number;
+    next_payout_investment: string | null;
+  };
+  investments: PortfolioInvestment[];
+}
+
+export interface InvestmentFundEntry {
+  name: string;
+  paid_date: string;
+  amount: number;
+  mode_of_payment: InvestorFlowPaymentMode;
+  reference_number: string | null;
+  record_status: FundRecordStatus;
+  journal_entry: string | null;
+  paid_from: string;
+  paid_from_description: string;
+  paid_to: string;
+  paid_to_description: string;
+}
+
+export interface InvestmentScheduleEntry {
+  name: string;
+  number: number;
+  payment_date: string;
+  principal: number;
+  interest: number;
+  penalty: number;
+  total: number;
+  status: InvestorEarningRowStatus;
+  /** Day the payout Journal Entry was posted. */
+  paid_on: string | null;
+  payout_entry: string | null;
+  accrual_entry: string | null;
+}
+
+export interface InvestmentDetail extends PortfolioInvestment {
+  mail_sent: string | null;
+  subject: string | null;
+  funds: InvestmentFundEntry[];
+  schedule: InvestmentScheduleEntry[];
+}
+
+export interface InvestorStatementEntry {
+  date: string;
+  investment: string;
+  type: "Fund received" | "Payout";
+  description: string;
+  paid_in: number;
+  principal_returned: number;
+  interest_paid: number;
+  journal_entry: string | null;
+  /** Principal held for the investor after this entry. */
+  balance: number;
+}
+
+export interface InvestorStatement {
+  investor: InvestorInfo;
+  investment: string | null;
+  entries: InvestorStatementEntry[];
+  totals: { paid_in: number; principal_returned: number; interest_paid: number; closing_balance: number };
+}
+
+export interface JournalEntryLine {
+  account: string;
+  account_name: string;
+  account_number: string | null;
+  root_type: string;
+  party: string | null;
+  debit: number;
+  credit: number;
+  /** Plain words: "Money came in", "Amount owed to investor increased", … */
+  meaning: string;
+}
+
+export interface JournalEntryDetail {
+  name: string;
+  posting_date: string;
+  status: "Draft" | "Submitted" | "Cancelled";
+  reference_no: string | null;
+  remark: string | null;
+  total_debit: number;
+  total_credit: number;
+  lines: JournalEntryLine[];
 }

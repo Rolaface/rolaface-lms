@@ -1,8 +1,18 @@
 import API from "../../config/api";
 import apiClient from "../../config/axios";
 import type {
-  InvestorAccountingSettings,
-  InvestorFlowRenewalReceivePayload,
+  InvestmentDetail,
+  InvestorPortfolio,
+  InvestorStatement,
+  JournalEntryDetail,
+  FundRecordListParams,
+  FundRecordListResponse,
+  InvestorFundRow,
+  InvestorFund,
+  InvestorFundListParams,
+  InvestorFundListResponse,
+  RecordFundAccounts,
+  RecordFundPayload,
   InvestorMaturity,
   InvestorMaturityListParams,
   InvestorMaturityListResponse,
@@ -18,8 +28,6 @@ import type {
   InvestorFlowListParams,
   InvestorFlowListResponse,
   InvestorFlowPayload,
-  InvestorFlowPaymentPayload,
-  InvestorFlowReceivePaymentResult,
   InvestorFlowRecord,
   InvestorFlowSaveContractPayload,
   InvestorFlowSaveContractResult,
@@ -166,21 +174,6 @@ export async function saveContract({
   return data.message.data;
 }
 
-/** Saves the payment, posts the Journal Entry; Contract Status -> Paid, Status -> Received. */
-export async function receiveInvestorFlowPayment({
-  id,
-  payload,
-}: {
-  id: string;
-  payload: InvestorFlowPaymentPayload | InvestorFlowRenewalReceivePayload;
-}) {
-  const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorFlowReceivePaymentResult>>(
-    API.investorFlow.receivePayment,
-    payload,
-    { params: { id } },
-  );
-  return data.message.data;
-}
 
 /** Paid From options: the investor's Bank Accounts (Party Type Customer, Party = investor). */
 export async function getInvestorBankAccounts(investor: string) {
@@ -232,13 +225,6 @@ export async function updateInvestorEarning({
   return data.message.data;
 }
 
-/** Company Bank Account (Paid To) and Investor Deposit Account from Custom Investor Settings. */
-export async function getInvestorAccountingSettings() {
-  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestorAccountingSettings>>(
-    API.investorFlow.getAccountingSettings,
-  );
-  return data.message.data;
-}
 
 /** Pays one schedule row (posts the payout Journal Entry) and returns the updated earning. */
 export async function payInvestorEarningRow({
@@ -324,6 +310,136 @@ export async function renewInvestorFlow({ id, terms }: { id: string; terms: Inve
     API.investorFlow.renew,
     terms,
     { params: { id } },
+  );
+  return data.message.data;
+}
+
+/* -------------------------------- Record Fund -------------------------------- */
+
+export async function getInvestorFunds(params: InvestorFundListParams = {}) {
+  const query: Record<string, string | number> = {};
+  if (params.search) query.search = params.search;
+  if (params.status?.length) query.status = JSON.stringify(params.status);
+  if (params.fund_status?.length) query.fund_status = JSON.stringify(params.fund_status);
+  if (params.page) query.page = params.page;
+  if (params.page_size) query.page_size = params.page_size;
+
+  const { data } = await apiClient.get<InvestorFundListResponse>(API.investorFlow.getFunds, {
+    params: query,
+  });
+  return data;
+}
+
+export async function getInvestorFundById(id: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestorFund>>(API.investorFlow.getFundById, {
+    params: { id },
+  });
+  return data.message.data;
+}
+
+/** Paid from (Investor Creditor GL) and Paid to per Mode of Payment, from Investor Settings. */
+export async function getRecordFundAccounts() {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<RecordFundAccounts>>(
+    API.investorFlow.getRecordFundAccounts,
+  );
+  return data.message.data;
+}
+
+/** Saves a fund received from the investor as a Draft record (no accounting yet). */
+export async function addFundRecord({ id, payload }: { id: string; payload: RecordFundPayload }) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorFundRow>>(
+    API.investorFlow.addFundRecord,
+    payload,
+    { params: { id } },
+  );
+  return data.message.data;
+}
+
+/** Edits a Draft fund record. */
+export async function updateFundRecord({
+  id,
+  record,
+  payload,
+}: {
+  id: string;
+  record: string;
+  payload: RecordFundPayload;
+}) {
+  const { data } = await apiClient.put<InvestorFlowEnvelope<InvestorFundRow>>(
+    API.investorFlow.updateFundRecord,
+    payload,
+    { params: { id, record } },
+  );
+  return data.message.data;
+}
+
+/** Deletes a Draft fund record. */
+export async function deleteFundRecord({ id, record }: { id: string; record: string }) {
+  const { data } = await apiClient.delete(API.investorFlow.deleteFundRecord, { params: { id, record } });
+  return data;
+}
+
+/** Approves a Draft fund record: posts its Journal Entry. */
+export async function approveFundRecord({ id, record }: { id: string; record: string }) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorFundRow>>(
+    API.investorFlow.approveFundRecord,
+    {},
+    { params: { id, record } },
+  );
+  return data.message.data;
+}
+
+/** Cancels a fund record (an Approved one's Journal Entry is cancelled too). */
+export async function cancelFundRecord({ id, record }: { id: string; record: string }) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorFundRow>>(
+    API.investorFlow.cancelFundRecord,
+    {},
+    { params: { id, record } },
+  );
+  return data.message.data;
+}
+
+export async function getFundRecords(params: FundRecordListParams = {}) {
+  const query: Record<string, string | number> = {};
+  if (params.search) query.search = params.search;
+  if (params.record_status?.length) query.record_status = JSON.stringify(params.record_status);
+  if (params.page) query.page = params.page;
+  if (params.page_size) query.page_size = params.page_size;
+
+  const { data } = await apiClient.get<FundRecordListResponse>(API.investorFlow.getFundRecords, {
+    params: query,
+  });
+  return data;
+}
+
+/* ---------------------------- Investor 360 view ---------------------------- */
+
+export async function getInvestorPortfolio(investor: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestorPortfolio>>(API.investorFlow.getPortfolio, {
+    params: { investor },
+  });
+  return data.message.data;
+}
+
+export async function getInvestmentDetail(id: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestmentDetail>>(
+    API.investorFlow.getInvestmentDetail,
+    { params: { id } },
+  );
+  return data.message.data;
+}
+
+export async function getInvestorStatement(investor: string, investment?: string | null) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestorStatement>>(API.investorFlow.getStatement, {
+    params: { investor, ...(investment ? { investment } : {}) },
+  });
+  return data.message.data;
+}
+
+export async function getJournalEntryDetail(name: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<JournalEntryDetail>>(
+    API.investorFlow.getJournalEntryDetail,
+    { params: { name } },
   );
   return data.message.data;
 }

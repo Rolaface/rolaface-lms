@@ -42,7 +42,7 @@ import { getEveryInvestmentProduct } from "../../api/Investor/productApi";
 import type { InvestorEarningListItem } from "../../types/Investor/investorFlow";
 import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
-import { EarningsStatementsModal } from "../../components/Modal/Investor/EarningsStatementModal";
+import { earningsStatementsModal } from "../../components/Modal/Investor/earningsStatementsModalStore";
 
 const columnHelper = createColumnHelper<InvestorEarningListItem>();
 
@@ -110,16 +110,8 @@ export function EarningsStatements() {
   const lastRow = Math.min(totalRows, page * pageSize);
 
   /* ----------------------------- Modal ----------------------------- */
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [modalReadOnly, setModalReadOnly] = useState(true);
-  const [modalOpened, setModalOpened] = useState(false);
-  const [modalKey, setModalKey] = useState(0);
-  const openModal = (id: string, readOnly: boolean) => {
-    setSelectedId(id);
-    setModalReadOnly(readOnly);
-    setModalKey((k) => k + 1); // fresh modal state on every open
-    setModalOpened(true);
-  };
+  const openModal = (id: string, readOnly: boolean) =>
+    earningsStatementsModal.open({ investorFlowId: id, readOnly });
 
   /* ----------------------------- Table ----------------------------- */
   const productOptions = useMemo(
@@ -129,21 +121,21 @@ export function EarningsStatements() {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("name", {
-        header: "Investment ID",
-        cell: (info) => (
-          <Text
-            fz="sm"
-            fw={700}
-            c="slate.8"
-            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
-          >
-            {info.getValue()}
-          </Text>
-        ),
-      }),
+      // columnHelper.accessor("name", {
+      //   header: "Investment ID",
+      //   cell: (info) => (
+      //     <Text
+      //       fz="sm"
+      //       fw={700}
+      //       c="slate.8"
+      //       style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+      //     >
+      //       {info.getValue()}
+      //     </Text>
+      //   ),
+      // }),
       columnHelper.accessor("investor", {
-        header: "Customer",
+        header: "Investor",
         cell: (info) => (
           <Text fz="sm" fw={600} c="slate.8">
             {info.getValue()}
@@ -239,15 +231,15 @@ export function EarningsStatements() {
                 </ActionIcon>
               </Tooltip>
               <Tooltip
-                label={row.status === "Received" ? "Edit" : `${row.status}: view only`}
+                label={row.status !== "Cancelled" ? "Edit" : "Cancelled: view only"}
                 withArrow
               >
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color={row.status === "Received" ? "brand" : "slate"}
+                  color={row.status !== "Cancelled" ? "brand" : "slate"}
                   radius="md"
-                  disabled={row.status !== "Received"}
+                  disabled={row.status === "Cancelled"}
                   onClick={() => openModal(row.name, false)}
                 >
                   <IconPencil size={14} />
@@ -308,10 +300,10 @@ export function EarningsStatements() {
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
-              Earnings & Statements
+              Repayment Record
             </Title>
             <Text fz="sm" c="slate.5">
-              View and edit the earning schedule of received investments
+              View and edit the repayment schedule of investments
             </Text>
           </Stack>
         </Group>
@@ -528,15 +520,6 @@ export function EarningsStatements() {
         )}
       </Paper>
 
-      {selectedId && (
-        <EarningsStatementsModal
-          key={modalKey}
-          opened={modalOpened}
-          onClose={() => setModalOpened(false)}
-          investorFlowId={selectedId}
-          readOnly={modalReadOnly}
-        />
-      )}
 
     </Stack>
   );
