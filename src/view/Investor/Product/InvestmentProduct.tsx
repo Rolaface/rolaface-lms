@@ -103,7 +103,10 @@ function StatusBadge({ active }: { active: boolean }) {
         <Box
           w={6}
           h={6}
-          style={{ borderRadius: "50%", background: `var(--mantine-color-${scale}-6)` }}
+          style={{
+            borderRadius: "50%",
+            background: `var(--mantine-color-${scale}-6)`,
+          }}
         />
       }
     >
@@ -114,10 +117,16 @@ function StatusBadge({ active }: { active: boolean }) {
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
- 
-const RIGHT_ALIGNED = ["rate", "tenureMonths", "rateRange", "amountRange", "tenureRange", "actions"];
+const RIGHT_ALIGNED = [
+  "rate",
+  "tenureMonths",
+  "rateRange",
+  "amountRange",
+  "tenureRange",
+  "actions",
+];
 
- function statusToDisabledParam(status: string): 0 | 1 | undefined {
+function statusToDisabledParam(status: string): 0 | 1 | undefined {
   if (status === "active") return 0;
   if (status === "disabled") return 1;
   return undefined;
@@ -127,8 +136,8 @@ const RIGHT_ALIGNED = ["rate", "tenureMonths", "rateRange", "amountRange", "tenu
 export function InvestmentProduct() {
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
- const companyCurrency = useCompanyStore((state) => state.baseCurrency);
-const currencyReady = useCurrencyReady();
+  const companyCurrency = useCompanyStore((state) => state.baseCurrency);
+  const currencyReady = useCurrencyReady();
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebouncedValue(searchInput, 400);
   const [frequencyFilter, setFrequencyFilter] = useState<string[]>([]);
@@ -145,7 +154,11 @@ const currencyReady = useCurrencyReady();
     setPage(1);
   }, [debouncedSearch, disabledParam, frequencyFilter]);
 
-  const { data: productsResponse, isLoading, isFetching } = useQuery({
+  const {
+    data: productsResponse,
+    isLoading,
+    isFetching,
+  } = useQuery({
     queryKey: [
       "investmentProducts",
       debouncedSearch,
@@ -154,8 +167,7 @@ const currencyReady = useCurrencyReady();
       page,
       pageSize,
     ],
-    queryFn: () =>
-      getAllInvestmentProduct(),
+    queryFn: () => getAllInvestmentProduct(),
     placeholderData: (prev) => prev,
   });
 
@@ -183,7 +195,10 @@ const currencyReady = useCurrencyReady();
     mutationFn: (id: string) => enableInvestmentProduct(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["investmentProducts"] });
-      showSuccess("Product Activated", "Product has been marked active successfully.");
+      showSuccess(
+        "Product Activated",
+        "Product has been marked active successfully.",
+      );
     },
     onError: (error: any) => showError("Status Update Failed", error),
   });
@@ -192,7 +207,10 @@ const currencyReady = useCurrencyReady();
     mutationFn: (id: string) => disableInvestmentProduct(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["investmentProducts"] });
-      showSuccess("Product Marked Inactive", "Product has been marked inactive successfully.");
+      showSuccess(
+        "Product Marked Inactive",
+        "Product has been marked inactive successfully.",
+      );
     },
     onError: (error: any) => showError("Status Update Failed", error),
   });
@@ -271,7 +289,10 @@ const currencyReady = useCurrencyReady();
 
   const data = useMemo<ProductRow[]>(() => {
     const list =
-      productsResponse?.data || productsResponse?.message?.data || productsResponse || [];
+      productsResponse?.data ||
+      productsResponse?.message?.data ||
+      productsResponse ||
+      [];
     if (!Array.isArray(list)) return [];
     return list.map((item: any) => ({
       id: item.name,
@@ -359,8 +380,13 @@ const currencyReady = useCurrencyReady();
               whiteSpace: "nowrap",
             }}
           >
-            {formatAmount(companyCurrency, info.row.original.minAmount, { withSymbol: true })} –{" "}
-            {formatAmount(companyCurrency, info.row.original.maxAmount, { withSymbol: true })}
+            {formatAmount(companyCurrency, info.row.original.minAmount, {
+              withSymbol: true,
+            })}{" "}
+            –{" "}
+            {formatAmount(companyCurrency, info.row.original.maxAmount, {
+              withSymbol: true,
+            })}
           </Text>
         ),
       }),
@@ -389,7 +415,12 @@ const currencyReady = useCurrencyReady();
           const row = info.row.original;
           const isTogglingStatus = isEnabling || isDisabling;
           return (
-            <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
+            <Group
+              justify="flex-end"
+              gap={4}
+              wrap="nowrap"
+              className="lms-row-actions"
+            >
               <Tooltip label="View" withArrow>
                 <ActionIcon
                   size="sm"
@@ -412,7 +443,10 @@ const currencyReady = useCurrencyReady();
                   radius="md"
                   onClick={(e) => {
                     e.stopPropagation();
-                    investmentProductModal.open({ editId: row.id, isView: false });
+                    investmentProductModal.open({
+                      editId: row.id,
+                      isView: false,
+                    });
                   }}
                 >
                   <IconPencil size={14} />
@@ -500,14 +534,19 @@ const currencyReady = useCurrencyReady();
               justifyContent: "center",
             }}
           >
-            <IconPackage size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconPackage
+              size={20}
+              color="var(--mantine-color-white)"
+              stroke={1.8}
+            />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
               Investment Products
             </Title>
             <Text fz="sm" c="slate.5">
-              Defaults new investments start with, and the limits they must stay within
+              Defaults new investments start with, and the limits they must stay
+              within
             </Text>
           </Stack>
         </Group>
@@ -581,7 +620,9 @@ const currencyReady = useCurrencyReady();
               boxShadow: theme.other.brandGlowShadowSm,
             }}
             leftSection={<IconPlus size={14} />}
-            onClick={() => investmentProductModal.open({ editId: null, isView: false })}
+            onClick={() =>
+              investmentProductModal.open({ editId: null, isView: false })
+            }
           >
             Add Product
           </Button>
@@ -653,7 +694,9 @@ const currencyReady = useCurrencyReady();
                                 header.getContext(),
                               )}
                               {canSort && (
-                                <SortIcon sorted={header.column.getIsSorted()} />
+                                <SortIcon
+                                  sorted={header.column.getIsSorted()}
+                                />
                               )}
                             </Group>
                           </Table.Th>
@@ -666,7 +709,10 @@ const currencyReady = useCurrencyReady();
                 <Table.Tbody>
                   {rows.length === 0 ? (
                     <Table.Tr>
-                      <Table.Td colSpan={columns.length} style={{ border: "none" }}>
+                      <Table.Td
+                        colSpan={columns.length}
+                        style={{ border: "none" }}
+                      >
                         <Stack align="center" gap="xs" py="xl">
                           <Box
                             style={{

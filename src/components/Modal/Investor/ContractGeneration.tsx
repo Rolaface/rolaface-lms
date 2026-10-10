@@ -80,7 +80,8 @@ export function ContractGeneration({
   const pdfPreview = usePdfPreview();
   const pdfName = contractPdfName(state);
 
-  const buildPdf = () => buildContractPdfFromState(state, schedule, theme, companyCurrency);
+  const buildPdf = () =>
+    buildContractPdfFromState(state, schedule, theme, companyCurrency);
 
   const handleViewPdf = () => {
     const doc = buildPdf();

@@ -1,8 +1,19 @@
 /* Left sidebar of the Investor 360 view: investor identity, Overview, Investments, Statement and Profile. */
 import { useState, type ReactNode } from "react";
-import { ActionIcon, Avatar, Box, Progress, ScrollArea, Text, TextInput, Tooltip } from "@mantine/core";
+import {
+  ActionIcon,
+  Badge,
+  Avatar,
+  Box,
+  Progress,
+  ScrollArea,
+  Text,
+  TextInput,
+  Tooltip,
+} from "@mantine/core";
 import {
   IconArrowLeft,
+  IconBell,
   IconChartPie,
   IconChevronLeft,
   IconChevronRight,
@@ -18,6 +29,8 @@ import { initialsOf, useMoney, type InvestorViewSelection } from "./format";
 
 interface Props {
   portfolio: InvestorPortfolio;
+  /** Emails sent to the investor (Notifications section badge). */
+  notificationCount: number;
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onBack: () => void;
@@ -31,12 +44,14 @@ function NavButton({
   hint,
   active,
   onClick,
+  count,
 }: {
   icon: ReactNode;
   label: string;
   hint: string;
   active: boolean;
   onClick: () => void;
+  count?: number;
 }) {
   return (
     <button
@@ -45,8 +60,14 @@ function NavButton({
       className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all"
       style={
         active
-          ? { backgroundColor: themeTokens.primarySoft, color: themeTokens.primary }
-          : { backgroundColor: "var(--mantine-color-white)", color: "var(--mantine-color-slate-6)" }
+          ? {
+              backgroundColor: themeTokens.primarySoft,
+              color: themeTokens.primary,
+            }
+          : {
+              backgroundColor: "var(--mantine-color-white)",
+              color: "var(--mantine-color-slate-6)",
+            }
       }
     >
       {icon}
@@ -58,18 +79,33 @@ function NavButton({
           {hint}
         </Text>
       </div>
+      {!!count && (
+        <Badge size="xs" variant="filled" color="brand" radius="xl">
+          {count}
+        </Badge>
+      )}
     </button>
   );
 }
 
-export function InvestorSidebar({ portfolio, collapsed, onToggleCollapsed, onBack, selected, onSelect }: Props) {
+export function InvestorSidebar({
+  portfolio,
+  notificationCount,
+  collapsed,
+  onToggleCollapsed,
+  onBack,
+  selected,
+  onSelect,
+}: Props) {
   const money = useMoney();
   const [search, setSearch] = useState("");
   const { investor, investments } = portfolio;
   const q = search.trim().toLowerCase();
   const shown = q
     ? investments.filter(
-        (i) => i.name.toLowerCase().includes(q) || i.investment_product_name.toLowerCase().includes(q),
+        (i) =>
+          i.name.toLowerCase().includes(q) ||
+          i.investment_product_name.toLowerCase().includes(q),
       )
     : investments;
 
@@ -89,7 +125,12 @@ export function InvestorSidebar({ portfolio, collapsed, onToggleCollapsed, onBac
   );
 
   if (collapsed) {
-    const iconButton = (label: string, active: boolean, icon: ReactNode, onClick: () => void) => (
+    const iconButton = (
+      label: string,
+      active: boolean,
+      icon: ReactNode,
+      onClick: () => void,
+    ) => (
       <Tooltip label={label} position="right" withArrow>
         <ActionIcon
           variant={active ? "light" : "subtle"}
@@ -104,27 +145,57 @@ export function InvestorSidebar({ portfolio, collapsed, onToggleCollapsed, onBac
     );
     return (
       <div className="flex flex-col items-center w-14 shrink-0 h-screen sticky top-0 border-r border-[var(--mantine-color-slate-2)] bg-white py-3 gap-1">
-        <ActionIcon variant="subtle" color="gray" radius="xl" size={34} onClick={onToggleCollapsed} className="mb-2">
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          radius="xl"
+          size={34}
+          onClick={onToggleCollapsed}
+          className="mb-2"
+        >
           <IconChevronRight size={17} />
         </ActionIcon>
         <Box mb={8}>{avatar(32)}</Box>
-        {iconButton("Overview", selected.type === "overview", <IconChartPie size={16} />, () =>
-          onSelect({ type: "overview" }),
+        {iconButton(
+          "Overview",
+          selected.type === "overview",
+          <IconChartPie size={16} />,
+          () => onSelect({ type: "overview" }),
         )}
         {iconButton(
           `Investments (${investments.length})`,
           selected.type === "investment",
           <IconReportMoney size={16} />,
-          () => investments[0] && onSelect({ type: "investment", id: investments[0].name }),
+          () =>
+            investments[0] &&
+            onSelect({ type: "investment", id: investments[0].name }),
         )}
-        {iconButton("Statement", selected.type === "statement", <IconFileInvoice size={16} />, () =>
-          onSelect({ type: "statement" }),
+        {iconButton(
+          "Statement",
+          selected.type === "statement",
+          <IconFileInvoice size={16} />,
+          () => onSelect({ type: "statement" }),
         )}
-        {iconButton("Profile", selected.type === "profile", <IconUser size={16} />, () =>
-          onSelect({ type: "profile" }),
+        {iconButton(
+          "Profile",
+          selected.type === "profile",
+          <IconUser size={16} />,
+          () => onSelect({ type: "profile" }),
+        )}
+        {iconButton(
+          `Notifications (${notificationCount})`,
+          selected.type === "notifications",
+          <IconBell size={16} />,
+          () => onSelect({ type: "notifications" }),
         )}
         <div className="flex-1" />
-        <ActionIcon variant="subtle" color="gray" radius="xl" size={32} onClick={onBack}>
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          radius="xl"
+          size={32}
+          onClick={onBack}
+        >
           <IconArrowLeft size={14} />
         </ActionIcon>
       </div>
@@ -140,7 +211,13 @@ export function InvestorSidebar({ portfolio, collapsed, onToggleCollapsed, onBac
         <Text fz={11} fw={600} c="slate.5">
           Investments
         </Text>
-        <ActionIcon variant="subtle" color="slate" size="sm" className="ml-auto" onClick={onToggleCollapsed}>
+        <ActionIcon
+          variant="subtle"
+          color="slate"
+          size="sm"
+          className="ml-auto"
+          onClick={onToggleCollapsed}
+        >
           <IconChevronLeft size={14} />
         </ActionIcon>
       </div>
@@ -203,6 +280,14 @@ export function InvestorSidebar({ portfolio, collapsed, onToggleCollapsed, onBac
           active={selected.type === "profile"}
           onClick={() => onSelect({ type: "profile" })}
         />
+        <NavButton
+          icon={<IconBell size={14} />}
+          label="Notifications"
+          hint="Contracts and statements sent"
+          active={selected.type === "notifications"}
+          onClick={() => onSelect({ type: "notifications" })}
+          count={notificationCount}
+        />
       </div>
 
       {/* Investments (contracts) */}
@@ -225,11 +310,19 @@ export function InvestorSidebar({ portfolio, collapsed, onToggleCollapsed, onBac
           onChange={(e) => setSearch(e.currentTarget.value)}
         />
       </div>
-      <ScrollArea className="flex-1" type="hover" scrollbarSize={5} offsetScrollbars>
+      <ScrollArea
+        className="flex-1"
+        type="hover"
+        scrollbarSize={5}
+        offsetScrollbars
+      >
         <div className="px-2 pb-3 flex flex-col gap-1.5">
           {shown.map((inv) => {
-            const active = selected.type === "investment" && selected.id === inv.name;
-            const progress = inv.payouts_total ? (inv.payouts_done / inv.payouts_total) * 100 : 0;
+            const active =
+              selected.type === "investment" && selected.id === inv.name;
+            const progress = inv.payouts_total
+              ? (inv.payouts_done / inv.payouts_total) * 100
+              : 0;
             return (
               <button
                 key={inv.name}
@@ -237,12 +330,19 @@ export function InvestorSidebar({ portfolio, collapsed, onToggleCollapsed, onBac
                 onClick={() => onSelect({ type: "investment", id: inv.name })}
                 className="w-full rounded-lg px-2.5 py-2 text-left transition-all"
                 style={{
-                  backgroundColor: active ? themeTokens.primarySoft : "var(--mantine-color-white)",
+                  backgroundColor: active
+                    ? themeTokens.primarySoft
+                    : "var(--mantine-color-white)",
                   border: `1px solid ${active ? "var(--mantine-color-brand-2)" : "var(--mantine-color-slate-1)"}`,
                 }}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <Text fz={11} fw={700} c={active ? "brand.7" : "slate.8"} truncate>
+                  <Text
+                    fz={11}
+                    fw={700}
+                    c={active ? "brand.7" : "slate.8"}
+                    truncate
+                  >
                     {inv.name}
                   </Text>
                   <StatusBadge status={inv.status} size="xs" />
@@ -258,7 +358,13 @@ export function InvestorSidebar({ portfolio, collapsed, onToggleCollapsed, onBac
                     {inv.payouts_done}/{inv.payouts_total} payouts
                   </Text>
                 </div>
-                <Progress value={progress} size={3} radius="xl" color="success" mt={4} />
+                <Progress
+                  value={progress}
+                  size={3}
+                  radius="xl"
+                  color="success"
+                  mt={4}
+                />
               </button>
             );
           })}

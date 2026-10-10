@@ -58,6 +58,7 @@ import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { formatAmount } from "../../../store/currencyStore";
 import { useCompanyStore } from "../../../store/companyStore";
 import { renewalModal } from "../../../components/Modal/Investor/Renewal/renewalModalStore";
+import { formatInvestorDate } from "../../../components/Modal/Investor/investorDate";
 
 const columnHelper = createColumnHelper<RenewalListItem>();
 
@@ -114,14 +115,7 @@ function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-const fmtDate = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : "-";
+const fmtDate = (iso: string | null) => formatInvestorDate(iso);
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
@@ -564,8 +558,8 @@ export function Renewal() {
               Renewal
             </Title>
             <Text fz="sm" c="slate.5">
-              Renew investments at expiry or during the contract; approving a renewal posts its entry and
-              starts the new schedule
+              Renew investments at expiry or during the contract; approving a
+              renewal posts its entry and starts the new schedule
             </Text>
           </Stack>
         </Group>

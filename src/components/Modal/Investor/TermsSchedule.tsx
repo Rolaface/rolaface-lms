@@ -25,6 +25,7 @@ import {
 } from "./InvestorModalShared";
 import { formatAmount, getSymbol } from "../../../store/currencyStore";
 import { useCompanyStore } from "../../../store/companyStore";
+import { InvestorDateInput } from "./InvestorDateInput";
 
 export function TermsSchedule({
   state,
@@ -127,21 +128,19 @@ export function TermsSchedule({
             value={state.frequency}
             onChange={handleFrequencyChange}
           />
-          <TextInput
-            type="date"
+          <InvestorDateInput
             label="First repayment date"
             size="sm"
             radius="md"
             value={state.firstRepayment}
-            onChange={(e) => update({ firstRepayment: e.currentTarget.value })}
+            onChange={(value) => update({ firstRepayment: value })}
           />
-          <TextInput
-            type="date"
+          <InvestorDateInput
             label="Maturity date"
             size="sm"
             radius="md"
             value={state.maturity}
-            onChange={(e) => update({ maturity: e.currentTarget.value })}
+            onChange={(value) => update({ maturity: value })}
           />
           <Stack gap={6} justify="flex-end">
             <Checkbox

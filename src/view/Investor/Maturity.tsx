@@ -45,13 +45,22 @@ import type {
 import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { maturityModal } from "../../components/Modal/Investor/maturityModalStore";
+import { formatInvestorDate } from "../../components/Modal/Investor/investorDate";
 
 const columnHelper = createColumnHelper<InvestorMaturityListItem>();
 
 const VIEWS: { value: InvestorMaturityView; label: string; empty: string }[] = [
-  { value: "due", label: "Due", empty: "No investments have reached maturity." },
+  {
+    value: "due",
+    label: "Due",
+    empty: "No investments have reached maturity.",
+  },
   { value: "upcoming", label: "Upcoming", empty: "No upcoming maturities." },
-  { value: "closed", label: "Closed", empty: "No redeemed or renewed investments yet." },
+  {
+    value: "closed",
+    label: "Closed",
+    empty: "No redeemed or renewed investments yet.",
+  },
 ];
 
 const STATUS_COLOR: Record<string, string> = {
@@ -69,18 +78,16 @@ function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-const fmtDate = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : "-";
+const fmtDate = (iso: string | null) => formatInvestorDate(iso);
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-const RIGHT_ALIGNED = ["amount_invested", "rate_of_interest", "outstanding", "actions"];
+const RIGHT_ALIGNED = [
+  "amount_invested",
+  "rate_of_interest",
+  "outstanding",
+  "actions",
+];
 
 export function Maturity() {
   const theme = useMantineTheme();
@@ -101,8 +108,19 @@ export function Maturity() {
   }, [view, debouncedSearch, productFilter]);
 
   /* ------------------------------- Data ------------------------------- */
-  const { data: maturityResponse, isLoading, isFetching } = useQuery({
-    queryKey: ["investorMaturities", view, debouncedSearch, productFilter, page, pageSize],
+  const {
+    data: maturityResponse,
+    isLoading,
+    isFetching,
+  } = useQuery({
+    queryKey: [
+      "investorMaturities",
+      view,
+      debouncedSearch,
+      productFilter,
+      page,
+      pageSize,
+    ],
     queryFn: () =>
       getInvestorMaturities({
         view,
@@ -217,7 +235,8 @@ export function Maturity() {
         ),
       }),
       columnHelper.accessor(
-        (row) => Number(row.outstanding_principal) + Number(row.outstanding_interest),
+        (row) =>
+          Number(row.outstanding_principal) + Number(row.outstanding_interest),
         {
           id: "outstanding",
           header: "Still Owed",
@@ -248,7 +267,11 @@ export function Maturity() {
                 color={STATUS_COLOR[row.status] ?? "slate"}
                 styles={{ root: { textTransform: "none", fontWeight: 700 } }}
               >
-                {row.status === "Received" ? (row.is_due ? "Due" : "Active") : row.status}
+                {row.status === "Received"
+                  ? row.is_due
+                    ? "Due"
+                    : "Active"
+                  : row.status}
               </Badge>
               {row.renewed_to && (
                 <Text fz={10} c="slate.5">
@@ -343,7 +366,11 @@ export function Maturity() {
               justifyContent: "center",
             }}
           >
-            <IconHourglass size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconHourglass
+              size={20}
+              color="var(--mantine-color-white)"
+              stroke={1.8}
+            />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
@@ -471,7 +498,9 @@ export function Maturity() {
                                 header.getContext(),
                               )}
                               {canSort && (
-                                <SortIcon sorted={header.column.getIsSorted()} />
+                                <SortIcon
+                                  sorted={header.column.getIsSorted()}
+                                />
                               )}
                             </Group>
                           </Table.Th>
@@ -484,7 +513,10 @@ export function Maturity() {
                 <Table.Tbody>
                   {rows.length === 0 ? (
                     <Table.Tr>
-                      <Table.Td colSpan={columns.length} style={{ border: "none" }}>
+                      <Table.Td
+                        colSpan={columns.length}
+                        style={{ border: "none" }}
+                      >
                         <Stack align="center" gap="xs" py="xl">
                           <Box
                             style={{
@@ -498,7 +530,10 @@ export function Maturity() {
                               border: "1px solid var(--mantine-color-slate-2)",
                             }}
                           >
-                            <IconHourglass size={24} color="var(--mantine-color-slate-4)" />
+                            <IconHourglass
+                              size={24}
+                              color="var(--mantine-color-slate-4)"
+                            />
                           </Box>
                           <Text ta="center" c="slate.5" fz="xs">
                             {VIEWS.find((v) => v.value === view)?.empty}
@@ -519,12 +554,16 @@ export function Maturity() {
                               borderLeft:
                                 idx === 0
                                   ? `3px solid var(--mantine-color-${
-                                      STATUS_COLOR[row.original.status] ?? "slate"
+                                      STATUS_COLOR[row.original.status] ??
+                                      "slate"
                                     }-4)`
                                   : undefined,
                             }}
                           >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
                           </Table.Td>
                         ))}
                       </Table.Tr>
@@ -575,8 +614,6 @@ export function Maturity() {
           </>
         )}
       </Paper>
-
-
     </Stack>
   );
 }

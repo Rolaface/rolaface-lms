@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  ActionIcon,
   Alert,
   Badge,
   Box,
@@ -16,7 +17,6 @@ import {
   Switch,
   Table,
   Text,
-  TextInput,
   ThemeIcon,
   Timeline,
   Tooltip,
@@ -36,7 +36,7 @@ import {
   type InvestorEarningScheduleRow,
   type InvestorScheduleVersion,
 } from "../../../types/Investor/investorFlow";
-import { IconHistory, IconReceipt2 } from "@tabler/icons-react";
+import { IconHistory, IconMail, IconReceipt2 } from "@tabler/icons-react";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { openCommonModal } from "../AlertModal";
 import {
@@ -51,6 +51,8 @@ import {
 import { StageShell } from "./StageShell";
 import { formatAmount } from "../../../store/currencyStore";
 import { useCompanyStore } from "../../../store/companyStore";
+import { InvestorDateInput } from "./InvestorDateInput";
+import { PaymentStatementMailDialog } from "./Statements/StatementMailDialog";
 
 const ROWS_PER_PAGE = 10;
 
@@ -116,6 +118,8 @@ interface EarningsStatementsProps {
   onPay?: (row: InvestorEarningScheduleRow) => void;
   /** Opens the accounting of a paid row (its payout Journal Entry). */
   onViewAccounting?: (row: InvestorEarningScheduleRow) => void;
+  /** Emails the payment statement of a paid row. */
+  onSendStatement?: (row: InvestorEarningScheduleRow) => void;
   /** Why Pay is disabled (e.g. unsaved changes), or "". */
   payDisabledReason?: string;
   /** Row being paid. */
@@ -566,6 +570,7 @@ function EarningsStatements({
   onChange,
   onPay,
   onViewAccounting,
+  onSendStatement,
   payDisabledReason = "",
   payingRow = null,
   version = 1,
@@ -719,7 +724,9 @@ function EarningsStatements({
                         Total payment
                       </Table.Th>
                       <Table.Th style={TH_STYLE}>Status</Table.Th>
-                      {(onPay || onViewAccounting) && <Table.Th />}
+                      {(onPay || onViewAccounting || onSendStatement) && (
+                        <Table.Th />
+                      )}
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
@@ -728,19 +735,18 @@ function EarningsStatements({
                         <Table.Td>{row.idx}</Table.Td>
                         <Table.Td miw={140}>
                           {cellEditable(row, "payment_date") ? (
-                            <TextInput
-                              type="date"
+                            <InvestorDateInput
                               size="xs"
                               radius="md"
                               value={row.payment_date ?? ""}
-                              onChange={(e) =>
+                              onChange={(value) =>
                                 setRow(row.name, {
-                                  payment_date: e.currentTarget.value,
+                                  payment_date: value,
                                 })
                               }
                             />
                           ) : (
-                            row.payment_date
+                            fmtDate(row.payment_date)
                           )}
                         </Table.Td>
                         <Table.Td miw={110}>
@@ -765,8 +771,23 @@ function EarningsStatements({
                             {row.status ?? "Pending"}
                           </Badge>
                         </Table.Td>
-                        {(onPay || onViewAccounting) && (
-                          <Table.Td ta="right">
+                        {(onPay || onViewAccounting || onSendStatement) && (
+                          <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}>
+                            {row.status === "Paid" && onSendStatement && (
+                              <Tooltip label="Send payment statement" withArrow>
+                                <ActionIcon
+                                  size="sm"
+                                  radius="xl"
+                                  variant="light"
+                                  color="success"
+                                  mr={6}
+                                  aria-label="Send payment statement"
+                                  onClick={() => onSendStatement(row)}
+                                >
+                                  <IconMail size={13} />
+                                </ActionIcon>
+                              </Tooltip>
+                            )}
                             {row.status === "Paid" &&
                               row.payout_entry &&
                               onViewAccounting && (
@@ -937,6 +958,8 @@ export function EarningsStatementsModal({
   onSaved,
   onMinimize,
 }: EarningsStatementsModalProps) {
+  // Payment statement email: kept here, not in EarningsStage, which remounts when the schedule reloads.
+  const [statementRow, setStatementRow] = useState<string | null>(null);
   const earningQuery = useQuery({
     queryKey: ["investorEarning", investorFlowId],
     queryFn: () => getInvestorEarningById(investorFlowId),
@@ -950,17 +973,27 @@ export function EarningsStatementsModal({
 
   if (earningQuery.data && flowQuery.data) {
     return (
-      <EarningsStage
-        key={earningQuery.dataUpdatedAt}
-        opened={opened}
-        onClose={onClose}
-        onMinimize={onMinimize}
-        investorFlowId={investorFlowId}
-        readOnly={readOnly}
-        onSaved={onSaved}
-        earning={earningQuery.data}
-        flowState={flowQuery.data}
-      />
+      <>
+        <EarningsStage
+          key={earningQuery.dataUpdatedAt}
+          onSendStatement={setStatementRow}
+          opened={opened}
+          onClose={onClose}
+          onMinimize={onMinimize}
+          investorFlowId={investorFlowId}
+          readOnly={readOnly}
+          onSaved={onSaved}
+          earning={earningQuery.data}
+          flowState={flowQuery.data}
+        />
+        {statementRow && (
+          <PaymentStatementMailDialog
+            investmentId={investorFlowId}
+            rowName={statementRow}
+            onClose={() => setStatementRow(null)}
+          />
+        )}
+      </>
     );
   }
 
@@ -996,8 +1029,11 @@ function EarningsStage({
   onSaved,
   earning,
   flowState,
+  onSendStatement,
 }: Omit<EarningsStatementsModalProps, "readOnly"> & {
   readOnly: boolean;
+  /** Opens the payment statement email for a paid row (kept by the parent). */
+  onSendStatement: (rowName: string) => void;
   earning: InvestorEarning;
   flowState: ModalState;
 }) {
@@ -1055,13 +1091,8 @@ function EarningsStage({
       }),
     onSuccess: (_data, row) => {
       refreshEarning();
-      openCommonModal({
-        heading: "Payout Posted",
-        subtitle: "",
-        body: `Payout of ${fmtAmount(Number(row.total_payment) || 0)} for row ${row.idx} has been posted successfully.`,
-        color: "green",
-        buttons: [{ label: "Close", color: "green" }],
-      });
+      // The Payment Statement email dialog opens (it shows the payout too).
+      onSendStatement(row.name);
     },
     onError: (error: any) => showFailure("Payout Failed", error),
   });
@@ -1070,7 +1101,7 @@ function EarningsStage({
     openCommonModal({
       heading: "Pay Schedule Row",
       subtitle: "Please confirm this action before continuing.",
-      body: `Pay ${fmtAmount(Number(row.total_payment) || 0)} for row ${row.idx} (due ${row.payment_date}) from the Company Bank Account, dated today?`,
+      body: `Pay ${fmtAmount(Number(row.total_payment) || 0)} for row ${row.idx} (due ${fmtDate(row.payment_date)}) from the Company Bank Account, dated today?`,
       color: "green",
       buttons: [
         { label: "Cancel", variant: "default" },
@@ -1202,6 +1233,7 @@ function EarningsStage({
           currentRows={earning.schedule}
           onChange={editable ? setDraft : undefined}
           onPay={canPay && !allPaid ? confirmPay : undefined}
+          onSendStatement={(row) => onSendStatement(row.name)}
           onViewAccounting={(row) => {
             // Investor 360: this investment's Repayments, with the payout's accounting open.
             const params = new URLSearchParams({

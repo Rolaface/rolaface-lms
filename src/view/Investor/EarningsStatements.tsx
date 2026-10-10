@@ -43,6 +43,7 @@ import type { InvestorEarningListItem } from "../../types/Investor/investorFlow"
 import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { earningsStatementsModal } from "../../components/Modal/Investor/earningsStatementsModalStore";
+import { formatInvestorDate } from "../../components/Modal/Investor/investorDate";
 
 const columnHelper = createColumnHelper<InvestorEarningListItem>();
 
@@ -55,14 +56,7 @@ function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-const fmtDate = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : "-";
+const fmtDate = (iso: string | null) => formatInvestorDate(iso);
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
@@ -86,8 +80,18 @@ export function EarningsStatements() {
   }, [debouncedSearch, productFilter]);
 
   /* ------------------------------- Data ------------------------------- */
-  const { data: earningsResponse, isLoading, isFetching } = useQuery({
-    queryKey: ["investorEarnings", debouncedSearch, productFilter, page, pageSize],
+  const {
+    data: earningsResponse,
+    isLoading,
+    isFetching,
+  } = useQuery({
+    queryKey: [
+      "investorEarnings",
+      debouncedSearch,
+      productFilter,
+      page,
+      pageSize,
+    ],
     queryFn: () =>
       getInvestorEarnings({
         search: debouncedSearch.trim() || undefined,
@@ -212,10 +216,27 @@ export function EarningsStatements() {
         header: "Payment Status",
         cell: (info) => {
           const value = info.getValue();
-          if (!value) return <Text fz="xs" c="slate.4">-</Text>;
-          const color = { Pending: "slate", Paid: "success", Renewed: "brand", Expired: "danger" }[value] ?? "slate";
+          if (!value)
+            return (
+              <Text fz="xs" c="slate.4">
+                -
+              </Text>
+            );
+          const color =
+            {
+              Pending: "slate",
+              Paid: "success",
+              Renewed: "brand",
+              Expired: "danger",
+            }[value] ?? "slate";
           return (
-            <Badge variant="light" size="sm" radius="xl" color={color} styles={{ root: { textTransform: "none", fontWeight: 700 } }}>
+            <Badge
+              variant="light"
+              size="sm"
+              radius="xl"
+              color={color}
+              styles={{ root: { textTransform: "none", fontWeight: 700 } }}
+            >
               {value}
             </Badge>
           );
@@ -258,9 +279,15 @@ export function EarningsStatements() {
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color={row.status !== "Cancelled" && row.payment_status !== "Paid" ? "brand" : "slate"}
+                  color={
+                    row.status !== "Cancelled" && row.payment_status !== "Paid"
+                      ? "brand"
+                      : "slate"
+                  }
                   radius="md"
-                  disabled={row.status === "Cancelled" || row.payment_status === "Paid"}
+                  disabled={
+                    row.status === "Cancelled" || row.payment_status === "Paid"
+                  }
                   onClick={() => openModal(row.name, false)}
                 >
                   <IconPencil size={14} />
@@ -317,7 +344,11 @@ export function EarningsStatements() {
               justifyContent: "center",
             }}
           >
-            <IconMoneybagPlus size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconMoneybagPlus
+              size={20}
+              color="var(--mantine-color-white)"
+              stroke={1.8}
+            />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
@@ -438,7 +469,9 @@ export function EarningsStatements() {
                                 header.getContext(),
                               )}
                               {canSort && (
-                                <SortIcon sorted={header.column.getIsSorted()} />
+                                <SortIcon
+                                  sorted={header.column.getIsSorted()}
+                                />
                               )}
                             </Group>
                           </Table.Th>
@@ -451,7 +484,10 @@ export function EarningsStatements() {
                 <Table.Tbody>
                   {rows.length === 0 ? (
                     <Table.Tr>
-                      <Table.Td colSpan={columns.length} style={{ border: "none" }}>
+                      <Table.Td
+                        colSpan={columns.length}
+                        style={{ border: "none" }}
+                      >
                         <Stack align="center" gap="xs" py="xl">
                           <Box
                             style={{
@@ -465,7 +501,10 @@ export function EarningsStatements() {
                               border: "1px solid var(--mantine-color-slate-2)",
                             }}
                           >
-                            <IconFileText size={24} color="var(--mantine-color-slate-4)" />
+                            <IconFileText
+                              size={24}
+                              color="var(--mantine-color-slate-4)"
+                            />
                           </Box>
                           <Text ta="center" c="slate.5" fz="xs">
                             No received investments match your filters.
@@ -489,7 +528,10 @@ export function EarningsStatements() {
                                   : undefined,
                             }}
                           >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
                           </Table.Td>
                         ))}
                       </Table.Tr>
@@ -540,8 +582,6 @@ export function EarningsStatements() {
           </>
         )}
       </Paper>
-
-
     </Stack>
   );
 }
