@@ -179,6 +179,54 @@ export function LoanTransfer() {
     });
   };
 
+  const handleViewTransfer = (row: TransferRow) => {
+    loanTransferModal.open({
+      editData: {
+        transferDate: row.transferDate,
+        fromBranch: row.fromBranch,
+        toBranch: row.toBranch,
+        loans: Array.from({ length: Math.max(row.loansCount, 1) }, (_, i) => ({
+          rowId: i + 1,
+          loanId: `ACC-LOAN-2026-${String(i + 1).padStart(5, '0')}`,
+          applicant: 'Mwansa Chileshe',
+        })),
+      },
+      isView: true,
+    });
+  };
+
+  const handleEditTransfer = (row: TransferRow) => {
+    loanTransferModal.open({
+      editData: {
+        transferDate: row.transferDate,
+        fromBranch: row.fromBranch,
+        toBranch: row.toBranch,
+        loans: Array.from({ length: Math.max(row.loansCount, 1) }, (_, i) => ({
+          rowId: i + 1,
+          loanId: `ACC-LOAN-2026-${String(i + 1).padStart(5, '0')}`,
+          applicant: 'Mwansa Chileshe',
+        })),
+      },
+      isView: false,
+      onSubmit: (formData) => {
+        setRowsData((prev) =>
+          prev.map((r) =>
+            r.id === row.id
+              ? {
+                  ...r,
+                  transferDate: formData.transferDate,
+                  fromBranch: formData.fromBranch,
+                  toBranch: formData.toBranch,
+                  loansCount: formData.loans.length,
+                }
+              : r
+          )
+        );
+        showSuccess('Transfer Updated', 'Loan transfer updated successfully.');
+      },
+    });
+  };
+
   const handleAddTransfer = (formData: LoanTransferFormData) => {
     try {
       setRowsData((prev) => [
@@ -262,9 +310,15 @@ export function LoanTransfer() {
           const row = info.row.original;
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap" className="lms-row-actions">
-              {canReadLoan && (
+              {(canReadLoan ?? true) && (
                 <Tooltip label="View" withArrow>
-                  <ActionIcon size="sm" variant="subtle" color="slate" radius="md">
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="slate"
+                    radius="md"
+                    onClick={() => handleViewTransfer(row)}
+                  >
                     <IconEye size={14} />
                   </ActionIcon>
                 </Tooltip>
@@ -276,7 +330,7 @@ export function LoanTransfer() {
                     variant="subtle"
                     color="brand"
                     radius="md"
-                    onClick={() => loanTransferModal.open({ onSubmit: handleAddTransfer })}
+                    onClick={() => handleEditTransfer(row)}
                   >
                     <IconPencil size={14} />
                   </ActionIcon>
@@ -532,7 +586,12 @@ export function LoanTransfer() {
               rows.map((row) => {
                 const cells = row.getVisibleCells();
                 return (
-                  <Table.Tr key={row.id} className="lms-row">
+                  <Table.Tr
+                    key={row.id}
+                    className="lms-row"
+                    onDoubleClick={() => handleViewTransfer(row.original)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {cells.map((cell, idx) => (
                       <Table.Td
                         key={cell.id}

@@ -6,11 +6,14 @@ import type { LoanTransferFormData } from "../../../components/Modal/LoanTransfe
 
 
 export interface LoanTransferModalParams {
+  editData?: LoanTransferFormData | null;
+  isView?: boolean;
   onSubmit?: (data: LoanTransferFormData) => void;
 }
 
-function getTitle() {
-  return "Loan Transfer";
+function getTitle(params: LoanTransferModalParams) {
+  if (params.isView) return "View Loan Transfer";
+  return params.editData ? "Update Loan Transfer" : "Loan Transfer";
 }
 
 export const loanTransferModal = createModal(
@@ -20,6 +23,8 @@ export const loanTransferModal = createModal(
     icon: IconArrowsExchange,
     getTitle,
     buildProps: (params: LoanTransferModalParams) => ({
+      editData: params.editData ?? null,
+      isView: params.isView ?? false,
       onSubmit: params.onSubmit,
     }),
   },
