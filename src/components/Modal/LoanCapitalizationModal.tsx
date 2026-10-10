@@ -556,7 +556,7 @@ export function LoanCapitalizationModal({ opened, onClose, onMinimize, onSubmit,
                   ? 'View Loan Capitalization'
                   : editId
                     ? 'Edit Loan Capitalization'
-                    : 'Add Capitalization'}
+                    : 'Process Capitalization'}
               </Text>
               <Text size="xs" fw={500} c="brand.1">
                 {isView
