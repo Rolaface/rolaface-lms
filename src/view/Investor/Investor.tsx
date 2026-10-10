@@ -51,6 +51,8 @@ import { parseFrappeError } from "../../utils/parseFrappeError";
 import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { InvestorView } from "./InvestorView/InvestorView";
+import type { InvestmentDetailTab } from "./InvestorView/InvestmentDetailPanel";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
 import { openCommonModal } from "../../components/Modal/AlertModal";
 import type { Frequency } from "../../components/Modal/Investor/InvestorModalShared";
@@ -141,7 +143,12 @@ export function Investor() {
   const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([]);
   const [page, setPage] = useState(1);
   // Investor 360 view: opened by the Eye button or a row double-click.
-  const [viewing, setViewing] = useState<{ investorId: string; investmentId: string } | null>(null);
+  const [viewing, setViewing] = useState<{
+    investorId: string;
+    investmentId: string;
+  } | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
@@ -258,7 +265,10 @@ export function Investor() {
     mutationFn: (id: string) => deleteInvestorFlow(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
-      showSuccess("Investment Deleted", "Investment has been deleted successfully.");
+      showSuccess(
+        "Investment Deleted",
+        "Investment has been deleted successfully.",
+      );
     },
     onError: (error: any) => showError("Delete Failed", error),
   });
@@ -473,14 +483,24 @@ export function Investor() {
 
           return (
             // Double-clicking an action button must not also open the Investor 360 view.
-            <Group justify="flex-end" gap={4} wrap="nowrap" onDoubleClick={(e) => e.stopPropagation()}>
+            <Group
+              justify="flex-end"
+              gap={4}
+              wrap="nowrap"
+              onDoubleClick={(e) => e.stopPropagation()}
+            >
               <Tooltip label="View" withArrow>
                 <ActionIcon
                   size="sm"
                   variant="subtle"
                   color="slate"
                   radius="md"
-                  onClick={() => setViewing({ investorId: row.customerId, investmentId: row.id })}
+                  onClick={() =>
+                    setViewing({
+                      investorId: row.customerId,
+                      investmentId: row.id,
+                    })
+                  }
                 >
                   <IconEye size={14} />
                 </ActionIcon>
@@ -588,12 +608,30 @@ export function Investor() {
     setPage(1);
   };
 
-  if (viewing) {
+  // Opened from elsewhere by link: ?investor=…&investment=…&tab=…&je=… (e.g. "View accounting" in Investor Payouts).
+  const linkParams = new URLSearchParams(location.searchStr);
+  const linked = linkParams.get("investor")
+    ? {
+        investorId: linkParams.get("investor") as string,
+        investmentId: linkParams.get("investment") ?? "",
+        tab: (linkParams.get("tab") as InvestmentDetailTab | null) ?? undefined,
+        journalEntry: linkParams.get("je"),
+      }
+    : null;
+  const shown = viewing ?? linked;
+
+  if (shown) {
     return (
       <InvestorView
-        investorId={viewing.investorId}
-        initialInvestment={viewing.investmentId}
-        onBack={() => setViewing(null)}
+        key={`${shown.investorId}-${shown.investmentId}-${linked?.journalEntry ?? ""}`}
+        investorId={shown.investorId}
+        initialInvestment={shown.investmentId}
+        initialTab={viewing ? undefined : linked?.tab}
+        initialJournalEntry={viewing ? null : (linked?.journalEntry ?? null)}
+        onBack={() => {
+          setViewing(null);
+          if (linked) navigate({ to: "/investor/investments" });
+        }}
       />
     );
   }
@@ -903,7 +941,6 @@ export function Investor() {
           </>
         )}
       </Paper>
-
     </Stack>
   );
 }

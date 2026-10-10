@@ -64,7 +64,7 @@ import {
   IconChartLine,
   IconPackage,
   IconCircleDot,
-  IconHourglass,
+  // IconHourglass, (Renewal item hidden)
   IconCategory,
   IconMinus,
   IconListNumbers,
@@ -324,9 +324,10 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
      subItems: [
       { path: "/investor/product", label: "Product", icon: IconPackage, modules: ["Loan"] },
       { path: "/investor/investments", label: "Investments", icon: IconCircleDot, modules: ["Loan"] },
-      { path: "/investor/record-fund", label: "Record Fund", icon: IconCash, modules: ["Loan"] },
-      { path: "/investor/earnings", label: "Repayment Record", icon: IconMoneybagPlus, modules: ["Loan"] },
-      { path: "/investor/maturity", label: "Maturity", icon: IconHourglass, modules: ["Loan"] },
+      { path: "/investor/record-fund", label: "Fund Receipt", icon: IconCash, modules: ["Loan"] },
+      { path: "/investor/earnings", label: "Investor Payouts", icon: IconMoneybagPlus, modules: ["Loan"] },
+      // Renewal: future scope, hidden for now.
+      // { path: "/investor/renewal", label: "Renewal", icon: IconHourglass, modules: ["Loan"] },
       { path: "/investor/settings", label: "Settings", icon: IconSettings, modules: ["Loan"] },
      ],
    },

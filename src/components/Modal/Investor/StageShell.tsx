@@ -176,6 +176,39 @@ export function StageSideNav({
   );
 }
 
+/** A label / value pair of the customer bar: small uppercase label over a bold value. */
+function BarItem({
+  label,
+  value,
+  large = false,
+}: {
+  label: string;
+  value: ReactNode;
+  large?: boolean;
+}) {
+  return (
+    <Box ta="right">
+      <Text
+        fz={10}
+        fw={600}
+        c="slate.5"
+        tt="uppercase"
+        style={{ letterSpacing: 0.5, whiteSpace: "nowrap" }}
+      >
+        {label}
+      </Text>
+      <Text
+        fw={700}
+        fz={large ? "md" : "sm"}
+        c="slate.8"
+        style={{ whiteSpace: "nowrap" }}
+      >
+        {value}
+      </Text>
+    </Box>
+  );
+}
+
 /* ------------------------------ Shell ------------------------------- */
 
 interface StageShellProps {
@@ -192,6 +225,8 @@ interface StageShellProps {
   sideNav?: ReactNode;
   /** Buttons shown on the right of the footer; "Close" is always on the left. */
   footer?: ReactNode;
+  /** Extra label / value pairs shown in the customer bar, before Amount. */
+  headerItems?: { label: string; value: ReactNode }[];
   children: ReactNode;
 }
 
@@ -205,6 +240,7 @@ export function StageShell({
   title = "New Investment",
   sideNav,
   footer,
+  headerItems = [],
   children,
 }: StageShellProps) {
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
@@ -307,50 +343,82 @@ export function StageShell({
 
       {/* Customer bar */}
       {customer && (
-        <Group
-          gap="sm"
-          wrap="nowrap"
-          px={18}
-          py={10}
-          style={{
-            flex: "none",
-            borderBottom: "1px solid var(--mantine-color-slate-2)",
-          }}
-        >
-          <Avatar color="brand" variant="light" radius="xl" size={34}>
-            {customer.name
-              .split(" ")
-              .map((w) => w[0])
-              .slice(0, 2)
-              .join("")}
-          </Avatar>
-          <Box>
-            <Text fw={700} fz="sm" c="slate.8">
-              {customer.name}
-            </Text>
-            <Text fz={11} c="slate.5">
-              {product ? product.name : "No product selected"}
-            </Text>
-          </Box>
-          <Group gap={18} ml="auto" wrap="nowrap">
-            <Box ta="right">
-              <Text fz={11} c="slate.5">
-                Amount
+        <Box px={18} pt={10} style={{ flex: "none" }}>
+          <Group
+            gap="sm"
+            wrap="nowrap"
+            px="md"
+            py={10}
+            style={{
+              borderRadius: "var(--mantine-radius-md)",
+              border: "1px solid var(--mantine-color-slate-2)",
+              background: "var(--mantine-color-white)",
+            }}
+          >
+            <Avatar color="brand" variant="light" radius="xl" size={34}>
+              {customer.name
+                .split(" ")
+                .map((w) => w[0])
+                .slice(0, 2)
+                .join("")}
+            </Avatar>
+            <Box style={{ minWidth: 0 }}>
+              <Text fw={700} fz="sm" c="slate.8" truncate>
+                {customer.name}
               </Text>
-              <Text fw={700} fz="sm" c="slate.8">
-                {state.amount ? fmtAmount(state.amount) : "—"}
+              <Text fz={11} c="brand.6" truncate>
+                {product ? product.name : "No product selected"}
               </Text>
             </Box>
-            <Box ta="right">
-              <Text fz={11} c="slate.5">
-                Investment No.
-              </Text>
-              <Text fw={700} fz="sm" c="slate.8">
-                {state.investmentNo || "Pending"}
-              </Text>
-            </Box>
+            <Group
+              gap={22}
+              ml="auto"
+              wrap="wrap"
+              justify="flex-end"
+              align="center"
+            >
+              {headerItems.map((item) => (
+                <BarItem
+                  key={item.label}
+                  label={item.label}
+                  value={item.value}
+                />
+              ))}
+              {headerItems.length > 0 && (
+                <Box
+                  h={30}
+                  style={{
+                    borderLeft: "1px solid var(--mantine-color-slate-2)",
+                  }}
+                />
+              )}
+              <BarItem
+                label="Amount"
+                value={state.amount ? fmtAmount(state.amount) : "—"}
+                large
+              />
+              <BarItem
+                label="Investment No."
+                value={
+                  state.investmentNo || (
+                    <Badge
+                      size="sm"
+                      radius="sm"
+                      variant="light"
+                      color="warning"
+                      style={{
+                        textTransform: "none",
+                        border: "1px solid var(--mantine-color-warning-3)",
+                      }}
+                    >
+                      Pending
+                    </Badge>
+                  )
+                }
+              />
+            </Group>
           </Group>
-        </Group>
+        </Box>
       )}
 
       {/* Body */}

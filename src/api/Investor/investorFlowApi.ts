@@ -1,6 +1,13 @@
 import API from "../../config/api";
 import apiClient from "../../config/axios";
 import type {
+  RenewalCandidate,
+  RenewalContract,
+  RenewalListParams,
+  RenewalListResponse,
+  RenewalPayload,
+  RenewalRecord,
+  RenewalSchedulePreview,
   InvestmentDetail,
   InvestorPortfolio,
   InvestorStatement,
@@ -440,6 +447,97 @@ export async function getJournalEntryDetail(name: string) {
   const { data } = await apiClient.get<InvestorFlowEnvelope<JournalEntryDetail>>(
     API.investorFlow.getJournalEntryDetail,
     { params: { name } },
+  );
+  return data.message.data;
+}
+
+/* --------------------------------- Renewal --------------------------------- */
+
+export async function getRenewals(params: RenewalListParams = {}) {
+  const query: Record<string, string | number> = {};
+  if (params.search) query.search = params.search;
+  if (params.renewal_status?.length) query.renewal_status = JSON.stringify(params.renewal_status);
+  if (params.renewal_structure?.length) query.renewal_structure = JSON.stringify(params.renewal_structure);
+  if (params.page) query.page = params.page;
+  if (params.page_size) query.page_size = params.page_size;
+  const { data } = await apiClient.get<RenewalListResponse>(API.investorFlow.getRenewals, { params: query });
+  return data;
+}
+
+/** Expired investments (past maturity with money due) that can get a renewal. */
+export async function getRenewalCandidates(search?: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<RenewalCandidate[]>>(
+    API.investorFlow.getRenewalCandidates,
+    { params: search ? { search } : {} },
+  );
+  return data.message.data;
+}
+
+export async function getRenewalContext(id: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<RenewalContract>>(
+    API.investorFlow.getRenewalContext,
+    { params: { id } },
+  );
+  return data.message.data;
+}
+
+export async function getRenewalById(id: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<RenewalRecord>>(API.investorFlow.getRenewalById, {
+    params: { id },
+  });
+  return data.message.data;
+}
+
+export async function previewRenewalSchedule({ id, payload }: { id: string; payload: RenewalPayload }) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<RenewalSchedulePreview>>(
+    API.investorFlow.previewRenewalSchedule,
+    payload,
+    { params: { id } },
+  );
+  return data.message.data;
+}
+
+export async function saveRenewal({ id, payload }: { id: string; payload: RenewalPayload }) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<RenewalRecord>>(API.investorFlow.saveRenewal, payload, {
+    params: { id },
+  });
+  return data.message.data;
+}
+
+export async function deleteRenewal(id: string) {
+  const { data } = await apiClient.delete(API.investorFlow.deleteRenewal, { params: { id } });
+  return data;
+}
+
+export async function approveRenewal(id: string) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<RenewalRecord>>(
+    API.investorFlow.approveRenewal,
+    {},
+    { params: { id } },
+  );
+  return data.message.data;
+}
+
+export async function cancelRenewal(id: string) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<RenewalRecord>>(
+    API.investorFlow.cancelRenewal,
+    {},
+    { params: { id } },
+  );
+  return data.message.data;
+}
+
+export async function saveRenewalContract({
+  id,
+  payload,
+}: {
+  id: string;
+  payload: { to: string; subject: string; message: string; file_id: string };
+}) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<RenewalRecord>>(
+    API.investorFlow.saveRenewalContract,
+    payload,
+    { params: { id } },
   );
   return data.message.data;
 }

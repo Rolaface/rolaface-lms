@@ -11,7 +11,7 @@ export interface EarningsStatementsModalParams {
 }
 
 function getTitle(params: EarningsStatementsModalParams) {
-  return params.readOnly ? "View Repayment Record" : "Edit Repayment Record";
+  return params.readOnly ? "View Investor Payouts" : "Edit Investor Payouts";
 }
 
 export const earningsStatementsModal = createModal<EarningsStatementsModalParams, ComponentProps<typeof EarningsStatementsModal>>(

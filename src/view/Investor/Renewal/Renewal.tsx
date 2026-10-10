@@ -24,7 +24,7 @@ import {
   IconChevronDown,
   IconSelector,
   IconSearch,
-  IconCash,
+  IconRefresh,
   IconEye,
   IconPencil,
   IconTrash,
@@ -39,32 +39,71 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
+import { FilterMultiSelect } from "../../../components/shared/FilterMultiSelect";
 import {
-  approveFundRecord,
-  cancelFundRecord,
-  deleteFundRecord,
-  getFundRecords,
-} from "../../api/Investor/investorFlowApi";
-import type { FundRecordListItem, FundRecordStatus } from "../../types/Investor/investorFlow";
-import { parseFrappeError } from "../../utils/parseFrappeError";
-import { openCommonModal } from "../../components/Modal/AlertModal";
-import { formatAmount } from "../../store/currencyStore";
-import { useCompanyStore } from "../../store/companyStore";
-import { recordFundModal } from "../../components/Modal/Investor/recordFundModalStore";
+  approveRenewal,
+  cancelRenewal,
+  deleteRenewal,
+  getRenewals,
+} from "../../../api/Investor/investorFlowApi";
+import {
+  RENEWAL_STRUCTURES,
+  type PaymentStatus,
+  type RenewalListItem,
+  type RenewalStatus,
+  type RenewalStructure,
+} from "../../../types/Investor/investorFlow";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+import { openCommonModal } from "../../../components/Modal/AlertModal";
+import { formatAmount } from "../../../store/currencyStore";
+import { useCompanyStore } from "../../../store/companyStore";
+import { renewalModal } from "../../../components/Modal/Investor/Renewal/renewalModalStore";
 
-const columnHelper = createColumnHelper<FundRecordListItem>();
+const columnHelper = createColumnHelper<RenewalListItem>();
 
-const RECORD_STATUS_COLOR: Record<FundRecordStatus, string> = {
+const RENEWAL_STATUS_COLOR: Record<RenewalStatus, string> = {
   Draft: "slate",
   Approved: "success",
   Cancelled: "danger",
 };
 
-const RECORD_STATUS_OPTIONS = (["Draft", "Approved", "Cancelled"] as FundRecordStatus[]).map((v) => ({
+const PAYMENT_STATUS_COLOR: Record<PaymentStatus, string> = {
+  Pending: "slate",
+  Paid: "success",
+  Renewed: "brand",
+  Expired: "danger",
+};
+
+const CONTRACT_STATUS_COLOR: Record<string, string> = {
+  Pending: "warning",
+  Sent: "brand",
+  Paid: "success",
+};
+
+const RENEWAL_STATUS_OPTIONS = (
+  ["Draft", "Approved", "Cancelled"] as RenewalStatus[]
+).map((v) => ({
   value: v,
   label: v,
 }));
+const STRUCTURE_OPTIONS = RENEWAL_STRUCTURES.map((v) => ({
+  value: v,
+  label: v,
+}));
+
+function StatusBadge({ label, color }: { label: string; color: string }) {
+  return (
+    <Badge
+      variant="light"
+      size="sm"
+      radius="xl"
+      color={color}
+      styles={{ root: { textTransform: "none", fontWeight: 700 } }}
+    >
+      {label}
+    </Badge>
+  );
+}
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   const color = sorted
@@ -86,9 +125,9 @@ const fmtDate = (iso: string | null) =>
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-const RIGHT_ALIGNED = ["amount_paid", "remaining_fund", "actions"];
+const RIGHT_ALIGNED = ["renewed_principal", "renewal_interest_rate", "actions"];
 
-export function RecordFund() {
+export function Renewal() {
   const theme = useMantineTheme();
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const fmtAmount = (value: number) =>
@@ -97,47 +136,67 @@ export function RecordFund() {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebouncedValue(searchInput, 400);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [structureFilter, setStructureFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter]);
+  }, [debouncedSearch, statusFilter, structureFilter]);
 
   /* ------------------------------- Data ------------------------------- */
-  const { data: fundsResponse, isLoading, isFetching } = useQuery({
-    queryKey: ["fundRecords", debouncedSearch, statusFilter, page, pageSize],
+  const {
+    data: renewalsResponse,
+    isLoading,
+    isFetching,
+  } = useQuery({
+    queryKey: [
+      "renewals",
+      debouncedSearch,
+      statusFilter,
+      structureFilter,
+      page,
+      pageSize,
+    ],
     queryFn: () =>
-      getFundRecords({
+      getRenewals({
         search: debouncedSearch.trim() || undefined,
-        record_status: statusFilter as FundRecordStatus[],
+        renewal_status: statusFilter as RenewalStatus[],
+        renewal_structure: structureFilter as RenewalStructure[],
         page,
         page_size: pageSize,
       }),
     placeholderData: (prev) => prev,
   });
 
-  const records = fundsResponse?.data ?? [];
-  const totalRows = fundsResponse?.pagination?.total ?? 0;
-  const totalPages = fundsResponse?.pagination?.total_pages ?? 1;
+  const records = renewalsResponse?.data ?? [];
+  const totalRows = renewalsResponse?.pagination?.total ?? 0;
+  const totalPages = renewalsResponse?.pagination?.total_pages ?? 1;
   const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
   const lastRow = Math.min(totalRows, page * pageSize);
 
   /* ----------------------------- Modal ----------------------------- */
-  const openModal = (mode: "view" | "edit", row: FundRecordListItem) =>
-    recordFundModal.open({ mode, investorFlowId: row.investment_id, recordName: row.name });
+  const openModal = (mode: "view" | "edit", row: RenewalListItem) =>
+    renewalModal.open({ mode, investorFlowId: row.name });
 
   /* --------------------------- Row actions --------------------------- */
   const queryClient = useQueryClient();
-  const refresh = (investmentId: string) => {
-    queryClient.invalidateQueries({ queryKey: ["fundRecords"] });
-    queryClient.invalidateQueries({ queryKey: ["investorFunds"] });
-    queryClient.invalidateQueries({ queryKey: ["investorFund", investmentId] });
-    queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
+  const refresh = (id: string) => {
+    queryClient.invalidateQueries({ queryKey: ["renewals"] });
+    queryClient.invalidateQueries({ queryKey: ["renewal", id] });
+    queryClient.invalidateQueries({ queryKey: ["renewalCandidates"] });
+    queryClient.invalidateQueries({ queryKey: ["investorEarnings"] });
+    queryClient.invalidateQueries({ queryKey: ["investorEarning", id] });
   };
   const showSuccess = (heading: string, body: string) =>
-    openCommonModal({ heading, subtitle: "", body, color: "green", buttons: [{ label: "Close", color: "green" }] });
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
   const showError = (heading: string, error: any) =>
     openCommonModal({
       heading,
@@ -148,38 +207,48 @@ export function RecordFund() {
     });
 
   const rowAction = (
-    fn: (args: { id: string; record: string }) => Promise<unknown>,
-    success: (row: FundRecordListItem) => [string, string],
+    fn: (id: string) => Promise<unknown>,
+    success: (row: RenewalListItem) => [string, string],
     failure: string,
   ) => ({
-    mutationFn: (row: FundRecordListItem) => fn({ id: row.investment_id, record: row.name }),
-    onSuccess: (_data: unknown, row: FundRecordListItem) => {
-      refresh(row.investment_id);
+    mutationFn: (row: RenewalListItem) => fn(row.name),
+    onSuccess: (_data: unknown, row: RenewalListItem) => {
+      refresh(row.name);
       showSuccess(...success(row));
     },
     onError: (error: any) => showError(failure, error),
   });
 
-  const approveMutation = useMutation(rowAction(
-    approveFundRecord,
-    (row) => ["Fund Approved", `${fmtAmount(row.amount_paid)} from ${row.investor} is approved and its Journal Entry is posted.`],
-    "Approve Failed",
-  ));
-  const cancelMutation = useMutation(rowAction(
-    cancelFundRecord,
-    (row) => [
-      "Fund Cancelled",
-      row.record_status === "Approved"
-        ? `The record and its Journal Entry ${row.journal_entry ?? ""} are cancelled.`
-        : "The fund record is cancelled.",
-    ],
-    "Cancel Failed",
-  ));
-  const deleteMutation = useMutation(rowAction(
-    deleteFundRecord,
-    () => ["Fund Deleted", "The draft fund record has been deleted."],
-    "Delete Failed",
-  ));
+  const approveMutation = useMutation(
+    rowAction(
+      approveRenewal,
+      (row) => [
+        "Renewal Approved",
+        `The renewal of ${row.name} is approved: its entry is posted and the new schedule is now the current one.`,
+      ],
+      "Approve Failed",
+    ),
+  );
+  const cancelMutation = useMutation(
+    rowAction(
+      cancelRenewal,
+      (row) => [
+        "Renewal Cancelled",
+        `The renewal of ${row.name} is cancelled and the schedule before it is restored.`,
+      ],
+      "Cancel Failed",
+    ),
+  );
+  const deleteMutation = useMutation(
+    rowAction(
+      deleteRenewal,
+      (row) => [
+        "Renewal Deleted",
+        `The renewal of ${row.name} has been deleted.`,
+      ],
+      "Delete Failed",
+    ),
+  );
 
   const confirm = (
     heading: string,
@@ -199,44 +268,32 @@ export function RecordFund() {
       ],
     });
 
-   const columns = useMemo(
+  const columns = useMemo(
     () => [
-      // columnHelper.accessor("investment_id", {
-      //   header: "Investment ID",
-      //   cell: (info) => (
-      //     <Text fz="sm" fw={700} c="slate.8" style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>
-      //       {info.getValue()}
-      //     </Text>
-      //   ),
-      // }),
       columnHelper.accessor("investor", {
         header: "Investor",
         cell: (info) => (
-          <Text fz="sm" fw={600} c="slate.8">
+          <Box>
+            <Text fz="sm" fw={600} c="slate.8">
+              {info.getValue()}
+            </Text>
+            <Text fz={11} c="slate.5">
+              {info.row.original.name} ·{" "}
+              {info.row.original.investment_product_name}
+            </Text>
+          </Box>
+        ),
+      }),
+      columnHelper.accessor("renewal_structure", {
+        header: "Structure",
+        cell: (info) => (
+          <Text fz="xs" c="slate.7">
             {info.getValue()}
           </Text>
         ),
       }),
-      columnHelper.accessor("amount_paid", {
-        header: "Fund Received",
-        cell: (info) => (
-          <Text fz="xs" fw={600} c="slate.8" ta="right" style={{ fontVariantNumeric: "tabular-nums" }}>
-            {fmtAmount(Number(info.getValue()) || 0)}
-          </Text>
-        ),
-        sortingFn: "basic",
-      }),
-      columnHelper.accessor("remaining_fund", {
-        header: "Remaining Fund",
-        cell: (info) => (
-          <Text fz="xs" c="slate.7" ta="right" style={{ fontVariantNumeric: "tabular-nums" }}>
-            {fmtAmount(Number(info.getValue()) || 0)}
-          </Text>
-        ),
-        sortingFn: "basic",
-      }),
-      columnHelper.accessor("paid_date", {
-        header: "Paid Date",
+      columnHelper.accessor("renewal_effective_date", {
+        header: "Effective Date",
         cell: (info) => (
           <Text fz="xs" c="slate.6">
             {fmtDate(info.getValue())}
@@ -244,34 +301,78 @@ export function RecordFund() {
         ),
         sortingFn: "basic",
       }),
-      columnHelper.accessor("mode_of_payment", {
-        header: "Mode of Payment",
+      columnHelper.accessor("renewed_principal", {
+        header: "Renewed Principal",
         cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {info.getValue() || "-"}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor("reference_number", {
-        header: "Reference No.",
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {info.getValue() || "-"}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor("record_status", {
-        header: "Record Status",
-        cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            radius="xl"
-            color={RECORD_STATUS_COLOR[info.getValue()] ?? "slate"}
-            styles={{ root: { textTransform: "none", fontWeight: 700 } }}
+          <Text
+            fz="xs"
+            fw={600}
+            c="slate.8"
+            ta="right"
+            style={{ fontVariantNumeric: "tabular-nums" }}
           >
-            {info.getValue()}
-          </Badge>
+            {fmtAmount(Number(info.getValue()) || 0)}
+          </Text>
+        ),
+        sortingFn: "basic",
+      }),
+      columnHelper.accessor("renewal_interest_rate", {
+        header: "Rate",
+        cell: (info) => (
+          <Text fz="xs" c="slate.7" ta="right">
+            {info.getValue()}% p.a.
+          </Text>
+        ),
+        sortingFn: "basic",
+      }),
+      columnHelper.accessor("new_maturity_date", {
+        header: "New Maturity",
+        cell: (info) => (
+          <Box>
+            <Text fz="xs" c="slate.7">
+              {fmtDate(info.getValue())}
+            </Text>
+            <Text fz={11} c="slate.5">
+              {info.row.original.renewal_tenure} mo ·{" "}
+              {info.row.original.payment_frequency}
+            </Text>
+          </Box>
+        ),
+        sortingFn: "basic",
+      }),
+      columnHelper.accessor("renewal_contract_status", {
+        header: "Contract",
+        cell: (info) => (
+          <StatusBadge
+            label={info.getValue() || "Pending"}
+            color={
+              CONTRACT_STATUS_COLOR[info.getValue() || "Pending"] ?? "slate"
+            }
+          />
+        ),
+      }),
+      columnHelper.accessor("payment_status", {
+        header: "Payment Status",
+        cell: (info) =>
+          info.getValue() ? (
+            <StatusBadge
+              label={info.getValue() as string}
+              color={
+                PAYMENT_STATUS_COLOR[info.getValue() as PaymentStatus] ??
+                "slate"
+              }
+            />
+          ) : (
+            "-"
+          ),
+      }),
+      columnHelper.accessor("renewal_status", {
+        header: "Renewal Status",
+        cell: (info) => (
+          <StatusBadge
+            label={info.getValue()}
+            color={RENEWAL_STATUS_COLOR[info.getValue()] ?? "slate"}
+          />
         ),
       }),
       columnHelper.display({
@@ -283,18 +384,27 @@ export function RecordFund() {
         ),
         cell: (info) => {
           const row = info.row.original;
-          const isDraft = row.record_status === "Draft";
-          const isApproved = row.record_status === "Approved";
+          const isDraft = row.renewal_status === "Draft";
+          const isApproved = row.renewal_status === "Approved";
           // Draft: Approve / Edit / Delete. Approved: Cancel. Cancelled: Delete.
-          const canDelete = isDraft || row.record_status === "Cancelled";
+          const canDelete = isDraft || row.renewal_status === "Cancelled";
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => openModal("view", row)}>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="slate"
+                  radius="md"
+                  onClick={() => openModal("view", row)}
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={isDraft ? "Edit" : "Only Draft records can be edited"} withArrow>
+              <Tooltip
+                label={isDraft ? "Edit" : "Only Draft renewals can be edited"}
+                withArrow
+              >
                 <ActionIcon
                   size="sm"
                   variant="subtle"
@@ -308,7 +418,11 @@ export function RecordFund() {
                 </ActionIcon>
               </Tooltip>
               <Tooltip
-                label={canDelete ? "Delete" : "Only Draft or Cancelled records can be deleted"}
+                label={
+                  canDelete
+                    ? "Delete"
+                    : "Only Draft or Cancelled renewals can be deleted"
+                }
                 withArrow
               >
                 <ActionIcon
@@ -320,8 +434,8 @@ export function RecordFund() {
                   style={canDelete ? undefined : { opacity: 0.35 }}
                   onClick={() =>
                     confirm(
-                      "Delete Fund Record",
-                      `Delete the ${row.record_status.toLowerCase()} record of ${fmtAmount(row.amount_paid)} from ${row.investor}?`,
+                      "Delete Renewal",
+                      `Delete the ${row.renewal_status.toLowerCase()} renewal of ${row.name} (${row.investor})?`,
                       "Delete",
                       "red",
                       () => deleteMutation.mutate(row),
@@ -331,7 +445,13 @@ export function RecordFund() {
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Menu shadow="md" width={170} position="bottom-end" radius="md" disabled={!isDraft && !isApproved}>
+              <Menu
+                shadow="md"
+                width={170}
+                position="bottom-end"
+                radius="md"
+                disabled={!isDraft && !isApproved}
+              >
                 <Menu.Target>
                   <ActionIcon
                     size="sm"
@@ -340,7 +460,9 @@ export function RecordFund() {
                     radius="md"
                     aria-label="Actions"
                     disabled={!isDraft && !isApproved}
-                    style={isDraft || isApproved ? undefined : { opacity: 0.35 }}
+                    style={
+                      isDraft || isApproved ? undefined : { opacity: 0.35 }
+                    }
                   >
                     <IconDotsVertical size={14} />
                   </ActionIcon>
@@ -350,8 +472,8 @@ export function RecordFund() {
                     <Menu.Item
                       onClick={() =>
                         confirm(
-                          "Approve Fund",
-                          `Approve ${fmtAmount(row.amount_paid)} from ${row.investor}? This posts its Journal Entry (Paid from ${row.credit_gl} → Paid to ${row.debit_gl}).`,
+                          "Approve Renewal",
+                          `Approve the ${row.renewal_structure} renewal of ${row.name}? Its Journal Entry is posted on ${fmtDate(row.renewal_effective_date)} and the new schedule (${fmtAmount(row.renewed_principal)} at ${row.renewal_interest_rate}% till ${fmtDate(row.new_maturity_date)}) becomes the current one.`,
                           "Approve",
                           "green",
                           () => approveMutation.mutate(row),
@@ -366,9 +488,9 @@ export function RecordFund() {
                       color="danger"
                       onClick={() =>
                         confirm(
-                          "Cancel Fund",
-                          `Cancel the approved record of ${fmtAmount(row.amount_paid)}? Its Journal Entry ${row.journal_entry ?? ""} will be cancelled and the repayment schedule recalculated.`,
-                          "Cancel Record",
+                          "Cancel Renewal",
+                          `Cancel the approved renewal of ${row.name}? Its Journal Entry is cancelled and the schedule in force before it is restored.`,
+                          "Cancel Renewal",
                           "red",
                           () => cancelMutation.mutate(row),
                         )
@@ -402,6 +524,7 @@ export function RecordFund() {
   const resetFilters = () => {
     setSearchInput("");
     setStatusFilter([]);
+    setStructureFilter([]);
   };
 
   return (
@@ -430,14 +553,19 @@ export function RecordFund() {
               justifyContent: "center",
             }}
           >
-            <IconCash size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconRefresh
+              size={20}
+              color="var(--mantine-color-white)"
+              stroke={1.8}
+            />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
-              Fund Receipt
+              Renewal
             </Title>
             <Text fz="sm" c="slate.5">
-              Record the funds received from investors; approving a record posts its Journal Entry
+              Renew investments at expiry or during the contract; approving a renewal posts its entry and
+              starts the new schedule
             </Text>
           </Stack>
         </Group>
@@ -446,9 +574,9 @@ export function RecordFund() {
           color="brand"
           leftSection={<IconPlus size={16} />}
           style={{ background: theme.other.brandGradient }}
-          onClick={() => recordFundModal.open({ mode: "add" })}
+          onClick={() => renewalModal.open({ mode: "add" })}
         >
-          Add Fund
+          Add Renewal
         </Button>
       </Group>
 
@@ -477,11 +605,19 @@ export function RecordFund() {
           />
 
           <FilterMultiSelect
-            placeholder="All Record Status"
-            data={RECORD_STATUS_OPTIONS}
+            placeholder="All Structures"
+            data={STRUCTURE_OPTIONS}
+            value={structureFilter}
+            onChange={setStructureFilter}
+            width={170}
+          />
+
+          <FilterMultiSelect
+            placeholder="All Renewal Status"
+            data={RENEWAL_STATUS_OPTIONS}
             value={statusFilter}
             onChange={setStatusFilter}
-            width={160}
+            width={170}
           />
 
           <Button
@@ -560,7 +696,9 @@ export function RecordFund() {
                                 header.getContext(),
                               )}
                               {canSort && (
-                                <SortIcon sorted={header.column.getIsSorted()} />
+                                <SortIcon
+                                  sorted={header.column.getIsSorted()}
+                                />
                               )}
                             </Group>
                           </Table.Th>
@@ -573,7 +711,10 @@ export function RecordFund() {
                 <Table.Tbody>
                   {rows.length === 0 ? (
                     <Table.Tr>
-                      <Table.Td colSpan={columns.length} style={{ border: "none" }}>
+                      <Table.Td
+                        colSpan={columns.length}
+                        style={{ border: "none" }}
+                      >
                         <Stack align="center" gap="xs" py="xl">
                           <Box
                             style={{
@@ -587,10 +728,13 @@ export function RecordFund() {
                               border: "1px solid var(--mantine-color-slate-2)",
                             }}
                           >
-                            <IconCash size={24} color="var(--mantine-color-slate-4)" />
+                            <IconRefresh
+                              size={24}
+                              color="var(--mantine-color-slate-4)"
+                            />
                           </Box>
                           <Text ta="center" c="slate.5" fz="xs">
-                            No fund records match your filters.
+                            No renewals match your filters.
                           </Text>
                         </Stack>
                       </Table.Td>
@@ -608,12 +752,17 @@ export function RecordFund() {
                               borderLeft:
                                 idx === 0
                                   ? `3px solid var(--mantine-color-${
-                                      RECORD_STATUS_COLOR[row.original.record_status] ?? "slate"
+                                      RENEWAL_STATUS_COLOR[
+                                        row.original.renewal_status
+                                      ] ?? "slate"
                                     }-4)`
                                   : undefined,
                             }}
                           >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
                           </Table.Td>
                         ))}
                       </Table.Tr>
@@ -664,8 +813,6 @@ export function RecordFund() {
           </>
         )}
       </Paper>
-
-
     </Stack>
   );
 }

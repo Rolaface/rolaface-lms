@@ -17,7 +17,10 @@ import { getInvestorPortfolio } from "../../../api/Investor/investorFlowApi";
 import { themeTokens } from "../../LoanAccount/LoanView/SharedUI";
 import { InvestorSidebar } from "./InvestorSidebar";
 import { OverviewPanel } from "./OverviewPanel";
-import { InvestmentDetailPanel } from "./InvestmentDetailPanel";
+import {
+  InvestmentDetailPanel,
+  type InvestmentDetailTab,
+} from "./InvestmentDetailPanel";
 import { StatementPanel } from "./StatementPanel";
 import { ProfilePanel } from "./ProfilePanel";
 import { JournalEntryDrawer } from "./JournalEntryDrawer";
@@ -29,6 +32,10 @@ interface Props {
   investorId: string;
   /** Investment to open first; the Overview opens when not given. */
   initialInvestment?: string | null;
+  /** Tab of that investment to open first. */
+  initialTab?: InvestmentDetailTab;
+  /** Journal Entry whose accounting drawer is open at the start. */
+  initialJournalEntry?: string | null;
   onBack: () => void;
 }
 
@@ -39,14 +46,28 @@ const TITLES: Record<InvestorViewSelection["type"], string> = {
   profile: "Profile",
 };
 
-export function InvestorView({ investorId, initialInvestment, onBack }: Props) {
+export function InvestorView({
+  investorId,
+  initialInvestment,
+  initialTab,
+  initialJournalEntry = null,
+  onBack,
+}: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [selected, setSelected] = useState<InvestorViewSelection>(
-    initialInvestment ? { type: "investment", id: initialInvestment } : { type: "overview" },
+    initialInvestment
+      ? { type: "investment", id: initialInvestment }
+      : { type: "overview" },
   );
-  const [journalEntry, setJournalEntry] = useState<string | null>(null);
+  const [journalEntry, setJournalEntry] = useState<string | null>(
+    initialJournalEntry,
+  );
 
-  const { data: portfolio, isError, error } = useQuery({
+  const {
+    data: portfolio,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["investorPortfolio", investorId],
     queryFn: () => getInvestorPortfolio(investorId),
     retry: false,
@@ -57,10 +78,19 @@ export function InvestorView({ investorId, initialInvestment, onBack }: Props) {
   if (isError || !portfolio) {
     return (
       <Box p="lg">
-        <Button variant="subtle" color="slate" leftSection={<IconArrowLeft size={14} />} onClick={onBack} mb="md">
+        <Button
+          variant="subtle"
+          color="slate"
+          leftSection={<IconArrowLeft size={14} />}
+          onClick={onBack}
+          mb="md"
+        >
           Back
         </Button>
-        <ErrorBlock error={error} fallback="The investor could not be loaded." />
+        <ErrorBlock
+          error={error}
+          fallback="The investor could not be loaded."
+        />
       </Box>
     );
   }
@@ -69,7 +99,10 @@ export function InvestorView({ investorId, initialInvestment, onBack }: Props) {
   switch (selected.type) {
     case "overview":
       panel = (
-        <OverviewPanel portfolio={portfolio} onOpenInvestment={(id) => setSelected({ type: "investment", id })} />
+        <OverviewPanel
+          portfolio={portfolio}
+          onOpenInvestment={(id) => setSelected({ type: "investment", id })}
+        />
       );
       break;
     case "investment":
@@ -79,11 +112,17 @@ export function InvestorView({ investorId, initialInvestment, onBack }: Props) {
           investmentId={selected.id}
           investorName={portfolio.investor.name}
           onOpenEntry={setJournalEntry}
+          // The opening tab applies to the investment the view was opened on.
+          initialTab={
+            selected.id === initialInvestment ? initialTab : undefined
+          }
         />
       );
       break;
     case "statement":
-      panel = <StatementPanel portfolio={portfolio} onOpenEntry={setJournalEntry} />;
+      panel = (
+        <StatementPanel portfolio={portfolio} onOpenEntry={setJournalEntry} />
+      );
       break;
     case "profile":
       panel = <ProfilePanel investorId={investorId} />;
@@ -101,7 +140,10 @@ export function InvestorView({ investorId, initialInvestment, onBack }: Props) {
         onSelect={setSelected}
       />
 
-      <div className="flex-1 flex flex-col overflow-y-auto" style={{ backgroundColor: themeTokens.surface }}>
+      <div
+        className="flex-1 flex flex-col overflow-y-auto"
+        style={{ backgroundColor: themeTokens.surface }}
+      >
         <div className="p-4 flex flex-col gap-3">
           <Group gap={6}>
             <Text fz="xs" c="slate.5">
@@ -119,7 +161,10 @@ export function InvestorView({ investorId, initialInvestment, onBack }: Props) {
         </div>
       </div>
 
-      <JournalEntryDrawer journalEntry={journalEntry} onClose={() => setJournalEntry(null)} />
+      <JournalEntryDrawer
+        journalEntry={journalEntry}
+        onClose={() => setJournalEntry(null)}
+      />
     </div>
   );
 }

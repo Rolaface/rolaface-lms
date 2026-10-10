@@ -192,7 +192,7 @@ export const STEP_NAMES = [
   "Terms & Schedule",
   "Contract Generation",
   "Funding & Allotment",
-  "Repayment Record",
+  "Investor Payouts",
   "Maturity",
 ];
 
@@ -666,19 +666,27 @@ export function SectionBox({
   title,
   titleAddon,
   actions,
+  fill = false,
   children,
 }: {
   title?: ReactNode;
   titleAddon?: ReactNode;
   actions?: ReactNode;
+  /** Fill the remaining height of a flex column (its content then scrolls inside). */
+  fill?: boolean;
   children?: ReactNode;
 }) {
   return (
     <Paper
       radius="md"
       p="md"
-      mb="md"
-      style={{ border: "1px solid var(--mantine-color-slate-2)" }}
+      mb={fill ? 0 : "md"}
+      style={{
+        border: "1px solid var(--mantine-color-slate-2)",
+        ...(fill
+          ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }
+          : {}),
+      }}
     >
       {(title || actions) && (
         <Group
@@ -713,12 +721,16 @@ export function KeyValueList({
   cols = 1,
 }: {
   rows: { label: string; value: ReactNode }[];
-  /** 2 = two label / value pairs per row. */
-  cols?: 1 | 2;
+  /** 2 / 4 = that many label / value pairs per row. */
+  cols?: 1 | 2 | 4;
 }) {
-  if (cols === 2) {
+  if (cols === 2 || cols === 4) {
     return (
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" verticalSpacing="sm">
+      <SimpleGrid
+        cols={cols === 4 ? { base: 1, sm: 2, lg: 4 } : { base: 1, sm: 2 }}
+        spacing="sm"
+        verticalSpacing="sm"
+      >
         {rows.map((r) => (
           <Paper
             key={r.label}
@@ -768,7 +780,7 @@ export function KeyValueList({
   );
 }
 
-export type KpiColor = "info" | "warning" | "brand" | "success";
+export type KpiColor = "info" | "warning" | "brand" | "success" | "danger";
 
 export function KpiGrid({
   items,
