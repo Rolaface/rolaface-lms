@@ -164,7 +164,7 @@ const customerOptions = useMemo(() => {
   }, [productList, form.values.productCode]);
   const hasLoanAppNumber = !!form.values.loanAppNumber;
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2.5 pb-3">
       <Paper withBorder radius="lg" shadow="md" p="sm">
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm" verticalSpacing="xs">
           <Select
@@ -447,16 +447,18 @@ const customerOptions = useMemo(() => {
       {...form.getInputProps("moratoriumPeriod")}
     />
     
-  <Textarea
-  size="sm"
-  label="Comment"
-  placeholder="Add a comment or description..."
-  autosize
-  leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
-  leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
-  style={{ gridColumn: 'span 2' }}
-  {...form.getInputProps("_comments")}
-/>
+    <Textarea
+      size="sm"
+      label="Comment"
+      placeholder="Add a comment or description..."
+      minRows={2}
+      maxRows={4}
+      autosize
+      leftSection={<IconNotes size={14} style={{ color: "var(--mantine-color-slate-4)" }} />}
+      leftSectionProps={{ style: { alignItems: 'flex-start', paddingTop: '10px' } }}
+      style={{ gridColumn: 'span 2' }}
+      {...form.getInputProps("_comments")}
+    />
   </SimpleGrid>
 </Paper>
     </div>
