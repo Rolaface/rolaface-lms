@@ -1,6 +1,9 @@
 import API from "../../config/api";
 import apiClient from "../../config/axios";
 import type {
+  InvestorNotification,
+  LogNotificationPayload,
+  NotificationType,
   RenewalCandidate,
   RenewalContract,
   RenewalListParams,
@@ -540,4 +543,29 @@ export async function saveRenewalContract({
     { params: { id } },
   );
   return data.message.data;
+}
+
+/* ------------------------------ Notifications ------------------------------ */
+
+/** Records an emailed statement / contract (attaches the PDF to the investment). */
+export async function logInvestorNotification(payload: LogNotificationPayload) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorNotification>>(
+    API.investorFlow.logNotification,
+    payload,
+  );
+  return data.message.data;
+}
+
+export async function getInvestorNotifications(investor: string, notificationType?: NotificationType) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestorNotification[]>>(
+    API.investorFlow.getNotifications,
+    { params: { investor, ...(notificationType ? { notification_type: notificationType } : {}) } },
+  );
+  return data.message.data;
+}
+
+/** A private file (e.g. an emailed PDF) as a Blob, using the logged-in session. */
+export async function fetchPrivateFile(fileUrl: string) {
+  const { data } = await apiClient.get<Blob>(fileUrl, { responseType: "blob" });
+  return data;
 }

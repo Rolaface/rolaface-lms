@@ -57,6 +57,7 @@ import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
 import { openCommonModal } from "../../components/Modal/AlertModal";
 import type { Frequency } from "../../components/Modal/Investor/InvestorModalShared";
 import { investorModal } from "../../components/Modal/Investor/investorModalStore";
+import { formatInvestorDate } from "../../components/Modal/Investor/investorDate";
 
 interface InvestmentRow {
   id: string;
@@ -116,14 +117,7 @@ function StatusBadge({ label, color }: { label: string; color: string }) {
   );
 }
 
-const fmtDate = (iso: string) =>
-  iso
-    ? new Date(iso).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : "-";
+const fmtDate = (iso: string) => formatInvestorDate(iso);
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 

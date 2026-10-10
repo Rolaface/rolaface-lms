@@ -665,7 +665,10 @@ export function InvestmentProductModal({
                       {...form.getInputProps("maxRate")}
                     />
                   </LimitGroup>
-                  <LimitGroup title="Investment amount" unit={`${companyCurrency} (${currencySymbol})`}>
+                  <LimitGroup
+                    title="Investment amount"
+                    unit={`${companyCurrency} (${currencySymbol})`}
+                  >
                     <NumberInput
                       label="Min investment"
                       placeholder="10,000"

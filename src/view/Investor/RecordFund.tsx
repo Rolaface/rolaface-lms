@@ -30,6 +30,7 @@ import {
   IconTrash,
   IconDotsVertical,
   IconPlus,
+  IconMail,
 } from "@tabler/icons-react";
 import {
   useReactTable,
@@ -46,12 +47,17 @@ import {
   deleteFundRecord,
   getFundRecords,
 } from "../../api/Investor/investorFlowApi";
-import type { FundRecordListItem, FundRecordStatus } from "../../types/Investor/investorFlow";
+import type {
+  FundRecordListItem,
+  FundRecordStatus,
+} from "../../types/Investor/investorFlow";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 import { openCommonModal } from "../../components/Modal/AlertModal";
 import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { recordFundModal } from "../../components/Modal/Investor/recordFundModalStore";
+import { FundReceiptMailDialog } from "../../components/Modal/Investor/Statements/StatementMailDialog";
+import { formatInvestorDate } from "../../components/Modal/Investor/investorDate";
 
 const columnHelper = createColumnHelper<FundRecordListItem>();
 
@@ -61,7 +67,9 @@ const RECORD_STATUS_COLOR: Record<FundRecordStatus, string> = {
   Cancelled: "danger",
 };
 
-const RECORD_STATUS_OPTIONS = (["Draft", "Approved", "Cancelled"] as FundRecordStatus[]).map((v) => ({
+const RECORD_STATUS_OPTIONS = (
+  ["Draft", "Approved", "Cancelled"] as FundRecordStatus[]
+).map((v) => ({
   value: v,
   label: v,
 }));
@@ -75,14 +83,7 @@ function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
 }
 
-const fmtDate = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : "-";
+const fmtDate = (iso: string | null) => formatInvestorDate(iso);
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
@@ -106,7 +107,11 @@ export function RecordFund() {
   }, [debouncedSearch, statusFilter]);
 
   /* ------------------------------- Data ------------------------------- */
-  const { data: fundsResponse, isLoading, isFetching } = useQuery({
+  const {
+    data: fundsResponse,
+    isLoading,
+    isFetching,
+  } = useQuery({
     queryKey: ["fundRecords", debouncedSearch, statusFilter, page, pageSize],
     queryFn: () =>
       getFundRecords({
@@ -126,7 +131,11 @@ export function RecordFund() {
 
   /* ----------------------------- Modal ----------------------------- */
   const openModal = (mode: "view" | "edit", row: FundRecordListItem) =>
-    recordFundModal.open({ mode, investorFlowId: row.investment_id, recordName: row.name });
+    recordFundModal.open({
+      mode,
+      investorFlowId: row.investment_id,
+      recordName: row.name,
+    });
 
   /* --------------------------- Row actions --------------------------- */
   const queryClient = useQueryClient();
@@ -137,7 +146,13 @@ export function RecordFund() {
     queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
   };
   const showSuccess = (heading: string, body: string) =>
-    openCommonModal({ heading, subtitle: "", body, color: "green", buttons: [{ label: "Close", color: "green" }] });
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
   const showError = (heading: string, error: any) =>
     openCommonModal({
       heading,
@@ -152,7 +167,8 @@ export function RecordFund() {
     success: (row: FundRecordListItem) => [string, string],
     failure: string,
   ) => ({
-    mutationFn: (row: FundRecordListItem) => fn({ id: row.investment_id, record: row.name }),
+    mutationFn: (row: FundRecordListItem) =>
+      fn({ id: row.investment_id, record: row.name }),
     onSuccess: (_data: unknown, row: FundRecordListItem) => {
       refresh(row.investment_id);
       showSuccess(...success(row));
@@ -160,26 +176,39 @@ export function RecordFund() {
     onError: (error: any) => showError(failure, error),
   });
 
-  const approveMutation = useMutation(rowAction(
-    approveFundRecord,
-    (row) => ["Fund Approved", `${fmtAmount(row.amount_paid)} from ${row.investor} is approved and its Journal Entry is posted.`],
-    "Approve Failed",
-  ));
-  const cancelMutation = useMutation(rowAction(
-    cancelFundRecord,
-    (row) => [
-      "Fund Cancelled",
-      row.record_status === "Approved"
-        ? `The record and its Journal Entry ${row.journal_entry ?? ""} are cancelled.`
-        : "The fund record is cancelled.",
-    ],
-    "Cancel Failed",
-  ));
-  const deleteMutation = useMutation(rowAction(
-    deleteFundRecord,
-    () => ["Fund Deleted", "The draft fund record has been deleted."],
-    "Delete Failed",
-  ));
+  // After approval the Fund Receipt email dialog opens (it shows the approval too).
+  const [mailFor, setMailFor] = useState<{
+    investmentId: string;
+    recordName: string;
+  } | null>(null);
+  const approveMutation = useMutation({
+    mutationFn: (row: FundRecordListItem) =>
+      approveFundRecord({ id: row.investment_id, record: row.name }),
+    onSuccess: (_data: unknown, row: FundRecordListItem) => {
+      refresh(row.investment_id);
+      setMailFor({ investmentId: row.investment_id, recordName: row.name });
+    },
+    onError: (error: unknown) => showError("Approve Failed", error),
+  });
+  const cancelMutation = useMutation(
+    rowAction(
+      cancelFundRecord,
+      (row) => [
+        "Fund Cancelled",
+        row.record_status === "Approved"
+          ? `The record and its Journal Entry ${row.journal_entry ?? ""} are cancelled.`
+          : "The fund record is cancelled.",
+      ],
+      "Cancel Failed",
+    ),
+  );
+  const deleteMutation = useMutation(
+    rowAction(
+      deleteFundRecord,
+      () => ["Fund Deleted", "The draft fund record has been deleted."],
+      "Delete Failed",
+    ),
+  );
 
   const confirm = (
     heading: string,
@@ -199,7 +228,7 @@ export function RecordFund() {
       ],
     });
 
-   const columns = useMemo(
+  const columns = useMemo(
     () => [
       // columnHelper.accessor("investment_id", {
       //   header: "Investment ID",
@@ -220,7 +249,13 @@ export function RecordFund() {
       columnHelper.accessor("amount_paid", {
         header: "Fund Received",
         cell: (info) => (
-          <Text fz="xs" fw={600} c="slate.8" ta="right" style={{ fontVariantNumeric: "tabular-nums" }}>
+          <Text
+            fz="xs"
+            fw={600}
+            c="slate.8"
+            ta="right"
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
             {fmtAmount(Number(info.getValue()) || 0)}
           </Text>
         ),
@@ -229,7 +264,12 @@ export function RecordFund() {
       columnHelper.accessor("remaining_fund", {
         header: "Remaining Fund",
         cell: (info) => (
-          <Text fz="xs" c="slate.7" ta="right" style={{ fontVariantNumeric: "tabular-nums" }}>
+          <Text
+            fz="xs"
+            c="slate.7"
+            ta="right"
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
             {fmtAmount(Number(info.getValue()) || 0)}
           </Text>
         ),
@@ -290,11 +330,20 @@ export function RecordFund() {
           return (
             <Group justify="flex-end" gap={4} wrap="nowrap">
               <Tooltip label="View" withArrow>
-                <ActionIcon size="sm" variant="subtle" color="slate" radius="md" onClick={() => openModal("view", row)}>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="slate"
+                  radius="md"
+                  onClick={() => openModal("view", row)}
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label={isDraft ? "Edit" : "Only Draft records can be edited"} withArrow>
+              <Tooltip
+                label={isDraft ? "Edit" : "Only Draft records can be edited"}
+                withArrow
+              >
                 <ActionIcon
                   size="sm"
                   variant="subtle"
@@ -308,7 +357,11 @@ export function RecordFund() {
                 </ActionIcon>
               </Tooltip>
               <Tooltip
-                label={canDelete ? "Delete" : "Only Draft or Cancelled records can be deleted"}
+                label={
+                  canDelete
+                    ? "Delete"
+                    : "Only Draft or Cancelled records can be deleted"
+                }
                 withArrow
               >
                 <ActionIcon
@@ -331,7 +384,39 @@ export function RecordFund() {
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Menu shadow="md" width={170} position="bottom-end" radius="md" disabled={!isDraft && !isApproved}>
+              <Tooltip
+                label={
+                  isApproved
+                    ? "Compose Mail (fund receipt)"
+                    : "Available once the record is Approved"
+                }
+                withArrow
+              >
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color={isApproved ? "success" : "slate"}
+                  radius="md"
+                  disabled={!isApproved}
+                  style={isApproved ? undefined : { opacity: 0.35 }}
+                  aria-label="Compose Mail"
+                  onClick={() =>
+                    setMailFor({
+                      investmentId: row.investment_id,
+                      recordName: row.name,
+                    })
+                  }
+                >
+                  <IconMail size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Menu
+                shadow="md"
+                width={170}
+                position="bottom-end"
+                radius="md"
+                disabled={!isDraft && !isApproved}
+              >
                 <Menu.Target>
                   <ActionIcon
                     size="sm"
@@ -340,7 +425,9 @@ export function RecordFund() {
                     radius="md"
                     aria-label="Actions"
                     disabled={!isDraft && !isApproved}
-                    style={isDraft || isApproved ? undefined : { opacity: 0.35 }}
+                    style={
+                      isDraft || isApproved ? undefined : { opacity: 0.35 }
+                    }
                   >
                     <IconDotsVertical size={14} />
                   </ActionIcon>
@@ -430,14 +517,19 @@ export function RecordFund() {
               justifyContent: "center",
             }}
           >
-            <IconCash size={20} color="var(--mantine-color-white)" stroke={1.8} />
+            <IconCash
+              size={20}
+              color="var(--mantine-color-white)"
+              stroke={1.8}
+            />
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
               Fund Receipt
             </Title>
             <Text fz="sm" c="slate.5">
-              Record the funds received from investors; approving a record posts its Journal Entry
+              Record the funds received from investors; approving a record posts
+              its Journal Entry
             </Text>
           </Stack>
         </Group>
@@ -560,7 +652,9 @@ export function RecordFund() {
                                 header.getContext(),
                               )}
                               {canSort && (
-                                <SortIcon sorted={header.column.getIsSorted()} />
+                                <SortIcon
+                                  sorted={header.column.getIsSorted()}
+                                />
                               )}
                             </Group>
                           </Table.Th>
@@ -573,7 +667,10 @@ export function RecordFund() {
                 <Table.Tbody>
                   {rows.length === 0 ? (
                     <Table.Tr>
-                      <Table.Td colSpan={columns.length} style={{ border: "none" }}>
+                      <Table.Td
+                        colSpan={columns.length}
+                        style={{ border: "none" }}
+                      >
                         <Stack align="center" gap="xs" py="xl">
                           <Box
                             style={{
@@ -587,7 +684,10 @@ export function RecordFund() {
                               border: "1px solid var(--mantine-color-slate-2)",
                             }}
                           >
-                            <IconCash size={24} color="var(--mantine-color-slate-4)" />
+                            <IconCash
+                              size={24}
+                              color="var(--mantine-color-slate-4)"
+                            />
                           </Box>
                           <Text ta="center" c="slate.5" fz="xs">
                             No fund records match your filters.
@@ -608,12 +708,17 @@ export function RecordFund() {
                               borderLeft:
                                 idx === 0
                                   ? `3px solid var(--mantine-color-${
-                                      RECORD_STATUS_COLOR[row.original.record_status] ?? "slate"
+                                      RECORD_STATUS_COLOR[
+                                        row.original.record_status
+                                      ] ?? "slate"
                                     }-4)`
                                   : undefined,
                             }}
                           >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
                           </Table.Td>
                         ))}
                       </Table.Tr>
@@ -664,8 +769,13 @@ export function RecordFund() {
           </>
         )}
       </Paper>
-
-
+      {mailFor && (
+        <FundReceiptMailDialog
+          investmentId={mailFor.investmentId}
+          recordName={mailFor.recordName}
+          onClose={() => setMailFor(null)}
+        />
+      )}
     </Stack>
   );
 }

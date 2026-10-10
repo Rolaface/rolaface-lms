@@ -17,6 +17,7 @@ import {
   type InvestorFlowTerms,
   type RepaymentFrequency,
 } from "../../../types/Investor/investorFlow";
+import { formatInvestorDate } from "./investorDate";
 
 /* ------------------------------ Types ------------------------------ */
 /** The Investor Flow frequencies, plus "At maturity" used by the Earnings / Maturity mock data. */
@@ -200,12 +201,8 @@ export const MS_PER_MONTH = 2629800000;
 
 /* ------------------------------ Helpers ------------------------------ */
 
-export const fmtDate = (d: Date | string) =>
-  new Date(d).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+/** DD-MMM-YYYY, the date format of every investor screen. */
+export const fmtDate = (d: Date | string) => formatInvestorDate(d);
 
 export const fmtMonthYear = (d: Date) =>
   d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
@@ -511,7 +508,8 @@ export function apiProductPatch(
     amount: Number(p.minimum_investment) || 0,
     rate: Number(p.default_interest_rate) || 0,
     maturity: toIso(addMonths(today, tenure)),
-    penaltyApplicable: penalty > 0,
+    // Penalty starts unchecked; the product's default penalty rate is ready if it is ticked.
+    penaltyApplicable: false,
     penaltyRate: penalty > 0 ? penalty : createInitialState().penaltyRate,
   };
   if (isRepaymentFrequency(p.payout_frequency)) {

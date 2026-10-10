@@ -588,6 +588,8 @@ export interface InvestmentScheduleEntry {
 export interface InvestmentDetail extends PortfolioInvestment {
   mail_sent: string | null;
   subject: string | null;
+  investor_name: string;
+  investor_email: string | null;
   payment_status: PaymentStatus | null;
   /** The latest renewal, shown next to the original terms (null when never renewed). */
   renewal: RenewalFields | null;
@@ -785,4 +787,36 @@ export interface RenewalSchedulePreview {
   total_interest: number;
   count: number;
   schedule: RenewalScheduleRow[];
+}
+
+/* ------------------------------ Notifications ------------------------------ */
+
+/** Custom Investor Notification.notification_type */
+export type NotificationType = "Contract" | "Investment" | "Payment Statement";
+
+export interface InvestorNotification {
+  name: number;
+  investor: string;
+  investment: string;
+  notification_type: NotificationType;
+  sent_to: string;
+  subject: string;
+  message: string | null;
+  file: string | null;
+  file_url: string | null;
+  file_name: string | null;
+  /** Fund record / schedule row the email is about. */
+  reference: string | null;
+  communication: string | null;
+  sent_on: string;
+}
+
+export interface LogNotificationPayload {
+  investment: string;
+  notification_type: NotificationType;
+  sent_to: string;
+  subject: string;
+  message: string;
+  file_id: string;
+  reference?: string | null;
 }

@@ -13,7 +13,10 @@ import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Box, Button, Group, Text } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
-import { getInvestorPortfolio } from "../../../api/Investor/investorFlowApi";
+import {
+  getInvestorNotifications,
+  getInvestorPortfolio,
+} from "../../../api/Investor/investorFlowApi";
 import { themeTokens } from "../../LoanAccount/LoanView/SharedUI";
 import { InvestorSidebar } from "./InvestorSidebar";
 import { OverviewPanel } from "./OverviewPanel";
@@ -23,6 +26,7 @@ import {
 } from "./InvestmentDetailPanel";
 import { StatementPanel } from "./StatementPanel";
 import { ProfilePanel } from "./ProfilePanel";
+import { NotificationsPanel } from "./NotificationsPanel";
 import { JournalEntryDrawer } from "./JournalEntryDrawer";
 import { ErrorBlock, LoadingBlock } from "./ui";
 import { type InvestorViewSelection } from "./format";
@@ -44,6 +48,7 @@ const TITLES: Record<InvestorViewSelection["type"], string> = {
   investment: "Investment",
   statement: "Statement",
   profile: "Profile",
+  notifications: "Notifications",
 };
 
 export function InvestorView({
@@ -63,6 +68,12 @@ export function InvestorView({
     initialJournalEntry,
   );
 
+  // Emails sent to the investor (contracts, fund receipts, payment statements).
+  const notificationsQuery = useQuery({
+    queryKey: ["investorNotifications", investorId],
+    queryFn: () => getInvestorNotifications(investorId),
+    retry: false,
+  });
   const {
     data: portfolio,
     isError,
@@ -127,12 +138,18 @@ export function InvestorView({
     case "profile":
       panel = <ProfilePanel investorId={investorId} />;
       break;
+    case "notifications":
+      panel = (
+        <NotificationsPanel notifications={notificationsQuery.data ?? []} />
+      );
+      break;
   }
 
   return (
     <div className="flex h-full min-h-screen">
       <InvestorSidebar
         portfolio={portfolio}
+        notificationCount={notificationsQuery.data?.length ?? 0}
         collapsed={collapsed}
         onToggleCollapsed={() => setCollapsed((c) => !c)}
         onBack={onBack}

@@ -17,10 +17,12 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
+import { useNavigate } from "@tanstack/react-router";
 import {
   IconArrowRight,
   IconCash,
   IconMinus,
+  IconReceipt2,
   IconX,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -44,6 +46,7 @@ import { openCommonModal } from "../AlertModal";
 import { fmtDate, toIso } from "./InvestorModalShared";
 import { formatAmount } from "../../../store/currencyStore";
 import { useCompanyStore } from "../../../store/companyStore";
+import { InvestorDateInput } from "./InvestorDateInput";
 
 export type RecordFundMode = "add" | "edit" | "view";
 
@@ -381,6 +384,7 @@ export function RecordFundModal({
     formatAmount(companyCurrency, value, { withSymbol: true });
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   /* Add: choose the investment (Approved, with an amount still to record) */
   const [chosenFlowId, setChosenFlowId] = useState<string | null>(
@@ -723,6 +727,27 @@ export function RecordFundModal({
         >
           {mode === "view" ? "Close" : "Cancel"}
         </Button>
+        {mode === "view" && fund && record?.journal_entry && (
+          <Button
+            radius="md"
+            variant="light"
+            color="brand"
+            leftSection={<IconReceipt2 size={16} />}
+            onClick={() => {
+              // Investor 360: this investment's Funds paid, with this fund's accounting open.
+              const params = new URLSearchParams({
+                investor: fund.investor_id,
+                investment: fund.id,
+                tab: "funds",
+                je: record.journal_entry as string,
+              });
+              onClose();
+              navigate({ href: `/investor/investments?${params.toString()}` });
+            }}
+          >
+            View accounting
+          </Button>
+        )}
         {mode !== "view" && (
           <Button
             type="submit"
@@ -844,15 +869,14 @@ function FundForm({
           gap: 12,
         }}
       >
-        <TextInput
-          type="date"
+        <InvestorDateInput
           label="Paid date"
           size="sm"
           radius="md"
           required
           styles={FIELD_STYLES}
           value={paidDate}
-          onChange={(e) => setPaidDate(e.currentTarget.value)}
+          onChange={(value) => setPaidDate(value)}
         />
         <Select
           label="Mode of payment"
