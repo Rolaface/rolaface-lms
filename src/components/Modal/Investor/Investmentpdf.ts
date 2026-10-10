@@ -683,3 +683,125 @@ export function buildInvestorStatementPdf(
   );
   return doc;
 }
+
+/* --------------------------- Renewal agreement --------------------------- */
+export interface RenewalContractPdfData {
+  contractNo: string;
+  companyName: string;
+  issuedOn: Date;
+  status: string;
+  customer: { name: string; id: string; email: string };
+  productName: string;
+  /** Contract in force before the renewal. */
+  previousPrincipal: number;
+  previousMaturity: string | null;
+  outstandingPrincipal: number;
+  unpaidInterest: number;
+  structure: string;
+  effectiveDate: string;
+  settlementAmount: number;
+  interestSettlement: string | null;
+  interestSettlementDate: string | null;
+  reason: string | null;
+  /** Renewed terms. */
+  principal: number;
+  rate: number;
+  frequency: string;
+  tenureMonths: number;
+  firstPayment: string;
+  maturity: string;
+  penaltyRate: number;
+  totalInterest: number;
+  rows: { date: string; principal: number; interest: number; total: number }[];
+}
+
+/** The renewal agreement: the contract in force, how it is renewed, and the renewed terms and schedule. */
+export function buildRenewalContractPdf(d: RenewalContractPdfData, p: PdfPalette, currency: string): jsPDF {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const ctx: Ctx = { doc, p, currency };
+
+  let y = drawHeader(ctx, "RENEWAL AGREEMENT", d.productName, [
+    { label: "Contract No.", value: d.contractNo },
+    { label: "Issued on", value: fmtDate(d.issuedOn) },
+    { label: "Status", value: d.status },
+  ]);
+
+  y = sectionTitle(ctx, y, "Parties");
+  const cardW = (CW - 6) / 2;
+  const h1 = infoCard(ctx, M, y, cardW, "The Company", d.companyName || "The Company", [`Product: ${d.productName}`]);
+  const h2 = infoCard(ctx, M + cardW + 6, y, cardW, "The Investor", d.customer.name, [
+    `Customer ID: ${d.customer.id}`,
+    `Email: ${d.customer.email || "-"}`,
+  ]);
+  y += Math.max(h1, h2) + 8;
+
+  y = sectionTitle(ctx, y, "Existing contract");
+  y = keyValueRows(ctx, y, [
+    ["Contract principal", money(ctx, d.previousPrincipal)],
+    ["Maturity date", d.previousMaturity ? fmtDate(d.previousMaturity) : "-"],
+    ["Outstanding principal", money(ctx, d.outstandingPrincipal)],
+    ["Unpaid interest", money(ctx, d.unpaidInterest)],
+  ]);
+
+  y = ensure(ctx, y, 40);
+  y = sectionTitle(ctx, y, "Renewal");
+  const renewalRows: [string, string][] = [
+    ["Renewal structure", d.structure],
+    ["Effective date", fmtDate(d.effectiveDate)],
+  ];
+  if (d.settlementAmount) renewalRows.push(["Amount paid at settlement", money(ctx, d.settlementAmount)]);
+  if (d.interestSettlement)
+    renewalRows.push([
+      "Unpaid interest",
+      d.interestSettlementDate ? `${d.interestSettlement} (${fmtDate(d.interestSettlementDate)})` : d.interestSettlement,
+    ]);
+  if (d.reason) renewalRows.push(["Reason", d.reason]);
+  y = keyValueRows(ctx, y, renewalRows);
+
+  y = ensure(ctx, y, 40);
+  y = sectionTitle(ctx, y, "Renewed terms");
+  y = kpiTiles(ctx, y, [
+    { label: "Renewed principal", value: money(ctx, d.principal) },
+    { label: "Interest rate", value: `${d.rate}% p.a.` },
+    { label: "Tenure", value: `${d.tenureMonths} months` },
+    { label: "Total repayment", value: money(ctx, d.principal + d.totalInterest) },
+  ]);
+  y = keyValueRows(ctx, y, [
+    ["Payment frequency", d.frequency],
+    ["First payment date", fmtDate(d.firstPayment)],
+    ["New maturity date", fmtDate(d.maturity)],
+    ["Penalty", d.penaltyRate ? `Delayed payouts attract ${d.penaltyRate}% p.a.` : "Not applicable"],
+  ]);
+
+  y = ensure(ctx, y, 30);
+  y = sectionTitle(ctx, y, "Repayment schedule");
+  y = table(
+    ctx,
+    y,
+    [
+      { header: "No.", w: 16, align: "left" },
+      { header: "Payment date", w: 44, align: "left" },
+      { header: "Principal", w: 40, align: "right" },
+      { header: "Interest", w: 40, align: "right" },
+      { header: "Total payout", w: 40, align: "right" },
+    ],
+    d.rows.map((r, i) => [String(i + 1), fmtDate(r.date), money(ctx, r.principal), money(ctx, r.interest), money(ctx, r.total)]),
+  );
+
+  y = ensure(ctx, y, 40);
+  y = sectionTitle(ctx, y, "Signatures");
+  const sigW = (CW - 12) / 2;
+  [
+    { x: M, label: `Investor - ${d.customer.name}` },
+    { x: M + sigW + 12, label: `For ${d.companyName || "the Company"}` },
+  ].forEach((s) => {
+    draw(ctx, p.mute);
+    doc.line(s.x, y + 22, s.x + sigW, y + 22);
+    ink(ctx, p.ink);
+    font(ctx, "bold", 9);
+    doc.text(s.label, s.x, y + 28);
+  });
+
+  addFooters(ctx, `Renewal Agreement | ${d.contractNo}`);
+  return doc;
+}

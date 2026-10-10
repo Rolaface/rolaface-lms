@@ -208,6 +208,19 @@ export function EarningsStatements() {
         ),
         sortingFn: "basic",
       }),
+      columnHelper.accessor("payment_status", {
+        header: "Payment Status",
+        cell: (info) => {
+          const value = info.getValue();
+          if (!value) return <Text fz="xs" c="slate.4">-</Text>;
+          const color = { Pending: "slate", Paid: "success", Renewed: "brand", Expired: "danger" }[value] ?? "slate";
+          return (
+            <Badge variant="light" size="sm" radius="xl" color={color} styles={{ root: { textTransform: "none", fontWeight: 700 } }}>
+              {value}
+            </Badge>
+          );
+        },
+      }),
       columnHelper.display({
         id: "actions",
         header: () => (
@@ -231,15 +244,23 @@ export function EarningsStatements() {
                 </ActionIcon>
               </Tooltip>
               <Tooltip
-                label={row.status !== "Cancelled" ? "Edit" : "Cancelled: view only"}
+                label={
+                  row.status === "Cancelled"
+                    ? "Cancelled: view only"
+                    : row.payment_status === "Paid"
+                      ? "Fully paid: view only"
+                      : row.payment_status === "Expired"
+                        ? "Expired: rows can only be paid"
+                        : "Edit"
+                }
                 withArrow
               >
                 <ActionIcon
                   size="sm"
                   variant="subtle"
-                  color={row.status !== "Cancelled" ? "brand" : "slate"}
+                  color={row.status !== "Cancelled" && row.payment_status !== "Paid" ? "brand" : "slate"}
                   radius="md"
-                  disabled={row.status === "Cancelled"}
+                  disabled={row.status === "Cancelled" || row.payment_status === "Paid"}
                   onClick={() => openModal(row.name, false)}
                 >
                   <IconPencil size={14} />
@@ -300,7 +321,7 @@ export function EarningsStatements() {
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
-              Repayment Record
+              Investor Payouts
             </Title>
             <Text fz="sm" c="slate.5">
               View and edit the repayment schedule of investments

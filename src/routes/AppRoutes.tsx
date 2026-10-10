@@ -86,7 +86,8 @@ import { SourceMaintenance } from "../view/LosConfiguration/SourceMaintenance/So
 import { Investor } from "../view/Investor/Investor";
 import { InvestmentProduct } from "../view/Investor/Product/InvestmentProduct";
 import { EarningsStatements } from "../view/Investor/EarningsStatements";
-import { Maturity } from "../view/Investor/Maturity";
+// Renewal: future scope, hidden for now.
+// import { Renewal } from "../view/Investor/Renewal/Renewal";
 import { InvestorSettings } from "../view/Investor/InvestorSettings";
 import { RecordFund } from "../view/Investor/RecordFund";
 
@@ -532,11 +533,12 @@ const earningRoute = createRoute({
   path: "/earnings",
   component: EarningsStatements,
 });
-const maturityRoute = createRoute({
-  getParentRoute: () => investorRoute,
-  path: "/maturity",
-  component: Maturity,
-});
+// Renewal: future scope, hidden for now (it replaced the earlier Maturity screen).
+// const maturityRoute = createRoute({
+//   getParentRoute: () => investorRoute,
+//   path: "/renewal",
+//   component: Renewal,
+// });
 const investorSettingsRoute = createRoute({
   getParentRoute: () => investorRoute,
   path: "/settings",
@@ -633,7 +635,7 @@ const routeTree = rootRoute.addChildren([
     investmentRoute,
     recordFundRoute,
     earningRoute,
-    maturityRoute,
+    // maturityRoute,
     investorSettingsRoute,
   ]),
   settingsRoute.addChildren([

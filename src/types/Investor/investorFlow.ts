@@ -224,8 +224,9 @@ export interface InvestorEarning extends InvestorEarningDetails {
   investment_product_name: string;
   payment_date: string | null;
   receive_entry: string | null;
-  renewed_to: string | null;
-  renewed_from: string | null;
+  /** Pending / Paid / Renewed / Expired (Expired: the schedule can only be viewed; rows can still be paid). */
+  payment_status: PaymentStatus | null;
+  renewal_status: RenewalStatus | null;
   /** Version of the current schedule (the highest one). */
   schedule_version: number;
   /** The current schedule (rows of the highest version). */
@@ -257,6 +258,8 @@ export interface InvestorEarningListItem {
   mat_date: string | null;
   payment_date: string | null;
   status: InvestorFlowStatus;
+  payment_status: PaymentStatus | null;
+  renewal_status: RenewalStatus | null;
 }
 
 export interface InvestorEarningListParams {
@@ -585,6 +588,9 @@ export interface InvestmentScheduleEntry {
 export interface InvestmentDetail extends PortfolioInvestment {
   mail_sent: string | null;
   subject: string | null;
+  payment_status: PaymentStatus | null;
+  /** The latest renewal, shown next to the original terms (null when never renewed). */
+  renewal: RenewalFields | null;
   funds: InvestmentFundEntry[];
   schedule: InvestmentScheduleEntry[];
 }
@@ -630,4 +636,153 @@ export interface JournalEntryDetail {
   total_debit: number;
   total_credit: number;
   lines: JournalEntryLine[];
+}
+
+/* --------------------------------- Renewal --------------------------------- */
+
+/** payment_status of Custom Investor Flow. */
+export type PaymentStatus = "Pending" | "Paid" | "Renewed" | "Expired";
+/** renewal_status of Custom Investor Flow. */
+export type RenewalStatus = "Draft" | "Approved" | "Cancelled";
+/** At expiry: after maturity with money due. Mid-contract: while the contract is still running. */
+export type RenewalKind = "At expiry" | "Mid-contract";
+
+export const RENEWAL_STRUCTURES = [
+  "Capitalization",
+  "Principal Rollover",
+  "Extended Maturity",
+  "Partial Settlement",
+] as const;
+export type RenewalStructure = (typeof RENEWAL_STRUCTURES)[number];
+
+/** Interest Settlement options (Principal Rollover / Extended Maturity). */
+export const INTEREST_SETTLEMENTS = ["Pay on renewal date", "Defer to an agreed future date"] as const;
+export type InterestSettlement = (typeof INTEREST_SETTLEMENTS)[number];
+
+/** Fields entered on the Renewal screen (body of save_renewal / preview_renewal_schedule). */
+export interface RenewalPayload {
+  renewal_structure: RenewalStructure;
+  renewal_effective_date: string;
+  settlement_amount?: number | null;
+  interest_settlement?: InterestSettlement | null;
+  interest_settlement_date?: string | null;
+  renewal_interest_rate: number;
+  payment_frequency: RepaymentFrequency;
+  /** Months; the new maturity = effective date + tenure (calculated by the backend). */
+  renewal_tenure: number;
+  renewal_first_repayment_date: string;
+  renewal_penalty_rate?: number | null;
+  reason_for_renewal?: string | null;
+}
+
+/** All renewal fields of Custom Investor Flow. */
+export interface RenewalFields extends RenewalPayload {
+  renewed_principal: number;
+  new_maturity_date: string;
+  renewal_outstanding_principal: number;
+  renewal_unpaid_interest: number;
+  renewal_journal_entry: string | null;
+  renewal_status: RenewalStatus;
+  renewal_to: string | null;
+  renewal_subject: string | null;
+  renewal_message: string | null;
+  renewal_contract_status: InvestorFlowContractStatus | null;
+}
+
+/** The contract in force (Section 1) and what is still owed on it. */
+export interface RenewalContract {
+  id: string;
+  investor_id: string;
+  investor: string;
+  investor_email: string | null;
+  investment_product: string;
+  investment_product_name: string;
+  status: InvestorFlowStatus;
+  payment_status: PaymentStatus | null;
+  /** When it can be renewed: at expiry (Expired) or mid-contract (running); null when it cannot. */
+  renewal_kind: RenewalKind | null;
+  contract_principal: number;
+  contract_maturity: string | null;
+  contract_interest_rate: number;
+  contract_frequency: RepaymentFrequency;
+  contract_penalty_rate: number;
+  original_investment_amount: number;
+  original_maturity_date: string | null;
+  outstanding_principal: number;
+  unpaid_interest: number;
+  rows_total: number;
+  rows_paid: number;
+}
+
+export interface RenewalRecord extends RenewalFields {
+  id: string;
+  contract: RenewalContract;
+}
+
+export interface RenewalListItem {
+  name: string;
+  /** Customer name. */
+  investor: string;
+  investor_id: string;
+  investment_product: string;
+  investment_product_name: string;
+  renewal_structure: RenewalStructure;
+  renewal_effective_date: string;
+  renewed_principal: number;
+  renewal_interest_rate: number;
+  renewal_tenure: number;
+  new_maturity_date: string;
+  payment_frequency: RepaymentFrequency;
+  renewal_status: RenewalStatus;
+  renewal_contract_status: InvestorFlowContractStatus | null;
+  payment_status: PaymentStatus | null;
+  modified: string;
+}
+
+export interface RenewalListParams {
+  search?: string;
+  renewal_status?: RenewalStatus[];
+  renewal_structure?: RenewalStructure[];
+  page?: number;
+  page_size?: number;
+}
+
+export interface RenewalListResponse {
+  data: RenewalListItem[];
+  pagination: { page: number; page_size: number; total: number; total_pages: number };
+}
+
+/** An Expired investment that can get a renewal. */
+export interface RenewalCandidate {
+  id: string;
+  investor_id: string;
+  investor: string;
+  investment_product_name: string;
+  contract_principal: number;
+  contract_maturity: string | null;
+  outstanding_principal: number;
+  unpaid_interest: number;
+  payment_status: PaymentStatus | null;
+  renewal_kind: RenewalKind;
+}
+
+export interface RenewalScheduleRow {
+  idx: number;
+  payment_date: string;
+  principal_amount: number;
+  interest_amount: number;
+  penalty_amount: number;
+  total_payment: number;
+  /** Accrued = a deferred interest row (booked before the renewal). */
+  status: InvestorEarningRowStatus;
+}
+
+export interface RenewalSchedulePreview {
+  renewed_principal: number;
+  new_maturity_date: string;
+  outstanding_principal: number;
+  unpaid_interest: number;
+  total_interest: number;
+  count: number;
+  schedule: RenewalScheduleRow[];
 }

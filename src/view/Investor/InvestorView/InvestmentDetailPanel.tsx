@@ -41,11 +41,16 @@ import {
 } from "./ui";
 import { fmtDate, useMoney } from "./format";
 
+/** Tabs of the investment detail. */
+export type InvestmentDetailTab = "funds" | "schedule" | "trail";
+
 interface Props {
   investmentId: string;
   /** Investor's name, shown on the Repayments summary line. */
   investorName: string;
   onOpenEntry: (journalEntry: string) => void;
+  /** Tab to open first (Repayments opens with its schedule expanded). */
+  initialTab?: InvestmentDetailTab;
 }
 
 /** Small button that opens the accounting (Journal Entry) of a row. */
@@ -82,6 +87,7 @@ export function InvestmentDetailPanel({
   investmentId,
   investorName,
   onOpenEntry,
+  initialTab = "funds",
 }: Props) {
   const { data, isError, error } = useQuery({
     queryKey: ["investorInvestmentDetail", investmentId],
@@ -103,6 +109,7 @@ export function InvestmentDetailPanel({
       detail={data}
       investorName={investorName}
       onOpenEntry={onOpenEntry}
+      initialTab={initialTab}
     />
   );
 }
@@ -111,13 +118,15 @@ function InvestmentDetailBody({
   detail,
   investorName,
   onOpenEntry,
+  initialTab,
 }: {
   detail: InvestmentDetail;
   investorName: string;
   onOpenEntry: (je: string) => void;
+  initialTab: InvestmentDetailTab;
 }) {
   const money = useMoney();
-  const [tab, setTab] = useState<string | null>("funds");
+  const [tab, setTab] = useState<string | null>(initialTab);
   const paidInPct = detail.investment_amount
     ? (detail.fund_paid_in / detail.investment_amount) * 100
     : 0;
@@ -146,6 +155,9 @@ function InvestmentDetailBody({
           </Group>
           <Group gap={6}>
             <StatusBadge status={detail.status} />
+            {detail.payment_status && (
+              <StatusBadge status={detail.payment_status} />
+            )}
             {detail.fund_status && (
               <Tooltip label="Fund status" withArrow>
                 <span>
@@ -195,6 +207,85 @@ function InvestmentDetailBody({
           <Progress value={paidInPct} size={8} radius="xl" color="info" />
         </Box>
       </Card>
+
+      {detail.renewal && (
+        <Card>
+          <Group justify="space-between" mb="md">
+            <Box>
+              <Text fw={700} fz="sm" c="slate.8">
+                Renewal terms
+              </Text>
+              <Text fz="xs" c="slate.5">
+                {detail.renewal.renewal_structure} · effective{" "}
+                {fmtDate(detail.renewal.renewal_effective_date)}
+              </Text>
+            </Box>
+            <StatusBadge status={detail.renewal.renewal_status} />
+          </Group>
+          <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
+            <Field
+              label="Renewed principal"
+              value={money(detail.renewal.renewed_principal)}
+            />
+            <Field
+              label="Interest rate"
+              value={`${detail.renewal.renewal_interest_rate}% p.a.`}
+            />
+            <Field
+              label="Payment frequency"
+              value={detail.renewal.payment_frequency}
+            />
+            <Field
+              label="Tenure"
+              value={`${detail.renewal.renewal_tenure} months`}
+            />
+            <Field
+              label="First payment"
+              value={fmtDate(detail.renewal.renewal_first_repayment_date)}
+            />
+            <Field
+              label="New maturity date"
+              value={fmtDate(detail.renewal.new_maturity_date)}
+            />
+            <Field
+              label="Penalty rate"
+              value={
+                Number(detail.renewal.renewal_penalty_rate)
+                  ? `${detail.renewal.renewal_penalty_rate}% p.a.`
+                  : "-"
+              }
+            />
+            <Field
+              label="Renewal contract"
+              value={detail.renewal.renewal_contract_status || "Pending"}
+            />
+            <Field
+              label="Outstanding principal (at renewal)"
+              value={money(detail.renewal.renewal_outstanding_principal)}
+            />
+            <Field
+              label="Unpaid interest (at renewal)"
+              value={money(detail.renewal.renewal_unpaid_interest)}
+            />
+            {detail.renewal.renewal_structure === "Partial Settlement" && (
+              <Field
+                label="Paid at settlement"
+                value={money(Number(detail.renewal.settlement_amount) || 0)}
+              />
+            )}
+            {detail.renewal.interest_settlement && (
+              <Field
+                label="Unpaid interest"
+                value={
+                  detail.renewal.interest_settlement_date
+                    ? `${detail.renewal.interest_settlement} (${fmtDate(detail.renewal.interest_settlement_date)})`
+                    : detail.renewal.interest_settlement
+                }
+              />
+            )}
+          </SimpleGrid>
+        </Card>
+      )}
 
       <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="md">
         <KpiTile
@@ -260,6 +351,7 @@ function InvestmentDetailBody({
               detail={detail}
               investorName={investorName}
               onOpenEntry={onOpenEntry}
+              initiallyOpen={initialTab === "schedule"}
             />
           </Tabs.Panel>
           <Tabs.Panel value="trail">
@@ -389,18 +481,20 @@ function FundsTable({
   );
 }
 
-/** One line like the Repayment Record list; clicking it opens the schedule below it. */
+/** One line like the Investor Payouts list; clicking it opens the schedule below it. */
 function RepaymentRecord({
   detail,
   investorName,
   onOpenEntry,
+  initiallyOpen = false,
 }: {
   detail: InvestmentDetail;
   investorName: string;
   onOpenEntry: (je: string) => void;
+  initiallyOpen?: boolean;
 }) {
   const money = useMoney();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   return (
     <Stack gap="sm">
       <Table.ScrollContainer minWidth={860}>

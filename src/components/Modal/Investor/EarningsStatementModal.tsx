@@ -10,6 +10,7 @@ import {
   Modal,
   NumberInput,
   Pagination,
+  Select,
   Paper,
   SimpleGrid,
   Switch,
@@ -22,8 +23,8 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import {
-  closeInvestorFlow,
   getInvestorEarningById,
   payInvestorEarningRow,
   updateInvestorEarning,
@@ -35,12 +36,10 @@ import {
   type InvestorEarningScheduleRow,
   type InvestorScheduleVersion,
 } from "../../../types/Investor/investorFlow";
-import { IconHistory } from "@tabler/icons-react";
+import { IconHistory, IconReceipt2 } from "@tabler/icons-react";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { openCommonModal } from "../AlertModal";
 import {
-  KeyValueList,
-  KpiGrid,
   SectionBox,
   TH_STYLE,
   createInitialState,
@@ -115,6 +114,8 @@ interface EarningsStatementsProps {
   onChange?: (draft: EarningDraft) => void;
   /** Pays one schedule row; omitted when read-only. */
   onPay?: (row: InvestorEarningScheduleRow) => void;
+  /** Opens the accounting of a paid row (its payout Journal Entry). */
+  onViewAccounting?: (row: InvestorEarningScheduleRow) => void;
   /** Why Pay is disabled (e.g. unsaved changes), or "". */
   payDisabledReason?: string;
   /** Row being paid. */
@@ -564,6 +565,7 @@ function EarningsStatements({
   draft,
   onChange,
   onPay,
+  onViewAccounting,
   payDisabledReason = "",
   payingRow = null,
   version = 1,
@@ -575,20 +577,19 @@ function EarningsStatements({
     formatAmount(companyCurrency, value, { withSymbol: true });
   const [historyOpened, setHistoryOpened] = useState(false);
   const [page, setPage] = useState(1);
-  const { details, rows } = draft;
+  const [pageSize, setPageSize] = useState(ROWS_PER_PAGE);
+  const { rows } = draft;
   const editable = !!onChange;
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = rows.slice(
-    (currentPage - 1) * ROWS_PER_PAGE,
-    currentPage * ROWS_PER_PAGE,
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
   );
+  const firstRow = rows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const lastRow = Math.min(rows.length, currentPage * pageSize);
 
-  const totalInterest = rows.reduce(
-    (a, r) => a + (Number(r.interest_amount) || 0),
-    0,
-  );
   const totalPayment = rows.reduce(
     (a, r) => a + (Number(r.total_payment) || 0),
     0,
@@ -647,196 +648,213 @@ function EarningsStatements({
 
   return (
     <>
-      <KpiGrid
-        items={[
-          {
-            label: "Amount invested",
-            value: fmtAmount(details.amount_invested),
-            color: "info",
-          },
-          {
-            label: "Rate of interest",
-            value: `${details.rate_of_interest}% p.a.`,
-            color: "warning",
-          },
-          {
-            label: "Total interest",
-            value: fmtAmount(totalInterest),
-            color: "success",
-          },
-          { label: "Payouts", value: String(rows.length), color: "brand" },
-        ]}
-      />
-
-      <SectionBox title="Details">
-        <KeyValueList
-          cols={2}
-          rows={[
-            {
-              label: "Amount invested",
-              value: fmtAmount(details.amount_invested),
-            },
-            {
-              label: "Rate of interest",
-              value: `${details.rate_of_interest}% p.a.`,
-            },
-            { label: "Frequency", value: details.frequency || "—" },
-            {
-              label: "First repay date",
-              value: details.first_repay_date
-                ? fmtDate(details.first_repay_date)
-                : "—",
-            },
-            {
-              label: "Maturity date",
-              value: details.mat_date ? fmtDate(details.mat_date) : "—",
-            },
-            {
-              label: "Rate of penalty",
-              value:
-                details.rate_of_penalty != null
-                  ? `${details.rate_of_penalty}% p.a.`
-                  : "—",
-            },
-          ]}
-        />
-      </SectionBox>
-
-      <SectionBox
-        title="Repayment schedule"
-        titleAddon={
-          <Badge variant="light" color="brand" radius="sm" size="sm">
-            Version {version}
-          </Badge>
-        }
-        actions={
-          <Button
-            size="xs"
-            radius="xl"
-            variant="default"
-            leftSection={<IconHistory size={14} />}
-            disabled={history.length === 0}
-            onClick={() => setHistoryOpened(true)}
-          >
-            Schedule history{history.length ? ` (${history.length})` : ""}
-          </Button>
-        }
+      {/* Takes the remaining height; only the table inside it scrolls. */}
+      <Box
+        style={{
+          flex: 1,
+          // Room for a few rows; on a very short window the modal body scrolls instead.
+          minHeight: 300,
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
-        {rows.length === 0 ? (
-          <Alert variant="light" color="brand" radius="md">
-            No schedule saved for this investment.
-          </Alert>
-        ) : (
-          <>
-            <Box style={{ overflowX: "auto" }}>
-              <Table verticalSpacing={6} horizontalSpacing="sm" fz="xs">
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th style={TH_STYLE}>#</Table.Th>
-                    <Table.Th style={TH_STYLE}>Payment date</Table.Th>
-                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
-                      Principal
-                    </Table.Th>
-                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
-                      Interest
-                    </Table.Th>
-                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
-                      Penalty
-                    </Table.Th>
-                    <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
-                      Total payment
-                    </Table.Th>
-                    <Table.Th style={TH_STYLE}>Status</Table.Th>
-                    {onPay && <Table.Th />}
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {pageRows.map((row) => (
-                    <Table.Tr key={row.name}>
-                      <Table.Td>{row.idx}</Table.Td>
-                      <Table.Td miw={140}>
-                        {cellEditable(row, "payment_date") ? (
-                          <TextInput
-                            type="date"
-                            size="xs"
-                            radius="md"
-                            value={row.payment_date ?? ""}
-                            onChange={(e) =>
-                              setRow(row.name, {
-                                payment_date: e.currentTarget.value,
-                              })
-                            }
-                          />
-                        ) : (
-                          row.payment_date
-                        )}
-                      </Table.Td>
-                      <Table.Td miw={110}>
-                        {amountCell(row, "principal_amount")}
-                      </Table.Td>
-                      <Table.Td miw={110}>
-                        {amountCell(row, "interest_amount")}
-                      </Table.Td>
-                      <Table.Td miw={110}>
-                        {amountCell(row, "penalty_amount")}
-                      </Table.Td>
-                      <Table.Td miw={120}>
-                        {amountCell(row, "total_payment")}
-                      </Table.Td>
-                      <Table.Td>
-                        <Badge
-                          variant="light"
-                          radius="sm"
-                          size="sm"
-                          color={ROW_STATUS_COLOR[row.status ?? "Pending"]}
-                        >
-                          {row.status ?? "Pending"}
-                        </Badge>
-                      </Table.Td>
-                      {onPay && (
-                        <Table.Td ta="right">
-                          {row.status !== "Paid" && (
-                            <Button
-                              size="compact-xs"
-                              radius="xl"
-                              color="brand"
-                              disabled={
-                                !!payDisabledReason ||
-                                (!!payingRow && payingRow !== row.name)
+        <SectionBox
+          fill
+          title={
+            <Text
+              span
+              fz="xs"
+              fw={800}
+              tt="uppercase"
+              style={{ letterSpacing: 0.5 }}
+            >
+              Repayment schedule
+            </Text>
+          }
+          titleAddon={
+            <Badge variant="light" color="brand" radius="sm" size="sm">
+              Version {version}
+            </Badge>
+          }
+          actions={
+            <Button
+              size="xs"
+              radius="xl"
+              variant="default"
+              leftSection={<IconHistory size={14} />}
+              disabled={history.length === 0}
+              onClick={() => setHistoryOpened(true)}
+            >
+              Schedule history{history.length ? ` (${history.length})` : ""}
+            </Button>
+          }
+        >
+          {rows.length === 0 ? (
+            <Alert variant="light" color="brand" radius="md">
+              No schedule saved for this investment.
+            </Alert>
+          ) : (
+            <>
+              <Box style={{ overflow: "auto", flex: 1, minHeight: 0 }}>
+                <Table
+                  verticalSpacing={6}
+                  horizontalSpacing="sm"
+                  fz="xs"
+                  stickyHeader
+                >
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th style={TH_STYLE}>#</Table.Th>
+                      <Table.Th style={TH_STYLE}>Payment date</Table.Th>
+                      <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                        Principal
+                      </Table.Th>
+                      <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                        Interest
+                      </Table.Th>
+                      <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                        Penalty
+                      </Table.Th>
+                      <Table.Th style={{ ...TH_STYLE, textAlign: "right" }}>
+                        Total payment
+                      </Table.Th>
+                      <Table.Th style={TH_STYLE}>Status</Table.Th>
+                      {(onPay || onViewAccounting) && <Table.Th />}
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {pageRows.map((row) => (
+                      <Table.Tr key={row.name}>
+                        <Table.Td>{row.idx}</Table.Td>
+                        <Table.Td miw={140}>
+                          {cellEditable(row, "payment_date") ? (
+                            <TextInput
+                              type="date"
+                              size="xs"
+                              radius="md"
+                              value={row.payment_date ?? ""}
+                              onChange={(e) =>
+                                setRow(row.name, {
+                                  payment_date: e.currentTarget.value,
+                                })
                               }
-                              loading={payingRow === row.name}
-                              title={payDisabledReason || undefined}
-                              onClick={() => onPay(row)}
-                            >
-                              Pay
-                            </Button>
+                            />
+                          ) : (
+                            row.payment_date
                           )}
                         </Table.Td>
-                      )}
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Box>
-            <Group justify="space-between" mt="sm">
-              <Text fz="xs" c="slate.5">
-                {rows.length} payouts ·{" "}
-                {rows.filter((r) => r.status === "Paid").length} paid · Total{" "}
-                {fmtAmount(totalPayment)}
-                {payDisabledReason && onPay ? ` · ${payDisabledReason}` : ""}
-              </Text>
-              <Pagination
-                total={totalPages}
-                value={currentPage}
-                onChange={setPage}
-                color="brand"
-                size="xs"
-                radius="xl"
-              />
-            </Group>
-          </>
-        )}
-      </SectionBox>
+                        <Table.Td miw={110}>
+                          {amountCell(row, "principal_amount")}
+                        </Table.Td>
+                        <Table.Td miw={110}>
+                          {amountCell(row, "interest_amount")}
+                        </Table.Td>
+                        <Table.Td miw={110}>
+                          {amountCell(row, "penalty_amount")}
+                        </Table.Td>
+                        <Table.Td miw={120}>
+                          {amountCell(row, "total_payment")}
+                        </Table.Td>
+                        <Table.Td>
+                          <Badge
+                            variant="light"
+                            radius="sm"
+                            size="sm"
+                            color={ROW_STATUS_COLOR[row.status ?? "Pending"]}
+                          >
+                            {row.status ?? "Pending"}
+                          </Badge>
+                        </Table.Td>
+                        {(onPay || onViewAccounting) && (
+                          <Table.Td ta="right">
+                            {row.status === "Paid" &&
+                              row.payout_entry &&
+                              onViewAccounting && (
+                                <Button
+                                  size="compact-xs"
+                                  radius="xl"
+                                  variant="light"
+                                  color="brand"
+                                  leftSection={<IconReceipt2 size={12} />}
+                                  onClick={() => onViewAccounting(row)}
+                                >
+                                  View accounting
+                                </Button>
+                              )}
+                            {onPay && row.status !== "Paid" && (
+                              <Button
+                                size="compact-xs"
+                                radius="xl"
+                                color="brand"
+                                disabled={
+                                  !!payDisabledReason ||
+                                  (!!payingRow && payingRow !== row.name)
+                                }
+                                loading={payingRow === row.name}
+                                title={payDisabledReason || undefined}
+                                onClick={() => onPay(row)}
+                              >
+                                Pay
+                              </Button>
+                            )}
+                          </Table.Td>
+                        )}
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Box>
+              <Group
+                justify="space-between"
+                mt="sm"
+                wrap="wrap"
+                gap="xs"
+                style={{ flex: "none" }}
+              >
+                <Group
+                  gap="md"
+                  c="slate.6"
+                  style={{ fontSize: "var(--mantine-font-size-xs)" }}
+                >
+                  <span>
+                    Showing {firstRow}-{lastRow} of {rows.length}
+                  </span>
+                  <Group gap="xs">
+                    <span>Rows:</span>
+                    <Select
+                      data={["10", "20", "50"]}
+                      value={String(pageSize)}
+                      onChange={(v) => {
+                        setPageSize(Number(v) || ROWS_PER_PAGE);
+                        setPage(1);
+                      }}
+                      allowDeselect={false}
+                      size="xs"
+                      radius="xl"
+                      w={70}
+                    />
+                  </Group>
+                  <Text fz="xs" c="slate.5">
+                    {rows.filter((r) => r.status === "Paid").length} paid ·
+                    Total {fmtAmount(totalPayment)}
+                    {payDisabledReason && onPay
+                      ? ` · ${payDisabledReason}`
+                      : ""}
+                  </Text>
+                </Group>
+                <Pagination
+                  total={totalPages}
+                  value={currentPage}
+                  onChange={setPage}
+                  color="brand"
+                  size="xs"
+                  radius="xl"
+                />
+              </Group>
+            </>
+          )}
+        </SectionBox>
+      </Box>
       {historyOpened && (
         <ScheduleHistoryModal
           opened={historyOpened}
@@ -910,7 +928,7 @@ interface EarningsStatementsModalProps {
 
 const STAGE_INDEX = 1;
 
-/** Stage 2 — Repayment Record (no side nav). */
+/** Stage 2 — Investor Payouts (no side nav). */
 export function EarningsStatementsModal({
   opened,
   onClose,
@@ -954,7 +972,7 @@ export function EarningsStatementsModal({
       onMinimize={onMinimize}
       stageIndex={STAGE_INDEX}
       state={createInitialState()}
-      title={readOnly ? "View Repayment Record" : "Edit Repayment Record"}
+      title={readOnly ? "View Investor Payouts" : "Edit Investor Payouts"}
     >
       <Group justify="center" py="xl">
         {error ? (
@@ -987,22 +1005,27 @@ function EarningsStage({
   const fmtAmount = (value: number) =>
     formatAmount(companyCurrency, value, { withSymbol: true });
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [draft, setDraft] = useState<EarningDraft>(() =>
     draftFromEarning(earning),
   );
   // Only a Received investment can be edited / paid / closed.
   // Editable once funds are approved (Fund Status Partial / Paid), unless the investment is Cancelled.
-  const editable =
+  const canPay =
     !readOnly &&
     ["Partial", "Paid"].includes(earning.fund_status) &&
     earning.status !== "Cancelled";
+  // Expired (past maturity with money still due): the schedule can only be viewed; rows can still be paid.
+  const expired = earning.payment_status === "Expired";
+  // Every row paid (Payment Status Paid): nothing is left to change or pay; view only.
+  const allPaid =
+    earning.payment_status === "Paid" ||
+    (earning.schedule.length > 0 &&
+      earning.schedule.every((r) => r.status === "Paid"));
+  const editable = canPay && !expired && !allPaid;
   const draftError = editable ? validateDraft(draft) : "";
   const isDirty =
     JSON.stringify(draft) !== JSON.stringify(draftFromEarning(earning));
-  const allPaid =
-    earning.schedule.length > 0 &&
-    earning.schedule.every((r) => r.status === "Paid");
-
   const refreshEarning = () => {
     queryClient.invalidateQueries({
       queryKey: ["investorEarning", investorFlowId],
@@ -1059,38 +1082,6 @@ function EarningsStage({
       ],
     });
 
-  const closeMutation = useMutation({
-    mutationFn: () => closeInvestorFlow(investorFlowId),
-    onSuccess: () => {
-      refreshEarning();
-      onClose();
-      openCommonModal({
-        heading: "Investment Closed",
-        subtitle: "",
-        body: "All payouts are done. The investment has been marked Matured.",
-        color: "green",
-        buttons: [{ label: "Close", color: "green" }],
-      });
-    },
-    onError: (error: any) => showFailure("Close Failed", error),
-  });
-
-  const confirmClose = () =>
-    openCommonModal({
-      heading: "Close Investment",
-      subtitle: "Please confirm this action before continuing.",
-      body: "Every payout has been made. Mark this investment as Matured?",
-      color: "green",
-      buttons: [
-        { label: "Cancel", variant: "default" },
-        {
-          label: "Close investment",
-          color: "green",
-          onClick: () => closeMutation.mutate(),
-        },
-      ],
-    });
-
   const saveMutation = useMutation({
     mutationFn: () =>
       updateInvestorEarning({
@@ -1110,7 +1101,7 @@ function EarningsStage({
       refreshEarning();
       onClose();
       openCommonModal({
-        heading: "Repayment Record Updated",
+        heading: "Investor Payouts Updated",
         subtitle: "",
         body: "The repayment schedule has been updated successfully.",
         color: "green",
@@ -1129,19 +1120,6 @@ function EarningsStage({
           <Text fz="xs" c="red" mr="auto">
             {draftError}
           </Text>
-        )}
-        {allPaid && (
-          <Button
-            size="sm"
-            radius="xl"
-            variant="light"
-            color="success"
-            disabled={isDirty}
-            loading={closeMutation.isPending}
-            onClick={confirmClose}
-          >
-            Close investment
-          </Button>
         )}
         <Button
           size="sm"
@@ -1164,17 +1142,77 @@ function EarningsStage({
       onMinimize={onMinimize}
       stageIndex={STAGE_INDEX}
       state={flowState}
-      title={editable ? "Edit Repayment Record" : "View Repayment Record"}
+      title={editable ? "Edit Investor Payouts" : "View Investor Payouts"}
       footer={footer}
+      headerItems={[
+        {
+          label: "Rate of interest",
+          value: `${draft.details.rate_of_interest}% p.a.`,
+        },
+        {
+          label: "Total interest",
+          value: fmtAmount(
+            draft.rows.reduce(
+              (a, r) => a + (Number(r.interest_amount) || 0),
+              0,
+            ),
+          ),
+        },
+        { label: "Frequency", value: draft.details.frequency || "—" },
+        {
+          label: "First repay date",
+          value: draft.details.first_repay_date
+            ? fmtDate(draft.details.first_repay_date)
+            : "—",
+        },
+        {
+          label: "Maturity date",
+          value: draft.details.mat_date ? fmtDate(draft.details.mat_date) : "—",
+        },
+        {
+          label: "Rate of penalty",
+          value:
+            draft.details.rate_of_penalty != null
+              ? `${draft.details.rate_of_penalty}% p.a.`
+              : "—",
+        },
+      ]}
     >
-      <section className="inv-content">
+      <section
+        className="inv-content"
+        style={{ display: "flex", flexDirection: "column", overflow: "auto" }}
+      >
+        {allPaid && (
+          <Alert variant="light" color="success" radius="md" mb="md">
+            Every payout of this investment has been made (Payment Status:
+            Paid). Investor Payouts can only be viewed.
+          </Alert>
+        )}
+        {expired && (
+          <Alert variant="light" color="danger" radius="md" mb="md">
+            This investment has Expired: its maturity date has passed with money
+            still due. The schedule can no longer be edited. Pay the rows if the
+            investor takes the money back, or renew it from the Renewal screen.
+          </Alert>
+        )}
         <EarningsStatements
           draft={draft}
           version={earning.schedule_version}
           history={earning.schedule_history}
           currentRows={earning.schedule}
           onChange={editable ? setDraft : undefined}
-          onPay={editable ? confirmPay : undefined}
+          onPay={canPay && !allPaid ? confirmPay : undefined}
+          onViewAccounting={(row) => {
+            // Investor 360: this investment's Repayments, with the payout's accounting open.
+            const params = new URLSearchParams({
+              investor: earning.investor_id,
+              investment: investorFlowId,
+              tab: "schedule",
+              je: row.payout_entry ?? "",
+            });
+            onClose();
+            navigate({ href: `/investor/investments?${params.toString()}` });
+          }}
           payDisabledReason={isDirty ? "Save your changes before paying" : ""}
           payingRow={
             payMutation.isPending ? (payMutation.variables?.name ?? null) : null

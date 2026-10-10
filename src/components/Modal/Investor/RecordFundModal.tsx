@@ -63,9 +63,11 @@ interface RecordFundModalProps {
 const FIELD_STYLES = {
   label: {
     fontWeight: 700,
-    fontSize: "var(--mantine-font-size-sm)",
+    fontSize: "var(--mantine-font-size-xs)",
     color: "var(--mantine-color-slate-7)",
-    marginBottom: 6,
+    marginBottom: 4,
+    display: "block",
+    width: "100%",
   },
   input: {
     background: "var(--mantine-color-white)",
@@ -90,10 +92,33 @@ const TITLES: Record<RecordFundMode, string> = {
   view: "View Fund",
 };
 
+/** A field label with a hint on the right of the same line. */
+function LabelWithHint({ label, hint }: { label: string; hint: ReactNode }) {
+  return (
+    <Group justify="space-between" wrap="nowrap" gap="sm" w="100%">
+      <span>
+        {label}{" "}
+        <Text span c="red">
+          *
+        </Text>
+      </span>
+      <Text span fz={11} fw={400} c="slate.5" truncate>
+        {hint}
+      </Text>
+    </Group>
+  );
+}
+
 function LockedField({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Box>
-      <Text fz={11} c="slate.5">
+      <Text
+        fz={10}
+        fw={700}
+        c="slate.5"
+        tt="uppercase"
+        style={{ letterSpacing: 0.4 }}
+      >
         {label}
       </Text>
       <Text fz="sm" fw={700} c="slate.8">
@@ -103,7 +128,40 @@ function LockedField({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-/** One side of the Paid from → Paid to panel: the GL, its description and amount. */
+/** Read-only figures in one row, separated by thin lines. */
+function SummaryStrip({
+  items,
+}: {
+  items: { label: string; value: ReactNode }[];
+}) {
+  return (
+    <Paper radius="md" py="xs" mb="md" style={PANEL_STYLE}>
+      <Box
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
+        }}
+      >
+        {items.map((item, i) => (
+          <Box
+            key={item.label}
+            px="sm"
+            style={{
+              borderLeft: i
+                ? "1px solid var(--mantine-color-slate-2)"
+                : undefined,
+              minWidth: 0,
+            }}
+          >
+            <LockedField label={item.label} value={item.value} />
+          </Box>
+        ))}
+      </Box>
+    </Paper>
+  );
+}
+
+/** One side of the Paid from → Paid to panel: the GL with its amount, and its description. */
 function GlSide({
   title,
   account,
@@ -121,20 +179,29 @@ function GlSide({
   const fmtAmount = (value: number) =>
     formatAmount(companyCurrency, value, { withSymbol: true });
   return (
-    <Box p="md">
-      <Text fw={700} fz="sm" c="slate.8" mb={6}>
+    <Paper radius="md" p="sm" style={{ ...PANEL_STYLE, flex: 1, minWidth: 0 }}>
+      <Text
+        fz={10}
+        fw={700}
+        c="slate.5"
+        tt="uppercase"
+        style={{ letterSpacing: 0.4 }}
+        mb={2}
+      >
         {title}
       </Text>
       {account ? (
         <>
-          <Text fz="sm" fw={600} c="slate.8">
-            {account}
-          </Text>
-          <Text fz="xs" c="slate.5">
+          <Group justify="space-between" wrap="nowrap" gap="sm">
+            <Text fz="sm" fw={700} c="slate.8" truncate>
+              {account}
+            </Text>
+            <Text fz="sm" fw={800} c="slate.9" style={{ whiteSpace: "nowrap" }}>
+              {fmtAmount(amount)}
+            </Text>
+          </Group>
+          <Text fz="xs" c="slate.5" truncate>
             {description}
-          </Text>
-          <Text fz="sm" fw={700} c="slate.8" mt={6}>
-            {fmtAmount(amount)}
           </Text>
         </>
       ) : (
@@ -142,7 +209,7 @@ function GlSide({
           {emptyText}
         </Text>
       )}
-    </Box>
+    </Paper>
   );
 }
 
@@ -161,10 +228,10 @@ function PaidFromToPanel({
     <Paper
       radius="md"
       mt="md"
-      pos="relative"
-      style={{ ...PANEL_STYLE, overflow: "hidden" }}
+      p="xs"
+      style={{ ...PANEL_STYLE, background: "var(--mantine-color-slate-0)" }}
     >
-      <Box style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+      <Group wrap="nowrap" gap="xs" align="center">
         <GlSide
           title="Paid from"
           account={credit?.account}
@@ -172,34 +239,28 @@ function PaidFromToPanel({
           amount={amount}
           emptyText="Set the Investor Creditor GL in Investor Settings."
         />
-        <Box style={{ borderLeft: "1px solid var(--mantine-color-slate-2)" }}>
-          <GlSide
-            title="Paid to"
-            account={debit?.account}
-            description={debit?.description}
-            amount={amount}
-            emptyText={debitEmptyText}
-          />
+        <Box
+          style={{
+            flex: "none",
+            width: 26,
+            height: 26,
+            borderRadius: "50%",
+            background: "var(--mantine-color-brand-0)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <IconArrowRight size={14} color="var(--mantine-color-brand-6)" />
         </Box>
-      </Box>
-      <Box
-        style={{
-          position: "absolute",
-          top: 14,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: 28,
-          height: 28,
-          borderRadius: "50%",
-          background: "var(--mantine-color-white)",
-          border: "1px solid var(--mantine-color-slate-2)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <IconArrowRight size={14} color="var(--mantine-color-brand-6)" />
-      </Box>
+        <GlSide
+          title="Paid to"
+          account={debit?.account}
+          description={debit?.description}
+          amount={amount}
+          emptyText={debitEmptyText}
+        />
+      </Group>
     </Paper>
   );
 }
@@ -219,17 +280,19 @@ function FundsRecordedTable({
     <Paper radius="md" mt="md" style={{ ...PANEL_STYLE, overflow: "hidden" }}>
       <Group
         justify="space-between"
-        px="md"
-        py="sm"
+        px="sm"
+        py={8}
         bg="slate.0"
         style={{ borderBottom: "1px solid var(--mantine-color-slate-2)" }}
       >
-        <Text fw={700} fz="sm" c="slate.8">
-          Funds recorded for this investment
-        </Text>
-        <Badge variant="light" color="slate" radius="sm" size="sm">
-          {funds.length}
-        </Badge>
+        <Group gap={6}>
+          <Text fw={700} fz="sm" c="slate.8">
+            Funds recorded for this Investment
+          </Text>
+          <Badge variant="light" color="slate" radius="xl" size="sm" circle>
+            {funds.length}
+          </Badge>
+        </Group>
       </Group>
       {funds.length === 0 ? (
         <Text fz="sm" c="slate.6" px="md" py="sm">
@@ -237,7 +300,20 @@ function FundsRecordedTable({
         </Text>
       ) : (
         <Table.ScrollContainer minWidth={640}>
-          <Table verticalSpacing="sm" horizontalSpacing="md" fz="xs">
+          <Table
+            verticalSpacing="xs"
+            horizontalSpacing="sm"
+            fz="xs"
+            styles={{
+              th: {
+                fontSize: 10,
+                fontWeight: 700,
+                color: "var(--mantine-color-slate-5)",
+                textTransform: "uppercase",
+                letterSpacing: 0.4,
+              },
+            }}
+          >
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Paid date</Table.Th>
@@ -245,7 +321,7 @@ function FundsRecordedTable({
                 <Table.Th>Reference no.</Table.Th>
                 <Table.Th>Paid to</Table.Th>
                 <Table.Th ta="right">Amount</Table.Th>
-                <Table.Th>Status</Table.Th>
+                <Table.Th ta="center">Status</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -259,18 +335,21 @@ function FundsRecordedTable({
                   }
                 >
                   <Table.Td>{fmtDate(r.paid_date)}</Table.Td>
-                  <Table.Td>{r.mode_of_payment}</Table.Td>
-                  <Table.Td>{r.reference_number || "—"}</Table.Td>
+                  <Table.Td fw={600}>{r.mode_of_payment}</Table.Td>
+                  <Table.Td ff="monospace">
+                    {r.reference_number || "—"}
+                  </Table.Td>
                   <Table.Td>{r.debit_gl_description}</Table.Td>
-                  <Table.Td ta="right" fw={600}>
+                  <Table.Td ta="right" fw={800}>
                     {fmtAmount(r.amount_paid)}
                   </Table.Td>
-                  <Table.Td>
+                  <Table.Td ta="center">
                     <Badge
                       variant="light"
-                      radius="sm"
+                      radius="xl"
                       size="sm"
                       color={RECORD_STATUS_COLOR[r.record_status] ?? "slate"}
+                      style={{ textTransform: "none" }}
                     >
                       {r.record_status}
                     </Badge>
@@ -370,13 +449,16 @@ export function RecordFundModal({
       <>
         {mode === "add" && (
           <Select
-            label="Investment"
-            description="Approved investments with an amount still to be recorded"
+            label={
+              <LabelWithHint
+                label="Investment"
+                hint="Approved investments with an amount still to be recorded"
+              />
+            }
             placeholder="Search investor"
             size="sm"
             radius="md"
             mb="md"
-            required
             searchable
             styles={FIELD_STYLES}
             data={investmentOptions}
@@ -403,33 +485,27 @@ export function RecordFundModal({
         {fund && (
           <>
             {/* Investment summary */}
-            <Paper radius="md" p="sm" mb="md" style={PANEL_STYLE}>
-              <Box
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-                  gap: 12,
-                }}
-              >
-                <LockedField label="Investor" value={fund.investor} />
-                <LockedField
-                  label="Investment amount"
-                  value={fmtAmount(fund.investment_amount)}
-                />
-                <LockedField
-                  label="Fund received (approved)"
-                  value={fmtAmount(fund.fund_received)}
-                />
-                <LockedField
-                  label="Draft (not approved)"
-                  value={fmtAmount(fund.draft_amount)}
-                />
-                <LockedField
-                  label="Remaining fund"
-                  value={fmtAmount(fund.remaining_fund)}
-                />
-              </Box>
-            </Paper>
+            <SummaryStrip
+              items={[
+                { label: "Investor", value: fund.investor },
+                {
+                  label: "Investment amount",
+                  value: fmtAmount(fund.investment_amount),
+                },
+                {
+                  label: "Fund received (approved)",
+                  value: fmtAmount(fund.fund_received),
+                },
+                {
+                  label: "Draft (not approved)",
+                  value: fmtAmount(fund.draft_amount),
+                },
+                {
+                  label: "Remaining fund",
+                  value: fmtAmount(fund.remaining_fund),
+                },
+              ]}
+            />
 
             {mode === "view" && record ? (
               <>
@@ -514,7 +590,7 @@ export function RecordFundModal({
                     heading:
                       mode === "add" ? "Fund Saved as Draft" : "Fund Updated",
                     subtitle: "",
-                    body: `${fmtAmount(Number(saved.amount_paid) || 0)} for ${fund.investor} is saved as Draft. Approve it from the Record Fund list to post the Journal Entry.`,
+                    body: `${fmtAmount(Number(saved.amount_paid) || 0)} for ${fund.investor} is saved as Draft. Approve it from the Fund Receipt list to post the Journal Entry.`,
                     color: "green",
                     buttons: [{ label: "Close", color: "green" }],
                   });
@@ -535,18 +611,20 @@ export function RecordFundModal({
       onClose={saving ? () => {} : onClose}
       centered
       radius="lg"
-      size={900}
+      size="90vw"
       padding={0}
       withCloseButton={false}
       closeOnClickOutside={false}
       closeOnEscape={!saving}
       styles={{
-        // Header and footer stay visible; only the body scrolls when the form is taller than the screen.
         content: {
-          overflow: "hidden",
-          maxHeight: "calc(100dvh - 48px)",
+          height: "92vh",
+          maxHeight: "99vh",
+          width: "85vw",
+          maxWidth: "1600px",
           display: "flex",
           flexDirection: "column",
+          overflow: "hidden",
         },
         body: {
           padding: 0,
@@ -613,8 +691,8 @@ export function RecordFundModal({
 
       {/* Body */}
       <Box
-        px="xl"
-        py="xl"
+        px="lg"
+        py="md"
         style={{
           flex: 1,
           minHeight: 0,
@@ -628,8 +706,8 @@ export function RecordFundModal({
       {/* Footer: Save is inside the form (see FundForm); Close is always here. */}
       <Group
         justify="space-between"
-        px="xl"
-        py="md"
+        px="lg"
+        py="sm"
         style={{
           flex: "none",
           background: "var(--mantine-color-slate-0)",
@@ -662,10 +740,6 @@ export function RecordFundModal({
     </Modal>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/* Add / edit form                                                     */
-/* ------------------------------------------------------------------ */
 
 function FundForm({
   mode,
@@ -763,7 +837,13 @@ function FundForm({
         if (canSave && !saveMutation.isPending) saveMutation.mutate();
       }}
     >
-      <Box style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <Box
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+          gap: 12,
+        }}
+      >
         <TextInput
           type="date"
           label="Paid date"
@@ -796,11 +876,15 @@ function FundForm({
           onChange={(e) => setReferenceNo(e.currentTarget.value)}
         />
         <NumberInput
-          label="Amount"
-          description={`At most ${fmtAmount(maxAmount)}`}
+          label={
+            <LabelWithHint
+              label="Amount"
+              hint={`At most ${fmtAmount(maxAmount)}`}
+            />
+          }
+          hideControls
           size="sm"
           radius="md"
-          required
           min={1}
           max={maxAmount}
           decimalScale={2}
@@ -827,11 +911,6 @@ function FundForm({
               : "Select the mode of payment."
           }
         />
-      )}
-      {!canSave && (
-        <Text fz="xs" c="slate.5" mt={6}>
-          Fill in every field (and make sure both GLs are set) to save.
-        </Text>
       )}
     </form>
   );

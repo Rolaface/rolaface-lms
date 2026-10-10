@@ -90,14 +90,14 @@ const GROUPS: {
   {
     title: "Fund received (Paid from)",
     description:
-      "One liability GL for all investors. Each Record Fund credits it with the investor as the party.",
+      "One liability GL for all investors. Each Fund Receipt credits it with the investor as the party.",
     icon: IconScale,
     color: "danger",
     fields: ["investor_creditor_account"],
   },
   {
     title: "Mode of payment (Paid to)",
-    description: "Where the money lands for each mode of payment. Record Fund debits it.",
+    description: "Where the money lands for each mode of payment. Fund Receipt debits it.",
     icon: IconBuildingBank,
     color: "info",
     fields: ["investor_cash_account", "cheque_account", "bank_draft_account", "wire_transfer_account"],
@@ -317,7 +317,7 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
         }}
       >
         <Text fw={700} fz="sm" c="slate.8">
-          Entry posted by Record Fund
+          Entry posted by Fund Receipt
         </Text>
         <Text fz="xs" c="slate.5" mb="sm">
           Money received from an investor: the mode of payment's GL is debited (Paid to) and the Investor
