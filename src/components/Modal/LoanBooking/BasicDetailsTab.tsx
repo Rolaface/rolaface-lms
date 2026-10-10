@@ -123,18 +123,34 @@ const customerOptions = useMemo(() => {
 
  const { data: productResponse, isLoading: isProductsLoading, refetch: refetchProducts } = useQuery({
     queryKey: ["loanProducts"],
-    queryFn: () => getAllLoanProducts(),
+    queryFn: () => getAllLoanProducts({ page_size: 1000 }),
   });
 
-  const productOptions = useMemo(() => {
-    const products = productResponse?.data || [];
-    return products
-      .filter((p: any) => p.disabled !== 1)
-      .map((p: any) => ({
-        value: p.name,
-        label: p.name,
-      }));
+  const productList = useMemo(() => {
+    return Array.isArray(productResponse?.data)
+      ? productResponse.data
+      : Array.isArray(productResponse?.message?.data)
+      ? productResponse.message.data
+      : Array.isArray(productResponse)
+      ? productResponse
+      : [];
   }, [productResponse]);
+
+  const productOptions = useMemo(() => {
+    const activeProducts = productList.filter((p: any) => p.disabled !== 1);
+    if (form.values.productCode && !activeProducts.some((p: any) => p.name === form.values.productCode)) {
+      const current = productList.find((p: any) => p.name === form.values.productCode);
+      if (current) {
+        activeProducts.push(current);
+      } else {
+        activeProducts.push({ name: form.values.productCode, product_name: form.values.productCode });
+      }
+    }
+    return activeProducts.map((p: any) => ({
+      value: p.name,
+      label: p.name,
+    }));
+  }, [productList, form.values.productCode]);
 
   useEffect(() => {
     if (!form.values.valueDate) {
@@ -143,10 +159,9 @@ const customerOptions = useMemo(() => {
   }, []);
 
   const selectedProductName = useMemo(() => {
-    const products = productResponse?.data || [];
-    const found = products.find((p: any) => p.name === form.values.productCode);
+    const found = productList.find((p: any) => p.name === form.values.productCode);
     return found ? found.product_name || found.name : "";
-  }, [productResponse, form.values.productCode]);
+  }, [productList, form.values.productCode]);
   const hasLoanAppNumber = !!form.values.loanAppNumber;
   return (
     <div className="flex flex-col gap-2">
@@ -183,10 +198,30 @@ const customerOptions = useMemo(() => {
             error={form.errors.productCode}
             onClick={() => refetchProducts()}
             required
+            filter={({ options, search }) => {
+              const q = search.toLowerCase().trim();
+              if (!q) return options;
+              return options.filter((opt) => {
+                const p = productList.find((item: any) => item.name === opt.value);
+                const codeMatch = opt.label.toLowerCase().includes(q);
+                const nameMatch = (p?.product_name || "").toLowerCase().includes(q);
+                return codeMatch || nameMatch;
+              });
+            }}
+            renderOption={({ option }) => {
+              const p = productList.find((item: any) => item.name === option.value);
+              return (
+                <div style={{ padding: "2px 0" }}>
+                  <Text size="sm" fw={600} c="slate.8">{option.label}</Text>
+                  {p?.product_name && p.product_name !== option.label && (
+                    <Text size="xs" c="dimmed">{p.product_name}</Text>
+                  )}
+                </div>
+              );
+            }}
             onChange={(value) => {
               form.setFieldValue("productCode", value);
-              const products = productResponse?.data || [];
-              const found = products.find((p: any) => p.name === value);
+              const found = productList.find((p: any) => p.name === value);
               form.setFieldValue("rateOfInterest", found?.rate_of_interest ?? 0);
             }}
           />
