@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Box, Button, Group, Modal, Text, ThemeIcon, useMantineTheme } from "@mantine/core";
-import {  IconDiscount2, IconX, IconMinus } from "@tabler/icons-react"; import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { IconDiscount2, IconX, IconMinus } from "@tabler/icons-react"; import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LoanRepaymentPayload } from "../../types/loanRepaymentForm";
 import type { LoanWaiverBorrower, LoanWaiverFormData, LoanWaiverLoanAccount } from "../../types/loanwaiver";
 import {
@@ -35,7 +35,8 @@ interface LoanWaiverModalProps {
   isView?: boolean;
 }
 
-export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId, isView }: LoanWaiverModalProps) {  const theme = useMantineTheme();
+export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId, isView }: LoanWaiverModalProps) {
+  const theme = useMantineTheme();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
@@ -44,7 +45,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
   const [borrowerPanelCollapsed, setBorrowerPanelCollapsed] = useState(false);
 
   const [valueDate, setValueDate] = useState(new Date().toISOString().slice(0, 10));
-    const [comment, setComment] = useState("");
+  const [comment, setComment] = useState("");
 
   const [waivedInterest, setWaivedInterest] = useState<number | "">("");
   const [waivedPenalty, setWaivedPenalty] = useState<number | "">("");
@@ -115,7 +116,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
       });
       setSelectedLoanId(item.against_loan);
       setValueDate(item.value_date ? item.value_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
-                setComment(parseCommentForTextarea((item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || ""));
+      setComment(parseCommentForTextarea((item as any)._comments || (item as any).comment || (item as any).comments || (item as any).manual_remarks || (item as any).remarks || ""));
 
       setWaivedInterest("");
       setWaivedPenalty("");
@@ -153,7 +154,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
     setSelectedBorrower(null);
     setSelectedLoanId(null);
     setSearch("");
-        setComment("");
+    setComment("");
     setWaivedInterest("");
     setWaivedPenalty("");
     setWaivedFee("");
@@ -171,7 +172,7 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
     setSelectedBorrower(null);
     setSelectedLoanId(null);
     setValueDate(new Date().toISOString().slice(0, 10));
-        setComment("");
+    setComment("");
     setWaivedInterest("");
     setWaivedPenalty("");
     setWaivedFee("");
@@ -182,29 +183,29 @@ export function LoanWaiverModal({ opened, onClose, onMinimize, onSubmit, editId,
     mutationFn: createLoanRepayment,
   });
 
-const updateWaiverMutation = useMutation({
-  mutationFn: updateLoanRepayment,
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
-    handleReset();
-    onClose();
-    openCommonModal({
-      heading: "Waiver Updated",
-      subtitle: "Changes saved successfully",
-      body: "The loan waiver record has been updated.",
-      color: "success",
-      buttons: [{ label: "Okay" }],
-    });
-  },
-  onError: (err) => {
-    openCommonModal({
-      heading: "Update Failed",
-      body: parseFrappeError(err) || "Something went wrong while updating the waiver. Please try again.",
-      color: "danger",
-      buttons: [{ label: "Okay" }],
-    });
-  },
-});
+  const updateWaiverMutation = useMutation({
+    mutationFn: updateLoanRepayment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
+      handleReset();
+      onClose();
+      openCommonModal({
+        heading: "Waiver Updated",
+        subtitle: "Changes saved successfully",
+        body: "The loan waiver record has been updated.",
+        color: "success",
+        buttons: [{ label: "Okay" }],
+      });
+    },
+    onError: (err) => {
+      openCommonModal({
+        heading: "Update Failed",
+        body: parseFrappeError(err) || "Something went wrong while updating the waiver. Please try again.",
+        color: "danger",
+        buttons: [{ label: "Okay" }],
+      });
+    },
+  });
 
   const handleSubmit = async () => {
     if (!selectedLoan || !selectedBorrower) return;
@@ -246,7 +247,7 @@ const updateWaiverMutation = useMutation({
     if (entries.length === 0) return;
 
     setIsSubmittingAll(true);
-try {
+    try {
       for (const entry of entries) {
         const payload: LoanRepaymentPayload = {
           ...basePayload,
@@ -255,7 +256,7 @@ try {
         };
         await createWaiverMutation.mutateAsync(payload);
       }
-queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
+      queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
       onSubmit?.({
         loanAc: selectedLoan.id,
         customerName: selectedBorrower.name,
@@ -299,20 +300,20 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
 
   return (
     <>
-     <Modal
-  opened={opened}
-  onClose={onClose}
-  size="1300px"
-  centered
-  withinPortal
-  zIndex={300}
-  overlayProps={{ backgroundOpacity: 0.6, blur: 2 }}
-  withCloseButton={false}
-  padding={0}
-  radius="md"
-  closeOnClickOutside={false}
-  closeOnEscape={false}
->
+      <Modal
+        opened={opened}
+        onClose={onClose}
+        size="1300px"
+        centered
+        withinPortal
+        zIndex={300}
+        overlayProps={{ backgroundOpacity: 0.6, blur: 2 }}
+        withCloseButton={false}
+        padding={0}
+        radius="md"
+        closeOnClickOutside={false}
+        closeOnEscape={false}
+      >
         <Box className="flex flex-col h-[75vh] min-h-162.5 max-h-[95vh] overflow-hidden">
           {/* Header */}
           <Box
@@ -338,7 +339,11 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
                   {isView ? "View Loan Waiver" : editId ? "Edit Loan Waiver" : "Process Waiver"}
                 </Text>
                 <Text size="xs" c="brand.1" className="leading-tight truncate">
-                  Search a borrower and process a waiver against their loan account.
+                  {isView
+                    ? "View the details of the selected loan waiver."
+                    : editId
+                      ? "Edit the details of the selected loan waiver."
+                      : "Process an approved waiver against selected charges or fees."}
                 </Text>
               </div>
             </Group>
@@ -400,7 +405,7 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
               onWaivedInterestChange={setWaivedInterest}
               onWaivedPenaltyChange={setWaivedPenalty}
               onWaivedFeeChange={setWaivedFee}
-                                          comment={comment}
+              comment={comment}
               onCommentChange={setComment}
             />
 
@@ -413,14 +418,14 @@ queryClient.invalidateQueries({ queryKey: ["loanRepayments"] });
           </div>
 
           {/* Footer */}
-          <ModalFooter 
+          <ModalFooter
             variant="theme"
             isViewMode={isView}
             onClose={onClose}
-            submitLabel={editId ? "Update" : "Save"}
+            submitLabel="Submit"
             submitLoading={isPending}
             submitDisabled={!selectedLoan || !hasAnyWaivedAmount || isPending}
-                        onSubmit={handleSubmit}
+            onSubmit={handleSubmit}
           />
         </Box>
       </Modal>

@@ -375,7 +375,7 @@ const headerTitle = editId ? (isView ? "View Collateral" : "Edit Collateral") : 
           isViewMode={isView}
           onClose={handleClose}
           onSubmit={handleSubmit}
-          submitLabel={editId ? "Update" : "Save "}
+          submitLabel={editId ? "Update" : "Submit "}
           submitLoading={isPending}
           submitDisabled={isPending}
         />

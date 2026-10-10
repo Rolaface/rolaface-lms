@@ -1102,7 +1102,7 @@ export function ContractTemplateManagement() {
                   Edit Contract Template
                 </Text>
                 <Text size="xs" fw={500} c="brand.1">
-                  Update contract template configuration and details
+                  Edit contract template configuration and details
                 </Text>
               </Box>
             </Group>

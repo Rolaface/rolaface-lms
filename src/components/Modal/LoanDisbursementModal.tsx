@@ -1183,7 +1183,7 @@ export function LoanDisbursementModal({
               variant="theme"
               isViewMode={isView}
               onClose={onClose}
-              submitLabel={editId ? "Update" : "Save"}
+              submitLabel="Submit"
               submitLoading={isPending}
               errorMessage={footerErrorMessage}
             />
