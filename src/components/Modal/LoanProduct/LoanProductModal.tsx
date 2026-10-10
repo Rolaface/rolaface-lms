@@ -53,15 +53,15 @@ interface LoanProductProps {
 // ---------- NUMERIC VALIDATION HELPERS ----------
 const positiveNumber =
   (label: string, opts: { integer?: boolean; max?: number } = {}) =>
-  (v: number | string) => {
-    if (v === "" || v === null || v === undefined) return `${label} is required`;
-    const n = Number(v);
-    if (!Number.isFinite(n)) return `${label} must be a valid number`;
-    if (n <= 0) return `${label} must be greater than 0`;
-    if (opts.integer && !Number.isInteger(n)) return `${label} must be a whole number`;
-    if (opts.max !== undefined && n > opts.max) return `${label} cannot exceed ${opts.max}`;
-    return null;
-  };
+    (v: number | string) => {
+      if (v === "" || v === null || v === undefined) return `${label} is required`;
+      const n = Number(v);
+      if (!Number.isFinite(n)) return `${label} must be a valid number`;
+      if (n <= 0) return `${label} must be greater than 0`;
+      if (opts.integer && !Number.isInteger(n)) return `${label} must be a whole number`;
+      if (opts.max !== undefined && n > opts.max) return `${label} cannot exceed ${opts.max}`;
+      return null;
+    };
 
 const nonNegativeInteger = (label: string) => (v: number | string) => {
   if (v === "" || v === null || v === undefined) return null; // optional field
@@ -584,15 +584,22 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
   const headerTitle = loanProductId
     ? isViewMode
       ? "View Loan Product"
-      : "Update Loan Product"
-    : "Create Loan Product";
+      : "Edit Loan Product"
+    : "Add Loan Product";
+
+  const headerDescription = loanProductId
+    ? isViewMode
+      ? "View the details and configuration of this loan product."
+      : "Edit the details and configuration of this loan product."
+    : "Add a new loan product and its accounting.";
+
 
   const isLastStep = currentStep === 3;
   const hideSubmit = isViewMode && isLastStep;
   const submitLabel = isLastStep
     ? loanProductId
-      ? "Update"
-      : "Save"
+      ? "Submit"
+      : "Submit"
     : isViewMode
       ? "Next"
       : "Save & Continue";
@@ -676,17 +683,47 @@ export function LoanProductModal({ opened, onClose, onSaved, loanProductId, isVi
                 >
                   {headerTitle}
                 </Text>
-                <Group gap={6}>
-                  <Text size="xs" fw={600} c="brand.1" style={{ color: "var(--mantine-color-brand-1)" }}>
-                    Step {currentStep + 1} of {STEPS.length}
+
+                <Box>
+                  <Text
+                    size="xs"
+                    fw={500}
+                    c="brand.1"
+                    style={{ color: "var(--mantine-color-brand-1)" }}
+                  >
+                    {headerDescription}
                   </Text>
-                  <Text size="xs" c="brand.3" style={{ color: "var(--mantine-color-brand-3)" }}>
-                    ·
-                  </Text>
-                  <Text size="xs" fw={500} c="brand.1" style={{ color: "var(--mantine-color-brand-1)" }}>
-                    {STEPS[currentStep]?.label}
-                  </Text>
-                </Group>
+
+                  <Group gap={6}>
+                    <Text
+                      size="xs"
+                      fw={600}
+                      c="brand.1"
+                      style={{ color: "var(--mantine-color-brand-1)" }}
+                    >
+                      Step {currentStep + 1} of {STEPS.length}
+                    </Text>
+
+                    <Text
+                      size="xs"
+                      c="brand.3"
+                      style={{ color: "var(--mantine-color-brand-3)" }}
+                    >
+                      ·
+                    </Text>
+
+                    <Text
+                      size="xs"
+                      fw={500}
+                      c="brand.1"
+                      style={{ color: "var(--mantine-color-brand-1)" }}
+                    >
+                      {STEPS[currentStep]?.label}
+                    </Text>
+                  </Group>
+                </Box>
+
+
               </Box>
             </Group>
             <Group gap="xs" wrap="nowrap">

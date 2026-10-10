@@ -10,7 +10,7 @@ import {
   TextInput,
   ThemeIcon,
 } from "@mantine/core";
-import { IconGripVertical, IconListNumbers, IconX , IconMinus} from "@tabler/icons-react";
+import { IconGripVertical, IconListNumbers, IconX, IconMinus } from "@tabler/icons-react";
 import { useRef, useState } from "react";
 import { ModalFooter } from "../shared/ModalFooter";
 import { useCollectionOrderForm } from "../../hooks/CollectionOrder/useCollectionOrderForm";
@@ -36,12 +36,16 @@ export function LoanCollectionSequenceOrderModal({
   const isView = mode === "view";
 
   const title =
-    mode === "add" ? "New Collection Sequence" : mode === "edit" ? "Edit Collection Sequence" : "View Collection Sequence";
+    mode === "add" ? "Add Collection Sequence" : mode === "edit" ? "Edit Collection Sequence" : "View Collection Sequence";
 
   const description =
-    mode === "view"
-      ? "Viewing the defined sequence for component liquidation."
-      : "Define and order the collection sequence for loan components.";
+    mode === "add"
+      ? "Add the collection sequence order for loan components"
+      : mode === "edit"
+        ? "Edit the collection sequence order for loan components."
+        : "View the collection sequence order for loan components";
+
+
 
   const {
     sequenceName,
@@ -144,7 +148,7 @@ export function LoanCollectionSequenceOrderModal({
               </Text>
             </Box>
           </Group>
-<Group gap="xs" wrap="nowrap">
+          <Group gap="xs" wrap="nowrap">
             <ActionIcon
               variant="subtle"
               color="white"
@@ -263,7 +267,7 @@ export function LoanCollectionSequenceOrderModal({
           isViewMode={isView}
           onClose={handleClose}
           onSubmit={handleSubmit}
-          submitLabel="Save "
+          submitLabel="Submit"
           submitLoading={isSaving}
         />
       </Box>

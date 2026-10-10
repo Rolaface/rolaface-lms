@@ -163,7 +163,8 @@ export function CollateralTypeModal({
 
   const isPending = createMutation.isPending || updateMutation.isPending || isEditLoading;
 
-  const headerTitle = editId ? (isView ? "View Collateral Type" : "Edit Collateral Type") : "New Collateral Type";
+  const headerTitle = editId ? (isView ? 
+    "View Collateral Type" : "Edit Collateral Type") : "Add Collateral Type";
 
   return (
     <Modal
@@ -202,9 +203,19 @@ export function CollateralTypeModal({
               >
                 {headerTitle}
               </Text>
-              <Text size="xs" fw={500} c="brand.1" style={{ color: "var(--mantine-color-brand-1)" }}>
-                Define collateral category parameters and limits
-              </Text>
+<Text
+  size="xs"
+  fw={500}
+  c="brand.1"
+  style={{ color: "var(--mantine-color-brand-1)" }}
+>
+  {editId
+    ? isView
+      ? "View the details associated with this collateral type."
+      : "Edit the details associated with this collateral type."
+    : "Add a new collateral type to classify and manage collateral items."}
+</Text>
+
             </Box>
           </Group>
           <Group gap="xs" wrap="nowrap">
@@ -286,7 +297,7 @@ export function CollateralTypeModal({
           isViewMode={isView}
           onClose={handleClose}
           onSubmit={handleSubmit}
-          submitLabel={editId ? "Update" : "Save "}
+          submitLabel="Submit"
           submitLoading={isPending}
           submitDisabled={isPending}
         />

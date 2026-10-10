@@ -66,7 +66,7 @@ export function LoanClassificationModal({
 
   const title =
     mode === "add"
-      ? "New Loan Classification"
+      ? "Add Loan Classification"
       : mode === "edit"
         ? "Edit Loan Classification"
         : "View Loan Classification";
@@ -229,9 +229,7 @@ export function LoanClassificationModal({
               <Text size="md" fw={700} c="white" style={{ letterSpacing: "-0.01em" }}>
                 {title}
               </Text>
-              <Text size="xs" fw={500} c="brand.1">
-                Manage levels and provisioning
-              </Text>
+              <Text size="xs" fw={500} c="brand.1"> {mode === "add" ? "Add the details to create a new loan classification." : mode === "edit" ? "Edit the details of this loan classification." : "View the details of this loan classification."} </Text>
             </Box>
           </Group>
           <Group gap="xs" wrap="nowrap">
@@ -355,7 +353,7 @@ export function LoanClassificationModal({
           isViewMode={isView}
           onClose={handleModalClose}
           onSubmit={handleSave}
-          submitLabel="Save"
+          submitLabel="Submit"
           submitLoading={isSaving}
         />
       </Box>
