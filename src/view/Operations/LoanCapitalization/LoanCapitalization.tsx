@@ -603,7 +603,7 @@ const totalRows = repaymentsResponse?.message?.data?.total ?? 0;
                 boxShadow: theme.other.brandGlowShadowSm,
               }}
             >
-              Add Capitalization
+              Process Capitalization
             </Button>
           )}
         </Group>
