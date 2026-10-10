@@ -315,7 +315,7 @@ export function OfferIssuanceStage() {
                                      </ActionIcon>
                                    </Tooltip>
             <Tooltip label="Delete" withArrow>
-              <ActionIcon size="sm" variant="subtle" color="gray">
+              <ActionIcon size="sm" variant="subtle" color="danger">
                 <IconTrash size={14} />
               </ActionIcon>
             </Tooltip>
