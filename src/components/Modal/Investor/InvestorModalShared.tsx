@@ -553,6 +553,8 @@ export function stateFromRecord(r: InvestorFlowRecord): ModalState {
     penaltyApplicable: penalty > 0,
     penaltyRate: penalty > 0 ? penalty : createInitialState().penaltyRate,
     contractNo: r.name,
+    // A saved investment has its number (shown in the modal header instead of "Pending").
+    investmentNo: r.name,
     contractStatus: r.contract_status || "Pending",
     flowStatus: r.status,
     mailTo: r.mail_sent || "",

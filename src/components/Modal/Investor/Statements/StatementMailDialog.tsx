@@ -44,6 +44,8 @@ import {
 } from "../Investmentpdf";
 import { formatInvestorDate } from "../investorDate";
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const escapeHtml = (text: string) =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const messageToHtml = (text: string) =>
@@ -76,6 +78,8 @@ function StatementMailForm({
 }) {
   const pdfPreview = usePdfPreview();
   const queryClient = useQueryClient();
+  // To is pre-filled with the investor's email and can be changed.
+  const [to, setTo] = useState(content.to);
   const [subject, setSubject] = useState(content.subject);
   const [message, setMessage] = useState(content.message);
 
@@ -88,7 +92,7 @@ function StatementMailForm({
         content.pdfName,
       );
       await sendEmail({
-        recipients: content.to,
+        recipients: to.trim(),
         subject: subject.trim(),
         content: messageToHtml(message),
         send_me_a_copy: "0",
@@ -99,7 +103,7 @@ function StatementMailForm({
       return logInvestorNotification({
         investment: investmentId,
         notification_type: content.notificationType,
-        sent_to: content.to,
+        sent_to: to.trim(),
         subject: subject.trim(),
         message,
         file_id: file.name,
@@ -112,7 +116,7 @@ function StatementMailForm({
       openCommonModal({
         heading: `${content.notificationType === "Investment" ? "Fund Receipt" : content.notificationType} Sent`,
         subtitle: "",
-        body: `The statement was emailed to ${content.to} and saved in the investor's notifications.`,
+        body: `The statement was emailed to ${to.trim()} and saved in the investor's notifications.`,
         color: "green",
         buttons: [{ label: "Close", color: "green" }],
       });
@@ -127,7 +131,8 @@ function StatementMailForm({
       }),
   });
 
-  const canSend = !!content.to && !!subject.trim() && !!message.trim();
+  const validEmail = EMAIL_PATTERN.test(to.trim());
+  const canSend = validEmail && !!subject.trim() && !!message.trim();
 
   return (
     <>
@@ -136,13 +141,17 @@ function StatementMailForm({
           label="To"
           size="sm"
           radius="md"
-          readOnly
+          required
+          placeholder="Add recipient email..."
           leftSection={<IconMail size={14} />}
-          value={content.to}
+          value={to}
+          onChange={(e) => setTo(e.currentTarget.value)}
           error={
-            !content.to
-              ? "This investor has no email; add it to the customer first."
-              : undefined
+            !to.trim()
+              ? "This investor has no email; enter the recipient's email."
+              : !validEmail
+                ? "Enter a valid email address."
+                : undefined
           }
         />
         <TextInput

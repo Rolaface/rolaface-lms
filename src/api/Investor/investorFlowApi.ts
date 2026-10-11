@@ -157,7 +157,8 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailRespo
   formData.append("send_me_a_copy", params.send_me_a_copy);
   if (params.cc) formData.append("cc", params.cc);
   if (params.bcc) formData.append("bcc", params.bcc);
-  formData.append("use_default_print_format", "1");
+  // Only our own PDF is attached (attachmentNames). "use_default_print_format" is not sent: it made Frappe
+  // also attach the doctype's default print format, and the email failed whenever that print format had an error.
   formData.append("attachments", JSON.stringify(params.attachmentNames ?? []));
   formData.append("print_language", "en");
   formData.append("add_css", "1");

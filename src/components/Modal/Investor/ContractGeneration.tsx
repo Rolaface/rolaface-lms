@@ -44,6 +44,8 @@ interface ContractGenerationProps extends TabProps {
   investorFlowId?: string | null;
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const escapeHtml = (text: string) =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -139,9 +141,11 @@ export function ContractGeneration({
       }),
   });
 
+  // To is pre-filled with the customer's email and can be changed.
+  const validEmail = EMAIL_PATTERN.test(state.mailTo.trim());
   const canSend =
     status !== "Paid" &&
-    !!state.mailTo.trim() &&
+    validEmail &&
     !!state.mailSubject.trim() &&
     !!state.mailMessage.trim() &&
     !!schedule &&
@@ -352,14 +356,20 @@ export function ContractGeneration({
               label="To"
               size="sm"
               radius="md"
-              readOnly
+              required={status !== "Paid"}
+              readOnly={status === "Paid"}
               placeholder="Add recipient email..."
               leftSection={<IconMail size={14} />}
               value={state.mailTo}
+              onChange={(e) => update({ mailTo: e.currentTarget.value })}
               error={
-                customer && !state.mailTo
-                  ? "This customer has no email."
-                  : undefined
+                !state.mailTo.trim()
+                  ? customer
+                    ? "This customer has no email; enter the recipient's email."
+                    : undefined
+                  : !validEmail
+                    ? "Enter a valid email address."
+                    : undefined
               }
             />
             <TextInput
