@@ -53,6 +53,7 @@ import { formatAmount } from "../../../store/currencyStore";
 import { useCompanyStore } from "../../../store/companyStore";
 import { InvestorDateInput } from "./InvestorDateInput";
 import { PaymentStatementMailDialog } from "./Statements/StatementMailDialog";
+import { rateUnit } from "../../../types/Investor/investmentProductForm";
 
 const ROWS_PER_PAGE = 10;
 
@@ -1178,7 +1179,7 @@ function EarningsStage({
       headerItems={[
         {
           label: "Rate of interest",
-          value: `${draft.details.rate_of_interest}% p.a.`,
+          value: `${draft.details.rate_of_interest}% ${rateUnit(earning.interest_frequency)}`,
         },
         {
           label: "Total interest",

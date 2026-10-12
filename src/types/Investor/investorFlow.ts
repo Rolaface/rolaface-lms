@@ -44,6 +44,8 @@ export interface InvestorFlowTerms {
   interest_rate: number;
   first_repayment_date: string; // YYYY-MM-DD
   penalty_rate?: number;
+  /** Basis of interest_rate: Yearly = % per annum, Monthly = % per month. */
+  interest_frequency?: "Monthly" | "Yearly";
 }
 
 export interface InvestorFlowPayload extends InvestorFlowTerms {
@@ -69,6 +71,10 @@ export interface InvestorFlowListItem {
   contract_status: InvestorFlowContractStatus;
   /** Set when this investment carries the principal renewed from another one. */
   renewed_from: string | null;
+  /** Basis of interest_rate (its own, else its product's). */
+  interest_frequency?: "Monthly" | "Yearly" | null;
+  /** Where the investment is outside its product's ranges (warnings only). */
+  warnings?: string[];
 }
 
 /** Status of a schedule row. */
@@ -154,6 +160,8 @@ export interface InvestorFlowStatusResult {
   id: string;
   previous_status: InvestorFlowStatus;
   status: InvestorFlowStatus;
+  /** Approve: where the contract was emailed. */
+  emailed_to?: string;
 }
 
 export interface InvestorFlowScheduleRow {
@@ -229,6 +237,8 @@ export interface InvestorEarning extends InvestorEarningDetails {
   renewal_status: RenewalStatus | null;
   /** Version of the current schedule (the highest one). */
   schedule_version: number;
+  /** Basis of rate_of_interest: Yearly = % per annum, Monthly = % per month. */
+  interest_frequency?: "Monthly" | "Yearly" | null;
   /** The current schedule (rows of the highest version). */
   schedule: InvestorEarningScheduleRow[];
   /** Earlier versions, newest first. */
@@ -529,6 +539,8 @@ export interface PortfolioInvestment extends InvestmentFigures {
   contract_status: InvestorFlowContractStatus | null;
   investment_amount: number;
   interest_rate: number;
+  /** Basis of interest_rate: Yearly = % per annum, Monthly = % per month. */
+  interest_frequency?: "Monthly" | "Yearly" | null;
   repayment_frequency: RepaymentFrequency;
   first_repayment_date: string;
   maturity_date: string;
@@ -819,4 +831,125 @@ export interface LogNotificationPayload {
   message: string;
   file_id: string;
   reference?: string | null;
+}
+
+/* ------------------------------ Investor Payouts ------------------------------ */
+
+export type PayoutPaymentType = "Pay Dues" | "Pay Any" | "Pay Full";
+export const PAYOUT_PAYMENT_TYPES: PayoutPaymentType[] = ["Pay Dues", "Pay Any", "Pay Full"];
+export type PayoutRecordStatus = "Draft" | "Approved" | "Cancelled";
+
+/** How a payout is split over one EMI. */
+export interface PayoutAllocation {
+  row: string;
+  number: number | null;
+  payment_date: string;
+  interest: number;
+  penalty: number;
+  principal: number;
+  amount: number;
+  /** The EMI is fully paid by this payout. */
+  settles: boolean;
+}
+
+export interface PayoutPayload {
+  value_date: string;
+  payment_type: PayoutPaymentType;
+  payment_amount?: number | null;
+  payment_mode: InvestorFlowPaymentMode;
+  paid_from: string;
+  investor_bank_account?: string | null;
+  reference_number: string;
+  reference_date: string;
+  comment?: string | null;
+}
+
+export interface InvestorPayout extends PayoutPayload {
+  name: string;
+  idx: number;
+  investment_id: string;
+  payment_amount: number;
+  record_status: PayoutRecordStatus;
+  journal_entry: string | null;
+  principal_paid: number | null;
+  interest_paid: number | null;
+  penalty_paid: number | null;
+  allocations: PayoutAllocation[];
+}
+
+export interface PayoutListItem extends InvestorPayout {
+  investor: string;
+  investor_id: string;
+}
+
+export interface PayoutListParams {
+  search?: string;
+  record_status?: PayoutRecordStatus[];
+  payment_type?: PayoutPaymentType[];
+  page?: number;
+  page_size?: number;
+}
+
+export interface PayoutListResponse {
+  data: PayoutListItem[];
+  pagination: { page: number; page_size: number; total: number; total_pages: number };
+}
+
+/** An investment with unpaid EMIs, for the Add Payout search. */
+export interface PayoutCandidate {
+  id: string;
+  investor_id: string;
+  investor: string;
+  investor_email: string | null;
+  investor_mobile: string | null;
+  next_emi_date: string;
+  next_emi_amount: number;
+  outstanding: number;
+}
+
+export interface PayoutDueParts {
+  interest: number;
+  penalty: number;
+  principal: number;
+}
+
+export interface PayoutScheduleRow {
+  name: string;
+  number: number;
+  payment_date: string;
+  principal: number;
+  interest: number;
+  penalty: number;
+  total: number;
+  paid: number;
+  remaining: number;
+  remaining_parts: PayoutDueParts;
+  status: InvestorEarningRowStatus | "Partially Paid";
+  payout_entry: string | null;
+}
+
+export interface PayoutContext {
+  id: string;
+  investor_id: string;
+  investor: string;
+  investor_email: string | null;
+  investor_mobile: string | null;
+  investment_product: string;
+  investment_product_name: string;
+  investment_amount: number;
+  /** Company bank GL from Investor Settings (pre-selected as Paid From). */
+  default_paid_from: string | null;
+  bank_accounts: InvestorBankAccount[];
+  next_emi: (PayoutDueParts & { name: string; number: number | null; payment_date: string; total: number; status: string }) | null;
+  outstanding: PayoutDueParts & { emis: number; total: number };
+  schedule: PayoutScheduleRow[];
+  payouts: InvestorPayout[];
+}
+
+export interface PayoutPreview {
+  payment_amount: number;
+  principal: number;
+  interest: number;
+  penalty: number;
+  allocations: PayoutAllocation[];
 }

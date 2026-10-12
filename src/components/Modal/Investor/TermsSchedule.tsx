@@ -23,12 +23,15 @@ import {
   stateProduct,
   toIso,
   validateTerms,
+  productLimitWarnings,
   type ModalState,
   type TabProps,
 } from "./InvestorModalShared";
 import { formatAmount } from "../../../store/currencyStore";
 import { useCompanyStore } from "../../../store/companyStore";
 import { InvestorDateInput } from "./InvestorDateInput";
+import { rateUnit } from "../../../types/Investor/investmentProductForm";
+import { IconAlertTriangle } from "@tabler/icons-react";
 
 export function TermsSchedule({
   state,
@@ -40,6 +43,9 @@ export function TermsSchedule({
   const fmtAmount = (value: number) =>
     formatAmount(companyCurrency, value, { withSymbol: true });
   const error = validateTerms(state, fmtAmount) || scheduleError || "";
+  // Outside the product's ranges: shown, but the user can still continue.
+  const warnings = productLimitWarnings(state, fmtAmount);
+  const unit = rateUnit(state.interestFrequency);
   // The Penalty column is shown only when a penalty rate is set.
   const showPenalty = state.penaltyApplicable && Number(state.penaltyRate) > 0;
 
@@ -87,7 +93,7 @@ export function TermsSchedule({
             },
             {
               label: "Interest rate",
-              value: `${state.rate}% p.a.`,
+              value: `${state.rate}% ${unit}`,
               color: "warning",
             },
             {
@@ -102,6 +108,52 @@ export function TermsSchedule({
             },
           ]}
         />
+      )}
+
+      {warnings.length > 0 && (
+        <Group
+          gap="xs"
+          wrap="wrap"
+          px="sm"
+          py={6}
+          mb="md"
+          style={{
+            borderRadius: "var(--mantine-radius-md)",
+            background: "var(--mantine-color-warning-0)",
+            border: "1px solid var(--mantine-color-warning-2)",
+          }}
+        >
+          <Group gap={6} wrap="nowrap">
+            <IconAlertTriangle
+              size={14}
+              color="var(--mantine-color-warning-7)"
+            />
+            <Text
+              fz="xs"
+              fw={700}
+              c="warning.8"
+              style={{ whiteSpace: "nowrap" }}
+            >
+              Outside product ranges (you can continue):
+            </Text>
+          </Group>
+          {warnings.map((w) => (
+            <Text
+              key={w}
+              fz="xs"
+              c="warning.9"
+              px={8}
+              py={2}
+              style={{
+                borderRadius: "var(--mantine-radius-xl)",
+                background: "var(--mantine-color-white)",
+                border: "1px solid var(--mantine-color-warning-2)",
+              }}
+            >
+              {w}
+            </Text>
+          ))}
+        </Group>
       )}
 
       {error && (
@@ -154,7 +206,7 @@ export function TermsSchedule({
                 decimalScale={2}
                 rightSection={
                   <Text fz={11} c="slate.4">
-                    % p.a.
+                    % {unit}
                   </Text>
                 }
                 rightSectionWidth={48}

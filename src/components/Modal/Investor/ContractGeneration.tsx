@@ -38,6 +38,7 @@ import {
   type TabProps,
 } from "./InvestorModalShared";
 import { formatAmount } from "../../../store/currencyStore";
+import { rateUnit } from "../../../types/Investor/investmentProductForm";
 
 interface ContractGenerationProps extends TabProps {
   /** Investor Flow ID when it already exists (used as the email's reference document). */
@@ -45,6 +46,9 @@ interface ContractGenerationProps extends TabProps {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** The contract email box of this step (off: the contract is emailed on approval instead). */
+const SHOW_CONTRACT_EMAIL = false;
 
 const escapeHtml = (text: string) =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -289,7 +293,10 @@ export function ContractGeneration({
                       label: "Investment amount",
                       value: fmtAmount(state.amount),
                     },
-                    { label: "Interest rate", value: `${state.rate}% p.a.` },
+                    {
+                      label: "Interest rate",
+                      value: `${state.rate}% ${rateUnit(state.interestFrequency)}`,
+                    },
                     { label: "Repayment frequency", value: state.frequency },
                     { label: "Number of payments", value: schedule.count },
                     {
@@ -332,87 +339,91 @@ export function ContractGeneration({
           )}
         </Paper>
 
-        {/* Right: the email */}
-        <Paper radius="md" style={cardStyle}>
-          {cardHeader(
-            "Contract email",
-            <Tag label={status} color={CONTRACT_STATUS_COLOR[status]} />,
-            status !== "Paid" && (
-              <Button
-                size="xs"
+        {/* Right: the email. Hidden for now: the contract is emailed automatically when the investment is
+            approved, and re-sent with Compose Mail in the Investments list. */}
+        {SHOW_CONTRACT_EMAIL && (
+          <Paper radius="md" style={cardStyle}>
+            {cardHeader(
+              "Contract email",
+              <Tag label={status} color={CONTRACT_STATUS_COLOR[status]} />,
+              status !== "Paid" && (
+                <Button
+                  size="xs"
+                  radius="md"
+                  variant="default"
+                  leftSection={<IconSend size={14} />}
+                  disabled={!canSend}
+                  loading={sendMutation.isPending}
+                  onClick={handleSend}
+                >
+                  {status === "Sent" ? "Send again" : "Send"}
+                </Button>
+              ),
+            )}
+            <Stack gap="sm" p="md" style={{ flex: 1 }}>
+              <TextInput
+                label="To"
+                size="sm"
                 radius="md"
-                variant="default"
-                leftSection={<IconSend size={14} />}
-                disabled={!canSend}
-                loading={sendMutation.isPending}
-                onClick={handleSend}
-              >
-                {status === "Sent" ? "Send again" : "Send"}
-              </Button>
-            ),
-          )}
-          <Stack gap="sm" p="md" style={{ flex: 1 }}>
-            <TextInput
-              label="To"
-              size="sm"
-              radius="md"
-              required={status !== "Paid"}
-              readOnly={status === "Paid"}
-              placeholder="Add recipient email..."
-              leftSection={<IconMail size={14} />}
-              value={state.mailTo}
-              onChange={(e) => update({ mailTo: e.currentTarget.value })}
-              error={
-                !state.mailTo.trim()
-                  ? customer
-                    ? "This customer has no email; enter the recipient's email."
-                    : undefined
-                  : !validEmail
-                    ? "Enter a valid email address."
-                    : undefined
-              }
-            />
-            <TextInput
-              label="Subject"
-              size="sm"
-              radius="md"
-              required={status !== "Paid"}
-              readOnly={status === "Paid"}
-              placeholder={`Your Investment Agreement - ${state.contractNo}`}
-              value={state.mailSubject}
-              onChange={(e) => update({ mailSubject: e.currentTarget.value })}
-            />
-            <Textarea
-              label="Message"
-              size="sm"
-              radius="md"
-              required={status !== "Paid"}
-              readOnly={status === "Paid"}
-              placeholder={
-                customer && product
-                  ? `Dear ${customer.name}, please find attached your agreement for ${product.name}...`
-                  : "Write the message to the investor..."
-              }
-              style={{ flex: 1, display: "flex", flexDirection: "column" }}
-              styles={{
-                wrapper: { flex: 1, display: "flex" },
-                input: { flex: 1, minHeight: 140 },
-              }}
-              value={state.mailMessage}
-              onChange={(e) => update({ mailMessage: e.currentTarget.value })}
-            />
-            {status === "Sent" && !state.contractMailSent && (
-              <Text fz="xs" c="slate.5">
-                The contract was already sent to this address.
-              </Text>
-            )}
-            {state.contractMailSent && (
-              <Alert variant="light" color="brand" radius="md">
-                Contract sent. It is saved with the investment when you submit.
-              </Alert>
-            )}
-          </Stack>
-        </Paper>
+                required={status !== "Paid"}
+                readOnly={status === "Paid"}
+                placeholder="Add recipient email..."
+                leftSection={<IconMail size={14} />}
+                value={state.mailTo}
+                onChange={(e) => update({ mailTo: e.currentTarget.value })}
+                error={
+                  !state.mailTo.trim()
+                    ? customer
+                      ? "This customer has no email; enter the recipient's email."
+                      : undefined
+                    : !validEmail
+                      ? "Enter a valid email address."
+                      : undefined
+                }
+              />
+              <TextInput
+                label="Subject"
+                size="sm"
+                radius="md"
+                required={status !== "Paid"}
+                readOnly={status === "Paid"}
+                placeholder={`Your Investment Agreement - ${state.contractNo}`}
+                value={state.mailSubject}
+                onChange={(e) => update({ mailSubject: e.currentTarget.value })}
+              />
+              <Textarea
+                label="Message"
+                size="sm"
+                radius="md"
+                required={status !== "Paid"}
+                readOnly={status === "Paid"}
+                placeholder={
+                  customer && product
+                    ? `Dear ${customer.name}, please find attached your agreement for ${product.name}...`
+                    : "Write the message to the investor..."
+                }
+                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+                styles={{
+                  wrapper: { flex: 1, display: "flex" },
+                  input: { flex: 1, minHeight: 140 },
+                }}
+                value={state.mailMessage}
+                onChange={(e) => update({ mailMessage: e.currentTarget.value })}
+              />
+              {status === "Sent" && !state.contractMailSent && (
+                <Text fz="xs" c="slate.5">
+                  The contract was already sent to this address.
+                </Text>
+              )}
+              {state.contractMailSent && (
+                <Alert variant="light" color="brand" radius="md">
+                  Contract sent. It is saved with the investment when you
+                  submit.
+                </Alert>
+              )}
+            </Stack>
+          </Paper>
+        )}
       </Box>
 
       {pdfPreview.modal}

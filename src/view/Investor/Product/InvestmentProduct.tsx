@@ -51,6 +51,7 @@ import { openCommonModal } from "../../../components/Modal/AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { PAYOUT_FREQUENCIES } from "../../../components/Modal/Investor/Product/InvestmentProductModal";
 import { investmentProductModal } from "../../../components/Modal/Investor/Product/investmentProductModalStore";
+import { rateUnit } from "../../../types/Investor/investmentProductForm";
 import { formatAmount, useCurrencyReady } from "../../../store/currencyStore";
 import { useCompanyStore } from "../../../store/companyStore";
 
@@ -68,6 +69,8 @@ interface ProductRow {
   minTenure: number;
   maxTenure: number;
   active: boolean;
+  /** "p.m." or "p.a.": basis of the rates. */
+  rateUnit: string;
 }
 
 const columnHelper = createColumnHelper<ProductRow>();
@@ -308,6 +311,7 @@ export function InvestmentProduct() {
       minTenure: Number(item.minimum_tenure) || 0,
       maxTenure: Number(item.maximum_tenure) || 0,
       active: item.disabled !== 1,
+      rateUnit: rateUnit(item.interest_frequency),
     }));
   }, [productsResponse]);
 
@@ -335,7 +339,7 @@ export function InvestmentProduct() {
         header: "Default Rate",
         cell: (info) => (
           <Text fz="xs" c="slate.6" ta="right">
-            {`${info.getValue()}% p.a.`}
+            {`${info.getValue()}% ${info.row.original.rateUnit}`}
           </Text>
         ),
         sortingFn: "basic",
@@ -362,7 +366,7 @@ export function InvestmentProduct() {
         header: "Interest Range",
         cell: (info) => (
           <Text fz="xs" c="slate.6" ta="right">
-            {`${info.row.original.minRate}% – ${info.row.original.maxRate}%`}
+            {`${info.row.original.minRate}% – ${info.row.original.maxRate}% ${info.row.original.rateUnit}`}
           </Text>
         ),
       }),

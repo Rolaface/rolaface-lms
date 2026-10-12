@@ -9,11 +9,9 @@ import {
   NumberInput,
   Select,
   Checkbox,
-  Badge,
   ThemeIcon,
   Group,
   Fieldset,
-  Paper,
   SimpleGrid,
   Stack,
   Button,
@@ -24,9 +22,6 @@ import {
   IconChevronDown,
   IconMinus,
   IconCircleDot,
-  IconListDetails,
-  IconCurrencyRupee,
-  IconCurrency,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@mantine/form";
@@ -37,6 +32,7 @@ import {
   validateProductForm,
   type ProductFormValues,
 } from "./investmentProductForm";
+import { INTEREST_FREQUENCIES } from "../../../../types/Investor/investmentProductForm";
 import {
   createInvestmentProduct,
   updateInvestmentProduct,
@@ -67,48 +63,18 @@ export const PAYOUT_FREQUENCIES = [
 
 const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
 
-/** One limit pair (minimum + maximum) in its own bordered box, as in "Product limits". */
-function LimitGroup({
-  title,
-  unit,
-  children,
-}: {
-  title: string;
-  unit: string;
-  children: ReactNode;
-}) {
+/** A bordered box around one group of rows of the form. */
+function RowBox({ children }: { children: ReactNode }) {
   return (
     <Box
-      p="sm"
+      p="md"
       style={{
         borderRadius: "var(--mantine-radius-md)",
         border: "1px solid var(--mantine-color-slate-2)",
-        background: "var(--mantine-color-slate-0)",
+        background: "var(--mantine-color-white)",
       }}
     >
-      <Group justify="space-between" mb="xs" wrap="nowrap">
-        <Text
-          fz={11}
-          fw={800}
-          c="slate.7"
-          tt="uppercase"
-          style={{ letterSpacing: 0.4 }}
-        >
-          {title}
-        </Text>
-        <Badge
-          size="xs"
-          variant="light"
-          color="brand"
-          radius="sm"
-          style={{ textTransform: "none" }}
-        >
-          {unit}
-        </Badge>
-      </Group>
-      <SimpleGrid cols={2} spacing="xs">
-        {children}
-      </SimpleGrid>
+      {children}
     </Box>
   );
 }
@@ -118,44 +84,6 @@ function Unit({ children }: { children: ReactNode }) {
     <Text fz="xs" c="slate.4">
       {children}
     </Text>
-  );
-}
-
-function FormSection({
-  icon,
-  title,
-  subtitle,
-  children,
-}: {
-  icon: ReactNode;
-  title: string;
-  subtitle: string;
-  children: ReactNode;
-}) {
-  return (
-    <Paper
-      radius="lg"
-      p="md"
-      style={{
-        background: "var(--mantine-color-white)",
-        border: "1px solid var(--mantine-color-slate-2)",
-      }}
-    >
-      <Group gap="sm" mb="md" wrap="nowrap">
-        <ThemeIcon size={32} radius="md" variant="light" color="brand">
-          {icon}
-        </ThemeIcon>
-        <Box>
-          <Text fw={700} fz="sm" c="slate.8">
-            {title}
-          </Text>
-          <Text fz="xs" c="slate.5">
-            {subtitle}
-          </Text>
-        </Box>
-      </Group>
-      {children}
-    </Paper>
   );
 }
 
@@ -318,11 +246,6 @@ export function InvestmentProductModal({
   const savedCode: string = savedItem?.product_code || "";
   // A saved Product Code can't be changed (products saved before the code existed can still get one).
   const codeLocked = !!editId && !!savedCode;
-  // Defaults must sit inside the limits, so they are entered once both limits are set.
-  const tenureLimitsSet =
-    form.values.minTenure !== "" && form.values.maxTenure !== "";
-  const rateLimitsSet =
-    form.values.minRate !== "" && form.values.maxRate !== "";
 
   const headerTitle = editId
     ? isView
@@ -438,294 +361,258 @@ export function InvestmentProductModal({
           </Group>
         </Box>
 
-        {/* Body */}
+        {/* Body: four fields per row */}
         <Box
           px="lg"
           py="md"
-          bg="slate.0"
           style={{ flex: 1, overflowY: "auto", minHeight: 0 }}
         >
           <Fieldset disabled={isView} variant="unstyled" p={0} m={0}>
             <Stack gap="md">
-              <FormSection
-                icon={<IconListDetails size={16} />}
-                title="Investment product"
-                subtitle="Name, code and the values new investments start with."
-              >
-                <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-                  {/* Left: name, code, defaults */}
-                  <Stack gap="sm">
-                    <TextInput
-                      label="Product name"
-                      placeholder="Steady Income NCD"
-                      withAsterisk
-                      size="sm"
-                      radius="md"
-                      styles={FIELD_STYLES}
-                      {...form.getInputProps("name")}
-                    />
-                    <TextInput
-                      label={
-                        <Group justify="space-between" wrap="nowrap" w="100%">
-                          <span>
-                            Product code{" "}
-                            <Text span c="red">
-                              *
-                            </Text>
-                          </span>
-                          <Text span fz={11} fw={400} c="slate.5">
-                            {codeLocked
-                              ? "Can't be changed once created"
-                              : "Stays the same even if name changes"}
-                          </Text>
-                        </Group>
-                      }
-                      placeholder="SI-NCD"
-                      size="sm"
-                      radius="md"
-                      styles={{
-                        ...FIELD_STYLES,
-                        label: {
-                          ...FIELD_STYLES.label,
-                          display: "block",
-                          width: "100%",
-                        },
-                        input: {
-                          ...FIELD_STYLES.input,
-                          fontFamily: "var(--mantine-font-family-monospace)",
-                          letterSpacing: 1,
-                        },
+              <RowBox>
+                <SimpleGrid
+                  cols={{ base: 1, sm: 2, md: 4 }}
+                  spacing="md"
+                  verticalSpacing="sm"
+                >
+                  {/* Product */}
+                  <TextInput
+                    label="Product name"
+                    placeholder="Steady Income NCD"
+                    withAsterisk
+                    size="sm"
+                    radius="md"
+                    styles={FIELD_STYLES}
+                    {...form.getInputProps("name")}
+                  />
+                  <TextInput
+                    label="Product code"
+                    placeholder="SI-NCD"
+                    withAsterisk
+                    size="sm"
+                    radius="md"
+                    styles={FIELD_STYLES}
+                    disabled={codeLocked}
+                    title={
+                      codeLocked
+                        ? "Can't be changed once the product is created"
+                        : undefined
+                    }
+                    {...form.getInputProps("code")}
+                    onChange={(e) =>
+                      form.setFieldValue(
+                        "code",
+                        e.currentTarget.value.toUpperCase(),
+                      )
+                    }
+                  />
+                  <Textarea
+                    label="Product description"
+                    placeholder="Brief description of this investment product..."
+                    withAsterisk
+                    size="sm"
+                    radius="md"
+                    autosize
+                    minRows={1}
+                    maxRows={4}
+                    styles={FIELD_STYLES}
+                    style={{ gridColumn: "span 2" }}
+                    {...form.getInputProps("description")}
+                  />
+
+                  {/* Payout, penalty, status */}
+                  <Select
+                    label="Default payout frequency"
+                    withAsterisk
+                    size="sm"
+                    radius="md"
+                    allowDeselect={false}
+                    styles={FIELD_STYLES}
+                    data={PAYOUT_FREQUENCIES}
+                    rightSection={chevronDown}
+                    {...form.getInputProps("frequency")}
+                  />
+                  <NumberInput
+                    label="Default penalty"
+                    placeholder="Optional rate"
+                    size="sm"
+                    radius="md"
+                    hideControls
+                    min={0}
+                    styles={FIELD_STYLES}
+                    rightSection={<Unit>%</Unit>}
+                    {...form.getInputProps("defaultPenalty")}
+                  />
+                  <Box style={{ alignSelf: "end" }}>
+                    <Box
+                      px="sm"
+                      py={6}
+                      style={{
+                        borderRadius: "var(--mantine-radius-md)",
+                        border: "1px solid var(--mantine-color-slate-2)",
+                        background: "var(--mantine-color-slate-0)",
                       }}
-                      disabled={codeLocked}
-                      {...form.getInputProps("code")}
-                      onChange={(e) =>
-                        form.setFieldValue(
-                          "code",
-                          e.currentTarget.value.toUpperCase(),
-                        )
-                      }
-                    />
-                    <SimpleGrid cols={3} spacing="xs">
-                      <NumberInput
-                        label="Default tenure"
-                        withAsterisk
-                        size="sm"
-                        radius="md"
-                        hideControls
-                        min={0}
-                        allowDecimal={false}
-                        styles={FIELD_STYLES}
-                        disabled={!tenureLimitsSet}
-                        rightSectionWidth={36}
-                        rightSection={<Unit>mo</Unit>}
-                        description={
-                          tenureLimitsSet
-                            ? `${form.values.minTenure}–${form.values.maxTenure} months`
-                            : "Set limits below"
-                        }
-                        inputWrapperOrder={[
-                          "label",
-                          "input",
-                          "description",
-                          "error",
-                        ]}
-                        {...form.getInputProps("defaultTenure")}
-                      />
-                      <NumberInput
-                        label="Default interest"
-                        withAsterisk
-                        size="sm"
-                        radius="md"
-                        hideControls
-                        min={0}
-                        styles={FIELD_STYLES}
-                        disabled={!rateLimitsSet}
-                        rightSection={<Unit>%</Unit>}
-                        description={
-                          rateLimitsSet
-                            ? `${form.values.minRate}–${form.values.maxRate}%`
-                            : "Set limits below"
-                        }
-                        inputWrapperOrder={[
-                          "label",
-                          "input",
-                          "description",
-                          "error",
-                        ]}
-                        {...form.getInputProps("defaultRate")}
-                      />
-                      <NumberInput
-                        label="Default penalty"
-                        size="sm"
-                        radius="md"
-                        hideControls
-                        min={0}
-                        styles={FIELD_STYLES}
-                        rightSection={<Unit>%</Unit>}
-                        description="Optional rate"
-                        inputWrapperOrder={[
-                          "label",
-                          "input",
-                          "description",
-                          "error",
-                        ]}
-                        {...form.getInputProps("defaultPenalty")}
-                      />
-                    </SimpleGrid>
-                  </Stack>
-
-                  {/* Right: description, frequency, disabled */}
-                  <Stack gap="sm" justify="space-between">
-                    <Textarea
-                      label="Product description"
-                      placeholder="Brief description of this investment product."
-                      withAsterisk
-                      size="sm"
-                      radius="md"
-                      minRows={4}
-                      maxRows={6}
-                      autosize
-                      styles={FIELD_STYLES}
-                      {...form.getInputProps("description")}
-                    />
-                    <SimpleGrid
-                      cols={2}
-                      spacing="xs"
-                      style={{ alignItems: "end" }}
                     >
-                      <Select
-                        label="Default payout frequency"
-                        withAsterisk
+                      <Checkbox
                         size="sm"
-                        radius="md"
-                        allowDeselect={false}
-                        styles={FIELD_STYLES}
-                        data={PAYOUT_FREQUENCIES}
-                        rightSection={chevronDown}
-                        {...form.getInputProps("frequency")}
+                        label={
+                          <Box>
+                            <Text fz="sm" fw={600} c="slate.7" lh={1.2}>
+                              Disabled
+                            </Text>
+                            <Text fz={11} c="slate.5">
+                              Disables new investments
+                            </Text>
+                          </Box>
+                        }
+                        {...form.getInputProps("disabled", {
+                          type: "checkbox",
+                        })}
                       />
-                      <Box
-                        px="sm"
-                        py={6}
-                        style={{
-                          borderRadius: "var(--mantine-radius-md)",
-                          border: "1px solid var(--mantine-color-slate-2)",
-                          background: "var(--mantine-color-slate-0)",
-                        }}
-                      >
-                        <Checkbox
-                          size="sm"
-                          label={
-                            <Box>
-                              <Text fz="sm" fw={700} c="slate.7" lh={1.2}>
-                                Disabled
-                              </Text>
-                              <Text fz={11} c="slate.5">
-                                Disables new investments
-                              </Text>
-                            </Box>
-                          }
-                          {...form.getInputProps("disabled", {
-                            type: "checkbox",
-                          })}
-                        />
-                      </Box>
-                    </SimpleGrid>
-                  </Stack>
+                    </Box>
+                  </Box>
+                  <Box visibleFrom="md" />
                 </SimpleGrid>
-              </FormSection>
-
-              <FormSection
-                icon={<IconCurrency size={16} />}
-                title="Product limits"
-                subtitle="The range every investment under this product must stay within."
-              >
-                <SimpleGrid cols={{ base: 1, md: 3 }} spacing="sm">
-                  <LimitGroup title="Interest rate range" unit="% per annum">
-                    <NumberInput
-                      label="Min rate"
-                      withAsterisk
-                      size="sm"
-                      radius="md"
-                      hideControls
-                      min={0}
-                      styles={FIELD_STYLES}
-                      rightSection={<Unit>%</Unit>}
-                      {...form.getInputProps("minRate")}
-                    />
-                    <NumberInput
-                      label="Max rate"
-                      withAsterisk
-                      size="sm"
-                      radius="md"
-                      hideControls
-                      min={0}
-                      styles={FIELD_STYLES}
-                      rightSection={<Unit>%</Unit>}
-                      {...form.getInputProps("maxRate")}
-                    />
-                  </LimitGroup>
-                  <LimitGroup
-                    title="Investment amount"
-                    unit={`${companyCurrency} (${currencySymbol})`}
-                  >
-                    <NumberInput
-                      label="Min investment"
-                      placeholder="10,000"
-                      withAsterisk
-                      size="sm"
-                      radius="md"
-                      hideControls
-                      min={0}
-                      thousandSeparator=","
-                      styles={FIELD_STYLES}
-                      leftSection={<Unit>{currencySymbol}</Unit>}
-                      {...form.getInputProps("minAmount")}
-                    />
-                    <NumberInput
-                      label="Max investment"
-                      placeholder="10,00,000"
-                      withAsterisk
-                      size="sm"
-                      radius="md"
-                      hideControls
-                      min={0}
-                      thousandSeparator=","
-                      styles={FIELD_STYLES}
-                      leftSection={<Unit>{currencySymbol}</Unit>}
-                      {...form.getInputProps("maxAmount")}
-                    />
-                  </LimitGroup>
-                  <LimitGroup title="Tenure duration" unit="Months">
-                    <NumberInput
-                      label="Min tenure"
-                      withAsterisk
-                      size="sm"
-                      radius="md"
-                      hideControls
-                      min={0}
-                      allowDecimal={false}
-                      styles={FIELD_STYLES}
-                      rightSectionWidth={36}
-                      rightSection={<Unit>mo</Unit>}
-                      {...form.getInputProps("minTenure")}
-                    />
-                    <NumberInput
-                      label="Max tenure"
-                      withAsterisk
-                      size="sm"
-                      radius="md"
-                      hideControls
-                      min={0}
-                      allowDecimal={false}
-                      styles={FIELD_STYLES}
-                      rightSectionWidth={36}
-                      rightSection={<Unit>mo</Unit>}
-                      {...form.getInputProps("maxTenure")}
-                    />
-                  </LimitGroup>
+              </RowBox>
+              <RowBox>
+                <SimpleGrid
+                  cols={{ base: 1, sm: 2, md: 4 }}
+                  spacing="md"
+                  verticalSpacing="sm"
+                >
+                  {/* Interest */}
+                  <NumberInput
+                    label="Interest Min rate"
+                    placeholder="e.g. 10"
+                    withAsterisk
+                    size="sm"
+                    radius="md"
+                    hideControls
+                    min={0}
+                    styles={FIELD_STYLES}
+                    rightSection={<Unit>%</Unit>}
+                    {...form.getInputProps("minRate")}
+                  />
+                  <NumberInput
+                    label="Interest Max rate"
+                    placeholder="e.g. 18"
+                    withAsterisk
+                    size="sm"
+                    radius="md"
+                    hideControls
+                    min={0}
+                    styles={FIELD_STYLES}
+                    rightSection={<Unit>%</Unit>}
+                    {...form.getInputProps("maxRate")}
+                  />
+                  <NumberInput
+                    label="Default Interest rate"
+                    placeholder="e.g. 15"
+                    withAsterisk
+                    size="sm"
+                    radius="md"
+                    hideControls
+                    min={0}
+                    styles={FIELD_STYLES}
+                    rightSection={<Unit>%</Unit>}
+                    {...form.getInputProps("defaultRate")}
+                  />
+                  <Select
+                    label="Interest Frequency"
+                    size="sm"
+                    radius="md"
+                    allowDeselect={false}
+                    styles={FIELD_STYLES}
+                    data={INTEREST_FREQUENCIES}
+                    rightSection={chevronDown}
+                    {...form.getInputProps("interestFrequency")}
+                  />
                 </SimpleGrid>
-              </FormSection>
+              </RowBox>
+              <RowBox>
+                <SimpleGrid
+                  cols={{ base: 1, sm: 2, md: 4 }}
+                  spacing="md"
+                  verticalSpacing="sm"
+                >
+                  {/* Investment amount */}
+                  <NumberInput
+                    label={`Min investment (${currencySymbol})`}
+                    placeholder="10,000"
+                    withAsterisk
+                    size="sm"
+                    radius="md"
+                    hideControls
+                    min={0}
+                    thousandSeparator=","
+                    styles={FIELD_STYLES}
+                    {...form.getInputProps("minAmount")}
+                  />
+                  <NumberInput
+                    label={`Max investment (${currencySymbol})`}
+                    placeholder="10,00,000"
+                    withAsterisk
+                    size="sm"
+                    radius="md"
+                    hideControls
+                    min={0}
+                    thousandSeparator=","
+                    styles={FIELD_STYLES}
+                    {...form.getInputProps("maxAmount")}
+                  />
+                </SimpleGrid>
+              </RowBox>
+              <RowBox>
+                <SimpleGrid
+                  cols={{ base: 1, sm: 2, md: 4 }}
+                  spacing="md"
+                  verticalSpacing="sm"
+                >
+                  {/* Tenure */}
+                  <NumberInput
+                    label="Min tenure"
+                    placeholder="3"
+                    withAsterisk
+                    size="sm"
+                    radius="md"
+                    hideControls
+                    min={0}
+                    allowDecimal={false}
+                    styles={FIELD_STYLES}
+                    rightSectionWidth={36}
+                    rightSection={<Unit>mo</Unit>}
+                    {...form.getInputProps("minTenure")}
+                  />
+                  <NumberInput
+                    label="Max tenure"
+                    placeholder="36"
+                    withAsterisk
+                    size="sm"
+                    radius="md"
+                    hideControls
+                    min={0}
+                    allowDecimal={false}
+                    styles={FIELD_STYLES}
+                    rightSectionWidth={36}
+                    rightSection={<Unit>mo</Unit>}
+                    {...form.getInputProps("maxTenure")}
+                  />
+                  <NumberInput
+                    label="Default tenure"
+                    placeholder="12"
+                    withAsterisk
+                    size="sm"
+                    radius="md"
+                    hideControls
+                    min={0}
+                    allowDecimal={false}
+                    styles={FIELD_STYLES}
+                    rightSectionWidth={36}
+                    rightSection={<Unit>mo</Unit>}
+                    {...form.getInputProps("defaultTenure")}
+                  />
+                </SimpleGrid>
+              </RowBox>
             </Stack>
           </Fieldset>
         </Box>

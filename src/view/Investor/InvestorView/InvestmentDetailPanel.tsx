@@ -42,6 +42,7 @@ import {
   StatusBadge,
 } from "./ui";
 import { fmtDate, useMoney } from "./format";
+import { rateUnit } from "../../../types/Investor/investmentProductForm";
 
 /** Tabs of the investment detail. */
 export type InvestmentDetailTab = "funds" | "schedule" | "trail";
@@ -176,7 +177,7 @@ function InvestmentDetailBody({
           />
           <Field
             label="Interest rate"
-            value={`${detail.interest_rate}% p.a.`}
+            value={`${detail.interest_rate}% ${rateUnit(detail.interest_frequency)}`}
           />
           <Field
             label="Repayment frequency"

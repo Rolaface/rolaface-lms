@@ -21,6 +21,7 @@ import {
 } from "@mantine/core";
 import {
   IconEye,
+  IconMail,
   IconPencil,
   IconPlus,
   IconChevronUp,
@@ -51,6 +52,8 @@ import { parseFrappeError } from "../../utils/parseFrappeError";
 import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { InvestorView } from "./InvestorView/InvestorView";
+import { ContractMailDialog } from "../../components/Modal/Investor/Statements/StatementMailDialog";
+import { prepareContractMail } from "../../components/Modal/Investor/Statements/autoMail";
 import type { InvestmentDetailTab } from "./InvestorView/InvestmentDetailPanel";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
@@ -141,6 +144,9 @@ export function Investor() {
     investorId: string;
     investmentId: string;
   } | null>(null);
+  // Compose Mail: send the contract again (it is emailed automatically on approval).
+  const [contractMailFor, setContractMailFor] = useState<string | null>(null);
+  const companyName = useCompanyStore((state) => state.companyName);
   const location = useLocation();
   const navigate = useNavigate();
   const [pageSize, setPageSize] = useState(10);
@@ -243,13 +249,24 @@ export function Investor() {
     }: {
       id: string;
       action: InvestorFlowStatusAction;
-    }) => updateInvestorFlowStatus({ id, action }),
+    }) =>
+      // Approve: the contract is emailed to the investor; approved only when the email is sent.
+      action === "approved"
+        ? prepareContractMail(id, {
+            theme,
+            currency: companyCurrency,
+            companyName,
+          }).then((mail) => updateInvestorFlowStatus({ id, action, mail }))
+        : updateInvestorFlowStatus({ id, action }),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
       queryClient.invalidateQueries({ queryKey: ["investorFlow", result.id] });
+      queryClient.invalidateQueries({ queryKey: ["investorNotifications"] });
       showSuccess(
         `Investment ${result.status}`,
-        `Investment has been ${result.status.toLowerCase()} successfully.`,
+        result.emailed_to
+          ? `Investment has been ${result.status.toLowerCase()} and the contract was emailed to ${result.emailed_to}.`
+          : `Investment has been ${result.status.toLowerCase()} successfully.`,
       );
     },
     onError: (error: any) => showError("Status Update Failed", error),
@@ -274,6 +291,9 @@ export function Investor() {
       subtitle: "Please confirm this action before continuing.",
       body: (
         <>
+          The contract will be emailed to the investor; nothing is approved if
+          the email cannot be sent.
+          <br />
           Are you sure you want to approve the investment of{" "}
           <Text span fw={600}>
             {fmtAmount(row.amount)}
@@ -474,6 +494,8 @@ export function Investor() {
           const canDelete =
             (isDraft || row.status === "Cancelled") && !row.renewedFrom;
           const hasActions = isDraft || (isApproved && !row.renewedFrom);
+          // The contract exists once the investment is approved.
+          const canMail = isApproved || row.status === "Paid";
 
           return (
             // Double-clicking an action button must not also open the Investor 360 view.
@@ -539,6 +561,27 @@ export function Investor() {
                 </ActionIcon>
               </Tooltip>
 
+              <Tooltip
+                label={
+                  canMail
+                    ? "Compose Mail (contract)"
+                    : "Available once the investment is Approved"
+                }
+                withArrow
+              >
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color={canMail ? "success" : "slate"}
+                  radius="md"
+                  disabled={!canMail}
+                  style={canMail ? undefined : { opacity: 0.35 }}
+                  aria-label="Compose Mail"
+                  onClick={() => setContractMailFor(row.id)}
+                >
+                  <IconMail size={14} />
+                </ActionIcon>
+              </Tooltip>
               <Menu
                 shadow="md"
                 width={190}
@@ -935,6 +978,12 @@ export function Investor() {
           </>
         )}
       </Paper>
+      {contractMailFor && (
+        <ContractMailDialog
+          investmentId={contractMailFor}
+          onClose={() => setContractMailFor(null)}
+        />
+      )}
     </Stack>
   );
 }

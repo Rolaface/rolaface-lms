@@ -24,6 +24,8 @@ import { IconEye, IconMail, IconSend, IconX } from "@tabler/icons-react";
 import type { jsPDF } from "jspdf";
 import {
   getInvestmentDetail,
+  getInvestorFlowSchedule,
+  getPayoutContext,
   logInvestorNotification,
   sendEmail,
 } from "../../../../api/Investor/investorFlowApi";
@@ -38,11 +40,20 @@ import { parseFrappeError } from "../../../../utils/parseFrappeError";
 import { openCommonModal } from "../../AlertModal";
 import { usePdfPreview } from "../PdfPreviewModal";
 import {
+  buildContractPdfFromState,
   buildFundReceiptPdf,
   buildPaymentStatementPdf,
+  buildPayoutStatementPdf,
+  contractPdfName,
   getPdfPalette,
 } from "../Investmentpdf";
 import { formatInvestorDate } from "../investorDate";
+import { contractText, payoutPdfData, payoutText } from "./autoMail";
+import {
+  loadInvestorFlowState,
+  scheduleFromApi,
+  termsFromState,
+} from "../InvestorModalShared";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -464,6 +475,173 @@ export function PaymentStatementMailDialog({
       onClose={onClose}
       title="Send Payment Statement"
       subtitle="Email the statement for this payout to the investor"
+    >
+      {body}
+    </StatementMailShell>
+  );
+}
+
+/* --------------------- Payout statement (Compose Mail) --------------------- */
+
+export function PayoutStatementMailDialog({
+  investmentId,
+  payoutName,
+  onClose,
+}: {
+  investmentId: string;
+  /** An approved payout. */
+  payoutName: string;
+  onClose: () => void;
+}) {
+  const theme = useMantineTheme();
+  const companyName = useCompanyStore((s) => s.companyName);
+  const currency = useCompanyStore((s) => s.baseCurrency);
+  const query = useQuery({
+    queryKey: ["payoutContext", investmentId],
+    queryFn: () => getPayoutContext(investmentId),
+    staleTime: 0,
+  });
+  const context = query.data;
+  const payout = context?.payouts.find((p) => p.name === payoutName);
+
+  let body;
+  if (!context)
+    body = <LoadingOrError isError={query.isError} error={query.error} />;
+  else if (!payout)
+    body = <Alert color="red">This payout was not found.</Alert>;
+  else {
+    const mc = { theme, currency, companyName };
+    const text = payoutText(context, payout, mc);
+    body = (
+      <>
+        <Group gap={6} mb="sm">
+          <Badge
+            variant="light"
+            color="success"
+            radius="sm"
+            style={{ textTransform: "none" }}
+          >
+            {payout.record_status}
+          </Badge>
+          <Text fz="xs" c="slate.6">
+            {formatAmount(currency, payout.payment_amount, {
+              withSymbol: true,
+            })}{" "}
+            paid on {formatInvestorDate(payout.value_date)} ·{" "}
+            {payout.payment_type}
+          </Text>
+        </Group>
+        <StatementMailForm
+          investmentId={investmentId}
+          onClose={onClose}
+          content={{
+            title: `Payment Statement - ${context.id}`,
+            notificationType: "Payment Statement",
+            reference: payout.name,
+            to: context.investor_email || "",
+            subject: text.subject,
+            message: text.message,
+            pdfName: `PaymentStatement-${context.id}-${payout.value_date}.pdf`,
+            buildPdf: () =>
+              buildPayoutStatementPdf(
+                payoutPdfData(
+                  context,
+                  payout,
+                  payout.allocations,
+                  context.schedule,
+                ),
+                companyName,
+                getPdfPalette(theme),
+                currency,
+              ),
+          }}
+        />
+      </>
+    );
+  }
+
+  return (
+    <StatementMailShell
+      opened
+      onClose={onClose}
+      title="Send Payment Statement"
+      subtitle="Email the statement of this payout to the investor again"
+    >
+      {body}
+    </StatementMailShell>
+  );
+}
+
+/* ------------------------- Contract (Compose Mail) ------------------------- */
+
+export function ContractMailDialog({
+  investmentId,
+  onClose,
+}: {
+  investmentId: string;
+  onClose: () => void;
+}) {
+  const theme = useMantineTheme();
+  const companyName = useCompanyStore((s) => s.companyName);
+  const currency = useCompanyStore((s) => s.baseCurrency);
+  const query = useQuery({
+    queryKey: ["contractMail", investmentId],
+    queryFn: async () => {
+      const state = await loadInvestorFlowState(investmentId);
+      const schedule = scheduleFromApi(
+        await getInvestorFlowSchedule(termsFromState(state)),
+      );
+      return { state, schedule };
+    },
+    staleTime: 0,
+    retry: false,
+  });
+
+  let body;
+  if (!query.data)
+    body = <LoadingOrError isError={query.isError} error={query.error} />;
+  else {
+    const { state, schedule } = query.data;
+    const mc = { theme, currency, companyName };
+    const text = contractText(
+      state,
+      state.customerName || state.customerId || "",
+      state.productName || "",
+      mc,
+    );
+    body = (
+      <StatementMailForm
+        investmentId={investmentId}
+        onClose={onClose}
+        content={{
+          title: `Investment Agreement - ${state.contractNo}`,
+          notificationType: "Contract",
+          reference: "Contract",
+          to: state.customerEmail || "",
+          subject: text.subject,
+          message: text.message,
+          pdfName: contractPdfName(state),
+          buildPdf: () => {
+            const doc = buildContractPdfFromState(
+              state,
+              schedule,
+              theme,
+              currency,
+            );
+            if (!doc) throw new Error("The contract could not be made.");
+            return doc;
+          },
+        }}
+      />
+    );
+  }
+
+  return (
+    <StatementMailShell
+      opened
+      onClose={onClose}
+      title="Send Contract"
+      subtitle="Email the investment agreement to the investor again"
     >
       {body}
     </StatementMailShell>

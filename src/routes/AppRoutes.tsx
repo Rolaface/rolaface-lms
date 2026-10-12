@@ -86,6 +86,7 @@ import { SourceMaintenance } from "../view/LosConfiguration/SourceMaintenance/So
 import { Investor } from "../view/Investor/Investor";
 import { InvestmentProduct } from "../view/Investor/Product/InvestmentProduct";
 import { EarningsStatements } from "../view/Investor/EarningsStatements";
+import { InvestorPayouts } from "../view/Investor/Payouts/InvestorPayouts";
 // Renewal: future scope, hidden for now.
 // import { Renewal } from "../view/Investor/Renewal/Renewal";
 import { InvestorSettings } from "../view/Investor/InvestorSettings";
@@ -528,6 +529,11 @@ const recordFundRoute = createRoute({
   path: "/record-fund",
   component: RecordFund,
 });
+const payoutsRoute = createRoute({
+  getParentRoute: () => investorRoute,
+  path: "/payouts",
+  component: InvestorPayouts,
+});
 const earningRoute = createRoute({
   getParentRoute: () => investorRoute,
   path: "/earnings",
@@ -635,6 +641,7 @@ const routeTree = rootRoute.addChildren([
     investmentRoute,
     recordFundRoute,
     earningRoute,
+    payoutsRoute,
     // maturityRoute,
     investorSettingsRoute,
   ]),

@@ -25,5 +25,6 @@ import '../../components/Modal/Investor/Product/investmentProductModalStore';
 import '../../components/Modal/Investor/investorModalStore';
 import '../../components/Modal/Investor/recordFundModalStore';
 import '../../components/Modal/Investor/Renewal/renewalModalStore';
+import '../../components/Modal/Investor/Payouts/payoutModalStore';
 import '../../components/Modal/Investor/earningsStatementsModalStore';
 import '../../components/Modal/Investor/maturityModalStore';

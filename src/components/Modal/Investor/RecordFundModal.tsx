@@ -406,7 +406,8 @@ export function RecordFundModal({
     .filter((i) => i.available_to_record > 0 || i.name === chosenFlowId)
     .map((i) => ({
       value: i.name,
-      label: `${i.investor} · ${fmtAmount(i.investment_amount)} · remaining ${fmtAmount(i.remaining_fund)}`,
+      // The investment ID tells apart several investments of the same investor.
+      label: `${i.name} · ${i.investor} · ${fmtAmount(i.investment_amount)} · remaining ${fmtAmount(i.remaining_fund)}`,
     }));
 
   const flowId = mode === "add" ? chosenFlowId : investorFlowId;
@@ -459,7 +460,7 @@ export function RecordFundModal({
                 hint="Approved investments with an amount still to be recorded"
               />
             }
-            placeholder="Search investor"
+            placeholder="Search by investment ID, investor name, mobile, ID or email"
             size="sm"
             radius="md"
             mb="md"

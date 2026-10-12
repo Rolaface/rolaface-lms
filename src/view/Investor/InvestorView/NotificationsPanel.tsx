@@ -9,8 +9,10 @@ import {
   Group,
   Stack,
   Table,
+  Select,
   Tabs,
   Text,
+  TextInput,
   Tooltip,
 } from "@mantine/core";
 import {
@@ -19,6 +21,7 @@ import {
   IconFileCertificate,
   IconReceipt,
   IconReportMoney,
+  IconSearch,
 } from "@tabler/icons-react";
 import { fetchPrivateFile } from "../../../api/Investor/investorFlowApi";
 import type {
@@ -70,6 +73,20 @@ export function NotificationsPanel({
   notifications: InvestorNotification[];
 }) {
   const [tab, setTab] = useState<string | null>(TYPES[0].type);
+  // Filters: one investment, and a search on the subject / recipient.
+  const [investment, setInvestment] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const investments = Array.from(
+    new Set(notifications.map((n) => n.investment)),
+  ).sort();
+  const term = search.trim().toLowerCase();
+  const filtered = notifications.filter(
+    (n) =>
+      (!investment || n.investment === investment) &&
+      (!term ||
+        n.subject.toLowerCase().includes(term) ||
+        n.sent_to.toLowerCase().includes(term)),
+  );
 
   // The PDFs are private files: fetched with the logged-in session, then opened / saved.
   const fileMutation = useMutation({
@@ -110,10 +127,36 @@ export function NotificationsPanel({
         title="Notifications"
         subtitle="Contracts and statements emailed to the investor, with the PDF that was sent"
       />
+      <Group gap="sm" mb="sm" wrap="wrap">
+        <Select
+          size="xs"
+          radius="md"
+          w={220}
+          clearable
+          placeholder="All investments"
+          data={investments}
+          value={investment}
+          onChange={setInvestment}
+        />
+        <TextInput
+          size="xs"
+          radius="md"
+          w={260}
+          placeholder="Search subject or recipient"
+          leftSection={<IconSearch size={12} />}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+        />
+        {(investment || term) && (
+          <Text fz="xs" c="slate.5">
+            {filtered.length} of {notifications.length} shown
+          </Text>
+        )}
+      </Group>
       <Tabs value={tab} onChange={setTab} color="brand">
         <Tabs.List mb="md">
           {TYPES.map((t) => {
-            const count = notifications.filter(
+            const count = filtered.filter(
               (n) => n.notification_type === t.type,
             ).length;
             return (
@@ -134,9 +177,7 @@ export function NotificationsPanel({
         </Tabs.List>
 
         {TYPES.map((t) => {
-          const rows = notifications.filter(
-            (n) => n.notification_type === t.type,
-          );
+          const rows = filtered.filter((n) => n.notification_type === t.type);
           return (
             <Tabs.Panel key={t.type} value={t.type}>
               {rows.length === 0 ? (

@@ -18,6 +18,7 @@ import {
   type RepaymentFrequency,
 } from "../../../types/Investor/investorFlow";
 import { formatInvestorDate } from "./investorDate";
+import type { InterestFrequency } from "../../../types/Investor/investmentProductForm";
 
 /* ------------------------------ Types ------------------------------ */
 /** The Investor Flow frequencies, plus "At maturity" used by the Earnings / Maturity mock data. */
@@ -77,6 +78,8 @@ export interface ModalState {
   productMaxRate: number;
   productMinTenure: number;
   productMaxTenure: number;
+  /** Basis of the interest rate (from the product; saved on the investment). */
+  interestFrequency: InterestFrequency;
   amount: number;
   rate: number;
   frequency: Frequency;
@@ -244,6 +247,7 @@ export function createInitialState(): ModalState {
     productMaxRate: 0,
     productMinTenure: 0,
     productMaxTenure: 0,
+    interestFrequency: "Yearly",
     amount: 0,
     rate: 0,
     frequency: "Monthly",
@@ -348,14 +352,6 @@ export function validateTerms(
 ): string {
   const product = stateProduct(s);
   if (!stateCustomer(s) || !product) return "";
-  if (!(s.amount >= product.minAmount))
-    return (
-      "Minimum investment for " +
-      product.name +
-      " is " +
-      fmtAmount(product.minAmount) +
-      "."
-    );
   if (!Number.isInteger(s.amount))
     return "Investment amount must be a whole number.";
   if (!isRepaymentFrequency(s.frequency))
@@ -368,7 +364,9 @@ export function validateTerms(
     return "Maturity date must be after the first repayment date.";
   if (s.penaltyApplicable && !(s.penaltyRate > 0))
     return "Enter the penalty rate.";
-  return productLimitError(s, fmtAmount);
+  // Product ranges (amount, rate, tenure) are warnings only: see productLimitWarnings.
+  void fmtAmount;
+  return "";
 }
 
 /** Months from today to the date; leftover days count as a fraction (same as the backend). */
@@ -387,26 +385,31 @@ function monthsFromToday(iso: string): number {
   return months + (end.getTime() - anchor.getTime()) / 86_400_000 / 30.4375;
 }
 
-/** The chosen API product's limits (the backend checks the same on save). */
-function productLimitError(
+/** Where the terms are outside the chosen API product's ranges. Warnings only: they never block. */
+export function productLimitWarnings(
   s: ModalState,
   fmtAmount: (value: number) => string,
-): string {
-  if (!s.productId) return "";
+): string[] {
+  if (!s.productId) return [];
   const name = s.productName || s.productId;
+  const unit = s.interestFrequency === "Monthly" ? "per month" : "per annum";
+  const warnings: string[] = [];
+  if (s.productMinAmount && s.amount < s.productMinAmount)
+    warnings.push(`Investment amount is below the minimum investment of ${name} (${fmtAmount(s.productMinAmount)}).`);
   if (s.productMaxAmount && s.amount > s.productMaxAmount)
-    return `Maximum investment for ${name} is ${fmtAmount(s.productMaxAmount)}.`;
-  if (
-    s.productMaxRate &&
-    (s.rate < s.productMinRate || s.rate > s.productMaxRate)
-  )
-    return `Interest rate for ${name} must be between ${s.productMinRate}% and ${s.productMaxRate}%.`;
+    warnings.push(`Investment amount is above the maximum investment of ${name} (${fmtAmount(s.productMaxAmount)}).`);
+  if (s.productMaxRate && (s.rate < s.productMinRate || s.rate > s.productMaxRate))
+    warnings.push(
+      `Interest rate is outside the range of ${name} (${s.productMinRate}% to ${s.productMaxRate}% ${unit}).`,
+    );
   if (s.productMaxTenure && s.maturity) {
     const months = monthsFromToday(s.maturity);
     if (months < s.productMinTenure || months > s.productMaxTenure)
-      return `Tenure for ${name} must be between ${s.productMinTenure} and ${s.productMaxTenure} months (maturity date is ${months.toFixed(1)} months away).`;
+      warnings.push(
+        `Tenure (${months.toFixed(1)} months) is outside the range of ${name} (${s.productMinTenure} to ${s.productMaxTenure} months).`,
+      );
   }
-  return "";
+  return warnings;
 }
 
 /* ------------------------- Investor Flow API ------------------------- */
@@ -479,6 +482,7 @@ export function apiProductFields(
     productMaxRate: Number(p.maximum_interest_rate) || 0,
     productMinTenure: Number(p.minimum_tenure) || 0,
     productMaxTenure: Number(p.maximum_tenure) || 0,
+    interestFrequency: p.interest_frequency === "Monthly" ? "Monthly" : "Yearly",
   };
 }
 
@@ -497,6 +501,7 @@ export function apiProductPatch(
       productMaxRate: 0,
       productMinTenure: 0,
       productMaxTenure: 0,
+      interestFrequency: "Yearly",
     };
   }
   const today = new Date();
@@ -527,6 +532,7 @@ export function termsFromState(s: ModalState): InvestorFlowTerms {
     interest_rate: s.rate,
     first_repayment_date: s.firstRepayment,
     ...(s.penaltyApplicable ? { penalty_rate: s.penaltyRate } : {}),
+    interest_frequency: s.interestFrequency,
   };
 }
 
@@ -552,6 +558,7 @@ export function stateFromRecord(r: InvestorFlowRecord): ModalState {
     maturity: r.maturity_date,
     penaltyApplicable: penalty > 0,
     penaltyRate: penalty > 0 ? penalty : createInitialState().penaltyRate,
+    interestFrequency: r.interest_frequency === "Monthly" ? "Monthly" : "Yearly",
     contractNo: r.name,
     // A saved investment has its number (shown in the modal header instead of "Pending").
     investmentNo: r.name,
