@@ -243,7 +243,7 @@ function ApplicationIdCell({ name }: { name: string }) {
         fz={11}
         fw={700}
         c="slate.8"
-        style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+        // style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
       >
         {name}
       </Text>
@@ -627,7 +627,7 @@ export function LoanApplication() {
             fz={11}
             fw={600}
             c="slate.7"
-            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+            // style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
           >
             {getApplicantDisplayName(info.row.original)}
           </Text>
@@ -654,7 +654,7 @@ export function LoanApplication() {
               fz={11}
               c="slate.8"
               fw={600}
-              style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+              // style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
             >
              {formattedWithSymbol}
             </Text>
@@ -681,7 +681,7 @@ export function LoanApplication() {
           <Text
             fz={11}
             c="slate.6"
-            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+            // style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
           >
             {info.getValue() || "—"}
           </Text>

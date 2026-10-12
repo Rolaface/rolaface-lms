@@ -459,7 +459,7 @@ function RuleSetList({
                     >
                       <Group gap={4} justify="flex-end" wrap="nowrap">
                         <Tooltip label="View" withArrow>
-                          <ActionIcon size="sm" variant="subtle" color="gray" onClick={() => onOpen(r.id, true)}>
+                          <ActionIcon size="sm" variant="subtle" color="danger" onClick={() => onOpen(r.id, true)}>
                             <IconEye size={14} />
                           </ActionIcon>
                         </Tooltip>
