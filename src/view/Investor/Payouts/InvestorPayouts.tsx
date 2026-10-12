@@ -52,7 +52,11 @@ import { useCompanyStore } from "../../../store/companyStore";
 import { payoutModal } from "../../../components/Modal/Investor/Payouts/payoutModalStore";
 import { formatInvestorDate } from "../../../components/Modal/Investor/investorDate";
 import { PayoutStatementMailDialog } from "../../../components/Modal/Investor/Statements/StatementMailDialog";
-import { preparePayoutMail } from "../../../components/Modal/Investor/Statements/autoMail";
+import {
+  approveWithMail,
+  preparePayoutMail,
+  showApprovalResult,
+} from "../../../components/Modal/Investor/Statements/autoMail";
 
 const STATUS_COLOR: Record<PayoutRecordStatus, string> = {
   Draft: "slate",
@@ -122,6 +126,9 @@ export function InvestorPayouts() {
       queryKey: ["investorEarning", investmentId],
     });
     queryClient.invalidateQueries({ queryKey: ["investorEarnings"] });
+    // Add Payout's investment list: a fully paid investment drops out of it.
+    queryClient.invalidateQueries({ queryKey: ["payoutCandidates"] });
+    queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
   };
   const showSuccess = (heading: string, body: string) =>
     openCommonModal({
@@ -170,29 +177,35 @@ export function InvestorPayouts() {
     },
     onError: (error: unknown) => showError(failure, error),
   });
-  // Approve: the payment statement is emailed to the investor; approved only when the email is sent.
+  // Approve, then the payment statement is emailed to the investor; a failed email does not undo the approval.
   const companyName = useCompanyStore((state) => state.companyName);
   const approveMutation = useMutation({
-    mutationFn: async (row: PayoutListItem) => {
-      const mail = await preparePayoutMail(row.investment_id, row.name, {
-        theme,
-        currency: companyCurrency,
-        companyName,
-      });
-      return approveInvestorPayout({
-        id: row.investment_id,
-        payout: row.name,
-        mail,
-      });
-    },
-    onSuccess: (data: unknown, row: PayoutListItem) => {
+    // Never re-sent automatically: the first request may already have approved.
+    retry: false,
+    mutationFn: (row: PayoutListItem) =>
+      approveWithMail(
+        () =>
+          preparePayoutMail(row.investment_id, row.name, {
+            theme,
+            currency: companyCurrency,
+            companyName,
+          }),
+        (mail) =>
+          approveInvestorPayout({
+            id: row.investment_id,
+            payout: row.name,
+            mail,
+          }),
+      ),
+    onSuccess: (data, row: PayoutListItem) => {
       refresh(row.investment_id);
       queryClient.invalidateQueries({ queryKey: ["investorNotifications"] });
-      const to = (data as { emailed_to?: string })?.emailed_to;
-      showSuccess(
-        "Payout Approved",
-        `The payout to ${row.investor} is approved, its Journal Entry is posted, the EMIs are updated and the payment statement was emailed${to ? ` to ${to}` : ""}.`,
-      );
+      showApprovalResult({
+        heading: "Payout Approved",
+        body: `The payout to ${row.investor} is approved, its Journal Entry is posted and the EMIs are updated.`,
+        result: data,
+        document: "payment statement",
+      });
     },
     onError: (error: unknown) => showError("Approve Failed", error),
   });
@@ -632,7 +645,7 @@ export function InvestorPayouts() {
                                       onClick={() =>
                                         confirm(
                                           "Approve Payout",
-                                          `Approve the ${row.payment_type} payout of ${fmtAmount(row.payment_amount)} to ${row.investor} (${row.investment_id})? Its Journal Entry is posted from ${row.paid_from}, the EMIs are marked paid and the payment statement is emailed to the investor; nothing is approved if the email cannot be sent.`,
+                                          `Approve the ${row.payment_type} payout of ${fmtAmount(row.payment_amount)} to ${row.investor} (${row.investment_id})? Its Journal Entry is posted from ${row.paid_from},`,
                                           "Approve",
                                           "green",
                                           () => approveMutation.mutate(row),

@@ -53,7 +53,11 @@ import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { InvestorView } from "./InvestorView/InvestorView";
 import { ContractMailDialog } from "../../components/Modal/Investor/Statements/StatementMailDialog";
-import { prepareContractMail } from "../../components/Modal/Investor/Statements/autoMail";
+import {
+  approveWithMail,
+  prepareContractMail,
+  showApprovalResult,
+} from "../../components/Modal/Investor/Statements/autoMail";
 import type { InvestmentDetailTab } from "./InvestorView/InvestmentDetailPanel";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
@@ -243,6 +247,8 @@ export function Investor() {
 
   /* ---------------------- Status change / delete ---------------------- */
   const { mutate: changeStatus } = useMutation({
+    // Never re-sent automatically: the first request may already have approved.
+    retry: false,
     mutationFn: ({
       id,
       action,
@@ -250,24 +256,28 @@ export function Investor() {
       id: string;
       action: InvestorFlowStatusAction;
     }) =>
-      // Approve: the contract is emailed to the investor; approved only when the email is sent.
+      // Approve, then the contract is emailed to the investor; a failed email does not undo the approval.
       action === "approved"
-        ? prepareContractMail(id, {
-            theme,
-            currency: companyCurrency,
-            companyName,
-          }).then((mail) => updateInvestorFlowStatus({ id, action, mail }))
+        ? approveWithMail(
+            () =>
+              prepareContractMail(id, {
+                theme,
+                currency: companyCurrency,
+                companyName,
+              }),
+            (mail) => updateInvestorFlowStatus({ id, action, mail }),
+          )
         : updateInvestorFlowStatus({ id, action }),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
       queryClient.invalidateQueries({ queryKey: ["investorFlow", result.id] });
       queryClient.invalidateQueries({ queryKey: ["investorNotifications"] });
-      showSuccess(
-        `Investment ${result.status}`,
-        result.emailed_to
-          ? `Investment has been ${result.status.toLowerCase()} and the contract was emailed to ${result.emailed_to}.`
-          : `Investment has been ${result.status.toLowerCase()} successfully.`,
-      );
+      showApprovalResult({
+        heading: `Investment ${result.status}`,
+        body: `Investment has been ${result.status.toLowerCase()} successfully.`,
+        result,
+        document: "contract",
+      });
     },
     onError: (error: any) => showError("Status Update Failed", error),
   });
@@ -291,9 +301,6 @@ export function Investor() {
       subtitle: "Please confirm this action before continuing.",
       body: (
         <>
-          The contract will be emailed to the investor; nothing is approved if
-          the email cannot be sent.
-          <br />
           Are you sure you want to approve the investment of{" "}
           <Text span fw={600}>
             {fmtAmount(row.amount)}
@@ -390,19 +397,19 @@ export function Investor() {
 
   const columns = useMemo(
     () => [
-      // columnHelper.accessor("id", {
-      //   header: "Investment No.",
-      //   cell: (info) => (
-      //     <Text
-      //       fz="sm"
-      //       fw={700}
-      //       c="slate.8"
-      //       style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
-      //     >
-      //       {info.getValue()}
-      //     </Text>
-      //   ),
-      // }),
+      columnHelper.accessor("id", {
+        header: "Investment No.",
+        cell: (info) => (
+          <Text
+            fz="sm"
+            fw={700}
+            c="slate.8"
+            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+          >
+            {info.getValue()}
+          </Text>
+        ),
+      }),
       columnHelper.accessor("customer", {
         header: "Investor",
         cell: (info) => (
@@ -495,7 +502,7 @@ export function Investor() {
             (isDraft || row.status === "Cancelled") && !row.renewedFrom;
           const hasActions = isDraft || (isApproved && !row.renewedFrom);
           // The contract exists once the investment is approved.
-          const canMail = isApproved || row.status === "Paid";
+          const canMail = isApproved || ["Paid", "Matured"].includes(row.status);
 
           return (
             // Double-clicking an action button must not also open the Investor 360 view.

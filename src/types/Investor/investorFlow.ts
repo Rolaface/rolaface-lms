@@ -162,6 +162,8 @@ export interface InvestorFlowStatusResult {
   status: InvestorFlowStatus;
   /** Approve: where the contract was emailed. */
   emailed_to?: string;
+  /** Approve: why the contract was not emailed (the investment is approved). */
+  email_error?: string;
 }
 
 export interface InvestorFlowScheduleRow {

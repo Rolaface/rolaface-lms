@@ -30,7 +30,11 @@ import {
 import { formatAmount } from "../../../store/currencyStore";
 import { useCompanyStore } from "../../../store/companyStore";
 import { InvestorDateInput } from "./InvestorDateInput";
-import { rateUnit } from "../../../types/Investor/investmentProductForm";
+import {
+  INTEREST_FREQUENCIES,
+  rateUnit,
+  type InterestFrequency,
+} from "../../../types/Investor/investmentProductForm";
 import { IconAlertTriangle } from "@tabler/icons-react";
 
 export function TermsSchedule({
@@ -214,15 +218,30 @@ export function TermsSchedule({
                 onChange={(v) => update({ rate: Number(v) || 0 })}
               />
             </SimpleGrid>
-            <Select
-              label="Repayment frequency"
-              size="sm"
-              radius="md"
-              allowDeselect={false}
-              data={frequencyOptions}
-              value={state.frequency}
-              onChange={handleFrequencyChange}
-            />
+            <SimpleGrid cols={2} spacing="sm">
+              <Select
+                label="Repayment frequency"
+                size="sm"
+                radius="md"
+                allowDeselect={false}
+                data={frequencyOptions}
+                value={state.frequency}
+                onChange={handleFrequencyChange}
+              />
+              {/* Basis of the interest rate: Monthly = % per month, Yearly = % per annum. */}
+              <Select
+                label="Interest frequency"
+                size="sm"
+                radius="md"
+                allowDeselect={false}
+                data={INTEREST_FREQUENCIES}
+                value={state.interestFrequency}
+                onChange={(value) =>
+                  value &&
+                  update({ interestFrequency: value as InterestFrequency })
+                }
+              />
+            </SimpleGrid>
             <SimpleGrid cols={2} spacing="sm">
               <InvestorDateInput
                 label="First repayment"
