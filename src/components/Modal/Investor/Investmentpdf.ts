@@ -15,6 +15,7 @@ import {
   type Schedule,
   type ScheduleRow,
 } from "./InvestorModalShared";
+import { rateUnit } from "../../../types/Investor/investmentProductForm";
 
 /* ------------------------------ Palette ------------------------------ */
 type RGB = [number, number, number];
@@ -281,6 +282,8 @@ export interface ContractPdfData {
   productName: string;
   amount: number;
   rate: number;
+  /** "p.a." or "p.m.": basis of the rate. */
+  rateUnit?: string;
   frequency: string;
   firstRepayment: string;
   maturity: string;
@@ -332,7 +335,7 @@ export function buildContractPdf(
   y = sectionTitle(ctx, y, "Investment summary");
   y = kpiTiles(ctx, y, [
     { label: "Investment amount", value: money(ctx, d.amount) },
-    { label: "Interest rate", value: `${d.rate}% p.a.` },
+    { label: "Interest rate", value: `${d.rate}% ${d.rateUnit || "p.a."}` },
     { label: "Tenure", value: `${d.totalMonths} months` },
     { label: "Total repayment", value: money(ctx, d.amount + d.totalInterest) },
   ]);
@@ -341,7 +344,7 @@ export function buildContractPdf(
   y = sectionTitle(ctx, y, "Key terms");
   y = keyValueRows(ctx, y, [
     ["Investment amount", money(ctx, d.amount)],
-    ["Interest rate", `${d.rate}% p.a.`],
+    ["Interest rate", `${d.rate}% ${d.rateUnit || "p.a."}`],
     ["Repayment frequency", d.frequency],
     ["First repayment date", fmtDate(d.firstRepayment)],
     ["Maturity date", fmtDate(d.maturity)],
@@ -551,6 +554,7 @@ export function buildContractPdfFromState(
       productName: product.name,
       amount: state.amount,
       rate: state.rate,
+      rateUnit: rateUnit(state.interestFrequency),
       frequency: state.frequency,
       firstRepayment: state.firstRepayment,
       maturity: state.maturity,
@@ -851,13 +855,27 @@ export function buildRenewalContractPdf(
 /* --------------------- Fund receipt & payment statement --------------------- */
 
 /** A labelled progress bar (e.g. paid in of contract amount). */
-function progressBar(ctx: Ctx, y: number, done: number, total: number, caption: string) {
+function progressBar(
+  ctx: Ctx,
+  y: number,
+  done: number,
+  total: number,
+  caption: string,
+) {
   const { doc, p } = ctx;
   fill(ctx, p.line);
   doc.roundedRect(M, y, CW, 4, 2, 2, "F");
   if (total > 0 && done > 0) {
     fill(ctx, p.success);
-    doc.roundedRect(M, y, Math.max(4, CW * Math.min(1, done / total)), 4, 2, 2, "F");
+    doc.roundedRect(
+      M,
+      y,
+      Math.max(4, CW * Math.min(1, done / total)),
+      4,
+      2,
+      2,
+      "F",
+    );
   }
   ink(ctx, p.mute);
   font(ctx, "normal", 8.5);
@@ -865,15 +883,31 @@ function progressBar(ctx: Ctx, y: number, done: number, total: number, caption: 
   return y + 18;
 }
 
-function partiesCards(ctx: Ctx, y: number, companyName: string, d: InvestmentDetail) {
+function partiesCards(
+  ctx: Ctx,
+  y: number,
+  companyName: string,
+  d: InvestmentDetail,
+) {
   const cardW = (CW - 6) / 2;
-  const h1 = infoCard(ctx, M, y, cardW, "The Company", companyName || "The Company", [
-    `Product: ${d.investment_product_name}`,
-  ]);
-  const h2 = infoCard(ctx, M + cardW + 6, y, cardW, "The Investor", d.investor_name, [
-    `Customer ID: ${d.investor}`,
-    `Email: ${d.investor_email || "-"}`,
-  ]);
+  const h1 = infoCard(
+    ctx,
+    M,
+    y,
+    cardW,
+    "The Company",
+    companyName || "The Company",
+    [`Product: ${d.investment_product_name}`],
+  );
+  const h2 = infoCard(
+    ctx,
+    M + cardW + 6,
+    y,
+    cardW,
+    "The Investor",
+    d.investor_name,
+    [`Customer ID: ${d.investor}`, `Email: ${d.investor_email || "-"}`],
+  );
   return y + Math.max(h1, h2) + 8;
 }
 
@@ -897,11 +931,16 @@ export function buildFundReceiptPdf(
   const ctx: Ctx = { doc, p, currency };
   const approved = d.funds.filter((f) => f.record_status === "Approved");
 
-  let y = drawHeader(ctx, "FUND RECEIPT", `Investment statement · ${d.investment_product_name}`, [
-    { label: "Investment No.", value: d.name },
-    { label: "Received on", value: fmtDate(receipt.paid_date) },
-    { label: "Reference", value: receipt.reference_number || "-" },
-  ]);
+  let y = drawHeader(
+    ctx,
+    "FUND RECEIPT",
+    `Investment statement · ${d.investment_product_name}`,
+    [
+      { label: "Investment No.", value: d.name },
+      { label: "Received on", value: fmtDate(receipt.paid_date) },
+      { label: "Reference", value: receipt.reference_number || "-" },
+    ],
+  );
 
   y = sectionTitle(ctx, y, "Parties");
   y = partiesCards(ctx, y, companyName, d);
@@ -935,7 +974,7 @@ export function buildFundReceiptPdf(
   y = sectionTitle(ctx, y, "Investment terms");
   y = keyValueRows(ctx, y, [
     ["Investment amount", money(ctx, d.investment_amount)],
-    ["Interest rate", `${d.interest_rate}% p.a.`],
+    ["Interest rate", `${d.interest_rate}% ${rateUnit(d.interest_frequency)}`],
     ["Repayment frequency", d.repayment_frequency],
     ["First repayment date", fmtDate(d.first_repayment_date)],
     ["Maturity date", fmtDate(d.maturity_date)],
@@ -962,7 +1001,11 @@ export function buildFundReceiptPdf(
     ]),
   );
 
-  closingNote(ctx, y, "Thank you for your investment. This is a system-generated statement and does not require a signature.");
+  closingNote(
+    ctx,
+    y,
+    "Thank you for your investment. This is a system-generated statement and does not require a signature.",
+  );
   addFooters(ctx, `Fund Receipt | ${d.name} | ${fmtDate(receipt.paid_date)}`);
   return doc;
 }
@@ -979,11 +1022,16 @@ export function buildPaymentStatementPdf(
   const ctx: Ctx = { doc, p, currency };
   const paidOn = row.paid_on || row.payment_date;
 
-  let y = drawHeader(ctx, "PAYMENT STATEMENT", `Instalment ${row.number} of ${d.payouts_total} · ${d.investment_product_name}`, [
-    { label: "Investment No.", value: d.name },
-    { label: "Paid on", value: fmtDate(paidOn) },
-    { label: "Instalment", value: `${row.number} of ${d.payouts_total}` },
-  ]);
+  let y = drawHeader(
+    ctx,
+    "PAYMENT STATEMENT",
+    `Instalment ${row.number} of ${d.payouts_total} · ${d.investment_product_name}`,
+    [
+      { label: "Investment No.", value: d.name },
+      { label: "Paid on", value: fmtDate(paidOn) },
+      { label: "Instalment", value: `${row.number} of ${d.payouts_total}` },
+    ],
+  );
 
   y = sectionTitle(ctx, y, "Parties");
   y = partiesCards(ctx, y, companyName, d);
@@ -1007,16 +1055,27 @@ export function buildPaymentStatementPdf(
 
   y = ensure(ctx, y, 30);
   y = sectionTitle(ctx, y, "Repayment progress");
-  y = progressBar(ctx, y, d.payouts_done, d.payouts_total, `${d.payouts_done} of ${d.payouts_total} payouts made`);
+  y = progressBar(
+    ctx,
+    y,
+    d.payouts_done,
+    d.payouts_total,
+    `${d.payouts_done} of ${d.payouts_total} payouts made`,
+  );
 
   y = ensure(ctx, y, 50);
   y = sectionTitle(ctx, y, "Investment summary");
   y = keyValueRows(ctx, y, [
     ["Investment amount", money(ctx, d.investment_amount)],
-    ["Interest rate", `${d.interest_rate}% p.a.`],
+    ["Interest rate", `${d.interest_rate}% ${rateUnit(d.interest_frequency)}`],
     ["Principal still held", money(ctx, d.principal_outstanding)],
     ["Interest still to come", money(ctx, d.interest_outstanding)],
-    ["Next payout", d.next_payout_date ? `${money(ctx, d.next_payout_amount)} on ${fmtDate(d.next_payout_date)}` : "-"],
+    [
+      "Next payout",
+      d.next_payout_date
+        ? `${money(ctx, d.next_payout_amount)} on ${fmtDate(d.next_payout_date)}`
+        : "-",
+    ],
     ["Maturity date", fmtDate(d.maturity_date)],
   ]);
 
@@ -1043,7 +1102,133 @@ export function buildPaymentStatementPdf(
     ]),
   );
 
-  closingNote(ctx, y, "This is a system-generated statement and does not require a signature.");
+  closingNote(
+    ctx,
+    y,
+    "This is a system-generated statement and does not require a signature.",
+  );
   addFooters(ctx, `Payment Statement | ${d.name} | Instalment ${row.number}`);
+  return doc;
+}
+
+/* --------------------------- Payout statement --------------------------- */
+export interface PayoutStatementPdfData {
+  investmentId: string;
+  productName: string;
+  investor: { id: string; name: string; email: string | null };
+  valueDate: string;
+  paymentType: string;
+  paymentMode: string;
+  reference: string;
+  amount: number;
+  principal: number;
+  interest: number;
+  penalty: number;
+  /** How the payout is split over the EMIs. */
+  allocations: {
+    number: number | null;
+    payment_date: string;
+    interest: number;
+    penalty: number;
+    principal: number;
+    amount: number;
+    settles: boolean;
+  }[];
+  /** The schedule after this payout. */
+  schedule: { number: number; payment_date: string; total: number; paid: number; remaining: number; status: string }[];
+}
+
+/** Statement of one payout to the investor: what was paid, which EMIs it covered, the schedule after it. */
+export function buildPayoutStatementPdf(
+  d: PayoutStatementPdfData,
+  companyName: string,
+  p: PdfPalette,
+  currency: string,
+): jsPDF {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const ctx: Ctx = { doc, p, currency };
+
+  let y = drawHeader(ctx, "PAYMENT STATEMENT", `${d.paymentType} · ${d.productName}`, [
+    { label: "Investment No.", value: d.investmentId },
+    { label: "Paid on", value: fmtDate(d.valueDate) },
+    { label: "Reference", value: d.reference || "-" },
+  ]);
+
+  y = sectionTitle(ctx, y, "Parties");
+  const cardW = (CW - 6) / 2;
+  const h1 = infoCard(ctx, M, y, cardW, "The Company", companyName || "The Company", [`Product: ${d.productName}`]);
+  const h2 = infoCard(ctx, M + cardW + 6, y, cardW, "The Investor", d.investor.name, [
+    `Customer ID: ${d.investor.id}`,
+    `Email: ${d.investor.email || "-"}`,
+  ]);
+  y += Math.max(h1, h2) + 8;
+
+  y = sectionTitle(ctx, y, "This payment");
+  y = kpiTiles(ctx, y, [
+    { label: "Amount paid", value: money(ctx, d.amount) },
+    { label: "Interest", value: money(ctx, d.interest) },
+    { label: "Principal", value: money(ctx, d.principal) },
+    { label: "Penalty", value: money(ctx, d.penalty) },
+  ]);
+  y = keyValueRows(ctx, y, [
+    ["Paid on", fmtDate(d.valueDate)],
+    ["Payment type", d.paymentType],
+    ["Payment mode", d.paymentMode],
+    ["Reference no.", d.reference || "-"],
+  ]);
+
+  y = ensure(ctx, y, 30);
+  y = sectionTitle(ctx, y, "EMIs covered by this payment");
+  y = table(
+    ctx,
+    y,
+    [
+      { header: "EMI", w: 16, align: "left" },
+      { header: "Due date", w: 32, align: "left" },
+      { header: "Interest", w: 30, align: "right" },
+      { header: "Penalty", w: 26, align: "right" },
+      { header: "Principal", w: 30, align: "right" },
+      { header: "Paid", w: 26, align: "right" },
+      { header: "Result", w: 20, align: "left" },
+    ],
+    d.allocations.map((a) => [
+      a.number ? `#${a.number}` : "-",
+      fmtDate(a.payment_date),
+      money(ctx, a.interest),
+      money(ctx, a.penalty),
+      money(ctx, a.principal),
+      money(ctx, a.amount),
+      a.settles ? "Paid" : "Partly",
+    ]),
+  );
+
+  y = ensure(ctx, y, 30);
+  y = sectionTitle(ctx, y, "Repayment schedule after this payment");
+  y = table(
+    ctx,
+    y,
+    [
+      { header: "No.", w: 14, align: "left" },
+      { header: "Due date", w: 36, align: "left" },
+      { header: "EMI", w: 34, align: "right" },
+      { header: "Paid", w: 34, align: "right" },
+      { header: "Remaining", w: 34, align: "right" },
+      { header: "Status", w: 28, align: "left" },
+    ],
+    d.schedule.map((r) => [
+      String(r.number),
+      fmtDate(r.payment_date),
+      money(ctx, r.total),
+      money(ctx, r.paid),
+      money(ctx, r.remaining),
+      r.status,
+    ]),
+  );
+
+  y = ensure(ctx, y, 12);
+  ink(ctx, p.mute);
+  font(ctx, "normal", 8.5);
+  doc.text("This is a system-generated statement and does not require a signature.", M, y);
+  addFooters(ctx, `Payment Statement | ${d.investmentId} | ${fmtDate(d.valueDate)}`);
   return doc;
 }

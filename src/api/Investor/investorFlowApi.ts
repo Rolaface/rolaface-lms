@@ -1,6 +1,14 @@
 import API from "../../config/api";
 import apiClient from "../../config/axios";
 import type {
+  InvestorPayout,
+  PayoutCandidate,
+  PayoutContext,
+  PayoutListParams,
+  PayoutListResponse,
+  PayoutPayload,
+  PayoutPaymentType,
+  PayoutPreview,
   InvestorNotification,
   LogNotificationPayload,
   NotificationType,
@@ -101,16 +109,30 @@ export async function deleteInvestorFlow(id: string) {
   return data;
 }
 
+/** Email sent with an approval (the approval only goes through when the email is sent). */
+export interface ApprovalMail {
+  subject: string;
+  /** Plain text (saved in Notifications). */
+  message: string;
+  /** HTML body of the email. */
+  message_html: string;
+  /** File ID of the uploaded PDF. */
+  file_id: string;
+}
+
 export async function updateInvestorFlowStatus({
   id,
   action,
+  mail,
 }: {
   id: string;
   action: InvestorFlowStatusAction;
+  /** Required for "approved": the contract email. */
+  mail?: ApprovalMail;
 }) {
   const { data } = await apiClient.put<InvestorFlowEnvelope<InvestorFlowStatusResult>>(
     API.investorFlow.updateStatus,
-    {},
+    mail ?? {},
     { params: { id, action } },
   );
   return data.message.data;
@@ -391,10 +413,10 @@ export async function deleteFundRecord({ id, record }: { id: string; record: str
 }
 
 /** Approves a Draft fund record: posts its Journal Entry. */
-export async function approveFundRecord({ id, record }: { id: string; record: string }) {
+export async function approveFundRecord({ id, record, mail }: { id: string; record: string; mail: ApprovalMail }) {
   const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorFundRow>>(
     API.investorFlow.approveFundRecord,
-    {},
+    mail,
     { params: { id, record } },
   );
   return data.message.data;
@@ -569,4 +591,76 @@ export async function getInvestorNotifications(investor: string, notificationTyp
 export async function fetchPrivateFile(fileUrl: string) {
   const { data } = await apiClient.get<Blob>(fileUrl, { responseType: "blob" });
   return data;
+}
+
+/* ------------------------------ Investor Payouts ------------------------------ */
+
+export async function getInvestorPayouts(params: PayoutListParams = {}) {
+  const query: Record<string, string | number> = {};
+  if (params.search) query.search = params.search;
+  if (params.record_status?.length) query.record_status = JSON.stringify(params.record_status);
+  if (params.payment_type?.length) query.payment_type = JSON.stringify(params.payment_type);
+  if (params.page) query.page = params.page;
+  if (params.page_size) query.page_size = params.page_size;
+  const { data } = await apiClient.get<PayoutListResponse>(API.investorFlow.getPayouts, { params: query });
+  return data;
+}
+
+/** Investments with unpaid EMIs, by investment ID or investor name / mobile / ID / email. */
+export async function getPayoutCandidates(search?: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<PayoutCandidate[]>>(API.investorFlow.getPayoutCandidates, {
+    params: search ? { search } : {},
+  });
+  return data.message.data;
+}
+
+export async function getPayoutContext(id: string) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<PayoutContext>>(API.investorFlow.getPayoutContext, {
+    params: { id },
+  });
+  return data.message.data;
+}
+
+export async function previewInvestorPayout(id: string, paymentType: PayoutPaymentType, amount?: number | null) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<PayoutPreview>>(API.investorFlow.previewPayout, {
+    params: { id, payment_type: paymentType, ...(amount ? { amount } : {}) },
+  });
+  return data.message.data;
+}
+
+export async function addInvestorPayout({ id, payload }: { id: string; payload: PayoutPayload }) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorPayout>>(API.investorFlow.addPayout, payload, {
+    params: { id },
+  });
+  return data.message.data;
+}
+
+export async function updateInvestorPayout({ id, payout, payload }: { id: string; payout: string; payload: PayoutPayload }) {
+  const { data } = await apiClient.put<InvestorFlowEnvelope<InvestorPayout>>(API.investorFlow.updatePayout, payload, {
+    params: { id, payout },
+  });
+  return data.message.data;
+}
+
+export async function deleteInvestorPayout({ id, payout }: { id: string; payout: string }) {
+  const { data } = await apiClient.delete(API.investorFlow.deletePayout, { params: { id, payout } });
+  return data;
+}
+
+export async function approveInvestorPayout({ id, payout, mail }: { id: string; payout: string; mail: ApprovalMail }) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorPayout>>(
+    API.investorFlow.approvePayout,
+    mail,
+    { params: { id, payout } },
+  );
+  return data.message.data;
+}
+
+export async function cancelInvestorPayout({ id, payout }: { id: string; payout: string }) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorPayout>>(
+    API.investorFlow.cancelPayout,
+    {},
+    { params: { id, payout } },
+  );
+  return data.message.data;
 }

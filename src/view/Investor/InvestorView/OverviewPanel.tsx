@@ -20,6 +20,7 @@ import {
 import type { InvestorPortfolio } from "../../../types/Investor/investorFlow";
 import { Card, CardTitle, KpiTile, StatusBadge } from "./ui";
 import { fmtDate, useMoney } from "./format";
+import { rateUnit } from "../../../types/Investor/investmentProductForm";
 
 interface Props {
   portfolio: InvestorPortfolio;
@@ -186,7 +187,8 @@ export function OverviewPanel({ portfolio, onOpenInvestment }: Props) {
                       {inv.name}
                     </Text>
                     <Text fz={11} c="slate.5">
-                      {inv.investment_product_name} · {inv.interest_rate}% p.a.
+                      {inv.investment_product_name} · {inv.interest_rate}%{" "}
+                      {rateUnit(inv.interest_frequency)}
                     </Text>
                   </Table.Td>
                   <Table.Td>

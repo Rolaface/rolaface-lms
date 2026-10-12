@@ -1,6 +1,7 @@
 /* Form values of the Investment Product modal, and their conversion to / from the API. */
 import type {
   CreateInvestmentProductPayload,
+  InterestFrequency,
   InvestmentProductRecord,
 } from "../../../../types/Investor/investmentProductForm";
 
@@ -21,6 +22,8 @@ export interface ProductFormValues {
   maxAmount: Num;
   minTenure: Num;
   maxTenure: Num;
+  /** Basis of the rates: Yearly = % per annum, Monthly = % per month. */
+  interestFrequency: InterestFrequency;
 }
 
 export const EMPTY_FORM: ProductFormValues = {
@@ -38,6 +41,7 @@ export const EMPTY_FORM: ProductFormValues = {
   maxAmount: "",
   minTenure: "",
   maxTenure: "",
+  interestFrequency: "Yearly",
 };
 
 const toNum = (value: unknown): Num =>
@@ -68,6 +72,8 @@ export function formFromRecord(
     maxAmount: toNum(r.maximum_investment),
     minTenure: toNum(r.minimum_tenure),
     maxTenure: toNum(r.maximum_tenure),
+    // Products saved before the field existed are per annum.
+    interestFrequency: r.interest_frequency === "Monthly" ? "Monthly" : "Yearly",
   };
 }
 
@@ -90,6 +96,7 @@ export function payloadFromForm(
     maximum_investment: Number(v.maxAmount),
     minimum_tenure: Number(v.minTenure),
     maximum_tenure: Number(v.maxTenure),
+    interest_frequency: v.interestFrequency,
   };
 }
 

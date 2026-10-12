@@ -536,6 +536,16 @@ losDocumentSetup: {
     getInvestmentDetail: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investment_detail`,
     getStatement: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investor_statement`,
     getJournalEntryDetail: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_journal_entry_detail`,
+    // Investor Payouts
+    getPayouts: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investor_payouts`,
+    getPayoutCandidates: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_payout_candidates`,
+    getPayoutContext: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_payout_context`,
+    previewPayout: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.preview_investor_payout`,
+    addPayout: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.add_investor_payout`,
+    updatePayout: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.update_investor_payout`,
+    deletePayout: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.delete_investor_payout`,
+    approvePayout: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.approve_investor_payout`,
+    cancelPayout: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.cancel_investor_payout`,
     // Notifications (emails sent to the investor)
     logNotification: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.log_investor_notification`,
     getNotifications: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investor_notifications`,

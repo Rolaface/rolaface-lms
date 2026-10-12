@@ -1,3 +1,10 @@
+/** Basis of an interest rate: Yearly = % per annum, Monthly = % per month (12% p.a. = 1% p.m.). */
+export type InterestFrequency = "Monthly" | "Yearly";
+export const INTEREST_FREQUENCIES: InterestFrequency[] = ["Monthly", "Yearly"];
+
+/** "p.m." / "p.a." for a rate on this basis (no basis = per annum). */
+export const rateUnit = (frequency?: string | null) => (frequency === "Monthly" ? "p.m." : "p.a.");
+
 /** Fields of the Custom Investment Product doctype sent on create / update. */
 export interface CreateInvestmentProductPayload {
   /** Unique; saved in UPPERCASE and cannot be changed after create. */
@@ -18,6 +25,8 @@ export interface CreateInvestmentProductPayload {
   maximum_investment: number;
   minimum_tenure: number;
   maximum_tenure: number;
+  /** Basis of the product's interest rates: Yearly = % per annum, Monthly = % per month. */
+  interest_frequency?: InterestFrequency | null;
 }
 
 /** A Custom Investment Product as returned by the API. */

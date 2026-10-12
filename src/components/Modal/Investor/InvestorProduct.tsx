@@ -14,6 +14,7 @@ import {
 } from "./InvestorModalShared";
 import { formatAmount } from "../../../store/currencyStore";
 import { useCompanyStore } from "../../../store/companyStore";
+import { rateUnit } from "../../../types/Investor/investmentProductForm";
 
 const CUSTOMER_SEARCH_PAGE_SIZE = 50;
 
@@ -104,9 +105,9 @@ export function InvestorProduct({ state, update }: TabProps) {
 
   return (
     <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-      <SectionBox title="Customer">
+      <SectionBox title="Investor">
         <Select
-          label="Customer name"
+          label="Investor name"
           placeholder="Search investor"
           size="sm"
           radius="md"
@@ -127,7 +128,7 @@ export function InvestorProduct({ state, update }: TabProps) {
           <Box mt="md">
             <KeyValueList
               rows={[
-                { label: "Customer ID", value: customer.id },
+                { label: "Investor ID", value: customer.id },
                 ...(customer.bank
                   ? [{ label: "Payout bank", value: customer.bank }]
                   : []),
@@ -166,7 +167,7 @@ export function InvestorProduct({ state, update }: TabProps) {
                   ? [
                       {
                         label: "Default interest rate",
-                        value: `${productDetails.rate}% p.a.`,
+                        value: `${productDetails.rate}% ${rateUnit(selectedProduct.interest_frequency)}`,
                       },
                       {
                         label: "Default tenure",
@@ -178,7 +179,7 @@ export function InvestorProduct({ state, update }: TabProps) {
                       },
                       {
                         label: "Interest rate range",
-                        value: `${selectedProduct.min_interest_rate}% – ${selectedProduct.maximum_interest_rate}%`,
+                        value: `${selectedProduct.min_interest_rate}% – ${selectedProduct.maximum_interest_rate}% ${rateUnit(selectedProduct.interest_frequency)}`,
                       },
                       {
                         label: "Investment range",
