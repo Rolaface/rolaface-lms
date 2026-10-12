@@ -205,7 +205,7 @@ function ApplicationIdCell({ name }: { name: string }) {
         fz={11}
         fw={700}
         c="slate.8"
-        style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+        // style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
       >
         {name}
       </Text>
@@ -250,7 +250,7 @@ export function OfferIssuanceStage() {
             fz={11}
             fw={600}
             c="slate.7"
-            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+            // style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
           >
             {info.getValue()}
           </Text>
@@ -263,7 +263,7 @@ export function OfferIssuanceStage() {
             fz={11}
             c="slate.8"
             fw={600}
-            style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
+            // style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
           >
             ZMW {info.getValue().toLocaleString()}
           </Text>
