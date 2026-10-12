@@ -1,7 +1,7 @@
 /*
  * The emails sent automatically on approval (fund receipt, payout, contract): their default subject / message
- * and the PDF, built and uploaded before the approval request. The server approves first, then sends the email;
- * when the email is not sent the approval stays and the screen says so (send it again with Compose Mail).
+ * and the PDF, built and uploaded before the approval request. The server approves, then sends the email in the
+ * background (a failed one is in its Error Log; send it again with Compose Mail).
  * The Compose Mail dialogs use the same texts.
  */
 import type { MantineTheme } from "@mantine/core";
@@ -14,7 +14,6 @@ import {
   type ApprovalMail,
 } from "../../../../api/Investor/investorFlowApi";
 import { uploadFile } from "../../../../api/loanApi";
-import { parseFrappeError } from "../../../../utils/parseFrappeError";
 import { openCommonModal } from "../../AlertModal";
 import type {
   InvestmentDetail,
@@ -299,67 +298,35 @@ export async function prepareContractMail(
 
 /* ------------------------- Approve, then email ------------------------- */
 
-/** What an approval reports about its email. */
-export interface ApprovalMailResult {
-  /** The email was sent to this address. */
-  emailed_to?: string;
-  /** The email was not sent: why (the approval itself went through). */
-  email_error?: string;
-}
-
 /**
- * Builds the email (PDF uploaded), then approves. When the email cannot even be built, the record is still
- * approved, without it, and the reason comes back as email_error.
+ * Builds the email (PDF uploaded), then approves; the server sends the email in the background. When the
+ * email cannot even be built, the record is still approved, without it (the server records it in its Error Log).
  */
 export async function approveWithMail<T>(
   prepare: () => Promise<ApprovalMail>,
   approve: (mail: ApprovalMail) => Promise<T>,
-): Promise<T & ApprovalMailResult> {
-  let mail: ApprovalMail | null = null;
-  let prepareError = "";
+): Promise<T> {
+  let mail: ApprovalMail;
   try {
     mail = await prepare();
-  } catch (error) {
-    prepareError = `the email could not be prepared (${parseFrappeError(error)})`;
+  } catch {
+    mail = {} as ApprovalMail;
   }
-  const result = (await approve(
-    mail ?? ({} as ApprovalMail),
-  )) as T & ApprovalMailResult;
-  return prepareError ? { ...result, email_error: prepareError } : result;
+  return approve(mail);
 }
 
-/**
- * Approval succeeded: the success message, then, when the email was not sent, the "Email Not Sent" alert
- * (shown after the success one is closed).
- */
+/** Approval succeeded (the email goes in the background: nothing is shown about it). */
 export function showApprovalResult({
   heading,
   body,
-  result,
-  document,
 }: {
   heading: string;
   body: string;
-  result: ApprovalMailResult | undefined;
-  /** What was to be emailed, e.g. "fund receipt". */
-  document: string;
 }) {
-  const emailError = result?.email_error;
-  // Mantine shows the last opened modal; the alert is opened first so it appears once the success one closes.
-  if (emailError)
-    openCommonModal({
-      heading: "Email Not Sent",
-      subtitle: "The approval is saved; only the email failed.",
-      body: `The ${document} was not emailed to the investor: ${emailError}. Send it from the Compose Mail button.`,
-      color: "orange",
-      buttons: [{ label: "Close", color: "orange" }],
-    });
   openCommonModal({
     heading,
     subtitle: "",
-    body: result?.emailed_to
-      ? `${body} The ${document} was emailed to ${result.emailed_to}.`
-      : body,
+    body,
     color: "green",
     buttons: [{ label: "Close", color: "green" }],
   });

@@ -256,7 +256,7 @@ export function Investor() {
       id: string;
       action: InvestorFlowStatusAction;
     }) =>
-      // Approve, then the contract is emailed to the investor; a failed email does not undo the approval.
+      // Approve; the contract is then emailed to the investor in the background.
       action === "approved"
         ? approveWithMail(
             () =>
@@ -275,8 +275,6 @@ export function Investor() {
       showApprovalResult({
         heading: `Investment ${result.status}`,
         body: `Investment has been ${result.status.toLowerCase()} successfully.`,
-        result,
-        document: "contract",
       });
     },
     onError: (error: any) => showError("Status Update Failed", error),
