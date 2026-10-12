@@ -23,6 +23,8 @@ import { SIMULATION_RANGE, computeSimulation, type LoanApplicationValues } from 
 interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
   readOnly?: boolean;
+  rate: number;
+  maxAmount: number | null;
 }
 
 const FREQUENCIES: Array<{ value: "Monthly" | "Bi-weekly"; label: string }> = [
@@ -105,16 +107,16 @@ function MicroStat({ label, value, valueColor }: { label: string; value: string;
   );
 }
 
-export function EligibilitySimulationStep({ form, readOnly = false }: StepProps) {
+export function EligibilitySimulationStep({ form, readOnly = false, rate, maxAmount }: StepProps) {
   const [scheduleExpanded, setScheduleExpanded] = useState(false);
 
-  const rules = SIMULATION_RANGE[form.values.applicant_type];
+  const range = SIMULATION_RANGE[form.values.applicant_type];
+  const rules = { ...range, amount: { ...range.amount, max: maxAmount ? Math.min(maxAmount, range.amount.max) : range.amount.max } };
   const amount = Number(form.values.requested_amount) || 0;
   const tenure = Number(form.values.tenure_months) || 0;
   const frequency = form.values.repayment_frequency || "Monthly";
   const amountError = form.errors.requested_amount;
   const tenureError = form.errors.tenure_months;
-  const rate = rules.rate;
 
   const simulation = useMemo(() => {
     if (!amount || !tenure || !Number.isInteger(tenure)) return null;

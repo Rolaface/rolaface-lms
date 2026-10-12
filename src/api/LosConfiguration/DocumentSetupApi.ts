@@ -9,6 +9,7 @@ export interface DocumentSetupPayload {
   documents: {
     document_name: string;
     is_required: number;
+    description?: string;
   }[];
 }
 

@@ -47,3 +47,8 @@ export async function updateProductAssignmentSettings(payload: ProductAssignment
   const { data } = await apiClient.put<{ message: { data: ProductAssignmentSettings } }>(API.productAssignmentSetup.updateSettings, payload);
   return data;
 }
+
+export async function getConditionVariables() {
+  const { data } = await apiClient.get(API.productAssignmentSetup.getConditionVariables);
+  return (data?.data ?? []) as { name: string; label: string; numeric: boolean; options: string[] }[];
+}

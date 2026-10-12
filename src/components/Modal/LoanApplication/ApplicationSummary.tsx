@@ -1,21 +1,31 @@
 import { Box, Text, Progress, Divider } from "@mantine/core";
-import { DOCUMENT_KEYS, OPTIONAL_DOCUMENTS, applicantName, type LoanApplicationValues } from "./form";
+import { applicantName, type LoanApplicationValues, type RequiredDocument } from "./form";
 import { labelOf, useLoanTypeOptions } from "./lookups";
 
 interface Props {
   values: LoanApplicationValues;
+  documents: RequiredDocument[];
+  productName: string | null;
   totalRepayable: number;
   monthlyRepayment: number;
   activeStep: number;
   totalSteps: number;
 }
 
-export function ApplicationSummary({ values, totalRepayable, monthlyRepayment, activeStep, totalSteps }: Props) {
+export function ApplicationSummary({
+  values,
+  documents,
+  productName,
+  totalRepayable,
+  monthlyRepayment,
+  activeStep,
+  totalSteps,
+}: Props) {
   const isIndividual = values.applicant_type === "Individual";
   const { options: loanTypes } = useLoanTypeOptions(values.applicant_type);
 
-  const requiredDocs = DOCUMENT_KEYS[values.applicant_type].filter((key) => !OPTIONAL_DOCUMENTS.includes(key));
-  const uploadedCount = requiredDocs.filter((key) => values.documents[key]).length;
+  const requiredDocs = documents.filter((doc) => doc.is_required).map((doc) => doc.document_name);
+  const uploadedCount = requiredDocs.filter((name) => values.documents[name]).length;
   const totalDocs = requiredDocs.length;
   const pending = totalDocs - uploadedCount;
 
@@ -58,9 +68,14 @@ export function ApplicationSummary({ values, totalRepayable, monthlyRepayment, a
       <Text fz="sm" fw={700} c="slate.8" mb={1}>
         {labelOf(loanTypes, values.loan_type) || `${values.applicant_type} loan`}
       </Text>
-      <Text fz="xs" c="slate.5" mb="sm">
+      <Text fz="xs" c="slate.5" mb={productName ? 1 : "sm"}>
         K {(Number(values.requested_amount) || 0).toLocaleString()} • {values.tenure_months || 0} months
       </Text>
+      {productName && (
+        <Text fz="xs" c="slate.5" mb="sm">
+          Product: {productName}
+        </Text>
+      )}
 
       <Divider color="slate.2" mb="sm" />
 

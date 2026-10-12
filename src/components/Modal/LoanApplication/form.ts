@@ -9,20 +9,11 @@ import type {
 
 export type { ApplicantType };
 
-export type DocumentKey =
-  | "payslips"
-  | "bankStatementsPersonal"
-  | "nrcCopy"
-  | "passportPhotoPersonal"
-  | "tpinCertificate"
-  | "pacraCertificate"
-  | "form2"
-  | "taxClearanceCertificate"
-  | "taxComplianceReturn"
-  | "orderInvoice"
-  | "bankStatementsBusiness"
-  | "applicantPassportPhoto"
-  | "boardResolution";
+export interface RequiredDocument {
+  document_name: string;
+  is_required: number;
+  description?: string;
+}
 
 export interface DirectorEntry {
   id: string;
@@ -108,9 +99,8 @@ export interface LoanApplicationValues {
   obligations: FinancialEntry[];
   expenses: FinancialEntry[];
   collaterals: CollateralEntry[];
-  documents: Record<DocumentKey, File | null>;
+  documents: Record<string, File | null>;
   directorDocuments: DirectorDocEntry[];
-  other_documents: ApplicationDocument[];
 }
 
 export const GENDERS = ["Male", "Female", "Other"];
@@ -148,38 +138,6 @@ export const BUSINESS_TYPES = [
 export const INCOME_SOURCES = ["Net Salary", "Business Income", "Rental Income", "Other Income"];
 export const OBLIGATION_SOURCES = ["Monthly Obligation", "Rental Obligation", "Other Monthly Debt"];
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export const DOCUMENT_NAMES: Record<DocumentKey, string> = {
-  payslips: "Latest three payslips",
-  bankStatementsPersonal: "Bank statements (3 months)",
-  nrcCopy: "NRC copy",
-  passportPhotoPersonal: "Passport-sized photo",
-  tpinCertificate: "TPIN certificate",
-  pacraCertificate: "PACRA certificate",
-  form2: "Form 2",
-  taxClearanceCertificate: "Tax clearance certificate / TPIN",
-  taxComplianceReturn: "Latest tax compliance return",
-  orderInvoice: "Order / Invoice",
-  bankStatementsBusiness: "Bank statements (6 months)",
-  applicantPassportPhoto: "Applicant passport-sized photo",
-  boardResolution: "Board resolution",
-};
-
-export const DOCUMENT_KEYS: Record<ApplicantType, DocumentKey[]> = {
-  Individual: ["payslips", "bankStatementsPersonal", "nrcCopy", "passportPhotoPersonal", "tpinCertificate"],
-  Business: [
-    "pacraCertificate",
-    "form2",
-    "taxClearanceCertificate",
-    "taxComplianceReturn",
-    "orderInvoice",
-    "bankStatementsBusiness",
-    "applicantPassportPhoto",
-    "boardResolution",
-  ],
-};
-
-export const OPTIONAL_DOCUMENTS: DocumentKey[] = ["orderInvoice"];
 
 export const directorDocName = (index: number, kind: "nrcFile" | "photoFile") =>
   `Director ${index + 1} ${kind === "nrcFile" ? "NRC" : "Passport Photo"}`;
@@ -266,9 +224,6 @@ export const emptyAddress = (): AddressValues => ({
   pincode: "",
 });
 
-const emptyDocuments = () =>
-  Object.fromEntries(Object.keys(DOCUMENT_NAMES).map((key) => [key, null])) as Record<DocumentKey, File | null>;
-
 export const createInitialValues = (): LoanApplicationValues => ({
   customer_type: null,
   customer: null,
@@ -317,9 +272,8 @@ export const createInitialValues = (): LoanApplicationValues => ({
   obligations: OBLIGATION_SOURCES.map((source) => ({ source, monthly_amount: "" })),
   expenses: [],
   collaterals: [],
-  documents: emptyDocuments(),
+  documents: {},
   directorDocuments: [],
-  other_documents: [],
 });
 
 export const isAddressFilled = (address: AddressValues) =>
@@ -488,18 +442,11 @@ export function valuesFromApplication(
   const addressOf = (type: ApplicationAddress["address_type"]) =>
     fromAddress(application.addresses?.find((a) => a.address_type === type));
 
-  const documentKeyByName = new Map(
-    (Object.entries(DOCUMENT_NAMES) as [DocumentKey, string][]).map(([key, name]) => [name, key]),
-  );
-  const documents = { ...initial.documents };
+  const documents: Record<string, File | null> = {};
   const directorDocuments: DirectorDocEntry[] = [];
-  const otherDocuments: ApplicationDocument[] = [];
   for (const doc of application.documents ?? []) {
-    const key = documentKeyByName.get(doc.document_name);
     const directorMatch = doc.document_name.match(/^Director (\d+) (NRC|Passport Photo)$/);
-    if (key) {
-      documents[key] = fileStandIn(doc.file, existingUrls);
-    } else if (directorMatch) {
+    if (directorMatch) {
       const index = Number(directorMatch[1]) - 1;
       while (directorDocuments.length <= index) {
         directorDocuments.push({ id: nextId(), nrcFile: null, photoFile: null });
@@ -509,7 +456,7 @@ export function valuesFromApplication(
         existingUrls,
       );
     } else {
-      otherDocuments.push({ document_name: doc.document_name, file: doc.file });
+      documents[doc.document_name] = fileStandIn(doc.file, existingUrls);
     }
   }
 
@@ -575,6 +522,5 @@ export function valuesFromApplication(
     })),
     documents,
     directorDocuments,
-    other_documents: otherDocuments,
   };
 }

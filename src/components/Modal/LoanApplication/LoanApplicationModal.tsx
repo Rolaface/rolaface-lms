@@ -40,15 +40,16 @@ import { EmploymentDetails } from "./EmploymentDetails";
 import { Applicant } from "./Applicant";
 import { Collateral } from "./Collateral";
 import * as LoanApplicationApi from "../../../api/LosConfiguration/LoanApplicationApi";
-import type { ApplicationDocument, LoanApplicationPayload } from "../../../api/LosConfiguration/LoanApplicationApi";
+import type {
+  ApplicationDocument,
+  LoanApplicationPayload,
+  ProductAssignment,
+} from "../../../api/LosConfiguration/LoanApplicationApi";
 import { uploadFile } from "../../../api/loanApi";
 import { openCommonModal } from "../AlertModal";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 import {
-  DOCUMENT_KEYS,
-  DOCUMENT_NAMES,
   EMAIL_REGEX,
-  OPTIONAL_DOCUMENTS,
   SIMULATION_RANGE,
   buildPayload,
   computeSimulation,
@@ -57,8 +58,8 @@ import {
   isAddressFilled,
   valuesFromApplication,
   type ApplicantType,
-  type DocumentKey,
   type LoanApplicationValues,
+  type RequiredDocument,
 } from "./form";
 
 export type {
@@ -80,6 +81,8 @@ const STEP_ICONS: Record<ApplicantType, React.FC<any>[]> = {
 };
 
 const SUBMIT_STEP = 6;
+const COLLATERAL_STEP = 4;
+const DOCUMENTS_STEP = 5;
 const ALLOWED_FILE_TYPES = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
 const PERSON_FIELDS = [
   "first_name",
@@ -124,7 +127,6 @@ function stepPaths(values: LoanApplicationValues, step: number): string[] {
       return values.collaterals.flatMap((_, i) => [`collaterals.${i}.collateral_type`, `collaterals.${i}.estimated_value`]);
     case 5:
       return [
-        ...DOCUMENT_KEYS[values.applicant_type].map((key) => `documents.${key}`),
         ...(isBusiness
           ? values.directorDocuments.flatMap((_, i) => [`directorDocuments.${i}.nrcFile`, `directorDocuments.${i}.photoFile`])
           : []),
@@ -192,6 +194,9 @@ export function LoanApplicationModal({
   const [directorsError, setDirectorsError] = useState<string | null>(null);
   const [directorDocsError, setDirectorDocsError] = useState<string | null>(null);
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
+  const [assignment, setAssignment] = useState<ProductAssignment | null>(null);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [documentErrors, setDocumentErrors] = useState<Record<string, string>>({});
 
   const form = useForm<LoanApplicationValues>({
     initialValues: embedded && initialValues ? initialValues : createInitialValues(),
@@ -244,13 +249,6 @@ export function LoanApplicationModal({
         collateral_type: required,
         estimated_value: (value) => required(value) ?? (Number(value) > 0 ? null : "Must be more than 0"),
       },
-      documents: Object.fromEntries(
-        (Object.keys(DOCUMENT_NAMES) as DocumentKey[]).map((key) => [
-          key,
-          (value: File | null, values: LoanApplicationValues) =>
-            DOCUMENT_KEYS[values.applicant_type].includes(key) ? fileRule(value, !OPTIONAL_DOCUMENTS.includes(key)) : null,
-        ]),
-      ),
       directorDocuments: {
         nrcFile: (value, values) => (isBusinessApp(values) ? fileRule(value, true) : null),
         photoFile: (value, values) => (isBusinessApp(values) ? fileRule(value, true) : null),
@@ -260,6 +258,13 @@ export function LoanApplicationModal({
 
   const applicantType = form.values.applicant_type;
   const stepLabels = STEP_LABELS[applicantType];
+  const documentList: RequiredDocument[] = readOnly
+    ? Object.keys(form.values.documents)
+        .filter((name) => form.values.documents[name])
+        .map((document_name) => ({ document_name, is_required: 0 }))
+    : assignment?.documents ?? [];
+  const rate = assignment?.rate_of_interest || SIMULATION_RANGE[applicantType].rate;
+  const maxAmount = assignment?.maximum_loan_amount || null;
 
   const { data: existingApplication, error: loadError } = useQuery({
     queryKey: ["los-loan-application", loanApplicationId, "edit"],
@@ -277,6 +282,7 @@ export function LoanApplicationModal({
     loadedValues.current = values;
     form.setValues(values);
     form.resetDirty(values);
+    if (!readOnly) assignProduct(true, values);
   }, [existingApplication]);
 
   const validateStep = (step: number) => {
@@ -289,10 +295,23 @@ export function LoanApplicationModal({
       setDirectorsError(missing ? "Please add at least one director" : null);
       if (missing) hasError = true;
     }
-    if (applicantType === "Business" && step === 5) {
+    if (applicantType === "Business" && step === DOCUMENTS_STEP) {
       const missing = form.values.directorDocuments.length === 0;
       setDirectorDocsError(missing ? "Please add at least one director's documents" : null);
       if (missing) hasError = true;
+    }
+    if (step === DOCUMENTS_STEP) {
+      const errors: Record<string, string> = {};
+      for (const doc of documentList) {
+        const error = fileRule(form.values.documents[doc.document_name] ?? null, !!doc.is_required);
+        if (error) errors[doc.document_name] = error;
+      }
+      setDocumentErrors(errors);
+      if (Object.keys(errors).length) hasError = true;
+    }
+    if (step === SUBMIT_STEP && maxAmount && Number(form.values.requested_amount) > maxAmount) {
+      form.setFieldError("requested_amount", `Above this product's maximum of K ${maxAmount.toLocaleString()}`);
+      hasError = true;
     }
     return !hasError;
   };
@@ -304,6 +323,8 @@ export function LoanApplicationModal({
     form.clearErrors();
     setDirectorsError(null);
     setDirectorDocsError(null);
+    setDocumentErrors({});
+    setAssignment(null);
     setActiveStep(0);
   };
 
@@ -312,8 +333,41 @@ export function LoanApplicationModal({
     onClose();
   };
 
-  const handleNext = () => {
-    if (validateStep(activeStep)) setActiveStep((s) => Math.min(s + 1, SUBMIT_STEP));
+  const assignProduct = async (silent = false, values = form.values) => {
+    setIsAssigning(true);
+    try {
+      const result = await LoanApplicationApi.assignProduct(buildPayload(values, []));
+      if (!result?.product) {
+        if (!silent) {
+          openCommonModal({
+            heading: "No Loan Product",
+            subtitle: "A loan product could not be assigned to this application.",
+            body: result?.reason ?? "No product assignment rule matches this application.",
+            color: "red",
+            buttons: [{ label: "Close", color: "red" }],
+          });
+        }
+        return null;
+      }
+      setAssignment(result);
+      return result;
+    } catch (error) {
+      if (!silent) showError(error);
+      return null;
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const goToStep = async (step: number) => {
+    if (!readOnly && step >= DOCUMENTS_STEP && !assignment && !(await assignProduct())) return;
+    setActiveStep(step);
+  };
+
+  const handleNext = async () => {
+    if (!validateStep(activeStep)) return;
+    if (activeStep === COLLATERAL_STEP && !(await assignProduct())) return;
+    setActiveStep((s) => Math.min(s + 1, SUBMIT_STEP));
   };
 
   const handleBack = () => setActiveStep((s) => Math.max(s - 1, 0));
@@ -322,7 +376,7 @@ export function LoanApplicationModal({
   const tenure = Number(form.values.tenure_months) || 0;
   const estimate =
     amount > 0 && Number.isInteger(tenure) && tenure > 0
-      ? computeSimulation(amount, tenure, SIMULATION_RANGE[applicantType].rate, form.values.repayment_frequency)
+      ? computeSimulation(amount, tenure, rate, form.values.repayment_frequency)
       : null;
   const totalRepayable = Math.round(estimate?.totalRepayment ?? 0);
   const monthlyRepayment = Math.round(estimate?.installment ?? 0);
@@ -366,9 +420,9 @@ export function LoanApplicationModal({
   const resolveDocuments = async (values: LoanApplicationValues): Promise<ApplicationDocument[]> => {
     const fileUrl = async (file: File) => existingUrls.get(file) ?? (await uploadFile(file)).file_url;
     const documents: ApplicationDocument[] = [];
-    for (const key of DOCUMENT_KEYS[values.applicant_type]) {
-      const file = values.documents[key];
-      if (file) documents.push({ document_name: DOCUMENT_NAMES[key], file: await fileUrl(file) });
+    for (const { document_name } of documentList) {
+      const file = values.documents[document_name];
+      if (file) documents.push({ document_name, file: await fileUrl(file) });
     }
     if (values.applicant_type === "Business") {
       for (const [index, doc] of values.directorDocuments.entries()) {
@@ -378,11 +432,31 @@ export function LoanApplicationModal({
         }
       }
     }
-    return [...documents, ...values.other_documents];
+    return documents;
   };
 
   const handleSubmitApplication = async () => {
-    for (let step = 0; step <= SUBMIT_STEP; step++) {
+    for (let step = 0; step <= COLLATERAL_STEP; step++) {
+      if (!validateStep(step)) {
+        setActiveStep(step);
+        return;
+      }
+    }
+    const previous = assignment?.product;
+    const current = await assignProduct();
+    if (!current) return;
+    if (current.product !== previous) {
+      setActiveStep(DOCUMENTS_STEP);
+      openCommonModal({
+        heading: "Loan Product Changed",
+        subtitle: "",
+        body: `The application now matches ${current.product_name ?? current.product}. Check its documents and simulation before saving.`,
+        color: "orange",
+        buttons: [{ label: "Close", color: "orange" }],
+      });
+      return;
+    }
+    for (let step = DOCUMENTS_STEP; step <= SUBMIT_STEP; step++) {
       if (!validateStep(step)) {
         setActiveStep(step);
         return;
@@ -428,13 +502,15 @@ export function LoanApplicationModal({
           <DocumentsStep
             form={form}
             applicantType={applicantType}
+            documents={documentList}
+            documentErrors={documentErrors}
             directorDocsError={directorDocsError}
             existingUrls={existingUrls}
             readOnly={readOnly}
           />
         );
       case 6:
-        return <EligibilitySimulationStep form={form} readOnly={readOnly} />;
+        return <EligibilitySimulationStep form={form} readOnly={readOnly} rate={rate} maxAmount={maxAmount} />;
       case 7:
         return <Review form={form} />;
       default:
@@ -524,7 +600,7 @@ export function LoanApplicationModal({
                 <Group key={label} gap={18} wrap="nowrap">
                   <UnstyledButton
                     type="button"
-                    onClick={() => setActiveStep(idx)}
+                    onClick={() => goToStep(idx)}
                     px={14}
                     py={7}
                     style={{
@@ -600,6 +676,8 @@ export function LoanApplicationModal({
         {!readOnly && (
           <ApplicationSummary
             values={form.values}
+            documents={documentList}
+            productName={assignment?.product_name ?? null}
             totalRepayable={totalRepayable}
             monthlyRepayment={monthlyRepayment}
             activeStep={activeStep}
@@ -639,7 +717,7 @@ export function LoanApplicationModal({
               color="brand"
               radius="md"
               onClick={activeStep < SUBMIT_STEP ? handleNext : handleSubmitApplication}
-              loading={activeStep >= SUBMIT_STEP && isSaving}
+              loading={isAssigning || (activeStep >= SUBMIT_STEP && isSaving)}
               disabled={isLoadingApplication}
               rightSection={<IconArrowRight size={16} />}
             >

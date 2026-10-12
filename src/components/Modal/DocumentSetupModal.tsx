@@ -19,12 +19,14 @@ export interface DocumentSetupModalProps {
 export interface DocumentConfig {
   id: string;
   name: string;
+  description: string;
   required: boolean;
 }
 
 const doc = (name: string): DocumentConfig => ({
   id: "temp-" + Math.random().toString(36).substring(2, 9),
   name,
+  description: "",
   required: true,
 });
 
@@ -78,6 +80,7 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, editId, isView
           docs: (detail.documents || detail.document_list || []).map((d: any, i: number) => ({
             id: d.id || d.name || String(i),
             name: d.document_name || d.name || "",
+            description: d.description || "",
             required: d.is_required === 1 || d.required === 1 || d.is_required === true,
           })),
           newName: "",
@@ -152,6 +155,7 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, editId, isView
       documents: form.values.docs.map((d) => ({
         document_name: d.name,
         is_required: d.required ? 1 : 0,
+        description: d.description.trim(),
       })),
     };
 
@@ -328,6 +332,7 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, editId, isView
                       <Table.Tr>
                         <Table.Th c="slate.5" fw={700} style={{ ...headStyle, padding: "8px 10px", width: 48 }}>No.</Table.Th>
                         <Table.Th c="slate.5" fw={700} style={{ ...headStyle, padding: "8px 10px" }}>Document name</Table.Th>
+                        <Table.Th c="slate.5" fw={700} style={{ ...headStyle, padding: "8px 10px" }}>Description</Table.Th>
                         <Table.Th c="slate.5" fw={700} style={{ ...headStyle, padding: "8px 10px", width: 130 }}>Required</Table.Th>
                         <Table.Th style={{ ...headStyle, width: 100 }} />
                       </Table.Tr>
@@ -335,7 +340,7 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, editId, isView
                     <Table.Tbody>
                       {form.values.docs.length === 0 ? (
                         <Table.Tr>
-                          <Table.Td colSpan={4} p={0} style={{ borderBottom: "1px dashed var(--mantine-color-slate-3)" }}>
+                          <Table.Td colSpan={5} p={0} style={{ borderBottom: "1px dashed var(--mantine-color-slate-3)" }}>
                             <Stack align="center" gap={6} py={40} bg="slate.0">
                               <IconFiles size={40} stroke={1} color="var(--mantine-color-slate-4)" />
                               <Text fz={14} c="slate.6" fw={600}>No documents added yet</Text>
@@ -356,6 +361,15 @@ export function DocumentSetupModal({ opened, onClose, onMinimize, editId, isView
                                 disabled={isView}
                                 aria-label={"Document " + (i + 1) + " name"}
                                 {...form.getInputProps("docs." + i + ".name")}
+                              />
+                            </Table.Td>
+                            <Table.Td>
+                              <TextInput
+                                size="xs"
+                                radius="md"
+                                disabled={isView}
+                                aria-label={"Document " + (i + 1) + " description"}
+                                {...form.getInputProps("docs." + i + ".description")}
                               />
                             </Table.Td>
                             <Table.Td>

@@ -1,3 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
+import { getConditionVariables } from "../../../api/OriginationSetupAPi/productAssignmentApi";
+
 export interface Variable {
   name: string;
   label: string;
@@ -5,21 +8,26 @@ export interface Variable {
   options?: { value: string; label: string }[];
 }
 
-const listOf = (...values: string[]) => values.map((v) => ({ value: v, label: v }));
+let variables: Variable[] = [];
 
-export const VARIABLES: Variable[] = [
-  { name: "customer_type", label: "Customer type", numeric: false, options: listOf("New to bank", "Existing customer", "Staff") },
-  { name: "employment_type", label: "Employment type", numeric: false, options: listOf("Salaried", "Self-employed", "Business owner", "Pensioner") },
-  { name: "vehicle_condition", label: "Vehicle condition", numeric: false, options: listOf("New", "Used") },
-  { name: "credit_score", label: "Credit score", numeric: true },
-  { name: "net_monthly_income", label: "Net monthly income", numeric: true },
-  { name: "loan_amount", label: "Loan amount", numeric: true },
-  { name: "tenor", label: "Tenor (months)", numeric: true },
-  { name: "age", label: "Age", numeric: true },
-  { name: "years_in_business", label: "Years in business", numeric: true },
-];
+export function useConditionVariables(): Variable[] {
+  const { data } = useQuery({
+    queryKey: ["los-condition-variables"],
+    queryFn: getConditionVariables,
+    staleTime: 5 * 60 * 1000,
+  });
+  if (data) {
+    variables = data.map((v) => ({
+      name: v.name,
+      label: v.label,
+      numeric: v.numeric,
+      options: v.numeric ? undefined : v.options.map((option) => ({ value: option, label: option })),
+    }));
+  }
+  return variables;
+}
 
-export const variableByName = (name: string): Variable | undefined => VARIABLES.find((v) => v.name === name);
+export const variableByName = (name: string): Variable | undefined => variables.find((v) => v.name === name);
 
 export type Operator = "=" | "<>" | ">" | ">=" | "<" | "<=" | "between";
 

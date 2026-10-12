@@ -20,26 +20,18 @@ import {
   IconCheck,
   IconAlertCircle,
   IconInfoCircle,
-  IconReceipt,
-  IconBuildingBank,
-  IconIdBadge2,
-  IconCamera,
-  IconCertificate,
   IconFileCertificate,
-  IconFileInvoice,
-  IconGavel,
   IconPencil,
   IconTrash,
   IconEye,
 } from "@tabler/icons-react";
 import type { UseFormReturnType } from "@mantine/form";
 import {
-  DOCUMENT_NAMES,
   nextId,
   type ApplicantType,
   type DirectorDocEntry,
-  type DocumentKey,
   type LoanApplicationValues,
+  type RequiredDocument,
 } from "./form";
 import {
   DocumentPreviewModal,
@@ -51,18 +43,18 @@ import {
 interface StepProps {
   form: UseFormReturnType<LoanApplicationValues>;
   applicantType: ApplicantType;
+  documents: RequiredDocument[];
+  documentErrors: Record<string, string>;
   directorDocsError?: string | null;
   existingUrls?: WeakMap<File, string>;
   readOnly?: boolean;
 }
 
 interface DocTile {
-  key: DocumentKey;
+  key: string;
   label: string;
   description: string;
-  icon: React.FC<any>;
   required: boolean;
-  guidelines: string[];
 }
 
 const DEFAULT_GUIDELINES = [
@@ -71,124 +63,12 @@ const DEFAULT_GUIDELINES = [
   "Maximum file size: 5MB",
 ];
 
-const PERSONAL_DOC_TILES: DocTile[] = [
-  {
-    key: "payslips",
-    label: DOCUMENT_NAMES.payslips,
-    description: "Most recent 3 months of salary slips from your employer.",
-    icon: IconReceipt,
-    required: true,
-    guidelines: DEFAULT_GUIDELINES,
-  },
-  {
-    key: "bankStatementsPersonal",
-    label: DOCUMENT_NAMES.bankStatementsPersonal,
-    description: "Statements from your primary bank account, last 3 months.",
-    icon: IconBuildingBank,
-    required: true,
-    guidelines: DEFAULT_GUIDELINES,
-  },
-  {
-    key: "nrcCopy",
-    label: DOCUMENT_NAMES.nrcCopy,
-    description: "A clear scan or photo of both sides of your NRC.",
-    icon: IconIdBadge2,
-    required: true,
-    guidelines: DEFAULT_GUIDELINES,
-  },
-  {
-    key: "passportPhotoPersonal",
-    label: DOCUMENT_NAMES.passportPhotoPersonal,
-    description: "Recent passport-sized photo with a plain background.",
-    icon: IconCamera,
-    required: true,
-    guidelines: [
-      "Plain, light-colored background",
-      "Face clearly visible, no filters",
-      "Accepted formats: JPG, JPEG, PNG",
-    ],
-  },
-  {
-    key: "tpinCertificate",
-    label: DOCUMENT_NAMES.tpinCertificate,
-    description: "Taxpayer Identification Number certificate.",
-    icon: IconCertificate,
-    required: true,
-    guidelines: DEFAULT_GUIDELINES,
-  },
-];
-
-const BUSINESS_DOC_TILES: DocTile[] = [
-  {
-    key: "pacraCertificate",
-    label: DOCUMENT_NAMES.pacraCertificate,
-    description: "Certificate of incorporation / business registration.",
-    icon: IconCertificate,
-    required: true,
-    guidelines: DEFAULT_GUIDELINES,
-  },
-  {
-    key: "form2",
-    label: DOCUMENT_NAMES.form2,
-    description: "Particulars of directors and shareholders.",
-    icon: IconFileCertificate,
-    required: true,
-    guidelines: DEFAULT_GUIDELINES,
-  },
-  {
-    key: "taxClearanceCertificate",
-    label: DOCUMENT_NAMES.taxClearanceCertificate,
-    description: "Proof of tax compliance for the business.",
-    icon: IconFileInvoice,
-    required: true,
-    guidelines: DEFAULT_GUIDELINES,
-  },
-  {
-    key: "taxComplianceReturn",
-    label: DOCUMENT_NAMES.taxComplianceReturn,
-    description: "Most recently filed tax compliance return.",
-    icon: IconFileInvoice,
-    required: true,
-    guidelines: DEFAULT_GUIDELINES,
-  },
-  {
-    key: "orderInvoice",
-    label: DOCUMENT_NAMES.orderInvoice,
-    description:
-      "Only required if applying for order financing or invoice discounting.",
-    icon: IconFileInvoice,
-    required: false,
-    guidelines: DEFAULT_GUIDELINES,
-  },
-  {
-    key: "bankStatementsBusiness",
-    label: DOCUMENT_NAMES.bankStatementsBusiness,
-    description: "Business account statements, last 6 months.",
-    icon: IconBuildingBank,
-    required: true,
-    guidelines: DEFAULT_GUIDELINES,
-  },
-  {
-    key: "applicantPassportPhoto",
-    label: DOCUMENT_NAMES.applicantPassportPhoto,
-    description: "Recent passport-sized photo of the applicant.",
-    icon: IconCamera,
-    required: true,
-    guidelines: [
-      "Plain, light-colored background",
-      "Face clearly visible, no filters",
-      "Accepted formats: JPG, JPEG, PNG",
-    ],
-  },
-  {
-    key: "boardResolution",
-    label: DOCUMENT_NAMES.boardResolution,
-    description: "Resolution authorizing the loan application.",
-    icon: IconGavel,
-    required: true,
-    guidelines: DEFAULT_GUIDELINES,
-  },
-];
+const tileFor = ({ document_name, is_required, description }: RequiredDocument): DocTile => ({
+  key: document_name,
+  label: document_name,
+  description: description || `Upload a clear copy of the ${document_name.toLowerCase()}.`,
+  required: !!is_required,
+});
 
 interface UploadedDocRowProps {
   file: File;
@@ -262,18 +142,30 @@ function UploadedDocRow({ file, onPreview, onRemove, readOnly = false, }: Upload
   );
 }
 
-export function DocumentsStep({ form, applicantType, directorDocsError, existingUrls, readOnly = false }: StepProps) {
-  const tiles = applicantType === "Individual" ? PERSONAL_DOC_TILES : BUSINESS_DOC_TILES;
-  const [selectedKey, setSelectedKey] = useState<DocumentKey>(tiles[0].key);
+export function DocumentsStep({
+  form,
+  applicantType,
+  documents,
+  documentErrors,
+  directorDocsError,
+  existingUrls,
+  readOnly = false,
+}: StepProps) {
+  const tiles = documents.map(tileFor);
+  const [selectedKey, setSelectedKey] = useState<string | undefined>(tiles[0]?.key);
 
   useEffect(() => {
-    setSelectedKey(tiles[0].key);
-  }, [applicantType]);
+    if (!tiles.some((tile) => tile.key === selectedKey)) setSelectedKey(tiles[0]?.key);
+  }, [documents]);
 
-  const selected = tiles.find((t) => t.key === selectedKey) ?? tiles[0];
-  const SelectedIcon = selected.icon;
-  const file = form.values.documents[selected.key];
-  const error = form.errors[`documents.${selected.key}`];
+  const selected =
+    tiles.find((t) => t.key === selectedKey) ??
+    tiles[0] ??
+    tileFor({ document_name: "Documents", is_required: 0 });
+  const file = form.values.documents[selected.key] ?? null;
+  const error = file ? undefined : documentErrors[selected.key];
+  const setDocument = (name: string, value: File | null) =>
+    form.setFieldValue("documents", { ...form.values.documents, [name]: value });
 
   const [previewOpened, setPreviewOpened] = useState(false);
 
@@ -329,212 +221,217 @@ export function DocumentsStep({ form, applicantType, directorDocsError, existing
 
   return (
     <Stack gap="xl">
-      <Group align="stretch" gap="md" wrap="nowrap" style={{ minHeight: 260 }}>
-        <Paper
-          withBorder
-          radius="md"
-          bg="white"
-          w={240}
-          style={{
-            flexShrink: 0,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
-        >
-          <Text
-            size="xs"
-            fw={800}
-            tt="uppercase"
-            c="slate.5"
-            px="sm"
-            py="xs"
-            style={{ flexShrink: 0, letterSpacing: 0.5 }}
+      {tiles.length === 0 ? (
+        <Text size="sm" c="slate.5">
+          {readOnly ? "No documents uploaded." : "No documents are set up for this loan product."}
+        </Text>
+      ) : (
+        <Group align="stretch" gap="md" wrap="nowrap" style={{ minHeight: 260 }}>
+          <Paper
+            withBorder
+            radius="md"
+            bg="white"
+            w={240}
+            style={{
+              flexShrink: 0,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
           >
-            Required Documents
-          </Text>
+            <Text
+              size="xs"
+              fw={800}
+              tt="uppercase"
+              c="slate.5"
+              px="sm"
+              py="xs"
+              style={{ flexShrink: 0, letterSpacing: 0.5 }}
+            >
+              Required Documents
+            </Text>
 
-          <Stack gap={2} px={6} pb={6}>
-            {tiles.map((tile) => {
-              const tileFile = form.values.documents[tile.key];
-              const tileHasError = !!form.errors[`documents.${tile.key}`];
-              const isSelected = tile.key === selectedKey;
-              const TileIcon = tile.icon;
-              return (
-                <UnstyledButton
-                  key={tile.key}
-                  onClick={() => setSelectedKey(tile.key)}
-                  px="xs"
-                  py={6}
-                  style={{
-                    borderRadius: "var(--mantine-radius-sm)",
-                    background: isSelected
-                      ? "var(--mantine-color-brand-0)"
-                      : "transparent",
-                    border: isSelected
-                      ? "1px solid var(--mantine-color-brand-4)"
-                      : "1px solid transparent",
-                  }}
-                >
-                  <Group justify="space-between" wrap="nowrap" gap={6}>
-                    <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
-                      <TileIcon
-                        size={14}
-                        color={
-                          isSelected
-                            ? "var(--mantine-color-brand-6)"
-                            : "var(--mantine-color-slate-4)"
-                        }
-                        style={{ flexShrink: 0 }}
-                      />
-                      <Text
-                        size="xs"
-                        fw={isSelected ? 700 : 600}
-                        c={isSelected ? "brand.7" : "slate.7"}
-                        truncate
-                      >
-                        {tile.label}
-                      </Text>
-                    </Group>
-                    {tileFile ? (
-                      <IconCheck
-                        size={13}
-                        color="var(--mantine-color-green-6)"
-                        style={{ flexShrink: 0 }}
-                      />
-                    ) : tile.required ? (
-                      <IconAlertCircle
-                        size={13}
-                        color={
-                          tileHasError
-                            ? "var(--mantine-color-red-6)"
-                            : "var(--mantine-color-orange-5)"
-                        }
-                        style={{ flexShrink: 0 }}
-                      />
-                    ) : null}
-                  </Group>
-                </UnstyledButton>
-              );
-            })}
-          </Stack>
-        </Paper>
-
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <Stack gap="md" pr="xs">
-            <Group gap="sm" wrap="nowrap">
-              <ThemeIcon radius="md" size={40} variant="light" color="brand">
-                <SelectedIcon size={20} />
-              </ThemeIcon>
-              <Box>
-                <Title order={5} c="slate.8">
-                  Upload {selected.label}
-                  {selected.required && (
-                    <Text component="span" c="red.6">
-                      {" "}
-                      *
-                    </Text>
-                  )}
-                </Title>
-                <Text size="sm" c="slate.5">
-                  {selected.description}
-                </Text>
-              </Box>
-            </Group>
-
-                        {file ? (
-              <Stack gap="xs">
-                <Text fz="xs" fw={700} c="slate.5" tt="uppercase">
-                  Uploaded Document
-                </Text>
-                <UploadedDocRow
-                  file={file}
-                  onPreview={() => setPreviewOpened(true)}
-                  onRemove={() => form.setFieldValue(`documents.${selected.key}`, null)}
-                  readOnly={readOnly}
-                />
-              </Stack>
-            ) : readOnly ? (
-              <Paper
-                withBorder
-                radius="lg"
-                p="md"
-                ta="center"
-                bg="slate.0"
-                style={{ borderStyle: "dashed" }}
-              >
-                <Text size="sm" fw={600} c="slate.5">
-                  Not provided
-                </Text>
-              </Paper>
-            ) : (
-              <FileButton
-                onChange={(f) => f && form.setFieldValue(`documents.${selected.key}`, f)}
-                accept="application/pdf,image/jpeg,image/jpg,image/png,.pdf,.jpg,.jpeg,.png"
-              >
-                {(fileButtonProps) => (
-                  <Paper
-                    {...fileButtonProps}
-                    withBorder
-                    radius="lg"
-                    p="md"
-                    ta="center"
-                    bg="slate.0"
+            <Stack gap={2} px={6} pb={6}>
+              {tiles.map((tile) => {
+                const tileFile = form.values.documents[tile.key];
+                const tileHasError = !tileFile && !!documentErrors[tile.key];
+                const isSelected = tile.key === selectedKey;
+                return (
+                  <UnstyledButton
+                    key={tile.key}
+                    onClick={() => setSelectedKey(tile.key)}
+                    px="xs"
+                    py={6}
                     style={{
-                      borderStyle: "dashed",
-                      borderColor: error
-                        ? "var(--mantine-color-red-4)"
-                        : "var(--mantine-color-slate-3)",
-                      cursor: "pointer",
+                      borderRadius: "var(--mantine-radius-sm)",
+                      background: isSelected
+                        ? "var(--mantine-color-brand-0)"
+                        : "transparent",
+                      border: isSelected
+                        ? "1px solid var(--mantine-color-brand-4)"
+                        : "1px solid transparent",
                     }}
                   >
-                    <Stack align="center" gap={4}>
-                      <ThemeIcon radius="xl" size={56} variant="light" color="brand">
-                        <IconUpload size={26} />
-                      </ThemeIcon>
-                      <Text size="sm" fw={700} c="slate.8">
-                        Click to upload or drag and drop
-                      </Text>
-                      <Text size="xs" c="slate.5">
-                        PDF, JPG, JPEG or PNG (max. 5MB)
-                      </Text>
-                      <Button radius="md" size="xs" color="brand">
-                        Browse Files
-                      </Button>
-                    </Stack>
-                  </Paper>
-                )}
-              </FileButton>
-            )}
+                    <Group justify="space-between" wrap="nowrap" gap={6}>
+                      <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+                        <IconFileCertificate
+                          size={14}
+                          color={
+                            isSelected
+                              ? "var(--mantine-color-brand-6)"
+                              : "var(--mantine-color-slate-4)"
+                          }
+                          style={{ flexShrink: 0 }}
+                        />
+                        <Text
+                          size="xs"
+                          fw={isSelected ? 700 : 600}
+                          c={isSelected ? "brand.7" : "slate.7"}
+                          truncate
+                        >
+                          {tile.label}
+                        </Text>
+                      </Group>
+                      {tileFile ? (
+                        <IconCheck
+                          size={13}
+                          color="var(--mantine-color-green-6)"
+                          style={{ flexShrink: 0 }}
+                        />
+                      ) : tile.required ? (
+                        <IconAlertCircle
+                          size={13}
+                          color={
+                            tileHasError
+                              ? "var(--mantine-color-red-6)"
+                              : "var(--mantine-color-orange-5)"
+                          }
+                          style={{ flexShrink: 0 }}
+                        />
+                      ) : null}
+                    </Group>
+                  </UnstyledButton>
+                );
+              })}
+            </Stack>
+          </Paper>
 
-            {error && (
-              <Text fz="xs" c="red.6">
-                {error}
-              </Text>
-            )}
-
-            <Paper
-              withBorder
-              radius="md"
-              p="md"
-              bg="blue.0"
-              style={{ borderColor: "var(--mantine-color-blue-2)" }}
-            >
-              <Group gap="xs" mb="xs">
-                <IconInfoCircle size={15} color="var(--mantine-color-blue-6)" />
-                <Text size="xs" fw={700} c="blue.7">
-                  Guidelines for {selected.label}
-                </Text>
+          <Box style={{ flex: 1, minWidth: 0 }}>
+            <Stack gap="md" pr="xs">
+              <Group gap="sm" wrap="nowrap">
+                <ThemeIcon radius="md" size={40} variant="light" color="brand">
+                  <IconFileCertificate size={20} />
+                </ThemeIcon>
+                <Box>
+                  <Title order={5} c="slate.8">
+                    Upload {selected.label}
+                    {selected.required && (
+                      <Text component="span" c="red.6">
+                        {" "}
+                        *
+                      </Text>
+                    )}
+                  </Title>
+                  <Text size="sm" c="slate.5">
+                    {selected.description}
+                  </Text>
+                </Box>
               </Group>
-              <List size="xs" spacing={4} c="slate.6" pl={4}>
-                {selected.guidelines.map((g, i) => (
-                  <List.Item key={i}>{g}</List.Item>
-                ))}
-              </List>
-            </Paper>
-          </Stack>
-        </Box>
-      </Group>
+
+                          {file ? (
+                <Stack gap="xs">
+                  <Text fz="xs" fw={700} c="slate.5" tt="uppercase">
+                    Uploaded Document
+                  </Text>
+                  <UploadedDocRow
+                    file={file}
+                    onPreview={() => setPreviewOpened(true)}
+                    onRemove={() => setDocument(selected.key, null)}
+                    readOnly={readOnly}
+                  />
+                </Stack>
+              ) : readOnly ? (
+                <Paper
+                  withBorder
+                  radius="lg"
+                  p="md"
+                  ta="center"
+                  bg="slate.0"
+                  style={{ borderStyle: "dashed" }}
+                >
+                  <Text size="sm" fw={600} c="slate.5">
+                    Not provided
+                  </Text>
+                </Paper>
+              ) : (
+                <FileButton
+                  onChange={(f) => f && setDocument(selected.key, f)}
+                  accept="application/pdf,image/jpeg,image/jpg,image/png,.pdf,.jpg,.jpeg,.png"
+                >
+                  {(fileButtonProps) => (
+                    <Paper
+                      {...fileButtonProps}
+                      withBorder
+                      radius="lg"
+                      p="md"
+                      ta="center"
+                      bg="slate.0"
+                      style={{
+                        borderStyle: "dashed",
+                        borderColor: error
+                          ? "var(--mantine-color-red-4)"
+                          : "var(--mantine-color-slate-3)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <Stack align="center" gap={4}>
+                        <ThemeIcon radius="xl" size={56} variant="light" color="brand">
+                          <IconUpload size={26} />
+                        </ThemeIcon>
+                        <Text size="sm" fw={700} c="slate.8">
+                          Click to upload or drag and drop
+                        </Text>
+                        <Text size="xs" c="slate.5">
+                          PDF, JPG, JPEG or PNG (max. 5MB)
+                        </Text>
+                        <Button radius="md" size="xs" color="brand">
+                          Browse Files
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  )}
+                </FileButton>
+              )}
+
+              {error && (
+                <Text fz="xs" c="red.6">
+                  {error}
+                </Text>
+              )}
+
+              <Paper
+                withBorder
+                radius="md"
+                p="md"
+                bg="blue.0"
+                style={{ borderColor: "var(--mantine-color-blue-2)" }}
+              >
+                <Group gap="xs" mb="xs">
+                  <IconInfoCircle size={15} color="var(--mantine-color-blue-6)" />
+                  <Text size="xs" fw={700} c="blue.7">
+                    Guidelines for {selected.label}
+                  </Text>
+                </Group>
+                <List size="xs" spacing={4} c="slate.6" pl={4}>
+                  {DEFAULT_GUIDELINES.map((g, i) => (
+                    <List.Item key={i}>{g}</List.Item>
+                  ))}
+                </List>
+              </Paper>
+            </Stack>
+          </Box>
+        </Group>
+      )}
 
       {applicantType === "Business" && (
         <Box>

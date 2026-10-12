@@ -274,6 +274,7 @@ export const API = {
     deleteProductAssignment: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.delete_rule`,
     getSettings: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_settings`,
     updateSettings: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.update_settings`,
+    getConditionVariables: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.product_assignment.api.get_condition_variables`,
   },
 
   createEligibilityRule: {
@@ -536,6 +537,7 @@ losDocumentSetup: {
     getLoanTypes: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.get_loan_types`,
     getSubTypes: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.get_sub_types`,
     getPurposes: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.get_purposes`,
+    assignLoanProduct: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.engine.api.assign_loan_product`,
   },
 } as const;
 

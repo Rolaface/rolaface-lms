@@ -36,7 +36,6 @@ import {
 } from "@tabler/icons-react";
 
 import {
-  VARIABLES,
   clauseText,
   hasCondition,
   newClause,
@@ -49,6 +48,7 @@ import {
   type ConditionGroup,
   type Joiner,
   type Operator,
+  useConditionVariables,
 } from "../../../view/LosConfiguration/ProductAssignment/shared";
 import { getAllLoanTypes } from "../../../api/OriginationSetupAPi/loanSetupApi";
 import {type CreateLoantypeResponse } from "../../../types/OriginationSetup/loanTypeForm";
@@ -338,6 +338,7 @@ const JoinWord = ({ join }: { join: Joiner }) => (
 );
 
 export function ConditionText({ row }: { row: Pick<AssignmentRow, "join" | "groups"> }) {
+  useConditionVariables();
   const groups = row.groups.filter((gr) => gr.clauses.length > 0);
   return (
     <>
@@ -363,6 +364,7 @@ export function ConditionText({ row }: { row: Pick<AssignmentRow, "join" | "grou
 const LINE = { input: { height: 26, minHeight: 26, fontSize: 12, paddingLeft: 8, borderRadius: 6 } };
 
 function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onChange: (groups: ConditionGroup[]) => void }) {
+  const variables = useConditionVariables();
   const setGroups = (next: ConditionGroup[]) => onChange(next.filter((gr) => gr.clauses.length > 0));
   const updateGroup = (id: string, patch: Partial<ConditionGroup>) => setGroups(groups.map((gr) => (gr.id === id ? { ...gr, ...patch } : gr)));
   const updateClause = (gr: ConditionGroup, id: string, patch: Partial<Clause>) =>
@@ -433,7 +435,7 @@ function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onCh
                     <Select
                       aria-label="Variable"
                       placeholder="Variable"
-                      data={VARIABLES.map((v) => ({ value: v.name, label: v.label }))}
+                      data={variables.map((v) => ({ value: v.name, label: v.label }))}
                       value={clause.variable || null}
                       onChange={(v) => {
                         if (!v) return;
@@ -462,6 +464,7 @@ function ConditionBuilder({ groups, onChange }: { groups: ConditionGroup[]; onCh
                         value={clause.value || null}
                         onChange={(v) => updateClause(gr, clause.id, { value: v ?? "" })}
                         allowDeselect={false}
+                        searchable
                         styles={LINE}
                         style={{ flex: "1 1 0", minWidth: 0 }}
                       />

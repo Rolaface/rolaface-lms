@@ -41,6 +41,7 @@ import {
   FALLBACKS,
   MATCH_MODES,
   conditionText,
+  useConditionVariables,
   hasCondition,
   rowError,
   uid,
@@ -265,6 +266,7 @@ function LoanTypeDefault({ loanType, products, value, onChange, first }: { loanT
 }
 
 export function LoanProductAssignment() {
+  useConditionVariables();
   const theme = useMantineTheme();
   const queryClient = useQueryClient();
   const [saved, setSaved] = useState<Config>(EMPTY);

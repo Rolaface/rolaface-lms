@@ -189,6 +189,16 @@ export interface GetLoanApplicationsParams {
   sort_order?: "asc" | "desc";
 }
 
+export interface ProductAssignment {
+  status: string;
+  product: string | null;
+  product_name: string | null;
+  reason: string | null;
+  rate_of_interest: number | null;
+  maximum_loan_amount: number | null;
+  documents: { document_name: string; is_required: number }[] | null;
+}
+
 export interface TreeNode {
   name: string;
   node_name: string;
@@ -226,6 +236,11 @@ export const getAll = async (
 export const remove = async (id: string): Promise<any> => {
   const response: AxiosResponse<any> = await api.delete(LoanApplicationEndpoints.delete, { params: { id } });
   return response.data;
+};
+
+export const assignProduct = async (payload: Partial<LoanApplicationPayload>): Promise<ProductAssignment> => {
+  const response: AxiosResponse<any> = await api.post(LoanApplicationEndpoints.assignLoanProduct, payload);
+  return response.data?.message?.data;
 };
 
 export const getLoanTypes = async (applicant_type: ApplicantType): Promise<TreeNode[]> => {
