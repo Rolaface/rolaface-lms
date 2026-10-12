@@ -352,7 +352,7 @@ export function EarningsStatements() {
           </Box>
           <Stack gap={2}>
             <Title order={2} c="slate.8" fw={700}>
-              Investor Payouts
+              Amend Payouts
             </Title>
             <Text fz="sm" c="slate.5">
               View and edit the repayment schedule of investments

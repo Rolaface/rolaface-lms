@@ -57,7 +57,11 @@ import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
 import { recordFundModal } from "../../components/Modal/Investor/recordFundModalStore";
 import { FundReceiptMailDialog } from "../../components/Modal/Investor/Statements/StatementMailDialog";
-import { prepareFundReceiptMail } from "../../components/Modal/Investor/Statements/autoMail";
+import {
+  approveWithMail,
+  prepareFundReceiptMail,
+  showApprovalResult,
+} from "../../components/Modal/Investor/Statements/autoMail";
 import { formatInvestorDate } from "../../components/Modal/Investor/investorDate";
 
 const columnHelper = createColumnHelper<FundRecordListItem>();
@@ -183,28 +187,34 @@ export function RecordFund() {
     recordName: string;
   } | null>(null);
   const companyName = useCompanyStore((state) => state.companyName);
-  // Approve: the fund receipt is emailed to the investor; the record is approved only when the email is sent.
+  // Approve, then the fund receipt is emailed to the investor; a failed email does not undo the approval.
   const approveMutation = useMutation({
-    mutationFn: async (row: FundRecordListItem) => {
-      const mail = await prepareFundReceiptMail(row.investment_id, row.name, {
-        theme,
-        currency: companyCurrency,
-        companyName,
-      });
-      return approveFundRecord({
-        id: row.investment_id,
-        record: row.name,
-        mail,
-      });
-    },
-    onSuccess: (data: unknown, row: FundRecordListItem) => {
+    // Never re-sent automatically: the first request may already have approved.
+    retry: false,
+    mutationFn: (row: FundRecordListItem) =>
+      approveWithMail(
+        () =>
+          prepareFundReceiptMail(row.investment_id, row.name, {
+            theme,
+            currency: companyCurrency,
+            companyName,
+          }),
+        (mail) =>
+          approveFundRecord({
+            id: row.investment_id,
+            record: row.name,
+            mail,
+          }),
+      ),
+    onSuccess: (data, row: FundRecordListItem) => {
       refresh(row.investment_id);
       queryClient.invalidateQueries({ queryKey: ["investorNotifications"] });
-      const to = (data as { emailed_to?: string })?.emailed_to;
-      showSuccess(
-        "Fund Approved",
-        `${fmtAmount(row.amount_paid)} from ${row.investor} is approved, its Journal Entry is posted and the fund receipt was emailed${to ? ` to ${to}` : ""}.`,
-      );
+      showApprovalResult({
+        heading: "Fund Approved",
+        body: `${fmtAmount(row.amount_paid)} from ${row.investor} is approved and its Journal Entry is posted.`,
+        result: data,
+        document: "fund receipt",
+      });
     },
     onError: (error: unknown) => showError("Approve Failed", error),
   });
@@ -456,7 +466,7 @@ export function RecordFund() {
                       onClick={() =>
                         confirm(
                           "Approve Fund",
-                          `Approve ${fmtAmount(row.amount_paid)} from ${row.investor}? This posts its Journal Entry (Paid from ${row.credit_gl} → Paid to ${row.debit_gl}) and emails the fund receipt to the investor; nothing is approved if the email cannot be sent.`,
+                          `Approve ${fmtAmount(row.amount_paid)} from ${row.investor}? This posts its Journal Entry (Paid from ${row.credit_gl} → Paid to ${row.debit_gl}).`,
                           "Approve",
                           "green",
                           () => approveMutation.mutate(row),

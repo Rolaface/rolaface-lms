@@ -78,8 +78,10 @@ export interface ModalState {
   productMaxRate: number;
   productMinTenure: number;
   productMaxTenure: number;
-  /** Basis of the interest rate (from the product; saved on the investment). */
+  /** Basis of the investment's interest rate (starts as the product's; can be changed; saved on the investment). */
   interestFrequency: InterestFrequency;
+  /** Basis of the chosen product's rates (its interest rate range). */
+  productInterestFrequency: InterestFrequency;
   amount: number;
   rate: number;
   frequency: Frequency;
@@ -196,7 +198,7 @@ export const STEP_NAMES = [
   "Terms & Schedule",
   "Contract Generation",
   "Funding & Allotment",
-  "Investor Payouts",
+  "Amend Payouts",
   "Maturity",
 ];
 
@@ -248,6 +250,7 @@ export function createInitialState(): ModalState {
     productMinTenure: 0,
     productMaxTenure: 0,
     interestFrequency: "Yearly",
+    productInterestFrequency: "Yearly",
     amount: 0,
     rate: 0,
     frequency: "Monthly",
@@ -392,13 +395,20 @@ export function productLimitWarnings(
 ): string[] {
   if (!s.productId) return [];
   const name = s.productName || s.productId;
-  const unit = s.interestFrequency === "Monthly" ? "per month" : "per annum";
+  // The product's range is in the product's basis; compared per annum (a monthly rate is x12), as the backend does.
+  const unit = s.productInterestFrequency === "Monthly" ? "per month" : "per annum";
+  const perAnnum = (rate: number, basis: InterestFrequency) =>
+    basis === "Monthly" ? rate * 12 : rate;
   const warnings: string[] = [];
   if (s.productMinAmount && s.amount < s.productMinAmount)
     warnings.push(`Investment amount is below the minimum investment of ${name} (${fmtAmount(s.productMinAmount)}).`);
   if (s.productMaxAmount && s.amount > s.productMaxAmount)
     warnings.push(`Investment amount is above the maximum investment of ${name} (${fmtAmount(s.productMaxAmount)}).`);
-  if (s.productMaxRate && (s.rate < s.productMinRate || s.rate > s.productMaxRate))
+  if (
+    s.productMaxRate &&
+    (perAnnum(s.rate, s.interestFrequency) < perAnnum(s.productMinRate, s.productInterestFrequency) ||
+      perAnnum(s.rate, s.interestFrequency) > perAnnum(s.productMaxRate, s.productInterestFrequency))
+  )
     warnings.push(
       `Interest rate is outside the range of ${name} (${s.productMinRate}% to ${s.productMaxRate}% ${unit}).`,
     );
@@ -483,6 +493,7 @@ export function apiProductFields(
     productMinTenure: Number(p.minimum_tenure) || 0,
     productMaxTenure: Number(p.maximum_tenure) || 0,
     interestFrequency: p.interest_frequency === "Monthly" ? "Monthly" : "Yearly",
+    productInterestFrequency: p.interest_frequency === "Monthly" ? "Monthly" : "Yearly",
   };
 }
 
@@ -502,6 +513,7 @@ export function apiProductPatch(
       productMinTenure: 0,
       productMaxTenure: 0,
       interestFrequency: "Yearly",
+      productInterestFrequency: "Yearly",
     };
   }
   const today = new Date();
@@ -588,6 +600,10 @@ export async function loadInvestorFlowState(id: string): Promise<ModalState> {
   const productItem =
     product.status === "fulfilled" ? product.value?.message?.data : null;
   if (productItem) Object.assign(state, apiProductFields(productItem));
+  // The investment keeps its own saved basis (the product's is only the default for a new one).
+  if (record.interest_frequency)
+    state.interestFrequency =
+      record.interest_frequency === "Monthly" ? "Monthly" : "Yearly";
 
   return state;
 }

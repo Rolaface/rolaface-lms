@@ -26,7 +26,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   getInvestorEarningById,
-  payInvestorEarningRow,
   updateInvestorEarning,
 } from "../../../api/Investor/investorFlowApi";
 import {
@@ -45,14 +44,12 @@ import {
   createInitialState,
   fmtDate,
   loadInvestorFlowState,
-  toIso,
   type ModalState,
 } from "./InvestorModalShared";
 import { StageShell } from "./StageShell";
 import { formatAmount } from "../../../store/currencyStore";
 import { useCompanyStore } from "../../../store/companyStore";
 import { InvestorDateInput } from "./InvestorDateInput";
-import { PaymentStatementMailDialog } from "./Statements/StatementMailDialog";
 import { rateUnit } from "../../../types/Investor/investmentProductForm";
 
 const ROWS_PER_PAGE = 10;
@@ -789,7 +786,7 @@ function EarningsStatements({
                                 </ActionIcon>
                               </Tooltip>
                             )}
-                            {row.status === "Paid" &&
+                            {/* {row.status === "Paid" &&
                               row.payout_entry &&
                               onViewAccounting && (
                                 <Button
@@ -802,7 +799,7 @@ function EarningsStatements({
                                 >
                                   View accounting
                                 </Button>
-                              )}
+                              )} */}
                             {onPay && row.status !== "Paid" && (
                               <Button
                                 size="compact-xs"
@@ -950,7 +947,7 @@ interface EarningsStatementsModalProps {
 
 const STAGE_INDEX = 1;
 
-/** Stage 2 — Investor Payouts (no side nav). */
+/** Stage 2 — Amend Payouts: view / amend the schedule and its versions (no side nav). */
 export function EarningsStatementsModal({
   opened,
   onClose,
@@ -959,8 +956,6 @@ export function EarningsStatementsModal({
   onSaved,
   onMinimize,
 }: EarningsStatementsModalProps) {
-  // Payment statement email: kept here, not in EarningsStage, which remounts when the schedule reloads.
-  const [statementRow, setStatementRow] = useState<string | null>(null);
   const earningQuery = useQuery({
     queryKey: ["investorEarning", investorFlowId],
     queryFn: () => getInvestorEarningById(investorFlowId),
@@ -974,27 +969,17 @@ export function EarningsStatementsModal({
 
   if (earningQuery.data && flowQuery.data) {
     return (
-      <>
-        <EarningsStage
-          key={earningQuery.dataUpdatedAt}
-          onSendStatement={setStatementRow}
-          opened={opened}
-          onClose={onClose}
-          onMinimize={onMinimize}
-          investorFlowId={investorFlowId}
-          readOnly={readOnly}
-          onSaved={onSaved}
-          earning={earningQuery.data}
-          flowState={flowQuery.data}
-        />
-        {statementRow && (
-          <PaymentStatementMailDialog
-            investmentId={investorFlowId}
-            rowName={statementRow}
-            onClose={() => setStatementRow(null)}
-          />
-        )}
-      </>
+      <EarningsStage
+        key={earningQuery.dataUpdatedAt}
+        opened={opened}
+        onClose={onClose}
+        onMinimize={onMinimize}
+        investorFlowId={investorFlowId}
+        readOnly={readOnly}
+        onSaved={onSaved}
+        earning={earningQuery.data}
+        flowState={flowQuery.data}
+      />
     );
   }
 
@@ -1006,7 +991,7 @@ export function EarningsStatementsModal({
       onMinimize={onMinimize}
       stageIndex={STAGE_INDEX}
       state={createInitialState()}
-      title={readOnly ? "View Investor Payouts" : "Edit Investor Payouts"}
+      title={readOnly ? "View Amend Payouts" : "Amend Payouts"}
     >
       <Group justify="center" py="xl">
         {error ? (
@@ -1030,11 +1015,8 @@ function EarningsStage({
   onSaved,
   earning,
   flowState,
-  onSendStatement,
 }: Omit<EarningsStatementsModalProps, "readOnly"> & {
   readOnly: boolean;
-  /** Opens the payment statement email for a paid row (kept by the parent). */
-  onSendStatement: (rowName: string) => void;
   earning: InvestorEarning;
   flowState: ModalState;
 }) {
@@ -1083,37 +1065,6 @@ function EarningsStage({
       buttons: [{ label: "Close", color: "red" }],
     });
 
-  const payMutation = useMutation({
-    mutationFn: (row: InvestorEarningScheduleRow) =>
-      payInvestorEarningRow({
-        id: investorFlowId,
-        row: row.name,
-        paymentDate: toIso(new Date()),
-      }),
-    onSuccess: (_data, row) => {
-      refreshEarning();
-      // The Payment Statement email dialog opens (it shows the payout too).
-      onSendStatement(row.name);
-    },
-    onError: (error: any) => showFailure("Payout Failed", error),
-  });
-
-  const confirmPay = (row: InvestorEarningScheduleRow) =>
-    openCommonModal({
-      heading: "Pay Schedule Row",
-      subtitle: "Please confirm this action before continuing.",
-      body: `Pay ${fmtAmount(Number(row.total_payment) || 0)} for row ${row.idx} (due ${fmtDate(row.payment_date)}) from the Company Bank Account, dated today?`,
-      color: "green",
-      buttons: [
-        { label: "Cancel", variant: "default" },
-        {
-          label: "Pay",
-          color: "green",
-          onClick: () => payMutation.mutate(row),
-        },
-      ],
-    });
-
   const saveMutation = useMutation({
     mutationFn: () =>
       updateInvestorEarning({
@@ -1133,7 +1084,7 @@ function EarningsStage({
       refreshEarning();
       onClose();
       openCommonModal({
-        heading: "Investor Payouts Updated",
+        heading: "Payouts Amended",
         subtitle: "",
         body: "The repayment schedule has been updated successfully.",
         color: "green",
@@ -1174,7 +1125,7 @@ function EarningsStage({
       onMinimize={onMinimize}
       stageIndex={STAGE_INDEX}
       state={flowState}
-      title={editable ? "Edit Investor Payouts" : "View Investor Payouts"}
+      title={editable ? "Amend Payouts" : "View Amend Payouts"}
       footer={footer}
       headerItems={[
         {
@@ -1217,14 +1168,13 @@ function EarningsStage({
         {allPaid && (
           <Alert variant="light" color="success" radius="md" mb="md">
             Every payout of this investment has been made (Payment Status:
-            Paid). Investor Payouts can only be viewed.
+            Paid). The payouts can only be viewed.
           </Alert>
         )}
         {expired && (
           <Alert variant="light" color="danger" radius="md" mb="md">
             This investment has Expired: its maturity date has passed with money
-            still due. The schedule can no longer be edited. Pay the rows if the
-            investor takes the money back, or renew it from the Renewal screen.
+            still due. The schedule can no longer be edited.
           </Alert>
         )}
         <EarningsStatements
@@ -1233,8 +1183,6 @@ function EarningsStage({
           history={earning.schedule_history}
           currentRows={earning.schedule}
           onChange={editable ? setDraft : undefined}
-          onPay={canPay && !allPaid ? confirmPay : undefined}
-          onSendStatement={(row) => onSendStatement(row.name)}
           onViewAccounting={(row) => {
             // Investor 360: this investment's Repayments, with the payout's accounting open.
             const params = new URLSearchParams({
@@ -1246,10 +1194,6 @@ function EarningsStage({
             onClose();
             navigate({ href: `/investor/investments?${params.toString()}` });
           }}
-          payDisabledReason={isDirty ? "Save your changes before paying" : ""}
-          payingRow={
-            payMutation.isPending ? (payMutation.variables?.name ?? null) : null
-          }
         />
       </section>
     </StageShell>

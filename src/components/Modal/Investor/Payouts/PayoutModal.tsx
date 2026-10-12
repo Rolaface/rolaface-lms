@@ -323,6 +323,8 @@ function PayoutBody({
     queryKey: ["payoutCandidates", debouncedSearch],
     queryFn: () => getPayoutCandidates(debouncedSearch.trim() || undefined),
     enabled: mode === "add",
+    // Always fetched fresh when Add Payout opens: only investments with something still owed are listed.
+    staleTime: 0,
   });
   const candidateOptions = (candidatesQuery.data ?? []).map((c) => ({
     value: c.id,
@@ -433,6 +435,7 @@ function PayoutBody({
       queryClient.invalidateQueries({
         queryKey: ["payoutContext", investmentId],
       });
+      queryClient.invalidateQueries({ queryKey: ["payoutCandidates"] });
       onClose();
       openCommonModal({
         heading: payout ? "Payout Updated" : "Payout Saved as Draft",
