@@ -177,7 +177,7 @@ export function InvestorPayouts() {
     },
     onError: (error: unknown) => showError(failure, error),
   });
-  // Approve, then the payment statement is emailed to the investor; a failed email does not undo the approval.
+  // Approve; the payment statement is then emailed to the investor in the background.
   const companyName = useCompanyStore((state) => state.companyName);
   const approveMutation = useMutation({
     // Never re-sent automatically: the first request may already have approved.
@@ -197,14 +197,12 @@ export function InvestorPayouts() {
             mail,
           }),
       ),
-    onSuccess: (data, row: PayoutListItem) => {
+    onSuccess: (_data, row: PayoutListItem) => {
       refresh(row.investment_id);
       queryClient.invalidateQueries({ queryKey: ["investorNotifications"] });
       showApprovalResult({
         heading: "Payout Approved",
         body: `The payout to ${row.investor} is approved, its Journal Entry is posted and the EMIs are updated.`,
-        result: data,
-        document: "payment statement",
       });
     },
     onError: (error: unknown) => showError("Approve Failed", error),

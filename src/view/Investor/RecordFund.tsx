@@ -187,7 +187,7 @@ export function RecordFund() {
     recordName: string;
   } | null>(null);
   const companyName = useCompanyStore((state) => state.companyName);
-  // Approve, then the fund receipt is emailed to the investor; a failed email does not undo the approval.
+  // Approve; the fund receipt is then emailed to the investor in the background.
   const approveMutation = useMutation({
     // Never re-sent automatically: the first request may already have approved.
     retry: false,
@@ -206,14 +206,12 @@ export function RecordFund() {
             mail,
           }),
       ),
-    onSuccess: (data, row: FundRecordListItem) => {
+    onSuccess: (_data, row: FundRecordListItem) => {
       refresh(row.investment_id);
       queryClient.invalidateQueries({ queryKey: ["investorNotifications"] });
       showApprovalResult({
         heading: "Fund Approved",
         body: `${fmtAmount(row.amount_paid)} from ${row.investor} is approved and its Journal Entry is posted.`,
-        result: data,
-        document: "fund receipt",
       });
     },
     onError: (error: unknown) => showError("Approve Failed", error),
