@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { ActionIcon, Box, Button, Group, Modal, Text, useMantineTheme } from "@mantine/core";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Group,
+  Modal,
+  Text,
+  useMantineTheme,
+} from "@mantine/core";
 import { IconDownload, IconFileText, IconX } from "@tabler/icons-react";
 import type { jsPDF } from "jspdf";
 
@@ -18,41 +26,53 @@ export function PdfPreviewModal({ preview, onClose }: PdfPreviewModalProps) {
   const theme = useMantineTheme();
 
   return (
-  <Modal
-  opened={!!preview}
-  onClose={onClose}
-  size="xl"
-  centered
-  radius="lg"
-  padding={0}                    // added
-  zIndex={400}
-  withCloseButton={false}        // added
-  styles={{ content: { overflow: "hidden" }, body: { padding: 0 } }}   
->
+    <Modal
+      opened={!!preview}
+      onClose={onClose}
+      size="xl"
+      centered
+      radius="lg"
+      padding={0} // added
+      zIndex={400}
+      withCloseButton={false} // added
+      styles={{ content: { overflow: "hidden" }, body: { padding: 0 } }}
+    >
       {preview && (
         <>
-        <Group gap="sm" wrap="nowrap" px="xl" py="md" style={{ background: theme.other.brandGradient }}>
-  <Box
-    style={{
-      width: 36,
-      height: 36,
-      flexShrink: 0,
-      borderRadius: "var(--mantine-radius-md)",
-      background: "var(--mantine-color-white)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-  >
-    <IconFileText size={18} color="var(--mantine-color-brand-6)" />
-  </Box>
-  <Text fw={700} fz="md" c="white" lh={1.3}>
-    {preview.title}
-  </Text>
-  <ActionIcon variant="subtle" color="white" ml="auto" aria-label="Close" onClick={onClose}>
-    <IconX size={18} />
-  </ActionIcon>
-</Group>
+          <Group
+            gap="sm"
+            wrap="nowrap"
+            px="xl"
+            py="md"
+            style={{ background: theme.other.brandGradient }}
+          >
+            <Box
+              style={{
+                width: 36,
+                height: 36,
+                flexShrink: 0,
+                borderRadius: "var(--mantine-radius-md)",
+                background: "var(--mantine-color-white)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <IconFileText size={18} color="var(--mantine-color-brand-6)" />
+            </Box>
+            <Text fw={700} fz="md" c="white" lh={1.3}>
+              {preview.title}
+            </Text>
+            <ActionIcon
+              variant="subtle"
+              color="white"
+              ml="auto"
+              aria-label="Close"
+              onClick={onClose}
+            >
+              <IconX size={18} />
+            </ActionIcon>
+          </Group>
           <Box
             style={{
               height: "70vh",
@@ -68,15 +88,15 @@ export function PdfPreviewModal({ preview, onClose }: PdfPreviewModalProps) {
             />
           </Box>
           <Group
-  justify="flex-end"
-  gap="xs"
-  px="xl"
-  py="md"
-  style={{
-    background: "var(--mantine-color-slate-0)",
-    borderTop: "1px solid var(--mantine-color-slate-2)",
-  }}
->
+            justify="flex-end"
+            gap="xs"
+            px="xl"
+            py="md"
+            style={{
+              background: "var(--mantine-color-slate-0)",
+              borderTop: "1px solid var(--mantine-color-slate-2)",
+            }}
+          >
             <Button radius="xl" variant="default" onClick={onClose}>
               Close
             </Button>

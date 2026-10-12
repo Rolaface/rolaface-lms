@@ -1,6 +1,15 @@
 /* Small UI blocks shared by the Investor 360 view panels: cards, KPI tiles, status badges. */
 import type { ReactNode } from "react";
-import { Alert, Badge, Box, Group, Loader, Paper, Text, ThemeIcon } from "@mantine/core";
+import {
+  Alert,
+  Badge,
+  Box,
+  Group,
+  Loader,
+  Paper,
+  Text,
+  ThemeIcon,
+} from "@mantine/core";
 import { parseFrappeError } from "../../../utils/parseFrappeError";
 
 /** Badge colors of the investment, fund, fund record and schedule row statuses. */
@@ -21,7 +30,13 @@ const STATUS_COLORS: Record<string, string> = {
   Inactive: "slate",
 };
 
-export function StatusBadge({ status, size = "sm" }: { status: string | null | undefined; size?: "xs" | "sm" }) {
+export function StatusBadge({
+  status,
+  size = "sm",
+}: {
+  status: string | null | undefined;
+  size?: "xs" | "sm";
+}) {
   if (!status) return null;
   const color = STATUS_COLORS[status] ?? "gray";
   return (
@@ -44,19 +59,36 @@ export function StatusBadge({ status, size = "sm" }: { status: string | null | u
 }
 
 /** White rounded card used for every block of the view. */
-export function Card({ children, p = "md" }: { children: ReactNode; p?: string | number }) {
+export function Card({
+  children,
+  p = "md",
+}: {
+  children: ReactNode;
+  p?: string | number;
+}) {
   return (
     <Paper
       radius="lg"
       p={p}
-      style={{ background: "var(--mantine-color-white)", border: "1px solid var(--mantine-color-slate-2)" }}
+      style={{
+        background: "var(--mantine-color-white)",
+        border: "1px solid var(--mantine-color-slate-2)",
+      }}
     >
       {children}
     </Paper>
   );
 }
 
-export function CardTitle({ title, subtitle, aside }: { title: string; subtitle?: string; aside?: ReactNode }) {
+export function CardTitle({
+  title,
+  subtitle,
+  aside,
+}: {
+  title: string;
+  subtitle?: string;
+  aside?: ReactNode;
+}) {
   return (
     <Group justify="space-between" align="flex-start" mb="sm" wrap="nowrap">
       <Box>
@@ -95,7 +127,13 @@ export function KpiTile({
           {icon}
         </ThemeIcon>
         <Box style={{ minWidth: 0 }}>
-          <Text fz={11} fw={600} c="slate.5" tt="uppercase" style={{ letterSpacing: 0.4 }}>
+          <Text
+            fz={11}
+            fw={600}
+            c="slate.5"
+            tt="uppercase"
+            style={{ letterSpacing: 0.4 }}
+          >
             {label}
           </Text>
           <Text fz="lg" fw={800} c="slate.9" truncate>
@@ -134,7 +172,13 @@ export function LoadingBlock() {
   );
 }
 
-export function ErrorBlock({ error, fallback }: { error: unknown; fallback: string }) {
+export function ErrorBlock({
+  error,
+  fallback,
+}: {
+  error: unknown;
+  fallback: string;
+}) {
   return (
     <Alert variant="light" color="red" radius="md">
       {error ? parseFrappeError(error) : fallback}

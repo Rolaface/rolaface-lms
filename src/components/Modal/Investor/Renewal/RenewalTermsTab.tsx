@@ -13,7 +13,6 @@ import {
   SimpleGrid,
   Stack,
   Text,
-  TextInput,
   Textarea,
   ThemeIcon,
 } from "@mantine/core";
@@ -44,6 +43,7 @@ import {
   renewedPrincipal,
   type RenewalFormValues,
 } from "./renewalForm";
+import { InvestorDateInput } from "../InvestorDateInput";
 
 interface Props {
   /** Add: the investment is picked here. */
@@ -315,18 +315,17 @@ export function RenewalTermsTab({
                   update({ structure: (s as RenewalStructure) || "" })
                 }
               />
-              <TextInput
-                type="date"
+              <InvestorDateInput
                 label="Renewal effective date"
                 withAsterisk
                 size="xs"
                 radius="md"
-                min={
+                minDate={
                   contract?.renewal_kind === "Mid-contract"
                     ? toIso(new Date())
                     : (contract?.contract_maturity ?? undefined)
                 }
-                max={
+                maxDate={
                   contract?.renewal_kind === "Mid-contract"
                     ? (contract.contract_maturity ?? undefined)
                     : undefined
@@ -340,9 +339,7 @@ export function RenewalTermsTab({
                 }
                 inputWrapperOrder={["label", "input", "description", "error"]}
                 value={v.effectiveDate}
-                onChange={(e) =>
-                  update({ effectiveDate: e.currentTarget.value })
-                }
+                onChange={(value) => update({ effectiveDate: value })}
               />
 
               {contract && v.structure === "Capitalization" && (
@@ -413,17 +410,16 @@ export function RenewalTermsTab({
                       </Radio.Group>
                       {v.interestSettlement ===
                         "Defer to an agreed future date" && (
-                        <TextInput
+                        <InvestorDateInput
                           mt="sm"
-                          type="date"
                           label="Interest settlement date"
                           withAsterisk
                           size="xs"
                           radius="md"
                           value={v.interestSettlementDate}
-                          onChange={(e) =>
+                          onChange={(value) =>
                             update({
-                              interestSettlementDate: e.currentTarget.value,
+                              interestSettlementDate: value,
                             })
                           }
                         />
@@ -558,8 +554,7 @@ export function RenewalTermsTab({
                 value={v.tenure}
                 onChange={(n) => update({ tenure: n === "" ? "" : Number(n) })}
               />
-              <TextInput
-                type="date"
+              <InvestorDateInput
                 label="New maturity date"
                 description="Effective date + tenure"
                 inputWrapperOrder={["label", "input", "description", "error"]}
@@ -585,16 +580,13 @@ export function RenewalTermsTab({
                   })
                 }
               />
-              <TextInput
-                type="date"
+              <InvestorDateInput
                 label="First payment date"
                 withAsterisk
                 size="xs"
                 radius="md"
                 value={v.firstPayment}
-                onChange={(e) =>
-                  update({ firstPayment: e.currentTarget.value })
-                }
+                onChange={(value) => update({ firstPayment: value })}
               />
             </SimpleGrid>
 

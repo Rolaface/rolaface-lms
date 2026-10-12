@@ -1,5 +1,14 @@
 /* Overview: totals across all of the investor's investments and one row per investment. */
-import { Box, Group, Progress, SimpleGrid, Stack, Table, Text, Tooltip } from "@mantine/core";
+import {
+  Box,
+  Group,
+  Progress,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 import {
   IconArrowBackUp,
   IconCalendarDue,
@@ -41,7 +50,11 @@ export function OverviewPanel({ portfolio, onOpenInvestment }: Props) {
           color="info"
           label="Paid in by investor"
           value={money(totals.fund_paid_in)}
-          hint={totals.fund_remaining ? `${money(totals.fund_remaining)} still to be paid` : "Fully paid"}
+          hint={
+            totals.fund_remaining
+              ? `${money(totals.fund_remaining)} still to be paid`
+              : "Fully paid"
+          }
         />
         <KpiTile
           icon={<IconArrowBackUp size={18} />}
@@ -68,7 +81,9 @@ export function OverviewPanel({ portfolio, onOpenInvestment }: Props) {
           icon={<IconCalendarDue size={18} />}
           color="cyan"
           label="Next payout"
-          value={totals.next_payout_date ? money(totals.next_payout_amount) : "-"}
+          value={
+            totals.next_payout_date ? money(totals.next_payout_amount) : "-"
+          }
           hint={
             totals.next_payout_date
               ? `${fmtDate(totals.next_payout_date)} · ${totals.next_payout_investment}`
@@ -78,23 +93,51 @@ export function OverviewPanel({ portfolio, onOpenInvestment }: Props) {
       </SimpleGrid>
 
       <Card>
-        <CardTitle title="Where the money stands" subtitle="Principal paid in by the investor, split by what happened to it" />
+        <CardTitle
+          title="Where the money stands"
+          subtitle="Principal paid in by the investor, split by what happened to it"
+        />
         <Progress.Root size={14} radius="xl">
-          <Tooltip label={`Returned ${money(totals.principal_returned)}`} withArrow>
+          <Tooltip
+            label={`Returned ${money(totals.principal_returned)}`}
+            withArrow
+          >
             <Progress.Section value={returnedPct} color="success" />
           </Tooltip>
-          <Tooltip label={`Held ${money(totals.principal_outstanding)}`} withArrow>
+          <Tooltip
+            label={`Held ${money(totals.principal_outstanding)}`}
+            withArrow
+          >
             <Progress.Section value={heldPct} color="warning" />
           </Tooltip>
         </Progress.Root>
         <Group gap="xl" mt="sm">
           {[
-            { color: "success", label: "Returned to investor", value: totals.principal_returned },
-            { color: "warning", label: "Held by company", value: totals.principal_outstanding },
-            { color: "slate", label: "Still to be paid in", value: totals.fund_remaining },
+            {
+              color: "success",
+              label: "Returned to investor",
+              value: totals.principal_returned,
+            },
+            {
+              color: "warning",
+              label: "Held by company",
+              value: totals.principal_outstanding,
+            },
+            {
+              color: "slate",
+              label: "Still to be paid in",
+              value: totals.fund_remaining,
+            },
           ].map((l) => (
             <Group key={l.label} gap={6}>
-              <Box w={10} h={10} style={{ borderRadius: 3, background: `var(--mantine-color-${l.color}-5)` }} />
+              <Box
+                w={10}
+                h={10}
+                style={{
+                  borderRadius: 3,
+                  background: `var(--mantine-color-${l.color}-5)`,
+                }}
+              />
               <Text fz="xs" c="slate.6">
                 {l.label}
               </Text>
@@ -107,9 +150,17 @@ export function OverviewPanel({ portfolio, onOpenInvestment }: Props) {
       </Card>
 
       <Card>
-        <CardTitle title="Investments" subtitle="Click an investment to see its contract, funds, payouts and accounting" />
+        <CardTitle
+          title="Investments"
+          subtitle="Click an investment to see its contract, funds, payouts and accounting"
+        />
         <Table.ScrollContainer minWidth={900}>
-          <Table verticalSpacing="sm" horizontalSpacing="sm" fz="xs" highlightOnHover>
+          <Table
+            verticalSpacing="sm"
+            horizontalSpacing="sm"
+            fz="xs"
+            highlightOnHover
+          >
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Investment</Table.Th>
@@ -125,7 +176,11 @@ export function OverviewPanel({ portfolio, onOpenInvestment }: Props) {
             </Table.Thead>
             <Table.Tbody>
               {investments.map((inv) => (
-                <Table.Tr key={inv.name} style={{ cursor: "pointer" }} onClick={() => onOpenInvestment(inv.name)}>
+                <Table.Tr
+                  key={inv.name}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => onOpenInvestment(inv.name)}
+                >
                   <Table.Td>
                     <Text fz="xs" fw={700} c="brand.7">
                       {inv.name}
@@ -140,13 +195,19 @@ export function OverviewPanel({ portfolio, onOpenInvestment }: Props) {
                   <Table.Td ta="right">{money(inv.investment_amount)}</Table.Td>
                   <Table.Td ta="right">{money(inv.fund_paid_in)}</Table.Td>
                   <Table.Td ta="right">{money(inv.received_back)}</Table.Td>
-                  <Table.Td ta="right">{money(inv.principal_outstanding)}</Table.Td>
+                  <Table.Td ta="right">
+                    {money(inv.principal_outstanding)}
+                  </Table.Td>
                   <Table.Td>
                     <Text fz="xs" fw={600}>
                       {inv.payouts_done} / {inv.payouts_total}
                     </Text>
                     <Progress
-                      value={inv.payouts_total ? (inv.payouts_done / inv.payouts_total) * 100 : 0}
+                      value={
+                        inv.payouts_total
+                          ? (inv.payouts_done / inv.payouts_total) * 100
+                          : 0
+                      }
                       size={3}
                       color="success"
                       w={70}

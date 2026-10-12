@@ -28,11 +28,8 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
- import { InvestorModal } from "./InvestorModal";
-import {
-  PRODUCTS,
-  type FundedInvestment,
-} from "./InvestorModalShared";
+import { InvestorModal } from "./InvestorModal";
+import { PRODUCTS, type FundedInvestment } from "./InvestorModalShared";
 import { FilterMultiSelect } from "../../shared/FilterMultiSelect";
 
 /* ----------------------------- Mock data ----------------------------- */
@@ -148,7 +145,8 @@ const fmtAmount = (value: number) => `₹${value.toLocaleString("en-IN")}`;
 export function Investments() {
   const theme = useMantineTheme();
 
-  const [investments, setInvestments] = useState<InvestmentRow[]>(MOCK_INVESTMENTS);
+  const [investments, setInvestments] =
+    useState<InvestmentRow[]>(MOCK_INVESTMENTS);
   const [modalOpened, setModalOpened] = useState(false);
   const [modalKey, setModalKey] = useState(0);
 
@@ -172,7 +170,10 @@ export function Investments() {
       ...prev,
     ]);
 
-  const handleCompleted = (investmentNo: string, status: "Redeemed" | "Renewed") =>
+  const handleCompleted = (
+    investmentNo: string,
+    status: "Redeemed" | "Renewed",
+  ) =>
     setInvestments((prev) =>
       prev.map((r) => (r.investmentNo === investmentNo ? { ...r, status } : r)),
     );
@@ -188,8 +189,7 @@ export function Investments() {
   );
 
   const statusOptions = useMemo(
-    () =>
-      Object.keys(STATUS_META).map((s) => ({ value: s, label: s })),
+    () => Object.keys(STATUS_META).map((s) => ({ value: s, label: s })),
     [],
   );
 
@@ -493,10 +493,7 @@ export function Investments() {
             <Table.Tbody>
               {rows.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td
-                    colSpan={columns.length}
-                    style={{ border: "none" }}
-                  >
+                  <Table.Td colSpan={columns.length} style={{ border: "none" }}>
                     <Stack align="center" gap="xs" py="xl">
                       <Box
                         style={{

@@ -57,7 +57,9 @@ function AccountSearchSelect({
     queryFn: () => searchLedgerAccounts(debouncedSearch),
   });
   // Keep the saved account in the list even when it is not in the current search results.
-  const data = Array.from(new Set([...(value ? [value] : []), ...options.map((a) => a.name)]));
+  const data = Array.from(
+    new Set([...(value ? [value] : []), ...options.map((a) => a.name)]),
+  );
 
   return (
     <Select
@@ -97,14 +99,21 @@ const GROUPS: {
   },
   {
     title: "Mode of payment (Paid to)",
-    description: "Where the money lands for each mode of payment. Fund Receipt debits it.",
+    description:
+      "Where the money lands for each mode of payment. Fund Receipt debits it.",
     icon: IconBuildingBank,
     color: "info",
-    fields: ["investor_cash_account", "cheque_account", "bank_draft_account", "wire_transfer_account"],
+    fields: [
+      "investor_cash_account",
+      "cheque_account",
+      "bank_draft_account",
+      "wire_transfer_account",
+    ],
   },
   {
     title: "Repayments",
-    description: "Used when interest and principal are paid back to investors (later step).",
+    description:
+      "Used when interest and principal are paid back to investors (later step).",
     icon: IconReceipt,
     color: "warning",
     fields: [
@@ -176,7 +185,11 @@ export function InvestorSettings() {
             justifyContent: "center",
           }}
         >
-          <IconSettings size={20} color="var(--mantine-color-white)" stroke={1.8} />
+          <IconSettings
+            size={20}
+            color="var(--mantine-color-white)"
+            stroke={1.8}
+          />
         </Box>
         <Stack gap={2}>
           <Title order={2} c="slate.8" fw={700}>
@@ -194,7 +207,9 @@ export function InvestorSettings() {
 
 function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
   const queryClient = useQueryClient();
-  const [accounts, setAccounts] = useState<InvestorSettingsAccounts>(() => accountsFrom(settings));
+  const [accounts, setAccounts] = useState<InvestorSettingsAccounts>(() =>
+    accountsFrom(settings),
+  );
 
   const saved = accountsFrom(settings);
   const isDirty = JSON.stringify(accounts) !== JSON.stringify(saved);
@@ -206,7 +221,9 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
     mutationFn: () => updateInvestorSettings(accounts),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["investorSettings"] });
-      queryClient.invalidateQueries({ queryKey: ["investorAccountingSettings"] });
+      queryClient.invalidateQueries({
+        queryKey: ["investorAccountingSettings"],
+      });
       openCommonModal({
         heading: "Settings Saved",
         subtitle: "",
@@ -245,7 +262,11 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
             <Badge variant="light" color="brand" radius="sm">
               {settings.company || "No default company"}
             </Badge>
-            <Badge variant="light" color={isConfigured ? "success" : "warning"} radius="sm">
+            <Badge
+              variant="light"
+              color={isConfigured ? "success" : "warning"}
+              radius="sm"
+            >
               {isConfigured ? "Configured" : "Not configured"}
             </Badge>
           </Group>
@@ -269,7 +290,11 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
         </Group>
       </Paper>
 
-      <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="md" style={{ alignItems: "start" }}>
+      <SimpleGrid
+        cols={{ base: 1, lg: 3 }}
+        spacing="md"
+        style={{ alignItems: "start" }}
+      >
         {GROUPS.map((group) => (
           <Paper
             key={group.title}
@@ -281,7 +306,12 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
             }}
           >
             <Group gap="sm" mb="md" wrap="nowrap" align="flex-start">
-              <ThemeIcon size={36} radius="md" variant="light" color={group.color}>
+              <ThemeIcon
+                size={36}
+                radius="md"
+                variant="light"
+                color={group.color}
+              >
                 <group.icon size={18} />
               </ThemeIcon>
               <Box>
@@ -300,7 +330,9 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
                   label={settings.labels[field]}
                   required={settings.required.includes(field)}
                   value={accounts[field]}
-                  onChange={(v) => setAccounts((prev) => ({ ...prev, [field]: v }))}
+                  onChange={(v) =>
+                    setAccounts((prev) => ({ ...prev, [field]: v }))
+                  }
                 />
               ))}
             </Stack>
@@ -320,8 +352,9 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
           Entry posted by Fund Receipt
         </Text>
         <Text fz="xs" c="slate.5" mb="sm">
-          Money received from an investor: the mode of payment's GL is debited (Paid to) and the Investor
-          Creditor GL is credited (Paid from) with the investor as the party.
+          Money received from an investor: the mode of payment's GL is debited
+          (Paid to) and the Investor Creditor GL is credited (Paid from) with
+          the investor as the party.
         </Text>
         <Table.ScrollContainer minWidth={640}>
           <Table verticalSpacing="sm" horizontalSpacing="md" fz="xs">
@@ -336,7 +369,9 @@ function SettingsForm({ settings }: { settings: InvestorSettingsData }) {
               {MODE_FIELDS.map(({ mode, field }) => (
                 <Table.Tr key={mode}>
                   <Table.Td fw={600}>{mode}</Table.Td>
-                  <Table.Td>{accounts[field] || "Not set: this mode can't be used"}</Table.Td>
+                  <Table.Td>
+                    {accounts[field] || "Not set: this mode can't be used"}
+                  </Table.Td>
                   <Table.Td>{show("investor_creditor_account")}</Table.Td>
                 </Table.Tr>
               ))}

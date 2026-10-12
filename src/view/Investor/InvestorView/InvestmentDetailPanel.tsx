@@ -6,7 +6,9 @@ import {
   Box,
   Collapse,
   Group,
+  Pagination,
   Progress,
+  Select,
   SimpleGrid,
   Stack,
   Table,
@@ -208,6 +210,7 @@ function InvestmentDetailBody({
         </Box>
       </Card>
 
+      {/* Renewal terms: future scope, hidden for now.
       {detail.renewal && (
         <Card>
           <Group justify="space-between" mb="md">
@@ -286,6 +289,7 @@ function InvestmentDetailBody({
           </SimpleGrid>
         </Card>
       )}
+      */}
 
       <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="md">
         <KpiTile
@@ -636,6 +640,8 @@ function MoneyTrail({
   onOpenEntry: (je: string) => void;
 }) {
   const money = useMoney();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   type TrailEvent = {
     date: string;
     title: string;
@@ -678,7 +684,17 @@ function MoneyTrail({
         icon: <IconArrowBackUp size={12} />,
         entry: r.payout_entry,
       })),
-  ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Newest first, so the latest activity is on the first page.
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const totalPages = Math.max(1, Math.ceil(events.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageEvents = events.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+  const firstRow = events.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const lastRow = Math.min(events.length, currentPage * pageSize);
 
   if (events.length === 0) {
     return (
@@ -689,37 +705,73 @@ function MoneyTrail({
   }
 
   return (
-    <Timeline bulletSize={24} lineWidth={2} active={events.length}>
-      {events.map((e, i) => (
-        <Timeline.Item
-          key={i}
-          bullet={
-            <ThemeIcon size={24} radius="xl" color={e.color}>
-              {e.icon}
-            </ThemeIcon>
-          }
-          color={e.color}
-          title={
-            <Group gap="xs">
-              <Text fz="sm" fw={700} c="slate.8">
-                {e.title}
-              </Text>
-              <EntryButton
-                entry={e.entry}
-                label="Accounting"
-                onOpen={onOpenEntry}
-              />
-            </Group>
-          }
+    <>
+      <Timeline bulletSize={24} lineWidth={2} active={pageEvents.length}>
+        {pageEvents.map((e, i) => (
+          <Timeline.Item
+            key={i}
+            bullet={
+              <ThemeIcon size={24} radius="xl" color={e.color}>
+                {e.icon}
+              </ThemeIcon>
+            }
+            color={e.color}
+            title={
+              <Group gap="xs">
+                <Text fz="sm" fw={700} c="slate.8">
+                  {e.title}
+                </Text>
+                <EntryButton
+                  entry={e.entry}
+                  label="Accounting"
+                  onOpen={onOpenEntry}
+                />
+              </Group>
+            }
+          >
+            <Text fz="xs" c="slate.6">
+              {e.text}
+            </Text>
+            <Text fz={11} c="slate.4" mt={2}>
+              {fmtDate(e.date)}
+            </Text>
+          </Timeline.Item>
+        ))}
+      </Timeline>
+      <Group justify="space-between" mt="md" wrap="wrap" gap="xs">
+        <Group
+          gap="md"
+          c="slate.6"
+          style={{ fontSize: "var(--mantine-font-size-xs)" }}
         >
-          <Text fz="xs" c="slate.6">
-            {e.text}
-          </Text>
-          <Text fz={11} c="slate.4" mt={2}>
-            {fmtDate(e.date)}
-          </Text>
-        </Timeline.Item>
-      ))}
-    </Timeline>
+          <span>
+            Showing {firstRow}-{lastRow} of {events.length}
+          </span>
+          <Group gap="xs">
+            <span>Rows:</span>
+            <Select
+              data={["10", "20", "50"]}
+              value={String(pageSize)}
+              onChange={(v) => {
+                setPageSize(Number(v) || 10);
+                setPage(1);
+              }}
+              allowDeselect={false}
+              size="xs"
+              radius="xl"
+              w={70}
+            />
+          </Group>
+        </Group>
+        <Pagination
+          total={totalPages}
+          value={currentPage}
+          onChange={setPage}
+          color="brand"
+          size="xs"
+          radius="xl"
+        />
+      </Group>
+    </>
   );
 }

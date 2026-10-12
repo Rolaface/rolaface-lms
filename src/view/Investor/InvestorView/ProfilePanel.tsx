@@ -14,7 +14,13 @@ export function ProfilePanel({ investorId }: { investorId: string }) {
     retry: false,
   });
 
-  if (isError) return <ErrorBlock error={error} fallback="The investor profile could not be loaded." />;
+  if (isError)
+    return (
+      <ErrorBlock
+        error={error}
+        fallback="The investor profile could not be loaded."
+      />
+    );
   if (!raw) return <LoadingBlock />;
 
   const p = mapCustomerDetailToBorrowerProfile(raw);
@@ -24,7 +30,10 @@ export function ProfilePanel({ investorId }: { investorId: string }) {
   return (
     <Stack gap="md">
       <Card>
-        <CardTitle title="Identity" subtitle={isBusiness ? "Company investor" : "Individual investor"} />
+        <CardTitle
+          title="Identity"
+          subtitle={isBusiness ? "Company investor" : "Individual investor"}
+        />
         <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
           <Field label="Name" value={p.name} />
           <Field label="Investor ID" value={p.custId} />
@@ -48,7 +57,10 @@ export function ProfilePanel({ investorId }: { investorId: string }) {
             </>
           )}
           <Field label="Customer since" value={p.relationshipSince} />
-          <Field label="Relationship manager" value={p.relationshipManager?.name} />
+          <Field
+            label="Relationship manager"
+            value={p.relationshipManager?.name}
+          />
         </SimpleGrid>
       </Card>
 
@@ -58,7 +70,10 @@ export function ProfilePanel({ investorId }: { investorId: string }) {
           <Field label="Mobile" value={p.mobile} />
           <Field label="Alternate mobile" value={p.alternateMobile} />
           <Field label="Email" value={p.email} />
-          <Field label="Address" value={p.residentialAddress ?? p.addressLine1} />
+          <Field
+            label="Address"
+            value={p.residentialAddress ?? p.addressLine1}
+          />
           <Field label="City" value={p.city} />
           <Field label="Province" value={p.province} />
           <Field label="Country" value={p.country} />
@@ -70,7 +85,12 @@ export function ProfilePanel({ investorId }: { investorId: string }) {
         <Card>
           <CardTitle title="Next of kin" />
           <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
-            <Field label="Name" value={[nok.firstName, nok.middleName, nok.lastName].filter(Boolean).join(" ")} />
+            <Field
+              label="Name"
+              value={[nok.firstName, nok.middleName, nok.lastName]
+                .filter(Boolean)
+                .join(" ")}
+            />
             <Field label="Relationship" value={nok.relationship} />
             <Field label="Phone" value={nok.phone} />
             <Field label="Address" value={nok.address} />
@@ -79,7 +99,10 @@ export function ProfilePanel({ investorId }: { investorId: string }) {
       )}
 
       <Card>
-        <CardTitle title="Bank accounts" subtitle="Bank Accounts with this investor as the party" />
+        <CardTitle
+          title="Bank accounts"
+          subtitle="Bank Accounts with this investor as the party"
+        />
         {banksLoading ? (
           <LoadingBlock />
         ) : (
@@ -103,14 +126,21 @@ export function ProfilePanel({ investorId }: { investorId: string }) {
                           {b.account_name}
                         </Text>
                         {b.is_default === 1 && (
-                          <Badge size="xs" variant="light" color="brand" style={{ textTransform: "none" }}>
+                          <Badge
+                            size="xs"
+                            variant="light"
+                            color="brand"
+                            style={{ textTransform: "none" }}
+                          >
                             Default
                           </Badge>
                         )}
                       </Group>
                     </Table.Td>
                     <Table.Td>{b.bank}</Table.Td>
-                    <Table.Td className="font-mono">{b.bank_account_no || "-"}</Table.Td>
+                    <Table.Td className="font-mono">
+                      {b.bank_account_no || "-"}
+                    </Table.Td>
                     <Table.Td className="font-mono">{b.iban || "-"}</Table.Td>
                     <Table.Td>{b.branch_code || "-"}</Table.Td>
                   </Table.Tr>

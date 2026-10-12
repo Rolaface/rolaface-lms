@@ -1,6 +1,9 @@
 import API from "../../config/api";
 import apiClient from "../../config/axios";
 import type {
+  InvestorNotification,
+  LogNotificationPayload,
+  NotificationType,
   RenewalCandidate,
   RenewalContract,
   RenewalListParams,
@@ -154,7 +157,8 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailRespo
   formData.append("send_me_a_copy", params.send_me_a_copy);
   if (params.cc) formData.append("cc", params.cc);
   if (params.bcc) formData.append("bcc", params.bcc);
-  formData.append("use_default_print_format", "1");
+  // Only our own PDF is attached (attachmentNames). "use_default_print_format" is not sent: it made Frappe
+  // also attach the doctype's default print format, and the email failed whenever that print format had an error.
   formData.append("attachments", JSON.stringify(params.attachmentNames ?? []));
   formData.append("print_language", "en");
   formData.append("add_css", "1");
@@ -540,4 +544,29 @@ export async function saveRenewalContract({
     { params: { id } },
   );
   return data.message.data;
+}
+
+/* ------------------------------ Notifications ------------------------------ */
+
+/** Records an emailed statement / contract (attaches the PDF to the investment). */
+export async function logInvestorNotification(payload: LogNotificationPayload) {
+  const { data } = await apiClient.post<InvestorFlowEnvelope<InvestorNotification>>(
+    API.investorFlow.logNotification,
+    payload,
+  );
+  return data.message.data;
+}
+
+export async function getInvestorNotifications(investor: string, notificationType?: NotificationType) {
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestorNotification[]>>(
+    API.investorFlow.getNotifications,
+    { params: { investor, ...(notificationType ? { notification_type: notificationType } : {}) } },
+  );
+  return data.message.data;
+}
+
+/** A private file (e.g. an emailed PDF) as a Blob, using the logged-in session. */
+export async function fetchPrivateFile(fileUrl: string) {
+  const { data } = await apiClient.get<Blob>(fileUrl, { responseType: "blob" });
+  return data;
 }

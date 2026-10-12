@@ -14,15 +14,14 @@ function getTitle(params: MaturityModalParams) {
   return params.readOnly ? "View Maturity" : "Maturity";
 }
 
-export const maturityModal = createModal<MaturityModalParams, ComponentProps<typeof MaturityModal>>(
-  "investorMaturity",
-  MaturityModal,
-  {
-    icon: IconHourglass,
-    getTitle,
-    buildProps: (params) => ({
-      investorFlowId: params.investorFlowId,
-      readOnly: params.readOnly ?? false,
-    }),
-  },
-);
+export const maturityModal = createModal<
+  MaturityModalParams,
+  ComponentProps<typeof MaturityModal>
+>("investorMaturity", MaturityModal, {
+  icon: IconHourglass,
+  getTitle,
+  buildProps: (params) => ({
+    investorFlowId: params.investorFlowId,
+    readOnly: params.readOnly ?? false,
+  }),
+});

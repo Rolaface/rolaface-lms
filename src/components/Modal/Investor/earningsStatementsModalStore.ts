@@ -14,15 +14,14 @@ function getTitle(params: EarningsStatementsModalParams) {
   return params.readOnly ? "View Investor Payouts" : "Edit Investor Payouts";
 }
 
-export const earningsStatementsModal = createModal<EarningsStatementsModalParams, ComponentProps<typeof EarningsStatementsModal>>(
-  "investorEarnings",
-  EarningsStatementsModal,
-  {
-    icon: IconReportAnalytics,
-    getTitle,
-    buildProps: (params) => ({
-      investorFlowId: params.investorFlowId,
-      readOnly: params.readOnly ?? false,
-    }),
-  },
-);
+export const earningsStatementsModal = createModal<
+  EarningsStatementsModalParams,
+  ComponentProps<typeof EarningsStatementsModal>
+>("investorEarnings", EarningsStatementsModal, {
+  icon: IconReportAnalytics,
+  getTitle,
+  buildProps: (params) => ({
+    investorFlowId: params.investorFlowId,
+    readOnly: params.readOnly ?? false,
+  }),
+});

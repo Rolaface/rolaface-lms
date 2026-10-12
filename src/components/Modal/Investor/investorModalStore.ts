@@ -16,17 +16,16 @@ function getTitle(params: InvestorModalParams) {
   return "New Investment";
 }
 
-export const investorModal = createModal<InvestorModalParams, ComponentProps<typeof InvestorModal>>(
-  "investorFlow",
-  InvestorModal,
-  {
-    icon: IconCoin,
-    getTitle,
-    buildProps: (params, close) => ({
-      editId: params.editId ?? null,
-      isView: params.isView ?? false,
-      existingCount: params.existingCount,
-      onSaved: close,
-    }),
-  },
-);
+export const investorModal = createModal<
+  InvestorModalParams,
+  ComponentProps<typeof InvestorModal>
+>("investorFlow", InvestorModal, {
+  icon: IconCoin,
+  getTitle,
+  buildProps: (params, close) => ({
+    editId: params.editId ?? null,
+    isView: params.isView ?? false,
+    existingCount: params.existingCount,
+    onSaved: close,
+  }),
+});

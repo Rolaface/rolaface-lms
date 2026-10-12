@@ -17,16 +17,15 @@ const TITLES: Record<RecordFundMode, string> = {
   view: "View Fund",
 };
 
-export const recordFundModal = createModal<RecordFundModalParams, ComponentProps<typeof RecordFundModal>>(
-  "investorRecordFund",
-  RecordFundModal,
-  {
-    icon: IconCash,
-    getTitle: (params) => TITLES[params.mode],
-    buildProps: (params) => ({
-      mode: params.mode,
-      investorFlowId: params.investorFlowId ?? null,
-      recordName: params.recordName ?? null,
-    }),
-  },
-);
+export const recordFundModal = createModal<
+  RecordFundModalParams,
+  ComponentProps<typeof RecordFundModal>
+>("investorRecordFund", RecordFundModal, {
+  icon: IconCash,
+  getTitle: (params) => TITLES[params.mode],
+  buildProps: (params) => ({
+    mode: params.mode,
+    investorFlowId: params.investorFlowId ?? null,
+    recordName: params.recordName ?? null,
+  }),
+});
