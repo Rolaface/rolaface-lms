@@ -100,6 +100,7 @@ function StatusBadge({ status }: { status: number }) {
   );
 }
 
+
 const fmtDate = (iso: string) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
@@ -417,39 +418,48 @@ export function LoanWriteOff() {
                 </Tooltip>
               )}
 
-              {(canSubmitLoan || canCancelLoan) && !isCancelled && (
-                <Menu shadow="md" width={140} position="bottom-end" withinPortal radius="md" withArrow>
-                  <Menu.Target>
-                    <ActionIcon
-                      size="sm"
-                      variant="subtle"
-                      color="slate"
-                      radius="md"
-                      disabled={isCancelled}
-                      loading={statusMutation.isPending && statusMutation.variables?.id === row.name}
-                      style={{ opacity: isCancelled ? 0.5 : 1 }}
-                    >
-                      <IconDotsVertical size={14} />
-                    </ActionIcon>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    {isDraft && canSubmitLoan && (
-                      <Menu.Item
-                        color="success"
-                        leftSection={<IconCircleCheck size={14} />}
-                        onClick={() => handleStatusChange(row.name, 'approved')}
+              {(canSubmitLoan || canCancelLoan) &&
+                (isCancelled ? (
+                  <Tooltip label="No actions available for cancelled write-offs" withArrow>
+                    {/* span wrapper: browsers don't fire hover events on disabled buttons,
+        so the tooltip needs a normal element to listen on */}
+                    <span style={{ display: 'inline-flex' }}>
+                      <ActionIcon size="sm" variant="subtle" color="slate" radius="md" disabled>
+                        <IconDotsVertical size={14} />
+                      </ActionIcon>
+                    </span>
+                  </Tooltip>
+                ) : (
+                  <Menu shadow="md" width={140} position="bottom-end" withinPortal radius="md" withArrow>
+                    <Menu.Target>
+                      <ActionIcon
+                        size="sm"
+                        variant="subtle"
+                        color="slate"
+                        radius="md"
+                        loading={statusMutation.isPending && statusMutation.variables?.id === row.name}
                       >
-                        Approve
-                      </Menu.Item>
-                    )}
-                    {!isDraft && canCancelLoan && (
-                      <Menu.Item color="danger" onClick={() => handleStatusChange(row.name, 'cancelled')}>
-                        Cancel
-                      </Menu.Item>
-                    )}
-                  </Menu.Dropdown>
-                </Menu>
-              )}
+                        <IconDotsVertical size={14} />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      {isDraft && canSubmitLoan && (
+                        <Menu.Item
+                          color="success"
+                          leftSection={<IconCircleCheck size={14} />}
+                          onClick={() => handleStatusChange(row.name, 'approved')}
+                        >
+                          Approve
+                        </Menu.Item>
+                      )}
+                      {!isDraft && canCancelLoan && (
+                        <Menu.Item color="danger" onClick={() => handleStatusChange(row.name, 'cancelled')}>
+                          Cancel
+                        </Menu.Item>
+                      )}
+                    </Menu.Dropdown>
+                  </Menu>
+                ))}
             </Group>
           );
         },
