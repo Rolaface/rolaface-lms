@@ -19,7 +19,6 @@ import {
 import { useDebouncedValue } from "@mantine/hooks";
 import { useNavigate } from "@tanstack/react-router";
 import {
-  IconArrowRight,
   IconCash,
   IconMinus,
   IconReceipt2,
@@ -164,25 +163,38 @@ function SummaryStrip({
   );
 }
 
-/** One side of the Paid from → Paid to panel: the GL with its amount, and its description. */
+/** One side of the Paid from / Paid to panel: the GL with its amount, and its description. */
 function GlSide({
   title,
   account,
   description,
   amount,
   emptyText,
+  color,
 }: {
   title: string;
   account?: string | null;
   description?: string | null;
   amount: number;
   emptyText: string;
+  /** info = Paid from, grape = Paid to. */
+  color: string;
 }) {
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const fmtAmount = (value: number) =>
     formatAmount(companyCurrency, value, { withSymbol: true });
   return (
-    <Paper radius="md" p="sm" style={{ ...PANEL_STYLE, flex: 1, minWidth: 0 }}>
+    <Paper
+      radius="md"
+      p="sm"
+      style={{
+        ...PANEL_STYLE,
+        flex: 1,
+        minWidth: 0,
+        border: `1px solid var(--mantine-color-${color}-2)`,
+        background: `var(--mantine-color-${color}-0)`,
+      }}
+    >
       <Text
         fz={10}
         fw={700}
@@ -199,7 +211,7 @@ function GlSide({
             <Text fz="sm" fw={700} c="slate.8" truncate>
               {account}
             </Text>
-            <Text fz="sm" fw={800} c="slate.9" style={{ whiteSpace: "nowrap" }}>
+            <Text fz="sm" fw={800} c={`${color}.7`} style={{ whiteSpace: "nowrap" }}>
               {fmtAmount(amount)}
             </Text>
           </Group>
@@ -216,16 +228,19 @@ function GlSide({
   );
 }
 
+/** Paid from -> Paid to (for the user; the Journal Entry is Dr Paid to / Cr Paid from). */
 function PaidFromToPanel({
-  credit,
-  debit,
+  from,
+  to,
   amount,
-  debitEmptyText,
+  fromEmptyText,
+  toEmptyText,
 }: {
-  credit: { account?: string | null; description?: string | null } | null;
-  debit: { account?: string | null; description?: string | null } | null;
+  from: { account?: string | null; description?: string | null } | null;
+  to: { account?: string | null; description?: string | null } | null;
   amount: number;
-  debitEmptyText: string;
+  fromEmptyText: string;
+  toEmptyText: string;
 }) {
   return (
     <Paper
@@ -234,34 +249,22 @@ function PaidFromToPanel({
       p="xs"
       style={{ ...PANEL_STYLE, background: "var(--mantine-color-slate-0)" }}
     >
-      <Group wrap="nowrap" gap="xs" align="center">
+      <Group wrap="nowrap" gap="xs" align="stretch">
         <GlSide
           title="Paid from"
-          account={credit?.account}
-          description={credit?.description}
+          account={from?.account}
+          description={from?.description}
           amount={amount}
-          emptyText="Set the Investor Creditor GL in Investor Settings."
+          emptyText={fromEmptyText}
+          color="info"
         />
-        <Box
-          style={{
-            flex: "none",
-            width: 26,
-            height: 26,
-            borderRadius: "50%",
-            background: "var(--mantine-color-brand-0)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <IconArrowRight size={14} color="var(--mantine-color-brand-6)" />
-        </Box>
         <GlSide
           title="Paid to"
-          account={debit?.account}
-          description={debit?.description}
+          account={to?.account}
+          description={to?.description}
           amount={amount}
-          emptyText={debitEmptyText}
+          emptyText={toEmptyText}
+          color="grape"
         />
       </Group>
     </Paper>
@@ -560,17 +563,19 @@ export function RecordFundModal({
                     />
                   </Box>
                 </Paper>
+                {/* Paid from = the credited GL, Paid to = the debited GL of the record's entry. */}
                 <PaidFromToPanel
-                  credit={{
+                  from={{
                     account: record.credit_gl,
                     description: record.credit_gl_description,
                   }}
-                  debit={{
+                  to={{
                     account: record.debit_gl,
                     description: record.debit_gl_description,
                   }}
                   amount={Number(record.amount_paid) || 0}
-                  debitEmptyText="—"
+                  fromEmptyText="—"
+                  toEmptyText="—"
                 />
               </>
             ) : (
@@ -590,6 +595,10 @@ export function RecordFundModal({
                     queryKey: ["investorFunds"],
                   });
                   queryClient.invalidateQueries({ queryKey: ["fundRecords"] });
+                  // Investor 360 (investment view): refreshed so it shows the latest without reloading the page.
+                  queryClient.invalidateQueries({ queryKey: ["investorPortfolio"] });
+                  queryClient.invalidateQueries({ queryKey: ["investorInvestmentDetail"] });
+                  queryClient.invalidateQueries({ queryKey: ["investorStatement"] });
                   onClose();
                   openCommonModal({
                     heading:
@@ -803,9 +812,10 @@ function FundForm({
     record ? Number(record.amount_paid) || 0 : maxAmount,
   );
 
-  const debit =
+  // Paid from "Fund received" (Investor Creditor GL) -> Paid to the GL mapped to the Mode of Payment.
+  const paidFrom = accounts?.credit ?? null;
+  const paidTo =
     paymentMode && accounts ? accounts.debit_by_mode[paymentMode] : null;
-  const credit = accounts?.credit ?? null;
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -849,8 +859,8 @@ function FundForm({
   const canSave =
     !!paidDate &&
     !!paymentMode &&
-    !!debit &&
-    !!credit &&
+    !!paidFrom &&
+    !!paidTo &&
     referenceNo.trim().length > 0 &&
     amount > 0 &&
     !amountError;
@@ -927,10 +937,11 @@ function FundForm({
         </Alert>
       ) : (
         <PaidFromToPanel
-          credit={credit}
-          debit={debit}
+          from={paidFrom}
+          to={paidTo}
           amount={amount}
-          debitEmptyText={
+          fromEmptyText="Set the Investor Creditor GL in Investor Settings."
+          toEmptyText={
             paymentMode
               ? `Set the ${paymentMode} GL in Investor Settings to use this mode.`
               : "Select the mode of payment."

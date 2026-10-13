@@ -133,6 +133,10 @@ export function InvestorPayouts() {
     // Add Payout's investment list: a fully paid investment drops out of it.
     queryClient.invalidateQueries({ queryKey: ["payoutCandidates"] });
     queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
+    // Investor 360 (investment view): refreshed so it shows the latest without reloading the page.
+    queryClient.invalidateQueries({ queryKey: ["investorPortfolio"] });
+    queryClient.invalidateQueries({ queryKey: ["investorInvestmentDetail"] });
+    queryClient.invalidateQueries({ queryKey: ["investorStatement"] });
   };
   const showSuccess = (heading: string, body: string) =>
     openCommonModal({

@@ -497,9 +497,9 @@ interface RecordFundAccount {
 /** get_record_fund_accounts data (from Investor Settings). */
 export interface RecordFundAccounts {
   company: string | null;
-  /** Paid from: Investor Creditor GL. */
+  /** Paid from: Investor Creditor GL (credited on a Fund Receipt). */
   credit: RecordFundAccount;
-  /** Paid to, per Mode of Payment (null when its GL is not set). */
+  /** Paid to, per Mode of Payment (debited on a Fund Receipt; null when its GL is not set). */
   debit_by_mode: Record<InvestorFlowPaymentMode, RecordFundAccount | null>;
 }
 
@@ -945,8 +945,16 @@ export interface PayoutContext {
   investment_product: string;
   investment_product_name: string;
   investment_amount: number;
-  /** Company bank GL from Investor Settings (pre-selected as Paid From). */
+  /** Not used any more (Paid From comes from mode_accounts). */
   default_paid_from: string | null;
+  /** Payment Mode -> the GL mapped to it in Investor Settings (Paid From). */
+  mode_accounts?: Partial<Record<InvestorFlowPaymentMode, string | null>>;
+  /** Investor Settings GLs used by the payout entry. */
+  gl?: {
+    investor_creditor_account: string | null;
+    interest_expense_account: string | null;
+    penalty_expense_account: string | null;
+  };
   bank_accounts: InvestorBankAccount[];
   next_emi: (PayoutDueParts & { name: string; number: number | null; payment_date: string; total: number; status: string }) | null;
   outstanding: PayoutDueParts & { emis: number; total: number };

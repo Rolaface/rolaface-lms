@@ -1,4 +1,4 @@
-/* Accounting drill-down: one Journal Entry, which GL was debited / credited, when, and where the money went. */
+/* Accounting drill-down: one Journal Entry, which GL was debited / credited and when. */
 import { useQuery } from "@tanstack/react-query";
 import {
   Badge,
@@ -11,7 +11,6 @@ import {
   ThemeIcon,
 } from "@mantine/core";
 import {
-  IconArrowRight,
   IconInfoCircle,
   IconReceipt2,
 } from "@tabler/icons-react";
@@ -76,37 +75,31 @@ function JournalEntryBody({ name }: { name: string }) {
     );
   if (!data) return <LoadingBlock />;
 
-  // Credited lines are where the value came from; debited lines are where it went.
-  const from = data.lines.filter((l) => l.credit > 0);
-  const to = data.lines.filter((l) => l.debit > 0);
+  // Same sides as the GL lines: debited accounts (Dr) on the left, credited accounts (Cr) on the right.
+  const debited = data.lines.filter((l) => l.debit > 0);
+  const credited = data.lines.filter((l) => l.credit > 0);
 
   return (
     <Stack gap="md">
-      {/* Money flow: credited accounts on the left, debited accounts on the right */}
       <Card>
         <Text fw={700} fz="sm" c="slate.8" mb="sm">
-          Where the money came from and where it went
+          Debit and credit
         </Text>
         <Group align="stretch" wrap="nowrap" gap="sm">
           <Stack gap="xs" style={{ flex: 1 }}>
             <Text fz={11} fw={700} c="slate.5" tt="uppercase">
-              From (credited)
+              Debit (Dr)
             </Text>
-            {from.map((l, i) => (
-              <FlowCard key={i} line={l} amount={l.credit} color="danger" />
+            {debited.map((l, i) => (
+              <FlowCard key={i} line={l} amount={l.debit} color="info" />
             ))}
           </Stack>
-          <Box style={{ display: "flex", alignItems: "center" }}>
-            <ThemeIcon size={30} radius="xl" variant="light" color="brand">
-              <IconArrowRight size={16} />
-            </ThemeIcon>
-          </Box>
           <Stack gap="xs" style={{ flex: 1 }}>
             <Text fz={11} fw={700} c="slate.5" tt="uppercase">
-              To (debited)
+              Credit (Cr)
             </Text>
-            {to.map((l, i) => (
-              <FlowCard key={i} line={l} amount={l.debit} color="success" />
+            {credited.map((l, i) => (
+              <FlowCard key={i} line={l} amount={l.credit} color="grape" />
             ))}
           </Stack>
         </Group>
