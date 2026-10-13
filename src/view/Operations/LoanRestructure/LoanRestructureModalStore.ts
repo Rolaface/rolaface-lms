@@ -5,6 +5,7 @@ import { createModal } from "../../../store/modal store/createModal";
 export interface LoanRestructureModalParams {
   editName?: string | null;
   viewName?: string | null;
+  onSaved?: () => void;
 }
 
 function getTitle(params: LoanRestructureModalParams) {
@@ -22,7 +23,10 @@ export const loanRestructureModal = createModal(
     buildProps: (params) => ({
       editName: params.editName ?? null,
       viewName: params.viewName ?? null,
-      onSaved: () => loanRestructureModal.close(),
+      onSaved: () => {
+        loanRestructureModal.close();
+        params.onSaved?.();
+      },
     }),
   },
 );

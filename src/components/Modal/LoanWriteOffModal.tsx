@@ -400,10 +400,15 @@ export function LoanWriteOffModal({ opened, onClose, onMinimize, onSubmit, editD
                   hideControls
                   label="Principal Outstanding"
                   placeholder="Auto-filled on account selection"
-                  value={principalOutstanding}
+                  value={
+                    typeof principalOutstanding === 'number'
+                      ? Number(principalOutstanding.toFixed(2))
+                      : principalOutstanding
+                  }
                   onChange={(v) => setPrincipalOutstanding(v as number | '')}
                   thousandSeparator=","
-                  readOnly
+                  decimalScale={2}
+                  disabled
                 />
               </div>
 
