@@ -118,7 +118,8 @@ const GROUPS: {
     color: "warning",
     fields: [
       "company_bank_account",
-      "interest_payable_account",
+      // "interest_payable_account", (no accrual: Payable GL not used)
+      "investor_income_account",
       "interest_expense_account",
       "penalty_expense_account",
     ],
@@ -140,7 +141,8 @@ const accountsFrom = (s: InvestorSettingsData): InvestorSettingsAccounts => ({
   bank_draft_account: s.accounts.bank_draft_account ?? "",
   wire_transfer_account: s.accounts.wire_transfer_account ?? "",
   company_bank_account: s.accounts.company_bank_account ?? "",
-  interest_payable_account: s.accounts.interest_payable_account ?? "",
+  // interest_payable_account: s.accounts.interest_payable_account ?? "",
+  investor_income_account: s.accounts.investor_income_account ?? "",
   interest_expense_account: s.accounts.interest_expense_account ?? "",
   penalty_expense_account: s.accounts.penalty_expense_account ?? "",
 });

@@ -1,10 +1,3 @@
-/*
- * Investor Payout (Add / Edit / View).
- *   Tab "Payment"  - choose the investment, Pay Dues / Pay Any / Pay Full, payment details; right: dues summary
- *                    and the payment effect (how the amount is split over the EMIs).
- *   Tab "Schedule" - every EMI of the investment: paid, partly paid or unpaid.
- * Saving keeps the payout as Draft; Approve / Cancel / Delete are done from the Investor Payouts list.
- */
 import { useState, type ReactNode } from "react";
 import {
   ActionIcon,
@@ -53,6 +46,7 @@ import { searchLedgerAccounts } from "../../../../api/utils/frappeUtilsApi";
 import {
   INVESTOR_FLOW_PAYMENT_MODES,
   PAYOUT_PAYMENT_TYPES,
+  PAYOUT_PAYMENT_TYPE_LABELS,
   type InvestorFlowPaymentMode,
   type InvestorPayout,
   type PayoutContext,
@@ -237,8 +231,6 @@ export function PayoutModal({
     </Modal>
   );
 }
-
-/* ------------------------------- Body ------------------------------- */
 
 interface FormValues {
   valueDate: string;
@@ -621,7 +613,7 @@ function PayoutBody({
 
                         <Box>
                           <Text fz="sm" fw={500} mb={6}>
-                            Nature of payment
+                            Payout Type
                           </Text>
                           <SegmentedControl
                             fullWidth
@@ -638,7 +630,7 @@ function PayoutBody({
                               label: (
                                 <Group gap={6} justify="center" wrap="nowrap">
                                   {TYPE_ICONS[t]}
-                                  <span>{t}</span>
+                                  <span>{PAYOUT_PAYMENT_TYPE_LABELS[t]}</span>
                                 </Group>
                               ),
                             }))}
