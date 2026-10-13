@@ -598,8 +598,9 @@ export function LoanTransfer() {
                         style={{
                           padding: '10px 10px',
                           border: 'none',
-                          boxShadow: 'var(--mantine-shadow-xs)',
-                          borderLeft: idx === 0 ? '3px solid var(--mantine-color-brand-4)' : undefined,
+                          boxShadow: idx === 0
+                            ? 'var(--mantine-shadow-xs), inset 3px 0 0 var(--mantine-color-brand-4)'
+                            : 'var(--mantine-shadow-xs)',
                         }}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

@@ -297,6 +297,7 @@ export function LoanWriteOff() {
     () => [
       columnHelper.accessor('name', {
         header: 'Write-off ID',
+        size: 150,
         cell: (info) => (
           <Text fz="sm" fw={700} c="slate.8">
             {info.getValue()}
@@ -306,6 +307,7 @@ export function LoanWriteOff() {
       }),
       columnHelper.accessor('loan', {
         header: 'Loan A/c',
+        size: 170,
         cell: (info) => (
           <Text fz="xs" fw={600} c="slate.7">
             {info.getValue()}
@@ -314,6 +316,7 @@ export function LoanWriteOff() {
       }),
       columnHelper.accessor('applicant', {
         header: 'Applicant',
+        size: 160,
         cell: (info) => (
           <Text fz="xs" c="slate.6">
             {info.getValue()}
@@ -322,6 +325,7 @@ export function LoanWriteOff() {
       }),
       columnHelper.accessor('loan_product', {
         header: 'Loan Product',
+        size: 130,
         cell: (info) => (
           <Text fz="xs" c="slate.6">
             {info.getValue()}
@@ -330,6 +334,7 @@ export function LoanWriteOff() {
       }),
       columnHelper.accessor('write_off_amount', {
         header: 'Write-off Amount',
+        size: 150,
         cell: (info) => (
           <Text
             fz="xs"
@@ -343,6 +348,7 @@ export function LoanWriteOff() {
       }),
       columnHelper.accessor('posting_date', {
         header: 'Posting Date',
+        size: 130,
         cell: (info) => (
           <Text fz="xs" c="slate.6">
             {fmtDate(info.getValue())}
@@ -351,20 +357,14 @@ export function LoanWriteOff() {
         sortingFn: 'basic',
       }),
       columnHelper.accessor('docstatus', {
-        header: () => (
-          <Text fz="xs" fw={600} w="100%">
-            Status
-          </Text>
-        ),
+        header: 'Status',
+        size: 110,
         cell: (info) => <StatusBadge status={info.getValue()} />,
       }),
       columnHelper.display({
         id: 'actions',
-        header: () => (
-          <Text fz="xs" fw={600} ta="right" w="100%">
-            Actions
-          </Text>
-        ),
+        header: 'Actions',
+        size: 120,
         cell: (info) => {
           const row = info.row.original;
           const isDraft = row.docstatus === 0;
@@ -628,6 +628,7 @@ export function LoanWriteOff() {
                         textTransform: 'uppercase',
                         letterSpacing: '0.04em',
                         border: 'none',
+                        width: header.column.getSize() ? `${header.column.getSize()}px` : undefined,
                       }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
@@ -705,8 +706,10 @@ export function LoanWriteOff() {
                         style={{
                           padding: '10px 10px',
                           border: 'none',
-                          boxShadow: 'var(--mantine-shadow-xs)',
-                          borderLeft: idx === 0 ? '3px solid var(--mantine-color-brand-4)' : undefined,
+                          boxShadow: idx === 0
+                            ? 'var(--mantine-shadow-xs), inset 3px 0 0 var(--mantine-color-brand-4)'
+                            : 'var(--mantine-shadow-xs)',
+                          width: cell.column.getSize() ? `${cell.column.getSize()}px` : undefined,
                         }}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

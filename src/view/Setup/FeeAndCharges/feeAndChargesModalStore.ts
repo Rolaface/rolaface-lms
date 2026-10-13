@@ -6,6 +6,7 @@ import type { FeeAndCharge } from '../../../components/Modal/FeeAndChargesModal'
 export interface FeeAndChargesModalParams {
   mode?: 'add' | 'edit' | 'view';
   data?: FeeAndCharge | null;
+  onSaved?: () => void;
 }
 
 function getTitle(params: FeeAndChargesModalParams) {
@@ -23,6 +24,7 @@ export const feeAndChargesModal = createModal(
     buildProps: (params) => ({
       mode: params.mode ?? 'add',
       data: params.data ?? null,
+      onSaved: params.onSaved,
     }),
   },
 );
