@@ -66,7 +66,14 @@ export function FeeAndCharges() {
   const canDeleteItem = can('Item', 'delete');
 
   const handleOpenModal = (mode: 'add' | 'edit' | 'view', data: FeeAndCharge | null = null) => {
-    feeAndChargesModal.open({ mode, data });
+    feeAndChargesModal.open({
+      mode,
+      data,
+      onSaved: () => {
+        if (mode === 'add') setPage(1);
+        queryClient.invalidateQueries({ queryKey: ['fee-and-charges'] });
+      },
+    });
   };
 
   const [search, setSearch] = useState('');
