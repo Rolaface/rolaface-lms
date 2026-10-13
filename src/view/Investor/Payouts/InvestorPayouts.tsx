@@ -41,6 +41,7 @@ import {
 } from "../../../api/Investor/investorFlowApi";
 import {
   PAYOUT_PAYMENT_TYPES,
+  PAYOUT_PAYMENT_TYPE_LABELS,
   type PayoutListItem,
   type PayoutPaymentType,
   type PayoutRecordStatus,
@@ -66,7 +67,10 @@ const STATUS_COLOR: Record<PayoutRecordStatus, string> = {
 const STATUS_OPTIONS = (
   ["Draft", "Approved", "Cancelled"] as PayoutRecordStatus[]
 ).map((v) => ({ value: v, label: v }));
-const TYPE_OPTIONS = PAYOUT_PAYMENT_TYPES.map((v) => ({ value: v, label: v }));
+const TYPE_OPTIONS = PAYOUT_PAYMENT_TYPES.map((v) => ({
+  value: v,
+  label: PAYOUT_PAYMENT_TYPE_LABELS[v],
+}));
 
 const TH = {
   fontSize: "var(--mantine-font-size-xs)",

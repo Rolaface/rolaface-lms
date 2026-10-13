@@ -291,7 +291,10 @@ export interface InvestorSettingsAccounts {
   bank_draft_account: string;
   wire_transfer_account: string;
   company_bank_account: string;
-  interest_payable_account: string;
+  // No accrual: the Payable GL is not used any more.
+  // interest_payable_account: string;
+  /** Investor Income GL: interest / penalty paid to investors (party = investor). */
+  investor_income_account: string;
   interest_expense_account: string;
   penalty_expense_account: string;
 }
@@ -833,8 +836,15 @@ export interface LogNotificationPayload {
 
 /* ------------------------------ Investor Payouts ------------------------------ */
 
+/** Values saved on the payout (Custom Investor Payouts.payment_type options); the screen shows the labels below. */
 export type PayoutPaymentType = "Pay Dues" | "Pay Any" | "Pay Full";
 export const PAYOUT_PAYMENT_TYPES: PayoutPaymentType[] = ["Pay Dues", "Pay Any", "Pay Full"];
+/** Names shown on screen for each payment type. */
+export const PAYOUT_PAYMENT_TYPE_LABELS: Record<PayoutPaymentType, string> = {
+  "Pay Dues": "Pay Next Due",
+  "Pay Any": "Custom Amount",
+  "Pay Full": "Full Settlement",
+};
 export type PayoutRecordStatus = "Draft" | "Approved" | "Cancelled";
 
 /** How a payout is split over one EMI. */
