@@ -47,45 +47,16 @@ import {
 import { useNavigate } from '@tanstack/react-router';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { ModalFooter } from '../../../components/shared/ModalFooter';
+import { createTemplateModal } from '../../../components/Modal/createTemplateModalStore';
+import {
+  useContractTemplateStore,
+  type TemplateItem,
+  BANK_OPTIONS,
+  BANK_COLORS,
+} from '../../../store/contractTemplateStore';
 
-export interface TemplateItem {
-  id: number | string;
-  bank: string;
-  color: string;
-  product: string;
-  type: string;
-  name: string;
-  version: string;
-  uploadDate: string;
-  uploadTime: string;
-  effectiveDate: string;
-  status: 'Active' | 'Inactive';
-  description?: string;
-}
+export type { TemplateItem };
 
-const BANK_OPTIONS = [
-  'HDFC Bank',
-  'ICICI Bank',
-  'SBI Bank',
-  'Axis Bank',
-  'Bajaj Finserv',
-  'Kotak Mahindra Bank',
-  'Bank of Baroda',
-  'Punjab National Bank',
-  'IndusInd Bank',
-];
-
-const BANK_COLORS: Record<string, string> = {
-  'HDFC Bank': 'red',
-  'ICICI Bank': 'orange',
-  'SBI Bank': 'blue',
-  'Axis Bank': 'pink',
-  'Bajaj Finserv': 'cyan',
-  'Kotak Mahindra Bank': 'grape',
-  'Bank of Baroda': 'orange',
-  'Punjab National Bank': 'yellow',
-  'IndusInd Bank': 'teal',
-};
 
 const PRODUCT_OPTIONS = [
   'Business Loan',
@@ -107,65 +78,6 @@ const CONTRACT_TYPE_OPTIONS = [
 ];
 
 /* ───── initial template data (4 rows only) ───── */
-const initialTemplates: TemplateItem[] = [
-  {
-    id: 1,
-    bank: 'HDFC Bank',
-    color: 'red',
-    product: 'Business Loan',
-    type: 'Loan Agreement',
-    name: 'HDFC Business Loan Agreement',
-    version: '2.0',
-    uploadDate: '01-May-2024',
-    uploadTime: '10:30 AM',
-    effectiveDate: '01-May-2024',
-    status: 'Active',
-    description: 'Standard commercial & business lending agreement for corporate clients.',
-  },
-  {
-    id: 2,
-    bank: 'HDFC Bank',
-    color: 'red',
-    product: 'Education Loan',
-    type: 'Sanction Letter',
-    name: 'HDFC Education Sanction Letter',
-    version: '1.0',
-    uploadDate: '15-Apr-2024',
-    uploadTime: '02:15 PM',
-    effectiveDate: '15-Apr-2024',
-    status: 'Active',
-    description: 'Formal sanction letter for higher education loan applicants.',
-  },
-  {
-    id: 3,
-    bank: 'ICICI Bank',
-    color: 'orange',
-    product: 'Personal Loan',
-    type: 'Loan Agreement',
-    name: 'ICICI Personal Loan Agreement',
-    version: '1.0',
-    uploadDate: '10-Apr-2024',
-    uploadTime: '11:45 AM',
-    effectiveDate: '10-Apr-2024',
-    status: 'Inactive',
-    description: 'Unsecured personal loan borrower contract template.',
-  },
-  {
-    id: 4,
-    bank: 'SBI Bank',
-    color: 'blue',
-    product: 'Home Loan',
-    type: 'Loan Agreement',
-    name: 'SBI Home Loan Agreement',
-    version: '1.1',
-    uploadDate: '20-Mar-2024',
-    uploadTime: '09:05 AM',
-    effectiveDate: '20-Mar-2024',
-    status: 'Active',
-    description: 'Mortgage loan agreement for residential housing finance.',
-  },
-];
-
 /* ───── shared sub-components ───── */
 function StatusBadge({ status }: { status: string }) {
   const isActive = status === 'Active';
@@ -217,8 +129,13 @@ export function ContractTemplateManagement() {
   const theme = useMantineTheme();
   const navigate = useNavigate();
 
-  // Primary data state (4 initial rows)
-  const [templates, setTemplates] = useState<TemplateItem[]>(initialTemplates);
+  const {
+    templates,
+    updateTemplate,
+    deleteTemplate,
+    toggleTemplateStatus,
+    setActiveTemplate,
+  } = useContractTemplateStore();
 
   // Filters & sorting
   const [search, setSearch] = useState('');
@@ -346,9 +263,7 @@ export function ContractTemplateManagement() {
     }
 
     const color = BANK_COLORS[editForm.bank] || editForm.color || 'blue';
-    setTemplates((prev) =>
-      prev.map((t) => (t.id === editForm.id ? { ...editForm, color } : t))
-    );
+    updateTemplate(String(editForm.id), { ...editForm, color });
     setEditModalOpen(false);
 
     openCommonModal({
@@ -380,7 +295,7 @@ export function ContractTemplateManagement() {
           label: 'Delete',
           color: 'red',
           onClick: () => {
-            setTemplates((prev) => prev.filter((t) => t.id !== template.id));
+            deleteTemplate(String(template.id));
             openCommonModal({
               heading: 'Contract Template Deleted',
               subtitle: '',
@@ -415,13 +330,7 @@ export function ContractTemplateManagement() {
           label: willMakeInactive ? 'Mark as Inactive' : 'Mark as Active',
           color: willMakeInactive ? 'orange' : 'green',
           onClick: () => {
-            setTemplates((prev) =>
-              prev.map((t) =>
-                t.id === template.id
-                  ? { ...t, status: willMakeInactive ? 'Inactive' : 'Active' }
-                  : t
-              )
-            );
+            toggleTemplateStatus(String(template.id));
             openCommonModal({
               heading: willMakeInactive ? 'Template Marked as Inactive' : 'Template Marked as Active',
               subtitle: '',
@@ -461,11 +370,19 @@ export function ContractTemplateManagement() {
       }),
       columnHelper.accessor('product', {
         header: 'Loan Product',
-        cell: (info) => (
-          <Text fz="sm" c="slate.7">
-            {info.getValue()}
-          </Text>
-        ),
+        cell: (info) => {
+          const item = info.row.original;
+          const mappedCount = item.mappedProductIds?.length ?? 0;
+          return mappedCount > 0 ? (
+            <Badge variant="light" color="brand" size="sm">
+              {mappedCount} {mappedCount === 1 ? 'Product' : 'Products'} Mapped
+            </Badge>
+          ) : (
+            <Text fz="sm" c="slate.7">
+              {item.product || '—'}
+            </Text>
+          );
+        },
       }),
       columnHelper.accessor('type', {
         header: 'Contract Type',
@@ -554,6 +471,22 @@ export function ContractTemplateManagement() {
                   aria-label="Edit template"
                 >
                   <IconPencil size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Map Loan Products" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="blue"
+                  radius="md"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveTemplate(item);
+                    navigate({ to: `/setup/map-products?templateId=${item.id}` });
+                  }}
+                  aria-label="Map Loan Products"
+                >
+                  <IconLink size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Delete" withArrow>
@@ -776,12 +709,7 @@ export function ContractTemplateManagement() {
               size="sm"
               radius="xl"
               color="brand"
-              component="a"
-              href="/setup/contract-templates/create"
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                navigate({ to: '/setup/contract-templates/create' });
-              }}
+              onClick={() => createTemplateModal.open({})}
               leftSection={<IconPlus size={14} />}
               style={{
                 background: theme.other.brandGradient,
@@ -1051,6 +979,20 @@ export function ContractTemplateManagement() {
                       {selectedTemplate.name}
                     </Text>
                   </Box>
+                  <Box style={{ gridColumn: '1 / -1' }}>
+                    <Text size="xs" c="slate.5" fw={600}>
+                      MAPPED LOAN PRODUCTS
+                    </Text>
+                    <Box mt={4}>
+                      {selectedTemplate.mappedProductIds?.length ? (
+                        <Badge variant="light" color="brand" size="md">
+                          {selectedTemplate.mappedProductIds.length} Products Mapped
+                        </Badge>
+                      ) : (
+                        <Text size="xs" c="slate.5">No products mapped yet</Text>
+                      )}
+                    </Box>
+                  </Box>
                   {selectedTemplate.description && (
                     <Box style={{ gridColumn: '1 / -1' }}>
                       <Text size="xs" c="slate.5" fw={600}>
@@ -1068,9 +1010,22 @@ export function ContractTemplateManagement() {
 
           <ModalFooter
             variant="theme"
-            isViewMode={true}
             onClose={() => setViewModalOpen(false)}
-            submitLabel=""
+            onSaveDraft={() => {
+              if (selectedTemplate) {
+                setActiveTemplate(selectedTemplate);
+                setViewModalOpen(false);
+                navigate({ to: `/setup/map-products?templateId=${selectedTemplate.id}` });
+              }
+            }}
+            saveDraftLabel="Map Loan Products"
+            submitLabel="Edit Template"
+            onSubmit={() => {
+              if (selectedTemplate) {
+                setViewModalOpen(false);
+                handleEdit(selectedTemplate);
+              }
+            }}
           />
         </Box>
       </Modal>
