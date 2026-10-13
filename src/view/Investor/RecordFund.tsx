@@ -149,6 +149,10 @@ export function RecordFund() {
     queryClient.invalidateQueries({ queryKey: ["investorFunds"] });
     queryClient.invalidateQueries({ queryKey: ["investorFund", investmentId] });
     queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
+    // Investor 360 (investment view): refreshed so it shows the latest without reloading the page.
+    queryClient.invalidateQueries({ queryKey: ["investorPortfolio"] });
+    queryClient.invalidateQueries({ queryKey: ["investorInvestmentDetail"] });
+    queryClient.invalidateQueries({ queryKey: ["investorStatement"] });
   };
   const showSuccess = (heading: string, body: string) =>
     openCommonModal({

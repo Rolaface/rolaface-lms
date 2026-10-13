@@ -5,6 +5,7 @@ import {
   Badge,
   Box,
   Button,
+  Grid,
   Group,
   Loader,
   Modal,
@@ -42,7 +43,6 @@ import {
   previewInvestorPayout,
   updateInvestorPayout,
 } from "../../../../api/Investor/investorFlowApi";
-import { searchLedgerAccounts } from "../../../../api/utils/frappeUtilsApi";
 import {
   INVESTOR_FLOW_PAYMENT_MODES,
   PAYOUT_PAYMENT_TYPES,
@@ -245,7 +245,7 @@ interface FormValues {
 }
 
 function initialValues(
-  context: PayoutContext | null,
+  _context: PayoutContext | null,
   payout: InvestorPayout | null,
 ): FormValues {
   if (payout) {
@@ -267,11 +267,9 @@ function initialValues(
     paymentType: "Pay Dues",
     amount: "",
     paymentMode: null,
-    paidFrom: context?.default_paid_from ?? "",
-    bankAccount:
-      context?.bank_accounts.find((b) => b.is_default)?.name ??
-      context?.bank_accounts[0]?.name ??
-      null,
+    paidFrom: "",
+    // Investor bank account is no longer chosen on the screen (an existing payout keeps its own).
+    bankAccount: null,
     referenceNumber: "",
     referenceDate: today,
     comment: "",
@@ -333,20 +331,13 @@ function PayoutBody({
     });
   }
 
-  /* Paid From: ledger accounts */
-  const [accountSearch, setAccountSearch] = useState("");
-  const [debouncedAccount] = useDebouncedValue(accountSearch, 300);
-  const accountsQuery = useQuery({
-    queryKey: ["ledgerAccountSearch", debouncedAccount],
-    queryFn: () => searchLedgerAccounts(debouncedAccount),
-    enabled: !readOnly,
-  });
-  const accountOptions = Array.from(
-    new Set([
-      ...(v.paidFrom ? [v.paidFrom] : []),
-      ...(accountsQuery.data ?? []).map((a) => a.name),
-    ]),
-  );
+  // Paid From: the GL Investor Settings map to the chosen Payment Mode (an approved payout keeps its own).
+  const paidFrom =
+    payout && payout.record_status !== "Draft"
+      ? v.paidFrom
+      : v.paymentMode
+        ? (context?.mode_accounts?.[v.paymentMode] ?? "")
+        : "";
 
   /* Payment effect (approved payouts show what they did; otherwise a live preview) */
   const [debouncedAmount] = useDebouncedValue(v.amount, 350);
@@ -391,7 +382,7 @@ function PayoutBody({
           ? "Enter the amount to pay."
           : !v.paymentMode
             ? "Select the payment mode."
-            : !v.paidFrom
+            : !paidFrom
               ? "Select the account the money is paid from."
               : !v.referenceNumber.trim()
                 ? "Enter the reference number."
@@ -406,7 +397,7 @@ function PayoutBody({
     payment_type: v.paymentType,
     payment_amount: v.paymentType === "Pay Any" ? Number(v.amount) : null,
     payment_mode: v.paymentMode as InvestorFlowPaymentMode,
-    paid_from: v.paidFrom,
+    paid_from: paidFrom,
     investor_bank_account: v.bankAccount,
     reference_number: v.referenceNumber.trim(),
     reference_date: v.referenceDate,
@@ -428,6 +419,10 @@ function PayoutBody({
         queryKey: ["payoutContext", investmentId],
       });
       queryClient.invalidateQueries({ queryKey: ["payoutCandidates"] });
+      // Investor 360 (investment view): refreshed so it shows the latest without reloading the page.
+      queryClient.invalidateQueries({ queryKey: ["investorPortfolio"] });
+      queryClient.invalidateQueries({ queryKey: ["investorInvestmentDetail"] });
+      queryClient.invalidateQueries({ queryKey: ["investorStatement"] });
       onClose();
       openCommonModal({
         heading: payout ? "Payout Updated" : "Payout Saved as Draft",
@@ -556,51 +551,48 @@ function PayoutBody({
                   style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
                 >
                   <Stack gap="md">
-                    {mode === "add" && (
-                      <Select
-                        label="Investment"
-                        description="Search by investment ID, investor name, mobile, customer ID or email"
-                        inputWrapperOrder={[
-                          "label",
-                          "input",
-                          "description",
-                          "error",
-                        ]}
-                        placeholder="Search investment"
-                        withAsterisk
-                        searchable
-                        clearable
-                        size="sm"
-                        radius="md"
-                        data={candidateOptions}
-                        value={investmentId}
-                        onChange={(value) => {
-                          onInvestmentChange(value);
-                        }}
-                        searchValue={search}
-                        onSearchChange={setSearch}
-                        filter={({ options }) => options}
-                        rightSection={
-                          candidatesQuery.isFetching ? (
-                            <Loader size={14} />
-                          ) : undefined
-                        }
-                        nothingFoundMessage={
-                          candidatesQuery.isFetching
-                            ? "Searching…"
-                            : "No investment with unpaid EMIs"
-                        }
-                      />
-                    )}
-                    {contextLoading && (
-                      <Group justify="center" py="md">
-                        <Loader size="sm" color="brand" />
-                      </Group>
-                    )}
-
-                    {context && (
-                      <>
-                        <Box maw={240}>
+                    {/* Investment (2 columns) and Value date (1 column) */}
+                    <Grid gap="md">
+                      {mode === "add" && (
+                        <Grid.Col span={{ base: 12, sm: 8 }}>
+                          <Select
+                            label="Investment"
+                            description="Search by investment ID, investor name, mobile, customer ID or email"
+                            inputWrapperOrder={[
+                              "label",
+                              "input",
+                              "description",
+                              "error",
+                            ]}
+                            placeholder="Search investment"
+                            withAsterisk
+                            searchable
+                            clearable
+                            size="sm"
+                            radius="md"
+                            data={candidateOptions}
+                            value={investmentId}
+                            onChange={(value) => {
+                              onInvestmentChange(value);
+                            }}
+                            searchValue={search}
+                            onSearchChange={setSearch}
+                            filter={({ options }) => options}
+                            rightSection={
+                              candidatesQuery.isFetching ? (
+                                <Loader size={14} />
+                              ) : undefined
+                            }
+                            nothingFoundMessage={
+                              candidatesQuery.isFetching
+                                ? "Searching…"
+                                : "No investment with unpaid EMIs"
+                            }
+                          />
+                        </Grid.Col>
+                      )}
+                      {context && (
+                        <Grid.Col span={{ base: 12, sm: 4 }}>
                           <InvestorDateInput
                             label="Value date"
                             withAsterisk
@@ -609,8 +601,17 @@ function PayoutBody({
                             value={v.valueDate}
                             onChange={(value) => update({ valueDate: value })}
                           />
-                        </Box>
+                        </Grid.Col>
+                      )}
+                    </Grid>
+                    {contextLoading && (
+                      <Group justify="center" py="md">
+                        <Loader size="sm" color="brand" />
+                      </Group>
+                    )}
 
+                    {context && (
+                      <>
                         <Box>
                           <Text fz="sm" fw={500} mb={6}>
                             Payout Type
@@ -698,51 +699,6 @@ function PayoutBody({
                               })
                             }
                           />
-                          <Select
-                            label="Paid from"
-                            description="Company bank GL"
-                            inputWrapperOrder={[
-                              "label",
-                              "input",
-                              "description",
-                              "error",
-                            ]}
-                            withAsterisk
-                            size="sm"
-                            radius="md"
-                            searchable
-                            placeholder="Search account"
-                            data={accountOptions}
-                            value={v.paidFrom || null}
-                            onChange={(value) =>
-                              update({ paidFrom: value ?? "" })
-                            }
-                            searchValue={accountSearch}
-                            onSearchChange={setAccountSearch}
-                            filter={({ options }) => options}
-                            rightSection={
-                              accountsQuery.isFetching ? (
-                                <Loader size={14} />
-                              ) : undefined
-                            }
-                          />
-                          <Select
-                            label="Investor bank account"
-                            size="sm"
-                            radius="md"
-                            clearable
-                            placeholder={
-                              context.bank_accounts.length
-                                ? "Select account"
-                                : "No bank account"
-                            }
-                            data={context.bank_accounts.map((b) => ({
-                              value: b.name,
-                              label: `${b.bank}${b.bank_account_no ? ` · ${b.bank_account_no}` : ""}`,
-                            }))}
-                            value={v.bankAccount}
-                            onChange={(value) => update({ bankAccount: value })}
-                          />
                           <TextInput
                             label="Reference number"
                             withAsterisk
@@ -765,6 +721,59 @@ function PayoutBody({
                               update({ referenceDate: value })
                             }
                           />
+                        </SimpleGrid>
+
+                        {/* Paid from -> Paid to (Paid from for the principal = the GL mapped to the Payment Mode
+                            in Investor Settings). Read-only. */}
+                        <SimpleGrid
+                          cols={{ base: 1, sm: 2, lg: 4 }}
+                          spacing="md"
+                        >
+                          {[
+                            {
+                              label: "Principal · Paid from",
+                              value: paidFrom,
+                              hint: !v.paymentMode
+                                ? "Select the payment mode."
+                                : paidFrom
+                                  ? `${v.paymentMode} GL in Investor Settings`
+                                  : `Set the ${v.paymentMode} GL in Investor Settings.`,
+                            },
+                            {
+                              label: "Principal · Paid to",
+                              value:
+                                context.gl?.investor_creditor_account ?? "",
+                              hint: "Fund received (Paid from) GL",
+                            },
+                            {
+                              label: "Interest · Paid from",
+                              value: context.gl?.interest_expense_account ?? "",
+                              hint: "Interest Expense GL",
+                            },
+                            {
+                              label: "Interest · Paid to",
+                              value: paidFrom,
+                              hint: v.paymentMode
+                                ? `${v.paymentMode} GL in Investor Settings`
+                                : "Select the payment mode.",
+                            },
+                          ].map((f) => (
+                            <TextInput
+                              key={f.label}
+                              label={f.label}
+                              description={f.hint}
+                              inputWrapperOrder={[
+                                "label",
+                                "input",
+                                "description",
+                                "error",
+                              ]}
+                              size="sm"
+                              radius="md"
+                              readOnly
+                              value={f.value}
+                            />
+                          ))}
                         </SimpleGrid>
 
                         <Textarea
@@ -946,6 +955,62 @@ function PayoutBody({
                           </Group>
                         ))}
                       </Stack>
+                      {/* Accounting (Dr / Cr of this payout): hidden for now; the Paid from / Paid to fields show it.
+                      {/* The Journal Entry this payout posts on Approve. * /}
+                      <Text fz={10} fw={800} c="slate.6" tt="uppercase" mt="sm" mb={4}>
+                        Accounting
+                      </Text>
+                      <Stack gap={4}>
+                        {[
+                          {
+                            label: "Principal",
+                            amount: effect.principal,
+                            dr: paidFrom,
+                            cr: context.gl?.investor_creditor_account,
+                          },
+                          {
+                            label: "Interest",
+                            amount: effect.interest,
+                            dr: context.gl?.interest_expense_account,
+                            cr: paidFrom,
+                          },
+                          {
+                            label: "Penalty",
+                            amount: effect.penalty,
+                            dr: context.gl?.penalty_expense_account,
+                            cr: paidFrom,
+                          },
+                        ]
+                          .filter((e) => e.amount > 0)
+                          .map((e) => (
+                            <Box
+                              key={e.label}
+                              px={8}
+                              py={4}
+                              style={{
+                                borderRadius: 6,
+                                background: "var(--mantine-color-white)",
+                                border: "1px solid var(--mantine-color-slate-2)",
+                              }}
+                            >
+                              <Group justify="space-between" wrap="nowrap">
+                                <Text fz="xs" fw={700}>
+                                  {e.label}
+                                </Text>
+                                <Text fz="xs" fw={700} ff="monospace">
+                                  {fmtAmount(e.amount)}
+                                </Text>
+                              </Group>
+                              <Text fz={10} c="info.7" truncate>
+                                Dr {e.dr || "—"}
+                              </Text>
+                              <Text fz={10} c="grape.7" truncate>
+                                Cr {e.cr || "—"}
+                              </Text>
+                            </Box>
+                          ))}
+                      </Stack>
+                      */}
                     </Paper>
                   ) : (
                     <Text fz="xs" c="slate.5">
