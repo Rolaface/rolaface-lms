@@ -50,7 +50,7 @@ import { LoanCollectionSequenceOrder } from "../view/Setup/LoanCollectionSequenc
 import { FeeAndCharges } from "../view/Setup/FeeAndCharges/FeeAndCharges";
 import { LoanProduct } from "../view/Loan/Product/LoanProduct";
 import { LoanClassificationRanges } from "../view/Setup/LoanClassificationRanges/LoanClassificationRanges";
-
+import { MySubscription } from "../view/Subscription/MySubscription";
 import { MapLoanProducts } from "../view/Setup/MapLoanProducts/MapLoanProducts";
 
 //accounting
@@ -409,6 +409,12 @@ function GeneralLedgerReportRoute() {
   return <GeneralLedger account={account} />;
 }
 
+const subscriptionRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/subscription",
+  component: MySubscription,
+});
+
 const accountingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/accounting",
@@ -648,6 +654,7 @@ const routeTree = rootRoute.addChildren([
   settingsRoute.addChildren([
     emailTemplateRoute,
     schedulerRoute,
+    subscriptionRoute,
     userRoute.addChildren([userManagementRoute, userRolesRoute]),
   ]),
 ]);

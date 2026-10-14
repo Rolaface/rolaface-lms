@@ -366,6 +366,11 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
         label: "Scheduler",
         icon: IconCalendarClock,
       },
+       {
+       path: "/settings/subscription",
+        label: "My Subscription",
+        icon: IconCreditCard,
+      },
     ],
   },
 ];
