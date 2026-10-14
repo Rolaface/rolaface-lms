@@ -541,6 +541,7 @@ losDocumentSetup: {
     getJournalEntryDetail: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_journal_entry_detail`,
     // Investor Payouts
     getPayouts: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investor_payouts`,
+    getInvestorReport: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_investor_report`,
     getPayoutCandidates: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_payout_candidates`,
     getPayoutContext: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.get_payout_context`,
     previewPayout: `${ERP_BASE}/api/method/rolaface_lms_app.modules.loan.custom_api.investorFlow.api.preview_investor_payout`,

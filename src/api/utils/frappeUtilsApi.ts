@@ -90,6 +90,82 @@ export async function searchLedgerAccounts(search = "", limit = 20): Promise<Acc
   return response.data.data ?? [];
 }
 
+/** Names of the accounts matching the filters (Frappe Account list). */
+async function accountNames(filters: (string | number | string[])[][]): Promise<string[]> {
+  const response: AxiosResponse<{ data: { name: string }[] }> = await api.get(API.frappeUtilsAPI.getaccounts, {
+    params: {
+      fields: JSON.stringify(["name"]),
+      filters: JSON.stringify(filters),
+      limit_page_length: 0,
+      order_by: "name asc",
+    },
+  });
+  return (response.data.data ?? []).map((a) => a.name);
+}
+
+/** The company an account belongs to. */
+export async function getAccountCompany(account: string): Promise<string | null> {
+  const response: AxiosResponse<{ data: { company: string }[] }> = await api.get(API.frappeUtilsAPI.getaccounts, {
+    params: {
+      fields: JSON.stringify(["company"]),
+      filters: JSON.stringify([["name", "=", account]]),
+      limit_page_length: 1,
+    },
+  });
+  return response.data.data?.[0]?.company ?? null;
+}
+
+/**
+ * Ledger accounts of the given Account Types inside a group path of the Chart of Accounts.
+ *   groupPath    - group names from the top down, each one inside the previous, e.g. ["Current Assets", "Bank Accounts"]
+ *   accountTypes - Account Types of the ledgers to list, e.g. ["Bank"] (empty = any type)
+ *   company      - limit to one company (optional)
+ */
+export async function fetchAccountsUnderGroups({
+  groupPath,
+  accountTypes = [],
+  company,
+}: {
+  groupPath: string[];
+  accountTypes?: string[];
+  company?: string | null;
+}): Promise<AccountOption[]> {
+  const companyFilter = company ? [["company", "=", company]] : [];
+  // Resolve each group of the path inside the groups found at the previous level.
+  let parents: string[] | null = null;
+  for (const groupName of groupPath) {
+    const base = [["is_group", "=", 1], ["account_name", "=", groupName], ...companyFilter];
+    const found: string[] = parents
+      ? (await Promise.all(parents.map((p) => accountNames([...base, ["name", "descendants of", p]])))).flat()
+      : await accountNames(base);
+    parents = Array.from(new Set(found));
+    if (!parents.length) return [];
+  }
+  const groups = parents ?? [];
+  const typeFilter = accountTypes.length ? [["account_type", "in", accountTypes]] : [];
+  const lists = await Promise.all(
+    groups.map(async (group) => {
+      const response: AxiosResponse<RawAccountOptionsResponse> = await api.get(API.frappeUtilsAPI.getaccounts, {
+        params: {
+          fields: JSON.stringify(["name", "account_currency", "account_number", "account_name", "account_type"]),
+          filters: JSON.stringify([
+            ["is_group", "=", 0],
+            ["disabled", "=", 0],
+            ["name", "descendants of", group],
+            ...typeFilter,
+            ...companyFilter,
+          ]),
+          limit_page_length: 0,
+          order_by: "name asc",
+        },
+      });
+      return response.data.data ?? [];
+    }),
+  );
+  const byName = new Map(lists.flat().map((a) => [a.name, a]));
+  return Array.from(byName.values());
+}
+
 
 export async function fetchRelationshipManagers(
   query?: string,

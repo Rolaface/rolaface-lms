@@ -330,6 +330,7 @@ const LOCAL_NAV_ITEMS: NavItem[] = [
       { path: "/investor/earnings", label: "Amend Payouts", icon: IconMoneybagPlus, modules: ["Loan"] },
       // Renewal: future scope, hidden for now.
       // { path: "/investor/renewal", label: "Renewal", icon: IconHourglass, modules: ["Loan"] },
+      { path: "/investor/reports", label: "Reports", icon: IconReportAnalytics, modules: ["Loan"] },
       { path: "/investor/settings", label: "Settings", icon: IconSettings, modules: ["Loan"] },
      ],
    },

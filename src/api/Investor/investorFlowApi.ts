@@ -6,6 +6,8 @@ import type {
   PayoutContext,
   PayoutListParams,
   PayoutListResponse,
+  InvestorReport,
+  InvestorReportParams,
   PayoutPayload,
   PayoutPaymentType,
   PayoutPreview,
@@ -664,3 +666,20 @@ export async function cancelInvestorPayout({ id, payout }: { id: string; payout:
   );
   return data.message.data;
 }
+
+/** Investor Report: one row per investment, with totals of every filtered investment. */
+export async function getInvestorReport(params: InvestorReportParams = {}) {
+  const query: Record<string, string | number> = {};
+  if (params.search) query.search = params.search;
+  if (params.status?.length) query.status = JSON.stringify(params.status);
+  if (params.product) query.product = params.product;
+  if (params.start_from) query.start_from = params.start_from;
+  if (params.start_to) query.start_to = params.start_to;
+  if (params.page) query.page = params.page;
+  if (params.page_size !== undefined) query.page_size = params.page_size;
+  const { data } = await apiClient.get<InvestorFlowEnvelope<InvestorReport>>(API.investorFlow.getInvestorReport, {
+    params: query,
+  });
+  return data.message.data;
+}
+

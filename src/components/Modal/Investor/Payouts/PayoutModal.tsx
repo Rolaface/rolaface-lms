@@ -60,6 +60,15 @@ import { openCommonModal } from "../../AlertModal";
 import { InvestorDateInput } from "../InvestorDateInput";
 import { formatInvestorDate } from "../investorDate";
 import { toIso } from "../InvestorModalShared";
+import {
+  fetchAccountsUnderGroups,
+  getAccountCompany,
+} from "../../../../api/utils/frappeUtilsApi";
+
+/* Interest · Paid to dropdown: ledgers of these Account Types under this group path of the Chart of Accounts.
+   Change these to list other accounts. */
+const INTEREST_PAID_TO_GROUP_PATH = ["Current Assets", "Bank Accounts"];
+const INTEREST_PAID_TO_ACCOUNT_TYPES = ["Bank"];
 
 export type PayoutModalMode = "add" | "edit" | "view";
 
@@ -238,6 +247,8 @@ interface FormValues {
   amount: number | "";
   paymentMode: InvestorFlowPaymentMode | null;
   paidFrom: string;
+  /** Interest · Paid to chosen by the user ("" = the Payment Mode GL). */
+  interestPaidFrom: string;
   bankAccount: string | null;
   referenceNumber: string;
   referenceDate: string;
@@ -255,6 +266,11 @@ function initialValues(
       amount: Number(payout.payment_amount) || "",
       paymentMode: payout.payment_mode,
       paidFrom: payout.paid_from,
+      interestPaidFrom:
+        payout.interest_paid_from &&
+        payout.interest_paid_from !== payout.paid_from
+          ? payout.interest_paid_from
+          : "",
       bankAccount: payout.investor_bank_account ?? null,
       referenceNumber: payout.reference_number,
       referenceDate: payout.reference_date,
@@ -268,6 +284,7 @@ function initialValues(
     amount: "",
     paymentMode: null,
     paidFrom: "",
+    interestPaidFrom: "",
     // Investor bank account is no longer chosen on the screen (an existing payout keeps its own).
     bankAccount: null,
     referenceNumber: "",
@@ -332,12 +349,39 @@ function PayoutBody({
   }
 
   // Paid From: the GL Investor Settings map to the chosen Payment Mode (an approved payout keeps its own).
-  const paidFrom =
-    payout && payout.record_status !== "Draft"
-      ? v.paidFrom
-      : v.paymentMode
-        ? (context?.mode_accounts?.[v.paymentMode] ?? "")
-        : "";
+  // Paid From (principal, saved as paid_from): the GL Investor Settings map to the Payment Mode.
+  // Interest · Paid to (saved as interest_paid_from): the account picked, else the same Payment Mode GL.
+  // An approved payout keeps its own.
+  const modeGl = v.paymentMode
+    ? (context?.mode_accounts?.[v.paymentMode] ?? "")
+    : "";
+  const approved = !!payout && payout.record_status !== "Draft";
+  const paidFrom = approved ? v.paidFrom : modeGl;
+  const interestPaidFrom = approved
+    ? payout?.interest_paid_from || v.paidFrom
+    : v.interestPaidFrom || modeGl;
+
+  // Choices for Interest · Paid to (same company as the Payment Mode GL).
+  const companyQuery = useQuery({
+    queryKey: ["accountCompany", modeGl],
+    queryFn: () => getAccountCompany(modeGl),
+    enabled: !!modeGl && !readOnly,
+  });
+  const interestAccountsQuery = useQuery({
+    queryKey: [
+      "accountsUnderGroups",
+      INTEREST_PAID_TO_GROUP_PATH,
+      INTEREST_PAID_TO_ACCOUNT_TYPES,
+      companyQuery.data,
+    ],
+    queryFn: () =>
+      fetchAccountsUnderGroups({
+        groupPath: INTEREST_PAID_TO_GROUP_PATH,
+        accountTypes: INTEREST_PAID_TO_ACCOUNT_TYPES,
+        company: companyQuery.data,
+      }),
+    enabled: !!companyQuery.data && !readOnly,
+  });
 
   /* Payment effect (approved payouts show what they did; otherwise a live preview) */
   const [debouncedAmount] = useDebouncedValue(v.amount, 350);
@@ -398,6 +442,7 @@ function PayoutBody({
     payment_amount: v.paymentType === "Pay Any" ? Number(v.amount) : null,
     payment_mode: v.paymentMode as InvestorFlowPaymentMode,
     paid_from: paidFrom,
+    interest_paid_from: interestPaidFrom || null,
     investor_bank_account: v.bankAccount,
     reference_number: v.referenceNumber.trim(),
     reference_date: v.referenceDate,
@@ -696,6 +741,8 @@ function PayoutBody({
                               update({
                                 paymentMode:
                                   value as InvestorFlowPaymentMode | null,
+                                // Interest goes back to the new Payment Mode's GL.
+                                interestPaidFrom: "",
                               })
                             }
                           />
@@ -750,13 +797,6 @@ function PayoutBody({
                               value: context.gl?.interest_expense_account ?? "",
                               hint: "Interest Expense GL",
                             },
-                            {
-                              label: "Interest · Paid to",
-                              value: paidFrom,
-                              hint: v.paymentMode
-                                ? `${v.paymentMode} GL in Investor Settings`
-                                : "Select the payment mode.",
-                            },
                           ].map((f) => (
                             <TextInput
                               key={f.label}
@@ -774,6 +814,50 @@ function PayoutBody({
                               value={f.value}
                             />
                           ))}
+                          {/* Interest · Paid to: default the Payment Mode GL; can be changed (saved as Paid From). */}
+                          <Select
+                            label="Interest · Paid to"
+                            description={
+                              !v.paymentMode
+                                ? "Select the payment mode."
+                                : interestPaidFrom &&
+                                    interestPaidFrom !== modeGl
+                                  ? "Chosen account for the interest"
+                                  : `${v.paymentMode} GL in Investor Settings (default)`
+                            }
+                            inputWrapperOrder={[
+                              "label",
+                              "input",
+                              "description",
+                              "error",
+                            ]}
+                            size="sm"
+                            radius="md"
+                            searchable
+                            allowDeselect={false}
+                            disabled={!v.paymentMode}
+                            readOnly={readOnly}
+                            data={Array.from(
+                              new Set([
+                                ...(interestPaidFrom ? [interestPaidFrom] : []),
+                                ...(interestAccountsQuery.data ?? []).map(
+                                  (a) => a.name,
+                                ),
+                              ]),
+                            )}
+                            value={interestPaidFrom || null}
+                            onChange={(value) =>
+                              update({
+                                interestPaidFrom:
+                                  !value || value === modeGl ? "" : value,
+                              })
+                            }
+                            rightSection={
+                              interestAccountsQuery.isFetching ? (
+                                <Loader size={14} />
+                              ) : undefined
+                            }
+                          />
                         </SimpleGrid>
 
                         <Textarea

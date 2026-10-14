@@ -861,6 +861,8 @@ export interface PayoutAllocation {
 }
 
 export interface PayoutPayload {
+  /** Account the interest is paid from (default: the Payment Mode GL, i.e. paid_from). */
+  interest_paid_from?: string | null;
   value_date: string;
   payment_type: PayoutPaymentType;
   payment_amount?: number | null;
@@ -969,3 +971,108 @@ export interface PayoutPreview {
   penalty: number;
   allocations: PayoutAllocation[];
 }
+
+/* ------------------------------ Investor Report ------------------------------ */
+
+/** One investment in the Investor Report. */
+export interface InvestorReportRow {
+  investment_id: string;
+  investor_id: string;
+  investor: string;
+  product: string | null;
+  status: InvestorFlowStatus;
+  payment_status: string | null;
+  /** Investment Amount. */
+  investment_amount: number;
+  /** Received from the investor (approved Fund Receipts). */
+  fund_received: number;
+  /** Paid out to the investor (principal + interest + penalty). */
+  amount_paid: number;
+  principal_paid: number;
+  total_interest: number;
+  interest_paid: number;
+  total_penalty: number;
+  penalty_paid: number;
+  /** Principal + interest + penalty of the current schedule. */
+  total_due: number;
+  outstanding: number;
+  emis_total: number;
+  emis_paid: number;
+  /** Paid date of the first approved Fund Receipt. */
+  start_date: string | null;
+  /** Maturity Date. */
+  end_date: string | null;
+}
+
+export type InvestorReportAmountField =
+  | "investment_amount"
+  | "fund_received"
+  | "amount_paid"
+  | "principal_paid"
+  | "total_interest"
+  | "interest_paid"
+  | "total_penalty"
+  | "penalty_paid"
+  | "total_due"
+  | "outstanding";
+
+export interface InvestorReport {
+  rows: InvestorReportRow[];
+  /** Totals of every filtered investment (not only this page). */
+  totals: Record<InvestorReportAmountField, number> & { investments: number; investors: number };
+  status_counts: Record<string, number>;
+  insights: InvestorReportInsights;
+  pagination: { page: number; page_size: number; total: number; total_pages: number };
+}
+
+/** Investor / product with the largest amount invested. */
+export interface InvestorReportTopItem {
+  id: string;
+  name: string;
+  invested: number;
+  paid_out: number;
+  investments: number;
+}
+
+/** Report insights (as of today), over every filtered investment. */
+export interface InvestorReportInsights {
+  /** Paid on the EMIs due up to today / what those EMIs total. */
+  efficiency: { due_to_date: number; paid: number; rate_pct: number };
+  /** Unpaid EMIs whose date has passed. */
+  overdue: {
+    emis: number;
+    investments: number;
+    amount: number;
+    oldest_days: number;
+    top: { investment_id: string; investor: string; amount: number; emis: number; days: number }[];
+  };
+  /** Per month (YYYY-MM): EMIs due vs approved payouts; actual is null for months still to come. */
+  trend: { month: string; scheduled: number; actual: number | null }[];
+  upcoming_maturities: {
+    window_days: number;
+    count: number;
+    outstanding: number;
+    items: {
+      investment_id: string;
+      investor: string;
+      end_date: string;
+      days_left: number;
+      investment_amount: number;
+      outstanding: number;
+    }[];
+  };
+  top_investors: InvestorReportTopItem[];
+  top_products: InvestorReportTopItem[];
+}
+
+export interface InvestorReportParams {
+  search?: string;
+  status?: string[];
+  product?: string | null;
+  start_from?: string;
+  start_to?: string;
+  page?: number;
+  /** 0 = every row (export). */
+  page_size?: number;
+}
+

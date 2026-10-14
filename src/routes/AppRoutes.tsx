@@ -87,6 +87,7 @@ import { Investor } from "../view/Investor/Investor";
 import { InvestmentProduct } from "../view/Investor/Product/InvestmentProduct";
 import { EarningsStatements } from "../view/Investor/EarningsStatements";
 import { InvestorPayouts } from "../view/Investor/Payouts/InvestorPayouts";
+import { InvestorReports } from "../view/Investor/Reports/InvestorReports";
 // Renewal: future scope, hidden for now.
 // import { Renewal } from "../view/Investor/Renewal/Renewal";
 import { InvestorSettings } from "../view/Investor/InvestorSettings";
@@ -540,6 +541,11 @@ const payoutsRoute = createRoute({
   path: "/payouts",
   component: InvestorPayouts,
 });
+const investorReportsRoute = createRoute({
+  getParentRoute: () => investorRoute,
+  path: "/reports",
+  component: InvestorReports,
+});
 const earningRoute = createRoute({
   getParentRoute: () => investorRoute,
   path: "/earnings",
@@ -648,6 +654,7 @@ const routeTree = rootRoute.addChildren([
     recordFundRoute,
     earningRoute,
     payoutsRoute,
+    investorReportsRoute,
     // maturityRoute,
     investorSettingsRoute,
   ]),
