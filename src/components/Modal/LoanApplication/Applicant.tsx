@@ -10,7 +10,7 @@ interface ApplicantProps {
   readOnly?: boolean;
 }
 
-const GENDERS = ["Male", "Female", "Other"];
+ const GENDERS = ["Male", "Female", "Other"];
 const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed", "Separated"];
 
 function Label({
