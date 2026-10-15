@@ -301,8 +301,8 @@ export function InvestorReports() {
           <SummaryCard
             icon={<IconWallet size={18} />}
             color="brand"
-            label="Invested"
-            value={money(totals.investment_amount)}
+            label="Investment"
+            value={money(totals.fund_received)}
             hint={`${totals.investments} investment(s) · ${totals.investors} investor(s)`}
           />
           <SummaryCard
@@ -323,24 +323,24 @@ export function InvestorReports() {
           <SummaryCard
             icon={<IconCoins size={18} />}
             color="info"
-            label="Principal obligation"
-            value={money(totals.total_principal)}
+            label="Principal Outstanding"
+            value={money(totals.total_principal - totals.principal_paid)}
             hint={`${money(totals.principal_paid)} paid`}
             progress={pct(totals.principal_paid, totals.total_principal)}
           />
           <SummaryCard
             icon={<IconPercentage size={18} />}
             color="grape"
-            label="Interest obligation"
-            value={money(totals.total_interest)}
+            label="Interest Outstanding"
+            value={money(totals.total_interest - totals.interest_paid)}
             hint={`${money(totals.interest_paid)} paid`}
             progress={pct(totals.interest_paid, totals.total_interest)}
           />
           <SummaryCard
             icon={<IconAlertTriangle size={18} />}
             color="warning"
-            label="Penalty obligation"
-            value={money(totals.total_penalty)}
+            label="Penalty Outstanding"
+            value={money(totals.total_penalty - totals.penalty_paid)}
             hint={`${money(totals.penalty_paid)} paid`}
             progress={pct(totals.penalty_paid, totals.total_penalty)}
           />
