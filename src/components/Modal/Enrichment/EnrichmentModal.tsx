@@ -42,7 +42,8 @@ import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import { PreScreeningModal } from "../PreScreeningModal/PreScreeningModal";
 import { LeftNav, ContextHeader } from "../PreScreeningModal/PreScreeningShared";
 import type { LoanApplication, StagePayload } from "../../../api/LosConfiguration/LoanApplicationApi";
-import { StageLoading, stagePolicy, useStageApplication } from "../stageData";
+import { StageLoading, productTerms, useStageApplication } from "../stageData";
+import { StageFooter, type StageBusy } from "../StageFooter";
 
 interface EnrichmentModalProps {
   opened: boolean;
@@ -59,7 +60,7 @@ export interface AppraisalResult {
   payload: StagePayload;
 }
 
-const PRODUCT_LIMITS = { amountMin: 5000, rateMin: 18, rateMax: 32, tenureMin: 1, tenureMax: 360 };
+const PRODUCT_LIMITS = { amountMin: 5000, rateMin: 1, rateMax: 100, tenureMin: 1, tenureMax: 360 };
 
 type ChargeBasis = "Amount" | "Percentage";
 type ChargeTreatment = "Add to First Repayment" | "Billed Separately";
@@ -283,18 +284,17 @@ export function EnrichmentWorkspace({
   readOnly?: boolean;
   onChange?: (result: AppraisalResult) => void;
 }) {
-  const policy = stagePolicy(application);
+  const terms = productTerms(application);
   const saved = application.appraisal_data ?? {};
   const income = Number(application.monthly_income) || 0;
   const obligations = Number(application.monthly_obligations) || 0;
-  const maxDTI = Number(application.prescreening_data?.policy?.max_dti) || policy.maxDTI;
+  const maxDTI = terms.maxDTI;
   const eligibleAmount = Number(application.eligible_amount) || 0;
   const [approvedAmount, setApprovedAmount] = useState<number>(
     () =>
       Number(application.approved_amount) ||
       Number(application.prescreening_data?.confirmed_amount) ||
-      eligibleAmount ||
-      Number(application.requested_amount) ||
+      [Number(application.requested_amount), eligibleAmount].filter((amount) => amount > 0).sort((a, b) => a - b)[0] ||
       0,
   );
   const [overrideReason, setOverrideReason] = useState<string>(saved.override_reason ?? "");
@@ -303,7 +303,7 @@ export function EnrichmentWorkspace({
     Number(application.approved_tenure_months) || Number(application.tenure_months) || 0,
   );
   const [frequency, setFrequency] = useState<string>(application.approved_frequency || application.repayment_frequency);
-  const [rate, setRate] = useState<number>(Number(application.interest_rate) || policy.rate);
+  const [rate, setRate] = useState<number>(terms.rate);
   const [interestType, setInterestType] = useState<string>(saved.interest_type ?? "Fixed");
   const [calcMethod, setCalcMethod] = useState<string>(saved.interest_calculation ?? "Reducing balance");
   const [effectiveDate, setEffectiveDate] = useState<string>(
@@ -394,6 +394,8 @@ export function EnrichmentWorkspace({
       },
     });
   }, [valid, approvedAmount, tenure, frequency, rate, interestType, calcMethod, effectiveDate, overrideReason, charges, figures]);
+
+  const overDti = maxDTI > 0 && figures?.projectedDti != null && figures.projectedDti > maxDTI;
 
   const scheduleTotalPages = figures ? Math.ceil(figures.sim.nPeriods / SCHEDULE_PAGE_SIZE) : 0;
   const pagedSchedule = useMemo(
@@ -902,11 +904,11 @@ export function EnrichmentWorkspace({
                 style={{
                   borderRadius: "var(--mantine-radius-md)",
                   background:
-                    figures.projectedDti != null && figures.projectedDti > maxDTI
+                    overDti
                       ? "var(--mantine-color-red-0)"
                       : "var(--mantine-color-slate-0)",
                   border:
-                    figures.projectedDti != null && figures.projectedDti > maxDTI
+                    overDti
                       ? "1px solid var(--mantine-color-red-2)"
                       : "1px solid var(--mantine-color-slate-2)",
                 }}
@@ -928,12 +930,12 @@ export function EnrichmentWorkspace({
                   <Text
                     fz={12}
                     fw={700}
-                    c={figures.projectedDti != null && figures.projectedDti > maxDTI ? "red.7" : "green.7"}
+                    c={overDti ? "red.7" : "green.7"}
                   >
                     {figures.projectedDti == null ? "—" : `${figures.projectedDti.toFixed(1)}%`} / {maxDTI}%
                   </Text>
                 </Group>
-                {figures.projectedDti != null && figures.projectedDti > maxDTI && (
+                {overDti && (
                   <Text fz={10.5} c="red.7" mt={6}>
                     These terms take the customer past the {maxDTI}% DTI policy limit.
                   </Text>
@@ -986,6 +988,7 @@ export function EnrichmentModal({
 }: EnrichmentModalProps) {
   const [section, setSection] = useState<Section>("appraisal");
   const [result, setResult] = useState<AppraisalResult | null>(null);
+  const [busy, setBusy] = useState<StageBusy>(null);
   const stage = useStageApplication(embedded ? null : loanApplicationId);
 
   if (embedded) {
@@ -994,10 +997,12 @@ export function EnrichmentModal({
 
   const { application, values } = stage;
 
-  const handleSubmit = async () => {
+  const persist = async (approve: boolean) => {
     if (!result) return;
-    const payload: StagePayload = { ...result.payload, custom_status: "Approved" };
-    if (await stage.save(payload)) onClose();
+    setBusy(approve ? "approve" : "save");
+    const saved = await stage.save({ ...result.payload, custom_status: approve ? "Approved" : "Pending" });
+    setBusy(null);
+    if (saved) onClose();
   };
 
   return (
@@ -1082,28 +1087,19 @@ export function EnrichmentModal({
               </Box>
             </Box>
             {!readOnly && (
-              <Group
-                justify="space-between"
-                align="center"
-                px="xl"
-                py="md"
-                bg="white"
-                style={{ borderTop: "1px solid var(--mantine-color-gray-2)", flexShrink: 0 }}
-              >
-                <Button variant="transparent" c="dark.8" px={0} fw={600} onClick={onClose}>
-                  Cancel
-                </Button>
-                <Button
-                  color="brand"
-                  radius="md"
-                  onClick={handleSubmit}
-                  disabled={!result?.ready}
-                  loading={stage.saving}
-                  rightSection={<IconArrowRight size={16} />}
-                >
-                  Submit
-                </Button>
-              </Group>
+              <StageFooter
+                ready={!!result?.ready}
+                message={
+                  result?.ready
+                    ? "Terms are complete — approve to send the application on to underwriting."
+                    : "Complete the loan terms (amount, tenure, rate) to approve."
+                }
+                busy={busy}
+                canSave={!!result}
+                onCancel={onClose}
+                onSave={() => persist(false)}
+                onApprove={() => persist(true)}
+              />
             )}
           </>
         )}

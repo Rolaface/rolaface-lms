@@ -136,6 +136,7 @@ export interface LoanApplication extends LoanApplicationPayload, Omit<StagePaylo
   loan_type_name?: string | null;
   loan_sub_type_name?: string | null;
   loan_purpose_name?: string | null;
+  loan?: string | null;
   owner?: string;
   creation?: string;
   modified?: string;
@@ -165,6 +166,7 @@ export interface LoanApplicationListRow {
   requested_amount: number;
   tenure_months: number;
   repayment_frequency?: string;
+  loan?: string | null;
   creation?: string;
   modified?: string;
 }
@@ -197,6 +199,58 @@ export interface ProductAssignment {
   rate_of_interest: number | null;
   maximum_loan_amount: number | null;
   documents: { document_name: string; is_required: number }[] | null;
+}
+
+export interface FinancialLine {
+  source: string;
+  monthly_amount: number;
+}
+
+export interface EvaluationOverrides {
+  credit_score?: number;
+  requested_amount?: number;
+  income?: FinancialLine[];
+  obligations?: FinancialLine[];
+}
+
+export interface EligibilityLimit {
+  key: "income" | "affordability" | "credit" | "collateral" | "product";
+  value: number;
+  [detail: string]: any;
+}
+
+export interface Evaluation {
+  verdict: string;
+  loan_product: string | null;
+  product_name: string | null;
+  requested_amount: number;
+  eligible_amount: number | null;
+  error?: string;
+  prescreening?: {
+    ruleset: string | null;
+    version: string | null;
+    verdict: string;
+    reason: string | null;
+    failed: { label: string; severity: string; actual: unknown; missing: boolean; group: string }[];
+  };
+  eligibility?: {
+    skipped?: boolean;
+    rule?: string | null;
+    version?: string | null;
+    decision?: string;
+    eligible_amount?: number | null;
+    limiting_factor?: string;
+    limits?: EligibilityLimit[];
+    grade?: string | null;
+    recognised_income?: number;
+    obligations?: number;
+    dsr?: number | null;
+    max_dti_ratio?: number;
+    emi_to_income?: number | null;
+    max_emi_ratio?: number;
+    rate_of_interest?: number;
+    reasons?: string[];
+  };
 }
 
 export interface TreeNode {
@@ -240,6 +294,26 @@ export const remove = async (id: string): Promise<any> => {
 
 export const assignProduct = async (payload: Partial<LoanApplicationPayload>): Promise<ProductAssignment> => {
   const response: AxiosResponse<any> = await api.post(LoanApplicationEndpoints.assignLoanProduct, payload);
+  return response.data?.message?.data;
+};
+
+export const evaluate = async (
+  application: string,
+  overrides?: EvaluationOverrides,
+  save = false,
+  approve = false,
+): Promise<Evaluation> => {
+  const response: AxiosResponse<any> = await api.post(LoanApplicationEndpoints.evaluate, {
+    application,
+    overrides,
+    save: save ? 1 : 0,
+    approve: approve ? 1 : 0,
+  });
+  return response.data?.message?.data;
+};
+
+export const createLoan = async (id: string): Promise<LoanApplication> => {
+  const response: AxiosResponse<any> = await api.post(LoanApplicationEndpoints.createLoan, {}, { params: { id } });
   return response.data?.message?.data;
 };
 

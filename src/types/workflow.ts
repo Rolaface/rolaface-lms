@@ -8,6 +8,7 @@ export interface WorkflowAction {
   next_state: string;
   allowed_role: string;
   assignable_role?: string;
+  blocked_reason?: string | null;
 }
 
 export interface WorkflowActionsResponse {

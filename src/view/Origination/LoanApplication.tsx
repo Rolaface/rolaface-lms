@@ -72,9 +72,19 @@ export const STATUS_COLOR: Record<string, string> = {
   Appraisal: "info",
   Underwriting: "grape",
   Offer: "grape",
+  Pending: "info",
+  Pass: "success",
+  Warning: "yellow",
+  Review: "orange",
+  Fail: "danger",
+  "Offer Issued": "grape",
+  Accepted: "success",
+  Amend: "orange",
 };
 
 export const CLOSED_STATUSES = ["Approved", "Rejected", "Cancelled"];
+
+const APPROVABLE_PRESCREENING = ["Pass", "Warning", "Review"];
 
 export const displayStatus = (row: { status: string; workflow_state?: string | null }) => row.workflow_state || row.status;
 
@@ -82,10 +92,14 @@ function WorkflowMenu({
   row,
   onSelect,
   onViewDetails,
+  onCreateLoan,
+  onApprove,
 }: {
   row: LoanApplicationRow;
   onSelect: (action: string, actions: WorkflowAction[]) => void;
   onViewDetails: () => void;
+  onCreateLoan: () => void;
+  onApprove: () => void;
 }) {
   const [opened, setOpened] = useState(false);
   const { data, isFetching } = useQuery({
@@ -95,8 +109,10 @@ function WorkflowMenu({
     staleTime: 0,
   });
   const actions = data?.allowed_actions ?? [];
+  const approved = row.workflow_state === "Approved";
+  const canApprove = row.workflow_state === "Pre-Screening" && APPROVABLE_PRESCREENING.includes(row.custom_status ?? "");
   return (
-    <Menu shadow="md" width={200} position="bottom-end" opened={opened} onChange={setOpened}>
+    <Menu shadow="md" width={240} position="bottom-end" opened={opened} onChange={setOpened}>
       <Menu.Target>
         <ActionIcon size="sm" variant="subtle" color="gray">
           <IconDotsVertical size={14} />
@@ -112,7 +128,30 @@ function WorkflowMenu({
           View details
         </Menu.Item>
         <Menu.Divider />
-        {isFetching && !data ? (
+        {canApprove && (
+          <Menu.Item
+            onClick={() => {
+              setOpened(false);
+              onApprove();
+            }}
+          >
+            Approve
+            <Text fz={10.5} c="slate.5" lh={1.3} mt={2}>
+              Pass pre-screening on your decision
+            </Text>
+          </Menu.Item>
+        )}
+        {approved ? (
+          <Menu.Item
+            disabled={!!row.loan}
+            onClick={() => {
+              setOpened(false);
+              onCreateLoan();
+            }}
+          >
+            {row.loan ? `Loan ${row.loan}` : "Create Loan"}
+          </Menu.Item>
+        ) : isFetching && !data ? (
           <Menu.Item disabled leftSection={<Loader size={12} />}>
             Loading actions…
           </Menu.Item>
@@ -122,12 +161,21 @@ function WorkflowMenu({
           actions.map((wf) => (
             <Menu.Item
               key={wf.action}
+              disabled={!!wf.blocked_reason}
               onClick={() => {
                 setOpened(false);
-                onSelect(wf.action, actions);
+                onSelect(
+                  wf.action,
+                  actions.filter((a) => !a.blocked_reason),
+                );
               }}
             >
               {wf.action}
+              {wf.blocked_reason && (
+                <Text fz={10.5} c="slate.5" lh={1.3} mt={2}>
+                  {wf.blocked_reason}
+                </Text>
+              )}
             </Menu.Item>
           ))
         )}
@@ -271,6 +319,95 @@ export function LoanApplication({ stage = "application" }: { stage?: Origination
     },
   });
 
+  const createLoanMutation = useMutation({
+    mutationFn: LoanApplicationApi.createLoan,
+    onSuccess: (application) => {
+      queryClient.invalidateQueries({ queryKey: ["los-loan-applications"] });
+      openCommonModal({
+        heading: "Loan Created",
+        subtitle: "",
+        body: `Loan ${application.loan} was created from ${application.name}.`,
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
+    },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      });
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => LoanApplicationApi.evaluate(id, undefined, true, true),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["los-loan-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["los-loan-application", id] });
+      queryClient.invalidateQueries({ queryKey: ["los-workflow-actions", id] });
+      openCommonModal({
+        heading: "Pre-screening Approved",
+        subtitle: "",
+        body: `${id} is approved. Use Submit for Appraisal to move it on.`,
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
+    },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      });
+    },
+  });
+
+  const confirmApprove = (row: LoanApplicationRow) => {
+    openCommonModal({
+      heading: "Approve Pre-screening",
+      subtitle: "",
+      body: (
+        <>
+          <Text span fw={600}>
+            {row.name}
+          </Text>{" "}
+          is {row.custom_status}. Approve it on your decision?
+        </>
+      ),
+      color: "green",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        { label: "Approve", color: "green", onClick: () => approveMutation.mutate(row.name) },
+      ],
+    });
+  };
+
+  const confirmCreateLoan = (row: LoanApplicationRow) => {
+    openCommonModal({
+      heading: "Create Loan",
+      subtitle: "",
+      body: (
+        <>
+          Create a loan from{" "}
+          <Text span fw={600}>
+            {row.name}
+          </Text>{" "}
+          for {row.applicant_name}?
+        </>
+      ),
+      color: "green",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        { label: "Create Loan", color: "green", onClick: () => createLoanMutation.mutate(row.name) },
+      ],
+    });
+  };
+
   const resetPage = () => setPagination((p) => ({ ...p, pageIndex: 0 }));
 
   const handleAdd = () => loanApplicationModal.open({ loanApplicationId: null });
@@ -363,16 +500,7 @@ export function LoanApplication({ stage = "application" }: { stage?: Origination
       columnHelper.accessor("status", {
         header: "Status",
         enableSorting: false,
-        cell: (info) => (
-          <Group gap={6} wrap="nowrap">
-            <StatusBadge status={displayStatus(info.row.original)} />
-            {info.row.original.custom_status && info.row.original.custom_status !== displayStatus(info.row.original) && (
-              <Text fz={10.5} c="slate.6" fw={600}>
-                {info.row.original.custom_status}
-              </Text>
-            )}
-          </Group>
-        ),
+        cell: (info) => <StatusBadge status={info.row.original.custom_status || displayStatus(info.row.original)} />,
       }),
       columnHelper.display({
         id: "actions",
@@ -417,6 +545,8 @@ export function LoanApplication({ stage = "application" }: { stage?: Origination
               <WorkflowMenu
                 row={row}
                 onViewDetails={() => handleViewDetails(row.name)}
+                onCreateLoan={() => confirmCreateLoan(row)}
+                onApprove={() => confirmApprove(row)}
                 onSelect={(action, actions) =>
                   openAction({ id: row.name, applicantName: row.applicant_name, actions, preselectedAction: action })
                 }

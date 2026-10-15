@@ -1,14 +1,14 @@
 import { LegalVerification } from "./LegalVerification";
-import { AssetValuation, zmw, STATUS_COLORS, DECISION_LABEL, REJECT_REASONS, requiredDocsVerified, missingRequiredDocs, DecisionButton, SectionLabel } from "./AssetValuation";
+import { AssetValuation, zmw, STATUS_COLORS, requiredDocsVerified, missingRequiredDocs, SectionLabel } from "./AssetValuation";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Modal, Box, Group, Text, Badge, ThemeIcon, UnstyledButton, Stack, SimpleGrid, Paper, TextInput, Select,
+  Modal, Box, Group, Text, Badge, ThemeIcon, UnstyledButton, Stack, Paper,
   Checkbox, Textarea, Button, ActionIcon, Avatar, Divider, Tooltip,
 } from "@mantine/core";
 import {
   IconBell, IconChevronDown, IconChevronLeft, IconChevronRight, IconFileText, IconGauge, IconBuildingBank, IconScale,
   IconShieldCheck, IconCar, IconIdBadge2, IconCheck, IconX, IconPlus, IconInfoCircle,
-  IconAlertTriangle, IconCircleCheck, IconCircleX, IconArrowRight, IconMinus, IconTrash, IconUpload, IconLock,
+  IconAlertTriangle, IconCircleCheck, IconArrowRight, IconMinus, IconTrash, IconUpload, IconLock,
   IconCertificate,
 } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
@@ -18,6 +18,7 @@ import { EnrichmentModal } from "../Enrichment/EnrichmentModal";
 import { DUMMY_ASSET_TYPES, getApplicableChecks, type DummyAssetBase } from "../PreScreeningModal/Dummyloanapplicationdata";
 import type { ApplicationCollateral, LoanApplication, StagePayload } from "../../../api/LosConfiguration/LoanApplicationApi";
 import { StageLoading, uploadStageFile, useStageApplication } from "../stageData";
+import { StageFooter, type StageBusy } from "../StageFooter";
 
 interface UnderwritingModalProps {
   opened: boolean;
@@ -31,7 +32,8 @@ interface UnderwritingModalProps {
 
 export interface UnderwritingResult {
   ready: boolean;
-  buildPayload: (submit: boolean) => Promise<StagePayload>;
+  message: string;
+  buildPayload: (approve: boolean) => Promise<StagePayload>;
 }
 
 export function ReadRow({ label, value, span }: { label: string; value: React.ReactNode; span?: number }) {
@@ -96,8 +98,6 @@ export interface AssetDoc {
 }
 export interface TitleChecklistItem { id: string; label: string; status: string; comment: string }
 export interface LegalCheck { id: string; name: string; status: string; finding: string; why: string; action: string; comment: string }
-export type Decision = "approve" | "conditions" | "refer" | "reject" | null;
-export interface Condition { condition: string; responsible: string; dueBefore: string }
 
 export interface Asset {
   id: string;
@@ -165,20 +165,6 @@ const ASSET_DETAIL_KEYS = [
   "valuer", "valuationDate", "expiryDays", "reason", "docs", "title", "legalVerifier", "titleChecklist", "titleDocs",
   "legalChecks", "legalRemarks", "assetOverallAssessment", "assetRemarks", "assetAssignee", "assetDecisionStatus",
 ] as const;
-
-const DECISION_CAPTION: Record<Exclude<Decision, null>, string> = {
-  approve: "All assets reviewed and cleared", conditions: "Proceed once listed conditions are met",
-  refer: "Send back for more information", reject: "Decline the application",
-};
-const DECISION_COLOR: Record<Exclude<Decision, null>, string> = { approve: "green", conditions: "teal", refer: "orange", reject: "red" };
-const DECISION_ICON: Record<Exclude<Decision, null>, React.FC<any>> = {
-  approve: IconCircleCheck, conditions: IconCheck, refer: IconInfoCircle, reject: IconCircleX,
-};
-
-const DECISION_TO_STATUS: Record<Exclude<Decision, null>, string> = {
-  approve: "Approved", conditions: "Approved with Conditions", refer: "Referred", reject: "Rejected",
-};
-const STATUS_TO_DECISION = Object.fromEntries(Object.entries(DECISION_TO_STATUS).map(([k, v]) => [v, k])) as Record<string, Decision>;
 
 function assetCategory(securityType: string | null | undefined) {
   const name = (securityType || "").toLowerCase();
@@ -359,11 +345,6 @@ function UnderwritingWorkspace({
   const [panel, setPanel] = useState<PanelId>("assetDetails");
 
   const [assignee] = useState<string>(saved.assignee ?? "Internal team");
-  const [decision, setDecision] = useState<Decision>(STATUS_TO_DECISION[application.underwriting_decision ?? ""] ?? null);
-  const [conditions, setConditions] = useState<Condition[]>(saved.conditions ?? []);
-  const [reasonCategory, setReasonCategory] = useState<string>(saved.reason_category ?? "");
-  const [reasonDetail, setReasonDetail] = useState<string>(saved.reason_detail ?? "");
-  const [completed, setCompleted] = useState(false);
   const [globalNotes, setGlobalNotes] = useState<string>(saved.notes ?? "");
 
   useEffect(() => {
@@ -401,31 +382,29 @@ function UnderwritingWorkspace({
     return { ready: blockers.length === 0, blockers };
   }, [assets]);
 
-  const decisionReady =
-    (decision === "approve" && readiness.ready) ||
-    (decision === "conditions" && conditions.length > 0 && conditions.every((c) => c.condition.trim())) ||
-    ((decision === "refer" || decision === "reject") && !!reasonCategory);
-
-  const assetsComplete = assets.every((a) => a.securityType && Number(a.estimatedValue) > 0);
+  const incompleteAsset = assets.findIndex((a) => !a.securityType || !(Number(a.estimatedValue) > 0));
+  const blockers = [
+    ...(incompleteAsset >= 0 ? [`Asset ${incompleteAsset + 1}: security type and estimated value are required.`] : []),
+    ...readiness.blockers,
+  ];
 
   useEffect(() => {
     onChange?.({
-      ready: decisionReady && assetsComplete,
-      buildPayload: async (submit) => ({
-        custom_status: submit && decision ? DECISION_TO_STATUS[decision] : "Pending",
-        underwriting_decision: decision ? DECISION_TO_STATUS[decision] : null,
+      ready: blockers.length === 0,
+      message: blockers.length
+        ? blockers[0]
+        : assets.length
+          ? "All assets valued and legally cleared — ready to approve."
+          : "No collateral to review — ready to approve.",
+      buildPayload: async (approve) => ({
+        custom_status: approve ? "Approved" : "Pending",
+        underwriting_decision: approve ? "Approved" : null,
         final_amount: finalAmount || null,
-        underwriting_data: {
-          notes: globalNotes,
-          assignee,
-          conditions: decision === "conditions" ? conditions : [],
-          reason_category: decision === "refer" || decision === "reject" ? reasonCategory || null : null,
-          reason_detail: decision === "refer" || decision === "reject" ? reasonDetail || null : null,
-        },
+        underwriting_data: { notes: globalNotes, assignee },
         collaterals: await Promise.all(assets.map(collateralFromAsset)),
       }),
     });
-  }, [assets, decision, conditions, reasonCategory, reasonDetail, globalNotes, assignee, decisionReady, assetsComplete]);
+  }, [assets, globalNotes, assignee, readiness]);
 
   const panelItems = useMemo(() => {
     if (tab === "asset") {
@@ -441,20 +420,6 @@ function UnderwritingWorkspace({
     ];
   }, [tab]);
   const steps = useMemo(() => panelItems.map((p) => p.id), [panelItems]);
-
-  // ------------------------------------------------------------- completed
-  if (completed) {
-    return (
-      <Box p="xl">
-        <Paper withBorder className="ps-surface" radius="lg" p="xl" ta="center">
-          <ThemeIcon size={48} radius="xl" color="green" variant="light" mb={12}><IconCircleCheck size={26} /></ThemeIcon>
-          <Text fz={18} fw={700}>Underwriting complete</Text>
-          <Text fz={13} c="dimmed" mb={16}>{decision ? DECISION_LABEL[decision] : ""} · {assets.length} asset(s) reviewed. Use Submit below to send it on.</Text>
-          <Button variant="default" radius="xl" onClick={() => setCompleted(false)}>Reopen</Button>
-        </Paper>
-      </Box>
-    );
-  }
 
   // ------------------------------------------------------------ asset flow
   if (selected) {
@@ -597,71 +562,19 @@ function UnderwritingWorkspace({
         </Paper>
       )}
 
-      <Box component="fieldset" disabled={readOnly} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
-      <Paper withBorder radius="lg" p="md" bg="white">
-        <SectionLabel>Underwriting decision</SectionLabel>
-        <SimpleGrid cols={{ base: 1, md: 4 }} spacing={10} mt={8}>
-          {(["approve", "conditions", "refer", "reject"] as const).map((d) => (
-            <Box key={d} style={{ borderRadius: "var(--mantine-radius-md)", outline: decision === d ? "2px solid var(--mantine-color-brand-5)" : "none" }}>
-              <DecisionButton
-                label={DECISION_LABEL[d]}
-                caption={DECISION_CAPTION[d]}
-                color={DECISION_COLOR[d]}
-                icon={DECISION_ICON[d]}
-                onClick={() => setDecision(d)}
-              />
-            </Box>
-          ))}
-        </SimpleGrid>
-
-        {decision === "approve" && !readiness.ready && (
-          <Stack gap={4} mt={10}>
-            {readiness.blockers.map((b) => (
+      {!readOnly && blockers.length > 0 && (
+        <Paper withBorder radius="lg" p="md" bg="white">
+          <SectionLabel>Before approval</SectionLabel>
+          <Stack gap={4} mt={8}>
+            {blockers.map((b) => (
               <Group key={b} gap={6} wrap="nowrap">
                 <IconAlertTriangle size={13} color="var(--mantine-color-orange-6)" />
                 <Text fz={12} c="orange.8">{b}</Text>
               </Group>
             ))}
           </Stack>
-        )}
-
-        {decision === "conditions" && (
-          <Stack gap={8} mt={12}>
-            {conditions.map((c, i) => (
-              <Group key={i} gap={8} wrap="nowrap" align="flex-end">
-                <TextInput
-                  size="xs" radius="md" label={i === 0 ? "Condition" : undefined} style={{ flex: 1 }}
-                  value={c.condition} error={c.condition.trim() ? undefined : "Required"}
-                  onChange={(e) => setConditions(conditions.map((x, idx) => (idx === i ? { ...x, condition: e.currentTarget.value } : x)))}
-                />
-                <Select
-                  size="xs" radius="md" label={i === 0 ? "Responsible" : undefined} w={140} data={["Customer", "Bank"]} allowDeselect={false}
-                  value={c.responsible} onChange={(v) => setConditions(conditions.map((x, idx) => (idx === i ? { ...x, responsible: v ?? "Customer" } : x)))}
-                />
-                <Select
-                  size="xs" radius="md" label={i === 0 ? "Due before" : undefined} w={160} data={["Offer signing", "Disbursement", "First repayment"]} allowDeselect={false}
-                  value={c.dueBefore} onChange={(v) => setConditions(conditions.map((x, idx) => (idx === i ? { ...x, dueBefore: v ?? "Disbursement" } : x)))}
-                />
-                <ActionIcon variant="subtle" color="red" size="md" onClick={() => setConditions(conditions.filter((_, idx) => idx !== i))}><IconX size={15} /></ActionIcon>
-              </Group>
-            ))}
-            <Button variant="subtle" size="compact-sm" radius="xl" leftSection={<IconPlus size={13} />} w="fit-content"
-              onClick={() => setConditions([...conditions, { condition: "", responsible: "Customer", dueBefore: "Disbursement" }])}>
-              Add condition
-            </Button>
-          </Stack>
-        )}
-
-        {(decision === "refer" || decision === "reject") && (
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing={10} mt={12}>
-            <Select size="xs" radius="md" label="Reason" data={REJECT_REASONS} value={reasonCategory || null}
-              onChange={(v) => setReasonCategory(v ?? "")} error={reasonCategory ? undefined : "Required"} />
-            <Textarea size="xs" radius="md" label="Details" autosize minRows={1} value={reasonDetail}
-              onChange={(e) => setReasonDetail(e.currentTarget.value)} />
-          </SimpleGrid>
-        )}
-      </Paper>
-      </Box>
+        </Paper>
+      )}
     </Box>
   );
 }
@@ -674,7 +587,7 @@ export function UnderwritingModal({ opened, onClose, loanApplicationId, applicat
   const [section, setSection] = useState<Section>("underwriting");
   const [internalTab, setInternalTab] = useState<TabId>("asset"); const tab = externalTab || internalTab; const setTab = setExternalTab || setInternalTab;
   const [result, setResult] = useState<UnderwritingResult | null>(null);
-  const [preparing, setPreparing] = useState(false);
+  const [busy, setBusy] = useState<StageBusy>(null);
   const stage = useStageApplication(embedded ? null : loanApplicationId);
 
   if (embedded) {
@@ -687,13 +600,13 @@ export function UnderwritingModal({ opened, onClose, loanApplicationId, applicat
   const { application, values } = stage;
   const noop = () => {};
 
-  const handleSubmit = async () => {
+  const persist = async (approve: boolean) => {
     if (!result) return;
-    setPreparing(true);
+    setBusy(approve ? "approve" : "save");
     try {
-      if (await stage.save(await result.buildPayload(true))) onClose();
+      if (await stage.save(await result.buildPayload(approve))) onClose();
     } finally {
-      setPreparing(false);
+      setBusy(null);
     }
   };
 
@@ -766,10 +679,15 @@ export function UnderwritingModal({ opened, onClose, loanApplicationId, applicat
               </Box>
             </Box>
             {!readOnly && (
-              <Group justify="space-between" px="xl" py="md" bg="white" style={{ borderTop: "1px solid var(--mantine-color-gray-2)", flexShrink: 0 }}>
-                <Button variant="default" radius="md" onClick={onClose}>Cancel</Button>
-                <Button radius="md" onClick={handleSubmit} disabled={!result?.ready} loading={stage.saving || preparing} rightSection={<IconArrowRight size={16} />}>Submit</Button>
-              </Group>
+              <StageFooter
+                ready={!!result?.ready}
+                message={result?.message ?? "Review each asset to continue."}
+                busy={busy}
+                canSave={!!result}
+                onCancel={onClose}
+                onSave={() => persist(false)}
+                onApprove={() => persist(true)}
+              />
             )}
           </>
         )}

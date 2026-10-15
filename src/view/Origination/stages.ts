@@ -41,9 +41,9 @@ export const ORIGINATION_STAGES: Record<OriginationStageKey, OriginationStage> =
     openModal: (loanApplicationId, readOnly) => underwritingModal.open({ loanApplicationId, readOnly }),
   },
   offer: {
-    workflowState: "Offer",
+    workflowState: "Offer,Approved",
     title: "Offer Issuance",
-    subtitle: "Applications at offer issuance",
+    subtitle: "Applications at offer issuance, and approved applications ready to become loans",
     openModal: (loanApplicationId, readOnly) => offerModal.open({ loanApplicationId, readOnly }),
   },
 };

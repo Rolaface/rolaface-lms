@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Badge, Button, Paper, Tabs, Text } from '@mantine/core';
+import { Badge, Button, Paper, Tabs, Text, Tooltip } from '@mantine/core';
 import { IconPencil } from '@tabler/icons-react';
 
 import type { LoanApplicationRow } from './LoanApplication';
@@ -149,23 +149,26 @@ export function LoanApplicationDetailView({ application, onBack, onEdit }: LoanA
                       </Button>
                     )}
                     {allowedActions.map((wf) => (
-                      <Button
-                        key={wf.action}
-                        size="xs"
-                        radius="md"
-                        variant="light"
-                        color="violet"
-                        onClick={() =>
-                          openAction({
-                            id: application.name,
-                            applicantName: detail.displayName,
-                            actions: allowedActions,
-                            preselectedAction: wf.action,
-                          })
-                        }
-                      >
-                        {wf.action}
-                      </Button>
+                      <Tooltip key={wf.action} label={wf.blocked_reason} disabled={!wf.blocked_reason} withArrow multiline w={240}>
+                        <Button
+                          size="xs"
+                          radius="md"
+                          variant="light"
+                          color="violet"
+                          data-disabled={wf.blocked_reason ? true : undefined}
+                          onClick={() =>
+                            !wf.blocked_reason &&
+                            openAction({
+                              id: application.name,
+                              applicantName: detail.displayName,
+                              actions: allowedActions.filter((a) => !a.blocked_reason),
+                              preselectedAction: wf.action,
+                            })
+                          }
+                        >
+                          {wf.action}
+                        </Button>
+                      </Tooltip>
                     ))}
                   </div>
                 </div>
@@ -174,7 +177,7 @@ export function LoanApplicationDetailView({ application, onBack, onEdit }: LoanA
                   <OverviewField label="LOAN TYPE" value={detail.loanTerms.loanType} />
                   <OverviewField label="AMOUNT REQUESTED" value={formatCurrency(detail.loanTerms.amountRequested)} />
                   <OverviewField label="TENURE REQUESTED" value={`${detail.loanTerms.tenureMonths} months`} />
-                  <OverviewField label="APPLICATION STATUS" value={status} />
+                  <OverviewField label="APPLICATION STATUS" value={(apiData ?? application).custom_status || status} />
                   <OverviewField label="APPLICATION DATE" value={formatDate(application.application_date)} />
                 </div>
 

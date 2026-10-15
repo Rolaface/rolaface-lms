@@ -36,8 +36,18 @@ import {
   IconBuildingBank,
   IconGauge as IconGaugeTab,
 } from "@tabler/icons-react";
-import type { LoanApplication, StagePayload } from "../../../api/LosConfiguration/LoanApplicationApi";
-import { stagePolicy, sumAmounts } from "../stageData";
+import { useDebouncedValue } from "@mantine/hooks";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import * as LoanApplicationApi from "../../../api/LosConfiguration/LoanApplicationApi";
+import type {
+  Evaluation,
+  EvaluationOverrides,
+  FinancialLine,
+  LoanApplication,
+  StagePayload,
+} from "../../../api/LosConfiguration/LoanApplicationApi";
+import { INCOME_SOURCES, OBLIGATION_SOURCES } from "../LoanApplication/form";
+import { sumAmounts } from "../stageData";
 
 import type {
   PreScreeningModalProps,
@@ -47,7 +57,6 @@ import type {
 } from './PreScreeningShared';
 import {
   zmw,
-  calcEligibility,
   calcRiskScore,
   type RiskScoreResult,
   SourceBadge,
@@ -518,6 +527,7 @@ function PrescreeningOverview({
                       })
                     }
                     placeholder="e.g. 12000"
+                    readOnly={readOnly}
                     styles={{ input: { fontSize: 15, fontWeight: 700, height: 32 } }}
                   />
                 ) : income.source === "none" && additionalIncomeTotal === 0 ? (
@@ -1055,6 +1065,8 @@ function TopTabs({ tab, setTab }: { tab: TopTab; setTab: (t: TopTab) => void }) 
 
 export interface PrescreeningResult {
   ready: boolean;
+  message: string | null;
+  overrides: EvaluationOverrides;
   payload: StagePayload;
 }
 
@@ -1107,10 +1119,26 @@ function initialState(application: LoanApplication): PrescreeningState {
   };
 }
 
-function stageStatus(calc: EligibilityCalc | null, requested: number) {
-  if (!calc) return "Pending";
-  if (!calc.mandatoryPassed) return "Fail";
-  return calc.eligibleAmount >= requested ? "Pass" : "Review";
+const [NET_SALARY, BUSINESS_INCOME] = INCOME_SOURCES;
+const [MONTHLY_OBLIGATION] = OBLIGATION_SOURCES;
+const ELIGIBLE_VERDICTS = ["Eligible", "Eligible with Warnings"];
+
+function engineLines(
+  value: number | null,
+  items: FinancialLine[] | undefined,
+  source: string,
+  extra: FinancialLine[],
+): FinancialLine[] {
+  const unchanged = !!items?.length && value === sumAmounts(items);
+  const base = value == null ? [] : unchanged ? items!.map((i) => ({ source: i.source, monthly_amount: Number(i.monthly_amount) || 0 })) : [{ source, monthly_amount: value }];
+  return [...base, ...extra.filter((line) => line.monthly_amount > 0)];
+}
+
+function evaluationReason(evaluation: Evaluation | undefined) {
+  const failed = evaluation?.prescreening?.failed?.[0];
+  if (failed) return `${failed.label}${failed.missing ? " missing" : ` ${failed.actual}`} (${failed.severity})`;
+  const text = evaluation?.eligibility?.reasons?.[0] ?? evaluation?.prescreening?.reason ?? evaluation?.error;
+  return text ? text.replace(/\.$/, "") : null;
 }
 
 export function PrescreeningWorkspace({
@@ -1122,9 +1150,6 @@ export function PrescreeningWorkspace({
   readOnly?: boolean;
   onChange?: (result: PrescreeningResult) => void;
 }) {
-  const policy = stagePolicy(application);
-  const rate = policy.rate;
-  const tenure = Number(application.tenure_months) || 0;
 
   const [state, setState] = useState<PrescreeningState>(() => initialState(application));
   const [requested, setRequested] = useState(
@@ -1223,25 +1248,71 @@ export function PrescreeningWorkspace({
       ? null
       : (state.income.value ?? 0) + additionalIncomeTotal;
 
-  const calc = useMemo(() => {
-    return calcEligibility({
-      income: totalIncome,
-      obligations: totalObligations,
-      maxDTI: policy.maxDTI,
-      annualRate: rate,
-      tenureMonths: tenure,
-      productMax: policy.productMax,
-      creditScore,
-      minCreditScore: policy.minCreditScore,
-    });
-  }, [
-    creditScore,
-    totalObligations,
-    totalIncome,
-    policy,
-    rate,
-    tenure,
-  ]);
+  const overrides = useMemo<EvaluationOverrides>(() => {
+    const financials = application.financials;
+    return {
+      credit_score: creditScore ?? undefined,
+      requested_amount: requested > 0 ? requested : undefined,
+      income:
+        totalIncome == null
+          ? undefined
+          : engineLines(
+              state.income.value,
+              financials?.income as FinancialLine[] | undefined,
+              application.applicant_type === "Business" ? BUSINESS_INCOME : NET_SALARY,
+              state.income.additionalIncome.map((r) => ({ source: r.type, monthly_amount: r.amount || 0 })),
+            ),
+      obligations:
+        totalObligations == null
+          ? undefined
+          : engineLines(
+              state.liabilities.obligations,
+              financials?.obligations as FinancialLine[] | undefined,
+              MONTHLY_OBLIGATION,
+              state.liabilities.additionalRecords.map((r) => ({ source: r.facilityType, monthly_amount: r.monthlyPayment || 0 })),
+            ),
+    };
+  }, [application, creditScore, requested, totalIncome, totalObligations, state.income, state.liabilities]);
+
+  const storedEvaluation = application.prescreening_data?.engine as Evaluation | undefined;
+  const [debouncedOverrides] = useDebouncedValue(overrides, 400);
+  const {
+    data: liveEvaluation,
+    isFetching: evaluating,
+    refetch: reevaluate,
+  } = useQuery({
+    queryKey: ["los-evaluate", application.name, debouncedOverrides],
+    queryFn: () => LoanApplicationApi.evaluate(application.name, debouncedOverrides),
+    enabled: !readOnly || !storedEvaluation,
+    placeholderData: keepPreviousData,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+  const evaluation = readOnly && storedEvaluation ? storedEvaluation : liveEvaluation;
+  const eligibility = evaluation?.eligibility;
+  const limitValue = (key: string) => eligibility?.limits?.find((limit) => limit.key === key)?.value ?? null;
+  const maxDTI = eligibility?.max_dti_ratio || 100;
+  const productMax = limitValue("product") ?? 0;
+  const rate = eligibility?.rate_of_interest ?? 0;
+  const verdict = evaluation?.verdict;
+
+  const calc = useMemo<EligibilityCalc | null>(() => {
+    if (!evaluation || creditScore == null || totalIncome == null || totalObligations == null) return null;
+    const affordability = eligibility?.limits?.find((limit) => limit.key === "affordability");
+    const customerDTI = eligibility?.dsr ?? (totalIncome > 0 ? (totalObligations / totalIncome) * 100 : 100);
+    return {
+      customerDTI,
+      creditPassed: !evaluation.prescreening?.failed?.some((f) => f.label === "Credit Score" && f.severity === "Blocking"),
+      dtiPassed: customerDTI <= maxDTI,
+      maxAffordableMonthly: (eligibility?.recognised_income ?? 0) * ((eligibility?.max_emi_ratio ?? 0) / 100),
+      capacity: affordability?.max_emi ?? 0,
+      affordabilityAmount: affordability?.value ?? 0,
+      eligibleAmount: evaluation.eligible_amount ?? 0,
+      productMax,
+      mandatoryPassed: evaluation.verdict !== "Not Eligible",
+    };
+  }, [evaluation, eligibility, creditScore, totalIncome, totalObligations, maxDTI, productMax]);
 
   const prevCalc = useRef(calc);
   const [flash, setFlash] = useState(false);
@@ -1261,32 +1332,55 @@ export function PrescreeningWorkspace({
     }
     setConfirm(false);
   }
-  const isEligible = !!calc && calc.mandatoryPassed && calc.eligibleAmount >= requested;
+  const status = !calc
+    ? "Pending"
+    : verdict === "Not Eligible"
+      ? "Fail"
+      : ELIGIBLE_VERDICTS.includes(verdict ?? "") && calc.eligibleAmount >= requested
+        ? verdict === "Eligible with Warnings" ? "Warning" : "Pass"
+        : "Review";
+  const settled = !evaluating && debouncedOverrides === overrides;
+  const isEligible =
+    !!calc && settled && verdict !== "Not Eligible" && (verdict === "Manual Review" || calc.eligibleAmount >= requested);
+  const reason = evaluationReason(evaluation);
+  const message = !evaluation
+    ? null
+    : verdict === "Not Eligible"
+      ? `Not eligible — ${reason ?? "see the checks above"}.`
+      : verdict === "Manual Review"
+        ? `Manual review — ${reason ?? "the officer decides"}.`
+        : verdict === "Eligible with Warnings"
+          ? `Warning — ${reason ?? "see the checks above"}.`
+          : null;
 
   useEffect(() => {
     if (!onChange) return;
     const strip = <T extends { status: string }>(value: T) => ({ ...value, status: "idle" as const });
     onChange({
       ready: isEligible,
+      message,
+      overrides,
       payload: {
-        custom_status: stageStatus(calc, requested),
+        custom_status: status,
         monthly_income: totalIncome,
         monthly_obligations: totalObligations,
-        eligible_amount: calc ? Math.round(calc.eligibleAmount) : null,
+        eligible_amount: evaluation?.eligible_amount ?? null,
         prescreening_data: {
           credit: strip(state.credit),
           liabilities: strip(state.liabilities),
           income: strip(state.income),
           confirmed_amount: requested,
-          result: stageStatus(calc, requested),
-          policy: { min_credit_score: policy.minCreditScore, max_dti: policy.maxDTI, product_max: policy.productMax, rate },
+          result: status,
+          verdict: verdict ?? null,
+          policy: { max_dti: eligibility?.max_dti_ratio ?? null, product_max: productMax || null, rate },
           dti: calc ? Math.round(calc.customerDTI * 10) / 10 : null,
           risk_score: riskScore?.score ?? null,
           risk_band: riskScore?.band ?? null,
+          engine: storedEvaluation ?? null,
         },
       },
     });
-  }, [state, requested, calc, riskScore, totalIncome, totalObligations, isEligible]);
+  }, [state, requested, calc, riskScore, totalIncome, totalObligations, isEligible, message, overrides, evaluation]);
 
   if (continued) {
     return (
@@ -1368,8 +1462,8 @@ export function PrescreeningWorkspace({
               readOnly={readOnly}
               calc={calc}
               requested={requested}
-              maxDTI={policy.maxDTI}
-              productMax={policy.productMax}
+              maxDTI={maxDTI}
+              productMax={productMax}
               riskScore={riskScore}
               creditLoading={state.credit.status === "loading"}
             />
@@ -1388,7 +1482,7 @@ export function PrescreeningWorkspace({
               </Badge>
             )}
 
-            {!calc && (
+            {!calc && missing.length > 0 && (
               <Paper
                 withBorder
                 radius="lg"
@@ -1430,21 +1524,11 @@ export function PrescreeningWorkspace({
           </Box>
         ) : (
           <LimitAssessment
-            state={state}
-            calc={calc}
             requested={requested}
-            income={totalIncome}
-            obligations={totalObligations}
-            maxDTI={policy.maxDTI}
-            minCreditScore={policy.minCreditScore}
-            productMax={policy.productMax}
-            rate={rate}
-            tenure={tenure}
-            onRefreshAll={() => {
-              dispatch({ type: "fetchCredit" });
-              dispatch({ type: "fetchLiabilities" });
-              dispatch({ type: "fetchIncome" });
-            }}
+            limits={eligibility?.limits}
+            productCode={evaluation?.loan_product ?? null}
+            ruleLabel={eligibility?.rule ? `${eligibility.rule} v${eligibility.version}` : null}
+            onRecalculate={readOnly ? undefined : () => reevaluate()}
           />
         )}
       </Box>

@@ -6,22 +6,14 @@ import type { LoanApplication, StagePayload } from "../../api/LosConfiguration/L
 import { uploadFile } from "../../api/loanApi";
 import { openCommonModal } from "./AlertModal";
 import { parseFrappeError } from "../../utils/parseFrappeError";
-import { SIMULATION_RANGE, valuesFromApplication } from "./LoanApplication/form";
+import { valuesFromApplication } from "./LoanApplication/form";
 
-const POLICIES = {
-  personal: { minCreditScore: 650, maxDTI: 50, productMax: 100000 },
-  business: { minCreditScore: 620, maxDTI: 55, productMax: 500000 },
-  mortgage: { minCreditScore: 680, maxDTI: 45, productMax: 2000000 },
-};
-
-export function stagePolicy(application: LoanApplication) {
-  const key =
-    application.applicant_type === "Business"
-      ? "business"
-      : application.loan_type_name === "Home Loan"
-        ? "mortgage"
-        : "personal";
-  return { ...POLICIES[key], rate: SIMULATION_RANGE[application.applicant_type].rate };
+export function productTerms(application: LoanApplication) {
+  const eligibility = (application.prescreening_data?.engine?.eligibility ?? {}) as Record<string, any>;
+  return {
+    rate: Number(application.interest_rate) || Number(eligibility.rate_of_interest) || 0,
+    maxDTI: Number(eligibility.max_emi_ratio) || Number(eligibility.max_dti_ratio) || Number(application.prescreening_data?.policy?.max_dti) || 0,
+  };
 }
 
 export const sumAmounts = (items?: { monthly_amount: number }[] | null) =>

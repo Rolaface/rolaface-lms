@@ -11,10 +11,7 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 
-import type {
-  EligibilityCalc,
-  PrescreeningState,
-} from "./PreScreeningShared";
+import type { EligibilityLimit } from "../../../api/LosConfiguration/LoanApplicationApi";
 import { zmw, NUMERIC } from "./PreScreeningShared";
 
 // ---------------------------------------------------------------------------
@@ -109,73 +106,61 @@ function ConstraintBar({
 // ---------------------------------------------------------------------------
 
 export function LimitAssessment({
-  state,
-  calc,
   requested,
-  income,
-  obligations,
-  maxDTI,
-  productMax,
-  tenure,
-  applicationId = "APP-58231",
+  limits: engineLimits,
+  productCode,
+  ruleLabel,
   onRecalculate,
 }: {
-  state: PrescreeningState;
-  calc: EligibilityCalc | null;
   requested: number;
-  income: number | null;
-  obligations: number | null;
-  maxDTI: number;
-  minCreditScore: number;
-  productMax: number;
-  rate: number;
-  tenure: number;
-  applicationId?: string;
-  customerName?: string;
-  onRefreshAll?: () => void;
+  limits?: EligibilityLimit[];
+  productCode: string | null;
+  ruleLabel: string | null;
   onRecalculate?: () => void;
 }) {
-  const creditScore = state.credit.value;
-  const eligibleAmount = calc?.eligibleAmount ?? 0;
-  const affordabilityAmount = calc?.affordabilityAmount ?? eligibleAmount;
-
-  // Derived limits for the constraint model — computed defensively from the
-  // same inputs already available on the page, so this stays in sync with
-  // the eligibility calc without needing new shared logic.
-  const incomeLimit = income != null ? income * 6 : null;
-  const affordabilityLimit = affordabilityAmount;
-  const creditLimit = income != null && creditScore != null ? income * 5 : null;
+  const find = (key: EligibilityLimit["key"]) => engineLimits?.find((limit) => limit.key === key);
+  const income = find("income");
+  const affordability = find("affordability");
+  const credit = find("credit");
+  const collateral = find("collateral");
+  const product = find("product");
 
   const limits = [
     {
       key: "income",
       label: "Income limit",
-      sublabel: income != null ? `${zmw(income)} × 6 (income multiple)` : "Awaiting income data",
-      value: incomeLimit,
+      sublabel: income ? `${zmw(income.recognised_income)} × ${income.multiple} (income multiple)` : "Awaiting income data",
+      value: income?.value ?? null,
     },
     {
       key: "affordability",
       label: "Affordability limit",
-      sublabel: `(${zmw(income)} × ${maxDTI}% − ${zmw(obligations)}) × ${tenure || "—"}mo`,
-      value: affordabilityLimit,
+      sublabel: affordability
+        ? `(${zmw(affordability.recognised_income)} × ${affordability.max_emi_ratio}% − ${zmw(affordability.obligations)}) × ${affordability.tenure_months}mo × ${affordability.buffer}%`
+        : "Awaiting income data",
+      value: affordability?.value ?? null,
     },
     {
       key: "credit",
       label: "Credit score limit",
-      sublabel: creditScore != null ? `${zmw(income)} × 5 (score ${creditScore})` : "Awaiting bureau data",
-      value: creditLimit,
+      sublabel: credit
+        ? `${zmw(credit.basis_income)} × ${credit.multiple} (${credit.basis}${credit.grade ? `, grade ${credit.grade}` : ""})`
+        : "Awaiting bureau data",
+      value: credit?.value ?? null,
     },
     {
       key: "collateral",
       label: "Collateral limit",
-      sublabel: "Unsecured product — not applicable",
-      value: null,
+      sublabel: collateral
+        ? `${collateral.assets.length} asset${collateral.assets.length === 1 ? "" : "s"} after haircut and LTV`
+        : "Unsecured product — not applicable",
+      value: collateral?.value ?? null,
     },
     {
       key: "product",
       label: "Product limit",
       sublabel: "Product maximum",
-      value: productMax,
+      value: product?.value ?? null,
     },
   ];
 
@@ -205,9 +190,9 @@ export function LimitAssessment({
             <Text fz={16} fw={800} c="slate.9" style={{ letterSpacing: "-0.01em" }}>
               Loan eligibility &amp; limit assessment
             </Text>
-            {applicationId && (
+            {productCode && (
               <Badge size="sm" radius="xl" color="slate" variant="light">
-                PL-SAL-36
+                {productCode}
               </Badge>
             )}
           </Group>
@@ -263,9 +248,11 @@ export function LimitAssessment({
           <Text fz={13.5} fw={700} c="slate.9">
             Eligibility calculation
           </Text>
-          <Badge size="xs" radius="xl" color="brand" variant="light" style={NUMERIC}>
-            Rule model v2.4
-          </Badge>
+          {ruleLabel && (
+            <Badge size="xs" radius="xl" color="brand" variant="light" style={NUMERIC}>
+              {ruleLabel}
+            </Badge>
+          )}
         </Group>
 
         <Stack

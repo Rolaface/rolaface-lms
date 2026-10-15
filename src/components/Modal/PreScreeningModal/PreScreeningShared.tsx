@@ -227,51 +227,6 @@ export interface EligibilityCalc {
   mandatoryPassed: boolean;
 }
 
-export function calcEligibility({
-  income,
-  obligations,
-  maxDTI,
-  annualRate,
-  tenureMonths,
-  productMax,
-  creditScore,
-  minCreditScore,
-}: {
-  income: number | null;
-  obligations: number | null;
-  maxDTI: number;
-  annualRate: number;
-  tenureMonths: number;
-  productMax: number;
-  creditScore: number | null;
-  minCreditScore: number;
-}): EligibilityCalc | null {
-  if (income == null || obligations == null || creditScore == null) return null;
-  const customerDTI = income > 0 ? (obligations / income) * 100 : 100;
-  const creditPassed = creditScore >= minCreditScore;
-  const dtiPassed = customerDTI <= maxDTI;
-  const maxAffordableMonthly = income * (maxDTI / 100);
-  const capacity = Math.max(0, maxAffordableMonthly - obligations);
-  const r = annualRate / 100 / 12;
-  const affordabilityAmount =
-    r > 0
-      ? capacity * ((1 - Math.pow(1 + r, -tenureMonths)) / r)
-      : capacity * tenureMonths;
-  const eligibleAmount =
-    creditPassed && dtiPassed ? Math.min(affordabilityAmount, productMax) : 0;
-  return {
-    customerDTI,
-    creditPassed,
-    dtiPassed,
-    maxAffordableMonthly,
-    capacity,
-    affordabilityAmount,
-    eligibleAmount,
-    productMax,
-    mandatoryPassed: creditPassed && dtiPassed,
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Internal risk score — our own read on default risk, built from the bureau's
 // underlying signals (credit score, delinquencies, enquiries, repayment

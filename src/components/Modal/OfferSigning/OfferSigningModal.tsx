@@ -21,7 +21,8 @@ import {
   Tooltip,
   Accordion,
   Anchor,
-
+  FileButton,
+  Image,
   Pagination,
 } from "@mantine/core";
 import {
@@ -49,7 +50,11 @@ import '../PreScreeningModal/prescreening.css';
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplicationValues } from "../LoanApplication/LoanApplicationModal";
 import type { LoanApplication, StagePayload } from "../../../api/LosConfiguration/LoanApplicationApi";
-import { StageLoading, stagePolicy, useStageApplication } from "../stageData";
+import { StageLoading, productTerms, uploadStageFile, useStageApplication } from "../stageData";
+import { SignaturePad } from "./SignaturePad";
+import { StageFooter, type StageBusy } from "../StageFooter";
+import { openCommonModal } from "../AlertModal";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
 import { PreScreeningModal } from "../PreScreeningModal/PreScreeningModal";
 import { LeftNav } from "../PreScreeningModal/PreScreeningShared";
 import { EnrichmentModal } from "../Enrichment/EnrichmentModal";
@@ -97,8 +102,7 @@ function computeSimulation(amount: number, tenure: number, rate: number, frequen
 type OfferContext = ReturnType<typeof buildOfferContext>;
 
 function buildOfferContext(application: LoanApplication) {
-  const policy = stagePolicy(application);
-  const offerData = (application.offer_data ?? {}) as Record<string, any>;
+  const offerData = (application.custom_status === "Pending" ? {} : application.offer_data ?? {}) as Record<string, any>;
   const appraisal = (application.appraisal_data ?? {}) as Record<string, any>;
   const prescreening = (application.prescreening_data ?? {}) as Record<string, any>;
   const underwriting = (application.underwriting_data ?? {}) as Record<string, any>;
@@ -106,7 +110,7 @@ function buildOfferContext(application: LoanApplication) {
 
   const FINAL_TERMS = {
     amount: Number(application.final_amount) || Number(application.approved_amount) || Number(application.requested_amount) || 0,
-    rate: Number(application.interest_rate) || policy.rate,
+    rate: productTerms(application).rate,
     tenure: Number(application.approved_tenure_months) || Number(application.tenure_months) || 0,
     frequency: application.approved_frequency || application.repayment_frequency || "Monthly",
   };
@@ -299,6 +303,8 @@ const ROUTE_STAGES = ["Loan Appraisal", "Underwriting", "Prescreening"];
 
 function OfferPendingView({
   ctx,
+  issued,
+  onIssue,
   onAccept,
   onReject,
   onAmend,
@@ -307,6 +313,8 @@ function OfferPendingView({
   readOnly,
 }: {
   ctx: OfferContext;
+  issued: boolean;
+  onIssue: () => void;
   onAccept: () => void;
   onReject: () => void;
   onAmend: () => void;
@@ -347,7 +355,7 @@ function OfferPendingView({
              <Badge color="green" variant="light" size="sm" radius="sm" style={{ textTransform: 'none' }}>{ctx.UNDERWRITING_DECISION.decision}</Badge>
            </Group>
          </Group>
-         <Badge color="indigo" variant="light" size="md" radius="sm" style={{ textTransform: 'none' }}>Valid until {fmtDate(VALID_UNTIL)}</Badge>
+         <Badge color="indigo" variant="light" size="md" radius="sm" style={{ textTransform: 'none' }}>{issued ? `Valid until ${fmtDate(VALID_UNTIL)}` : "Not issued yet"}</Badge>
       </Group>
 
       {/* Key Stats Grid */}
@@ -481,15 +489,27 @@ function OfferPendingView({
 
       {/* Action Footer */}
       <Group justify="space-between" align="center" p="sm" bg="slate.0" style={{ borderRadius: "var(--mantine-radius-md)", border: "1px solid var(--mantine-color-slate-2)" }}>
-        <Box>
-           <Text fz={14} fw={700} c="slate.9">Customer response & signing authorization</Text>
-           <Text fz={12} c="slate.5" mt={2}>Select the borrower's response to generate and execute the contract.</Text>
-        </Box>
-        <Group gap="sm">
-          <Button variant="outline" color="red.7" size="sm" onClick={onReject} disabled={readOnly}>Reject offer</Button>
-          <Button variant="default" size="sm" onClick={onAmend} disabled={readOnly}>Request amendment</Button>
-          <Button color="green.8" size="sm" onClick={onAccept} disabled={readOnly}>Accept offer</Button>
-        </Group>
+        {issued ? (
+          <>
+            <Box>
+              <Text fz={14} fw={700} c="slate.9">Customer response & signing authorization</Text>
+              <Text fz={12} c="slate.5" mt={2}>Select the borrower's response to generate and execute the contract.</Text>
+            </Box>
+            <Group gap="sm">
+              <Button variant="outline" color="red.7" size="sm" onClick={onReject} disabled={readOnly}>Reject offer</Button>
+              <Button variant="default" size="sm" onClick={onAmend} disabled={readOnly}>Request amendment</Button>
+              <Button color="green.8" size="sm" onClick={onAccept} disabled={readOnly}>Accept offer</Button>
+            </Group>
+          </>
+        ) : (
+          <>
+            <Box>
+              <Text fz={14} fw={700} c="slate.9">Issue the offer</Text>
+              <Text fz={12} c="slate.5" mt={2}>Check the terms above, then issue the offer to the customer. It stays valid for 14 days.</Text>
+            </Box>
+            <Button color="brand" size="sm" onClick={onIssue} disabled={readOnly} rightSection={<IconSend size={14} />}>Issue offer</Button>
+          </>
+        )}
       </Group>
     </Box>
   );
@@ -501,11 +521,12 @@ const amendLabelStyles = {
 
 export interface OfferResult {
   ready: boolean;
+  message: string;
   payload: StagePayload;
 }
 
 const OFFER_STATUS_LABEL: Record<string, string> = {
-  pending: "Offer Issued", accepted: "Accepted", rejected: "Rejected", amendment: "Amendment Requested",
+  draft: "Pending", pending: "Offer Issued", accepted: "Accepted", rejected: "Rejected", amendment: "Amend",
 };
 const SIGNING_METHOD_LABEL: Record<string, string> = { esign: "E-signature", physical: "Physical Signature" };
 
@@ -526,7 +547,9 @@ function OfferWorkspace({
   readOnly?: boolean;
 }) {
   const { APPLICATION, FINAL_TERMS, FINAL_SIM, FINAL_FEES, ISSUED_DATE, VALID_UNTIL, ASSETS_SUMMARY, UNDERWRITING_DECISION, offerData } = ctx;
-  const [offerStatus, setOfferStatus] = useState<string>(offerData.status ?? "pending");
+  const [offerStatus, setOfferStatus] = useState<string>(offerData.status ?? "draft");
+  const [issuedOn, setIssuedOn] = useState<string | null>(offerData.issued_on ?? null);
+  const awaiting = offerStatus === "draft" || offerStatus === "pending";
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [rejectCategory, setRejectCategory] = useState<string | null>(offerData.reject?.category ?? null);
   const [rejectReason, setRejectReason] = useState<string>(offerData.reject?.reason ?? "");
@@ -538,29 +561,42 @@ function OfferWorkspace({
 
   const [contractStatus] = useState("not_generated");
   const [signingMethod, setSigningMethod] = useState<string | null>(offerData.signing_method ?? null);
-  const [signatories, setSignatories] = useState<{ name: string; role: string; status: string }[]>(
+  const [signatories, setSignatories] = useState<{ name: string; role: string; status: string; signature?: string; signed_on?: string }[]>(
     offerData.signatories ?? [
       { name: APPLICATION.customer.name, role: "Customer", status: "Pending" },
       { name: "Bank officer", role: "Bank officer", status: "Pending" },
     ],
   );
-  const [physical, setPhysical] = useState(
+  const [physical, setPhysical] = useState<{ dispatch: string; received: boolean; uploaded: boolean; verification: string; file_url?: string; file_name?: string }>(
     offerData.physical ?? { dispatch: "Not dispatched", received: false, uploaded: false, verification: "Pending" },
   );
+  const [signingIndex, setSigningIndex] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [executed, setExecuted] = useState<boolean>(!!offerData.executed);
 
   useEffect(() => {
     onChange?.({
       ready: executed,
+      message: executed
+        ? "Contract executed — ready to approve."
+        : offerStatus === "draft"
+          ? "Issue the offer to the customer to continue."
+          : offerStatus === "pending"
+            ? "Record the customer's response to continue."
+            : offerStatus === "accepted"
+              ? "Collect every signature and mark the contract executed to approve."
+              : offerStatus === "rejected"
+                ? "The customer rejected the offer — use Reject in the actions menu."
+                : "Amendment requested — use Return in the actions menu.",
       payload: {
-        custom_status: executed ? "Contract Executed" : OFFER_STATUS_LABEL[offerStatus],
+        custom_status: OFFER_STATUS_LABEL[offerStatus],
         signing_method: signingMethod ? SIGNING_METHOD_LABEL[signingMethod] : null,
         contract_status: executed ? "Executed" : signingMethod ? "Signing in Progress" : "Not Generated",
         first_payment_date: FINAL_TERMS.tenure ? isoDate(FINAL_SIM.first) : null,
         offer_data: {
           status: offerStatus,
-          issued_on: isoDate(ISSUED_DATE),
-          valid_until: isoDate(VALID_UNTIL),
+          issued_on: issuedOn,
+          valid_until: issuedOn ? isoDate(new Date(new Date(issuedOn).getTime() + 14 * 86400000)) : null,
           reject: offerStatus === "rejected" ? { category: rejectCategory, reason: rejectReason.trim() } : null,
           amendment: offerStatus === "amendment" ? { field: amendField, detail: amendDetail.trim(), route: amendRoute } : null,
           signing_method: signingMethod,
@@ -570,9 +606,9 @@ function OfferWorkspace({
         },
       },
     });
-  }, [offerStatus, rejectCategory, rejectReason, amendField, amendDetail, amendRoute, signingMethod, signatories, physical, executed]);
+  }, [offerStatus, issuedOn, rejectCategory, rejectReason, amendField, amendDetail, amendRoute, signingMethod, signatories, physical, executed]);
 
-  const decisionKey = `${offerStatus}|${executed}`;
+  const decisionKey = `${offerStatus}|${executed}|${signatories.map((s) => s.status).join()}|${physical.file_url ?? ""}|${physical.verification}`;
   const lastDecision = useRef(decisionKey);
   useEffect(() => {
     if (lastDecision.current === decisionKey) return;
@@ -589,8 +625,36 @@ function OfferWorkspace({
   const allSigned = signingMethod === "esign" ? signatories.every((s) => s.status === "Signed")
     : signingMethod === "physical" ? physical.received && physical.uploaded && physical.verification === "Verified" : false;
 
-  function toggleSignatory(i: number) {
-    setSignatories(signatories.map((s, idx) => (idx === i ? { ...s, status: s.status === "Signed" ? "Pending" : "Signed" } : s)));
+  async function upload(file: File) {
+    setUploading(true);
+    try {
+      return await uploadStageFile(file);
+    } catch (error) {
+      openCommonModal({
+        heading: "Upload Failed",
+        subtitle: "We couldn't upload the file.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      });
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function saveSignature(file: File) {
+    if (signingIndex === null) return;
+    const url = await upload(file);
+    if (!url) return;
+    setSignatories(signatories.map((s, idx) => (idx === signingIndex ? { ...s, status: "Signed", signature: url, signed_on: isoDate(new Date()) } : s)));
+    setSigningIndex(null);
+  }
+
+  async function uploadSignedCopy(file: File | null) {
+    if (!file) return;
+    const url = await upload(file);
+    if (url) setPhysical({ ...physical, uploaded: true, file_url: url, file_name: file.name, verification: "Pending" });
   }
 
   function downloadOffer() {
@@ -599,7 +663,7 @@ function OfferWorkspace({
 
   return (
    <Box p={14}>
-      {offerStatus !== "accepted" && offerStatus !== "pending" && showAmendForm && (
+      {offerStatus !== "accepted" && !awaiting && showAmendForm && (
         <Group justify="space-between" align="center" mb={8}>
           <Box>
             <Text fz={15} fw={700} c="slate.9">Offer &amp; signing</Text>
@@ -614,9 +678,14 @@ function OfferWorkspace({
         </Group>
       )}
 
-      {offerStatus === "pending" && !showRejectForm && !showAmendForm && (
+      {awaiting && !showRejectForm && !showAmendForm && (
         <OfferPendingView
           ctx={ctx}
+          issued={offerStatus === "pending"}
+          onIssue={() => {
+            setIssuedOn(isoDate(new Date()));
+            setOfferStatus("pending");
+          }}
           onAccept={() => setOfferStatus("accepted")}
           onReject={() => setShowRejectForm(true)}
           onAmend={() => setShowAmendForm(true)}
@@ -626,7 +695,7 @@ function OfferWorkspace({
         />
       )}
 
-      {offerStatus === "pending" && showRejectForm && (
+      {awaiting && showRejectForm && (
         <Paper withBorder className="ps-surface" radius="md" bg="white" mb="md">
           <Box p="sm">
             <Group gap={4} mb="sm">
@@ -689,7 +758,7 @@ function OfferWorkspace({
         </Paper>
       )}
 
-      {offerStatus === "pending" && showAmendForm && (
+      {awaiting && showAmendForm && (
         <Paper withBorder className="ps-surface" radius="md" bg="white" mb="sm" style={{ overflow: "hidden" }}>
           <Group gap={10} px="md" py={10} wrap="nowrap" style={{ background: "linear-gradient(90deg, var(--mantine-color-indigo-0), white)", borderBottom: "1px solid var(--mantine-color-slate-1)" }}>
             <BackIconButton onClick={() => setShowAmendForm(false)} label="Back to offer" />
@@ -759,6 +828,7 @@ function OfferWorkspace({
             <Text fz={15} fw={700} c="red.9">Offer rejected</Text>
           </Group>
           <Text fz={12.5} c="red.8">Reason: {rejectReason}</Text>
+          <Text fz={12.5} c="red.8" mt={4}>Use <strong>Reject</strong> in the actions menu to close the application.</Text>
         </Paper>
       )}
 
@@ -769,7 +839,7 @@ function OfferWorkspace({
             <Text fz={15} fw={700} c="orange.9">Routed back for amendment</Text>
           </Group>
           <Text fz={12.5} c="orange.8" mb={4}>Change requested: <strong>{amendField}</strong> — {amendDetail}</Text>
-          <Text fz={12.5} c="orange.8">Application sent back to the <strong>{amendRoute}</strong> stage for review and recalculation.</Text>
+          <Text fz={12.5} c="orange.8">Use <strong>Return</strong> in the actions menu to send the application back to the <strong>{amendRoute}</strong> stage for review and recalculation.</Text>
         </Paper>
       )}
 
@@ -933,7 +1003,7 @@ function OfferWorkspace({
                       const initials = s.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
                       const signed = s.status === "Signed";
                       return (
-                        <UnstyledButton key={s.name} onClick={() => toggleSignatory(i)} style={{ display: 'block', width: '100%' }}>
+                        <UnstyledButton key={s.name} onClick={() => setSigningIndex(i)} disabled={readOnly} style={{ display: 'block', width: '100%' }}>
                           <Paper 
                             withBorder 
                             radius="md" 
@@ -954,9 +1024,13 @@ function OfferWorkspace({
                                   <Text fz={11} c={signed ? "green.7" : "slate.5"}>{s.role}</Text>
                                 </Box>
                               </Group>
-                              <Badge size="sm" radius="sm" variant={signed ? "filled" : "light"} color={signed ? "green.5" : "gray.5"} style={{ textTransform: 'none', fontWeight: 600 }}>
-                                {s.status}
-                              </Badge>
+                              {signed && s.signature ? (
+                                <Image src={s.signature} h={34} w={110} fit="contain" alt={`Signature of ${s.name}`} />
+                              ) : (
+                                <Badge size="sm" radius="sm" variant={signed ? "filled" : "light"} color={signed ? "green.5" : "gray.5"} style={{ textTransform: 'none', fontWeight: 600 }}>
+                                  {s.status}
+                                </Badge>
+                              )}
                             </Group>
                           </Paper>
                         </UnstyledButton>
@@ -964,7 +1038,15 @@ function OfferWorkspace({
                     })}
                   </SimpleGrid>
 
-                  <Text fz={11} c="slate.4" mb={20} ta="left">Click a status pill to simulate a signature being received.</Text>
+                  <Text fz={11} c="slate.4" mb={20} ta="left">Click a signatory to sign on the signature pad. Click again to sign afresh.</Text>
+                  <SignaturePad
+                    opened={signingIndex !== null}
+                    signer={signingIndex !== null ? signatories[signingIndex].name : ""}
+                    fileName={`signature-${APPLICATION.id}-${signingIndex !== null ? signatories[signingIndex].role.replace(/\s+/g, "-").toLowerCase() : ""}`}
+                    saving={uploading}
+                    onClose={() => setSigningIndex(null)}
+                    onSave={saveSignature}
+                  />
                 </Box>
               )}
 
@@ -981,18 +1063,26 @@ function OfferWorkspace({
                     <Box mt="md">
                       <Checkbox color="indigo" label="Signed document received" checked={physical.received} onChange={(e) => setPhysical({ ...physical, received: e.currentTarget.checked })} mb={12} />
                       {!physical.uploaded ? (
-                        <Button size="sm" variant="light" color="indigo" radius="md" mb={12} onClick={() => setPhysical({ ...physical, uploaded: true, verification: "Pending" })} leftSection={<IconCloudUpload size={14} />}>
-                          Upload signed document
-                        </Button>
+                        <FileButton onChange={uploadSignedCopy} accept="application/pdf,image/png,image/jpeg">
+                          {(props) => (
+                            <Button {...props} size="sm" variant="light" color="indigo" radius="md" mb={12} loading={uploading} leftSection={<IconCloudUpload size={14} />}>
+                              Upload signed document
+                            </Button>
+                          )}
+                        </FileButton>
                       ) : (
                         <Group justify="space-between" align="center" p="sm" mb={12} bg="white" style={{ border: "1px solid var(--mantine-color-slate-2)", borderRadius: "var(--mantine-radius-md)" }}>
                           <Group gap={8}>
                             <IconFileText size={14} color="var(--mantine-color-slate-4)" />
-                            <Text fz={12.5}>Signed contract — {APPLICATION.id}.pdf</Text>
+                            <Anchor fz={12.5} href={physical.file_url} target="_blank">{physical.file_name || `Signed contract — ${APPLICATION.id}`}</Anchor>
                           </Group>
-                          <Button size="compact-sm" variant="light" color="indigo" radius="md" onClick={() => setPhysical({ ...physical, verification: "Verified" })}>
-                            Mark verified
-                          </Button>
+                          {physical.verification === "Verified" ? (
+                            <StatusBadge status="Verified" />
+                          ) : (
+                            <Button size="compact-sm" variant="light" color="indigo" radius="md" onClick={() => setPhysical({ ...physical, verification: "Verified" })}>
+                              Mark verified
+                            </Button>
+                          )}
                         </Group>
                       )}
                     </Box>
@@ -1033,7 +1123,7 @@ function OfferWorkspace({
                     <Box>
                       <Text fz={18} fw={700} c="green.9" mb={4}>Contract successfully executed</Text>
                       <Text fz={13.5} c="green.8" mt={4}>
-                        All required signatures completed via {signingMethod === "esign" ? "e-signature" : "physical signature"}. The loan is ready for disbursement.
+                        All required signatures completed via {signingMethod === "esign" ? "e-signature" : "physical signature"}. Approve the offer, then use Approve and Create Loan in the actions menu.
                       </Text>
                     </Box>
                   </Group>
@@ -1090,7 +1180,7 @@ function OfferWorkspace({
               </Accordion>
               
               <Button mt={8} fullWidth color="brand" radius="md" disabled={!executed || readOnly} onClick={onClose} rightSection={<IconArrowRight size={14} />}>
-                Complete workflow
+                Approve
               </Button>
             </Box>
           </Group>
@@ -1293,6 +1383,7 @@ export function OfferModal({
   const [section, setSection] = useState<Section>("offer");
   const [uwTab, setUwTab] = useState<any>("asset");
   const [result, setResult] = useState<OfferResult | null>(null);
+  const [busy, setBusy] = useState<StageBusy>(null);
   const resultRef = useRef<OfferResult | null>(null);
   const stage = useStageApplication(loanApplicationId);
   const { application, values } = stage;
@@ -1303,12 +1394,15 @@ export function OfferModal({
     setResult(next);
   };
 
-  const save = async (complete: boolean) => {
+  const autosave = () => resultRef.current && stage.save(resultRef.current.payload);
+
+  const persist = async (approve: boolean) => {
     const current = resultRef.current;
     if (!current) return;
-    const payload: StagePayload = complete ? { ...current.payload, custom_status: "Approved" } : current.payload;
-    const saved = await stage.save(payload);
-    if (saved && complete) onClose();
+    setBusy(approve ? "approve" : "save");
+    const saved = await stage.save(approve ? { ...current.payload, custom_status: "Approved" } : current.payload);
+    setBusy(null);
+    if (saved) onClose();
   };
 
   return (
@@ -1391,23 +1485,24 @@ export function OfferModal({
                   <OfferWorkspace
                     ctx={ctx}
                     readOnly={readOnly}
-                    onClose={() => save(true)}
+                    onClose={() => persist(true)}
                     onChange={handleChange}
-                    onDecision={readOnly ? undefined : () => save(false)}
+                    onDecision={readOnly ? undefined : autosave}
                   />
                 )}
               </Box>
             </Box>
 
             {!readOnly && (
-              <Group justify="space-between" align="center" px="xl" py="md" bg="white" style={{ borderTop: "1px solid var(--mantine-color-gray-2)", flexShrink: 0 }}>
-                <Button variant="transparent" c="dark.8" px={0} fw={600} onClick={onClose}>
-                  Close
-                </Button>
-                <Button color="brand" radius="md" onClick={() => save(true)} disabled={!result?.ready} loading={stage.saving}>
-                  Complete workflow
-                </Button>
-              </Group>
+              <StageFooter
+                ready={!!result?.ready}
+                message={result?.message ?? "Issue the offer to the customer to continue."}
+                busy={busy}
+                canSave={!!result}
+                onCancel={onClose}
+                onSave={() => persist(false)}
+                onApprove={() => persist(true)}
+              />
             )}
           </>
         )}

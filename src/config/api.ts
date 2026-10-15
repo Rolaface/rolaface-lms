@@ -538,6 +538,8 @@ losDocumentSetup: {
     getSubTypes: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.get_sub_types`,
     getPurposes: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_type_tree.api.get_purposes`,
     assignLoanProduct: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.engine.api.assign_loan_product`,
+    evaluate: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.engine.api.evaluate_application`,
+    createLoan: `${ERP_BASE}/api/method/rolaface_lms_app.modules.los.loan_application.api.create_loan`,
   },
 } as const;
 

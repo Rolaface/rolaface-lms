@@ -6,6 +6,8 @@ import { WorkflowActionModal } from "../../components/Modal/WorkflowActionModal"
 import { openCommonModal } from "../../components/Modal/AlertModal";
 import { parseFrappeError } from "../../utils/parseFrappeError";
 import { useUserStore } from "../../store/userStore";
+import { useCompanyStore } from "../../store/companyStore";
+import { formatAmount } from "../../store/currencyStore";
 import type { WorkflowAction } from "../../types/workflow";
 
 interface Target {
@@ -18,12 +20,14 @@ interface Target {
 export function useApplicationWorkflow() {
   const queryClient = useQueryClient();
   const email = useUserStore((s) => s.user?.email);
+  const currency = useCompanyStore((s) => s.baseCurrency);
   const [target, setTarget] = useState<Target | null>(null);
 
   const mutation = useMutation({
     mutationFn: (payload: { docname: string; action: string; comment?: string; assign_to_user?: string }) =>
       applyWorkflowAction({ doctype: LOAN_APPLICATION_DOCTYPE, ...payload }),
-    onSuccess: (_, variables) => {
+    onSuccess: (response, variables) => {
+      const engine = response?.message?.data?.action_result;
       queryClient.invalidateQueries({ queryKey: ["los-loan-applications"] });
       queryClient.invalidateQueries({ queryKey: ["los-loan-application", variables.docname] });
       queryClient.invalidateQueries({ queryKey: ["los-workflow-actions", variables.docname] });
@@ -31,7 +35,11 @@ export function useApplicationWorkflow() {
       openCommonModal({
         heading: "Action Applied",
         subtitle: "",
-        body: `'${variables.action}' applied to ${variables.docname}.`,
+        body: engine?.status
+          ? `'${variables.action}' applied to ${variables.docname}. Pre-screening result: ${engine.status}${
+              engine.eligible_amount ? `, eligible amount ${formatAmount(currency, engine.eligible_amount, { withSymbol: true })}` : ""
+            }.`
+          : `'${variables.action}' applied to ${variables.docname}.`,
         color: "green",
         buttons: [{ label: "Close", color: "green" }],
       });

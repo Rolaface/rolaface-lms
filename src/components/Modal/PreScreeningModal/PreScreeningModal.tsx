@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { Modal, Box, Group, Text, ActionIcon, Button, ThemeIcon } from "@mantine/core";
-import { IconGauge, IconFileText, IconX, IconMinus, IconCircleCheck, IconInfoCircle, IconArrowRight } from "@tabler/icons-react";
+import { Modal, Box, Group, Text, ActionIcon, ThemeIcon } from "@mantine/core";
+import { IconGauge, IconFileText, IconX, IconMinus } from "@tabler/icons-react";
 import { LoanApplicationModal } from "../LoanApplication/LoanApplicationModal";
-import type { StagePayload } from "../../../api/LosConfiguration/LoanApplicationApi";
+import * as LoanApplicationApi from "../../../api/LosConfiguration/LoanApplicationApi";
+import { parseFrappeError } from "../../../utils/parseFrappeError";
+import { openCommonModal } from "../AlertModal";
 import type { PreScreeningModalProps, Section } from "./PreScreeningShared";
 import { ContextHeader, LeftNav } from "./PreScreeningShared";
 import { PrescreeningWorkspace, type PrescreeningResult } from "./PrescreeningWorkspace";
 import { StageLoading, useStageApplication } from "../stageData";
+import { StageFooter, type StageBusy } from "../StageFooter";
 
 export function PreScreeningModal({
   opened,
@@ -19,6 +22,7 @@ export function PreScreeningModal({
 }: PreScreeningModalProps) {
   const [section, setSection] = useState<Section>("prescreening");
   const [result, setResult] = useState<PrescreeningResult | null>(null);
+  const [busy, setBusy] = useState<StageBusy>(null);
   const stage = useStageApplication(embedded ? null : loanApplicationId);
 
   if (embedded) {
@@ -29,10 +33,33 @@ export function PreScreeningModal({
 
   const canSubmit = !!result?.ready;
 
-  const handleSubmit = async () => {
-    if (!result) return;
-    const payload: StagePayload = { ...result.payload, custom_status: "Approved" };
-    if (await stage.save(payload)) onClose();
+  const stageStatus = result?.payload.custom_status;
+  const decisionHint =
+    canSubmit && (stageStatus === "Review" || stageStatus === "Warning")
+      ? ` Approve passes it on your decision; Save keeps it as ${stageStatus}.`
+      : "";
+
+  const persist = async (approve: boolean) => {
+    if (!result || !loanApplicationId) return;
+    setBusy(approve ? "approve" : "save");
+    if (!(await stage.save(result.payload))) {
+      setBusy(null);
+      return;
+    }
+    try {
+      await LoanApplicationApi.evaluate(loanApplicationId, result.overrides, true, approve);
+      onClose();
+    } catch (error) {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      });
+    } finally {
+      setBusy(null);
+    }
   };
 
   const bodyContent = (
@@ -87,55 +114,19 @@ export function PreScreeningModal({
             </Box>
           </Box>
           {!readOnly && (
-            <Group
-              justify="space-between"
-              align="center"
-              px="xl"
-              py={8}
-              bg="white"
-              style={{
-                borderTop: "1px solid var(--mantine-color-slate-2)",
-                boxShadow: "0 -6px 18px -14px rgba(15, 23, 42, 0.45)",
-                flexShrink: 0,
-              }}
-            >
-              <Group gap={8} wrap="nowrap">
-                {canSubmit ? (
-                  <IconCircleCheck size={15} color="var(--mantine-color-success-6)" />
-                ) : (
-                  <IconInfoCircle size={15} color="var(--mantine-color-slate-4)" />
-                )}
-                <Text fz={12} c={canSubmit ? "success.7" : "slate.5"} fw={canSubmit ? 600 : 500}>
-                  {canSubmit
-                    ? "All prescreening checks passed — ready for appraisal."
-                    : "Resolve the outstanding checks to continue."}
-                </Text>
-              </Group>
-              <Group gap={10}>
-                <Button variant="subtle" color="slate" radius="md" fw={600} onClick={onClose}>
-                  Cancel
-                </Button>
-                <Button
-                  radius="md"
-                  onClick={handleSubmit}
-                  disabled={!canSubmit}
-                  loading={stage.saving}
-                  rightSection={<IconArrowRight size={16} />}
-                  styles={{
-                    root: canSubmit
-                      ? {
-                          background:
-                            "linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-7))",
-                          boxShadow:
-                            "0 8px 18px -10px color-mix(in srgb, var(--mantine-color-brand-6) 90%, transparent)",
-                        }
-                      : undefined,
-                  }}
-                >
-                  Submit
-                </Button>
-              </Group>
-            </Group>
+            <StageFooter
+              ready={canSubmit}
+              message={
+                (result?.message ??
+                  (canSubmit ? "All prescreening checks passed — ready for appraisal." : "Resolve the outstanding checks to continue.")) +
+                decisionHint
+              }
+              busy={busy}
+              canSave={!!result}
+              onCancel={onClose}
+              onSave={() => persist(false)}
+              onApprove={() => persist(true)}
+            />
           )}
         </>
       )}
